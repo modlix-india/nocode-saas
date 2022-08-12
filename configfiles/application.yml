@@ -1,0 +1,31 @@
+eureka:
+  client:
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:9999/eureka/
+
+management:
+  security:
+    enabled: false
+  endpoints:
+    web:
+      expose: "*"
+      exposure:
+        include: "*"
+
+endpoints:
+  enabled: true
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+
+jwt:
+  key: ficity_secret_token_for_the_new_saas_application_it_requires_a_very_long_key_to_sign_tokens
+  token:
+    rememberme:
+      expiry: 525600
+    default:
+      expiry: 30

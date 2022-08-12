@@ -1,0 +1,37 @@
+spring:
+  r2dbc:
+    url: ${security.db.url}
+    username: ${security.db.username}
+    password: ${security.db.password}
+    pool:
+      initial-size: 2
+      max-size: 4
+      max-idle-time: 30m
+      validation-query: SELECT 1
+  flyway:
+    enabled: true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${security.db.flyway.url}
+    user: ${security.db.username}
+    password: ${security.db.password}
+  boot:
+    admin:
+      client:
+        instance:
+          name: Security
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+  cloud:
+    gateway:
+      routes:
+        - id: security
+          uri: lb://security
+          predicates:
+            - Path=/api/security/**
+
+management:
+  endpoint:
+    flyway:
+      enabled: true

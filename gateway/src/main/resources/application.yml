@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: gateway
+  config:
+   import: configserver:http://${CLOUD_CONFIG_SERVER:localhost}:${CLOUD_CONFIG_SERVER_PORT:8888}/
+  
+management:
+  endpoint:
+    gateway:
+      enabled: true
+      
+server:
+  port: 8080

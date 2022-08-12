@@ -1,0 +1,16 @@
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: security
+          uri: lb://security
+          predicates:
+            - Path=/api/security/**
+  boot:
+    admin:
+      client:
+        instance:
+          name: Gateway

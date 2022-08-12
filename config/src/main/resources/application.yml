@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: config
+  cloud:
+    config:
+      server:
+        bootstrap: true
+    
+        
+server:
+  port: 8888
+
+eureka:
+  client:
+    register-with-eureka: true

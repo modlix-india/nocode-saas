@@ -1,0 +1,17 @@
+spring:
+  boot:
+    admin:
+      notify:
+        ms-teams:
+          webhook-url: ${admin.teams-url:}
+          enabled: ${admin.teams-enabled:false}
+      client:
+        instance:
+          name: Gateway
+      ui:
+        title: ${admin.title:Server Management Console}
+        brand: ${admin.brand:<img src="assets/img/icon-spring-boot-admin.svg"><span>Server Managment Console</span>}
+      monitor:
+        status-interval: 60000ms
+        status-lifetime: 60000ms
+        default-retries: 5

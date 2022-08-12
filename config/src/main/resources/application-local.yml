@@ -1,0 +1,10 @@
+spring:
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:///Users/kirangrandhi/fincity/saas/configfiles
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:9999/eureka/
