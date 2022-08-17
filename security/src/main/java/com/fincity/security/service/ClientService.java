@@ -1,21 +1,21 @@
 package com.fincity.security.service;
 
 import java.net.URI;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.model.AuthenticationResponse;
-import com.fincity.security.model.ClientURLPattern;
-import com.fincity.security.model.ClientURLPattern.Protocol;
+import com.fincity.security.model.ClientUrlPattern;
+import com.fincity.security.model.ClientUrlPattern.Protocol;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
@@ -26,6 +26,7 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
+	private static final String CACHE_NAME_CLIENT_URL = "clientClientURL";
 
 	private static final String CACHE_CLIENT_URI = "uri";
 
@@ -34,21 +35,6 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 
 	@Autowired
 	private ClientUrlService clientUrlService;
-//
-//	public void addClientURLPattern(ULong clientId, String urlPattern) {
-//
-//		cacheService.evictAll(CACHE_NAME_CLIENT_URL)
-//		        .and(this.dao.addClientURLPattern(clientId, urlPattern))
-//		        .subscribe();
-//	}
-//
-//	public Mono<List<ClientURLPattern>> clientURLPatterns() {
-//
-//		Mono<List<ClientURLPattern>> list = cacheService.get(CACHE_NAME_CLIENT_URL, CACHE_CLIENT_URL_LIST);
-//
-//		return list.switchIfEmpty(this.dao.clientURLPatterns()
-//		        .flatMap(e -> cacheService.put(CACHE_NAME_CLIENT_URL, e, CACHE_CLIENT_URL_LIST)));
-//	}
 
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
 
@@ -58,7 +44,7 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 
 		Mono<ULong> clientId = key.flatMap(e -> cacheService.get(CACHE_NAME_CLIENT_URL, e));
 
-		return clientId.switchIfEmpty(this.dao.clientURLPatterns()
+		return clientId.switchIfEmpty(clientUrlService.readAllAsClientURLPattern()
 		        .flatMapIterable(e -> e)
 		        .filter(e ->
 				{
@@ -94,7 +80,7 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 
 			        return checkPort == -1 || uri.getPort() == checkPort;
 		        })
-		        .map(ClientURLPattern::getClientId)
+		        .map(ClientUrlPattern::getClientId)
 		        .defaultIfEmpty(ULong.valueOf(1l))
 		        .take(1)
 		        .single()
@@ -115,6 +101,10 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_RELATION, v, k))));
 	}
 
+	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
+		return this.dao.isBeingManagedBy(managingClientId, clientId);
+	}
+
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong clientId) {
 
 		Mono<ClientPasswordPolicy> policy = cacheService.get(CACHE_NAME_CLIENT_PWD_POLICY, clientId);
@@ -131,5 +121,51 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 		return clientType.switchIfEmpty(Mono.defer(() -> this.dao.getClientType(id)
 		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_TYPE, v, id))));
 	}
+	
+	@PreAuthorize("hasPermission('Client CREATE')")
+	@Override
+	public Mono<Client> create(Client entity) {
+		
+		Mono<Client> client = super.create(entity);
+		
+//		client.and
+		
+		return client;
+	}
+	
+	@PreAuthorize("hasPermission('Client READ')")
+	@Override
+	public Mono<Client> read(ULong id) {
+		return super.read(id);
+	}
+	
+	@PreAuthorize("hasPermission('Client UPDATE')")
+	@Override
+	public Mono<Client> update(Client entity) {
+		return super.update(entity);
+	}
+	
+	@PreAuthorize("hasPermission('Client UPDATE')")
+	@Override
+	public Mono<Client> update(ULong key, Map<String, Object> fields) {
+		return super.update(key, fields);
+	}
 
+	@PreAuthorize("hasPermission('Client UPDATE')")
+	@Override
+	public Mono<Void> delete(ULong id) {
+		return super.delete(id);
+	}
+
+	@Override
+	protected Mono<Client> updatableEntity(Client entity) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected Mono<Map<String, Object>> updatableFields(Map<String, Object> fields) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

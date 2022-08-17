@@ -6,17 +6,19 @@ import java.util.regex.Pattern;
 import org.jooq.types.ULong;
 
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Data
-public class ClientURLPattern {
+@RequiredArgsConstructor
+public class ClientUrlPattern {
 
 	public static final Pattern URL_PATTERN = Pattern
 	        .compile("(http\\:|https\\:){0,1}\\/\\/([a-z0-9\\.]+)([\\:]([0-9]{0,5})){0,1}");
 
-	private ULong clientId;
-	private String urlPattern;
+	private final ULong clientId;
+	private final String urlPattern;
 
 	private Tuple3<Protocol, String, Integer> hostnPort = null;
 

@@ -102,7 +102,7 @@ public class AuthenticationService {
 			        return clientId.flatMap(cid -> makeToken(authRequest, response, uri, setAddress, u, c, cid));
 
 		        })))))
-		        .switchIfEmpty(Mono.defer(() -> this.credentialError()));
+		        .switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
 	private Mono<AuthenticationResponse> makeToken(AuthenticationRequest authRequest, ServerHttpResponse response,

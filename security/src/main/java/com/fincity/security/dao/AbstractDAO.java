@@ -91,20 +91,21 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 	}
 
 	public Mono<Page<D>> readPage(Pageable pageable) {
-		Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = getSelectJointStep();
-		return list(pageable, selectJoinStepTuple);
+
+		return getSelectJointStep().flatMap(tup -> this.list(pageable, tup));
 	}
 
 	@SuppressWarnings("unchecked")
 	public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-		Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = getSelectJointStep();
+		return getSelectJointStep().flatMap(selectJoinStepTuple -> {
 
-		if (condition != null) {
-			Condition filterCondition = filter(condition);
-			selectJoinStepTuple = selectJoinStepTuple.mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
-			        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
-		}
-		return list(pageable, selectJoinStepTuple);
+			if (condition != null) {
+				return filter(condition).flatMap(filterCondition -> list(pageable,
+				        selectJoinStepTuple.mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
+				                .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition))));
+			}
+			return list(pageable, selectJoinStepTuple);
+		});
 	}
 
 	protected Mono<Page<D>> list(Pageable pageable,
@@ -137,11 +138,13 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 	}
 
 	public Flux<D> readAll(AbstractCondition query) {
-		SelectJoinStep<Record> selectJoinStep = getSelectJointStep().getT1();
-		selectJoinStep.where(filter(query));
+		Mono<SelectJoinStep<Record>> selectJoinStep = getSelectJointStep().map(Tuple2::getT1);
 
-		return Flux.from(selectJoinStep)
-		        .map(e -> e.into(this.pojoClass));
+		return selectJoinStep.flatMapMany(sjs -> filter(query).flatMapMany(cond -> {
+			sjs.where(cond);
+			return Flux.from(sjs)
+			        .map(e -> e.into(this.pojoClass));
+		}));
 	}
 
 	public Mono<D> readById(I id) {
@@ -233,21 +236,18 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		return table.field(convertToJOOQFieldName(fieldName));
 	}
 
-	protected Condition filter(AbstractCondition condition) {
+	protected Mono<Condition> filter(AbstractCondition condition) {
 
 		if (condition == null)
-			return DSL.noCondition();
+			return Mono.just(DSL.noCondition());
 
-		Condition cond = null;
+		Mono<Condition> cond = null;
 		if (condition instanceof ComplexCondition cc)
 			cond = complexConditionFilter(cc);
 		else
-			cond = filterConditionFilter((FilterCondition) condition);
+			cond = Mono.just(filterConditionFilter((FilterCondition) condition));
 
-		if (cond == null)
-			return DSL.noCondition();
-
-		return condition.isNegate() ? cond.not() : cond;
+		return cond.map(c -> condition.isNegate() ? c.not() : c);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -307,7 +307,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 			return field.like("%" + fc.getValue() + "%");
 
 		default:
-			return null;
+			return DSL.noCondition();
 		}
 	}
 
@@ -366,23 +366,27 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		return value;
 	}
 
-	private Condition complexConditionFilter(ComplexCondition cc) {
+	private Mono<Condition> complexConditionFilter(ComplexCondition cc) {
 
 		if (cc.getConditions() == null || cc.getConditions()
 		        .isEmpty())
-			return DSL.noCondition();
+			return Mono.just(DSL.noCondition());
 
-		List<Condition> conds = cc.getConditions()
+		return Flux.concat(cc.getConditions()
 		        .stream()
 		        .map(this::filter)
-		        .toList();
-		return cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conds) : DSL.or(conds);
+		        .toList())
+		        .collectList()
+		        .map(conds -> cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conds) : DSL.or(conds));
 	}
 
+	@SuppressWarnings("unchecked")
 	protected Mono<R> getRecordById(I id) {
 
-		return Mono.from(dslContext.selectFrom(table)
-		        .where(idField.eq(id)))
+		return this.getSelectJointStep()
+		        .map(Tuple2::getT1)
+		        .flatMap(e -> Mono.from(e.where(idField.eq(id))))
+		        .map(e -> (R) e)
 		        .switchIfEmpty(Mono.defer(
 		                () -> messageResourceService.getMessage(OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
 		                        .map(msg ->
@@ -391,11 +395,11 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		                        })));
 	}
 
-	protected Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> getSelectJointStep() {
-		return Tuples.of(dslContext.select(Arrays.asList(table.fields()))
+	protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
+		return Mono.just(Tuples.of(dslContext.select(Arrays.asList(table.fields()))
 		        .from(table),
 		        dslContext.select(DSL.count())
-		                .from(table));
+		                .from(table)));
 	}
 
 	private D rowMapper(Row row, RowMetadata meta) {

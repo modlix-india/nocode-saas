@@ -6,9 +6,10 @@ import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECU
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+import org.jooq.Field;
 import org.jooq.Record1;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
@@ -20,43 +21,23 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
-public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong, Client> {
+public class ClientDAO extends AbstractClientCheckDAO<SecurityClientRecord, ULong, Client> {
 
 	protected ClientDAO() {
 		super(Client.class, SECURITY_CLIENT, SECURITY_CLIENT.ID);
 	}
 
-//	public Mono<Void> addClientURLPattern(ULong clientId, String urlPattern) {
-//
-//		return Mono
-//		        .from(this.dslContext
-//		                .insertInto(SECURITY_CLIENT_URL, SECURITY_CLIENT_URL.CLIENT_ID, SECURITY_CLIENT_URL.URL_PATTERN)
-//		                .values(clientId, urlPattern))
-//		        .then();
-//	}
-
-//	public Mono<List<ClientURLPattern>> clientURLPatterns() {
-//
-//		return Flux.from(this.dslContext.select(SECURITY_CLIENT_URL.CLIENT_ID, SECURITY_CLIENT_URL.URL_PATTERN)
-//		        .from(SECURITY_CLIENT_URL))
-//		        .map(e -> e.into(ClientURLPattern.class))
-//		        .collectList();
-//	}
-
 	public Mono<Set<ULong>> findManagedClientList(ULong id) {
 
-		return Flux.from(this.dslContext.select(SECURITY_CLIENT_MANAGE.CLIENT_ID)
-		        .from(SECURITY_CLIENT_MANAGE)
-		        .where(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(id)))
+		return Flux.from(this.dslContext.select(SECURITY_CLIENT.ID)
+		        .from(SECURITY_CLIENT)
+		        .leftJoin(SECURITY_CLIENT_MANAGE)
+		        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID))
+		        .where(SECURITY_CLIENT.ID.eq(id)
+		                .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(id))))
 		        .map(Record1::value1)
-		        .collect(Collectors.toCollection(HashSet::new))
-		        .map(e ->
-				{
-			        e.add(id);
-			        return e;
-		        })
-		        .map(e -> (Set<ULong>) e)
-		        .switchIfEmpty(Mono.just(Set.of(id)));
+		        .collectList()
+		        .map(HashSet::new);
 	}
 
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong clientId) {
@@ -78,4 +59,23 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(Record1::value1);
 	}
 
+	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
+
+		if (managingClientId.equals(clientId))
+			return Mono.just(true);
+
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(SECURITY_CLIENT_MANAGE)
+		        .where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)
+		                .and(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(managingClientId)))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(e -> e == 1);
+	}
+	
+	@Override
+	protected Field<ULong> getClientIDField() {
+		
+		return SECURITY_CLIENT.ID;
+	}
 }

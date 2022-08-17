@@ -1,7 +1,6 @@
 package com.fincity.security.dao;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -18,34 +17,28 @@ import reactor.util.function.Tuples;
 
 @Transactional
 public abstract class AbstractUpdatableDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>>
-	extends AbstractDAO<R, I, D>{
-	
+        extends AbstractDAO<R, I, D> {
+
 	private static final String UPDATED_BY = "UPDATED_BY";
-	
+
 	protected final Field<?> updatedByField;
-	
+
 	protected AbstractUpdatableDAO(Class<D> pojoClass, Table<R> table, Field<I> idField) {
 		super(pojoClass, table, idField);
 		this.updatedByField = table.field(UPDATED_BY);
 	}
 
-	@SuppressWarnings({ "unchecked" })
 	public <A extends AbstractUpdatableDTO<I, I>> Mono<D> update(A entity) {
-	
-		return this.getRecordById(entity.getId())
-		        .map(e ->
-				{
-			        entity.setCreatedBy((I) e.get("CREATED_BY"));
-			        entity.setCreatedAt((LocalDateTime) e.get("CREATED_AT"));
-			        entity.setUpdatedAt(null);
-			        UpdatableRecord<R> rec = this.dslContext.newRecord(this.table);
-			        rec.from(entity);
-			        return rec;
-		        })
-		        .flatMap(e -> Mono.from(this.dslContext.update(this.table)
-		                .set(e))
-		                .thenReturn(e.into(this.pojoClass)));
-	
+
+		entity.setUpdatedAt(null);
+		UpdatableRecord<R> rec = this.dslContext.newRecord(this.table);
+		rec.from(entity);
+		rec.reset("CREATED_BY");
+		rec.reset("CREATED_AT");
+		return Mono.from(this.dslContext.update(this.table)
+		        .set(rec)
+		        .where(this.idField.eq(entity.getId())))
+		        .thenReturn(rec.into(this.pojoClass));
 	}
 
 	public Mono<D> update(I id, Map<String, Object> updateFields) {
@@ -59,7 +52,8 @@ public abstract class AbstractUpdatableDAO<R extends UpdatableRecord<R>, I exten
 		        .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));
 
 		return Mono.from(this.dslContext.update(this.table)
-		        .set(fields))
+		        .set(fields)
+		        .where(this.idField.eq(id)))
 		        .then(this.readById(id));
 	}
 }

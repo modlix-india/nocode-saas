@@ -1,0 +1,91 @@
+package com.fincity.security.dao;
+
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
+
+import java.io.Serializable;
+import java.util.Arrays;
+
+import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.Record;
+import org.jooq.Record1;
+import org.jooq.SelectJoinStep;
+import org.jooq.Table;
+import org.jooq.UpdatableRecord;
+import org.jooq.impl.DSL;
+import org.jooq.types.ULong;
+
+import com.fincity.security.dto.AbstractUpdatableDTO;
+import com.fincity.security.jwt.ContextAuthentication;
+import com.fincity.security.model.condition.AbstractCondition;
+import com.fincity.security.util.SecurityContextUtil;
+
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
+
+public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>>
+        extends AbstractUpdatableDAO<R, I, D> {
+
+	protected AbstractClientCheckDAO(Class<D> pojoClass, Table<R> table, Field<I> idField) {
+		super(pojoClass, table, idField);
+	}
+
+	@Override
+	protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .map(ca ->
+				{
+
+			        SelectJoinStep<Record> mainQuery = dslContext.select(Arrays.asList(table.fields()))
+			                .from(table);
+
+			        SelectJoinStep<Record1<Integer>> countQuery = dslContext.select(DSL.count())
+			                .from(table);
+
+			        if (ca.getClientTypeCode()
+			                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
+				        return Tuples.of(mainQuery, countQuery);
+
+			        return this.addJoinCondition(mainQuery, countQuery, this.getClientIDField());
+		        });
+	}
+
+	protected Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> addJoinCondition(
+	        SelectJoinStep<Record> mainQuery, SelectJoinStep<Record1<Integer>> countQuery, Field<ULong> clientIdField) {
+
+		return Tuples.of((SelectJoinStep<Record>) mainQuery.leftJoin(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(clientIdField))
+		        .leftJoin(SECURITY_CLIENT_MANAGE)
+		        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID)),
+		        (SelectJoinStep<Record1<Integer>>) countQuery.leftJoin(SECURITY_CLIENT)
+		                .on(SECURITY_CLIENT.ID.eq(clientIdField))
+		                .leftJoin(SECURITY_CLIENT_MANAGE)
+		                .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID)));
+	}
+	
+	@Override
+	protected Mono<Condition> filter(AbstractCondition acond) {
+
+		Mono<Condition> condition = super.filter(acond);
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca ->
+				{
+			        if (ca.getClientTypeCode()
+			                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
+				        return condition;
+
+			        ULong clientId = ULong.valueOf(ca.getUser()
+			                .getClientId());
+
+			        return condition.map(c -> DSL.and(c, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)
+			                .or(SECURITY_CLIENT.ID.eq(clientId))));
+		        });
+	}
+	
+	
+	protected abstract Field<ULong> getClientIDField();
+}
