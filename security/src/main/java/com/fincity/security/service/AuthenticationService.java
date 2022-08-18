@@ -193,7 +193,7 @@ public class AuthenticationService {
 
 	private Mono<? extends AuthenticationResponse> credentialError() {
 
-		return resourceService.getMessage("user_credentials_mismatched")
+		return resourceService.getMessage(MessageResourceService.USER_CREDENTIALS_MISMATCHED)
 		        .map(msg ->
 				{
 			        throw new GenericException(HttpStatus.FORBIDDEN, msg);
@@ -217,7 +217,7 @@ public class AuthenticationService {
 				c = JWTUtil.getClaimsFromToken(this.tokenKey, bearerToken);
 			} catch (Exception ex) {
 				throw new GenericException(HttpStatus.UNAUTHORIZED,
-				        resourceService.getDefaultLocaleMessage("token_expired"), ex);
+				        resourceService.getDefaultLocaleMessage(MessageResourceService.TOKEN_EXPIRED), ex);
 			}
 
 			final var claims = c;
@@ -237,7 +237,7 @@ public class AuthenticationService {
 				        return (Authentication) e;
 			        })
 			        .switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
-			                resourceService.getDefaultLocaleMessage("unknown_token"))));
+			                resourceService.getDefaultLocaleMessage(MessageResourceService.UNKNOWN_TOKEN))));
 
 		} else {
 			// Need to add the basic authorisation...
@@ -253,7 +253,7 @@ public class AuthenticationService {
 		if (!uri.getHost()
 		        .equals(jwtClaims.getHostName()) || uri.getPort() != jwtClaims.getPort()) {
 			return Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
-			        resourceService.getDefaultLocaleMessage("unknown_token")));
+			        resourceService.getDefaultLocaleMessage(MessageResourceService.UNKNOWN_TOKEN)));
 		}
 
 		return this.userService.read(tokenObject.getUserId())

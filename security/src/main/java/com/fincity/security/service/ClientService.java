@@ -13,9 +13,16 @@ import org.springframework.stereotype.Service;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dto.SoxLog;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
+import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.jwt.ContextAuthentication;
+import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.ClientUrlPattern;
 import com.fincity.security.model.ClientUrlPattern.Protocol;
+import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
@@ -35,6 +42,9 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 
 	@Autowired
 	private ClientUrlService clientUrlService;
+
+	@Autowired
+	private SoxLogService soxLogService;
 
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
 
@@ -121,51 +131,80 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 		return clientType.switchIfEmpty(Mono.defer(() -> this.dao.getClientType(id)
 		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_TYPE, v, id))));
 	}
-	
-	@PreAuthorize("hasPermission('Client CREATE')")
+
+	@PreAuthorize("hasPermission('Authorities.Client_CREATE')")
 	@Override
 	public Mono<Client> create(Client entity) {
-		
-		Mono<Client> client = super.create(entity);
-		
-//		client.and
-		
-		return client;
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca -> super.create(entity).map(e ->
+				{
+			        soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
+			                .setObjectId(e.getId())
+			                .setDescription("Created")
+			                .setObjectName(SecuritySoxLogObjectName.CLIENT));
+			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
+				        SecurityContextUtil.getUsersContextUser()
+				                .map(ContextUser::getClientId)
+				                .map(manageClientId -> this.addManageRecord(ULong.valueOf(manageClientId), e.getId()))
+				                .subscribe();
+			        }
+
+			        return e;
+		        }));
 	}
-	
-	@PreAuthorize("hasPermission('Client READ')")
+
+	private Mono<Integer> addManageRecord(ULong manageClientId, ULong id) {
+
+		return this.dao.addManageRecord(manageClientId, id);
+	}
+
+	@PreAuthorize("hasPermission('Authorities.Client_READ')")
 	@Override
 	public Mono<Client> read(ULong id) {
 		return super.read(id);
 	}
-	
-	@PreAuthorize("hasPermission('Client UPDATE')")
+
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Client> update(Client entity) {
 		return super.update(entity);
 	}
-	
-	@PreAuthorize("hasPermission('Client UPDATE')")
+
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Client> update(ULong key, Map<String, Object> fields) {
 		return super.update(key, fields);
 	}
 
-	@PreAuthorize("hasPermission('Client UPDATE')")
+	@PreAuthorize("hasPermission('Authorities.Client_DELETE')")
 	@Override
-	public Mono<Void> delete(ULong id) {
-		return super.delete(id);
+	public Mono<Integer> delete(ULong id) {
+		return this.read(id)
+		        .map(e ->
+				{
+			        e.setStatusCode(SecurityClientStatusCode.DELETED);
+			        return e;
+		        })
+		        .flatMap(this::update)
+		        .map(e -> 1);
 	}
 
 	@Override
 	protected Mono<Client> updatableEntity(Client entity) {
-		// TODO Auto-generated method stub
-		return null;
+		return Mono.just(entity);
 	}
 
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(Map<String, Object> fields) {
-		// TODO Auto-generated method stub
-		return null;
+		return Mono.just(fields);
+	}
+
+	@Override
+	protected Mono<ULong> getLoggedInUserId() {
+
+		return SecurityContextUtil.getUsersContextUser()
+		        .map(ContextUser::getId)
+		        .map(ULong::valueOf);
 	}
 }

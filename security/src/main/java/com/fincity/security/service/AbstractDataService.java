@@ -20,12 +20,21 @@ public abstract class AbstractDataService<R extends UpdatableRecord<R>, I extend
 	protected O dao;
 
 	public Mono<D> create(D entity) {
-		entity.setCreatedBy(this.getLoggedInUserId());
-		return this.dao.create(entity);
+
+		entity.setCreatedBy(null);
+		return this.getLoggedInUserId()
+		        .map(e ->
+				{
+			        entity.setCreatedBy(e);
+			        return entity;
+		        })
+		        .defaultIfEmpty(entity)
+		        .flatMap(e -> this.dao.create(e));
+
 	}
 
-	protected I getLoggedInUserId() {
-		return null;
+	protected Mono<I> getLoggedInUserId() {
+		return Mono.empty();
 	}
 
 	public Mono<D> read(I id) {
@@ -35,12 +44,12 @@ public abstract class AbstractDataService<R extends UpdatableRecord<R>, I extend
 	public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 		return this.dao.readPageFilter(pageable, condition);
 	}
-	
+
 	public Flux<D> readAllFilter(AbstractCondition condition) {
 		return this.dao.readAll(condition);
 	}
 
-	public Mono<Void> delete(I id) {
+	public Mono<Integer> delete(I id) {
 		return this.dao.delete(id);
 	}
 }

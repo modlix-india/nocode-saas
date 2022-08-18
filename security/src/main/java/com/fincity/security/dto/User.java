@@ -20,6 +20,8 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private static final long serialVersionUID = 754028768624617709L;
 
+	public static final String PLACEHOLDER = "NONE";
+
 	private ULong clientId;
 	private String userName;
 	private String emailId;
@@ -36,6 +38,18 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	private Short noFailedAttempt;
 	private SecurityUserStatusCode statusCode;
 	private List<String> authorities;
+
+	public String getUserName() {
+		return PLACEHOLDER.equals(this.userName) ? null : this.userName;
+	}
+
+	public String getEmailId() {
+		return PLACEHOLDER.equals(this.emailId) ? null : this.emailId;
+	}
+
+	public String getPhoneNumber() {
+		return PLACEHOLDER.equals(this.phoneNumber) ? null : this.phoneNumber;
+	}
 
 	@JsonIgnore
 	public String getPassword() {
@@ -59,15 +73,15 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 		        .setAuthorities(authorities)
 		        .setClientId(safeFrom(this.clientId))
 		        .setCredentialsNonExpired(credentialsNonExpired)
-		        .setEmailId(emailId)
+		        .setEmailId(this.getEmailId())
 		        .setFirstName(firstName)
 		        .setLastName(lastName)
 		        .setLocaleCode(localeCode)
 		        .setMiddleName(middleName)
 		        .setNoFailedAttempt(noFailedAttempt)
-		        .setPhoneNumber(phoneNumber)
+		        .setPhoneNumber(this.getPhoneNumber())
 		        .setStatusCode(this.statusCode.toString())
-		        .setUserName(userName);
+		        .setUserName(this.getUserName());
 	}
 
 	public static final BigInteger safeFrom(ULong v) {

@@ -41,7 +41,7 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 //	public Mono<ResponseEntity<GenericExceptionData>> handleGenericException(Exception e) {
 //
 //		String eId = GenericException.uniqueId();
-//		Mono<String> msg = resourceService.getMessage("unknown_error_with_id", eId);
+//		Mono<String> msg = resourceService.getMessage(MessageResourceService.UNKNOWN_ERROR_WITH_ID, eId);
 //
 //		log.error("Error : {}", eId, e);
 //
@@ -59,7 +59,7 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 			        .bodyValue(g.toExceptionData());
 		} else {
 			String eId = GenericException.uniqueId();
-			Mono<String> msg = resourceService.getMessage("unknown_error_with_id", eId);
+			Mono<String> msg = resourceService.getMessage(MessageResourceService.UNKNOWN_ERROR_WITH_ID, eId);
 
 			log.error("Error : {}", eId, ex);
 

@@ -72,10 +72,17 @@ public class ClientDAO extends AbstractClientCheckDAO<SecurityClientRecord, ULon
 		        .map(Record1::value1)
 		        .map(e -> e == 1);
 	}
-	
+
 	@Override
 	protected Field<ULong> getClientIDField() {
-		
+
 		return SECURITY_CLIENT.ID;
+	}
+
+	public Mono<Integer> addManageRecord(ULong manageClientId, ULong id) {
+		return Mono.from(this.dslContext
+		        .insertInto(SECURITY_CLIENT_MANAGE, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID,
+		                SECURITY_CLIENT_MANAGE.CLIENT_ID)
+		        .values(manageClientId, id));
 	}
 }

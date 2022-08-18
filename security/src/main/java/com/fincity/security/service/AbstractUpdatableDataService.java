@@ -16,21 +16,28 @@ public abstract class AbstractUpdatableDataService<R extends UpdatableRecord<R>,
 	public Mono<D> update(I key, Map<String, Object> fields) {
 
 		return this.updatableFields(fields)
-		        .flatMap(updatableFields ->
-				{
-			        updatableFields.put("updatedBy", this.getLoggedInUserId());
-			        return this.dao.update(key, updatableFields);
-		        });
+		        .flatMap(updatableFields -> this.getLoggedInUserId()
+		                .map(e ->
+						{
+			                updatableFields.remove("id");
+			                updatableFields.put("updatedBy", e);
+			                return updatableFields;
+		                })
+		                .defaultIfEmpty(updatableFields)
+		                .flatMap(f -> this.dao.update(key, f)));
 	}
 
 	public Mono<D> update(D entity) {
 
 		return this.updatableEntity(entity)
-		        .flatMap(updateableEntity ->
-				{
-			        updateableEntity.setUpdatedBy(this.getLoggedInUserId());
-			        return this.dao.update(updateableEntity);
-		        });
+		        .flatMap(updateableEntity -> this.getLoggedInUserId()
+		                .map(e ->
+						{
+			                updateableEntity.setUpdatedBy(e);
+			                return updateableEntity;
+		                })
+		                .defaultIfEmpty(updateableEntity)
+		                .flatMap(ent -> this.dao.update(ent)));
 	}
 
 	protected abstract Mono<D> updatableEntity(D entity);

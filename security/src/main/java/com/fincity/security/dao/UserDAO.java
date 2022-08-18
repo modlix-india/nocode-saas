@@ -1,5 +1,6 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
@@ -7,22 +8,37 @@ import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_R
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.Record1;
+import org.jooq.Record3;
 import org.jooq.SelectOrderByStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.User;
+import com.fincity.security.exception.GenericException;
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
+import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.service.MessageResourceService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
-public class UserDAO extends AbstractUpdatableDAO<SecurityUserRecord, ULong, User> {
+public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
 
 	protected UserDAO() {
 		super(User.class, SECURITY_USER, SECURITY_USER.ID);
@@ -84,5 +100,127 @@ public class UserDAO extends AbstractUpdatableDAO<SecurityUserRecord, ULong, Use
 		        .map(Record1::value1)
 		        .collectList()
 		        .map(user::setAuthorities);
+	}
+
+	@Override
+	protected Field<ULong> getClientIDField() {
+		return SECURITY_USER.CLIENT_ID;
+	}
+
+	public Mono<Boolean> checkAvailabilityWithClientId(ULong clientID, String userName, String emailId,
+	        String phoneNumber) {
+
+		Mono<Set<ULong>> clientIds = Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT)
+		        .where(SECURITY_CLIENT.ID.eq(clientID))
+		        .limit(1))
+		        .map(e -> e.into(Client.class))
+		        .flatMap(client -> this.getClientIdsToCheckUserAvailability(client));
+
+		List<Condition> conditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
+
+		return clientIds
+		        .flatMap(
+		                cis -> Flux
+		                        .from(this.dslContext
+		                                .select(SECURITY_USER.USER_NAME, SECURITY_USER.EMAIL_ID,
+		                                        SECURITY_USER.PHONE_NUMBER)
+		                                .from(SECURITY_USER)
+		                                .where(SECURITY_USER.CLIENT_ID.in(cis)
+		                                        .and(DSL.or(conditions))))
+		                        .collectList()
+		                        .flatMap(e -> this.generateAvailabilityException(userName, emailId, phoneNumber, e))
+		                        .switchIfEmpty(Mono.just(true)));
+	}
+
+	public Mono<Boolean> checkAvailability(ULong userId, String userName, String emailId, String phoneNumber) {
+
+		Mono<Client> client = Mono.from(this.dslContext.select(SECURITY_CLIENT.fields())
+		        .from(SECURITY_CLIENT)
+		        .leftJoin(SECURITY_USER)
+		        .on(SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT.ID))
+		        .where(SECURITY_USER.ID.eq(userId)
+		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED)))
+		        .limit(1))
+		        .map(e -> e.into(Client.class));
+
+		Mono<Set<ULong>> clientIds = client.flatMap(this::getClientIdsToCheckUserAvailability);
+
+		List<Condition> conditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
+
+		return clientIds.flatMap(cis -> Flux
+		        .from(this.dslContext
+		                .select(SECURITY_USER.USER_NAME, SECURITY_USER.EMAIL_ID, SECURITY_USER.PHONE_NUMBER)
+		                .from(SECURITY_USER)
+		                .where(SECURITY_USER.CLIENT_ID.in(cis)
+		                        .and(SECURITY_USER.ID.ne(userId)
+		                                .and(DSL.or(conditions)))))
+		        .collectList()
+		        .flatMap(e -> this.generateAvailabilityException(userName, emailId, phoneNumber, e))
+		        .switchIfEmpty(Mono.just(true)));
+	}
+
+	public List<Condition> getUserAvailabilityConditions(String userName, String emailId, String phoneNumber) {
+
+		List<Condition> conditions = new ArrayList<>();
+
+		if (userName != null && !User.PLACEHOLDER.equals(userName))
+			conditions.add(SECURITY_USER.USER_NAME.eq(userName));
+
+		if (emailId != null && !User.PLACEHOLDER.equals(emailId))
+			conditions.add(SECURITY_USER.EMAIL_ID.eq(emailId));
+
+		if (phoneNumber != null && !User.PLACEHOLDER.equals(phoneNumber))
+			conditions.add(SECURITY_USER.PHONE_NUMBER.eq(phoneNumber));
+		return conditions;
+	}
+
+	private Mono<Boolean> generateAvailabilityException(String userName, String emailId, String phoneNumber,
+	        List<Record3<String, String, String>> e) {
+
+		for (Record3<String, String, String> r : e) {
+			if (userName != null && !User.PLACEHOLDER.equals(userName) && r.value1()
+			        .equals(userName)) {
+				return messageResourceService.getMessage(MessageResourceService.ALREADY_EXISTS)
+				        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
+				                StringFormatter.format(msg, "User name", userName))));
+			}
+
+			if (emailId != null && !User.PLACEHOLDER.equals(emailId) && r.value2()
+			        .equals(emailId)) {
+				return messageResourceService.getMessage(MessageResourceService.ALREADY_EXISTS)
+				        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
+				                StringFormatter.format(msg, "Email", emailId))));
+			}
+
+			if (phoneNumber != null && !User.PLACEHOLDER.equals(phoneNumber) && r.value3()
+			        .equals(phoneNumber)) {
+				return messageResourceService.getMessage(MessageResourceService.ALREADY_EXISTS)
+				        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
+				                StringFormatter.format(msg, "Phone number", phoneNumber))));
+			}
+		}
+		return Mono.just(false);
+	}
+
+	private Mono<Set<ULong>> getClientIdsToCheckUserAvailability(Client c) {
+
+		if (c.getTypeCode()
+		        .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
+			return Mono.just(Set.of(c.getId()));
+
+		return Flux
+		        .from(this.dslContext.select(SECURITY_CLIENT_MANAGE.CLIENT_ID, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
+		                .from(SECURITY_CLIENT_MANAGE)
+		                .where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(c.getId())
+		                        .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(c.getId()))))
+		        .flatMap(e -> Flux.just(e.value1(), e.value2()))
+		        .collectList()
+		        .map(HashSet::new)
+		        .map(e ->
+				{
+			        e.add(c.getId());
+			        return e;
+		        });
+
 	}
 }

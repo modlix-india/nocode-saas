@@ -62,7 +62,7 @@ import reactor.util.function.Tuples;
 @Transactional
 public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractDTO<I, I>> {
 
-	private static final String OBJECT_NOT_FOUND = "object_not_found";
+	private static final String OBJECT_NOT_FOUND = MessageResourceService.OBJECT_NOT_FOUND;
 
 	private static final Map<Class<?>, Function<UNumber, Tuple2<Object, Class<?>>>> CONVERTERS = Map.of(ULong.class,
 	        x -> Tuples.of(x == null ? x : x.toBigInteger(), BigInteger.class), UInteger.class,
@@ -221,13 +221,12 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		                .first());
 	}
 
-	public Mono<Void> delete(I id) {
+	public Mono<Integer> delete(I id) {
 
 		DeleteQuery<R> query = dslContext.deleteQuery(table);
 		query.addConditions(idField.eq(id));
 
-		return Mono.from(query)
-		        .then();
+		return Mono.from(query);
 	}
 
 	@SuppressWarnings("rawtypes")

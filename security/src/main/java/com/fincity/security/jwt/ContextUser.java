@@ -5,6 +5,8 @@ import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -41,18 +43,19 @@ public class ContextUser implements Serializable {
 	private Short noFailedAttempt;
 	private String statusCode;
 	private List<String> authorities;
-	private List<GrantedAuthority> grantedAuthorities;
+	private Set<GrantedAuthority> grantedAuthorities;
 
 	public Collection<GrantedAuthority> getAuthorities() {
 
 		if (this.authorities == null || this.authorities.isEmpty())
-			return List.of();
+			return Set.of();
 
 		if (this.grantedAuthorities == null) {
 			this.grantedAuthorities = this.authorities.parallelStream()
+			        .map(e -> "Authorities." + e.replace(' ', '_'))
 			        .map(SimpleGrantedAuthority::new)
 			        .map(GrantedAuthority.class::cast)
-			        .toList();
+			        .collect(Collectors.toSet());
 		}
 		return this.grantedAuthorities;
 	}

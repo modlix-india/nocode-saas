@@ -15,6 +15,22 @@ import reactor.core.publisher.Mono;
 @Service
 public class MessageResourceService {
 
+	public static final String OBJECT_NOT_FOUND = "object_not_found";
+	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
+	public static final String FORBIDDEN_CREATE = "forbidden_create";
+	public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
+	public static final String UNABLE_TO_DELETE = "unable_to_delete";
+	public static final String OBJECT_NOT_UPDATABLE = "object_not_updatable";
+	public static final String USER_CREDENTIALS_MISMATCHED = "user_credentials_mismatched";
+	public static final String UNKNOWN_ERROR = "unknown_error";
+	public static final String UNKNOWN_ERROR_WITH_ID = "unknown_error_with_id";
+	public static final String UNKONWN_ERROR_INSERT = "unkonwn_error_insert";
+	public static final String VALUEOF_METHOD_NOT_FOUND = "valueof_method_not_found";
+	public static final String UNABLE_TO_CONVERT = "unable_to_convert";
+	public static final String TOKEN_EXPIRED = "token_expired";
+	public static final String UNKNOWN_TOKEN = "unknown_token";
+	public static final String ALREADY_EXISTS = "already_exists";
+
 	private static final String UKNOWN_ERROR = "unknown_error";
 
 	private Map<Locale, ResourceBundle> bundleMap = new ConcurrentHashMap<>();

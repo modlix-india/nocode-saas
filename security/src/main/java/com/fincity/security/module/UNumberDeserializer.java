@@ -30,7 +30,7 @@ public class UNumberDeserializer<R extends UNumber> extends StdDeserializer<R> {
 			this.method = this.classs.getDeclaredMethod("valueOf", String.class);
 		} catch (Exception e) {
 			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-			        msgResource.getDefaultLocaleMessage("valueof_method_not_found"));
+			        msgResource.getDefaultLocaleMessage(MessageResourceService.VALUEOF_METHOD_NOT_FOUND));
 		}
 	}
 
@@ -44,7 +44,7 @@ public class UNumberDeserializer<R extends UNumber> extends StdDeserializer<R> {
 			return (R) this.method.invoke(null, str);
 		} catch (IllegalAccessException | InvocationTargetException e) {
 			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-			        msgResource.getDefaultLocaleMessage("unable_to_convert", str, this.classs.getSimpleName()));
+			        msgResource.getDefaultLocaleMessage(MessageResourceService.UNABLE_TO_CONVERT, str, this.classs.getSimpleName()));
 		}
 	}
 

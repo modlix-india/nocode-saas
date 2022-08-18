@@ -18,6 +18,7 @@ import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.exception.GenericException;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 import com.fincity.security.jwt.ContextAuthentication;
+import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.ClientUrlPattern;
 import com.fincity.security.model.condition.AbstractCondition;
 import com.fincity.security.util.SecurityContextUtil;
@@ -40,7 +41,7 @@ public class ClientUrlService
 	private static final String CACHE_NAME_CLIENT_URL = "clientUrl";
 	private static final String CACHE_CLIENT_URL_LIST = "list";
 
-	@PreAuthorize("hasPermission('Client UPDATE')")
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> read(ULong id) {
 
@@ -60,20 +61,20 @@ public class ClientUrlService
 //			        return clientService.getPotentialClientList(id)
 //			                .filter(lst -> lst.contains(userClientId))
 //			                .map(x -> clientUrl)
-//			                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.getMessage("object_not_found")
+//			                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.getMessage(MessageResourceService.OBJECT_NOT_FOUND)
 //			                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
 //			                                StringFormatter.format(msg, "Client URL", id))))));
 //		        }));
 		return super.read(id);
 	}
 
-	@PreAuthorize("hasPermission('Client UPDATE')")
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Page<ClientUrl>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 		return super.readPageFilter(pageable, condition);
 	}
 
-	@PreAuthorize("hasPermission('Client UPDATE')")
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> create(ClientUrl entity) {
 
@@ -94,7 +95,7 @@ public class ClientUrlService
 					                .flatMap(managed ->
 									{
 						                if (Boolean.FALSE.equals(managed))
-							                return this.messageResourceService.getMessage("forbidden_create")
+							                return this.messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
 							                        .flatMap(
 							                                msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
 							                                        StringFormatter.format(msg, "Client URL"))));
@@ -108,23 +109,23 @@ public class ClientUrlService
 		        });
 	}
 
-	@PreAuthorize("hasPermission('Client UPDATE')")
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> update(ClientUrl entity) {
 
 		return super.update(entity);
 	}
 
-	@PreAuthorize("hasPermission('Client UPDATE')")
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> update(ULong key, Map<String, Object> updateFields) {
 
 		return super.update(key, updateFields);
 	}
 
-	@PreAuthorize("hasPermission('Client UPDATE')")
+	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
-	public Mono<Void> delete(ULong id) {
+	public Mono<Integer> delete(ULong id) {
 
 		return this.read(id)
 		        .flatMap(e -> super.delete(id));
@@ -155,5 +156,13 @@ public class ClientUrlService
 
 		return this.read(entity.getId())
 		        .map(e -> e.setUrlPattern(entity.getUrlPattern()));
+	}
+	
+	@Override
+	protected Mono<ULong> getLoggedInUserId() {
+
+		return SecurityContextUtil.getUsersContextUser()
+		        .map(ContextUser::getId)
+		        .map(ULong::valueOf);
 	}
 }
