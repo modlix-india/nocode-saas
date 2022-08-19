@@ -13,3 +13,6 @@ server:
 eureka:
   client:
     register-with-eureka: true
+
+## To use it in local, please configure the following program arguments with the right path to the search locations to config files.
+#--spring.profiles.active=native,local --spring.cloud.config.server.native.search-locations=file:///Users/kirangrandhi/fincity/nocode-saas/configfiles

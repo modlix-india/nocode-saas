@@ -5,6 +5,8 @@ import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -13,10 +15,12 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.User;
 import com.fincity.security.exception.GenericException;
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.condition.AbstractCondition;
 import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
@@ -63,6 +67,10 @@ public class UserService extends AbstractUpdatableDataService<SecurityUserRecord
 	@Override
 	public Mono<User> create(User entity) {
 
+		String password = entity.getPassword();
+		entity.setPassword(null);
+		entity.setPasswordHashed(false);
+
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .flatMap(ca ->
 				{
@@ -80,15 +88,30 @@ public class UserService extends AbstractUpdatableDataService<SecurityUserRecord
 			                .getClientId()), entity.getClientId())
 			                .map(e -> entity);
 		        })
+		        .flatMap(e -> this.passwordPolicyCheck(e, password))
 		        .flatMap(u -> this.dao
 		                .checkAvailabilityWithClientId(u.getClientId(), u.getUserName(), u.getEmailId(),
 		                        u.getPhoneNumber())
 		                .map(b -> u))
 		        .flatMap(u -> this.dao.create(u))
+		        .flatMap(u -> this.setPassword(u, password))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService
 		                .getMessage(MessageResourceService.FORBIDDEN_CREATE)
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User"))))));
+	}
+
+	private Mono<User> passwordPolicyCheck(User user, String password) {
+
+		return this.clientService.validatePasswordPolicy(user.getClientId(), password)
+		        .map(e -> user);
+	}
+
+	private Mono<User> setPassword(User u, String password) {
+		this.getLoggedInUserId()
+		        .flatMap(e -> this.dao.setPassword(u.getId(), password, e))
+		        .subscribe();
+		return Mono.just(u);
 	}
 
 	@Override
@@ -113,6 +136,12 @@ public class UserService extends AbstractUpdatableDataService<SecurityUserRecord
 		                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User", id))))));
+	}
+	
+	@PreAuthorize("hasAuthority('Authorities.User_READ')")
+	@Override
+	public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+		return super.readPageFilter(pageable, condition);
 	}
 
 	@Override
@@ -178,5 +207,22 @@ public class UserService extends AbstractUpdatableDataService<SecurityUserRecord
 		fields.remove("statusCode");
 
 		return Mono.just(fields);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.User_DELETE')")
+	@Override
+	public Mono<Integer> delete(ULong id) {
+		return this.read(id)
+		        .map(e ->
+				{
+			        e.setStatusCode(SecurityUserStatusCode.DELETED);
+			        return e;
+		        })
+		        .flatMap(this::update)
+		        .map(e -> 1);
+	}
+
+	public Mono<User> readInternal(ULong id) {
+		return this.dao.readInternal(id).flatMap(this.dao::setPermissions);
 	}
 }

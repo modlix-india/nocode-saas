@@ -6,6 +6,8 @@ import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.ClientUrlPattern;
 import com.fincity.security.model.ClientUrlPattern.Protocol;
+import com.fincity.security.model.condition.AbstractCondition;
 import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
@@ -132,7 +135,7 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_TYPE, v, id))));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_CREATE')")
 	@Override
 	public Mono<Client> create(Client entity) {
 
@@ -159,25 +162,35 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 		return this.dao.addManageRecord(manageClientId, id);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Client_READ')")
 	@Override
 	public Mono<Client> read(ULong id) {
 		return super.read(id);
 	}
+	
+	public Mono<Client> readInternal(ULong id) {
+		return this.dao.readInternal(id);
+	}
+	
+	@PreAuthorize("hasAuthority('Authorities.Client_READ')")
+	@Override
+	public Mono<Page<Client>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+		return super.readPageFilter(pageable, condition);
+	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Client> update(Client entity) {
 		return super.update(entity);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Client> update(ULong key, Map<String, Object> fields) {
 		return super.update(key, fields);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_DELETE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
 		return this.read(id)
@@ -206,5 +219,29 @@ public class ClientService extends AbstractUpdatableDataService<SecurityClientRe
 		return SecurityContextUtil.getUsersContextUser()
 		        .map(ContextUser::getId)
 		        .map(ULong::valueOf);
+	}
+
+	//For creating user.
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) {
+
+		return this.dao.getClientPasswordPolicy(clientId)
+		        .map(e ->
+				{
+					// Need to check the password policy
+			        return true;
+		        })
+		        .switchIfEmpty(Mono.just(Boolean.TRUE));
+	}
+	
+	//For existing user.
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong userId, String password) {
+
+		return this.dao.getClientPasswordPolicy(clientId)
+		        .map(e ->
+				{
+					// Need to check the password policy
+			        return true;
+		        })
+		        .switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 }

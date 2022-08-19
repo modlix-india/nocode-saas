@@ -8,10 +8,13 @@ import java.time.LocalDateTime;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -70,6 +73,49 @@ public class AuthenticationService {
 
 	private static final String CACHE_NAME_TOKEN = "tokenCache";
 
+	@PreAuthorize("hasAuthority('Authorities.Logged_IN')")
+	public Mono<Integer> revoke(ServerHttpRequest request) {
+
+		String bearerToken = request.getHeaders()
+		        .getFirst(HttpHeaders.AUTHORIZATION);
+
+		if (bearerToken == null || bearerToken.isBlank()) {
+			HttpCookie cookie = request.getCookies()
+			        .getFirst(HttpHeaders.AUTHORIZATION);
+			if (cookie != null)
+				bearerToken = cookie.getValue();
+		}
+
+		if (bearerToken != null) {
+
+			bearerToken = bearerToken.trim();
+
+			if (bearerToken.startsWith("Bearer ")) {
+				bearerToken = bearerToken.substring(7);
+			} else if (bearerToken.startsWith("basic ")) {
+				bearerToken = bearerToken.substring(6);
+			}
+		}
+
+		if (bearerToken == null)
+			return Mono.just(1);
+
+		final String finToken = bearerToken;
+
+		cacheService.evict(CACHE_NAME_TOKEN, finToken)
+		        .subscribe();
+
+		return tokenService.readAllFilter(new FilterCondition().setField("partToken")
+		        .setOperator(FilterConditionOperator.EQUALS)
+		        .setValue(toPartToken(finToken)))
+		        .filter(e -> e.getToken()
+		                .equals(finToken))
+		        .take(1)
+		        .single()
+		        .map(TokenObject::getId)
+		        .flatMap(tokenService::delete);
+	}
+
 	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
 	        ServerHttpResponse response) {
 
@@ -78,7 +124,7 @@ public class AuthenticationService {
 		Mono<User> user = clientId.flatMap(clients -> userService.findByClientIdsUserName(clients,
 		        authRequest.getUserName(), authRequest.getIdentifierType()));
 
-		Mono<Client> client = user.flatMap(u -> this.clientService.read(u.getClientId()));
+		Mono<Client> client = user.flatMap(u -> this.clientService.readInternal(u.getClientId()));
 
 		URI uri = request.getURI();
 
@@ -172,7 +218,7 @@ public class AuthenticationService {
 
 			}
 		} else {
-			if (!pwdEncoder.matches(u.getFirstName() + authRequest.getPassword(), u.getPassword())) {
+			if (!pwdEncoder.matches(u.getId() + authRequest.getPassword(), u.getPassword())) {
 
 				userService.increaseFailedAttempt(u.getId())
 				        .subscribe();
@@ -224,12 +270,11 @@ public class AuthenticationService {
 
 			return tokenService.readAllFilter(new FilterCondition().setField("partToken")
 			        .setOperator(FilterConditionOperator.EQUALS)
-			        .setValue(
-			                bearerToken.length() > 50 ? bearerToken.substring(bearerToken.length() - 50) : bearerToken))
+			        .setValue(toPartToken(bearerToken)))
 			        .filter(e -> e.getToken()
 			                .equals(bearerToken))
 			        .take(1)
-			        .next()
+			        .single()
 			        .flatMap(e -> this.makeSpringAuthentication(request, claims, e))
 			        .map(e ->
 					{
@@ -246,6 +291,10 @@ public class AuthenticationService {
 		return Mono.empty();
 	}
 
+	private String toPartToken(String bearerToken) {
+		return bearerToken.length() > 50 ? bearerToken.substring(bearerToken.length() - 50) : bearerToken;
+	}
+
 	private Mono<ContextAuthentication> makeSpringAuthentication(ServerHttpRequest request, JWTClaims jwtClaims,
 	        TokenObject tokenObject) {
 
@@ -256,7 +305,7 @@ public class AuthenticationService {
 			        resourceService.getDefaultLocaleMessage(MessageResourceService.UNKNOWN_TOKEN)));
 		}
 
-		return this.userService.read(tokenObject.getUserId())
+		return this.userService.readInternal(tokenObject.getUserId())
 		        .flatMap(u -> this.clientService.getClientType(u.getClientId())
 		                .map(typ -> new ContextAuthentication(u.toContextUser(), true, jwtClaims.getLoggedInClientId(),
 		                        typ)));

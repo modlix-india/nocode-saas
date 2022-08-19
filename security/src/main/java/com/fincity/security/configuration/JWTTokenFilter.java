@@ -51,7 +51,7 @@ public class JWTTokenFilter implements WebFilter {
 		if (bearerToken != null && !bearerToken.isBlank()) {
 
 			Mono<Authentication> authentication = this.authService.getAuthentication(isBasic, bearerToken, request);
-
+			
 			return chain.filter(exchange)
 			        .contextWrite(ReactiveSecurityContextHolder
 			                .withSecurityContext(authentication.map(SecurityContextImpl::new)));

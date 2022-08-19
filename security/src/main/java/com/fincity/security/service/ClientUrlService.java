@@ -8,14 +8,11 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
-import com.fincity.security.exception.GenericException;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.jwt.ContextUser;
@@ -30,13 +27,10 @@ public class ClientUrlService
         extends AbstractUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO> {
 
 	@Autowired
-	private ClientService clientService;
-
-	@Autowired
 	private CacheService cacheService;
-
-	@Autowired
-	private MessageResourceService messageResourceService;
+//
+//	@Autowired
+//	private MessageResourceService messageResourceService;
 
 	private static final String CACHE_NAME_CLIENT_URL = "clientUrl";
 	private static final String CACHE_CLIENT_URL_LIST = "list";
@@ -91,17 +85,19 @@ public class ClientUrlService
 				        if (!ca.getClientTypeCode()
 				                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM)) {
 
-					        return clientService.isBeingManagedBy(clientId, entity.getClientId())
-					                .flatMap(managed ->
-									{
-						                if (Boolean.FALSE.equals(managed))
-							                return this.messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
-							                        .flatMap(
-							                                msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
-							                                        StringFormatter.format(msg, "Client URL"))));
-
-						                return super.create(entity);
-					                });
+				        	return super.create(entity);
+//				        	
+//					        return clientService.isBeingManagedBy(clientId, entity.getClientId())
+//					                .flatMap(managed ->
+//									{
+//						                if (Boolean.FALSE.equals(managed))
+//							                return this.messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
+//							                        .flatMap(
+//							                                msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
+//							                                        StringFormatter.format(msg, "Client URL"))));
+//
+//						                
+//					                });
 				        }
 			        }
 

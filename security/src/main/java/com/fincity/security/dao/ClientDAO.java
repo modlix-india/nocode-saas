@@ -85,4 +85,11 @@ public class ClientDAO extends AbstractClientCheckDAO<SecurityClientRecord, ULon
 		                SECURITY_CLIENT_MANAGE.CLIENT_ID)
 		        .values(manageClientId, id));
 	}
+
+	public Mono<Client> readInternal(ULong id) {
+		return Mono.from(this.dslContext.selectFrom(this.table)
+		        .where(this.idField.eq(id))
+		        .limit(1))
+		        .map(e -> e.into(this.pojoClass));
+	}
 }

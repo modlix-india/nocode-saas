@@ -2,6 +2,7 @@ package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
+import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
@@ -21,7 +22,9 @@ import org.jooq.SelectOrderByStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
@@ -33,12 +36,16 @@ import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.service.MessageResourceService;
+import com.fincity.security.util.ByteUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
+
+	@Autowired
+	private PasswordEncoder encoder;
 
 	protected UserDAO() {
 		super(User.class, SECURITY_USER, SECURITY_USER.ID);
@@ -91,7 +98,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                .from(SECURITY_USER_ROLE_PERMISSION)
 		                .join(SECURITY_PERMISSION)
 		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)))
-		        .union(this.dslContext.select(DSL.concat("ROLE_" + SECURITY_ROLE.NAME))
+		        .union(this.dslContext.select(DSL.concat("ROLE_", SECURITY_ROLE.NAME))
 		                .from(SECURITY_USER_ROLE_PERMISSION)
 		                .join(SECURITY_ROLE)
 		                .on(SECURITY_ROLE.ID.eq(SECURITY_USER_ROLE_PERMISSION.ROLE_ID)));
@@ -99,6 +106,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Flux.from(query)
 		        .map(Record1::value1)
 		        .collectList()
+		        .map(e -> {
+		        	List<String> auths = new ArrayList<>(e);
+		        	auths.add("Logged IN");
+		        	return auths;
+		        })
 		        .map(user::setAuthorities);
 	}
 
@@ -114,7 +126,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .where(SECURITY_CLIENT.ID.eq(clientID))
 		        .limit(1))
 		        .map(e -> e.into(Client.class))
-		        .flatMap(client -> this.getClientIdsToCheckUserAvailability(client));
+		        .flatMap(this::getClientIdsToCheckUserAvailability);
 
 		List<Condition> conditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
 
@@ -222,5 +234,28 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			        return e;
 		        });
 
+	}
+
+	public Mono<Integer> setPassword(ULong id, String password, ULong currentUserId) {
+
+		String encryptedPassword = encoder.encode((id + password));
+		Mono.from(this.dslContext
+		        .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
+		                SECURITY_PAST_PASSWORDS.PASSWORD_HASHED, SECURITY_PAST_PASSWORDS.CREATED_BY)
+		        .values(id, encryptedPassword, ByteUtil.ONE, currentUserId))
+		        .subscribe();
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+		        .set(SECURITY_USER.PASSWORD, encryptedPassword)
+		        .set(SECURITY_USER.PASSWORD_HASHED, ByteUtil.ONE)
+		        .set(SECURITY_USER.UPDATED_BY, currentUserId)
+		        .where(SECURITY_USER.ID.eq(id)));
+	}
+
+	public Mono<User> readInternal(ULong id) {
+		return Mono.from(this.dslContext.selectFrom(this.table)
+		        .where(this.idField.eq(id))
+		        .limit(1))
+		        .map(e -> e.into(this.pojoClass));
 	}
 }

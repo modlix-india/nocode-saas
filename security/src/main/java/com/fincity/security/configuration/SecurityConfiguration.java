@@ -94,6 +94,6 @@ public class SecurityConfiguration implements WebFluxConfigurer {
 
 	@Bean
 	PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
+		return new BCryptPasswordEncoder(BCryptPasswordEncoder.BCryptVersion.$2Y, 31);
 	}
 }
