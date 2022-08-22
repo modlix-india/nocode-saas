@@ -5,6 +5,7 @@ import static com.fincity.security.jooq.tables.SecurityClientType.SECURITY_CLIEN
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
+import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.security.dto.ClientType;
 import com.fincity.security.jooq.tables.records.SecurityClientTypeRecord;
 

@@ -12,6 +12,9 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.service.CacheService;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
@@ -24,14 +27,13 @@ import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.ClientUrlPattern;
 import com.fincity.security.model.ClientUrlPattern.Protocol;
-import com.fincity.security.model.condition.AbstractCondition;
 import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
 
 @Service
-public class ClientService extends AbstractUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
+public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
 
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";

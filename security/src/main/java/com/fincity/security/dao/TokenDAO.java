@@ -5,6 +5,7 @@ import static com.fincity.security.jooq.tables.SecurityUserToken.SECURITY_USER_T
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
+import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
 

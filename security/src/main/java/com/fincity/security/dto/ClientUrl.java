@@ -3,6 +3,7 @@ package com.fincity.security.dto;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.model.ClientUrlPattern;
 
 import lombok.Data;

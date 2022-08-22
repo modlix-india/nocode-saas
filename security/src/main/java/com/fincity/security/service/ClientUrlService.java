@@ -11,20 +11,22 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.service.CacheService;
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.ClientUrlPattern;
-import com.fincity.security.model.condition.AbstractCondition;
 import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
 
 @Service
 public class ClientUrlService
-        extends AbstractUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO> {
+        extends AbstractJOOQUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO> {
 
 	@Autowired
 	private CacheService cacheService;

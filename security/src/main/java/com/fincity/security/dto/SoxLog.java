@@ -2,6 +2,7 @@ package com.fincity.security.dto;
 
 import org.jooq.types.ULong;
 
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 

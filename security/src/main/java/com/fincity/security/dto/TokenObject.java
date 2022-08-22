@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import org.jooq.types.ULong;
 
+import com.fincity.saas.commons.model.dto.AbstractDTO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;

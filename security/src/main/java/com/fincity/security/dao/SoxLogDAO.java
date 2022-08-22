@@ -3,6 +3,7 @@ package com.fincity.security.dao;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
+import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.records.SecuritySoxLogRecord;

@@ -16,9 +16,10 @@ import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 
-import com.fincity.security.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.jwt.ContextAuthentication;
-import com.fincity.security.model.condition.AbstractCondition;
 import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;

@@ -7,7 +7,7 @@
 		<version>2.7.2</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.fincity</groupId>
+	<groupId>com.fincity.saas</groupId>
 	<artifactId>security</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Security</name>
@@ -16,6 +16,8 @@
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
 		<nocode-kirun-version>1.0.0</nocode-kirun-version>
+		<saas-commons-version>1.0.0</saas-commons-version>
+		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -83,7 +85,7 @@
 		<dependency>
 			<groupId>org.jooq</groupId>
 			<artifactId>jooq</artifactId>
-			<version>3.17.2</version><!--$NO-MVN-MAN-VER$-->
+			<version>3.17.2</version> <!--$NO-MVN-MAN-VER$-->
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
@@ -106,6 +108,16 @@
 			<groupId>com.fincity.nocode</groupId>
 			<artifactId>kirun-java</artifactId>
 			<version>${nocode-kirun-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons</artifactId>
+			<version>${saas-commons-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons-jooq</artifactId>
+			<version>${saas-commons-jooq-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

@@ -6,6 +6,7 @@ import java.util.List;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jwt.ContextUser;
 

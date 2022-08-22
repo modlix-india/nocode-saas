@@ -3,6 +3,8 @@ package com.fincity.security.dto;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
 
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
