@@ -12,6 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.security.util.RolePermissionUtil;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -52,7 +53,7 @@ public class ContextUser implements Serializable {
 
 		if (this.grantedAuthorities == null) {
 			this.grantedAuthorities = this.authorities.parallelStream()
-			        .map(e -> "Authorities." + e.replace(' ', '_'))
+			        .map(RolePermissionUtil::toAuthorityString)
 			        .map(SimpleGrantedAuthority::new)
 			        .map(GrantedAuthority.class::cast)
 			        .collect(Collectors.toSet());

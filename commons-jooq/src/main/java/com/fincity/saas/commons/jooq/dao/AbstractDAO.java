@@ -97,15 +97,10 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	@SuppressWarnings("unchecked")
 	public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-		return getSelectJointStep().flatMap(selectJoinStepTuple -> {
-
-			if (condition != null) {
-				return filter(condition).flatMap(filterCondition -> list(pageable,
-				        selectJoinStepTuple.mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
-				                .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition))));
-			}
-			return list(pageable, selectJoinStepTuple);
-		});
+		return getSelectJointStep()
+		        .flatMap(selectJoinStepTuple -> filter(condition).flatMap(filterCondition -> list(pageable,
+		                selectJoinStepTuple.mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
+		                        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition)))));
 	}
 
 	protected Mono<Page<D>> list(Pageable pageable,
@@ -142,6 +137,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 		return selectJoinStep.flatMapMany(sjs -> filter(query).flatMapMany(cond -> {
 			sjs.where(cond);
+
 			return Flux.from(sjs)
 			        .map(e -> e.into(this.pojoClass));
 		}));

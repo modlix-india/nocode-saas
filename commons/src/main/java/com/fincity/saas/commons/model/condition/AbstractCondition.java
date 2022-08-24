@@ -4,6 +4,9 @@ import java.io.Serializable;
 
 import lombok.Data;
 
+//@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+//@JsonSubTypes({ @Type(name = "field", value = FilterCondition.class),
+//        @Type(name = "conditions", value = ComplexCondition.class) })
 @Data
 public abstract class AbstractCondition implements Serializable {
 

@@ -94,22 +94,26 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_ROLE.ID))
 		        .join(SECURITY_PERMISSION)
 		        .on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
+		        .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId()))
 		        .union(this.dslContext.select(SECURITY_PERMISSION.NAME)
 		                .from(SECURITY_USER_ROLE_PERMISSION)
 		                .join(SECURITY_PERMISSION)
-		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)))
+		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID))
+		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId())))
 		        .union(this.dslContext.select(DSL.concat("ROLE_", SECURITY_ROLE.NAME))
 		                .from(SECURITY_USER_ROLE_PERMISSION)
 		                .join(SECURITY_ROLE)
-		                .on(SECURITY_ROLE.ID.eq(SECURITY_USER_ROLE_PERMISSION.ROLE_ID)));
+		                .on(SECURITY_ROLE.ID.eq(SECURITY_USER_ROLE_PERMISSION.ROLE_ID))
+		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId())));
 
 		return Flux.from(query)
 		        .map(Record1::value1)
 		        .collectList()
-		        .map(e -> {
-		        	List<String> auths = new ArrayList<>(e);
-		        	auths.add("Logged IN");
-		        	return auths;
+		        .map(e ->
+				{
+			        List<String> auths = new ArrayList<>(e);
+			        auths.add("Logged IN");
+			        return auths;
 		        })
 		        .map(user::setAuthorities);
 	}

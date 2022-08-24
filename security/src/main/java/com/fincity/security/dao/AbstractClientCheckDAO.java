@@ -84,7 +84,7 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 
 			        return condition.map(c -> DSL.and(c, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)
 			                .or(SECURITY_CLIENT.ID.eq(clientId))));
-		        });
+		        }).switchIfEmpty(condition);
 	}
 	
 	

@@ -7,21 +7,28 @@ import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECU
 import java.util.HashSet;
 import java.util.Set;
 
-import org.jooq.Field;
+import org.jooq.Condition;
+import org.jooq.Record;
 import org.jooq.Record1;
+import org.jooq.SelectJoinStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.jwt.ContextAuthentication;
+import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 @Service
-public class ClientDAO extends AbstractClientCheckDAO<SecurityClientRecord, ULong, Client> {
+public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong, Client> {
 
 	protected ClientDAO() {
 		super(Client.class, SECURITY_CLIENT, SECURITY_CLIENT.ID);
@@ -74,9 +81,41 @@ public class ClientDAO extends AbstractClientCheckDAO<SecurityClientRecord, ULon
 	}
 
 	@Override
-	protected Field<ULong> getClientIDField() {
+	protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
 
-		return SECURITY_CLIENT.ID;
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca ->
+				{
+
+			        Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> x = super.getSelectJointStep();
+
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        return x;
+
+			        return x.map(tup -> tup
+			                .mapT1(query -> (SelectJoinStep<Record>) query.leftJoin(SECURITY_CLIENT_MANAGE)
+			                        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID)))
+			                .mapT2(query -> query.leftJoin(SECURITY_CLIENT_MANAGE)
+			                        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID))));
+
+		        });
+	}
+
+	@Override
+	protected Mono<Condition> filter(AbstractCondition condition) {
+
+		return super.filter(condition).flatMap(cond -> SecurityContextUtil.getUsersContextAuthentication()
+		        .map(ca ->
+				{
+
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        return cond;
+
+			        ULong clientId = ULong.valueOf(ca.getUser()
+			                .getClientId());
+			        return DSL.and(cond, SECURITY_CLIENT.ID.eq(clientId)
+			                .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)));
+		        }));
 	}
 
 	public Mono<Integer> addManageRecord(ULong manageClientId, ULong id) {

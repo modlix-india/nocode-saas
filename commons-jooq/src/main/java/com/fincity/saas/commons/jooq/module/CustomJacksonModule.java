@@ -18,6 +18,8 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.jackson.AbstractCondtionDeserializer;
 
 public class CustomJacksonModule extends SimpleModule {
 
@@ -46,7 +48,6 @@ public class CustomJacksonModule extends SimpleModule {
 			public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
 			        throws IOException {
 
-//				provider.get
 				gen.writeNumber(value.toEpochSecond(ZoneOffset.UTC));
 			}
 		});
@@ -54,6 +55,7 @@ public class CustomJacksonModule extends SimpleModule {
 		this.addDeserializer(ULong.class, new UNumberDeserializer<>(ULong.class, messageResourceService));
 		this.addDeserializer(UShort.class, new UNumberDeserializer<>(UShort.class, messageResourceService));
 		this.addDeserializer(UInteger.class, new UNumberDeserializer<>(UInteger.class, messageResourceService));
+		this.addDeserializer(AbstractCondition.class, new AbstractCondtionDeserializer());
 
 		this.addSerializer(new UNumberSerializer());
 	}

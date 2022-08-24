@@ -87,7 +87,7 @@ public class ClientUrlService
 				        if (!ca.getClientTypeCode()
 				                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM)) {
 
-				        	return super.create(entity);
+					        return super.create(entity);
 //				        	
 //					        return clientService.isBeingManagedBy(clientId, entity.getClientId())
 //					                .flatMap(managed ->
@@ -132,7 +132,7 @@ public class ClientUrlService
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
 
 		Mono<List<ClientUrlPattern>> curl = cacheService.get(CACHE_NAME_CLIENT_URL, CACHE_CLIENT_URL_LIST);
-		return curl.switchIfEmpty(Mono.defer(() -> this.readAllFilter(null)
+		return curl.switchIfEmpty(Mono.defer(() -> this.dao.readAll(null)
 				.map(ClientUrl::toClientUrlPattern)
 		        .collectList()));
 	}
@@ -155,7 +155,7 @@ public class ClientUrlService
 		return this.read(entity.getId())
 		        .map(e -> e.setUrlPattern(entity.getUrlPattern()));
 	}
-	
+
 	@Override
 	protected Mono<ULong> getLoggedInUserId() {
 

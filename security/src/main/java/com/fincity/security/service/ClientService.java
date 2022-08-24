@@ -8,6 +8,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -53,25 +54,47 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
 
-		final URI uri = request.getURI();
+//		[Content-Type:"application/json", User-Agent:"PostmanRuntime/7.29.2", Accept:"*/*", Postman-Token:"e719e5ee-5fa4-4fa2-8de9-98dbe3895b05", Accept-Encoding:"gzip, deflate, br", Forwarded:"proto=http;host="client2:8080";for="192.168.1.220:59568"",
+//		X-Forwarded-For:"192.168.1.220", X-Forwarded-Proto:"http", X-Forwarded-Port:"8080",
+//		X-Forwarded-Host:"client2:8080", host:"client2:8001", content-length:"67"]
 
-		Mono<String> key = cacheService.makeKey(CACHE_CLIENT_URI, uri.getScheme(), uri.getHost(), ":", uri.getPort());
+		HttpHeaders header = request.getHeaders();
+
+		String uriScheme = header.getFirst("X-Forwarded-Proto");
+		String uriHost = header.getFirst("X-Forwarded-Host");
+		String uriPort = header.getFirst("X-Forwarded-Port");
+
+		final URI uri1 = request.getURI();
+
+		if (uriScheme == null)
+			uriScheme = uri1.getScheme();
+		if (uriHost == null)
+			uriHost = uri1.getHost();
+		if (uriPort == null)
+			uriPort = "" + uri1.getPort();
+
+		int ind = uriHost.indexOf(':');
+		if (ind != -1)
+			uriHost = uriHost.substring(0, ind);
+
+		Mono<String> key = cacheService.makeKey(CACHE_CLIENT_URI, uriScheme, uriHost, ":", uriPort);
 
 		Mono<ULong> clientId = key.flatMap(e -> cacheService.get(CACHE_NAME_CLIENT_URL, e));
 
+		String finScheme = uriScheme;
+		String finHost = uriHost;
+		Integer finPort = Integer.valueOf(uriPort);
+
 		return clientId.switchIfEmpty(clientUrlService.readAllAsClientURLPattern()
-		        .flatMapIterable(e -> e)
-		        .filter(e ->
+		        .flatMapIterable(e -> e).filter(e ->
 				{
 
 			        Tuple3<Protocol, String, Integer> tuple = e.getHostnPort();
 
-			        String scheme = uri.getScheme()
-			                .toLowerCase();
+			        String scheme = finScheme.toLowerCase();
 
 			        if (!tuple.getT2()
-			                .equals(uri.getHost()
-			                        .toLowerCase()))
+			                .equals(finHost.toLowerCase()))
 				        return false;
 
 			        int checkPort = -1;
@@ -84,7 +107,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 				        checkPort = 443;
 			        } else if (tuple.getT1() == Protocol.HTTP) {
 
-				        if (!scheme.startsWith("http:"))
+				        if (!scheme.startsWith("http"))
 					        return false;
 
 				        checkPort = 80;
@@ -93,7 +116,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 			        if (tuple.getT3() != -1)
 				        checkPort = tuple.getT3();
 
-			        return checkPort == -1 || uri.getPort() == checkPort;
+			        return checkPort == -1 || finPort == checkPort;
 		        })
 		        .map(ClientUrlPattern::getClientId)
 		        .defaultIfEmpty(ULong.valueOf(1l))
@@ -169,11 +192,11 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	public Mono<Client> read(ULong id) {
 		return super.read(id);
 	}
-	
+
 	public Mono<Client> readInternal(ULong id) {
 		return this.dao.readInternal(id);
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.Client_READ')")
 	@Override
 	public Mono<Page<Client>> readPageFilter(Pageable pageable, AbstractCondition condition) {
@@ -223,25 +246,25 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		        .map(ULong::valueOf);
 	}
 
-	//For creating user.
+	// For creating user.
 	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) {
 
 		return this.dao.getClientPasswordPolicy(clientId)
 		        .map(e ->
 				{
-					// Need to check the password policy
+			        // Need to check the password policy
 			        return true;
 		        })
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
-	
-	//For existing user.
+
+	// For existing user.
 	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong userId, String password) {
 
 		return this.dao.getClientPasswordPolicy(clientId)
 		        .map(e ->
 				{
-					// Need to check the password policy
+			        // Need to check the password policy
 			        return true;
 		        })
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
