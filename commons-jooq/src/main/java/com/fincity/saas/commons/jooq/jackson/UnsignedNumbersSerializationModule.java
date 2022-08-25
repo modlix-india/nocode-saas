@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.jooq.module;
+package com.fincity.saas.commons.jooq.jackson;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -18,14 +18,12 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.jackson.AbstractCondtionDeserializer;
 
-public class CustomJacksonModule extends SimpleModule {
+public class UnsignedNumbersSerializationModule extends SimpleModule {
 
 	private static final long serialVersionUID = -5726049745793085074L;
 
-	public CustomJacksonModule(AbstractMessageService messageResourceService) {
+	public UnsignedNumbersSerializationModule(AbstractMessageService messageResourceService) {
 		super();
 
 		this.addDeserializer(LocalDateTime.class, new StdDeserializer<LocalDateTime>((Class<?>) null) {
@@ -55,8 +53,6 @@ public class CustomJacksonModule extends SimpleModule {
 		this.addDeserializer(ULong.class, new UNumberDeserializer<>(ULong.class, messageResourceService));
 		this.addDeserializer(UShort.class, new UNumberDeserializer<>(UShort.class, messageResourceService));
 		this.addDeserializer(UInteger.class, new UNumberDeserializer<>(UInteger.class, messageResourceService));
-		this.addDeserializer(AbstractCondition.class, new AbstractCondtionDeserializer());
-
 		this.addSerializer(new UNumberSerializer());
 	}
 }

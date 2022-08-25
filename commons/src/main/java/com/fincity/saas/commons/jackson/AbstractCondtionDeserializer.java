@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.model.jackson;
+package com.fincity.saas.commons.jackson;
 
 import java.io.IOException;
 

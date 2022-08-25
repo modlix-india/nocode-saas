@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fincity.saas.commons.jackson.AbstractConditionSerializationModule;
 
 public class AbstractBaseConfiguration implements WebFluxConfigurer {
 
@@ -25,6 +26,7 @@ public class AbstractBaseConfiguration implements WebFluxConfigurer {
 		this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
 		this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_NULL, Include.ALWAYS));
 		this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_EMPTY, Include.ALWAYS));
+		this.objectMapper.registerModule(new AbstractConditionSerializationModule());
 	}
 
 	@Override

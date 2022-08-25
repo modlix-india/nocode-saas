@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.jooq.module;
+package com.fincity.saas.commons.jooq.jackson;
 
 import java.io.IOException;
 
