@@ -86,20 +86,7 @@ public class ClientUrlService
 			        else {
 				        if (!ca.getClientTypeCode()
 				                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM)) {
-
 					        return super.create(entity);
-//				        	
-//					        return clientService.isBeingManagedBy(clientId, entity.getClientId())
-//					                .flatMap(managed ->
-//									{
-//						                if (Boolean.FALSE.equals(managed))
-//							                return this.messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
-//							                        .flatMap(
-//							                                msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
-//							                                        StringFormatter.format(msg, "Client URL"))));
-//
-//						                
-//					                });
 				        }
 			        }
 
@@ -138,7 +125,7 @@ public class ClientUrlService
 	}
 
 	@Override
-	protected Mono<Map<String, Object>> updatableFields(Map<String, Object> fields) {
+	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
 		HashMap<String, Object> map = new HashMap<>();
 		if (fields == null)

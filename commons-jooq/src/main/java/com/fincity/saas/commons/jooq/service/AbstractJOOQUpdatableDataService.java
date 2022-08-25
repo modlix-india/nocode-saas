@@ -15,7 +15,7 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
 
 	public Mono<D> update(I key, Map<String, Object> fields) {
 
-		return this.updatableFields(fields)
+		return this.updatableFields(key, fields)
 		        .flatMap(updatableFields -> this.getLoggedInUserId()
 		                .map(e ->
 						{
@@ -42,6 +42,6 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
 
 	protected abstract Mono<D> updatableEntity(D entity);
 
-	protected abstract Mono<Map<String, Object>> updatableFields(Map<String, Object> fields);
+	protected abstract Mono<Map<String, Object>> updatableFields(I key, Map<String, Object> fields);
 
 }

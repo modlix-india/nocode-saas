@@ -193,7 +193,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 	@Override
-	protected Mono<Map<String, Object>> updatableFields(Map<String, Object> fields) {
+	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
 		if (fields == null)
 			return Mono.just(new HashMap<>());

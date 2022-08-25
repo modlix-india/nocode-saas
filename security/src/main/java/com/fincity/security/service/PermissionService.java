@@ -1,8 +1,10 @@
 package com.fincity.security.service;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,14 +20,20 @@ import com.fincity.security.dto.Permission;
 import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
 import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.util.SecurityContextUtil;
+import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
 public class PermissionService
         extends AbstractJOOQUpdatableDataService<SecurityPermissionRecord, ULong, Permission, PermissionDAO> {
 
+	private static final String PERMISSION = "Permission";
+
 	@Autowired
 	private MessageResourceService messageResourceService;
+
+	@Autowired
+	private ClientService clientService;
 
 	@PreAuthorize("hasAuthority('Authorities.Permission_CREATE')")
 	@Override
@@ -38,28 +46,147 @@ public class PermissionService
 			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
 				        return messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
 				                .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.FORBIDDEN,
-				                        StringFormatter.format(msg, "Permission"))));
+				                        StringFormatter.format(msg, PERMISSION))));
 			        }
 			        return super.create(entity);
 		        });
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.Permission_READ')")
+	@Override
+	public Mono<Permission> read(ULong id) {
+
+		return super.read(id).flatMap(p -> SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca ->
+				{
+
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        return Mono.just(p);
+
+			        return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                .getClientId()), p.getClientId())
+			                .flatMap(managed ->
+							{
+				                if (managed.booleanValue())
+					                return Mono.just(p);
+
+				                return messageResourceService.getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                        .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+				                                StringFormatter.format(msg, PERMISSION, id))));
+			                });
+
+		        }));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Permission_READ')")
 	@Override
 	public Mono<Page<Permission>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 
 		return this.dao.readPageFilter(pageable, condition);
 	}
-	
+
 	@Override
 	protected Mono<Permission> updatableEntity(Permission entity) {
-		// TODO Auto-generated method stub
-		return null;
+
+		return ((PermissionService) AopContext.currentProxy()).read(entity.getId())
+		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca ->
+						{
+
+			                existing.setDescription(entity.getDescription());
+			                existing.setName(entity.getName());
+
+			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				                return Mono.just(existing);
+
+			                return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                        .getClientId()), existing.getClientId())
+			                        .flatMap(managed ->
+									{
+				                        if (managed.booleanValue())
+					                        return Mono.just(existing);
+
+				                        return messageResourceService
+				                                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                                .flatMap(msg -> Mono.error(() -> new GenericException(
+				                                        HttpStatus.NOT_FOUND,
+				                                        StringFormatter.format(msg, PERMISSION, entity.getId()))));
+			                        });
+
+		                }));
 	}
 
 	@Override
-	protected Mono<Map<String, Object>> updatableFields(Map<String, Object> fields) {
-		// TODO Auto-generated method stub
-		return null;
+	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+
+		return ((PermissionService) AopContext.currentProxy()).read(key)
+		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca ->
+						{
+
+			                Map<String, Object> newMap = new HashMap<>();
+			                newMap.put("description", fields.get("description"));
+			                newMap.put("name", fields.get("name"));
+
+			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				                return Mono.just(newMap);
+
+			                return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                        .getClientId()), existing.getClientId())
+			                        .flatMap(managed ->
+									{
+				                        if (managed.booleanValue())
+					                        return Mono.just(newMap);
+
+				                        return messageResourceService
+				                                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                                .flatMap(msg -> Mono
+				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
+				                                                StringFormatter.format(msg, PERMISSION, key))));
+			                        });
+
+		                }));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Permission_UPDATE')")
+	@Override
+	public Mono<Permission> update(Permission entity) {
+		return super.update(entity);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Permission_UPDATE')")
+	@Override
+	public Mono<Permission> update(ULong key, Map<String, Object> fields) {
+		return super.update(key, fields);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Permission_DELETE')")
+	@Override
+	public Mono<Integer> delete(ULong id) {
+
+		return ((PermissionService) AopContext.currentProxy()).read(id)
+		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca ->
+						{
+
+			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				                return super.delete(id);
+
+			                return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                        .getClientId()), existing.getClientId())
+			                        .flatMap(managed ->
+									{
+				                        if (managed.booleanValue())
+					                        return super.delete(id);
+
+				                        return messageResourceService
+				                                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                                .flatMap(msg -> Mono
+				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
+				                                                StringFormatter.format(msg, PERMISSION, id))));
+			                        });
+
+		                }));
 	}
 
 }

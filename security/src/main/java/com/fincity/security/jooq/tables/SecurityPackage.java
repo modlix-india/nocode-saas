@@ -15,12 +15,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function9;
+import org.jooq.Function10;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row9;
+import org.jooq.Row10;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -58,6 +58,12 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
      * The column <code>security.security_package.ID</code>. Primary key
      */
     public final TableField<SecurityPackageRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
+
+    /**
+     * The column <code>security.security_package.CLIENT_ID</code>. Client ID
+     * for which this permission belongs to
+     */
+    public final TableField<SecurityPackageRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID for which this permission belongs to");
 
     /**
      * The column <code>security.security_package.CODE</code>. Package code
@@ -160,6 +166,24 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
     }
 
     @Override
+    public List<ForeignKey<SecurityPackageRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_PACKAGE_CLIENT_ID);
+    }
+
+    private transient SecurityClient _securityClient;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table.
+     */
+    public SecurityClient securityClient() {
+        if (_securityClient == null)
+            _securityClient = new SecurityClient(this, Keys.FK1_PACKAGE_CLIENT_ID);
+
+        return _securityClient;
+    }
+
+    @Override
     public SecurityPackage as(String alias) {
         return new SecurityPackage(DSL.name(alias), this);
     }
@@ -199,18 +223,18 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row9 type methods
+    // Row10 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row9<ULong, String, String, String, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row9) super.fieldsRow();
+    public Row10<ULong, ULong, String, String, String, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row10) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function9<? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -218,7 +242,7 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function9<? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

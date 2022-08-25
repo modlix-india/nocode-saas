@@ -1,5 +1,7 @@
 package com.fincity.security.util;
 
+import java.math.BigInteger;
+
 import org.jooq.types.ULong;
 
 public class ULongUtil {
@@ -11,6 +13,9 @@ public class ULongUtil {
 
 		if (o instanceof ULong v)
 			return v;
+		
+		if (o instanceof BigInteger b)
+			return ULong.valueOf(b);
 
 		return ULong.valueOf(o.toString());
 	}

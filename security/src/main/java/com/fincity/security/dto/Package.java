@@ -13,6 +13,7 @@ public class Package extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private static final long serialVersionUID = -7920462907193913694L;
 
+	private ULong clientId;
 	private String code;
 	private String name;
 	private String description;
