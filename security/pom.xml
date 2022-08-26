@@ -50,6 +50,10 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-config</artifactId>
 		</dependency>
@@ -127,7 +131,6 @@
 			<groupId>com.github.ben-manes.caffeine</groupId>
 			<artifactId>caffeine</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -211,13 +214,14 @@
 								<artifactId>jaxb-runtime</artifactId>
 								<version>4.0.0</version>
 							</dependency>
+
 						</dependencies>
 						<configuration>
 							<jdbc>
 								<driver>com.mysql.cj.jdbc.Driver</driver>
 								<url>jdbc:mysql://localhost:3306/security</url>
 								<user>root</user>
-								<password>Kiran@123</password>
+								<password>root</password>
 							</jdbc>
 							<generator>
 								<database>
