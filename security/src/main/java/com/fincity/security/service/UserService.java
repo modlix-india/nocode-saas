@@ -87,7 +87,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 			        return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
 			                .getClientId()), entity.getClientId())
-			                .map(e -> entity);
+			                .flatMap(e -> e.booleanValue() ? Mono.just(entity) : Mono.empty());
 		        })
 		        .flatMap(e -> this.passwordPolicyCheck(e, password))
 		        .flatMap(u -> this.dao

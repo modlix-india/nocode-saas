@@ -66,7 +66,7 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 		                .leftJoin(SECURITY_CLIENT_MANAGE)
 		                .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID)));
 	}
-	
+
 	@Override
 	protected Mono<Condition> filter(AbstractCondition acond) {
 
@@ -84,9 +84,17 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 
 			        return condition.map(c -> DSL.and(c, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)
 			                .or(SECURITY_CLIENT.ID.eq(clientId))));
-		        }).switchIfEmpty(condition);
+		        })
+		        .switchIfEmpty(condition);
 	}
-	
-	
+
+	public Mono<Boolean> canBeUpdated(I id) {
+		return this.getSelectJointStep()
+		        .map(Tuple2::getT2)
+		        .flatMap(query -> Mono.from(query.where(this.idField.eq(id))))
+		        .map(e -> e.value1() == 1);
+	}
+
 	protected abstract Field<ULong> getClientIDField();
+
 }
