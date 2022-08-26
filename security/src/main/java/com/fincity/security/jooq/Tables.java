@@ -10,6 +10,7 @@ import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
+import com.fincity.security.jooq.tables.SecurityOrgStructure;
 import com.fincity.security.jooq.tables.SecurityPackage;
 import com.fincity.security.jooq.tables.SecurityPackageRole;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
@@ -57,6 +58,11 @@ public class Tables {
      * The table <code>security.security_client_url</code>.
      */
     public static final SecurityClientUrl SECURITY_CLIENT_URL = SecurityClientUrl.SECURITY_CLIENT_URL;
+
+    /**
+     * The table <code>security.security_org_structure</code>.
+     */
+    public static final SecurityOrgStructure SECURITY_ORG_STRUCTURE = SecurityOrgStructure.SECURITY_ORG_STRUCTURE;
 
     /**
      * The table <code>security.security_package</code>.

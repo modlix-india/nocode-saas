@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS `security_user` (
     PHONE_NUMBER CHAR(32) NOT NULL DEFAULT 'NONE' COMMENT 'Phone Number to login',
     FIRST_NAME VARCHAR(128) DEFAULT NULL COMMENT 'First name',
     LAST_NAME VARCHAR(128) DEFAULT NULL COMMENT 'Last name',
+    DESIGNATION VARCHAR(256) DEFAULT NULL COMMENT 'Designation',
     MIDDLE_NAME VARCHAR(128) DEFAULT NULL COMMENT 'Middle name',
     LOCALE_CODE VARCHAR(10) DEFAULT 'en-US' COMMENT 'User\'s Locale',
 	PASSWORD VARCHAR(512) DEFAULT NULL COMMENT 'Password message digested string',
@@ -362,14 +363,14 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO `security_package` (CODE, NAME, DESCRIPTION, BASE) VALUES
-	('CLIENT', 'Client Management', 'Client management roles and permissions will be part of this package', FALSE),
-    ('CLIUPD', 'Client Update', 'Client management roles and permissions will be part of this package', TRUE),
-    ('CLITYP', 'Client Type Management', 'Client management roles and permissions will be part of this package', FALSE),
-    ('USER', 'User Management', 'User management roles and permissions will be part of this package', TRUE),
-    ('PACKAGE', 'Package Management', 'Package management roles and permissions will be part of this package', FALSE),
-    ('ROLE', 'Role Management', 'Role management roles and permissions will be part of this package', TRUE),
-    ('PERMISS', 'Permission Management', 'Permission management roles and permissions will be part of this package', FALSE);
+INSERT IGNORE INTO `security_package` (CLIENT_ID, CODE, NAME, DESCRIPTION, BASE) VALUES
+	(@v_client_system, 'CLIENT', 'Client Management', 'Client management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'CLIUPD', 'Client Update', 'Client management roles and permissions will be part of this package', TRUE),
+    (@v_client_system, 'CLITYP', 'Client Type Management', 'Client management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'USER', 'User Management', 'User management roles and permissions will be part of this package', TRUE),
+    (@v_client_system, 'PACKAGE', 'Package Management', 'Package management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'ROLE', 'Role Management', 'Role management roles and permissions will be part of this package', TRUE),
+    (@v_client_system, 'PERMISS', 'Permission Management', 'Permission management roles and permissions will be part of this package', FALSE);
 
 SELECT ID from `security_package` WHERE CODE = 'CLIENT' LIMIT 1 INTO @v_package_client;
 SELECT ID from `security_package` WHERE CODE = 'CLIUPD' LIMIT 1 INTO @v_package_client_update;
@@ -461,6 +462,24 @@ CREATE TABLE IF NOT EXISTS `security_sox_log`(
     PRIMARY KEY (ID),
     INDEX (CREATED_AT DESC),
     INDEX (OBJECT_NAME, ACTION_NAME)
+)
+ENGINE = INNODB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `security_org_structure`(
+	ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+	
+    CLIENT_ID BIGINT UNSIGNED NOT NULL COMMENT 'Client ID',
+    USER_ID BIGINT UNSIGNED NOT NULL COMMENT 'User ID',
+    DEFAULT_MANAGER TINYINT NOT NULL DEFAULT 1 COMMENT 'Default manager, 0 if he is reporting to multiple managers',
+    MANAGER_ID BIGINT UNSIGNED NOT NULL COMMENT 'Manager ID',
+    
+	PRIMARY KEY (ID),
+    UNIQUE KEY UK1_ORG_STRUCTURE(USER_ID, MANAGER_ID),
+    CONSTRAINT FK1_ORG_STRUCTURE_CLIENT_ID FOREIGN KEY (CLIENT_ID) REFERENCES security_client (ID) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT FK2_ORG_STRUCTURE_USER_ID FOREIGN KEY (USER_ID) REFERENCES security_user (ID) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT FK3_ORG_STRUCTURE_MANAGER_ID FOREIGN KEY (MANAGER_ID) REFERENCES security_user (ID) ON DELETE RESTRICT ON UPDATE RESTRICT
 )
 ENGINE = INNODB
 CHARACTER SET utf8mb4

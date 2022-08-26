@@ -17,13 +17,13 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function20;
+import org.jooq.Function21;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row20;
+import org.jooq.Row21;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -95,6 +95,11 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * The column <code>security.security_user.LAST_NAME</code>. Last name
      */
     public final TableField<SecurityUserRecord, String> LAST_NAME = createField(DSL.name("LAST_NAME"), SQLDataType.VARCHAR(128), this, "Last name");
+
+    /**
+     * The column <code>security.security_user.DESIGNATION</code>. Designation
+     */
+    public final TableField<SecurityUserRecord, String> DESIGNATION = createField(DSL.name("DESIGNATION"), SQLDataType.VARCHAR(256), this, "Designation");
 
     /**
      * The column <code>security.security_user.MIDDLE_NAME</code>. Middle name
@@ -288,18 +293,18 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row20 type methods
+    // Row21 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row20<ULong, ULong, String, String, String, String, String, String, String, String, Byte, Byte, Byte, Byte, Short, SecurityUserStatusCode, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row20) super.fieldsRow();
+    public Row21<ULong, ULong, String, String, String, String, String, String, String, String, String, Byte, Byte, Byte, Byte, Short, SecurityUserStatusCode, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row21) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function20<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Short, ? super SecurityUserStatusCode, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function21<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Short, ? super SecurityUserStatusCode, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -307,7 +312,7 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function20<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Short, ? super SecurityUserStatusCode, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function21<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Short, ? super SecurityUserStatusCode, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
