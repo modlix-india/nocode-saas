@@ -375,13 +375,11 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		        .map(conds -> cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conds) : DSL.or(conds));
 	}
 
-	@SuppressWarnings("unchecked")
-	protected Mono<R> getRecordById(I id) {
+	protected Mono<Record> getRecordById(I id) {
 
 		return this.getSelectJointStep()
 		        .map(Tuple2::getT1)
 		        .flatMap(e -> Mono.from(e.where(idField.eq(id))))
-		        .map(e -> (R) e)
 		        .switchIfEmpty(Mono.defer(
 		                () -> messageResourceService.getMessage(OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
 		                        .map(msg ->

@@ -1,10 +1,14 @@
 package com.fincity.saas.commons.jooq.controller;
 
+import java.beans.PropertyEditorSupport;
 import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.jooq.UpdatableRecord;
+import org.jooq.types.UInteger;
+import org.jooq.types.ULong;
+import org.jooq.types.UShort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,8 +18,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.DataBinder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,6 +47,35 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
 
 	@Autowired
 	protected S service;
+	
+	@InitBinder
+	public void initBinder(DataBinder binder){
+		binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
+			@Override
+			public void setAsText(String text) {
+				if (text == null)
+					setValue(null);
+				setValue(ULong.valueOf(text));
+			}
+		});
+		binder.registerCustomEditor(UInteger.class, new PropertyEditorSupport() {
+			@Override
+			public void setAsText(String text) {
+				if (text == null)
+					setValue(null);
+				setValue(UInteger.valueOf(text));
+			}
+		});
+		binder.registerCustomEditor(UShort.class, new PropertyEditorSupport() {
+			@Override
+			public void setAsText(String text) {
+				if (text == null)
+					setValue(null);
+				setValue(UShort.valueOf(text));
+			}
+		});
+    }
+
 
 	@PostMapping
 	public Mono<ResponseEntity<D>> create(@RequestBody D entity) {
