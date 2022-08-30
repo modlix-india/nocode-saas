@@ -1,6 +1,6 @@
 security:
   db:
-    url: r2dbc:mysql://localhost:3306/security
+    url: r2dbc:mysql://localhost:3306/security?serverTimezone=UTC
     username: root
     password: Kiran@123
     flyway:
