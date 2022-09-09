@@ -2,7 +2,9 @@ package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
+import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
+import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -130,5 +132,31 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .where(this.idField.eq(id))
 		        .limit(1))
 		        .map(e -> e.into(this.pojoClass));
+	}
+
+	public int addPackageToClient(ULong clientId, ULong packageId) {
+
+		return this.dslContext
+		        .insertInto(SECURITY_CLIENT_PACKAGE, SECURITY_CLIENT_PACKAGE.CLIENT_ID,
+		                SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
+		        .values(clientId, packageId)
+		        .execute();
+
+	}
+
+	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong clientId, ULong packageId) {
+		return Mono.just(this.dslContext.select(DSL.count())
+		        .from(SECURITY_PACKAGE)
+		        .where(SECURITY_PACKAGE.ID.eq(packageId)
+		                .and(SECURITY_PACKAGE.CLIENT_ID.eq(clientId)))
+		        .execute() > 0);
+	}
+
+	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong clientId, ULong packageId) {
+		return Mono.just(this.dslContext.select(DSL.count())
+		        .from(SECURITY_CLIENT_PACKAGE)
+		        .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
+		                .and(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
+		        .execute() > 0);
 	}
 }

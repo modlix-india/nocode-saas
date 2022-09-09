@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -23,6 +24,7 @@ import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.util.SecurityContextUtil;
+import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
@@ -138,7 +140,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User", id))))));
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.User_READ')")
 	@Override
 	public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
@@ -224,6 +226,25 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 	public Mono<User> readInternal(ULong id) {
-		return this.dao.readInternal(id).flatMap(this.dao::setPermissions);
+		return this.dao.readInternal(id)
+		        .flatMap(this.dao::setPermissions);
+	}
+
+	private Mono<Boolean> checkEligibleForPermission(ULong userId) {
+		return this.clientService.read(userId)
+		        .flatMap(p -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca ->
+						{
+
+			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				                return Mono.just(true);
+
+			                clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                        .getClientId()), userId)
+			                        .flatMap(managed -> managed.booleanValue() ? Mono.just(true) : Mono.just(false));
+
+			                return Mono.just(false);
+
+		                }));
 	}
 }

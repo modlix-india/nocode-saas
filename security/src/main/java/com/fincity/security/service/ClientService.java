@@ -9,10 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.service.CacheService;
@@ -52,6 +55,12 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private SoxLogService soxLogService;
 
+	@Autowired
+	private PackageService packageService;
+
+	@Autowired
+	private MessageResourceService messageResourceService;
+
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
 
 //		[Content-Type:"application/json", User-Agent:"PostmanRuntime/7.29.2", Accept:"*/*", Postman-Token:"e719e5ee-5fa4-4fa2-8de9-98dbe3895b05", Accept-Encoding:"gzip, deflate, br", Forwarded:"proto=http;host="client2:8080";for="192.168.1.220:59568"",
@@ -86,7 +95,8 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		Integer finPort = Integer.valueOf(uriPort);
 
 		return clientId.switchIfEmpty(clientUrlService.readAllAsClientURLPattern()
-		        .flatMapIterable(e -> e).filter(e ->
+		        .flatMapIterable(e -> e)
+		        .filter(e ->
 				{
 
 			        Tuple3<Protocol, String, Integer> tuple = e.getHostnPort();
@@ -268,5 +278,30 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 			        return true;
 		        })
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
+	}
+
+	@PreAuthorize("hasPermission('Authorities.Assign_Package_To_Client')")
+	protected Mono<Boolean> assigningPackageToClient(ULong packageId, ULong clientId) {
+		return packageService.isBasePackage(packageId)
+		        .filter(Boolean::booleanValue)
+		        .flatMap(e -> SecurityContextUtil.getUsersContextAuthentication())
+		        .flatMap(ca ->
+				{
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        return Mono.just(this.dao.addPackageToClient(clientId, packageId) > 0);
+
+			        return this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                .getClientId()), clientId)
+			                .map(Boolean::booleanValue)
+			                .flatMap(manage -> this.dao.checkClientApplicableForGivenPackage(clientId, packageId))
+			                .flatMap(manage -> this.dao.checkPackageApplicableForGivenClient(clientId, packageId))
+			                .flatMap(manage -> Mono.just(this.dao.addPackageToClient(clientId, packageId) > 0));
+		        })
+
+		        .switchIfEmpty(
+		                Mono.defer(() -> messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
+		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
+		                                StringFormatter.format(msg, "assign package to client"))))));
+
 	}
 }

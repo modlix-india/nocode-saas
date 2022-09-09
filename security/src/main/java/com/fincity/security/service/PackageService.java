@@ -136,20 +136,31 @@ public class PackageService extends
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
 		Map<String, Object> newFields = new HashMap<>();
-		
-		if (fields.containsKey(NAME)) newFields.put(NAME, fields.containsKey(NAME));
-		if (fields.containsKey(DESCRIPTION)) newFields.put(DESCRIPTION, fields.containsKey(DESCRIPTION));
-		if (fields.containsKey(CODE)) newFields.put(CODE, fields.containsKey(CODE));
-		
-		if (!fields.containsKey(BASE)) return Mono.just(newFields);
-		
-		return SecurityContextUtil.getUsersContextAuthentication().map(ca -> {
-			
-			if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				newFields.put(BASE, fields.containsKey(BASE));
-			
-			return newFields;
-		});
+
+		if (fields.containsKey(NAME))
+			newFields.put(NAME, fields.containsKey(NAME));
+		if (fields.containsKey(DESCRIPTION))
+			newFields.put(DESCRIPTION, fields.containsKey(DESCRIPTION));
+		if (fields.containsKey(CODE))
+			newFields.put(CODE, fields.containsKey(CODE));
+
+		if (!fields.containsKey(BASE))
+			return Mono.just(newFields);
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .map(ca ->
+				{
+
+			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        newFields.put(BASE, fields.containsKey(BASE));
+
+			        return newFields;
+		        });
+	}
+
+	protected Mono<Boolean> isBasePackage(ULong packageId) {
+		return this.dao.readById(packageId)
+		        .map(Package::isBase);
 	}
 
 }
