@@ -1,4 +1,4 @@
-package com.fincity.security.jwt;
+package com.fincity.saas.common.security.jwt;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -12,7 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.security.util.RolePermissionUtil;
+import com.fincity.saas.common.security.util.RolePermissionUtil;
 
 import lombok.Data;
 import lombok.experimental.Accessors;

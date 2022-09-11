@@ -6,9 +6,9 @@ import java.util.List;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jwt.ContextUser;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

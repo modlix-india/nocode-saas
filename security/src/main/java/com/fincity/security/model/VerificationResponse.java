@@ -9,7 +9,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class AuthenticationResponse {
+public class VerificationResponse {
 
 	private ContextUser user;
 

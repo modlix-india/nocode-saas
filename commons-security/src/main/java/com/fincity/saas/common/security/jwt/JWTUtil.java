@@ -1,4 +1,4 @@
-package com.fincity.security.jwt;
+package com.fincity.saas.common.security.jwt;
 
 import java.math.BigInteger;
 import java.time.Instant;

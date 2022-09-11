@@ -28,12 +28,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-import com.fincity.security.jwt.ContextAuthentication;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.service.MessageResourceService;
 import com.fincity.security.util.ByteUtil;

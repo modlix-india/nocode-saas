@@ -18,6 +18,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -26,8 +28,6 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
-import com.fincity.security.jwt.ContextAuthentication;
-import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;

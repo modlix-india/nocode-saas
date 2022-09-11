@@ -12,6 +12,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.jwt.ContextUser;
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -19,10 +22,7 @@ import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-import com.fincity.security.jwt.ContextAuthentication;
-import com.fincity.security.jwt.ContextUser;
 import com.fincity.security.model.AuthenticationIdentifierType;
-import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
 
