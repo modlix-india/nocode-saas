@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.reactive.function.server.HandlerStrategies;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.reactive.result.view.ViewResolver;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
@@ -39,12 +40,16 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 			sr = ServerResponse.status(g.getStatusCode())
 			        .bodyValue(g.toExceptionData());
 		} else {
+
 			String eId = GenericException.uniqueId();
 			Mono<String> msg = resourceService.getMessage(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
 
 			log.error("Error : {}", eId, ex);
 
-			sr = msg.map(m -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, eId, m, ex))
+			final HttpStatus status = (ex instanceof ResponseStatusException rse) ? rse.getStatus()
+			        : HttpStatus.INTERNAL_SERVER_ERROR;
+
+			sr = msg.map(m -> new GenericException(status, eId, m, ex))
 			        .flatMap(g -> ServerResponse.status(g.getStatusCode())
 			                .bodyValue(g.toExceptionData()));
 		}

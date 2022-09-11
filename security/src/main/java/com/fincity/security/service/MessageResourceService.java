@@ -6,8 +6,8 @@ import java.util.ResourceBundle;
 
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
 

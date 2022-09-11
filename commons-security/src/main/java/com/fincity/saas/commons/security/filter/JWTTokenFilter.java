@@ -1,16 +1,15 @@
-package com.fincity.security.configuration;
+package com.fincity.saas.commons.security.filter;
 
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
-import com.fincity.security.service.AuthenticationService;
+import com.fincity.saas.commons.security.service.IAuthenticationService;
 
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -18,7 +17,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class JWTTokenFilter implements WebFilter {
 
-	private final AuthenticationService authService;
+	private final IAuthenticationService authService;
 
 	@Override
 	public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -50,11 +49,12 @@ public class JWTTokenFilter implements WebFilter {
 
 		if (bearerToken != null && !bearerToken.isBlank()) {
 
-			Mono<Authentication> authentication = this.authService.getAuthentication(isBasic, bearerToken, request);
-			
-			return chain.filter(exchange)
-			        .contextWrite(ReactiveSecurityContextHolder
-			                .withSecurityContext(authentication.map(SecurityContextImpl::new)));
+			return this.authService.getAuthentication(isBasic, bearerToken, request)
+			        .flatMap(e ->
+
+					chain.filter(exchange)
+					        .contextWrite(ReactiveSecurityContextHolder
+					                .withSecurityContext(Mono.just(new SecurityContextImpl(e)))));
 		}
 		return chain.filter(exchange);
 	}

@@ -1,6 +1,7 @@
-package com.fincity.security.jwt;
+package com.fincity.saas.common.security.jwt;
 
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -22,12 +23,14 @@ public class ContextAuthentication implements Authentication {
 	private boolean isAuthenticated;
 	private final BigInteger loggedInFromClientId;
 	private String clientTypeCode;
+	private String accessToken;
+	private LocalDateTime accessTokenExpiryAt;
 
 	@Override
 	public String getName() {
 		if (user == null)
 			return null;
-		return user.getFirstName();
+		return user.getFirstName(); 
 	}
 
 	@Override
