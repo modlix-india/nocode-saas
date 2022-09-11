@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import static com.fincity.reactor.util.FlatMapUtil.flatMapMono;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
@@ -120,23 +121,24 @@ public class AuthenticationService {
 	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
 	        ServerHttpResponse response) {
 
-		Mono<ULong> clientId = this.clientService.getClientId(request);
+		return flatMapMono(
 
-		Mono<User> user = clientId.flatMap(clients -> userService.findByClientIdsUserName(clients,
-		        authRequest.getUserName(), authRequest.getIdentifierType()));
+		        () -> this.clientService.getClientId(request),
 
-		Mono<Client> client = user.flatMap(u -> this.clientService.readInternal(u.getClientId()));
+		        clientId -> userService.findByClientIdsUserName(clientId, authRequest.getUserName(),
+		                authRequest.getIdentifierType()),
 
-		URI uri = request.getURI();
+		        (clientId, u) -> this.clientService.readInternal(u.getClientId()),
 
-		InetSocketAddress inetAddress = request.getRemoteAddress();
-		final String setAddress = inetAddress == null ? null : inetAddress.getHostString();
+		        (clientId, u, c) -> this.checkPassword(authRequest, u),
 
-		return user.flatMap(u -> checkPassword(authRequest, u).flatMap(e ->
+		        (clientId, u, c, o) -> clientService.getClientPasswordPolicy(c.getId()),
 
-		client.flatMap(c -> clientService.getClientPasswordPolicy(c.getId())
-		        .flatMap(pol -> checkFailedAttempts(u, pol).flatMap(s ->
+		        (clientId, u, c, o, pol) -> this.checkFailedAttempts(u, pol),
+
+		        (clientId, u, c, o, pol, j) ->
 				{
+
 			        userService.resetFailedAttempt(u.getId())
 			                .subscribe();
 
@@ -146,10 +148,13 @@ public class AuthenticationService {
 			                .setDescription("Successful"))
 			                .subscribe();
 
-			        return clientId.flatMap(cid -> makeToken(authRequest, response, uri, setAddress, u, c, cid));
+			        URI uri = request.getURI();
 
-		        })))))
-		        .switchIfEmpty(Mono.defer(this::credentialError));
+			        InetSocketAddress inetAddress = request.getRemoteAddress();
+			        final String setAddress = inetAddress == null ? null : inetAddress.getHostString();
+
+			        return makeToken(authRequest, response, uri, setAddress, u, c, clientId);
+		        }).switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
 	private Mono<AuthenticationResponse> makeToken(AuthenticationRequest authRequest, ServerHttpResponse response,

@@ -124,6 +124,11 @@
 			<version>${saas-commons-jooq-version}</version>
 		</dependency>
 		<dependency>
+			<groupId>com.fincity.reactor.util</groupId>
+			<artifactId>rector-flatmap-util</artifactId>
+			<version>1.0.0</version>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
