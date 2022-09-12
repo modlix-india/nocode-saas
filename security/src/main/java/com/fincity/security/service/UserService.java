@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -23,6 +26,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
@@ -138,7 +142,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User", id))))));
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.User_READ')")
 	@Override
 	public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
@@ -224,6 +228,24 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 	public Mono<User> readInternal(ULong id) {
-		return this.dao.readInternal(id).flatMap(this.dao::setPermissions);
+		return this.dao.readInternal(id)
+		        .flatMap(this.dao::setPermissions);
 	}
+
+	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
+	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
+		return flatMapMono(() -> SecurityContextUtil.getUsersContextAuthentication(),
+		        (contextAuthentication) -> Mono.just(
+		                ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuthentication.getClientTypeCode())),
+		        (contextAuthentication, isSystem) -> this.clientService
+		                .isBeingManagedBy(ULongUtil.valueOf(contextAuthentication.getUser()
+		                        .getClientId()), this.dao.readInternal(userId)
+		                                .block()
+		                                .getClientId()),
+		        (contextAuthentication, isSystem, isManaged) ->
+				{
+
+		        });
+	}
+
 }
