@@ -18,6 +18,7 @@
 		<nocode-kirun-version>1.0.0</nocode-kirun-version>
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
+		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -122,6 +123,16 @@
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons-jooq</artifactId>
 			<version>${saas-commons-jooq-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons-security</artifactId>
+			<version>${saas-commons-security-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.nocode</groupId>
+			<artifactId>reactor-flatmap-util</artifactId>
+			<version>1.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

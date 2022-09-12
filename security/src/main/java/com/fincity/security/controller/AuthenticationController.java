@@ -1,5 +1,7 @@
 package com.fincity.security.controller;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -10,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.model.VerificationResponse;
 import com.fincity.security.service.AuthenticationService;
 
 import reactor.core.publisher.Mono;
@@ -36,5 +40,20 @@ public class AuthenticationController {
 		return this.service.revoke(request)
 		        .map(e -> ResponseEntity.ok()
 		                .build());
+	}
+
+	@GetMapping(value = "verifyToken")
+	public Mono<ResponseEntity<VerificationResponse>> verifyToken() {
+
+		return flatMapMono(
+
+	        SecurityContextUtil::getUsersContextAuthentication,
+
+	        ca -> Mono.just(new VerificationResponse().setUser(ca.getUser())
+	                .setAccessToken(ca.getAccessToken())
+	                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
+
+	        (ca, vr) -> Mono.just(ResponseEntity.<VerificationResponse>ok(vr)));
+
 	}
 }

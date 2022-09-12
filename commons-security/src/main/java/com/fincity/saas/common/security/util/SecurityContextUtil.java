@@ -1,4 +1,4 @@
-package com.fincity.security.util;
+package com.fincity.saas.common.security.util;
 
 import java.math.BigInteger;
 import java.util.Collection;
@@ -14,8 +14,8 @@ import org.springframework.security.core.context.SecurityContext;
 
 import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenValueExtractor;
-import com.fincity.security.jwt.ContextAuthentication;
-import com.fincity.security.jwt.ContextUser;
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.jwt.ContextUser;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 

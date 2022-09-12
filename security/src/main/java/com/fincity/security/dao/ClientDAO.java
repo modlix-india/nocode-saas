@@ -17,13 +17,13 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.jwt.ContextAuthentication;
-import com.fincity.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

@@ -3,8 +3,8 @@ package com.fincity.security.dto;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.common.security.util.RolePermissionUtil;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.security.util.RolePermissionUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
