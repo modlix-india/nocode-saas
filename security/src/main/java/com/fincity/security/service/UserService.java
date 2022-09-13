@@ -231,17 +231,29 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
 	public Mono<Boolean> removeRoleFromUser(ULong userId, ULong roleId) {
-		return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
 		        contextAuth -> Mono
 		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+
 		        (contextAuth, isSystem) -> this.dao.readById(userId),
-		        (contextAuth, isSystem, user) -> clientService
-		                .isBeingManagedBy(ULong.valueOf(contextAuth.getLoggedInFromClientId()), user.getClientId()),
+
+		        (contextAuth, isSystem, user) -> clientService.isBeingManagedBy(ULong.valueOf(contextAuth.getUser()
+		                .getClientId()), user.getClientId()),
+
 		        (contextAuth, isSystem, user, isManaged) ->
 				{
 			        if (isSystem.booleanValue() || isManaged.booleanValue())
 				        return this.dao.removeRoleForUser(userId, roleId);
-			        return Mono.just(false);
-		        });
+			        return Mono.empty();
+		        })
+		        .switchIfEmpty(
+		                Mono.defer(() -> messageResourceService.getMessage(MessageResourceService.ROLE_REMOVE_ERROR)
+		                        .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
+		                                StringFormatter.format(msg, roleId, userId)))
+		                        .flatMap(err -> Mono.error(err))));
+
 	}
 }
