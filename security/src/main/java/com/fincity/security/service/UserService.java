@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -138,7 +139,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User", id))))));
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.User_READ')")
 	@Override
 	public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
@@ -224,6 +225,23 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 	public Mono<User> readInternal(ULong id) {
-		return this.dao.readInternal(id).flatMap(this.dao::setPermissions);
+		return this.dao.readInternal(id)
+		        .flatMap(this.dao::setPermissions);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
+	public Mono<Boolean> removeRoleFromUser(ULong userId, ULong roleId) {
+		return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
+		        contextAuth -> Mono
+		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+		        (contextAuth, isSystem) -> this.dao.readById(userId),
+		        (contextAuth, isSystem, user) -> clientService
+		                .isBeingManagedBy(ULong.valueOf(contextAuth.getLoggedInFromClientId()), user.getClientId()),
+		        (contextAuth, isSystem, user, isManaged) ->
+				{
+			        if (isSystem.booleanValue() || isManaged.booleanValue())
+				        return this.dao.removeRoleForUser(userId, roleId);
+			        return Mono.just(false);
+		        });
 	}
 }
