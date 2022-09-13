@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -246,5 +249,25 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 			                return Mono.just(false);
 
 		                }));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Assign_Permission_To_User')")
+	public Mono<Boolean> assignPermissionToUser(ULong permissionId, ULong userId) {
+		return flatMapMono(() -> SecurityContextUtil.getUsersContextAuthentication(),
+		        (contextAuth) -> Mono
+		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+		        (contextAuth, isSystem) ->
+				{
+			        if (!isSystem) {
+				        return this.getLoggedInUserId();
+			        }
+		        }, (contextAuth, isSystem, loggedInUserId) -> {
+			        return this.dao.readById(loggedInUserId);
+		        }, (contextAuth, isSystem, loggedInUserId, loggedInUser) -> {
+			        return this.dao.readById(userId);
+		        }, (contextAuth, isSystem, loggedInUserId, loggedInUser, givenUser) -> clientService
+		                .isBeingManagedBy(loggedInUser.getClientId(), givenUser.getClientId())
+//		                (contextAuth, isSystem, loggedInUserId, loggedInUser, givenUser, isManaged) 
+		);
 	}
 }
