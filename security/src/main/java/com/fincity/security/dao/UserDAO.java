@@ -262,4 +262,27 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .limit(1))
 		        .map(e -> e.into(this.pojoClass));
 	}
+
+	public Mono<Boolean> checkRoleCreatedByUser(ULong roleId, ULong userId) {
+		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
+		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
+		        .execute() > 0);
+	}
+
+	public Mono<Boolean> checkRoleCreatedByUserWithPermission(ULong roleId, ULong userId, ULong permissionId) {
+		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
+		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
+		                .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
+		        .execute() > 0);
+	}
+
+	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
+		return Mono.just(this.dslContext
+		        .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+		                SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+		        .values(userId, roleId)
+		        .execute() > 0);
+	}
 }

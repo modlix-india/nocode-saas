@@ -86,7 +86,8 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		Integer finPort = Integer.valueOf(uriPort);
 
 		return clientId.switchIfEmpty(clientUrlService.readAllAsClientURLPattern()
-		        .flatMapIterable(e -> e).filter(e ->
+		        .flatMapIterable(e -> e)
+		        .filter(e ->
 				{
 
 			        Tuple3<Protocol, String, Integer> tuple = e.getHostnPort();
@@ -268,5 +269,13 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 			        return true;
 		        })
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
+	}
+
+	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong packageId, ULong clientId) {
+		return this.dao.checkClientApplicableForGivenPackage(packageId, clientId);
+	}
+
+	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong cliendId, ULong packageId) {
+		return this.dao.checkPackageApplicableForGivenClient(cliendId, packageId);
 	}
 }

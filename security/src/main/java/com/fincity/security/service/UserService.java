@@ -232,19 +232,36 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(this.dao::setPermissions);
 	}
 
+//	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
+//	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
+//		return flatMapMono(() -> SecurityContextUtil.getUsersContextAuthentication(),
+//		        (contextAuth) -> Mono
+//		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+//		        (contextAuth, isSystem) -> this.dao.readById(userId),
+//		        (contextAuth, isSystem, user) -> clientService
+//		                .isBeingManagedBy(ULongUtil.valueOf(contextAuth.getLoggedInFromClientId()), user.getClientId()),
+//		        (contextAuth, isSystem, isManaged) -> Mono.just(isManaged));
+//	}
+
 	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
 	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
-		return flatMapMono(() -> SecurityContextUtil.getUsersContextAuthentication(),
-		        (contextAuthentication) -> Mono.just(
-		                ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuthentication.getClientTypeCode())),
-		        (contextAuthentication, isSystem) -> this.clientService
-		                .isBeingManagedBy(ULongUtil.valueOf(contextAuthentication.getUser()
-		                        .getClientId()), this.dao.readInternal(userId)
-		                                .block()
-		                                .getClientId()),
-		        (contextAuthentication, isSystem, isManaged) ->
+		return flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
+		        contextAuth -> Mono
+		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+		        (contextAuth, isSystem) -> this.dao.readById(userId),
+		        (contextAuth, isSystem, givenUser) -> clientService.isBeingManagedBy(
+		                ULongUtil.valueOf(contextAuth.getLoggedInFromClientId()), givenUser.getClientId()),
+		        (contextAuth, isSystem, givenUser, isManaged) ->
 				{
+			        if (isSystem.booleanValue()) {
+				        // assign role to the given user
+				        return assignRoleToUser(userId, roleId);
+			        } else if (isManaged.booleanValue()) {
+				        // check if role if part of the package assigned to client or base package or
+				        // role should have been created by the client of that user
+			        }
 
+			        return Mono.just(false);
 		        });
 	}
 
