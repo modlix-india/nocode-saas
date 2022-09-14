@@ -5,6 +5,9 @@ import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLI
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
+import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
+import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -159,4 +162,32 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .and(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
 		        .execute() > 0);
 	}
+
+	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
+
+		Condition clientCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
+
+		        .or(SECURITY_PACKAGE.CLIENT_ID.eq(clientId))
+		        .or(SECURITY_PACKAGE.BASE.eq((byte) 1));
+
+		Condition permissionCondition = SECURITY_PERMISSION.ID.eq(permissionId);
+
+		return Mono.just(
+
+		        this.dslContext.select()
+		                .from(SECURITY_PACKAGE)
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+		                .leftJoin(SECURITY_PACKAGE_ROLE)
+		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+		                .leftJoin(SECURITY_ROLE_PERMISSION)
+		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
+		                .leftJoin(SECURITY_PERMISSION)
+		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
+		                .where(clientCondition.and(permissionCondition))
+		                .execute() > 0
+
+		);
+	}
+
 }

@@ -262,4 +262,18 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .limit(1))
 		        .map(e -> e.into(this.pojoClass));
 	}
+
+	public Mono<Boolean> assigningPermissionToUser(ULong userId, ULong permissionId) {
+
+		return Mono.just(
+
+		        this.dslContext
+		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+		                        SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+		                .values(userId, permissionId)
+		                .execute() > 0
+
+		);
+	}
+
 }

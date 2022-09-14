@@ -304,4 +304,8 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		                                StringFormatter.format(msg, "assign package to client"))))));
 
 	}
+
+	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
+		return this.dao.checkPermissionAvailableForGivenClient(clientId, permissionId);
+	}
 }

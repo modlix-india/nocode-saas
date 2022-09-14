@@ -3,7 +3,6 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -15,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -233,41 +231,38 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(this.dao::setPermissions);
 	}
 
-	private Mono<Boolean> checkEligibleForPermission(ULong userId) {
-		return this.clientService.read(userId)
-		        .flatMap(p -> SecurityContextUtil.getUsersContextAuthentication()
-		                .flatMap(ca ->
-						{
-
-			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				                return Mono.just(true);
-
-			                clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-			                        .getClientId()), userId)
-			                        .flatMap(managed -> managed.booleanValue() ? Mono.just(true) : Mono.just(false));
-
-			                return Mono.just(false);
-
-		                }));
-	}
-
 	@PreAuthorize("hasAuthority('Authorities.Assign_Permission_To_User')")
 	public Mono<Boolean> assignPermissionToUser(ULong permissionId, ULong userId) {
-		return flatMapMono(() -> SecurityContextUtil.getUsersContextAuthentication(),
-		        (contextAuth) -> Mono
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        contextAuth -> Mono
 		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
-		        (contextAuth, isSystem) ->
+
+		        (contextAuth, isSystem) -> this.dao.readById(userId),
+
+		        (contextAuth, isSystem, user) -> clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
+		                .getClientId()), user.getClientId()),
+
+		        (contextAuth, isSystem, user, isManaged) ->
 				{
-			        if (!isSystem) {
-				        return this.getLoggedInUserId();
+
+			        // assign permission to the given user
+			        if (isSystem.booleanValue())
+				        return this.dao.assigningPermissionToUser(userId, permissionId);
+
+			        else if (isManaged.booleanValue()) {
+
+				        clientService.checkPermissionAvailableForGivenClient(user.getClientId(), permissionId);
+				        return this.dao.assigningPermissionToUser(userId, permissionId);
 			        }
-		        }, (contextAuth, isSystem, loggedInUserId) -> {
-			        return this.dao.readById(loggedInUserId);
-		        }, (contextAuth, isSystem, loggedInUserId, loggedInUser) -> {
-			        return this.dao.readById(userId);
-		        }, (contextAuth, isSystem, loggedInUserId, loggedInUser, givenUser) -> clientService
-		                .isBeingManagedBy(loggedInUser.getClientId(), givenUser.getClientId())
-//		                (contextAuth, isSystem, loggedInUserId, loggedInUser, givenUser, isManaged) 
-		);
+
+			        return Mono.empty();
+		        }).switchIfEmpty(Mono
+		                .defer(() -> messageResourceService.getMessage(MessageResourceService.ASSIGN_PERMISSION_ERROR)
+		                        .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
+		                                StringFormatter.format(msg, permissionId, userId)))
+		                        .flatMap(Mono::error)));
 	}
 }
