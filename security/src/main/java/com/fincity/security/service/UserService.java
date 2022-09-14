@@ -14,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -232,37 +231,47 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(this.dao::setPermissions);
 	}
 
-//	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
-//	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
-//		return flatMapMono(() -> SecurityContextUtil.getUsersContextAuthentication(),
-//		        (contextAuth) -> Mono
-//		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
-//		        (contextAuth, isSystem) -> this.dao.readById(userId),
-//		        (contextAuth, isSystem, user) -> clientService
-//		                .isBeingManagedBy(ULongUtil.valueOf(contextAuth.getLoggedInFromClientId()), user.getClientId()),
-//		        (contextAuth, isSystem, isManaged) -> Mono.just(isManaged));
-//	}
+	public Mono<Boolean> isBeingManagedBy(ULong loggedInClientId, ULong userId) {
+		return this.isBeingManagedBy(loggedInClientId, userId);
+	}
 
 	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
 	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
-		return flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
 		        contextAuth -> Mono
 		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
-		        (contextAuth, isSystem) -> this.dao.readById(userId),
-		        (contextAuth, isSystem, givenUser) -> clientService.isBeingManagedBy(
-		                ULongUtil.valueOf(contextAuth.getLoggedInFromClientId()), givenUser.getClientId()),
-		        (contextAuth, isSystem, givenUser, isManaged) ->
+
+		        (contextAuth, isSystem) -> this.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
+		                .getClientId()), userId),
+
+		        (contextAuth, isSystem, isManaged) -> this.dao.readById(userId),
+
+		        (contextAuth, isSystem, isManaged, user) ->
 				{
-			        if (isSystem.booleanValue()) {
-				        // assign role to the given user
-				        return assignRoleToUser(userId, roleId);
-			        } else if (isManaged.booleanValue()) {
+			        if (isSystem.booleanValue())
+				        return this.assignRoleToUser(userId, roleId);
+
+			        else if (isManaged.booleanValue()) {
 				        // check if role if part of the package assigned to client or base package or
 				        // role should have been created by the client of that user
+				        clientService.checkRoleApplicableForSelectedClient(user.getClientId(), roleId);
+				        return this.assignRoleToUser(userId, roleId);
 			        }
+			        return Mono.empty();
 
-			        return Mono.just(false);
-		        });
+		        }
+
+		).switchIfEmpty(Mono.defer(
+
+		        () -> messageResourceService.getMessage(MessageResourceService.ROLE_FORBIDDEN)
+		                .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
+		                        StringFormatter.format(msg, userId, roleId)))
+		                .flatMap(Mono::error))
+
+		);
 	}
 
 }
