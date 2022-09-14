@@ -262,4 +262,14 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .limit(1))
 		        .map(e -> e.into(this.pojoClass));
 	}
+
+	public Mono<Boolean> removingPermissionFromUser(ULong userId, ULong permissionId) {
+
+		return Mono.just(
+
+		        this.dslContext.delete(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
+		                        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
+		                .execute() > 0);
+	}
 }

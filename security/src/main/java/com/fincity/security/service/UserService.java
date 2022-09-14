@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -23,6 +24,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
@@ -138,7 +140,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User", id))))));
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.User_READ')")
 	@Override
 	public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
@@ -224,6 +226,42 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 	public Mono<User> readInternal(ULong id) {
-		return this.dao.readInternal(id).flatMap(this.dao::setPermissions);
+		return this.dao.readInternal(id)
+		        .flatMap(this.dao::setPermissions);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Assign_Permission_To_User')")
+	public Mono<Boolean> removePermissionFromUser(ULong userId, ULong permissionId) {
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        contextAuth -> Mono
+		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+
+		        (contextAuth, isSystem) -> this.dao.readById(userId),
+
+		        (contextAuth, isSystem, user) -> clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
+		                .getClientId()), user.getClientId()),
+
+		        (contextAuth, isSystem, user, isManaged) ->
+				{
+
+			        if (isSystem.booleanValue() || isManaged.booleanValue())
+				        return this.dao.removingPermissionFromUser(userId, permissionId);
+
+			        return Mono.empty();
+
+		        }
+
+		)
+		        .switchIfEmpty(Mono.defer(
+
+		                () -> messageResourceService.getMessage(MessageResourceService.REMOVE_PERMISSION_ERROR)
+		                        .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
+		                                StringFormatter.format(msg, permissionId, userId)))
+		                        .flatMap(Mono::error)
+
+				));
 	}
 }
