@@ -253,7 +253,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                Mono.defer(() -> messageResourceService.getMessage(MessageResourceService.ROLE_REMOVE_ERROR)
 		                        .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
 		                                StringFormatter.format(msg, roleId, userId)))
-		                        .flatMap(err -> Mono.error(err))));
+		                        .flatMap(Mono::error)));
 
 	}
 }
