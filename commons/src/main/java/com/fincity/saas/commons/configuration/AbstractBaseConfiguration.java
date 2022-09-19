@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.configuration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.web.ReactivePageableHandlerMethodArgumentResolver;
@@ -18,6 +20,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fincity.saas.commons.jackson.CommonsSerializationModule;
 
 public class AbstractBaseConfiguration implements WebFluxConfigurer {
+
+	protected static final Logger logger = LoggerFactory.getLogger(AbstractBaseConfiguration.class);
 
 	@Autowired
 	protected ObjectMapper objectMapper;

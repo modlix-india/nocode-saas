@@ -14,7 +14,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class ContextAuthentication implements Authentication {
-	
+
 	public static final String CLIENT_TYPE_SYSTEM = "SYS";
 
 	private static final long serialVersionUID = 1127850908587759885L;
@@ -23,6 +23,7 @@ public class ContextAuthentication implements Authentication {
 	private boolean isAuthenticated;
 	private final BigInteger loggedInFromClientId;
 	private String clientTypeCode;
+	private String clientCode;
 	private String accessToken;
 	private LocalDateTime accessTokenExpiryAt;
 
@@ -30,7 +31,7 @@ public class ContextAuthentication implements Authentication {
 	public String getName() {
 		if (user == null)
 			return null;
-		return user.getFirstName(); 
+		return user.getFirstName();
 	}
 
 	@Override
@@ -55,4 +56,8 @@ public class ContextAuthentication implements Authentication {
 		return user;
 	}
 
+	public boolean isSystemClient() {
+
+		return CLIENT_TYPE_SYSTEM.equals(this.clientTypeCode);
+	}
 }

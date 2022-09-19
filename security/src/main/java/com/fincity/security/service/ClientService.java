@@ -31,6 +31,7 @@ import com.fincity.security.model.ClientUrlPattern;
 import com.fincity.security.model.ClientUrlPattern.Protocol;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 
 @Service
@@ -152,11 +153,11 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_PWD_POLICY, v, clientId))));
 	}
 
-	public Mono<String> getClientType(ULong id) {
+	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 
-		Mono<String> clientType = cacheService.get(CACHE_NAME_CLIENT_TYPE, id);
+		Mono<Tuple2<String, String>> clientType = cacheService.get(CACHE_NAME_CLIENT_TYPE, id);
 
-		return clientType.switchIfEmpty(Mono.defer(() -> this.dao.getClientType(id)
+		return clientType.switchIfEmpty(Mono.defer(() -> this.dao.getClientTypeNCode(id)
 		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_TYPE, v, id))));
 	}
 
