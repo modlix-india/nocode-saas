@@ -13,12 +13,14 @@ import reactor.core.publisher.Mono;
 @Service
 public class FeignAuthenticationService implements IAuthenticationService {
 
-	@Autowired
+	@Autowired(required = false)
 	private IFeignGetTokenService feignAuthService;
 
 	@Override
 	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, ServerHttpRequest request) {
 
+		if (this.feignAuthService == null) return Mono.empty();
+		
 		return this.feignAuthService.contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken)
 		        .map(ResponseEntity::getBody);
 	}
