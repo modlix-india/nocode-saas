@@ -5,7 +5,10 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.http.HttpStatus;
+
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.saas.commons.exeception.GenericException;
 
 import reactor.core.publisher.Mono;
 
@@ -35,6 +38,14 @@ public class AbstractMessageService {
 
 		return this.getMessage(messageId)
 		        .map(e -> StringFormatter.format(e, params));
+	}
+
+	public <T> Mono<T> throwMessage(HttpStatus status, String messageId, Object... params) {
+
+		return Mono.defer(() -> this.getMessage(messageId, params)
+		        .map(msg -> new GenericException(status, msg))
+		        .flatMap(Mono::error));
+
 	}
 
 	public String getDefaultLocaleMessage(String messageId) {

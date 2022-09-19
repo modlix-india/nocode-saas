@@ -26,6 +26,7 @@ import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong, Client> {
@@ -55,15 +56,15 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e.into(ClientPasswordPolicy.class));
 	}
 
-	public Mono<String> getClientType(ULong id) {
+	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 
-		return Flux.from(this.dslContext.select(SECURITY_CLIENT.TYPE_CODE)
+		return Flux.from(this.dslContext.select(SECURITY_CLIENT.TYPE_CODE, SECURITY_CLIENT.CODE)
 		        .from(SECURITY_CLIENT)
 		        .where(SECURITY_CLIENT.ID.eq(id))
 		        .limit(1))
 		        .take(1)
 		        .singleOrEmpty()
-		        .map(Record1::value1);
+		        .map(r -> Tuples.of(r.value1(), r.value2()));
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {

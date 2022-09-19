@@ -315,9 +315,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        () -> this.userService.readInternal(tokenObject.getUserId()),
 
-		        u -> this.clientService.getClientType(u.getClientId()),
+		        u -> this.clientService.getClientTypeNCode(u.getClientId()),
 
-		        (u, typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
-		                jwtClaims.getLoggedInClientId(), typ, tokenObject.getToken(), tokenObject.getExpiresAt())));
+		        (u, typ) -> Mono
+		                .just(new ContextAuthentication(u.toContextUser(), true, jwtClaims.getLoggedInClientId(),
+		                        typ.getT1(), typ.getT2(), tokenObject.getToken(), tokenObject.getExpiresAt())));
 	}
 }

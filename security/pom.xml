@@ -19,6 +19,7 @@
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
+		<nocode-flatmap-util-version>1.0.0</nocode-flatmap-util-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -132,7 +133,7 @@
 		<dependency>
 			<groupId>com.fincity.nocode</groupId>
 			<artifactId>reactor-flatmap-util</artifactId>
-			<version>1.0.0</version>
+			<version>${nocode-flatmap-util-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
