@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.7.3</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
 	<artifactId>ui</artifactId>
@@ -17,6 +16,9 @@
 		<java.version>18</java.version>
 		<spring-boot-admin.version>2.7.4</spring-boot-admin.version>
 		<spring-cloud.version>2021.0.4</spring-cloud.version>
+		<saas-commons-version>1.0.0</saas-commons-version>
+		<saas-commons-security-version>1.0.0</saas-commons-security-version>
+		<saas-commons-mongo-version>1.0.0</saas-commons-mongo-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -50,6 +52,28 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-openfeign</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.playtika.reactivefeign</groupId>
+			<artifactId>feign-reactor-spring-cloud-starter</artifactId>
+			<version>3.1.0</version>
+			<type>pom</type>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons</artifactId>
+			<version>${saas-commons-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons-security</artifactId>
+			<version>${saas-commons-security-version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons-mongo</artifactId>
+			<version>${saas-commons-mongo-version}</version>
 		</dependency>
 
 		<dependency>
