@@ -8,11 +8,11 @@ spring:
         - id: security
           uri: lb://security
           predicates:
-            - Path: /api/security/**, **/api/security/**, **/**/api/security/**, **/**/**/api/security/**, **/**/**/**/api/security/**
+            - Path=/api/security/**, /**/api/security/**, /**/**/api/security/**, /**/**/**/api/security/**, /**/**/**/**/api/security/**
         - id: ui
           uri: lb://ui
           predicates:
-            - Path: /api/ui/**, **/api/ui/**, **/**/api/ui/**, **/**/**/api/ui/**, **/**/**/**/api/ui/**
+            - Path=/api/ui/**, /**/api/ui/**, /**/**/api/ui/**, /**/**/**/api/ui/**, /**/**/**/**/api/ui/**
   boot:
     admin:
       client:
