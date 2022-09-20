@@ -173,9 +173,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 		Condition permissionCondition = SECURITY_PERMISSION.ID.eq(permissionId);
 
-		return Mono.just(
+		return Mono.from(
 
-		        this.dslContext.select()
+		        this.dslContext.select(SECURITY_PACKAGE.ID)
 		                .from(SECURITY_PACKAGE)
 		                .leftJoin(SECURITY_CLIENT_PACKAGE)
 		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
@@ -185,10 +185,10 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
 		                .leftJoin(SECURITY_PERMISSION)
 		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
-		                .where(clientCondition.and(permissionCondition))
-		                .execute() > 0
+		                .where(clientCondition.and(permissionCondition)))
+		        .map(Record1::value1)
+		        .map(value -> value.intValue() > 0);
 
-		);
 	}
 
 }

@@ -231,38 +231,65 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(this.dao::setPermissions);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Assign_Permission_To_User')")
-	public Mono<Boolean> assignPermissionToUser(ULong permissionId, ULong userId) {
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
+	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        contextAuth -> Mono
-		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+		        contextAuth -> this.dao.readById(userId),
 
-		        (contextAuth, isSystem) -> this.dao.readById(userId),
-
-		        (contextAuth, isSystem, user) -> clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
-		                .getClientId()), user.getClientId()),
-
-		        (contextAuth, isSystem, user, isManaged) ->
+		        (contextAuth, user) ->
 				{
 
-			        // assign permission to the given user
-			        if (isSystem.booleanValue())
-				        return this.dao.assigningPermissionToUser(userId, permissionId);
+			        if (contextAuth.isSystemClient())
+				        return Mono.just(true);
 
-			        else if (isManaged.booleanValue()) {
+			        return clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
+			                .getClientId()), user.getClientId())
+			                .flatMap(e -> e.booleanValue() ? Mono.just(e) : Mono.empty());
+		        },
 
-				        clientService.checkPermissionAvailableForGivenClient(user.getClientId(), permissionId);
-				        return this.dao.assigningPermissionToUser(userId, permissionId);
-			        }
+		        (contextAuth, user, isManaged) ->
+				{
+			        System.out.println("managed 3 " + isManaged);
+//			        if (isManaged.booleanValue())
+//			        return this.dao.checkPermissionExistsForUser(userId, permissionId);
+
+			        return Mono.just(false);
+//			        else
+//				        return Mono.empty();
+		        },
+
+		        (contextAuth, user, isManaged, exists) ->
+				{
+			        System.out.println("exists 4 " + exists);
+
+			        return exists.booleanValue() ? Mono.just(exists)
+			                : clientService
+
+			                        .checkPermissionAvailableForGivenClient(user.getClientId(), permissionId);
+
+		        },
+
+		        (contextAuth, user, isManaged, exists, hasPermission) ->
+				{
+			        System.out.println("permission 5 " + hasPermission);
+
+			        if (isManaged.booleanValue() && hasPermission.booleanValue() && !exists.booleanValue())
+
+				        return this.dao.assigningPermissionToUser(userId, permissionId)
+				                .map(res -> res > 0);
+
+			        else if (exists.booleanValue())
+				        return Mono.just(false);
 
 			        return Mono.empty();
-		        }).switchIfEmpty(Mono
-		                .defer(() -> messageResourceService.getMessage(MessageResourceService.ASSIGN_PERMISSION_ERROR)
-		                        .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
-		                                StringFormatter.format(msg, permissionId, userId)))
-		                        .flatMap(Mono::error)));
+		        }).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                MessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
+	}
+
+	public Mono<Boolean> checkPermissionExistsForUser(ULong userId, ULong permissionId) {
+		return this.dao.checkPermissionExistsForUser(userId, permissionId);
 	}
 }

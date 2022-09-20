@@ -36,8 +36,11 @@ public class PackageService extends
 
 	private static final String NAME = "name";
 
-	@Autowired
 	private ClientService clientService;
+
+	public void setClientService(ClientService clientService) {
+		this.clientService = clientService;
+	}
 
 	@Autowired
 	private MessageResourceService messageResourceService;
