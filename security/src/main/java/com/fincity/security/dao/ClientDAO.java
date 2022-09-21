@@ -138,30 +138,35 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e.into(this.pojoClass));
 	}
 
-	public int addPackageToClient(ULong clientId, ULong packageId) {
+	public Mono<Boolean> addPackageToClient(ULong clientId, ULong packageId) {
 
-		return this.dslContext
-		        .insertInto(SECURITY_CLIENT_PACKAGE, SECURITY_CLIENT_PACKAGE.CLIENT_ID,
-		                SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
-		        .values(clientId, packageId)
-		        .execute();
+		return Mono
+		        .from(this.dslContext
+		                .insertInto(SECURITY_CLIENT_PACKAGE, SECURITY_CLIENT_PACKAGE.CLIENT_ID,
+		                        SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
+		                .values(clientId, packageId))
+		        .map(val -> val > 0);
 
 	}
 
 	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong clientId, ULong packageId) {
-		return Mono.just(this.dslContext.select(DSL.count())
+		return Mono.from(this.dslContext.select(DSL.count())
 		        .from(SECURITY_PACKAGE)
 		        .where(SECURITY_PACKAGE.ID.eq(packageId)
 		                .and(SECURITY_PACKAGE.CLIENT_ID.eq(clientId)))
-		        .execute() > 0);
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(val -> val > 0);
 	}
 
 	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong clientId, ULong packageId) {
-		return Mono.just(this.dslContext.select(DSL.count())
+		return Mono.from(this.dslContext.select(DSL.count())
 		        .from(SECURITY_CLIENT_PACKAGE)
 		        .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
 		                .and(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
-		        .execute() > 0);
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(val -> val > 0);
 	}
 
 	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {

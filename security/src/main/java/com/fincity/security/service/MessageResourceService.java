@@ -28,6 +28,7 @@ public class MessageResourceService extends AbstractMessageService {
 	public static final String UNKNOWN_TOKEN = "unknown_token";
 	public static final String ALREADY_EXISTS = "already_exists";
 	public static final String ASSIGN_PERMISSION_ERROR = "assign_permission_error";
+	public static final String ASSIGN_PACKAGE_ERROR = "assign_package_error";
 
 	public MessageResourceService() {
 

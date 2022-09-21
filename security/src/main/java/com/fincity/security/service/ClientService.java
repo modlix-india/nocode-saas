@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
@@ -14,11 +16,9 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.service.CacheService;
@@ -281,28 +281,44 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Assign_Package_To_Client')")
-	protected Mono<Boolean> assigningPackageToClient(ULong packageId, ULong clientId) {
-		return packageService.isBasePackage(packageId)
-		        .filter(Boolean::booleanValue)
-		        .flatMap(e -> SecurityContextUtil.getUsersContextAuthentication())
-		        .flatMap(ca ->
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
+	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> packageService.isBasePackage(packageId),
+
+		        (ca, basePackage) -> basePackage.booleanValue() ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), clientId) : Mono.empty(),
+
+		        (ca, basePackage, isManaged) -> isManaged.booleanValue()
+		                ? this.dao.checkClientApplicableForGivenPackage(clientId, packageId)
+		                : Mono.empty(),
+
+		        (ca, basePackage, isManaged, clientApplicable) -> this.dao
+		                .checkPackageApplicableForGivenClient(clientId, packageId),
+
+		        (ca, basePackage, isManaged, clientApplicable, packageApplicable) ->
 				{
-			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				        return Mono.just(this.dao.addPackageToClient(clientId, packageId) > 0);
+			        System.out.println("step 6 " + clientApplicable + packageApplicable);
 
-			        return this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-			                .getClientId()), clientId)
-			                .map(Boolean::booleanValue)
-			                .flatMap(manage -> this.dao.checkClientApplicableForGivenPackage(clientId, packageId))
-			                .flatMap(manage -> this.dao.checkPackageApplicableForGivenClient(clientId, packageId))
-			                .flatMap(manage -> Mono.just(this.dao.addPackageToClient(clientId, packageId) > 0));
-		        })
+			        if ((!basePackage.booleanValue() && clientApplicable.booleanValue()
+			                && packageApplicable.booleanValue())
+			                && (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())
+			                        || isManaged.booleanValue())) {
 
-		        .switchIfEmpty(
-		                Mono.defer(() -> messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
-		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
-		                                StringFormatter.format(msg, "assign package to client"))))));
+				        System.out.println("client managed " + isManaged);
+				        return this.dao.addPackageToClient(clientId, packageId);
+
+			        }
+
+			        return Mono.empty();
+		        }
+
+		).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        MessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
 
 	}
 
