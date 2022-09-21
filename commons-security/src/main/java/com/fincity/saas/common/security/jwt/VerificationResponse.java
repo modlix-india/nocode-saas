@@ -1,8 +1,6 @@
-package com.fincity.security.model;
+package com.fincity.saas.common.security.jwt;
 
 import java.time.LocalDateTime;
-
-import com.fincity.saas.common.security.jwt.ContextUser;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
