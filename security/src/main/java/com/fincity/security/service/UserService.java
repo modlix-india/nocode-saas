@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -138,7 +140,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User", id))))));
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.User_READ')")
 	@Override
 	public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
@@ -224,6 +226,33 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 	public Mono<User> readInternal(ULong id) {
-		return this.dao.readInternal(id).flatMap(this.dao::setPermissions);
+		return this.dao.readInternal(id)
+		        .flatMap(this.dao::setPermissions);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
+	public Mono<Boolean> removeRoleFromUser(ULong userId, ULong roleId) {
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.dao.readById(userId),
+
+		        (ca, user) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), user.getClientId()),
+
+		        (ca, user, isManaged) ->
+				{
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())
+			                || isManaged.booleanValue())
+
+				        return this.dao.removeRoleForUser(userId, roleId)
+				                .map(val -> val > 0);
+
+			        return Mono.empty();
+		        }
+
+		).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        MessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 }
