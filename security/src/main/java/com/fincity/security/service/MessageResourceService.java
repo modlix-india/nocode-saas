@@ -28,6 +28,7 @@ public class MessageResourceService extends AbstractMessageService {
 	public static final String UNKNOWN_TOKEN = "unknown_token";
 	public static final String ALREADY_EXISTS = "already_exists";
 	public static final String REMOVE_PERMISSION_ERROR = "remove_permission_error";
+	public static final String ROLE_REMOVE_ERROR = "role_remove_error";
 
 	public MessageResourceService() {
 
@@ -39,8 +40,16 @@ public class MessageResourceService extends AbstractMessageService {
 
 		Mono<Locale> locale = SecurityContextUtil.getUsersLocale();
 
-		return locale.map(this.bundleMap::get)
+		return locale.flatMap(l -> {
+			var x = this.bundleMap.get(l);
+
+			if (x == null)
+				x = this.bundleMap.get(Locale.forLanguageTag(l.getLanguage()));
+
+			return x == null ? Mono.empty() : Mono.just(x);
+		})
 		        .defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
 		        .map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
+
 	}
 }
