@@ -5,6 +5,14 @@ security:
     password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/security
+
+ui:
+  mongo:
+    host: localhost
+    port: 27017
+    user: root
+    password: Kiran@123
+
 spring:
   flyway:
     enabled: false

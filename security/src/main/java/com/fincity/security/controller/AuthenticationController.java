@@ -12,10 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.jwt.VerificationResponse;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
-import com.fincity.security.model.VerificationResponse;
 import com.fincity.security.service.AuthenticationService;
 
 import reactor.core.publisher.Mono;
@@ -47,13 +48,23 @@ public class AuthenticationController {
 
 		return flatMapMono(
 
-	        SecurityContextUtil::getUsersContextAuthentication,
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-	        ca -> Mono.just(new VerificationResponse().setUser(ca.getUser())
-	                .setAccessToken(ca.getAccessToken())
-	                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
+		        ca -> Mono.just(new VerificationResponse().setUser(ca.getUser())
+		                .setAccessToken(ca.getAccessToken())
+		                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
 
-	        (ca, vr) -> Mono.just(ResponseEntity.<VerificationResponse>ok(vr)));
+		        (ca, vr) -> Mono.just(ResponseEntity.<VerificationResponse>ok(vr)));
 
+	}
+
+	@GetMapping(value = "/internal/securityContextAuthentication")
+	public Mono<ResponseEntity<ContextAuthentication>> contextAuthentication() {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        contextAuthentication -> Mono.just(ResponseEntity.ok(contextAuthentication)));
 	}
 }
