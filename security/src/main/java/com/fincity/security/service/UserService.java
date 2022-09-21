@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -229,31 +230,29 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(this.dao::setPermissions);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
 	public Mono<Boolean> removeRoleFromUser(ULong userId, ULong roleId) {
-		return FlatMapUtil.flatMapMono(
+		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        contextAuth -> Mono
-		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+		        ca -> this.dao.readById(userId),
 
-		        (contextAuth, isSystem) -> this.dao.readById(userId),
-
-		        (contextAuth, isSystem, user) -> clientService.isBeingManagedBy(ULong.valueOf(contextAuth.getUser()
+		        (ca, user) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
 		                .getClientId()), user.getClientId()),
 
-		        (contextAuth, isSystem, user, isManaged) ->
+		        (ca, user, isManaged) ->
 				{
-			        if (isSystem.booleanValue() || isManaged.booleanValue())
-				        return this.dao.removeRoleForUser(userId, roleId);
-			        return Mono.empty();
-		        })
-		        .switchIfEmpty(
-		                Mono.defer(() -> messageResourceService.getMessage(MessageResourceService.ROLE_REMOVE_ERROR)
-		                        .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
-		                                StringFormatter.format(msg, roleId, userId)))
-		                        .flatMap(Mono::error)));
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())
+			                || isManaged.booleanValue())
 
+				        return this.dao.removeRoleForUser(userId, roleId)
+				                .map(val -> val > 0);
+
+			        return Mono.empty();
+		        }
+
+		).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        MessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 }

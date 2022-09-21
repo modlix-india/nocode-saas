@@ -39,8 +39,16 @@ public class MessageResourceService extends AbstractMessageService {
 
 		Mono<Locale> locale = SecurityContextUtil.getUsersLocale();
 
-		return locale.map(this.bundleMap::get)
+		return locale.flatMap(l -> {
+			var x = this.bundleMap.get(l);
+
+			if (x == null)
+				x = this.bundleMap.get(Locale.forLanguageTag(l.getLanguage()));
+
+			return x == null ? Mono.empty() : Mono.just(x);
+		})
 		        .defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
 		        .map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
+
 	}
 }
