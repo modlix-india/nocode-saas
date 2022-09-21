@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -230,38 +231,34 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(this.dao::setPermissions);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Assign_Permission_To_User')")
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
 	public Mono<Boolean> removePermissionFromUser(ULong userId, ULong permissionId) {
-		return FlatMapUtil.flatMapMono(
+		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        contextAuth -> Mono
-		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+		        ca -> this.dao.readById(userId),
 
-		        (contextAuth, isSystem) -> this.dao.readById(userId),
+		        (ca, user) ->
 
-		        (contextAuth, isSystem, user) -> clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
-		                .getClientId()), user.getClientId()),
+				clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+				        .getClientId()), user.getClientId()),
 
-		        (contextAuth, isSystem, user, isManaged) ->
+		        (ca, user, isManaged) ->
 				{
 
-			        if (isSystem.booleanValue() || isManaged.booleanValue())
-				        return this.dao.removingPermissionFromUser(userId, permissionId);
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())
+			                || isManaged.booleanValue())
+
+				        return this.dao.removingPermissionFromUser(userId, permissionId)
+				                .map(val -> val > 0)
+				                .filter(Boolean::booleanValue);
 
 			        return Mono.empty();
 
 		        }
 
-		)
-		        .switchIfEmpty(Mono.defer(
-
-		                () -> messageResourceService.getMessage(MessageResourceService.REMOVE_PERMISSION_ERROR)
-		                        .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
-		                                StringFormatter.format(msg, permissionId, userId)))
-		                        .flatMap(Mono::error)
-
-				));
+		).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        MessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
 	}
 }
