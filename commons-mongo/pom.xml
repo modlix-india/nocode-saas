@@ -8,14 +8,16 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
-	<artifactId>commons-security</artifactId>
+	<artifactId>commons-mongo</artifactId>
 	<version>1.0.0</version>
-	<name>Commons Security</name>
-	<description>Common to all SAAS Security related api</description>
+	<name>Commons-Mongo</name>
+	<description>Common to all Mongo related api</description>
 	<properties>
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
 		<nocode-kirun-version>1.0.0</nocode-kirun-version>
+		<saas-commons-version>1.0.0</saas-commons-version>
+		<nocode-flatmap-util-version>1.1.0</nocode-flatmap-util-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -31,6 +33,10 @@
 			<artifactId>spring-data-commons</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
@@ -38,25 +44,6 @@
 		<dependency>
 			<groupId>io.projectreactor</groupId>
 			<artifactId>reactor-core</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.fincity.nocode</groupId>
-			<artifactId>kirun-java</artifactId>
-			<version>${nocode-kirun-version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-openfeign</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.playtika.reactivefeign</groupId>
-			<artifactId>feign-reactor-spring-cloud-starter</artifactId>
-			<version>3.1.0</version>
-			<type>pom</type>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -69,21 +56,19 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-api</artifactId>
-			<version>0.11.5</version>
+			<groupId>com.fincity.nocode</groupId>
+			<artifactId>kirun-java</artifactId>
+			<version>${nocode-kirun-version}</version>
 		</dependency>
 		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-impl</artifactId>
-			<version>0.11.5</version>
-			<scope>runtime</scope>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons</artifactId>
+			<version>${saas-commons-version}</version>
 		</dependency>
 		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-jackson</artifactId> <!-- or jjwt-gson if Gson is preferred -->
-			<version>0.11.5</version>
-			<scope>runtime</scope>
+			<groupId>com.fincity.nocode</groupId>
+			<artifactId>reactor-flatmap-util</artifactId>
+			<version>${nocode-flatmap-util-version}</version>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>
