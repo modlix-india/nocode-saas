@@ -23,12 +23,24 @@ public class UserController extends AbstractJOOQDataController<SecurityUserRecor
 	@Autowired
 	private UserService userService;
 
-	
+	@GetMapping("{userId}/removePermission/{permissionId}")
+	public Mono<ResponseEntity<Boolean>> removePermission(@PathVariable ULong userId,
+	        @PathVariable ULong permissionId) {
+
+		return userService.removePermissionFromUser(userId, permissionId);
+	}
+
 	@GetMapping("/{id}/assignPermission/{permissionId}")
 	public Mono<ResponseEntity<Boolean>> assignPacktoClient(@PathVariable ULong id, @PathVariable ULong permissionId) {
 
 		return this.userService
 		        .assignPermissionToUser(id, permissionId)
+		        .map(ResponseEntity::ok);
+	}
+
+	@GetMapping("{userId}/removeRole/{roleId}")
+	public Mono<ResponseEntity<Boolean>> removeRoleFromUser(@PathVariable ULong userId, @PathVariable ULong roleId) {
+		return userService.removeRoleFromUser(userId, roleId)
 		        .map(ResponseEntity::ok);
 	}
 }

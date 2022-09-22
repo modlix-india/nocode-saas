@@ -29,6 +29,8 @@ public class MessageResourceService extends AbstractMessageService {
 	public static final String ALREADY_EXISTS = "already_exists";
 	public static final String ASSIGN_PERMISSION_ERROR = "assign_permission_error";
 	public static final String ASSIGN_PACKAGE_ERROR = "assign_package_error";
+	public static final String REMOVE_PERMISSION_ERROR = "remove_permission_error";
+	public static final String ROLE_REMOVE_ERROR = "role_remove_error";
 
 	public MessageResourceService() {
 
@@ -50,5 +52,6 @@ public class MessageResourceService extends AbstractMessageService {
 		})
 		        .defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
 		        .map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
+
 	}
 }

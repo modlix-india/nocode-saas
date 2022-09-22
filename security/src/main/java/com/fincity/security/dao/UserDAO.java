@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.jooq.Condition;
+import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.Record3;
@@ -34,6 +35,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
+import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.service.MessageResourceService;
 import com.fincity.security.util.ByteUtil;
@@ -261,6 +263,28 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .where(this.idField.eq(id))
 		        .limit(1))
 		        .map(e -> e.into(this.pojoClass));
+	}
+
+	public Mono<Integer> removeRoleForUser(ULong userId, ULong roleId) {
+
+		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
+		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
+
+		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
+		        .and(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)));
+
+		return Mono.from(query);
+	}
+
+	public Mono<Integer> removingPermissionFromUser(ULong userId, ULong permissionId) {
+
+		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
+		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
+
+		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
+		        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)));
+
+		return Mono.from(query);
 	}
 
 	public Mono<Integer> assigningPermissionToUser(ULong userId, ULong permissionId) {
