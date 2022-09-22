@@ -290,26 +290,23 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 
 		        ca -> packageService.isBasePackage(packageId),
 
-		        (ca, basePackage) -> basePackage.booleanValue() ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), clientId) : Mono.empty(),
+		        (ca, basePackage) -> this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), clientId),
 
 		        (ca, basePackage, isManaged) -> isManaged.booleanValue()
-		                ? this.dao.checkClientApplicableForGivenPackage(clientId, packageId)
+		                ? this.packageService.getClientIdFromPackage(packageId)
 		                : Mono.empty(),
 
-		        (ca, basePackage, isManaged, clientApplicable) -> this.dao
-		                .checkPackageApplicableForGivenClient(clientId, packageId),
+		        (ca, basePackage, isManaged, clientIdFromPackage) -> isManaged.booleanValue()
+		                ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), clientIdFromPackage)
+		                : Mono.empty(),
 
-		        (ca, basePackage, isManaged, clientApplicable, packageApplicable) ->
+		        (ca, basePackage, isManaged, clientIdFromPackage, clientApplicable) ->
 				{
-			        System.out.println("step 6 " + clientApplicable + packageApplicable);
+			        if ((!basePackage.booleanValue() && clientApplicable.booleanValue())
+			                && (ca.isSystemClient() || isManaged.booleanValue())) {
 
-			        if ((!basePackage.booleanValue() && clientApplicable.booleanValue()
-			                && packageApplicable.booleanValue())
-			                && (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())
-			                        || isManaged.booleanValue())) {
-
-				        System.out.println("client managed " + isManaged);
 				        return this.dao.addPackageToClient(clientId, packageId);
 
 			        }

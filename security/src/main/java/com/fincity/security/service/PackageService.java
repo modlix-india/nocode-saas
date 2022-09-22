@@ -166,4 +166,7 @@ public class PackageService extends
 		        .map(Package::isBase);
 	}
 
+	public Mono<ULong> getClientIdFromPackage(ULong packageId) {
+		return this.dao.getClientIdFromPackage(packageId);
+	}
 }

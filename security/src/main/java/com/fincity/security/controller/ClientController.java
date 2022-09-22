@@ -25,8 +25,7 @@ public class ClientController
 	private ClientService clientService;
 
 	@GetMapping("/{clientId}/assignPackage/{packageId}")
-	public Mono<ResponseEntity<Boolean>> assignPackageToClient(@PathVariable ULong clientId,
-	        @PathVariable ULong packageId) {
+	public Mono<ResponseEntity<Boolean>> assignPackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
 		return clientService.assignPackageToClient(clientId, packageId)
 		        .map(ResponseEntity::ok);
 	}
