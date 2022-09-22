@@ -31,10 +31,9 @@ public class UserController extends AbstractJOOQDataController<SecurityUserRecor
 	}
 
 	@GetMapping("/{id}/assignPermission/{permissionId}")
-	public Mono<ResponseEntity<Boolean>> assignPacktoClient(@PathVariable ULong id, @PathVariable ULong permissionId) {
+	public Mono<ResponseEntity<Boolean>> assignPermission(@PathVariable ULong id, @PathVariable ULong permissionId) {
 
-		return this.userService
-		        .assignPermissionToUser(id, permissionId)
+		return this.userService.assignPermissionToUser(id, permissionId)
 		        .map(ResponseEntity::ok);
 	}
 

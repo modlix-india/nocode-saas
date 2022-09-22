@@ -322,10 +322,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 				{
 			        System.out.println("exists 4 " + exists);
 
-			        return exists.booleanValue() ? Mono.just(exists)
-			                : clientService
-
-			                        .checkPermissionAvailableForGivenClient(user.getClientId(), permissionId);
+			        return clientService.checkPermissionAvailableForGivenClient(user.getClientId(), permissionId);
 
 		        },
 
