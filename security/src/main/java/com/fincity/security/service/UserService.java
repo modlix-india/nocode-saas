@@ -288,46 +288,39 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        MessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Assign_Role_To_User')")
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
 	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        contextAuth -> Mono
-		                .just(ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(contextAuth.getClientTypeCode())),
+		        contextAuth ->
 
-		        (contextAuth, isSystem) -> this.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
-		                .getClientId()), userId),
+				this.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
+				        .getClientId()), userId),
 
-		        (contextAuth, isSystem, isManaged) -> this.dao.readById(userId),
+		        (contextAuth, isManaged) ->
 
-		        (contextAuth, isSystem, isManaged, user) ->
+				this.dao.readById(userId),
+
+		        (contextAuth, isManaged, user) ->
+
+				clientService.checkRoleApplicableForSelectedClient(ULong.valueOf(contextAuth.getUser()
+				        .getClientId()), roleId),
+
+		        (contextAuth, isManaged, user, hasRole) ->
+
+				this.dao.checkRoleCreatedByUser(roleId, user.getClientId()),
+
+		        (contextAuth, isManaged, user, hasRole, roleCreated) ->
 				{
-			        if (isSystem.booleanValue())
-				        return this.assignRoleToUser(userId, roleId);
-
-			        else if (isManaged.booleanValue()) {
-				        // check if role if part of the package assigned to client or base package or
-				        // role should have been created by the client of that user
-				        clientService.checkRoleApplicableForSelectedClient(user.getClientId(), roleId);
-				        return this.assignRoleToUser(userId, roleId);
-			        }
 			        return Mono.empty();
-
 		        }
 
-		).switchIfEmpty(Mono.defer(
-
-		        () -> messageResourceService.getMessage(MessageResourceService.ROLE_FORBIDDEN)
-		                .map(msg -> new GenericException(HttpStatus.FORBIDDEN,
-		                        StringFormatter.format(msg, userId, roleId)))
-		                .flatMap(Mono::error))
-
-		);
+		).switchIfEmpty();
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong loggedInClientId, ULong userId) {
-		return this.isBeingManagedBy(loggedInClientId, userId);
+		return this.dao.isBeingManagedBy(loggedInClientId, userId);
 	}
 }

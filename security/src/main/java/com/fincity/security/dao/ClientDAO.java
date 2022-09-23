@@ -169,9 +169,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 		Condition roleCondition = SECURITY_ROLE.ID.eq(roleId);
 
-		return Mono.just(
+		return Mono.from(
 
-		        this.dslContext.select()
+		        this.dslContext.select(SECURITY_PACKAGE.ID)
 		                .from(SECURITY_PACKAGE)
 		                .leftJoin(SECURITY_PACKAGE_ROLE)
 		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
@@ -180,9 +180,36 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .leftJoin(SECURITY_ROLE)
 		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE.ID))
 		                .where(packageCondition.and(roleCondition))
-		                .execute() > 0
-
-		);
+		                .limit(1))
+		        .map(Record1::value1)
+		        .map(val -> val.intValue() > 0);
 	}
+
+//	public Mono<Boolean> checkRoleApplicableForSelectedClientAndPackage(ULong clientId, ULong roleId, ULong packageId) {
+//
+//		Condition packageCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
+//		        .or(SECURITY_PACKAGE.BASE.eq((byte) 1))
+//		        .or(SECURITY_PACKAGE.CLIENT_ID.eq(clientId));
+//
+//		Condition roleCondition = SECURITY_ROLE.ID.eq(roleId);
+//
+//		Condition selectPackage = SECURITY_PACKAGE.ID.eq(packageId);
+//
+//		return Mono.from(
+//
+//		        this.dslContext.select(SECURITY_PACKAGE.ID)
+//		                .from(SECURITY_PACKAGE)
+//		                .leftJoin(SECURITY_PACKAGE_ROLE)
+//		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+//		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+//		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+//		                .leftJoin(SECURITY_ROLE)
+//		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE.ID))
+//		                .where(packageCondition.and(roleCondition)
+//		                        .and(selectPackage))
+//		                .limit(1))
+//		        .map(Record1::value1)
+//		        .map(val -> val.intValue() > 0);
+//	}
 
 }
