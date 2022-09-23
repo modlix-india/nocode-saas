@@ -149,26 +149,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 	}
 
-	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong clientId, ULong packageId) {
-		return Mono.from(this.dslContext.select(DSL.count())
-		        .from(SECURITY_PACKAGE)
-		        .where(SECURITY_PACKAGE.ID.eq(packageId)
-		                .and(SECURITY_PACKAGE.CLIENT_ID.eq(clientId)))
-		        .limit(1))
-		        .map(Record1::value1)
-		        .map(val -> val > 0);
-	}
-
-	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong clientId, ULong packageId) {
-		return Mono.from(this.dslContext.select(DSL.count())
-		        .from(SECURITY_CLIENT_PACKAGE)
-		        .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
-		                .and(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
-		        .limit(1))
-		        .map(Record1::value1)
-		        .map(val -> val > 0);
-	}
-
 	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
 
 		Condition clientCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)

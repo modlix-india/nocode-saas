@@ -306,20 +306,16 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        },
 
 		        (contextAuth, user, isManaged) ->
-				{
-			        System.out.println("step 04 is managed" + isManaged);
 
-			        return isManaged.booleanValue() ? flatMapMono(
-			                () -> clientService.checkPermissionAvailableForGivenClient(user.getClientId(),
-			                        permissionId),
+				isManaged.booleanValue() ? flatMapMono(
 
-			                havePermission -> this.dao.checkPermissionExistsForUser(user.getClientId(), permissionId),
+				        () -> clientService.checkPermissionAvailableForGivenClient(user.getClientId(), permissionId),
 
-			                (havePermission, permissionCreated) -> Mono.just(havePermission && permissionCreated)
+				        havePermission -> this.dao.checkPermissionExistsForUser(user.getClientId(), permissionId),
 
-				) : Mono.empty();
+				        (havePermission, permissionCreated) -> Mono.just(havePermission && permissionCreated)
 
-		        },
+				) : Mono.empty(),
 
 		        (contextAuth, user, isManaged, hasPermission) ->
 				{
