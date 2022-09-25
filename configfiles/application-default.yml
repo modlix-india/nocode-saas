@@ -12,6 +12,7 @@ ui:
     port: 27017
     user: root
     password: Kiran@123
+    authdatabase: admin
 
 spring:
   flyway:

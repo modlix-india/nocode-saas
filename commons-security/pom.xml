@@ -16,6 +16,8 @@
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
 		<nocode-kirun-version>1.0.0</nocode-kirun-version>
+		<saas-commons-version>1.0.0</saas-commons-version>
+		<feign-reactor.version>3.2.6</feign-reactor.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -55,7 +57,7 @@
 		<dependency>
 			<groupId>com.playtika.reactivefeign</groupId>
 			<artifactId>feign-reactor-spring-cloud-starter</artifactId>
-			<version>3.1.0</version>
+			<version>${feign-reactor.version}</version>
 			<type>pom</type>
 		</dependency>
 		<dependency>
@@ -78,6 +80,11 @@
 			<artifactId>jjwt-impl</artifactId>
 			<version>0.11.5</version>
 			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons</artifactId>
+			<version>${saas-commons-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>

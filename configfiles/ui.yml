@@ -3,12 +3,19 @@ spring:
     mongodb:
       host: ${ui.mongo.host}
       port: ${ui.mongo.port}
-      database: ${ui.mongo.authdb:ui}
-      authenticationDatabase: ${ui.mongo.authdb:admin}
+      database: ${ui.mongo.database:ui}
+      authenticationDatabase: ${ui.mongo.authdatabase:admin}
       password: ${ui.mongo.password}
-      user: ${ui.mongo.user:root}
+      username: ${ui.mongo.user:root}
   boot:
     admin:
       client:
         instance:
           name: UI
+  cloud:
+    gateway:
+      routes:
+        - id: ui
+          uri: lb://ui
+          predicates:
+            - Path=/api/ui/**, /*/api/ui/**, /*/*/api/ui/**, /*/*/*/api/ui/**, /*/*/*/*/api/ui/**

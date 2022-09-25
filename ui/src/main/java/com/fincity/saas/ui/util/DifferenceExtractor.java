@@ -3,9 +3,11 @@ package com.fincity.saas.ui.util;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
+import com.fincity.nocode.kirun.engine.model.Statement;
+import com.fincity.nocode.kirun.engine.model.StatementGroup;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.ui.model.ComponentDefinition;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -99,19 +101,49 @@ public class DifferenceExtractor {
 
 			        (propDiff, childDiff) ->
 					{
-				        if (propDiff.isEmpty() && childDiff.isEmpty())
-					        return Mono.empty();
 
 				        ComponentDefinition cd = new ComponentDefinition();
-				        cd.setKey(inc.getKey());
-				        cd.setName(inc.getName());
+				        cd.setKey(inc.getKey()
+				                .equals(exc.getKey()) ? null : exc.getKey());
+				        cd.setName(inc.getName()
+				                .equals(exc.getName()) ? null : exc.getName());
 				        cd.setOverride(true);
-				        cd.setType(inc.getType());
+				        cd.setType(inc.getType()
+				                .equals(exc.getType()) ? null : exc.getType());
 				        cd.setProperties((Map<String, Object>) propDiff);
 				        cd.setChildren(childDiff);
 
-				        return Mono.just(Tuples.of(true, cd));
+				        return Mono.just(cd);
 			        });
+		}
+
+		if (existing instanceof FunctionDefinition efd && incoming instanceof FunctionDefinition ifd) {
+
+			return FlatMapUtil.flatMapMono(
+
+			        () -> jsonMap(ifd.getSteps(), efd.getSteps()),
+
+			        stepDiff -> jsonMap(ifd.getStepGroups(), efd.getStepGroups()),
+
+			        (stepDiff, stepGroupDiff) ->
+					{
+
+				        FunctionDefinition fd = new FunctionDefinition();
+
+				        fd.setSteps((Map<String, Statement>) stepDiff);
+				        fd.setStepGroups((Map<String, StatementGroup>) stepGroupDiff);
+
+				        return Mono.just(fd);
+			        }
+
+			);
+		}
+
+		if (existing instanceof Statement est && incoming instanceof Statement ist) {
+
+//			return FlatMapUtil.flatMapMono(
+//					() -> 
+//			);
 		}
 
 		return Mono.just(incoming);

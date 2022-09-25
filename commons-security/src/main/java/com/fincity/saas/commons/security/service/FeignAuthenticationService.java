@@ -1,7 +1,6 @@
 package com.fincity.saas.commons.security.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -19,10 +18,11 @@ public class FeignAuthenticationService implements IAuthenticationService {
 	@Override
 	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, ServerHttpRequest request) {
 
-		if (this.feignAuthService == null) return Mono.empty();
-		
+		if (feignAuthService == null)
+			return Mono.empty();
+
 		return this.feignAuthService.contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken)
-		        .map(ResponseEntity::getBody);
+		        .map(Authentication.class::cast);
 	}
 
 }

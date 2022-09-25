@@ -50,11 +50,10 @@ public class JWTTokenFilter implements WebFilter {
 		if (bearerToken != null && !bearerToken.isBlank()) {
 
 			return this.authService.getAuthentication(isBasic, bearerToken, request)
-			        .flatMap(e ->
-
-					chain.filter(exchange)
-					        .contextWrite(ReactiveSecurityContextHolder
-					                .withSecurityContext(Mono.just(new SecurityContextImpl(e)))));
+			        .flatMap(e -> chain.filter(exchange)
+			                .contextWrite(ReactiveSecurityContextHolder
+			                        .withSecurityContext(Mono.just(new SecurityContextImpl(e)))))
+			        .switchIfEmpty(Mono.defer(() -> chain.filter(exchange)));
 		}
 		return chain.filter(exchange);
 	}

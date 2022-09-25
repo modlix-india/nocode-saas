@@ -8,6 +8,8 @@ import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -34,6 +36,7 @@ public class ContextAuthentication implements Authentication {
 		return user.getFirstName();
 	}
 
+	@JsonIgnore
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		if (user == null)
@@ -51,6 +54,7 @@ public class ContextAuthentication implements Authentication {
 		return null;
 	}
 
+	@JsonIgnore
 	@Override
 	public Object getPrincipal() {
 		return user;
