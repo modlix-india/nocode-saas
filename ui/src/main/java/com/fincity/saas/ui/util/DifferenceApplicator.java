@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
 import com.fincity.saas.ui.model.ComponentDefinition;
 
 public class DifferenceApplicator {
@@ -91,5 +92,10 @@ public class DifferenceApplicator {
 	}
 
 	private DifferenceApplicator() {
+	}
+
+	public static FunctionDefinition json(FunctionDefinition definition, FunctionDefinition definition2) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

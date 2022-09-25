@@ -30,21 +30,24 @@ public class Application extends AbstractUIDTO<Application> {
 	@Override
 	public Mono<Application> applyOverride(Application base) {
 
-		this.translations = (Map<String, Map<String, String>>) DifferenceApplicator.jsonMap(this.translations,
-		        base.translations);
-		this.languages = (Map<String, Map<String, String>>) DifferenceApplicator.jsonMap(this.languages,
-		        base.languages);
-		this.properties = (Map<String, Object>) DifferenceApplicator.jsonMap(this.properties, base.properties);
-
-		if (this.defaultLanguage == null)
-			this.defaultLanguage = base.defaultLanguage;
-
+		if (base != null) {
+			this.translations = (Map<String, Map<String, String>>) DifferenceApplicator.jsonMap(this.translations,
+			        base.translations);
+			this.languages = (Map<String, Map<String, String>>) DifferenceApplicator.jsonMap(this.languages,
+			        base.languages);
+			this.properties = (Map<String, Object>) DifferenceApplicator.jsonMap(this.properties, base.properties);
+			if (this.defaultLanguage == null)
+				this.defaultLanguage = base.defaultLanguage;
+		}
 		return Mono.just(this);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<Application> makeOverride(Application base) {
+
+		if (base == null)
+			return Mono.just(this);
 
 		return Mono.just(this)
 		        .flatMap(a -> DifferenceExtractor.jsonMap(a.translations, base.translations)
@@ -65,15 +68,13 @@ public class Application extends AbstractUIDTO<Application> {
 			                a.setProperties((Map<String, Object>) e);
 			                return a;
 		                }))
-		        .map(a ->
-				{
-
-			        if (base.defaultLanguage != null && base.defaultLanguage.equals(a.defaultLanguage))
-				        a.setDefaultLanguage(null);
-
-			        return a;
+		        .map(a -> {
+		        	
+		        	if (this.defaultLanguage != null && this.defaultLanguage.equals(base.defaultLanguage))
+		        		this.defaultLanguage = null;
+		        	
+		        	return a;
 		        });
-
 	}
 
 }

@@ -1,5 +1,7 @@
 package com.fincity.saas.ui.service;
 
+import org.springframework.stereotype.Service;
+
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -9,6 +11,7 @@ import com.fincity.saas.ui.repository.VersionRepository;
 
 import reactor.core.publisher.Mono;
 
+@Service
 public class VersionService extends AbstractMongoDataService<String, Version, VersionRepository> {
 
 	protected VersionService() {

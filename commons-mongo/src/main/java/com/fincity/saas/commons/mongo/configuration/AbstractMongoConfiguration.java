@@ -16,7 +16,7 @@ import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 public class AbstractMongoConfiguration extends AbstractBaseConfiguration {
 
 	@Bean
-	MappingMongoConverter mappingMongoConverter(ReactiveMongoDatabaseFactory factory, MongoMappingContext context,
+	MappingMongoConverter mappingConverter(ReactiveMongoDatabaseFactory factory, MongoMappingContext context,
 	        BeanFactory beanFactory) {
 		MappingMongoConverter mappingConverter = new MappingMongoConverter(NoOpDbRefResolver.INSTANCE, context);
 		try {
@@ -31,7 +31,7 @@ public class AbstractMongoConfiguration extends AbstractBaseConfiguration {
 	}
 
 	@Bean
-	ReactiveMongoTemplate mongoTemplate(ReactiveMongoDatabaseFactory factory, MappingMongoConverter convertor) {
+	ReactiveMongoTemplate reactiveMongoTemplate(ReactiveMongoDatabaseFactory factory, MappingMongoConverter convertor) {
 		return new ReactiveMongoTemplate(factory, convertor);
 	}
 

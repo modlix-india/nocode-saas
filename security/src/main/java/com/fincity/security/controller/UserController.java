@@ -28,6 +28,9 @@ public class UserController extends AbstractJOOQDataController<SecurityUserRecor
 	        @PathVariable ULong permissionId) {
 
 		return userService.removePermissionFromUser(userId, permissionId)
+		        .map(ResponseEntity::ok);
+	}
+
 	@GetMapping("{userId}/removeRole/{roleId}")
 	public Mono<ResponseEntity<Boolean>> removeRoleFromUser(@PathVariable ULong userId, @PathVariable ULong roleId) {
 		return userService.removeRoleFromUser(userId, roleId)

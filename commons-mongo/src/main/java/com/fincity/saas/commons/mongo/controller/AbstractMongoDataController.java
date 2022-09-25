@@ -1,34 +1,26 @@
-package com.fincity.saas.commons.jooq.controller;
+package com.fincity.saas.commons.mongo.controller;
 
-import java.beans.PropertyEditorSupport;
 import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.jooq.UpdatableRecord;
-import org.jooq.types.UInteger;
-import org.jooq.types.ULong;
-import org.jooq.types.UShort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MultiValueMap;
-import org.springframework.validation.DataBinder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-import com.fincity.saas.commons.jooq.dao.AbstractDAO;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -36,10 +28,11 @@ import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.mongo.service.AbstractMongoDataService;
 
 import reactor.core.publisher.Mono;
 
-public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractDTO<I, I>, O extends AbstractDAO<R, I, D>, S extends AbstractJOOQDataService<R, I, D, O>> {
+public class AbstractMongoDataController<I extends Serializable, D extends AbstractDTO<I, I>, R extends ReactiveCrudRepository<D, I>, S extends AbstractMongoDataService<I, D, R>> {
 
 	public static final String PATH_VARIABLE_ID = "id";
 	public static final String PATH_ID = "/{" + PATH_VARIABLE_ID + "}";
@@ -47,35 +40,6 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
 
 	@Autowired
 	protected S service;
-	
-	@InitBinder
-	public void initBinder(DataBinder binder){
-		binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
-			@Override
-			public void setAsText(String text) {
-				if (text == null)
-					setValue(null);
-				setValue(ULong.valueOf(text));
-			}
-		});
-		binder.registerCustomEditor(UInteger.class, new PropertyEditorSupport() {
-			@Override
-			public void setAsText(String text) {
-				if (text == null)
-					setValue(null);
-				setValue(UInteger.valueOf(text));
-			}
-		});
-		binder.registerCustomEditor(UShort.class, new PropertyEditorSupport() {
-			@Override
-			public void setAsText(String text) {
-				if (text == null)
-					setValue(null);
-				setValue(UShort.valueOf(text));
-			}
-		});
-    }
-
 
 	@PostMapping
 	public Mono<ResponseEntity<D>> create(@RequestBody D entity) {

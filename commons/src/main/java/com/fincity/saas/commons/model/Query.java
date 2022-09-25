@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.jooq.model;
+package com.fincity.saas.commons.model;
 
 import java.io.Serializable;
 

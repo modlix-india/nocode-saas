@@ -71,7 +71,7 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 		        .setUpdatedAt(this.getUpdatedAt())
 		        .setAccountNonExpired(this.accountNonExpired)
 		        .setAccountNonLocked(this.accountNonLocked)
-		        .setAuthorities(authorities)
+		        .setStringAuthorities(authorities)
 		        .setClientId(safeFrom(this.clientId))
 		        .setCredentialsNonExpired(credentialsNonExpired)
 		        .setEmailId(this.getEmailId())
