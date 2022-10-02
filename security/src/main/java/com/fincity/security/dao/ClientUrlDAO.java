@@ -1,5 +1,6 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 
 import java.util.Arrays;
@@ -9,6 +10,7 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
@@ -34,5 +36,17 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 		        .from(table)
 		        .where(cond))
 		        .map(e -> e.into(this.pojoClass)));
+	}
+
+	public Flux<ClientUrlPattern> readClientPatterns() {
+
+		return Flux
+		        .from(this.dslContext
+		                .select(SECURITY_CLIENT_URL.CLIENT_ID, SECURITY_CLIENT.CODE, SECURITY_CLIENT_URL.URL_PATTERN)
+		                .from(SECURITY_CLIENT_URL)
+		                .leftJoin(SECURITY_CLIENT)
+		                .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID)))
+		        .map(e -> new ClientUrlPattern(e.value1().toString(), e.value2(), e.value3()))
+		        .map(ClientUrlPattern::makeHostnPort);
 	}
 }

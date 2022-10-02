@@ -14,10 +14,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.common.security.util.RolePermissionUtil;
 
 import lombok.Data;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
+@ToString
 public class ContextUser implements Serializable {
 
 	private static final long serialVersionUID = -4905785598739255667L;

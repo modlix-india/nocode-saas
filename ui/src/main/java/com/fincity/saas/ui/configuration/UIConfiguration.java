@@ -13,21 +13,16 @@ import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 
 @Configuration
 public class UIConfiguration extends AbstractMongoConfiguration implements ISecurityConfiguration {
-	
-@Override
+
+	@Override
 	@PostConstruct
 	public void initialize() {
 		super.initialize();
 	}
-	
+
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService,
-				"/api/ui/page/**",
-				"/api/ui/application",
-				"/api/ui/css/**",
-				"/api/ui/cache/reset/**",
-				"/manifest.json");
+		return this.springSecurityFilterChain(http, authService, "/api/ui/page/*", "/api/ui/application",
+				 "/api/ui/function/*", "/api/ui/theme/*", "/api/ui/cache/reset/**", "/manifest.json");
 	}
-
 }

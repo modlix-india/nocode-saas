@@ -17,3 +17,7 @@ ui:
 spring:
   flyway:
     enabled: false
+
+logging:
+  level:
+    root: INFO
