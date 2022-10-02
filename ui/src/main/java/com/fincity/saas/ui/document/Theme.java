@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.ui.util.DifferenceApplicator;
 import com.fincity.saas.ui.util.DifferenceExtractor;
 
@@ -31,11 +32,23 @@ public class Theme extends AbstractUIDTO<Theme> {
 	public Mono<Theme> applyOverride(Theme base) {
 
 		if (base != null) {
-			this.styles = (Map<String, Map<String, Object>>) DifferenceApplicator.jsonMap(this.styles, base.styles);
-			this.variables = (Map<String, Map<String, String>>) DifferenceApplicator.jsonMap(this.variables,
-			        base.variables);
-			this.variableGroups = (Map<String, Map<String, Object>>) DifferenceApplicator.jsonMap(this.variableGroups,
-			        base.variableGroups);
+
+			return FlatMapUtil.flatMapMonoWithNull(
+
+			        () -> DifferenceApplicator.apply(this.styles, base.styles),
+
+			        s -> DifferenceApplicator.apply(this.variables, base.variables),
+
+			        (s, v) -> DifferenceApplicator.apply(this.variableGroups, base.variableGroups),
+
+			        (s, v, vg) ->
+					{
+				        this.styles = (Map<String, Map<String, Object>>) s;
+				        this.variableGroups = (Map<String, Map<String, Object>>) vg;
+				        this.variables = (Map<String, Map<String, String>>) v;
+
+				        return Mono.just(this);
+			        });
 		}
 		return Mono.just(this);
 	}
@@ -48,19 +61,19 @@ public class Theme extends AbstractUIDTO<Theme> {
 			return Mono.just(this);
 
 		return Mono.just(this)
-		        .flatMap(a -> DifferenceExtractor.jsonMap(a.styles, base.styles)
+		        .flatMap(a -> DifferenceExtractor.extract(a.styles, base.styles)
 		                .map(e ->
 						{
 			                a.setStyles((Map<String, Map<String, Object>>) e);
 			                return a;
 		                }))
-		        .flatMap(a -> DifferenceExtractor.jsonMap(a.variables, base.variables)
+		        .flatMap(a -> DifferenceExtractor.extract(a.variables, base.variables)
 		                .map(e ->
 						{
 			                a.setVariables((Map<String, Map<String, String>>) e);
 			                return a;
 		                }))
-		        .flatMap(a -> DifferenceExtractor.jsonMap(a.variableGroups, base.variableGroups)
+		        .flatMap(a -> DifferenceExtractor.extract(a.variableGroups, base.variableGroups)
 		                .map(e ->
 						{
 			                a.setVariableGroups((Map<String, Map<String, Object>>) e);

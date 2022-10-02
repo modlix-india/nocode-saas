@@ -35,10 +35,10 @@ import reactor.core.publisher.Mono;
 public class ControllerAdvice implements ErrorWebExceptionHandler {
 
 	private static final ErrorServerContext ERROR_SERVER_CONTEXT = new ErrorServerContext();
-	
+
 	@Autowired
 	private AbstractMessageService resourceService;
-	
+
 	@Autowired
 	private ObjectMapper objectMapper;
 
@@ -50,50 +50,62 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 		if (ex instanceof GenericException g) {
 			sr = ServerResponse.status(g.getStatusCode())
 			        .bodyValue(g.toExceptionData());
+		} else if (ex instanceof FeignException fe) {
+
+			sr = handleFeignException(sr, fe);
+
 		}
-		if (ex instanceof FeignException fe) {
 
-			Optional<ByteBuffer> byteBuffer = fe.responseBody();
-			if (byteBuffer.isPresent() && byteBuffer.get()
-			        .hasArray()) {
-
-				Collection<String> ctype = fe.responseHeaders()
-				        .get(HttpHeaders.CONTENT_TYPE);
-				if (ctype != null && ctype.contains("application/json")) {
-					try {
-						Map<String, Object> map = this.objectMapper.readValue(byteBuffer.get()
-						        .array(), new TypeReference<Map<String, Object>>() {
-						        });
-						sr = Mono.just(new GenericException(HttpStatus.valueOf(fe.status()),
-						        map.get("message") == null ? ""
-						                : map.get("message")
-						                        .toString(),
-						        fe)).flatMap(g -> ServerResponse.status(g.getStatusCode())
-						                .bodyValue(g.toExceptionData()));
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			}
-
-		} 
-		
 		if (sr == null) {
 
-			String eId = GenericException.uniqueId();
-			Mono<String> msg = resourceService.getMessage(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
-
-			log.error("Error : {}", eId, ex);
-
-			final HttpStatus status = (ex instanceof ResponseStatusException rse) ? rse.getStatus()
-			        : HttpStatus.INTERNAL_SERVER_ERROR;
-
-			sr = msg.map(m -> new GenericException(status, eId, m, ex))
-			        .flatMap(g -> ServerResponse.status(g.getStatusCode())
-			                .bodyValue(g.toExceptionData()));
+			sr = handleOtherExceptions(ex);
 		}
 
 		return sr.flatMap(e -> e.writeTo(exchange, ERROR_SERVER_CONTEXT));
+	}
+
+	private Mono<ServerResponse> handleOtherExceptions(Throwable ex) {
+		Mono<ServerResponse> sr;
+		String eId = GenericException.uniqueId();
+		Mono<String> msg = resourceService.getMessage(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
+
+		log.error("Error : {}", eId, ex);
+
+		final HttpStatus status = (ex instanceof ResponseStatusException rse) ? rse.getStatus()
+		        : HttpStatus.INTERNAL_SERVER_ERROR;
+
+		sr = msg.map(m -> new GenericException(status, eId, m, ex))
+		        .flatMap(g -> ServerResponse.status(g.getStatusCode())
+		                .bodyValue(g.toExceptionData()));
+		return sr;
+	}
+
+	private Mono<ServerResponse> handleFeignException(Mono<ServerResponse> sr, FeignException fe) {
+		Optional<ByteBuffer> byteBuffer = fe.responseBody();
+		if (byteBuffer.isPresent() && byteBuffer.get()
+		        .hasArray()) {
+
+			Collection<String> ctype = fe.responseHeaders()
+			        .get(HttpHeaders.CONTENT_TYPE);
+			if (ctype != null && ctype.contains("application/json")) {
+				try {
+					Map<String, Object> map = this.objectMapper.readValue(byteBuffer.get()
+					        .array(), new TypeReference<Map<String, Object>>() {
+					        });
+					sr = Mono
+					        .just(new GenericException(HttpStatus.valueOf(fe.status()),
+					                map.get("message") == null ? ""
+					                        : map.get("message")
+					                                .toString(),
+					                fe))
+					        .flatMap(g -> ServerResponse.status(g.getStatusCode())
+					                .bodyValue(g.toExceptionData()));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return sr;
 	}
 
 	private static class ErrorServerContext implements ServerResponse.Context {

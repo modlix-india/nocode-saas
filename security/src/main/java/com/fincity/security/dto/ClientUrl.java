@@ -2,9 +2,7 @@ package com.fincity.security.dto;
 
 import org.jooq.types.ULong;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.security.model.ClientUrlPattern;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,8 +18,4 @@ public class ClientUrl extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong clientId;
 	private String urlPattern;
 	
-	@JsonIgnore
-	public ClientUrlPattern toClientUrlPattern() {
-		return new ClientUrlPattern(this.clientId, this.urlPattern);
-	}
 }

@@ -19,7 +19,7 @@
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
-		<nocode-flatmap-util-version>1.0.0</nocode-flatmap-util-version>
+		<nocode-flatmap-util-version>1.2.0</nocode-flatmap-util-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -82,7 +82,6 @@
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty-resolver-dns-native-macos</artifactId>
-			<version>4.1.73.Final</version>
 			<classifier>osx-aarch_64</classifier>
 		</dependency>
 		<dependency>

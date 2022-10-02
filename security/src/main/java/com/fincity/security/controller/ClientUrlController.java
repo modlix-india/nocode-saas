@@ -12,6 +12,7 @@ import com.fincity.security.service.ClientUrlService;
 
 @RestController
 @RequestMapping("api/security/clienturls")
-public class ClientUrlController extends AbstractJOOQDataController<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO, ClientUrlService> {
+public class ClientUrlController
+        extends AbstractJOOQDataController<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO, ClientUrlService> {
 
 }

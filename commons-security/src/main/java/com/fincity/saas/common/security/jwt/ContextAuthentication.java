@@ -12,18 +12,22 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
+@ToString
 public class ContextAuthentication implements Authentication {
 
 	public static final String CLIENT_TYPE_SYSTEM = "SYS";
 
 	private static final long serialVersionUID = 1127850908587759885L;
 
-	private final ContextUser user;
+	private ContextUser user;
 	private boolean isAuthenticated;
-	private final BigInteger loggedInFromClientId;
+	private BigInteger loggedInFromClientId;
 	private String clientTypeCode;
 	private String clientCode;
 	private String accessToken;

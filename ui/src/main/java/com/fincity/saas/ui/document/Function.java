@@ -27,7 +27,12 @@ public class Function extends AbstractUIDTO<Function> {
 	public Mono<Function> applyOverride(Function base) {
 
 		if (base != null)
-			this.definition = DifferenceApplicator.json(this.definition, base.definition);
+			return DifferenceApplicator.apply(this.definition, base.definition)
+			        .map(a ->
+					{
+				        this.definition = (FunctionDefinition) a;
+				        return this;
+			        });
 
 		return Mono.just(this);
 	}
@@ -37,11 +42,11 @@ public class Function extends AbstractUIDTO<Function> {
 
 		if (base == null)
 			return Mono.just(this);
+		
 		return Mono.just(this)
-		        .flatMap(e -> DifferenceExtractor.json(this.definition, e.definition)
+		        .flatMap(e -> DifferenceExtractor.extract(this.definition, e.definition)
 		                .map(k ->
 						{
-
 			                e.definition = (FunctionDefinition) k;
 			                return e;
 		                }));

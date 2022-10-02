@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.ui.model.ComponentDefinition;
 import com.fincity.saas.ui.util.DifferenceApplicator;
 import com.fincity.saas.ui.util.DifferenceExtractor;
@@ -36,16 +37,29 @@ public class Page extends AbstractUIDTO<Page> {
 	public Mono<Page> applyOverride(Page base) {
 
 		if (base != null) {
-			this.translations = (Map<String, Map<String, String>>) DifferenceApplicator.jsonMap(this.translations,
-			        base.translations);
-			this.properties = (Map<String, Object>) DifferenceApplicator.jsonMap(this.properties, base.properties);
-			this.eventFunctions = (Map<String, FunctionDefinition>) DifferenceApplicator.jsonMap(this.eventFunctions,
-			        base.eventFunctions);
-			this.componentDefinition = (Map<String, ComponentDefinition>) DifferenceApplicator
-			        .jsonMap(this.componentDefinition, base.componentDefinition);
-			this.device = base.device;
-			if (this.rootComponent == null)
-				this.rootComponent = base.rootComponent;
+
+			return FlatMapUtil.flatMapMonoWithNull(
+			        () -> DifferenceApplicator.apply(this.translations, base.translations),
+
+			        t -> DifferenceApplicator.apply(this.properties, base.properties),
+
+			        (t, p) -> DifferenceApplicator.apply(this.eventFunctions, base.eventFunctions),
+
+			        (t, p, e) -> DifferenceApplicator.apply(this.componentDefinition, base.componentDefinition),
+
+			        (t, p, e, c) ->
+					{
+				        this.translations = (Map<String, Map<String, String>>) t;
+				        this.properties = (Map<String, Object>) p;
+				        this.eventFunctions = (Map<String, FunctionDefinition>) e;
+				        this.componentDefinition = (Map<String, ComponentDefinition>) c;
+
+				        this.device = base.device;
+				        if (this.rootComponent == null)
+					        this.rootComponent = base.rootComponent;
+
+				        return Mono.just(this);
+			        });
 		}
 		return Mono.just(this);
 	}
@@ -54,39 +68,31 @@ public class Page extends AbstractUIDTO<Page> {
 	@Override
 	public Mono<Page> makeOverride(Page base) {
 
-		if (base == null)
-			return Mono.just(this);
+		return FlatMapUtil.flatMapMonoWithNull(
 
-		return Mono.just(this)
-		        .flatMap(a -> DifferenceExtractor.jsonMap(a.translations, base.translations)
-		                .map(e ->
-						{
-			                a.setTranslations((Map<String, Map<String, String>>) e);
-			                return a;
-		                }))
-		        .flatMap(a -> DifferenceExtractor.jsonMap(a.properties, base.properties)
-		                .map(e ->
-						{
-			                a.setProperties((Map<String, Object>) e);
-			                return a;
-		                }))
-		        .flatMap(a -> DifferenceExtractor.jsonMap(a.componentDefinition, base.componentDefinition)
-		                .map(e ->
-						{
-			                a.setComponentDefinition((Map<String, ComponentDefinition>) e);
-			                return a;
-		                }))
-		        .flatMap(a -> DifferenceExtractor.jsonMap(a.eventFunctions, base.eventFunctions)
-		                .map(e ->
-						{
-			                a.setEventFunctions((Map<String, FunctionDefinition>) e);
-			                return a;
-		                }))
-		        .map(a -> {
-		        	
-		        	if (a.rootComponent !=null && a.rootComponent.equals(base.rootComponent))
-		        		a.rootComponent = null;
-		        	return a;
-		        });
+		        () -> Mono.just(this),
+
+		        obj -> DifferenceExtractor.extract(obj.properties, base.properties),
+
+		        (obj, props) -> DifferenceExtractor.extract(obj.translations, base.translations),
+
+		        (obj, props, trans) -> DifferenceExtractor.extract(obj.componentDefinition, base.componentDefinition),
+
+		        (obj, props, trans, cd) -> DifferenceExtractor.extract(obj.eventFunctions, base.eventFunctions),
+
+		        (obj, props, trans, cd, evs) ->
+				{
+
+			        obj.setProperties((Map<String, Object>) props);
+			        obj.setTranslations((Map<String, Map<String, String>>) trans);
+			        obj.setComponentDefinition((Map<String, ComponentDefinition>) cd);
+			        obj.setEventFunctions((Map<String, FunctionDefinition>) evs);
+
+			        if (obj.rootComponent != null && obj.rootComponent.equals(base.rootComponent))
+				        obj.rootComponent = null;
+			        return Mono.just(obj);
+		        }
+
+		);
 	}
 }

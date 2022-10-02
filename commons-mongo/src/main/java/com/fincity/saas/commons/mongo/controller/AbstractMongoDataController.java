@@ -93,7 +93,7 @@ public class AbstractMongoDataController<I extends Serializable, D extends Abstr
 
 	@DeleteMapping(PATH_ID)
 	@ResponseStatus(value = HttpStatus.NO_CONTENT)
-	public void delete(@PathVariable(PATH_VARIABLE_ID) final I id) {
-		this.service.delete(id).subscribe();
+	public Mono<ResponseEntity<Boolean>> delete(@PathVariable(PATH_VARIABLE_ID) final I id) {
+		return this.service.delete(id).map(ResponseEntity::ok);
 	}
 }
