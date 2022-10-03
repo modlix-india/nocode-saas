@@ -59,7 +59,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	private PackageService packageService;
 
 	@Autowired
-	private MessageResourceService messageResourceService;
+	private SecurityMessageResourceService securityMessageResourceService;
 
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
 
@@ -283,8 +283,8 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 			        return Mono.empty();
 		        }
 
-		).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        MessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
 
 	}
 
