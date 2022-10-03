@@ -16,11 +16,11 @@ import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.service.CacheService;
+import com.fincity.saas.commons.security.model.ClientUrlPattern;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
-import com.fincity.security.model.ClientUrlPattern;
 
 import reactor.core.publisher.Mono;
 
@@ -119,9 +119,7 @@ public class ClientUrlService
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
 
 		Mono<List<ClientUrlPattern>> curl = cacheService.get(CACHE_NAME_CLIENT_URL, CACHE_CLIENT_URL_LIST);
-		return curl.switchIfEmpty(Mono.defer(() -> this.dao.readAll(null)
-				.map(ClientUrl::toClientUrlPattern)
-		        .collectList()));
+		return curl.switchIfEmpty(Mono.defer(() -> this.dao.readClientPatterns().collectList()));
 	}
 
 	@Override

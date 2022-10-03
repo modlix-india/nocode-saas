@@ -18,7 +18,8 @@ import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.service.CacheService;
+import com.fincity.saas.commons.security.model.ClientUrlPattern;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
@@ -27,12 +28,9 @@ import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.model.ClientUrlPattern;
-import com.fincity.security.model.ClientUrlPattern.Protocol;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple3;
 
 @Service
 public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
@@ -41,6 +39,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_URL = "clientClientURL";
+	private static final String CACHE_NAME_CLIENT_CODE_ID = "clientCodeId";
 
 	private static final String CACHE_CLIENT_URI = "uri";
 
@@ -54,10 +53,6 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	private SoxLogService soxLogService;
 
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
-
-//		[Content-Type:"application/json", User-Agent:"PostmanRuntime/7.29.2", Accept:"*/*", Postman-Token:"e719e5ee-5fa4-4fa2-8de9-98dbe3895b05", Accept-Encoding:"gzip, deflate, br", Forwarded:"proto=http;host="client2:8080";for="192.168.1.220:59568"",
-//		X-Forwarded-For:"192.168.1.220", X-Forwarded-Proto:"http", X-Forwarded-Port:"8080",
-//		X-Forwarded-Host:"client2:8080", host:"client2:8001", content-length:"67"]
 
 		HttpHeaders header = request.getHeaders();
 
@@ -78,53 +73,27 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		if (ind != -1)
 			uriHost = uriHost.substring(0, ind);
 
+		return getClientPattern(uriScheme, uriHost, uriPort).map(ClientUrlPattern::getIdentifier)
+		        .map(ULong::valueOf)
+		        .defaultIfEmpty(ULong.valueOf(1l));
+	}
+
+	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
+
 		Mono<String> key = cacheService.makeKey(CACHE_CLIENT_URI, uriScheme, uriHost, ":", uriPort);
 
-		Mono<ULong> clientId = key.flatMap(e -> cacheService.get(CACHE_NAME_CLIENT_URL, e));
+		Mono<ClientUrlPattern> clientId = key.flatMap(e -> cacheService.get(CACHE_NAME_CLIENT_URL, e));
 
 		String finScheme = uriScheme;
 		String finHost = uriHost;
 		Integer finPort = Integer.valueOf(uriPort);
 
-		return clientId.switchIfEmpty(clientUrlService.readAllAsClientURLPattern()
+		return clientId.switchIfEmpty(Mono.defer(() -> clientUrlService.readAllAsClientURLPattern()
 		        .flatMapIterable(e -> e)
-		        .filter(e ->
-				{
-
-			        Tuple3<Protocol, String, Integer> tuple = e.getHostnPort();
-
-			        String scheme = finScheme.toLowerCase();
-
-			        if (!tuple.getT2()
-			                .equals(finHost.toLowerCase()))
-				        return false;
-
-			        int checkPort = -1;
-
-			        if (tuple.getT1() == Protocol.HTTPS) {
-
-				        if (!scheme.startsWith("https:"))
-					        return false;
-
-				        checkPort = 443;
-			        } else if (tuple.getT1() == Protocol.HTTP) {
-
-				        if (!scheme.startsWith("http"))
-					        return false;
-
-				        checkPort = 80;
-			        }
-
-			        if (tuple.getT3() != -1)
-				        checkPort = tuple.getT3();
-
-			        return checkPort == -1 || finPort == checkPort;
-		        })
-		        .map(ClientUrlPattern::getClientId)
-		        .defaultIfEmpty(ULong.valueOf(1l))
+		        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
 		        .take(1)
 		        .single()
-		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k))));
+		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k)))));
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
@@ -287,4 +256,20 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 //	public Mono<Boolean> checkRoleApplicableForSelectedClientAndPackage(ULong clientId, ULong roleId, ULong packageId) {
 //		return this.dao.checkRoleApplicableForSelectedClientAndPackage(clientId, roleId, packageId);
 //	}
+	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
+		return this.dao.isBeingManagedBy(managingClientCode, clientCode);
+	}
+
+	public Mono<ULong> getClientId(String clientCode) {
+
+		return cacheService.get(CACHE_NAME_CLIENT_CODE_ID, clientCode)
+		        .map(Object::toString)
+		        .map(ULong::valueOf)
+		        .switchIfEmpty(Mono.defer(() -> this.dao.getClientId(clientCode)
+		                .map(id ->
+						{
+			                cacheService.put(CACHE_NAME_CLIENT_CODE_ID, id, clientCode);
+			                return id;
+		                })));
+	}
 }

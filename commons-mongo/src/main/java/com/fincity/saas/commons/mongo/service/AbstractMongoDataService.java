@@ -1,6 +1,8 @@
 package com.fincity.saas.commons.mongo.service;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +43,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 	public Mono<D> create(D entity) {
 
 		entity.setCreatedBy(null);
+		entity.setCreatedAt(LocalDateTime.now(ZoneId.of("UTC")));
 		return this.getLoggedInUserId()
 		        .map(e ->
 				{
@@ -205,7 +208,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 		                : new Criteria().orOperator(conds));
 	}
 
-	public Mono<Void> delete(I id) {
-		return this.repo.deleteById(id);
+	public Mono<Boolean> delete(I id) {
+		return this.repo.deleteById(id).thenReturn(true);
 	}
 }

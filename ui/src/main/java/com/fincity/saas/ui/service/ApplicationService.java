@@ -2,15 +2,21 @@ package com.fincity.saas.ui.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
-import org.springframework.security.access.prepost.PreAuthorize;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class ApplicationService extends AbstractUIServcie<Application, ApplicationRepository> {
@@ -19,7 +25,6 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 		super(Application.class);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Application_CREATE')")
 	@Override
 	public Mono<Application> create(Application entity) {
 
@@ -38,10 +43,51 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 		        existing ->
 				{
 			        if (existing.getVersion() != entity.getVersion())
-				        return Mono.empty();
+				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				                UIMessageResourceService.VERSION_MISMATCH);
 
-			        return Mono.just(existing.setProperties(entity.getProperties()));
+			        existing.setProperties(entity.getProperties())
+			                .setTranslations(entity.getTranslations())
+			                .setLanguages(entity.getLanguages());
+
+			        existing.setMessage(entity.getMessage());
+			        existing.setDefaultLanguage(entity.getDefaultLanguage());
+			        existing.setVersion(existing.getVersion() + 1);
+
+			        return Mono.just(existing);
 		        });
 	}
-	
+
+	@SuppressWarnings("unchecked")
+	public Mono<Tuple2<String, String>> getAppNClientCodes(String scheme, String host, String port) {
+		return this.repo.findAll()
+		        .flatMap(a ->
+				{
+
+			        if (a.getProperties() == null)
+				        return Flux.empty();
+
+			        if (!a.getProperties()
+			                .containsKey("urlList"))
+				        return Flux.empty();
+
+			        try {
+				        List<String> x = (List<String>) a.getProperties()
+				                .get("urlPatterns");
+
+				        return Flux.fromIterable(x)
+				                .map(e -> new ClientUrlPattern(a.getName(), a.getClientCode(), e));
+
+			        } catch (Exception ex) {
+				        return Flux.empty();
+			        }
+		        })
+		        .map(ClientUrlPattern::makeHostnPort)
+		        .filter(e -> e.isValidClientURLPattern(scheme, host, port))
+		        .take(1)
+		        .singleOrEmpty()
+		        .map(e -> Tuples.of(e.getIdentifier(), e.getClientCode()))
+		        .defaultIfEmpty(Tuples.of("", ""));
+	}
+
 }

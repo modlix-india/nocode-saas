@@ -12,7 +12,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import reactor.core.publisher.Mono;
 
 @Service
-public class MessageResourceService extends AbstractMessageService {
+public class SecurityMessageResourceService extends AbstractMessageService {
 
 	public static final String OBJECT_NOT_FOUND = "object_not_found";
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
@@ -31,7 +31,7 @@ public class MessageResourceService extends AbstractMessageService {
 	public static final String REMOVE_PERMISSION_ERROR = "remove_permission_error";
 	public static final String ROLE_REMOVE_ERROR = "role_remove_error";
 
-	public MessageResourceService() {
+	public SecurityMessageResourceService() {
 
 		super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
 	}

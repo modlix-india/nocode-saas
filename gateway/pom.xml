@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.7.2</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity</groupId>
 	<artifactId>gateway</artifactId>
@@ -16,6 +15,9 @@
 	<properties>
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
+		<feign-reactor.version>3.2.6</feign-reactor.version>
+		<saas-commons-version>1.0.0</saas-commons-version>
+		<nocode-flatmap-util-version>1.2.0</nocode-flatmap-util-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -34,7 +36,31 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
 		</dependency>
-
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-openfeign</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.playtika.reactivefeign</groupId>
+			<artifactId>feign-reactor-spring-cloud-starter</artifactId>
+			<version>${feign-reactor.version}</version>
+			<type>pom</type>
+		</dependency>
+		<dependency>
+			<groupId>com.playtika.reactivefeign</groupId>
+			<artifactId>feign-reactor-spring-configuration</artifactId>
+			<version>${feign-reactor.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons</artifactId>
+			<version>${saas-commons-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.nocode</groupId>
+			<artifactId>reactor-flatmap-util</artifactId>
+			<version>${nocode-flatmap-util-version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>

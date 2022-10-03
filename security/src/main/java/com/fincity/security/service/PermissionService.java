@@ -30,7 +30,7 @@ public class PermissionService
 	private static final String PERMISSION = "Permission";
 
 	@Autowired
-	private MessageResourceService messageResourceService;
+	private SecurityMessageResourceService messageResourceService;
 
 	@Autowired
 	private ClientService clientService;
@@ -44,7 +44,7 @@ public class PermissionService
 				{
 
 			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
-				        return messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
+				        return messageResourceService.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 				                .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.FORBIDDEN,
 				                        StringFormatter.format(msg, PERMISSION))));
 			        }
@@ -70,7 +70,7 @@ public class PermissionService
 				                if (managed.booleanValue())
 					                return Mono.just(p);
 
-				                return messageResourceService.getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                return messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                        .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
 				                                StringFormatter.format(msg, PERMISSION, id))));
 			                });
@@ -107,7 +107,7 @@ public class PermissionService
 					                        return Mono.just(existing);
 
 				                        return messageResourceService
-				                                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                                .flatMap(msg -> Mono.error(() -> new GenericException(
 				                                        HttpStatus.NOT_FOUND,
 				                                        StringFormatter.format(msg, PERMISSION, entity.getId()))));
@@ -139,7 +139,7 @@ public class PermissionService
 					                        return Mono.just(newMap);
 
 				                        return messageResourceService
-				                                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                                .flatMap(msg -> Mono
 				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
 				                                                StringFormatter.format(msg, PERMISSION, key))));
@@ -180,7 +180,7 @@ public class PermissionService
 					                        return super.delete(id);
 
 				                        return messageResourceService
-				                                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                                .flatMap(msg -> Mono
 				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
 				                                                StringFormatter.format(msg, PERMISSION, id))));

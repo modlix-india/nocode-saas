@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.model.service;
+package com.fincity.saas.commons.service;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
