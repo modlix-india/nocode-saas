@@ -1,4 +1,4 @@
-package com.fincity.security.service;
+package com.fincity.saas.ui.service;
 
 import java.util.Locale;
 import java.util.Map;
@@ -12,7 +12,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import reactor.core.publisher.Mono;
 
 @Service
-public class MessageResourceService extends AbstractMessageService {
+public class UIMessageResourceService extends AbstractMessageService {
 
 	public static final String OBJECT_NOT_FOUND = "object_not_found";
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
@@ -27,12 +27,10 @@ public class MessageResourceService extends AbstractMessageService {
 	public static final String TOKEN_EXPIRED = "token_expired";
 	public static final String UNKNOWN_TOKEN = "unknown_token";
 	public static final String ALREADY_EXISTS = "already_exists";
-	public static final String ASSIGN_PERMISSION_ERROR = "assign_permission_error";
-	public static final String ASSIGN_PACKAGE_ERROR = "assign_package_error";
-	public static final String REMOVE_PERMISSION_ERROR = "remove_permission_error";
-	public static final String ROLE_REMOVE_ERROR = "role_remove_error";
+	public static final String VERSION_MISMATCH = "version_mismatch";
+	public static final String CANNOT_CHANGE_PREF = "cannot_change_pref";
 
-	public MessageResourceService() {
+	public UIMessageResourceService() {
 
 		super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
 	}
@@ -52,6 +50,5 @@ public class MessageResourceService extends AbstractMessageService {
 		})
 		        .defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
 		        .map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
-
 	}
 }

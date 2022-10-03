@@ -8,6 +8,8 @@ eureka:
     registerWithEureka: true
     serviceUrl:
       defaultZone: http://localhost:9999/eureka/
+  instance:
+    prefer-ip-address: true
 
 management:
   security:

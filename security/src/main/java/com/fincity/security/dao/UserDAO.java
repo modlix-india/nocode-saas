@@ -37,7 +37,7 @@ import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
-import com.fincity.security.service.MessageResourceService;
+import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.util.ByteUtil;
 
 import reactor.core.publisher.Flux;
@@ -198,21 +198,21 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		for (Record3<String, String, String> r : e) {
 			if (userName != null && !User.PLACEHOLDER.equals(userName) && r.value1()
 			        .equals(userName)) {
-				return messageResourceService.getMessage(MessageResourceService.ALREADY_EXISTS)
+				return messageResourceService.getMessage(SecurityMessageResourceService.ALREADY_EXISTS)
 				        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
 				                StringFormatter.format(msg, "User name", userName))));
 			}
 
 			if (emailId != null && !User.PLACEHOLDER.equals(emailId) && r.value2()
 			        .equals(emailId)) {
-				return messageResourceService.getMessage(MessageResourceService.ALREADY_EXISTS)
+				return messageResourceService.getMessage(SecurityMessageResourceService.ALREADY_EXISTS)
 				        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
 				                StringFormatter.format(msg, "Email", emailId))));
 			}
 
 			if (phoneNumber != null && !User.PLACEHOLDER.equals(phoneNumber) && r.value3()
 			        .equals(phoneNumber)) {
-				return messageResourceService.getMessage(MessageResourceService.ALREADY_EXISTS)
+				return messageResourceService.getMessage(SecurityMessageResourceService.ALREADY_EXISTS)
 				        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
 				                StringFormatter.format(msg, "Phone number", phoneNumber))));
 			}

@@ -1,6 +1,8 @@
 package com.fincity.saas.commons.mongo.service;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
@@ -22,6 +24,7 @@ public abstract class AbstractMongoUpdatableDataService<I extends Serializable, 
 		                .map(e ->
 						{
 			                updateableEntity.setUpdatedBy(e);
+			                updateableEntity.setUpdatedAt(LocalDateTime.now(ZoneId.of("UTC")));
 			                return updateableEntity;
 		                })
 		                .defaultIfEmpty(updateableEntity)

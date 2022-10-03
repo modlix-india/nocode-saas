@@ -43,7 +43,7 @@ public class PackageService extends
 	}
 
 	@Autowired
-	private MessageResourceService messageResourceService;
+	private SecurityMessageResourceService messageResourceService;
 
 	@PreAuthorize("hasPermission('Authorities.Package_CREATE')")
 	@Override
@@ -76,7 +76,7 @@ public class PackageService extends
 				                return Mono.empty();
 			                })
 			                .switchIfEmpty(Mono.defer(
-			                        () -> messageResourceService.getMessage(MessageResourceService.FORBIDDEN_CREATE)
+			                        () -> messageResourceService.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 			                                .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
 			                                        StringFormatter.format(msg, "User"))))));
 		        });
@@ -101,7 +101,7 @@ public class PackageService extends
 		return this.dao.canBeUpdated(entity.getId())
 		        .flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
 		        .switchIfEmpty(
-		                Mono.defer(() -> messageResourceService.getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+		                Mono.defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
 		                                StringFormatter.format(msg, "User", entity.getId()))))));
 	}
@@ -112,7 +112,7 @@ public class PackageService extends
 		return this.dao.canBeUpdated(key)
 		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
 		        .switchIfEmpty(
-		                Mono.defer(() -> messageResourceService.getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+		                Mono.defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
 		                                StringFormatter.format(msg, "User", key))))));
 	}

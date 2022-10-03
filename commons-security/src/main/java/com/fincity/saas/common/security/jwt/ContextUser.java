@@ -8,17 +8,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.common.security.util.RolePermissionUtil;
 
 import lombok.Data;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
+@ToString
 public class ContextUser implements Serializable {
 
 	private static final long serialVersionUID = -4905785598739255667L;
@@ -43,19 +44,21 @@ public class ContextUser implements Serializable {
 	private boolean credentialsNonExpired;
 	private Short noFailedAttempt;
 	private String statusCode;
-	private List<String> authorities;
-	private Set<GrantedAuthority> grantedAuthorities;
+	private List<String> stringAuthorities;
+	@JsonIgnore
+	private Set<SimpleGrantedAuthority> grantedAuthorities;
 
-	public Collection<GrantedAuthority> getAuthorities() {
+	@JsonIgnore
+	public Collection<SimpleGrantedAuthority> getAuthorities() {
 
-		if (this.authorities == null || this.authorities.isEmpty())
+		if (this.stringAuthorities == null || this.stringAuthorities.isEmpty())
 			return Set.of();
 
 		if (this.grantedAuthorities == null) {
-			this.grantedAuthorities = this.authorities.parallelStream()
+			this.grantedAuthorities = this.stringAuthorities.parallelStream()
 			        .map(RolePermissionUtil::toAuthorityString)
 			        .map(SimpleGrantedAuthority::new)
-			        .map(GrantedAuthority.class::cast)
+//			        .map(GrantedAuthority.class::cast)
 			        .collect(Collectors.toSet());
 		}
 		return this.grantedAuthorities;

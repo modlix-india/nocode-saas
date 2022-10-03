@@ -19,7 +19,7 @@ import reactor.util.function.Tuples;
 public class JWTUtil {
 
 	public static final Tuple2<String, LocalDateTime> generateToken(BigInteger userId, String secretKey,
-	        Integer expiryInMin, String host, Integer port, BigInteger loggedInClientId) {
+	        Integer expiryInMin, String host, String port, BigInteger loggedInClientId) {
 
 		LocalDateTime expirationTime = LocalDateTime.now(ZoneId.of("UTC"))
 		        .plus(expiryInMin, ChronoUnit.MINUTES);

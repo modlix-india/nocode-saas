@@ -486,3 +486,101 @@ CREATE TABLE IF NOT EXISTS `security_org_structure`(
 ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
+
+
+INSERT IGNORE INTO `security_permission` (CLIENT_ID, NAME, DESCRIPTION) VALUES
+	(@v_client_system, 'Application CREATE', 'Application create'),
+	(@v_client_system, 'Application READ', 'Application read'),
+	(@v_client_system, 'Application UPDATE', 'Application update'),
+	(@v_client_system, 'Application DELETE', 'Application delete'),
+    (@v_client_system, 'Function CREATE', 'Function create'),
+	(@v_client_system, 'Function READ', 'Function read'),
+	(@v_client_system, 'Function UPDATE', 'Function update'),
+	(@v_client_system, 'Function DELETE', 'Function delete'),
+    (@v_client_system, 'Page CREATE', 'Page create'),
+	(@v_client_system, 'Page READ', 'Page read'),
+	(@v_client_system, 'Page UPDATE', 'Page update'),
+	(@v_client_system, 'Page DELETE', 'Page delete'),
+    (@v_client_system, 'Theme CREATE', 'Theme create'),
+	(@v_client_system, 'Theme READ', 'Theme read'),
+	(@v_client_system, 'Theme UPDATE', 'Theme update'),
+	(@v_client_system, 'Theme DELETE', 'Theme delete'),
+    (@v_client_system, 'Personalization CLEAR', 'Personalization Clear');
+    
+INSERT IGNORE INTO `security_role` (CLIENT_ID, NAME, DESCRIPTION) VALUES
+	(@v_client_system, 'Application Manager', 'Role to hold application operations permissions'),
+    (@v_client_system, 'System Application Manager', 'Role to hold application operations permissions for System Client'),
+    (@v_client_system, 'Function Manager', 'Role to hold function operations permissions'),
+    (@v_client_system, 'Page Manager', 'Role to hold page operations permissions'),
+    (@v_client_system, 'Theme Manager', 'Role to hold theme operations permissions'),
+    (@v_client_system, 'Personalization Manager', 'Role to hold personalization operations permissions');
+    
+SELECT ID from `security_role` WHERE NAME = 'Application Manager' LIMIT 1 INTO @v_role_application;
+SELECT ID from `security_role` WHERE NAME = 'System Application Manager' LIMIT 1 INTO @v_role_system_application;
+SELECT ID from `security_role` WHERE NAME = 'Function Manager' LIMIT 1 INTO @v_role_function;
+SELECT ID from `security_role` WHERE NAME = 'Page Manager' LIMIT 1 INTO @v_role_page;
+SELECT ID from `security_role` WHERE NAME = 'Theme Manager' LIMIT 1 INTO @v_role_theme;
+SELECT ID from `security_role` WHERE NAME = 'Personalization Manager' LIMIT 1 INTO @v_role_personalization;
+
+INSERT IGNORE INTO `security_role_permission` (ROLE_ID, PERMISSION_ID) VALUES
+	
+	(@v_role_application, (SELECT ID FROM `security_permission` WHERE NAME = 'Application READ' LIMIT 1)),
+	(@v_role_application, (SELECT ID FROM `security_permission` WHERE NAME = 'Application UPDATE' LIMIT 1)),
+	(@v_role_application, (SELECT ID FROM `security_permission` WHERE NAME = 'Application DELETE' LIMIT 1)),
+    
+    (@v_role_system_application, (SELECT ID FROM `security_permission` WHERE NAME = 'Application CREATE' LIMIT 1)),
+    (@v_role_system_application, (SELECT ID FROM `security_permission` WHERE NAME = 'Application READ' LIMIT 1)),
+	(@v_role_system_application, (SELECT ID FROM `security_permission` WHERE NAME = 'Application UPDATE' LIMIT 1)),
+	(@v_role_system_application, (SELECT ID FROM `security_permission` WHERE NAME = 'Application DELETE' LIMIT 1)),
+    
+    (@v_role_function, (SELECT ID FROM `security_permission` WHERE NAME = 'Function CREATE' LIMIT 1)),
+    (@v_role_function, (SELECT ID FROM `security_permission` WHERE NAME = 'Function READ' LIMIT 1)),
+	(@v_role_function, (SELECT ID FROM `security_permission` WHERE NAME = 'Function UPDATE' LIMIT 1)),
+	(@v_role_function, (SELECT ID FROM `security_permission` WHERE NAME = 'Function DELETE' LIMIT 1)),
+    
+    (@v_role_page, (SELECT ID FROM `security_permission` WHERE NAME = 'Page CREATE' LIMIT 1)),
+    (@v_role_page, (SELECT ID FROM `security_permission` WHERE NAME = 'Page READ' LIMIT 1)),
+	(@v_role_page, (SELECT ID FROM `security_permission` WHERE NAME = 'Page UPDATE' LIMIT 1)),
+	(@v_role_page, (SELECT ID FROM `security_permission` WHERE NAME = 'Page DELETE' LIMIT 1)),
+    
+    (@v_role_theme, (SELECT ID FROM `security_permission` WHERE NAME = 'Theme CREATE' LIMIT 1)),
+    (@v_role_theme, (SELECT ID FROM `security_permission` WHERE NAME = 'Theme READ' LIMIT 1)),
+	(@v_role_theme, (SELECT ID FROM `security_permission` WHERE NAME = 'Theme UPDATE' LIMIT 1)),
+	(@v_role_theme, (SELECT ID FROM `security_permission` WHERE NAME = 'Theme DELETE' LIMIT 1)),
+    
+    (@v_role_personalization, (SELECT ID FROM `security_permission` WHERE NAME = 'Personalization CLEAR' LIMIT 1));
+
+
+INSERT IGNORE INTO `security_package` (CLIENT_ID, CODE, NAME, DESCRIPTION, BASE) VALUES
+	(@v_client_system, 'APP', 'Application Management', 'Application management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'APPSYS', 'System Application Management', 'System Application management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'FUNCT', 'Function Management', 'Function management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'PAGE', 'Page Management', 'Page management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'THEME', 'Theme Management', 'Theme management roles and permissions will be part of this package', FALSE),
+    (@v_client_system, 'PERSON', 'Personalization Management', 'Personalization management roles and permissions will be part of this package', FALSE);
+    
+SELECT ID from `security_package` WHERE CODE = 'APP' LIMIT 1 INTO @v_package_app;
+SELECT ID from `security_package` WHERE CODE = 'APPSYS' LIMIT 1 INTO @v_package_app_sys;
+SELECT ID from `security_package` WHERE CODE = 'FUNCT' LIMIT 1 INTO @v_package_funct;
+SELECT ID from `security_package` WHERE CODE = 'PAGE' LIMIT 1 INTO @v_package_page;
+SELECT ID from `security_package` WHERE CODE = 'THEME' LIMIT 1 INTO @v_package_theme;
+SELECT ID from `security_package` WHERE CODE = 'PERSON' LIMIT 1 INTO @v_package_person;
+
+INSERT IGNORE INTO `security_package_role` (ROLE_ID, PACKAGE_ID) VALUES
+	(@v_role_application,  @v_package_app),
+    (@v_role_system_application,  @v_package_app_sys),
+    (@v_role_function,  @v_package_funct),
+    (@v_role_page, @v_package_page),
+    (@v_role_theme, @v_package_theme),
+    (@v_role_personalization, @v_package_person);
+
+INSERT IGNORE INTO `security_client_package` (CLIENT_ID, PACKAGE_ID) VALUES
+    (@v_client_system, @v_package_app_sys),
+    (@v_client_system, @v_package_funct),
+    (@v_client_system, @v_package_page),
+    (@v_client_system, @v_package_theme),
+    (@v_client_system, @v_package_person);
+
+
+
+    

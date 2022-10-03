@@ -16,6 +16,7 @@ import org.jooq.Condition;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectJoinStep;
+import org.jooq.Table;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
@@ -176,4 +177,38 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 	}
 
+	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
+
+		if (managingClientCode.equals(clientCode))
+			return Mono.just(true);
+
+		Table<SecurityClientRecord> orig = SECURITY_CLIENT.asTable("orig");
+		Table<SecurityClientRecord> manage = SECURITY_CLIENT.asTable("manage");
+
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(SECURITY_CLIENT_MANAGE)
+		        .leftJoin(orig)
+		        .on(orig.field("ID", ULong.class)
+		                .eq(SECURITY_CLIENT_MANAGE.CLIENT_ID))
+		        .leftJoin(manage)
+		        .on(manage.field("ID", ULong.class)
+		                .eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID))
+		        .where(orig.field("CODE", String.class)
+		                .eq(clientCode)
+		                .and(manage.field("CODE", String.class)
+		                        .eq(managingClientCode)))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(e -> e == 1);
+	}
+
+	public Mono<ULong> getClientId(String clientCode) {
+
+		return Flux.from(this.dslContext.select(SECURITY_CLIENT.ID)
+		        .from(SECURITY_CLIENT)
+		        .where(SECURITY_CLIENT.CODE.eq(clientCode))
+		        .limit(1))
+		        .singleOrEmpty()
+		        .map(Record1::value1);
+	}
 }

@@ -18,7 +18,7 @@ public class JWTClaims implements Serializable {
 
 	private BigInteger userId;
 	private String hostName;
-	private Integer port;
+	private String port;
 	private BigInteger loggedInClientId;
 
 	public Map<String, Object> getClaimsMap() {
@@ -41,7 +41,7 @@ public class JWTClaims implements Serializable {
 
 		return new JWTClaims().setUserId(BigInteger.valueOf(claims.get("userId", Long.class)))
 		        .setHostName(claims.get("hostName", String.class))
-		        .setPort(claims.get("port", Integer.class))
+		        .setPort(claims.get("port", String.class))
 		        .setLoggedInClientId(BigInteger.valueOf(claims.get("loggedInClientId", Long.class)));
 
 	}

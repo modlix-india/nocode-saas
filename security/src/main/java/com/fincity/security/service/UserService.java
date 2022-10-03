@@ -36,7 +36,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	private ClientService clientService;
 
 	@Autowired
-	private MessageResourceService messageResourceService;
+	private SecurityMessageResourceService messageResourceService;
 
 	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
@@ -100,7 +100,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(u -> this.dao.create(u))
 		        .flatMap(u -> this.setPassword(u, password))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService
-		                .getMessage(MessageResourceService.FORBIDDEN_CREATE)
+		                .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User"))))));
 	}
@@ -130,14 +130,14 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 			        if (!SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities()))
 				        return Mono.defer(
-				                () -> messageResourceService.getMessage(MessageResourceService.FORBIDDEN_PERMISSION)
+				                () -> messageResourceService.getMessage(SecurityMessageResourceService.FORBIDDEN_PERMISSION)
 				                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
 				                                StringFormatter.format(msg, "User READ")))));
 
 			        return Mono.just(e);
 		        }))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService
-		                .getMessage(MessageResourceService.OBJECT_NOT_FOUND)
+		                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 		                .flatMap(msg -> Mono.error(
 		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User", id))))));
 	}
@@ -258,7 +258,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        }
 
 		).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        MessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
+		        SecurityMessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
@@ -283,7 +283,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        }
 
 		).switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        MessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
+		        SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
