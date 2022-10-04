@@ -13,12 +13,15 @@ import org.springframework.http.HttpStatus;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoUpdatableDataService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.ui.document.AbstractUIDTO;
+import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.document.Version;
 import com.fincity.saas.ui.document.Version.ObjectType;
 import com.fincity.saas.ui.repository.IUIRepository;
@@ -33,6 +36,11 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	protected static final String UPDATE = "UPDATE";
 	protected static final String READ = "READ";
 	protected static final String DELETE = "DELETE";
+
+	private static final String CACHE_NAME = "Cache";
+
+	@Autowired
+	private CacheService cacheService;
 
 	@Autowired
 	protected ObjectMapper objectMapper;
@@ -285,5 +293,45 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		        .map(ContextAuthentication::getUser)
 		        .map(ContextUser::getId)
 		        .map(Object::toString);
+	}
+
+	public Mono<D> read(String name, String appCode, String clientCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> cacheService.get(this.getCacheName(), name, "-", appCode, "-", clientCode),
+
+		        cApp ->
+				{
+			        if (cApp == null)
+				        Mono.just((Application) cApp);
+
+			        return this.repo.findOneByNameAndApplicationNameAndClientCode(name, appCode, clientCode);
+		        },
+
+		        (cApp, dbApp) -> dbApp == null ? Mono.empty() : this.readInternal(dbApp.getId()),
+
+		        (cApp, dbApp, mergedApp) -> this.applyChange(mergedApp),
+
+		        (cApp, dbApp, mergedApp, changedApp) ->
+				{
+
+			        if (changedApp == null)
+				        return Mono.empty();
+
+			        cacheService.put(this.getCacheName(), changedApp, name, "-", appCode, "-", clientCode);
+			        return Mono.just(changedApp);
+		        }
+
+		);
+	}
+
+	protected Mono<D> applyChange(D object) {
+		return Mono.just(object);
+	}
+
+	protected String getCacheName() {
+
+		return this.pojoClass.getSimpleName() + CACHE_NAME;
 	}
 }

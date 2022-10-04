@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -116,10 +117,33 @@ public class ClientUrlService
 		        .flatMap(e -> super.delete(id));
 	}
 
+	@SuppressWarnings("unchecked")
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
 
-		Mono<List<ClientUrlPattern>> curl = cacheService.get(CACHE_NAME_CLIENT_URL, CACHE_CLIENT_URL_LIST);
-		return curl.switchIfEmpty(Mono.defer(() -> this.dao.readClientPatterns().collectList()));
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        () -> cacheService.get(CACHE_NAME_CLIENT_URL, CACHE_CLIENT_URL_LIST)
+		                .map(e -> (List<String>) e),
+
+		        list ->
+				{
+
+			        if (list == null)
+				        return Mono.empty();
+
+			        return this.dao.readClientPatterns()
+			                .collectList();
+		        },
+
+		        (list, nList) ->
+				{
+			        if (nList == null)
+				        nList = List.of();
+
+			        cacheService.put(CACHE_NAME_CLIENT_URL, nList, CACHE_CLIENT_URL_LIST);
+
+			        return Mono.just(nList);
+		        });
 	}
 
 	@Override

@@ -1,6 +1,7 @@
 package com.fincity.gateway;
 
 import java.net.URI;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -17,15 +18,14 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.CacheService;
 
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Component
 public class GatewayFilter implements GlobalFilter, Ordered {
 
-	private static final String GATEWAY_URL_CLIENT_APP_CODE = "GATEWAY_URL_CLIENT_APP_CODE";
-	private static final String GATEWAY_URL_CLIENTCODE = "GATEWAY_URL_CLIENTCODE";
+	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+	private static final String CACHE_NAME_GATEWAY_URL_CLIENTCODE = "gatewayClientCode";
 
 	@Autowired
 	private CacheService cacheService;
@@ -62,16 +62,16 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		        () -> this.getAppNClientCodes(shpTuple.getT1(), shpTuple.getT2(), shpTuple.getT3()),
 
-		        t -> t.getT2()
+		        t -> t.get(1)
 		                .isBlank()
 		                        ? this.getClientCode(shpTuple.getT1(), shpTuple.getT2(), shpTuple.getT3())
-		                                .map(code -> t.mapT2(x -> code))
+		                                .map(code -> List.of(t.get(0),code))
 		                        : Mono.just(t),
 
 		        (t, finT) -> this.rewriteRequest(exchange, finT, chain));
 	}
 
-	public Mono<Void> rewriteRequest(ServerWebExchange exchange, Tuple2<String, String> appClientCode,
+	public Mono<Void> rewriteRequest(ServerWebExchange exchange, List<String> finT,
 	        GatewayFilterChain chain) {
 
 		String requestPath = exchange.getRequest()
@@ -80,10 +80,10 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		int apiIndex = requestPath.indexOf("/api/");
 		String modifiedRequestPath = requestPath;
 
-		String appCode = appClientCode.getT1()
-		        .isBlank() ? null : appClientCode.getT1();
-		String clientCode = appClientCode.getT2()
-		        .isBlank() ? null : appClientCode.getT2();
+		String appCode = finT.get(0)
+		        .isBlank() ? null : finT.get(0);
+		String clientCode = finT.get(1)
+		        .isBlank() ? null : finT.get(1);
 
 		if (apiIndex != -1) {
 			modifiedRequestPath = "/api/" + requestPath.substring(apiIndex + 4);
@@ -144,20 +144,20 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		        () -> uriKey,
 
-		        key -> cacheService.get(GATEWAY_URL_CLIENTCODE, key)
+		        key -> cacheService.get(CACHE_NAME_GATEWAY_URL_CLIENTCODE, key)
 		                .map(Object::toString)
 		                .switchIfEmpty(Mono.defer(() -> this.security.getClientCode(uriScheme, uriHost, uriPort)
 		                        .defaultIfEmpty("")
 		                        .map(cod ->
 								{
 
-			                        cacheService.put(GATEWAY_URL_CLIENTCODE, cod, uriKey);
+			                        cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENTCODE, cod, uriKey);
 			                        return cod;
 		                        }))));
 	}
 
 	@SuppressWarnings("unchecked")
-	private Mono<Tuple2<String, String>> getAppNClientCodes(String uriScheme, String uriHost, String uriPort) {
+	private Mono<List<String>> getAppNClientCodes(String uriScheme, String uriHost, String uriPort) {
 
 		Mono<String> uriKey = cacheService.makeKey(uriScheme, uriHost, ":", uriPort);
 
@@ -165,14 +165,14 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		        () -> uriKey,
 
-		        key -> cacheService.get(GATEWAY_URL_CLIENT_APP_CODE, key)
-		                .map(e -> (Tuple2<String, String>) e)
+		        key -> cacheService.get(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, key)
+		                .map(e -> (List<String>) e)
 		                .switchIfEmpty(Mono.defer(() -> this.ui.getAppNClientCode(uriScheme, uriHost, uriPort)
-		                        .defaultIfEmpty(Tuples.of("", ""))
+		                        .defaultIfEmpty(List.of("", ""))
 		                        .map(tup ->
 								{
 
-			                        cacheService.put(GATEWAY_URL_CLIENT_APP_CODE, tup, key);
+			                        cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, tup, key);
 			                        return tup;
 		                        }))));
 	}
