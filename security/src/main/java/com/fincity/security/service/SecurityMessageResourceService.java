@@ -31,6 +31,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String ASSIGN_PACKAGE_ERROR = "assign_package_error";
 	public static final String REMOVE_PERMISSION_ERROR = "remove_permission_error";
 	public static final String ROLE_REMOVE_ERROR = "role_remove_error";
+	public static final String ASSIGN_PERMISSION_ERROR_FOR_ROLE = "assign_permission_error_for_role";
 
 	public SecurityMessageResourceService() {
 

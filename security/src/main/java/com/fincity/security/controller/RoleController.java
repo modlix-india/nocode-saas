@@ -27,7 +27,7 @@ public class RoleController extends AbstractJOOQDataController<SecurityRoleRecor
 	public Mono<ResponseEntity<Boolean>> assignPermission(@PathVariable ULong roleId,
 	        @PathVariable ULong permissionId) {
 
-		return this.roleService.assignPermission(roleId, permissionId)
+		return this.roleService.assignPermissionToRole(roleId, permissionId)
 		        .map(ResponseEntity::ok);
 	}
 }

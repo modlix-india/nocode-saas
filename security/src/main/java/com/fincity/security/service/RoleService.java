@@ -37,7 +37,7 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	private ClientService clientService;
 
 	@Autowired
-	private SecurityMessageResourceService messageResourceService;
+	private SecurityMessageResourceService securityMessageResourceService;
 
 	@Override
 	@PreAuthorize("hasPermission('Authorities.Role_CREATE')")
@@ -64,7 +64,7 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 				                return Mono.empty();
 			                })
-			                .switchIfEmpty(Mono.defer(() -> messageResourceService
+			                .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
 			                        .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 			                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
 			                                StringFormatter.format(msg, "User"))))));
@@ -90,8 +90,8 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 		return this.dao.canBeUpdated(entity.getId())
 		        .flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
-		        .switchIfEmpty(Mono
-		                .defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+		        .switchIfEmpty(Mono.defer(
+		                () -> securityMessageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
 		                                StringFormatter.format(msg, "User", entity.getId()))))));
 	}
@@ -101,8 +101,8 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	public Mono<Role> update(ULong key, Map<String, Object> fields) {
 		return this.dao.canBeUpdated(key)
 		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
-		        .switchIfEmpty(Mono
-		                .defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+		        .switchIfEmpty(Mono.defer(
+		                () -> securityMessageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
 		                                StringFormatter.format(msg, "User", key))))));
 	}
@@ -134,35 +134,47 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
-	public Mono<Boolean> assignPermission(ULong roleId, ULong permissionId) {
+	public Mono<Boolean> assignPermissionToRole(ULong roleId, ULong permissionId) {
 
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.dao.getClientIdFromRoleAndPermission(roleId, permissionId),
+		        ca -> this.dao.getClientIdFromRole(roleId),
 
-		        (ca, clientId) -> ca.isSystemClient() ? Mono.just(true) : Mono.empty(),
+		        (ca, roleClientId) -> this.dao.getClientIdFromPermission(permissionId),
 
-		        (ca, clientId, isSystem) -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), clientId),
+		        (ca, roleClientId, permissionClientId) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), roleClientId),
 
-		        (ca, clientId, isSystem, isManaged) -> this.dao.isRoleAndPermissionCreatedBySameClient(roleId,
-		                permissionId),
+		        (ca, roleClientId, permissionClientId,
+		                clientManaged) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), permissionClientId),
 
-		        // add this condition Or the permission is part of the roles assigned to the
-		        // package assigned to the client or the base package.
+		        (ca, roleClientId, permissionClientId, roleManaged, permissionManaged) -> Mono
+		                .just(roleManaged.booleanValue() && permissionManaged.booleanValue()),
 
-		        (ca, clientId, isSystem, isManaged, sameClient) ->
+		        (ca, roleClientId, permissionClientId, roleManaged, permissionManaged, managesBoth) ->
+
+				this.dao.checkPermissionAvailableForGivenRole(roleId, permissionId),
+
+		        (ca, roleClientId, permissionClientId, roleManaged, permissionManaged, managesBoth,
+		                permissionAvailable) ->
+
 				{
 
-			        if (isManaged.booleanValue() || sameClient.booleanValue())
+			        if ((ca.isSystemClient() || managesBoth.booleanValue())
+			                && (roleClientId.equals(permissionClientId) || permissionAvailable.booleanValue()))
+
 				        return this.dao.addPermission(roleId, permissionId)
 				                .map(val -> val > 0);
 
 			        return Mono.empty();
+
 		        }
 
-		);
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId, roleId));
 	}
+
 }
