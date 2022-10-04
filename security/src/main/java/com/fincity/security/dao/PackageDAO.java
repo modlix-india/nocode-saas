@@ -4,6 +4,7 @@ import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 
 import org.jooq.Field;
+import org.jooq.Record1;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,18 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 	protected Field<ULong> getClientIDField() {
 
 		return SECURITY_PACKAGE.CLIENT_ID;
+	}
+
+	public Mono<ULong> getClientIdFromPackage(ULong packageId) {
+		return Mono.from(
+
+		        this.dslContext.select(SECURITY_PACKAGE.CLIENT_ID)
+		                .from(SECURITY_PACKAGE)
+		                .where(SECURITY_PACKAGE.ID.eq(packageId))
+		                .limit(1)
+
+		)
+		        .map(Record1::value1);
 	}
 
 	public Mono<Boolean> checkRoleApplicableForPackage(ULong packageId, ULong roleId) {

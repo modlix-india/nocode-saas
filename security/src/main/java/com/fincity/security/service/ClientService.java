@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
@@ -9,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -52,6 +55,12 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private SoxLogService soxLogService;
 
+	@Autowired
+	private PackageService packageService;
+
+	@Autowired
+	private SecurityMessageResourceService securityMessageResourceService;
+
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
 
 		HttpHeaders header = request.getHeaders();
@@ -92,8 +101,10 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		        .flatMapIterable(e -> e)
 		        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
 		        .take(1)
-		        .single()
-		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k)))));
+		        .collectList()
+		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
+		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k)
+		                .map(ClientUrlPattern.class::cast)))));
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
@@ -241,21 +252,48 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
-	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong packageId, ULong clientId) {
-		return this.dao.checkClientApplicableForGivenPackage(packageId, clientId);
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
+	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> packageService.isBasePackage(packageId),
+
+		        (ca, basePackage) -> this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), clientId),
+
+		        (ca, basePackage, isManaged) -> isManaged.booleanValue()
+		                ? this.packageService.getClientIdFromPackage(packageId)
+		                : Mono.empty(),
+
+		        (ca, basePackage, isManaged, clientIdFromPackage) -> isManaged.booleanValue()
+		                ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), clientIdFromPackage)
+		                : Mono.empty(),
+
+		        (ca, basePackage, isManaged, clientIdFromPackage, clientApplicable) ->
+				{
+			        if ((!basePackage.booleanValue() && clientApplicable.booleanValue())
+			                && (ca.isSystemClient() || isManaged.booleanValue())) {
+
+				        return this.dao.addPackageToClient(clientId, packageId);
+
+			        }
+
+			        return Mono.empty();
+		        }
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+
 	}
 
-	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong cliendId, ULong packageId) {
-		return this.dao.checkPackageApplicableForGivenClient(cliendId, packageId);
+	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
+		return this.dao.checkPermissionAvailableForGivenClient(clientId, permissionId);
 	}
 
-	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
-		return this.dao.checkRoleApplicableForSelectedClient(clientId, roleId);
-	}
-
-//	public Mono<Boolean> checkRoleApplicableForSelectedClientAndPackage(ULong clientId, ULong roleId, ULong packageId) {
-//		return this.dao.checkRoleApplicableForSelectedClientAndPackage(clientId, roleId, packageId);
-//	}
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
 		return this.dao.isBeingManagedBy(managingClientCode, clientCode);
 	}
@@ -272,4 +310,20 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 			                return id;
 		                })));
 	}
+
+	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong packageId, ULong clientId) {
+		return this.dao.checkClientApplicableForGivenPackage(packageId, clientId);
+	}
+
+	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong cliendId, ULong packageId) {
+		return this.dao.checkPackageApplicableForGivenClient(cliendId, packageId);
+	}
+
+	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
+		return this.dao.checkRoleApplicableForSelectedClient(clientId, roleId);
+	}
+
+//	public Mono<Boolean> checkRoleApplicableForSelectedClientAndPackage(ULong clientId, ULong roleId, ULong packageId) {
+//		return this.dao.checkRoleApplicableForSelectedClientAndPackage(clientId, roleId, packageId);
+//	}
 }
