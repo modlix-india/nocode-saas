@@ -27,6 +27,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String TOKEN_EXPIRED = "token_expired";
 	public static final String UNKNOWN_TOKEN = "unknown_token";
 	public static final String ALREADY_EXISTS = "already_exists";
+	public static final String ASSIGN_PERMISSION_ERROR = "assign_permission_error";
+	public static final String ASSIGN_PACKAGE_ERROR = "assign_package_error";
 	public static final String REMOVE_PERMISSION_ERROR = "remove_permission_error";
 	public static final String ROLE_REMOVE_ERROR = "role_remove_error";
 
