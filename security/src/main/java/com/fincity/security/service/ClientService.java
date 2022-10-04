@@ -92,8 +92,10 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		        .flatMapIterable(e -> e)
 		        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
 		        .take(1)
-		        .single()
-		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k)))));
+		        .collectList()
+		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
+		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k)
+		                .map(ClientUrlPattern.class::cast)))));
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {

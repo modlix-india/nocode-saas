@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Bean;
 
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 
 import io.r2dbc.spi.ConnectionFactory;
 
@@ -15,7 +14,7 @@ public class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
 	
 	public void initialize(AbstractMessageService messageResourceService) {
 		super.initialize();
-		this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(messageResourceService));
+		this.objectMapper.registerModule(new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageResourceService));
 	}
 	
 	@Bean

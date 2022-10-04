@@ -4,9 +4,11 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
@@ -15,11 +17,12 @@ import com.fincity.saas.ui.repository.ApplicationRepository;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Service
 public class ApplicationService extends AbstractUIServcie<Application, ApplicationRepository> {
+
+	@Autowired
+	private PageService pageService;
 
 	protected ApplicationService() {
 		super(Application.class);
@@ -27,6 +30,8 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 
 	@Override
 	public Mono<Application> create(Application entity) {
+
+		entity.setApplicationName(entity.getName());
 
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .filter(ContextAuthentication::isSystemClient)
@@ -59,11 +64,10 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 	}
 
 	@SuppressWarnings("unchecked")
-	public Mono<Tuple2<String, String>> getAppNClientCodes(String scheme, String host, String port) {
+	public Mono<List<String>> getAppNClientCodes(String scheme, String host, String port) {
 		return this.repo.findAll()
 		        .flatMap(a ->
 				{
-
 			        if (a.getProperties() == null)
 				        return Flux.empty();
 
@@ -86,8 +90,37 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 		        .filter(e -> e.isValidClientURLPattern(scheme, host, port))
 		        .take(1)
 		        .singleOrEmpty()
-		        .map(e -> Tuples.of(e.getIdentifier(), e.getClientCode()))
-		        .defaultIfEmpty(Tuples.of("", ""));
+		        .map(e -> List.of(e.getIdentifier(), e.getClientCode()))
+		        .defaultIfEmpty(List.of("", ""))
+		        .log();
 	}
 
+	@Override
+	protected Mono<Application> applyChange(Application object) {
+
+		if (object == null)
+			return Mono.empty();
+
+		return FlatMapUtil.flatMapMono(
+
+		        () ->
+				{
+
+			        if (object.getProperties() == null || object.getProperties()
+			                .get("shellPage") == null)
+				        return Mono.empty();
+
+			        return this.pageService.read(object.getProperties()
+			                .get("shellPage")
+			                .toString(), object.getApplicationName(), object.getClientCode());
+		        },
+
+		        shellPage ->
+				{
+
+			        object.getProperties()
+			                .put("shellPageDefinition", shellPage);
+			        return Mono.just(object);
+		        });
+	}
 }
