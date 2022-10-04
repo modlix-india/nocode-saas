@@ -34,6 +34,7 @@ public class ClientController
 		return this.service.getClientPattern(
 		        scheme, host, port)
 		        .map(ClientUrlPattern::getClientCode)
+		        .defaultIfEmpty("SYSTEM")
 		        .map(ResponseEntity::ok);
 	}
 }
