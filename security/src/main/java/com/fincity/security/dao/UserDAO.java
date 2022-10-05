@@ -313,7 +313,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	}
 
-	public Mono<Boolean> checkRoleCreatedByUser(ULong roleId, ULong userId) {
+	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
 		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
 		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
 		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
