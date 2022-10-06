@@ -1,9 +1,11 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapFlux;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -24,6 +27,7 @@ import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 import com.fincity.security.util.ULongUtil;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -175,6 +179,55 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId, roleId));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
+	public Mono<Boolean> removePermissionFromRole(ULong roleId, ULong permissionId) {
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.dao.readById(roleId),
+
+		        (ca, roleRecord) -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), roleRecord.getClientId()),
+
+		        (ca, roleRecord, isManaged) -> ca.isSystemClient() || isManaged.booleanValue() ? Mono.just(true)
+		                : Mono.empty(),
+
+		        (ca, roleRecord, isManaged, sysOrManaged) ->
+
+				sysOrManaged.booleanValue() ? this.dao.removePermission(roleId, permissionId)
+				        .map(val -> val > 0) : Mono.empty(),
+
+		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved) -> flatMapFlux(
+
+		                () -> this.dao.getClientListFromAssignedRoleAndPermission(roleId, permissionId),
+
+		                clientListFromAssignedRole -> this.dao.getClientListFromRoleClient(roleId),
+
+		                (clientListFromAssignedRole, clientListFromRole) -> this.dao
+		                        .getClientListFromAnotherRole(roleId, permissionId),
+
+		                (clientListFromAssignedRole, clientListFromRole, clientListFromDifferentRole) ->
+						{
+
+			                Flux<ULong> clientList = Flux.merge(clientListFromAssignedRole, clientListFromRole)
+			                        .distinct();
+
+			                Mono<Set<ULong>> removableSet = clientListFromDifferentRole;
+
+			                return clientList.filterWhen(client -> removableSet.map(s -> !s.contains(client)));
+		                },
+						
+						(clientListFromAssignedRole, clientListFromRole, clientListFromDifferentRole, ) -> {
+							
+						}
+
+				)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
 	}
 
 }
