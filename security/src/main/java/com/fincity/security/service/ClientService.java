@@ -310,4 +310,17 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 			                return id;
 		                })));
 	}
+
+	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong packageId, ULong clientId) {
+		return this.dao.checkClientApplicableForGivenPackage(packageId, clientId);
+	}
+
+	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong cliendId, ULong packageId) {
+		return this.dao.checkPackageApplicableForGivenClient(cliendId, packageId);
+	}
+
+	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
+		return this.dao.checkRoleApplicableForSelectedClient(clientId, roleId);
+	}
+
 }

@@ -1,6 +1,7 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 
 import org.jooq.Field;
 import org.jooq.Record1;
@@ -35,5 +36,12 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 
 		)
 		        .map(Record1::value1);
+	}
+
+	public Mono<Boolean> checkRoleApplicableForPackage(ULong packageId, ULong roleId) {
+		return Mono.just(this.dslContext.selectFrom(SECURITY_PACKAGE_ROLE)
+		        .where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId)
+		                .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)))
+		        .execute() > 0);
 	}
 }
