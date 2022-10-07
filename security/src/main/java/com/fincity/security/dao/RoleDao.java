@@ -1,15 +1,15 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
-import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
-import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
+import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
+import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
@@ -127,9 +127,9 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		return Mono.from(query);
 	}
 
-	public Flux<ULong> getClientListFromAssignedRoleAndPermission(ULong roleId, ULong permissionId) {
+	public Mono<Set<ULong>> getClientListFromAssignedRoleAndPermission(ULong roleId, ULong permissionId) {
 
-		List<ULong> clientList = new ArrayList<>();
+		Set<ULong> clientList = new HashSet<>();
 
 		Flux.from(
 
@@ -147,13 +147,13 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		        .toIterable()
 		        .forEach(client -> clientList.add(client));
 
-		return Flux.fromIterable(clientList);
+		return Mono.just(clientList);
 
 	}
 
-	public Flux<ULong> getClientListFromRoleClient(ULong roleId) {
+	public Mono<Set<ULong>> getClientListFromRoleClient(ULong roleId) {
 
-		List<ULong> clientList = new ArrayList<>();
+		Set<ULong> clientList = new HashSet<>();
 
 		Flux.from(
 
@@ -163,14 +163,15 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 		)
 		        .map(Record1::value1)
-		        .map(val -> clientList.add(val));
+		        .toIterable()
+		        .forEach(client -> clientList.add(client));
 
-		return Flux.fromIterable(clientList);
+		return Mono.just(clientList);
 	}
 
-	public Flux<ULong> getClientListFromAnotherRole(ULong roleId, ULong permissionId) {
+	public Mono<Set<ULong>> getClientListFromAnotherRole(ULong roleId, ULong permissionId) {
 
-		List<ULong> clientList = new ArrayList<>();
+		Set<ULong> clientList = new HashSet<ULong>();
 
 		Flux.from(
 
@@ -188,7 +189,7 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		        .toIterable()
 		        .forEach(client -> clientList.add(client));
 
-		return Flux.fromIterable(clientList);
+		return Mono.just(clientList);
 	}
 
 }

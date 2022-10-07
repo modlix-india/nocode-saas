@@ -4,6 +4,8 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapFlux;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +31,7 @@ import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple4;
 
 @Service
 public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRecord, ULong, Role, RoleDao> {
@@ -39,6 +42,9 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 	@Autowired
 	private ClientService clientService;
+
+	@Autowired
+	private UserService userService;
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
@@ -183,6 +189,7 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
 	public Mono<Boolean> removePermissionFromRole(ULong roleId, ULong permissionId) {
+
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
@@ -200,31 +207,45 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 				sysOrManaged.booleanValue() ? this.dao.removePermission(roleId, permissionId)
 				        .map(val -> val > 0) : Mono.empty(),
 
-		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved) -> flatMapFlux(
+		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved) -> this.dao
+		                .getClientListFromAssignedRoleAndPermission(roleId, permissionId),
 
-		                () -> this.dao.getClientListFromAssignedRoleAndPermission(roleId, permissionId),
+		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole) -> this.dao
+		                .getClientListFromRoleClient(roleId),
 
-		                clientListFromAssignedRole -> this.dao.getClientListFromRoleClient(roleId),
+		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole,
+		                clientListFromRole) -> this.dao.getClientListFromAnotherRole(roleId, permissionId),
 
-		                (clientListFromAssignedRole, clientListFromRole) -> this.dao
-		                        .getClientListFromAnotherRole(roleId, permissionId),
+		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole, clientListFromRole,
+		                clientListFromDifferentRole) ->
+				{
 
-		                (clientListFromAssignedRole, clientListFromRole, clientListFromDifferentRole) ->
-						{
+			        Set<ULong> clientList = new HashSet<>();
 
-			                Flux<ULong> clientList = Flux.merge(clientListFromAssignedRole, clientListFromRole)
-			                        .distinct();
+			        clientList.addAll(clientListFromAssignedRole);
+			        clientList.addAll(clientListFromRole);
 
-			                Mono<Set<ULong>> removableSet = clientListFromDifferentRole;
+			        clientList.filter(cl -> !clientListFromDifferentRole.contains(cl));
 
-			                return clientList.filterWhen(client -> removableSet.map(s -> !s.contains(client)));
-		                },
-						
-						(clientListFromAssignedRole, clientListFromRole, clientListFromDifferentRole, ) -> {
-							
-						}
+			        return Mono.just(clientList);
+		        },
 
-				)
+		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole, clientListFromRole,
+		                clientListFromDifferentRole, filteredList) ->
+
+				this.userService.getUsersListWithClientIds(filteredList),
+
+		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole, clientListFromRole,
+		                clientListFromDifferentRole, filteredList, usersList) ->
+				{
+			        if (usersList != null || usersList.isEmpty())
+				        return Mono.empty();
+
+			        usersList.toStream()
+			                .forEach(user -> this.userService.removingPermissionFromUser(user.getId(), permissionId));
+
+			        return Mono.just(true);
+		        }
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));

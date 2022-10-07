@@ -369,4 +369,17 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		);
 	}
+
+	public Mono<Set<ULong>> getListOfUsersWithClientIds(Set<ULong> clientId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_USER.ID)
+		                .from(SECURITY_USER)
+		                .where(SECURITY_USER.CLIENT_ID.in(clientId)))
+		        .map(Record1::value1)
+		        .collectList()
+		        .map(HashSet::new);
+
+	}
 }

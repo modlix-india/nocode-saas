@@ -3,7 +3,9 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -390,4 +392,12 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
 	}
 
+	public Mono<Set<ULong>> getUsersListWithClientIds(Set<ULong> clientIds) {
+		return this.dao.getListOfUsersWithClientIds(clientIds);
+	}
+
+	public Mono<Boolean> removingPermissionFromUser(ULong userId, ULong permissionId) {
+		return this.dao.removingPermissionFromUser(userId, permissionId)
+		        .map(val -> val > 0);
+	}
 }
