@@ -2,16 +2,21 @@ package com.fincity.saas.ui.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.repository.PageRepository;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class PageService extends AbstractUIServcie<Page, PageRepository> {
+public class PageService extends AbstractAppbasedUIService<Page, PageRepository> {
 
 	public PageService() {
 		super(Page.class);
@@ -41,5 +46,24 @@ public class PageService extends AbstractUIServcie<Page, PageRepository> {
 
 			        return Mono.just(existing);
 		        });
+	}
+
+	@Override
+	protected Mono<Page> applyChange(Page object) {
+
+		return flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> {
+
+			object.setComponentDefinition(object.getComponentDefinition()
+			        .entrySet()
+			        .stream()
+			        .filter(c -> Objects.nonNull(c.getValue()
+			                .getPermission()))
+			        .filter(c -> !SecurityContextUtil.hasAuthority(c.getValue()
+			                .getPermission(), ca.getAuthorities()))
+			        .collect(Collectors.toMap(Entry::getKey, Entry::getValue)));
+
+			return Mono.just(object);
+		}).defaultIfEmpty(object);
+
 	}
 }

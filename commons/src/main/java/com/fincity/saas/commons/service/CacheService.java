@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.service;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -23,20 +24,21 @@ public class CacheService {
 	@Value("${spring.application.name}")
 	private String appName;
 
-	public Mono<Object> evict(String cacheName, String key) {
+	public Mono<Boolean> evict(String cacheName, String key) {
 
 		return Mono.fromCallable(() -> {
 			Cache x = cacheManager.getCache(cacheName);
 			if (x == null)
-				return 1;
+				return true;
 
 			x.evictIfPresent(key);
-			return 1;
-		});
+			return true;
+		})
+		        .onErrorResume(t -> Mono.just(false));
 
 	}
 
-	public Mono<Object> evict(String cacheName, Object... keys) {
+	public Mono<Boolean> evict(String cacheName, Object... keys) {
 
 		return makeKey(keys).flatMap(e -> this.evict(cacheName, e));
 	}
@@ -71,13 +73,30 @@ public class CacheService {
 		                .map(vw -> (T) vw.get()));
 	}
 
-	public Mono<Object> evictAll(String cacheName) {
+	public Mono<Boolean> evictAll(String cacheName) {
 
 		return Mono.fromCallable(() -> {
 
 			this.cacheManager.getCache(cacheName)
 			        .clear();
-			return 1;
-		});
+			return true;
+		})
+		        .onErrorResume(t -> Mono.just(false));
+	}
+
+	public Mono<Boolean> evictAllCaches() {
+		return Flux.fromIterable(this.cacheManager.getCacheNames())
+		        .map(this.cacheManager::getCache)
+		        .map(e ->
+				{
+			        e.clear();
+			        return true;
+		        })
+		        .reduce((a, b) -> a && b);
+	}
+
+	public Mono<Collection<String>> getCacheNames() {
+
+		return Mono.just(this.cacheManager.getCacheNames());
 	}
 }

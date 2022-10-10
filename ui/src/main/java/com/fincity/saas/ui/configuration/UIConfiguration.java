@@ -25,6 +25,6 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
 		return this.springSecurityFilterChain(http, authService,
 
 		        "/api/ui/page/*", "/api/ui/application", "/api/ui/function/*", "/api/ui/theme/*",
-		        "/api/ui/cache/reset/**", "/manifest.json", "/api/ui/applications/internal/getAppNClientCode");
+		        "/api/ui/internal/cache/reset/*", "/manifest.json", "/api/ui/applications/internal/getAppNClientCode");
 	}
 }

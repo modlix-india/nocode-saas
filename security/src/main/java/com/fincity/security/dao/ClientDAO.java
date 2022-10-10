@@ -206,14 +206,14 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e == 1);
 	}
 
-	public Mono<ULong> getClientId(String clientCode) {
+	public Mono<Client> getClientBy(String clientCode) {
 
-		return Flux.from(this.dslContext.select(SECURITY_CLIENT.ID)
+		return Flux.from(this.dslContext.select(SECURITY_CLIENT.fields())
 		        .from(SECURITY_CLIENT)
 		        .where(SECURITY_CLIENT.CODE.eq(clientCode))
 		        .limit(1))
 		        .singleOrEmpty()
-		        .map(Record1::value1);
+		        .map(e -> e.into(Client.class));
 	}
 
 	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong packageId, ULong clientId) {

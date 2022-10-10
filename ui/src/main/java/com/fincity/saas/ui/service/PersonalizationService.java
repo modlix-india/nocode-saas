@@ -16,7 +16,7 @@ import com.fincity.saas.ui.repository.PersonalizationRepository;
 import reactor.core.publisher.Mono;
 
 @Service
-public class PersonalizationService extends AbstractUIServcie<Personalization, PersonalizationRepository> {
+public class PersonalizationService extends AbstractAppbasedUIService<Personalization, PersonalizationRepository> {
 
 	protected PersonalizationService() {
 		super(Personalization.class);
