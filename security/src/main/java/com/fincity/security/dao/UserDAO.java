@@ -1,5 +1,6 @@
 package com.fincity.security.dao;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
@@ -285,5 +286,87 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)));
 
 		return Mono.from(query);
+	}
+
+	public Mono<Integer> assigningPermissionToUser(ULong userId, ULong permissionId) {
+
+		return Mono.from(
+
+		        this.dslContext
+		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+		                        SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+		                .values(userId, permissionId));
+	}
+
+	public Mono<Boolean> checkPermissionExistsForUser(ULong userId, ULong permissionId) {
+		return Mono.from(
+
+		        this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.ID)
+		                .from(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
+		                        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
+		                .limit(1)
+
+		)
+		        .map(Record1::value1)
+		        .map(val -> val.intValue() > 0);
+
+	}
+
+	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
+		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
+		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
+		        .execute() > 0);
+	}
+
+	public Mono<Boolean> checkRoleCreatedByUserWithPermission(ULong roleId, ULong userId, ULong permissionId) {
+		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
+		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
+		                .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
+		        .execute() > 0);
+	}
+
+	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
+		return Mono.just(this.dslContext
+		        .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+		                SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+		        .values(userId, roleId)
+		        .execute() > 0);
+	}
+
+	public Mono<Boolean> isBeingManagedBy(ULong loggedInClientId, ULong userId) {
+
+		return flatMapMono(
+
+		        () -> this.readById(userId),
+
+		        givenUser ->
+				{
+			        if (loggedInClientId.equals(givenUser.getClientId()))
+				        return Mono.just(true);
+
+			        return Mono.just(this.dslContext.selectFrom(SECURITY_CLIENT_MANAGE)
+			                .where(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(loggedInClientId)
+			                        .and(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(givenUser.getClientId())))
+			                .execute() > 0);
+		        }
+
+		);
+	}
+
+	public Mono<Boolean> assigningRoleToUser(ULong userId, ULong roleId) {
+		return
+
+		Mono.just(
+
+		        this.dslContext
+		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+		                        SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+		                .values(userId, roleId)
+		                .execute() > 0
+
+		);
 	}
 }

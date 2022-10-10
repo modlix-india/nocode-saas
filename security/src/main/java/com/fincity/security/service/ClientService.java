@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
@@ -9,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -52,8 +55,14 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private SoxLogService soxLogService;
 
-	public Mono<Client> getClientBy(ServerHttpRequest request) {
+	@Autowired
+	private PackageService packageService;
 
+	@Autowired
+	private SecurityMessageResourceService securityMessageResourceService;
+
+	public Mono<Client> getClientBy(ServerHttpRequest request) {
+  
 		HttpHeaders header = request.getHeaders();
 
 		String uriScheme = header.getFirst("X-Forwarded-Proto");
@@ -245,6 +254,48 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
+	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> packageService.isBasePackage(packageId),
+
+		        (ca, basePackage) -> this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), clientId),
+
+		        (ca, basePackage, isManaged) -> isManaged.booleanValue()
+		                ? this.packageService.getClientIdFromPackage(packageId)
+		                : Mono.empty(),
+
+		        (ca, basePackage, isManaged, clientIdFromPackage) -> isManaged.booleanValue()
+		                ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), clientIdFromPackage)
+		                : Mono.empty(),
+
+		        (ca, basePackage, isManaged, clientIdFromPackage, clientApplicable) ->
+				{
+			        if ((!basePackage.booleanValue() && clientApplicable.booleanValue())
+			                && (ca.isSystemClient() || isManaged.booleanValue())) {
+
+				        return this.dao.addPackageToClient(clientId, packageId);
+
+			        }
+
+			        return Mono.empty();
+		        }
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+
+	}
+
+	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
+		return this.dao.checkPermissionAvailableForGivenClient(clientId, permissionId);
+	}
+
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
 		return this.dao.isBeingManagedBy(managingClientCode, clientCode);
 	}
@@ -260,4 +311,17 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 			                return client;
 		                })));
 	}
+
+	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong packageId, ULong clientId) {
+		return this.dao.checkClientApplicableForGivenPackage(packageId, clientId);
+	}
+
+	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong cliendId, ULong packageId) {
+		return this.dao.checkPackageApplicableForGivenClient(cliendId, packageId);
+	}
+
+	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
+		return this.dao.checkRoleApplicableForSelectedClient(clientId, roleId);
+	}
+
 }
