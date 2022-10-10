@@ -58,14 +58,17 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private PackageService packageService;
 
-	@Autowired
 	private UserService userService;
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
+	public void setUserService(UserService userService) {
+		this.userService = userService;
+	}
+
 	public Mono<Client> getClientBy(ServerHttpRequest request) {
-  
+
 		HttpHeaders header = request.getHeaders();
 
 		String uriScheme = header.getFirst("X-Forwarded-Proto");
@@ -114,7 +117,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
 
 		return this.getClientBy(request)
-				.map(Client::getId)
+		        .map(Client::getId)
 		        .flatMap(this::getPotentialClientList);
 	}
 
@@ -330,9 +333,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
 	public Mono<Boolean> removePackageFromClient(ULong clientId, ULong packageId) {
 
-		return flatMapMono(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
+		Mono<Set<ULong>> rolesFromFMM = flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca -> this.packageService.read(packageId),
 
@@ -354,35 +355,48 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		                .getRolesFromPackage(packageId),
 
 		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles) -> this.packageService
-		                .getRolesAfterOmittingFromBasePackage(roles),
+		                .getRolesAfterOmittingFromBasePackage(roles)
 
-		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting) -> this.dao
-		                .getClientListFromPackage(packageId),
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
 
-		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList) -> this.dao
-		                .getUsersListFromClient(clientList),
+		return flatMapMono(
 
-		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList,
-		                userList) ->
+		        () -> this.dao.getClientListFromPackage(packageId),
+
+		        clientList -> this.dao.getUsersListFromClient(clientList),
+
+		        (clientList, userList) ->
 				{
+			        if (userList == null || rolesFromFMM == null)
+				        return Mono.empty();
+
 			        // remove roles from users
+
+			        rolesFromFMM.subscribe(roles -> roles.forEach(
+			                role -> userList.forEach(user -> this.userService.removeRoleFromUser(user, role))));
+
 			        return Mono.just(true);
 		        },
 
-		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList, userList,
-		                users) -> this.packageService.getPermissionsFromPackage(packageId),
+		        (clientList, userList, userAfterRemoval) ->
 
-		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList, userList,
-		                users, permissionList) -> this.packageService.omitPermissionsFromBasePackage(permissionList),
+				this.packageService.getPermissionsFromPackage(packageId),
 
-		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList, userList,
-		                users, permissionList, finalPermissions) ->
+		        (clientList, userList, userAfterRemoval, permissionList) ->
+
+				this.packageService.omitPermissionsFromBasePackage(permissionList),
+
+		        (clientList, userList, userAfterRemoval, permissionList, finalPermissions) ->
 				{
-			        if ((finalPermissions == null || finalPermissions.size() == 0)
-			                || (userList == null || userList.size() == 0))
+			        if (finalPermissions == null || finalPermissions.isEmpty() || userList == null)
 				        return Mono.empty();
 
 			        // remove permissions from user
+
+			        finalPermissions.forEach(permission -> userList
+			                .forEach(user -> this.userService.removePermissionFromUser(user, permission)));
+
 			        return Mono.just(true);
 		        }
 
