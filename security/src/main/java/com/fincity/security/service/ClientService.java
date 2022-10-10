@@ -52,7 +52,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private SoxLogService soxLogService;
 
-	public Mono<ULong> getClientId(ServerHttpRequest request) {
+	public Mono<Client> getClientBy(ServerHttpRequest request) {
 
 		HttpHeaders header = request.getHeaders();
 
@@ -75,7 +75,8 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 
 		return getClientPattern(uriScheme, uriHost, uriPort).map(ClientUrlPattern::getIdentifier)
 		        .map(ULong::valueOf)
-		        .defaultIfEmpty(ULong.valueOf(1l));
+		        .defaultIfEmpty(ULong.valueOf(1l))
+		        .flatMap(id -> this.dao.readById(id));
 	}
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
@@ -100,7 +101,8 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
 
-		return this.getClientId(request)
+		return this.getClientBy(request)
+				.map(Client::getId)
 		        .flatMap(this::getPotentialClientList);
 	}
 
@@ -247,16 +249,15 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		return this.dao.isBeingManagedBy(managingClientCode, clientCode);
 	}
 
-	public Mono<ULong> getClientId(String clientCode) {
+	public Mono<Client> getClientBy(String clientCode) {
 
 		return cacheService.get(CACHE_NAME_CLIENT_CODE_ID, clientCode)
-		        .map(Object::toString)
-		        .map(ULong::valueOf)
-		        .switchIfEmpty(Mono.defer(() -> this.dao.getClientId(clientCode)
-		                .map(id ->
+		        .map(Client.class::cast)
+		        .switchIfEmpty(Mono.defer(() -> this.dao.getClientBy(clientCode)
+		                .map(client ->
 						{
-			                cacheService.put(CACHE_NAME_CLIENT_CODE_ID, id, clientCode);
-			                return id;
+			                cacheService.put(CACHE_NAME_CLIENT_CODE_ID, client, clientCode);
+			                return client;
 		                })));
 	}
 }

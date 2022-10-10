@@ -4,9 +4,13 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.saas.ui.service.UIMessageResourceService.FORBIDDEN_CREATE;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
@@ -17,11 +21,12 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.mongo.service.AbstractMongoUpdatableDataService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.ui.document.AbstractUIDTO;
-import com.fincity.saas.ui.document.Application;
+import com.fincity.saas.ui.document.ListResultObject;
 import com.fincity.saas.ui.document.Version;
 import com.fincity.saas.ui.document.Version.ObjectType;
 import com.fincity.saas.ui.repository.IUIRepository;
@@ -40,7 +45,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	private static final String CACHE_NAME = "Cache";
 
 	@Autowired
-	private CacheService cacheService;
+	protected CacheService cacheService;
 
 	@Autowired
 	protected ObjectMapper objectMapper;
@@ -168,6 +173,12 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	}
 
 	@Override
+	public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+
+		return super.readPageFilter(pageable, condition);
+	}
+
+	@Override
 	public Mono<D> update(D entity) {
 
 		@SuppressWarnings("unchecked")
@@ -200,7 +211,28 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
 		                        : Mono.empty(),
 
-		        (merged, overridden, created, version) -> this.read(created.getId())));
+		        (merged, overridden, created, version) -> this.read(created.getId()),
+
+		        (m, o, c, v, f) ->
+				{
+
+			        this.evictRecursively(f)
+			                .subscribe();
+
+			        return Mono.just(f);
+		        }));
+	}
+
+	protected Mono<D> evictRecursively(D f) {
+
+		Flux.just(f)
+		        .expandDeep(e -> this.repo.findByNameAndApplicationNameAndBaseClientCode(e.getName(),
+		                e.getApplicationName(), e.getClientCode()))
+		        .subscribe(e -> cacheService
+		                .evict(this.getCacheName(), e.getName(), "-", e.getApplicationName(), "-", e.getClientCode())
+		                .subscribe());
+
+		return Mono.just(f);
 	}
 
 	@Override
@@ -231,6 +263,10 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 				        return messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 				                UIMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id);
 
+			        cacheService
+			                .evict(this.getCacheName(), entity.getName(), "-", entity.getApplicationName(), "-",
+			                        entity.getClientCode())
+			                .subscribe();
 			        return super.delete(id);
 		        }).switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
 		                UIMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id));
@@ -295,35 +331,74 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		        .map(Object::toString);
 	}
 
-	public Mono<D> read(String name, String appCode, String clientCode) {
+	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, AbstractCondition condition) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> cacheService.get(this.getCacheName(), name, "-", appCode, "-", clientCode),
+		        () -> this.filter(condition),
 
-		        cApp ->
+		        crit -> Mono.just((new Query(crit)).skip(pageable.getOffset())
+		                .limit(pageable.getPageSize())
+		                .with(pageable.getSort())),
+
+		        (crit, dataQuery) -> this.mongoTemplate
+		                .find(dataQuery, ListResultObject.class, this.pojoClass.getSimpleName()
+		                        .toLowerCase())
+		                .collectList(),
+
+		        (crit, dataQuery, list) -> Mono.just((new Query(crit)).with(pageable.getSort())),
+
+		        (crit, dataQuery, list, countQuery) -> this.mongoTemplate.count(countQuery, this.pojoClass),
+
+		        (crit, dataQuery, list, countQuery, count) -> Mono.just(new PageImpl<>(list, pageable, count)));
+	}
+
+	public Mono<D> read(String name, String appCode, String clientCode) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        () -> cacheService.makeKey(name, "-", appCode, "-", clientCode),
+
+		        key -> cacheService.get(this.getCacheName(), key)
+		                .map(this.pojoClass::cast),
+
+		        (key, cApp) -> Mono.justOrEmpty(cApp)
+		                .switchIfEmpty(Mono.defer(
+		                        () -> this.repo.findOneByNameAndApplicationNameAndClientCode(name, appCode, clientCode)
+		                                .map(this.pojoClass::cast))),
+
+		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
+		                .flatMap(da -> this.readInternal(da.getId())
+		                        .map(this.pojoClass::cast)),
+
+		        (key, cApp, dbApp, mergedApp) ->
 				{
-			        if (cApp == null)
-				        Mono.just((Application) cApp);
 
-			        return this.repo.findOneByNameAndApplicationNameAndClientCode(name, appCode, clientCode);
-		        },
-
-		        (cApp, dbApp) -> dbApp == null ? Mono.empty() : this.readInternal(dbApp.getId()),
-
-		        (cApp, dbApp, mergedApp) -> this.applyChange(mergedApp),
-
-		        (cApp, dbApp, mergedApp, changedApp) ->
-				{
-
-			        if (changedApp == null)
+			        if (cApp == null && mergedApp == null)
 				        return Mono.empty();
 
-			        cacheService.put(this.getCacheName(), changedApp, name, "-", appCode, "-", clientCode);
-			        return Mono.just(changedApp);
-		        }
+			        try {
+				        return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
+				                .newInstance(cApp != null ? cApp : mergedApp));
+			        } catch (Exception e) {
 
-		);
+				        return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
+				                UIMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.pojoClass.getSimpleName());
+			        }
+		        },
+
+		        (key, cApp, dbApp, mergedApp, clonedApp) ->
+				{
+
+			        if (clonedApp == null)
+				        return Mono.empty();
+
+			        if (cApp == null && mergedApp != null) {
+				        cacheService.put(this.getCacheName(), mergedApp, key);
+			        }
+
+			        return this.applyChange(clonedApp);
+		        });
 	}
 
 	protected Mono<D> applyChange(D object) {
@@ -334,4 +409,6 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		return this.pojoClass.getSimpleName() + CACHE_NAME;
 	}
+
+	protected abstract Mono<List<String>> inheritanceOrder(String appName, String clientCode);
 }

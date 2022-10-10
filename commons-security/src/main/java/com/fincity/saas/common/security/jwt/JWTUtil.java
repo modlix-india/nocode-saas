@@ -19,7 +19,7 @@ import reactor.util.function.Tuples;
 public class JWTUtil {
 
 	public static final Tuple2<String, LocalDateTime> generateToken(BigInteger userId, String secretKey,
-	        Integer expiryInMin, String host, String port, BigInteger loggedInClientId) {
+	        Integer expiryInMin, String host, String port, BigInteger loggedInClientId, String loggedInClientCode) {
 
 		LocalDateTime expirationTime = LocalDateTime.now(ZoneId.of("UTC"))
 		        .plus(expiryInMin, ChronoUnit.MINUTES);
@@ -31,6 +31,7 @@ public class JWTUtil {
 		                .setHostName(host)
 		                .setPort(port)
 		                .setLoggedInClientId(loggedInClientId)
+		                .setLoggedInClientCode(loggedInClientCode)
 		                .getClaimsMap())
 		        .setIssuedAt(Date.from(Instant.now()))
 		        .setExpiration(Date.from(Instant.now()

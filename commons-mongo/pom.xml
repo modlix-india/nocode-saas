@@ -15,7 +15,7 @@
 	<properties>
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
-		<nocode-kirun-version>1.3.2</nocode-kirun-version>
+		<nocode-kirun-version>1.4.1</nocode-kirun-version>
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<nocode-flatmap-util-version>1.2.0</nocode-flatmap-util-version>
 	</properties>

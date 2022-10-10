@@ -1,13 +1,13 @@
 package com.fincity.security.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
@@ -124,26 +124,26 @@ public class AuthenticationService implements IAuthenticationService {
 		List<String> clientCode = request.getHeaders()
 		        .get("clientCode");
 
-		Mono<ULong> clientIdMono = (clientCode != null && !clientCode.isEmpty())
-		        ? this.clientService.getClientId(clientCode.get(0))
-		        : this.clientService.getClientId(request);
+		Mono<Client> loggedInClient = (clientCode != null && !clientCode.isEmpty())
+		        ? this.clientService.getClientBy(clientCode.get(0))
+		        : this.clientService.getClientBy(request);
 
 		return flatMapMono(
 
-		        () -> clientIdMono,
+		        () -> loggedInClient,
 
-		        clientId -> userService.findByClientIdsUserName(clientId, authRequest.getUserName(),
+		        linClient -> userService.findByClientIdsUserName(linClient.getId(), authRequest.getUserName(),
 		                authRequest.getIdentifierType()),
 
-		        (clientId, user) -> this.clientService.readInternal(user.getClientId()),
+		        (linClient, user) -> this.clientService.readInternal(user.getClientId()),
 
-		        (clientId, user, client) -> this.checkPassword(authRequest, user),
+		        (linClient, user, client) -> this.checkPassword(authRequest, user),
 
-		        (clientId, user, client, passwordChecked) -> clientService.getClientPasswordPolicy(client.getId()),
+		        (linClient, user, client, passwordChecked) -> clientService.getClientPasswordPolicy(client.getId()),
 
-		        (clientId, user, client, passwordChecked, policy) -> this.checkFailedAttempts(user, policy),
+		        (linClient, user, client, passwordChecked, policy) -> this.checkFailedAttempts(user, policy),
 
-		        (clientId, user, client, passwordChecked, policy, j) ->
+		        (linClient, user, client, passwordChecked, policy, j) ->
 				{
 
 			        userService.resetFailedAttempt(user.getId())
@@ -158,12 +158,12 @@ public class AuthenticationService implements IAuthenticationService {
 			        InetSocketAddress inetAddress = request.getRemoteAddress();
 			        final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
 
-			        return makeToken(authRequest, request, response, hostAddress, user, client, clientId);
+			        return makeToken(authRequest, request, response, hostAddress, user, client, linClient);
 		        }).switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
 	private Mono<AuthenticationResponse> makeToken(AuthenticationRequest authRequest, ServerHttpRequest request,
-	        ServerHttpResponse response, final String setAddress, User u, Client c, ULong cid) {
+	        ServerHttpResponse response, final String setAddress, User u, Client c, Client linClient) {
 
 		int timeInMinutes = authRequest.isRememberMe() ? remembermeExpiryInMinutes : c.getTokenValidityMinutes();
 		if (timeInMinutes <= 0)
@@ -189,7 +189,7 @@ public class AuthenticationService implements IAuthenticationService {
 		}
 
 		Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(u.getId()
-		        .toBigInteger(), tokenKey, timeInMinutes, host, port, cid.toBigInteger());
+		        .toBigInteger(), tokenKey, timeInMinutes, host, port, linClient.getId().toBigInteger(), linClient.getCode());
 
 		if (authRequest.isCookie())
 			response.addCookie(ResponseCookie.from("Authentication", token.getT1())
@@ -349,7 +349,7 @@ public class AuthenticationService implements IAuthenticationService {
 		        (claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
 
 		        (claims, u, typ) -> Mono
-		                .just(new ContextAuthentication(u.toContextUser(), true, claims.getLoggedInClientId(),
+		                .just(new ContextAuthentication(u.toContextUser(), true, claims.getLoggedInClientId(), claims.getLoggedInClientCode(),
 		                        typ.getT1(), typ.getT2(), tokenObject.getToken(), tokenObject.getExpiresAt())));
 	}
 
