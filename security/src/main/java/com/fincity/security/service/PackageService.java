@@ -2,6 +2,7 @@ package com.fincity.security.service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,10 +76,10 @@ public class PackageService extends
 
 				                return Mono.empty();
 			                })
-			                .switchIfEmpty(Mono.defer(
-			                        () -> messageResourceService.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
-			                                .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
-			                                        StringFormatter.format(msg, "User"))))));
+			                .switchIfEmpty(Mono.defer(() -> messageResourceService
+			                        .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
+			                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
+			                                StringFormatter.format(msg, "User"))))));
 		        });
 
 	}
@@ -100,8 +101,8 @@ public class PackageService extends
 	public Mono<Package> update(Package entity) {
 		return this.dao.canBeUpdated(entity.getId())
 		        .flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
-		        .switchIfEmpty(
-		                Mono.defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+		        .switchIfEmpty(Mono
+		                .defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
 		                                StringFormatter.format(msg, "User", entity.getId()))))));
 	}
@@ -111,8 +112,8 @@ public class PackageService extends
 	public Mono<Package> update(ULong key, Map<String, Object> fields) {
 		return this.dao.canBeUpdated(key)
 		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
-		        .switchIfEmpty(
-		                Mono.defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+		        .switchIfEmpty(Mono
+		                .defer(() -> messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 		                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
 		                                StringFormatter.format(msg, "User", key))))));
 	}
@@ -168,5 +169,21 @@ public class PackageService extends
 
 	public Mono<ULong> getClientIdFromPackage(ULong packageId) {
 		return this.dao.getClientIdFromPackage(packageId);
+	}
+
+	public Mono<Set<ULong>> getRolesFromPackage(ULong packageId) {
+		return this.dao.getRolesFromPackage(packageId);
+	}
+
+	public Mono<Set<ULong>> getRolesAfterOmittingFromBasePackage(Set<ULong> roles) {
+		return this.dao.getRolesAfterOmittingFromBasePackage(roles);
+	}
+
+	public Mono<Set<ULong>> getPermissionsFromPackage(ULong packageId) {
+		return this.dao.getPermissionsFromPackage(packageId);
+	}
+
+	public Mono<Set<ULong>> omitPermissionsFromBasePackage(Set<ULong> permissions) {
+		return this.dao.omitPermissionsFromBasePackage(permissions);
 	}
 }

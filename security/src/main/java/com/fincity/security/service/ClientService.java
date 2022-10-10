@@ -59,6 +59,9 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	private PackageService packageService;
 
 	@Autowired
+	private UserService userService;
+
+	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
 	public Mono<ULong> getClientId(ServerHttpRequest request) {
@@ -323,4 +326,66 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		return this.dao.checkRoleApplicableForSelectedClient(clientId, roleId);
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
+	public Mono<Boolean> removePackageFromClient(ULong clientId, ULong packageId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.packageService.read(packageId),
+
+		        (ca, packageRecord) -> this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                .getClientId()), packageRecord.getClientId()),
+
+		        (ca, packageRecord, isManaged) ->
+				{
+
+			        if (ca.isSystemClient() || isManaged.booleanValue())
+				        return Mono.just(true);
+
+			        return Mono.empty();
+		        },
+
+		        (ca, packageRecord, isManaged, sysOrManaged) -> this.dao.removePackage(clientId, packageId),
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed) -> this.packageService
+		                .getRolesFromPackage(packageId),
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles) -> this.packageService
+		                .getRolesAfterOmittingFromBasePackage(roles),
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting) -> this.dao
+		                .getClientListFromPackage(packageId),
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList) -> this.dao
+		                .getUsersListFromClient(clientList),
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList,
+		                userList) ->
+				{
+			        // remove roles from users
+			        return Mono.just(true);
+		        },
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList, userList,
+		                users) -> this.packageService.getPermissionsFromPackage(packageId),
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList, userList,
+		                users, permissionList) -> this.packageService.omitPermissionsFromBasePackage(permissionList),
+
+		        (ca, packageRecord, isManaged, sysOrManaged, removed, roles, rolesAfterOmitting, clientList, userList,
+		                users, permissionList, finalPermissions) ->
+				{
+			        if ((finalPermissions == null || finalPermissions.size() == 0)
+			                || (userList == null || userList.size() == 0))
+				        return Mono.empty();
+
+			        // remove permissions from user
+			        return Mono.just(true);
+		        }
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
+	}
 }

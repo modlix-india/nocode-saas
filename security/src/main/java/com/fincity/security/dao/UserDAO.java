@@ -369,4 +369,19 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		);
 	}
+
+	public Mono<Set<ULong>> getUsersListFromClient(Set<ULong> clients) {
+
+		Set<ULong> userList = new HashSet();
+
+		Flux.from(
+
+		        this.dslContext.select(SECURITY_USER.ID)
+		                .from(SECURITY_USER)
+		                .where(SECURITY_USER.CLIENT_ID.in(clients)))
+		        .map(Record1::value1)
+		        .map(user -> userList.add(user));
+
+		return Mono.just(userList);
+	}
 }

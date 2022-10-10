@@ -9,11 +9,13 @@ import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACK
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
+import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 
 import java.util.HashSet;
 import java.util.Set;
 
 import org.jooq.Condition;
+import org.jooq.DeleteQuery;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectJoinStep;
@@ -28,6 +30,7 @@ import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 
 import reactor.core.publisher.Flux;
@@ -261,4 +264,42 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(val -> val.intValue() > 0);
 	}
 
+	public Mono<Boolean> removePackage(ULong clientId, ULong packageId) {
+
+		DeleteQuery<SecurityClientPackageRecord> query = this.dslContext.deleteQuery(SECURITY_CLIENT_PACKAGE);
+
+		query.addConditions(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)
+		        .and(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)));
+
+		return Mono.from(query)
+		        .map(val -> val > 0);
+	}
+
+	public Mono<Set<ULong>> getClientListFromPackage(ULong packageId) {
+
+		Set<ULong> clientList = new HashSet<ULong>();
+
+		Flux.from(this.dslContext.select(SECURITY_CLIENT_PACKAGE.CLIENT_ID)
+		        .from(SECURITY_CLIENT_PACKAGE)
+		        .where(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
+		        .map(Record1::value1)
+		        .map(client -> clientList.add(client));
+
+		return Mono.just(clientList);
+	}
+
+	public Mono<Set<ULong>> getUsersListFromClient(Set<ULong> clients) {
+
+		Set<ULong> userList = new HashSet<ULong>();
+
+		Flux.from(
+
+		        this.dslContext.select(SECURITY_USER.ID)
+		                .from(SECURITY_USER)
+		                .where(SECURITY_USER.CLIENT_ID.in(clients)))
+		        .map(Record1::value1)
+		        .map(user -> userList.add(user));
+
+		return Mono.just(userList);
+	}
 }
