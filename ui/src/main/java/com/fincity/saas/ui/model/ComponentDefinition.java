@@ -16,4 +16,5 @@ public class ComponentDefinition implements Serializable {
 	private Map<String, Object> properties; // NOSONAR
 	private boolean override;
 	private Map<String, Boolean> children;
+	private String permission;
 }

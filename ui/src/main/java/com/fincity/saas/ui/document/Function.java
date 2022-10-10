@@ -9,6 +9,7 @@ import com.fincity.saas.ui.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -17,11 +18,17 @@ import reactor.core.publisher.Mono;
 @Document
 @CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1}", name = "filterFilteringIndex")
 @Accessors(chain = true)
+@NoArgsConstructor
 public class Function extends AbstractUIDTO<Function> {
 
 	private static final long serialVersionUID = 2733397732360134939L;
 
 	private FunctionDefinition definition;
+
+	public Function(Function fun) {
+		super(fun);
+		this.definition = fun.definition == null ? null : new FunctionDefinition(fun.definition);
+	}
 
 	@Override
 	public Mono<Function> applyOverride(Function base) {
@@ -42,7 +49,7 @@ public class Function extends AbstractUIDTO<Function> {
 
 		if (base == null)
 			return Mono.just(this);
-		
+
 		return Mono.just(this)
 		        .flatMap(e -> DifferenceExtractor.extract(this.definition, e.definition)
 		                .map(k ->

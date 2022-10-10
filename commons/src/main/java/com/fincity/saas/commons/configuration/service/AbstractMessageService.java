@@ -47,6 +47,14 @@ public class AbstractMessageService {
 		        .flatMap(Mono::error));
 
 	}
+	
+	public <T> Mono<T> throwMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
+
+		return Mono.defer(() -> this.getMessage(messageId, params)
+		        .map(msg -> new GenericException(status, msg, cause))
+		        .flatMap(Mono::error));
+
+	}
 
 	public String getDefaultLocaleMessage(String messageId) {
 		return this.getLocaleLocaleMessage(Locale.ENGLISH, messageId);

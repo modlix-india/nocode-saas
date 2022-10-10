@@ -28,6 +28,7 @@ public class ContextAuthentication implements Authentication {
 	private ContextUser user;
 	private boolean isAuthenticated;
 	private BigInteger loggedInFromClientId;
+	private String loggedInFromClientCode;
 	private String clientTypeCode;
 	private String clientCode;
 	private String accessToken;

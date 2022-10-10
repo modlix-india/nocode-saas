@@ -29,6 +29,8 @@ public class UIMessageResourceService extends AbstractMessageService {
 	public static final String ALREADY_EXISTS = "already_exists";
 	public static final String VERSION_MISMATCH = "version_mismatch";
 	public static final String CANNOT_CHANGE_PREF = "cannot_change_pref";
+	public static final String UNABLE_TO_CREAT_OBJECT = "unable_to_create_object";
+	public static final String APPLICATION_NAME_REQUIRED = "application_name_required";
 
 	public UIMessageResourceService() {
 
