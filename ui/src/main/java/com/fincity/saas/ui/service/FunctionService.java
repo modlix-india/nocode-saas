@@ -11,7 +11,7 @@ import com.fincity.saas.ui.repository.FunctionRepository;
 import reactor.core.publisher.Mono;
 
 @Service
-public class FunctionService extends AbstractUIServcie<Function, FunctionRepository> {
+public class FunctionService extends AbstractAppbasedUIService<Function, FunctionRepository> {
 
 	
 	public FunctionService() {

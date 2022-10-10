@@ -5,11 +5,13 @@ import java.util.Map;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.ui.util.CloneUtil;
 import com.fincity.saas.ui.util.DifferenceApplicator;
 import com.fincity.saas.ui.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -17,6 +19,7 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Document
 @Accessors(chain = true)
+@NoArgsConstructor
 public class Application extends AbstractUIDTO<Application> {
 
 	private static final long serialVersionUID = 4162610982706108795L;
@@ -26,6 +29,17 @@ public class Application extends AbstractUIDTO<Application> {
 	private Map<String, Object> properties; // NOSONAR
 
 	private String defaultLanguage;
+
+	public Application(Application app) {
+
+		super(app);
+
+		this.translations = CloneUtil.cloneMapStringMap(app.getTranslations());
+		this.languages = CloneUtil.cloneMapStringMap(app.getLanguages());
+		this.properties = CloneUtil.cloneMapObject(app.getProperties());
+
+		this.defaultLanguage = app.defaultLanguage;
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override

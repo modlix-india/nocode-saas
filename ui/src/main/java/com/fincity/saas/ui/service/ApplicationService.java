@@ -1,8 +1,10 @@
 package com.fincity.saas.ui.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,8 @@ import reactor.core.publisher.Mono;
 @Service
 public class ApplicationService extends AbstractUIServcie<Application, ApplicationRepository> {
 
+	private static final String CACHE_NAME_INHERITANCE_ORDER = "inheritanceOrder";
+
 	@Autowired
 	private PageService pageService;
 
@@ -36,6 +40,41 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .filter(ContextAuthentication::isSystemClient)
 		        .flatMap(ca -> super.create(entity));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	protected Mono<List<String>> inheritanceOrder(String appName, String clientCode) {
+
+		return flatMapMonoWithNull(
+
+		        () -> cacheService.makeKey(appName, "-", clientCode),
+
+		        key -> cacheService.get(CACHE_NAME_INHERITANCE_ORDER, key)
+		                .map(e -> (List<String>) e),
+
+		        (key, cList) ->
+				{
+			        if (cList != null)
+				        return Mono.just(cList);
+
+			        return this.repo.findOneByNameAndApplicationNameAndClientCode(appName, appName, clientCode)
+			                .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
+			                        : this.repo.findOneByNameAndApplicationNameAndClientCode(e.getName(),
+			                                e.getApplicationName(), e.getBaseClientCode()))
+			                .map(Application::getClientCode)
+			                .collectList();
+		        },
+
+		        (key, cList, finList) ->
+				{
+
+			        if (cList == null && finList != null) {
+				        cacheService.put(CACHE_NAME_INHERITANCE_ORDER, finList, key);
+			        }
+
+			        return Mono.just(finList);
+		        });
 	}
 
 	@Override
@@ -101,25 +140,36 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 		if (object == null)
 			return Mono.empty();
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () ->
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(ca == null || object.getPermission() == null)
+		                .map(e -> e || SecurityContextUtil.hasAuthority(object.getPermission(), ca.getAuthorities())),
+
+		        (ca, showShellPage) ->
 				{
 
-			        if (object.getProperties() == null || object.getProperties()
-			                .get("shellPage") == null)
+			        Map<String, Object> props = object.getProperties();
+
+			        if (props == null || props.get("shellPage") == null)
 				        return Mono.empty();
 
-			        return this.pageService.read(object.getProperties()
-			                .get("shellPage")
-			                .toString(), object.getApplicationName(), object.getClientCode());
+			        Object pageName = props.get("shellPage");
+
+			        if (!showShellPage.booleanValue() && props.get("forbiddenPage") != null)
+				        pageName = props.get("forbiddenPage");
+
+			        return this.pageService.read(pageName.toString(), object.getApplicationName(),
+			                object.getClientCode());
+
 		        },
 
-		        shellPage ->
+		        (ca, ssp, shellPage) ->
 				{
-
 			        object.getProperties()
 			                .put("shellPageDefinition", shellPage);
+
 			        return Mono.just(object);
 		        });
 	}
