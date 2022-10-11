@@ -1,13 +1,9 @@
 package com.fincity.security.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapFlux;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -29,9 +24,7 @@ import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 import com.fincity.security.util.ULongUtil;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple4;
 
 @Service
 public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRecord, ULong, Role, RoleDao> {
@@ -190,59 +183,62 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
 	public Mono<Boolean> removePermissionFromRole(ULong roleId, ULong permissionId) {
 
-		return flatMapMono(
+		Mono<Boolean> isPermissionFromBasePackage = flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.dao.readById(roleId),
+		        ca ->
 
-		        (ca, roleRecord) -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), roleRecord.getClientId()),
+				this.dao.readById(roleId),
 
-		        (ca, roleRecord, isManaged) -> ca.isSystemClient() || isManaged.booleanValue() ? Mono.just(true)
-		                : Mono.empty(),
+		        (ca, roleRecord) ->
 
-		        (ca, roleRecord, isManaged, sysOrManaged) ->
+				this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+				        .getClientId()), roleRecord.getClientId()),
 
-				sysOrManaged.booleanValue() ? this.dao.removePermission(roleId, permissionId)
-				        .map(val -> val > 0) : Mono.empty(),
-
-		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved) -> this.dao
-		                .getClientListFromAssignedRoleAndPermission(roleId, permissionId),
-
-		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole) -> this.dao
-		                .getClientListFromRoleClient(roleId),
-
-		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole,
-		                clientListFromRole) -> this.dao.getClientListFromAnotherRole(roleId, permissionId),
-
-		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole, clientListFromRole,
-		                clientListFromDifferentRole) ->
+		        (ca, roleRecord, isManaging) ->
 				{
 
-			        Set<ULong> clientList = new HashSet<>();
+			        if (ca.isSystemClient() || isManaging.booleanValue())
+				        return Mono.just(true);
 
-			        clientList.addAll(clientListFromAssignedRole);
-			        clientList.addAll(clientListFromRole);
-
-			        clientList.filter(cl -> !clientListFromDifferentRole.contains(cl));
-
-			        return Mono.just(clientList);
+			        return Mono.empty();
 		        },
 
-		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole, clientListFromRole,
-		                clientListFromDifferentRole, filteredList) ->
+		        (ca, roleRecord, isManaging, sysOrManaged) ->
 
-				this.userService.getUsersListWithClientIds(filteredList),
+				// remove permission from role,
 
-		        (ca, roleRecord, isManaged, sysOrManaged, roleRemoved, clientListFromAssignedRole, clientListFromRole,
-		                clientListFromDifferentRole, filteredList, usersList) ->
+				this.dao.removePermissionFromRole(roleId, permissionId),
+
+		        (ca, roleRecord, isManaging, sysOrManaged, permissionRemoved) ->
+
+				// check it is from base package or not
+				this.dao.checkPermissionBelongsToBasePackage(roleId, permissionId)
+
+		);
+
+		return flatMapMono(
+
+		        () -> isPermissionFromBasePackage,
+
+		        isBasePackage ->
+
+				this.dao.getClientListFromAssignedRoleAndPermission(roleId, permissionId),
+
+		        (isBasePackage, clientList) -> this.dao.getClientListFromAnotherRole(roleId, permissionId, clientList),
+
+		        (isBasePackage, clientList, filteredClientList) ->
+
+				this.userService.getUsersListWithClientIds(filteredClientList),
+
+		        (isBasePackage, clientList, filteredClientList, users) ->
 				{
-			        if (usersList != null || usersList.isEmpty())
+			        if (users == null || permissionId == null)
 				        return Mono.empty();
 
-			        usersList.toStream()
-			                .forEach(user -> this.userService.removingPermissionFromUser(user.getId(), permissionId));
+			        if (!isBasePackage.booleanValue())
+				        users.forEach(userId -> this.userService.removePermissionFromUser(userId, permissionId));
 
 			        return Mono.just(true);
 		        }
