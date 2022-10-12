@@ -2,9 +2,9 @@ package com.fincity.saas.ui.repository;
 
 import org.springframework.stereotype.Repository;
 
-import com.fincity.saas.ui.document.Theme;
+import com.fincity.saas.ui.document.Style;
 
 @Repository
-public interface ThemeRepository extends IUIRepository<Theme> {
+public interface StyleRepository extends IUIRepository<Style> {
 
 }

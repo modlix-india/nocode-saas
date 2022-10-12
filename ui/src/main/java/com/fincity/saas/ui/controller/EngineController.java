@@ -14,7 +14,7 @@ import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.service.ApplicationService;
 import com.fincity.saas.ui.service.FunctionService;
 import com.fincity.saas.ui.service.PageService;
-import com.fincity.saas.ui.service.ThemeService;
+import com.fincity.saas.ui.service.StyleService;
 
 import reactor.core.publisher.Mono;
 
@@ -29,7 +29,7 @@ public class EngineController {
 	private PageService pageService;
 
 	@Autowired
-	private ThemeService themeService;
+	private StyleService themeService;
 
 	@Autowired
 	private FunctionService functionService;
