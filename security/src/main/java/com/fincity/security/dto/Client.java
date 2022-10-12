@@ -7,8 +7,10 @@ import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 @Data
+@Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 
@@ -20,4 +22,5 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 	private int tokenValidityMinutes;
 	private String localeCode;
 	private SecurityClientStatusCode statusCode;
+
 }

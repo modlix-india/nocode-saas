@@ -24,6 +24,7 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	public static final String PLACEHOLDER = "NONE";
 
 	private ULong clientId;
+	private String clientCode;
 	private String userName;
 	private String emailId;
 	private String phoneNumber;
@@ -73,6 +74,7 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 		        .setAccountNonLocked(this.accountNonLocked)
 		        .setStringAuthorities(authorities)
 		        .setClientId(safeFrom(this.clientId))
+		        .setClientCode(this.clientCode)
 		        .setCredentialsNonExpired(credentialsNonExpired)
 		        .setEmailId(this.getEmailId())
 		        .setFirstName(firstName)

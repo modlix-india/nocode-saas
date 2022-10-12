@@ -17,8 +17,8 @@ import org.springframework.util.MultiValueMap;
 
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.ui.document.Theme;
-import com.fincity.saas.ui.repository.ThemeRepository;
+import com.fincity.saas.ui.document.Style;
+import com.fincity.saas.ui.repository.StyleRepository;
 import com.fincity.saas.ui.styles.expression.StyleExpressionEvaluator;
 
 import reactor.core.publisher.Mono;
@@ -26,7 +26,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Service
-public class ThemeService extends AbstractAppbasedUIService<Theme, ThemeRepository> {
+public class StyleService extends AbstractAppbasedUIService<Style, StyleRepository> {
 
 	private static final String WIDE_SCREEN = "wideScreen";
 	/* Minimum width 1281px */
@@ -87,12 +87,12 @@ public class ThemeService extends AbstractAppbasedUIService<Theme, ThemeReposito
 	private static final String NON_RESOLUTION = "nonResolution";
 	private static final String PARTS = "parts";
 
-	protected ThemeService() {
-		super(Theme.class);
+	protected StyleService() {
+		super(Style.class);
 	}
 
 	@Override
-	protected Mono<Theme> updatableEntity(Theme entity) {
+	protected Mono<Style> updatableEntity(Style entity) {
 
 		return flatMapMono(
 
@@ -121,7 +121,7 @@ public class ThemeService extends AbstractAppbasedUIService<Theme, ThemeReposito
 		        .defaultIfEmpty("");
 	}
 
-	private String makeCss(Theme theme) {
+	private String makeCss(Style theme) {
 
 		if (theme == null)
 			return "";

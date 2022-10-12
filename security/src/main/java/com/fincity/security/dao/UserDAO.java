@@ -65,9 +65,12 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		}
 
 		return Mono.from(this.dslContext.select(SECURITY_USER.fields())
+		        .select(SECURITY_CLIENT.CODE.as("clientCode"))
 		        .from(SECURITY_USER)
 		        .leftJoin(SECURITY_CLIENT_MANAGE)
 		        .on(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		        .leftJoin(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
 		        .where(field.eq(userName)
 		                .and(SECURITY_USER.CLIENT_ID.eq(clientId)
 		                        .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId))))
