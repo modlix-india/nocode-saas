@@ -3,6 +3,10 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
+
+import java.util.HashSet;
+import java.util.Set;
+
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
@@ -17,6 +21,7 @@ import org.springframework.stereotype.Component;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -111,4 +116,20 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 	}
 
+	public Mono<Set<ULong>> fetchPermissionsFromRole(ULong roleId) {
+
+		Set<ULong> permissionList = new HashSet<>();
+
+		Flux.from(
+
+		        this.dslContext.select(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
+		                .from(SECURITY_ROLE_PERMISSION)
+		                .leftJoin(SECURITY_PACKAGE_ROLE)
+		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
+		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)))
+		        .map(Record1::value1)
+		        .map(permissionList::add);
+
+		return Mono.just(permissionList);
+	}
 }

@@ -55,7 +55,6 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private SoxLogService soxLogService;
 
-	@Autowired
 	private PackageService packageService;
 
 	private UserService userService;
@@ -65,6 +64,10 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 
 	public void setUserService(UserService userService) {
 		this.userService = userService;
+	}
+	
+	public void setPackageService(PackageService packageService) {
+		this.packageService = packageService;
 	}
 
 	public Mono<Client> getClientBy(ServerHttpRequest request) {

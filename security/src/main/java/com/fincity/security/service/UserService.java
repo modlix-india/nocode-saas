@@ -391,7 +391,8 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
 	}
 
-	public Mono<Set<ULong>> getUsersListFromClient(Set<ULong> clients) {
-		return this.dao.getUsersListFromClient(clients);
+	public Mono<Set<ULong>> getUserListFromClients(Set<ULong> clientList) {
+		return this.dao.getUserListFromClientIds(clientList);
 	}
+
 }

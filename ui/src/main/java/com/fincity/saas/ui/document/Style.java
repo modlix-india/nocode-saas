@@ -17,9 +17,9 @@ import reactor.core.publisher.Mono;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document
-@CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1}", name = "themeFilteringIndex")
+@CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1}", name = "styleFilteringIndex")
 @Accessors(chain = true)
-public class Theme extends AbstractUIDTO<Theme> {
+public class Style extends AbstractUIDTO<Style> {
 
 	private static final long serialVersionUID = 4355909627072800292L;
 
@@ -29,7 +29,7 @@ public class Theme extends AbstractUIDTO<Theme> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<Theme> applyOverride(Theme base) {
+	public Mono<Style> applyOverride(Style base) {
 
 		if (base != null) {
 
@@ -55,7 +55,7 @@ public class Theme extends AbstractUIDTO<Theme> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<Theme> makeOverride(Theme base) {
+	public Mono<Style> makeOverride(Style base) {
 
 		if (base == null)
 			return Mono.just(this);

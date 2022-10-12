@@ -65,9 +65,12 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		}
 
 		return Mono.from(this.dslContext.select(SECURITY_USER.fields())
+		        .select(SECURITY_CLIENT.CODE.as("clientCode"))
 		        .from(SECURITY_USER)
 		        .leftJoin(SECURITY_CLIENT_MANAGE)
 		        .on(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		        .leftJoin(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
 		        .where(field.eq(userName)
 		                .and(SECURITY_USER.CLIENT_ID.eq(clientId)
 		                        .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId))))
@@ -370,18 +373,18 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		);
 	}
 
-	public Mono<Set<ULong>> getUsersListFromClient(Set<ULong> clients) {
+	public Mono<Set<ULong>> getUserListFromClientIds(Set<ULong> clientList) {
 
-		Set<ULong> userList = new HashSet();
+		Set<ULong> users = new HashSet<>();
 
 		Flux.from(
 
 		        this.dslContext.select(SECURITY_USER.ID)
 		                .from(SECURITY_USER)
-		                .where(SECURITY_USER.CLIENT_ID.in(clients)))
+		                .where(SECURITY_USER.CLIENT_ID.in(clientList)))
 		        .map(Record1::value1)
-		        .map(user -> userList.add(user));
+		        .map(users::add);
 
-		return Mono.just(userList);
+		return Mono.just(users);
 	}
 }
