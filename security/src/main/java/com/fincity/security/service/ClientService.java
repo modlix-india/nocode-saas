@@ -55,14 +55,17 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private SoxLogService soxLogService;
 
-	@Autowired
 	private PackageService packageService;
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
+	public void setPackageService(PackageService packageService) {
+		this.packageService = packageService;
+	}
+
 	public Mono<Client> getClientBy(ServerHttpRequest request) {
-  
+
 		HttpHeaders header = request.getHeaders();
 
 		String uriScheme = header.getFirst("X-Forwarded-Proto");
@@ -111,7 +114,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
 
 		return this.getClientBy(request)
-				.map(Client::getId)
+		        .map(Client::getId)
 		        .flatMap(this::getPotentialClientList);
 	}
 

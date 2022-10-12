@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -388,6 +389,10 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
+	}
+
+	public Mono<Set<ULong>> getUserListFromClients(Set<ULong> clientList) {
+		return this.dao.getUserListFromClientIds(clientList);
 	}
 
 }
