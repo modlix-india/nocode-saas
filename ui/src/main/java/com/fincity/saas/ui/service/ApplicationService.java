@@ -1,7 +1,6 @@
 package com.fincity.saas.ui.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.util.List;
 import java.util.Map;
@@ -23,8 +22,6 @@ import reactor.core.publisher.Mono;
 @Service
 public class ApplicationService extends AbstractUIServcie<Application, ApplicationRepository> {
 
-	private static final String CACHE_NAME_INHERITANCE_ORDER = "inheritanceOrder";
-
 	@Autowired
 	private PageService pageService;
 
@@ -40,41 +37,6 @@ public class ApplicationService extends AbstractUIServcie<Application, Applicati
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .filter(ContextAuthentication::isSystemClient)
 		        .flatMap(ca -> super.create(entity));
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	protected Mono<List<String>> inheritanceOrder(String appName, String clientCode) {
-
-		return flatMapMonoWithNull(
-
-		        () -> cacheService.makeKey(appName, "-", clientCode),
-
-		        key -> cacheService.get(CACHE_NAME_INHERITANCE_ORDER, key)
-		                .map(e -> (List<String>) e),
-
-		        (key, cList) ->
-				{
-			        if (cList != null)
-				        return Mono.just(cList);
-
-			        return this.repo.findOneByNameAndApplicationNameAndClientCode(appName, appName, clientCode)
-			                .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
-			                        : this.repo.findOneByNameAndApplicationNameAndClientCode(e.getName(),
-			                                e.getApplicationName(), e.getBaseClientCode()))
-			                .map(Application::getClientCode)
-			                .collectList();
-		        },
-
-		        (key, cList, finList) ->
-				{
-
-			        if (cList == null && finList != null) {
-				        cacheService.put(CACHE_NAME_INHERITANCE_ORDER, finList, key);
-			        }
-
-			        return Mono.just(finList);
-		        });
 	}
 
 	@Override

@@ -74,6 +74,9 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	@Autowired
 	protected IFeignSecurityService securityService;
 
+	@Autowired
+	private InheritanceService inheritanceService;
+
 	protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
 	};
 
@@ -417,7 +420,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 			                .getClientCode() : cc);
 		        },
 
-		        (ca, isBeingManaged, finClientCode) -> this.inheritanceOrder(appName, finClientCode),
+		        (ca, isBeingManaged, finClientCode) -> this.inheritanceService.order(appName, finClientCode),
 
 		        (ca, isBeingManaged, finClientCode, inheritance) ->
 				{
@@ -517,6 +520,4 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		return this.pojoClass.getSimpleName() + CACHE_NAME;
 	}
-
-	protected abstract Mono<List<String>> inheritanceOrder(String appName, String clientCode);
 }
