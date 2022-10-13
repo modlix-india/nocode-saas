@@ -179,6 +179,22 @@ public class PackageService extends
 		return this.dao.getClientIdFromPackage(packageId);
 	}
 
+	public Mono<Set<ULong>> getRolesFromPackage(ULong packageId) {
+		return this.dao.getRolesFromPackage(packageId);
+	}
+
+	public Mono<Set<ULong>> getRolesAfterOmittingFromBasePackage(Set<ULong> roles) {
+		return this.dao.getRolesAfterOmittingFromBasePackage(roles);
+	}
+
+	public Mono<Set<ULong>> getPermissionsFromPackage(ULong packageId) {
+		return this.dao.getPermissionsFromPackage(packageId);
+	}
+
+	public Mono<Set<ULong>> omitPermissionsFromBasePackage(Set<ULong> permissions) {
+		return this.dao.omitPermissionsFromBasePackage(permissions);
+	}
+
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Role')")
 	public Mono<Boolean> removeRoleFromPackage(ULong packageId, ULong roleId) {
 

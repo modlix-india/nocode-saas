@@ -33,11 +33,11 @@ public class ClientController
 		return this.service.isBeingManagedBy(managingClientCode, clientCode)
 		        .map(ResponseEntity::ok);
 	}
-	
+
 	@GetMapping("/internal/getClientCode")
-	public Mono<ResponseEntity<String>> getClientCode(@RequestParam String scheme, @RequestParam String host, @RequestParam String port) {
-		return this.service.getClientPattern(
-		        scheme, host, port)
+	public Mono<ResponseEntity<String>> getClientCode(@RequestParam String scheme, @RequestParam String host,
+	        @RequestParam String port) {
+		return this.service.getClientPattern(scheme, host, port)
 		        .map(ClientUrlPattern::getClientCode)
 		        .defaultIfEmpty("SYSTEM")
 		        .map(ResponseEntity::ok);
@@ -46,6 +46,12 @@ public class ClientController
 	@GetMapping("/{clientId}/assignPackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> assignPackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
 		return clientService.assignPackageToClient(clientId, packageId)
+		        .map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/{clientId}/removePackage/{packageId}")
+	public Mono<ResponseEntity<Boolean>> removePackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
+		return clientService.removePackageFromClient(clientId, packageId)
 		        .map(ResponseEntity::ok);
 	}
 }
