@@ -38,6 +38,9 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	private ClientService clientService;
 
 	@Autowired
+	private UserService userService;
+
+	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
 	@Override
@@ -185,4 +188,72 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	public Mono<Set<ULong>> fetchPermissionsFromRole(ULong roleId) {
 		return this.dao.fetchPermissionsFromRole(roleId);
 	}
+
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
+	public Mono<Boolean> removePermissionFromRole(ULong roleId, ULong permissionId) {
+
+		Mono<Boolean> isPermissionFromBasePackage = flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+
+				this.dao.readById(roleId),
+
+		        (ca, roleRecord) ->
+
+				this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+				        .getClientId()), roleRecord.getClientId()),
+
+		        (ca, roleRecord, isManaging) ->
+				{
+
+			        if (ca.isSystemClient() || isManaging.booleanValue())
+				        return Mono.just(true);
+
+			        return Mono.empty();
+		        },
+
+		        (ca, roleRecord, isManaging, sysOrManaged) ->
+
+				// remove permission from role,
+
+				this.dao.removePermissionFromRole(roleId, permissionId),
+
+		        (ca, roleRecord, isManaging, sysOrManaged, permissionRemoved) ->
+
+				// check it is from base package or not
+				this.dao.checkPermissionBelongsToBasePackage(roleId, permissionId)
+
+		);
+
+		return flatMapMono(
+
+		        () -> isPermissionFromBasePackage,
+
+		        isBasePackage ->
+
+				this.dao.getClientListFromAssignedRoleAndPermission(roleId, permissionId),
+
+		        (isBasePackage, clientList) -> this.dao.getClientListFromAnotherRole(roleId, permissionId, clientList),
+
+		        (isBasePackage, clientList, filteredClientList) ->
+
+				this.userService.getUserListFromClients(filteredClientList),
+
+		        (isBasePackage, clientList, filteredClientList, users) ->
+				{
+			        if (users == null || permissionId == null)
+				        return Mono.empty();
+
+			        if (!isBasePackage.booleanValue())
+				        users.forEach(userId -> this.userService.removePermissionFromUser(userId, permissionId));
+
+			        return Mono.just(true);
+		        }
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
+	}
+
 }
