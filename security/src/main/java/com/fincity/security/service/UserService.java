@@ -391,12 +391,14 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
 	}
 
-	public Mono<Set<ULong>> getUsersListWithClientIds(Set<ULong> clientIds) {
-		return this.dao.getListOfUsersWithClientIds(clientIds);
+	public Mono<Set<ULong>> getUserListFromClients(Set<ULong> clientList) {
+		return this.dao.getUserListFromClientIds(clientList);
 	}
 
 	public Mono<Boolean> removingPermissionFromUser(ULong userId, ULong permissionId) {
 		return this.dao.removingPermissionFromUser(userId, permissionId)
 		        .map(val -> val > 0);
 	}
+
+// getUserListFromClientIds
 }

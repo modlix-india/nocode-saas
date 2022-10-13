@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -180,6 +181,14 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 		        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId, roleId));
 	}
 
+	public Mono<ULong> getClientIdFromRole(ULong roleId) {
+		return this.dao.getClientIdFromRole(roleId);
+	}
+
+	public Mono<Set<ULong>> fetchPermissionsFromRole(ULong roleId) {
+		return this.dao.fetchPermissionsFromRole(roleId);
+	}
+
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
 	public Mono<Boolean> removePermissionFromRole(ULong roleId, ULong permissionId) {
 
@@ -230,7 +239,7 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 		        (isBasePackage, clientList, filteredClientList) ->
 
-				this.userService.getUsersListWithClientIds(filteredClientList),
+				this.userService.getUserListFromClients(filteredClientList),
 
 		        (isBasePackage, clientList, filteredClientList, users) ->
 				{

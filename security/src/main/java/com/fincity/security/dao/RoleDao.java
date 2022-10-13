@@ -118,6 +118,23 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 	}
 
+	public Mono<Set<ULong>> fetchPermissionsFromRole(ULong roleId) {
+
+		Set<ULong> permissionList = new HashSet<>();
+
+		Flux.from(
+
+		        this.dslContext.select(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
+		                .from(SECURITY_ROLE_PERMISSION)
+		                .leftJoin(SECURITY_PACKAGE_ROLE)
+		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
+		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)))
+		        .map(Record1::value1)
+		        .map(permissionList::add);
+
+		return Mono.just(permissionList);
+	}
+
 	public Mono<Integer> removePermissionFromRole(ULong roleId, ULong permissionId) {
 
 		DeleteQuery<SecurityRolePermissionRecord> query = this.dslContext.deleteQuery(SECURITY_ROLE_PERMISSION);
@@ -205,5 +222,4 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 		return Mono.just(filteredClientList);
 	}
-
 }

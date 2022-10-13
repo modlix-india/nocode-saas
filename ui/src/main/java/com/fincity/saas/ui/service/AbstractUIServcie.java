@@ -4,8 +4,13 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.saas.ui.service.UIMessageResourceService.FORBIDDEN_CREATE;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -14,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.MultiValueMap;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +28,10 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoUpdatableDataService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
@@ -33,9 +43,14 @@ import com.fincity.saas.ui.repository.IUIRepository;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IUIRepository<D>>
         extends AbstractMongoUpdatableDataService<String, D, R> {
+
+	private static final String CLIENT_CODE = "clientCode";
+	private static final String APPLICATION_NAME = "applicationName";
 
 	protected static final String CREATE = "CREATE";
 	protected static final String UPDATE = "UPDATE";
@@ -129,9 +144,9 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		        Criteria.where("name")
 		                .is(cca.getName()),
-		        Criteria.where("applicationName")
+		        Criteria.where(APPLICATION_NAME)
 		                .is(cca.getApplicationName()),
-		        Criteria.where("clientCode")
+		        Criteria.where(CLIENT_CODE)
 		                .is(cca.getClientCode())
 
 		)), this.pojoClass)
@@ -170,12 +185,6 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		        this::getMergedSources,
 
 		        this::applyOverride);
-	}
-
-	@Override
-	public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-
-		return super.readPageFilter(pageable, condition);
 	}
 
 	@Override
@@ -331,26 +340,125 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		        .map(Object::toString);
 	}
 
-	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, AbstractCondition condition) {
+	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) {
+
+		final String appName = params.getFirst(APPLICATION_NAME) == null ? "" : params.getFirst(APPLICATION_NAME);
+
+		Mono<Tuple2<ComplexCondition, List<String>>> condition = paramToConditionLRO(params, appName);
+
+		return condition.flatMap(tup -> FlatMapUtil.flatMapMono(
+
+		        () -> this.filter(tup.getT1()),
+
+		        crit -> this.mongoTemplate
+		                .find(new Query(crit).with(pageable.getSort()), ListResultObject.class,
+		                        this.pojoClass.getSimpleName()
+		                                .toLowerCase())
+		                .collectList(),
+
+		        (crit, list) ->
+				{
+			        Map<String, ListResultObject> things = new HashMap<>();
+
+			        String clientCode = tup.getT2()
+			                .get(0);
+
+			        for (ListResultObject lro : list) {
+
+				        if (!things.containsKey(lro.getName())) {
+					        things.put(lro.getName(), lro);
+					        continue;
+				        }
+
+				        if (clientCode.equals(lro.getClientCode())) {
+					        things.put(lro.getName(), lro);
+				        }
+			        }
+
+			        Set<String> ids = things.values()
+			                .stream()
+			                .map(ListResultObject::getId)
+			                .collect(Collectors.toSet());
+
+			        List<ListResultObject> nList = list.stream()
+			                .sequential()
+			                .filter(e -> ids.contains(e.getId()))
+			                .toList();
+
+			        return Mono.just(new PageImpl<>(nList.subList((int) pageable.getOffset(),
+			                (int) pageable.getOffset() + pageable.getPageSize()), pageable, nList.size()));
+		        }));
+	}
+
+	private Mono<Tuple2<ComplexCondition, List<String>>> paramToConditionLRO(MultiValueMap<String, String> params,
+	        final String appName) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.filter(condition),
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        crit -> Mono.just((new Query(crit)).skip(pageable.getOffset())
-		                .limit(pageable.getPageSize())
-		                .with(pageable.getSort())),
+		        ca ->
+				{
+			        if (params.containsKey(CLIENT_CODE) && ca.isSystemClient())
+				        return this.securityService.isBeingManaged(ca.getUser()
+				                .getClientCode(), params.getFirst(CLIENT_CODE));
 
-		        (crit, dataQuery) -> this.mongoTemplate
-		                .find(dataQuery, ListResultObject.class, this.pojoClass.getSimpleName()
-		                        .toLowerCase())
-		                .collectList(),
+			        return Mono.just(Boolean.TRUE);
+		        },
 
-		        (crit, dataQuery, list) -> Mono.just((new Query(crit)).with(pageable.getSort())),
+		        (ca, isBeingManaged) ->
+				{
 
-		        (crit, dataQuery, list, countQuery) -> this.mongoTemplate.count(countQuery, this.pojoClass),
+			        if (!isBeingManaged.booleanValue())
+				        return Mono.empty();
 
-		        (crit, dataQuery, list, countQuery, count) -> Mono.just(new PageImpl<>(list, pageable, count)));
+			        String cc = params.getFirst(CLIENT_CODE);
+			        return Mono.just(cc == null ? ca.getUser()
+			                .getClientCode() : cc);
+		        },
+
+		        (ca, isBeingManaged, finClientCode) -> this.inheritanceOrder(appName, finClientCode),
+
+		        (ca, isBeingManaged, finClientCode, inheritance) ->
+				{
+
+			        List<AbstractCondition> conditions = new ArrayList<>();
+
+			        if (inheritance.size() == 1)
+				        conditions.add(new FilterCondition().setField(CLIENT_CODE)
+				                .setOperator(FilterConditionOperator.EQUALS)
+				                .setValue(inheritance.get(0)));
+			        else
+				        conditions.add(new FilterCondition().setField(CLIENT_CODE)
+				                .setOperator(FilterConditionOperator.IN)
+				                .setValue(inheritance.stream()
+				                        .collect(Collectors.joining(","))));
+
+			        String applicationName = params.getFirst(APPLICATION_NAME);
+			        conditions.add(new FilterCondition().setField(APPLICATION_NAME)
+			                .setOperator(FilterConditionOperator.EQUALS)
+			                .setValue(applicationName));
+
+			        conditions.addAll(params.entrySet()
+			                .stream()
+			                .filter(e -> !e.getKey()
+			                        .equals(APPLICATION_NAME)
+			                        && !e.getKey()
+			                                .equals(CLIENT_CODE))
+			                .filter(e -> Objects.nonNull(e.getValue()))
+			                .filter(e -> !e.getValue()
+			                        .isEmpty())
+			                .map(e -> new FilterCondition().setField(e.getKey())
+			                        .setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL)
+			                        .setValue(e.getValue()
+			                                .get(0)))
+			                .toList());
+
+			        Tuple2<ComplexCondition, List<String>> tup = Tuples
+			                .of(new ComplexCondition().setConditions(conditions)
+			                        .setOperator(ComplexConditionOperator.AND), inheritance);
+			        return Mono.just(tup);
+		        });
 	}
 
 	public Mono<D> read(String name, String appCode, String clientCode) {
