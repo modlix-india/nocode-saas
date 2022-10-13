@@ -30,4 +30,13 @@ public class RoleController extends AbstractJOOQDataController<SecurityRoleRecor
 		return this.roleService.assignPermissionToRole(roleId, permissionId)
 		        .map(ResponseEntity::ok);
 	}
+
+	@GetMapping("{roleId}/removesPermission/{permissionId}")
+	public Mono<ResponseEntity<Boolean>> removePermission(@PathVariable ULong roleId,
+	        @PathVariable ULong permissionId) {
+
+		return this.roleService.assignPermissionToRole(roleId, permissionId)
+		        .map(ResponseEntity::ok);
+	}
+
 }
