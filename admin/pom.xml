@@ -72,7 +72,7 @@
 				<version>3.3.0</version>
 				<configuration>
 					<from>
-						<image>gcr.io/distroless/java:18</image>
+						<image>openjdk:alpine</image>
 					</from>
 					<to>
 						<image>ghcr.io/fincity-india/admin</image>
