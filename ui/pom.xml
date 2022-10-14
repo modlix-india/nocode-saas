@@ -57,10 +57,10 @@
 			<type>pom</type>
 		</dependency>
 		<dependency>
-            <groupId>com.playtika.reactivefeign</groupId>
-            <artifactId>feign-reactor-spring-configuration</artifactId>
-            <version>${feign-reactor.version}</version>
-        </dependency>
+			<groupId>com.playtika.reactivefeign</groupId>
+			<artifactId>feign-reactor-spring-configuration</artifactId>
+			<version>${feign-reactor.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons</artifactId>
@@ -137,6 +137,9 @@
 				<artifactId>jib-maven-plugin</artifactId>
 				<version>3.3.0</version>
 				<configuration>
+					<from>
+						<image>gcr.io/distroless/java:18</image>
+					</from>
 					<to>
 						<image>ghcr.io/fincity-india/ui</image>
 					</to>
