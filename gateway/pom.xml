@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.fincity</groupId>
 	<artifactId>gateway</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>Gateway</name>
 	<description>Fincity SAAS gateway server</description>
 	<properties>

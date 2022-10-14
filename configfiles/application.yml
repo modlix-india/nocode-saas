@@ -11,9 +11,16 @@ eureka:
   instance:
     prefer-ip-address: true
 
+server:
+  shutdown: graceful
+
 management:
   security:
     enabled: false
+  endpoint:
+    health:
+      probes:
+        enabled: true
   endpoints:
     web:
       expose: "*"
@@ -24,6 +31,8 @@ endpoints:
   enabled: true
 
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 60s
   servlet:
     multipart:
       max-file-size: -1

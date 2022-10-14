@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.fincity</groupId>
 	<artifactId>eureka</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>Eureka Server</name>
 	<description>Fincity SAAS eureka server</description>
 	<properties>

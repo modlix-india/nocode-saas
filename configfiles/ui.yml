@@ -1,12 +1,8 @@
 spring:
   data:
     mongodb:
-      host: ${ui.mongo.host}
-      port: ${ui.mongo.port}
-      database: ${ui.mongo.database:ui}
-      authenticationDatabase: ${ui.mongo.authdatabase:admin}
-      password: ${ui.mongo.password}
-      username: ${ui.mongo.user:root}
+      uri: ${ui.mongo.uri}
+
   boot:
     admin:
       client:
