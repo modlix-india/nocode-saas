@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.fincity.saas</groupId>
 	<artifactId>ui</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>ui</name>
 	<description>UI Server for the no code Platform</description>
 	<properties>
@@ -130,6 +130,16 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.3.0</version>
+				<configuration>
+					<to>
+						<image>ghcr.io/fincity-india/ui</image>
+					</to>
 				</configuration>
 			</plugin>
 		</plugins>

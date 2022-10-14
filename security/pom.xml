@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.fincity.saas</groupId>
 	<artifactId>security</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>Security</name>
 	<description>Fincity SAAS security server</description>
 	<properties>
@@ -257,6 +257,16 @@
 									<directory>src/main/java</directory>
 								</target>
 							</generator>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>com.google.cloud.tools</groupId>
+						<artifactId>jib-maven-plugin</artifactId>
+						<version>3.3.0</version>
+						<configuration>
+							<to>
+								<image>ghcr.io/fincity-india/security</image>
+							</to>
 						</configuration>
 					</plugin>
 				</plugins>
