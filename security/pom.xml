@@ -195,7 +195,19 @@
 				<groupId>org.flywaydb</groupId>
 				<artifactId>flyway-maven-plugin</artifactId>
 			</plugin>
-
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.3.0</version>
+				<configuration>
+					<from>
+						<image>openjdk:alpine</image>
+					</from>
+					<to>
+						<image>ghcr.io/fincity-india/security</image>
+					</to>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -257,19 +269,6 @@
 									<directory>src/main/java</directory>
 								</target>
 							</generator>
-						</configuration>
-					</plugin>
-					<plugin>
-						<groupId>com.google.cloud.tools</groupId>
-						<artifactId>jib-maven-plugin</artifactId>
-						<version>3.3.0</version>
-						<configuration>
-							<from>
-								<image>openjdk:alpine</image>
-							</from>
-							<to>
-								<image>ghcr.io/fincity-india/security</image>
-							</to>
 						</configuration>
 					</plugin>
 				</plugins>
