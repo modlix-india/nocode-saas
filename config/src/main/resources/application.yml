@@ -5,7 +5,8 @@ spring:
     config:
       server:
         bootstrap: true
-    
+  profiles:
+    active: ${SPRING_PROFILE:default} 
         
 server:
   port: 8888
