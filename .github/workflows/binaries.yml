@@ -42,19 +42,19 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Building admin
         working-directory: ./admin
-        run: mvn spring-boot:build-image
+        run: mvn compile jib:build
       - name: Building config
         working-directory: ./config
-        run: mvn spring-boot:build-image
+        run: mvn compile jib:build
       - name: Building eureka
         working-directory: ./eureka
-        run: mvn spring-boot:build-image
+        run: mvn compile jib:build
       - name: Building gateway
         working-directory: ./gateway
-        run: mvn spring-boot:build-image
+        run: mvn compile jib:build
       - name: Building security
         working-directory: ./security
-        run: mvn spring-boot:build-image
+        run: mvn compile jib:build
       - name: Building ui
         working-directory: ./ui
-        run: mvn spring-boot:build-image
+        run: mvn compile jib:build
