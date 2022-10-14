@@ -81,6 +81,9 @@
 				<artifactId>jib-maven-plugin</artifactId>
 				<version>3.3.0</version>
 				<configuration>
+					<from>
+						<image>openjdk:alpine</image>
+					</from>
 					<to>
 						<image>ghcr.io/fincity-india/config</image>
 					</to>
