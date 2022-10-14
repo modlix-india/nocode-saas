@@ -131,6 +131,8 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	}
 
 	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, D entity) {
+		
+		if (entity == null) return Mono.just(false);
 
 		return flatMapMono(
 		        () -> SecurityContextUtil.hasAuthority("Authorities." + this.pojoClass.getSimpleName() + "_" + method,

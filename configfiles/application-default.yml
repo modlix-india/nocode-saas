@@ -8,11 +8,7 @@ security:
 
 ui:
   mongo:
-    host: localhost
-    port: 27017
-    user: root
-    password: Kiran@123
-    authdatabase: admin
+    uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
 
 spring:
   flyway:
