@@ -18,3 +18,7 @@ spring:
       client:
         instance:
           name: Gateway
+
+redis:
+  cache:
+    prefix: gtw
