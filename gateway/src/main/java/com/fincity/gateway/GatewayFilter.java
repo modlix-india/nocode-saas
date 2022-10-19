@@ -151,7 +151,7 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		                        .map(cod ->
 								{
 
-			                        cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENTCODE, cod, uriKey);
+			                        cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENTCODE, cod, key);
 			                        return cod;
 		                        }))));
 	}

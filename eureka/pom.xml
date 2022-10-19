@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.fincity</groupId>
 	<artifactId>eureka</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<name>Eureka Server</name>
 	<description>Fincity SAAS eureka server</description>
 	<properties>
@@ -95,6 +95,10 @@
 					</from>
 					<to>
 						<image>ghcr.io/fincity-india/eureka</image>
+						<tags>
+							<tag>${env.ENVIRONMENT}</tag>
+							<tag>${project.version}</tag>
+						</tags>
 					</to>
 				</configuration>
 			</plugin>
