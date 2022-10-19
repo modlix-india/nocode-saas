@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.fincity.saas</groupId>
 	<artifactId>ui</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<name>ui</name>
 	<description>UI Server for the no code Platform</description>
 	<properties>
@@ -142,6 +142,10 @@
 					</from>
 					<to>
 						<image>ghcr.io/fincity-india/ui</image>
+						<tags>
+							<tag>${env.ENVIRONMENT}</tag>
+							<tag>${project.version}</tag>
+						</tags>
 					</to>
 				</configuration>
 			</plugin>
