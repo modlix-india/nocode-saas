@@ -35,3 +35,7 @@ management:
   endpoint:
     flyway:
       enabled: true
+
+redis:
+  cache:
+    prefix: sec

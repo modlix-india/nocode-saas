@@ -4,38 +4,85 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 
+import io.lettuce.core.api.async.RedisAsyncCommands;
+import io.lettuce.core.pubsub.RedisPubSubAdapter;
+import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
+import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-//TODO: This is primary cache, I need to implement the Redis cache as secondary to keep it distributed. 
-
 @Service
-public class CacheService {
+public class CacheService extends RedisPubSubAdapter<String, String> {
 
 	@Autowired
 	private CacheManager cacheManager;
 
+	@Autowired(required = false)
+	private RedisAsyncCommands<String, Object> redisAsyncCommand;
+
+	@Autowired(required = false)
+	@Qualifier("subRedisAsyncCommand")
+	private RedisPubSubAsyncCommands<String, String> subAsyncCommand;
+
+	@Autowired(required = false)
+	@Qualifier("pubRedisAsyncCommand")
+	private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+
+	@Autowired(required = false)
+	private StatefulRedisPubSubConnection<String, String> subConnect;
+
 	@Value("${spring.application.name}")
 	private String appName;
 
-	public Mono<Boolean> evict(String cacheName, String key) {
+	@Value("${redis.channel:evictionChannel}")
+	private String channel;
 
-		return Mono.fromCallable(() -> {
-			Cache x = cacheManager.getCache(cacheName);
-			if (x == null)
-				return true;
+	@Value("${redis.cache.prefix:unk}")
+	private String redisPrefix;
 
-			x.evictIfPresent(key);
-			return true;
-		})
+	@PostConstruct
+	public void registerEviction() {
+
+		if (redisAsyncCommand == null)
+			return;
+
+		subAsyncCommand.subscribe(channel);
+		subConnect.addListener(this);
+	}
+
+	public Mono<Boolean> evict(String cName, String key) {
+
+		String cacheName = this.redisPrefix + "-" + cName;
+
+		if (pubAsyncCommand != null) {
+			Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":" + key))
+			        .map(e -> true)
+			        .subscribe();
+
+			return Mono.fromCompletionStage(redisAsyncCommand.hdel(cacheName, key))
+			        .map(e -> true);
+		}
+
+		return Mono.fromCallable(() -> this.caffineCacheEvict(cacheName, key))
 		        .onErrorResume(t -> Mono.just(false));
 
+	}
+
+	private Boolean caffineCacheEvict(String cacheName, String key) {
+
+		Cache x = cacheManager.getCache(cacheName);
+		if (x != null)
+			x.evictIfPresent(key);
+		return true;
 	}
 
 	public Mono<Boolean> evict(String cacheName, Object... keys) {
@@ -55,25 +102,70 @@ public class CacheService {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> Mono<T> put(String cacheName, Object value, Object... keys) {
+	public <T> Mono<T> put(String cName, Object value, Object... keys) {
+
+		String cacheName = this.redisPrefix + "-" + cName;
 
 		this.makeKey(keys)
-		        .subscribe(key -> this.cacheManager.getCache(cacheName)
-		                .put(key, value));
+		        .flatMap(key ->
+				{
+
+			        this.cacheManager.getCache(cacheName)
+			                .put(key, value);
+
+			        if (redisAsyncCommand == null)
+				        return Mono.just(true);
+
+			        Mono.fromCompletionStage(redisAsyncCommand.hset(cacheName, key, value))
+			                .subscribe();
+
+			        return Mono.just(true);
+		        })
+		        .subscribe();
 
 		return Mono.just((T) value);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> Mono<T> get(String cacheName, Object... keys) {
+	public <T> Mono<T> get(String cName, Object... keys) {
+
+		String cacheName = this.redisPrefix + "-" + cName;
 
 		return this.makeKey(keys)
-		        .flatMap(key -> Mono.justOrEmpty(this.cacheManager.getCache(cacheName)
-		                .get(key))
-		                .map(vw -> (T) vw.get()));
+		        .flatMap(key ->
+				{
+
+			        Mono<T> value = Mono.justOrEmpty(this.cacheManager.getCache(cacheName)
+			                .get(key))
+			                .map(vw -> (T) vw.get());
+
+			        if (redisAsyncCommand == null)
+				        return value;
+
+			        return value.switchIfEmpty(
+			                Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
+			                		.map(v -> {
+			        					
+			        					System.err.println(cacheName + " -- " + key +" -- "+v);
+			        					
+			        					return v;
+			        				})
+			                        .map(vw -> (T) vw)));
+		        });
 	}
 
-	public Mono<Boolean> evictAll(String cacheName) {
+	public Mono<Boolean> evictAll(String cName) {
+
+		String cacheName = this.redisPrefix + "-" + cName;
+
+		if (pubAsyncCommand != null) {
+			Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":*"))
+			        .subscribe();
+
+			return Mono.fromCompletionStage(redisAsyncCommand.del(cacheName))
+			        .map(e -> true)
+			        .defaultIfEmpty(true);
+		}
 
 		return Mono.fromCallable(() -> {
 
@@ -85,8 +177,26 @@ public class CacheService {
 	}
 
 	public Mono<Boolean> evictAllCaches() {
-		return Flux.fromIterable(this.cacheManager.getCacheNames())
-		        .map(this.cacheManager::getCache)
+
+		if (pubAsyncCommand != null) {
+
+			return Mono.fromCompletionStage(redisAsyncCommand.keys(this.redisPrefix + "-*"))
+			        .flatMapMany(Flux::fromIterable)
+			        .map(e ->
+					{
+
+				        Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, e + ":*"))
+				                .subscribe();
+				        return Mono.fromCompletionStage(redisAsyncCommand.del(e));
+
+			        })
+			        .map(e -> true)
+			        .reduce((a, b) -> a && b);
+		}
+
+		Flux<String> flux = Flux.fromIterable(this.cacheManager.getCacheNames());
+
+		return flux.map(this.cacheManager::getCache)
 		        .map(e ->
 				{
 			        e.clear();
@@ -97,6 +207,33 @@ public class CacheService {
 
 	public Mono<Collection<String>> getCacheNames() {
 
-		return Mono.just(this.cacheManager.getCacheNames());
+		return Mono.just(this.cacheManager.getCacheNames()
+		        .stream()
+		        .map(e -> e.substring(this.redisPrefix.length() + 1))
+		        .toList());
+	}
+
+	@Override
+	public void message(String channel, String message) {
+
+		if (channel == null || !channel.equals(this.channel))
+			return;
+
+		int colon = message.indexOf(':');
+		if (colon == -1)
+			return;
+
+		String cacheName = message.substring(0, colon);
+		String cacheKey = message.substring(colon + 1);
+
+		Cache cache = this.cacheManager.getCache(cacheName);
+
+		if (cache == null)
+			return;
+
+		if (cacheKey.equals("*"))
+			cache.clear();
+		else
+			cache.evictIfPresent(cacheKey);
 	}
 }
