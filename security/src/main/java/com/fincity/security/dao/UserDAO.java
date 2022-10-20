@@ -34,6 +34,7 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -65,15 +66,17 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		}
 
 		return Mono.from(this.dslContext.select(SECURITY_USER.fields())
-		        .select(SECURITY_CLIENT.CODE.as("clientCode"))
+		        .select(SECURITY_USER.CLIENT_ID.as("clientCode"))
 		        .from(SECURITY_USER)
 		        .leftJoin(SECURITY_CLIENT_MANAGE)
-		        .on(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
 		        .leftJoin(SECURITY_CLIENT)
 		        .on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
 		        .where(field.eq(userName)
 		                .and(SECURITY_USER.CLIENT_ID.eq(clientId)
-		                        .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId))))
+		                        .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)))
+		                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE))
+		                .and(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE)))
 		        .limit(1))
 		        .map(e -> e.into(User.class));
 	}
