@@ -6,8 +6,12 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
@@ -24,6 +28,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.JWTClaims;
 import com.fincity.saas.common.security.jwt.JWTUtil;
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
@@ -38,6 +43,7 @@ import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -189,7 +195,10 @@ public class AuthenticationService implements IAuthenticationService {
 		}
 
 		Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(u.getId()
-		        .toBigInteger(), tokenKey, timeInMinutes, host, port, linClient.getId().toBigInteger(), linClient.getCode());
+		        .toBigInteger(), tokenKey, timeInMinutes, host, port,
+		        linClient.getId()
+		                .toBigInteger(),
+		        linClient.getCode());
 
 		if (authRequest.isCookie())
 			response.addCookie(ResponseCookie.from("Authentication", token.getT1())
@@ -348,9 +357,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
 
-		        (claims, u, typ) -> Mono
-		                .just(new ContextAuthentication(u.toContextUser(), true, claims.getLoggedInClientId(), claims.getLoggedInClientCode(),
-		                        typ.getT1(), typ.getT2(), tokenObject.getToken(), tokenObject.getExpiresAt())));
+		        (claims, u,
+		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
+		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
+		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
 	}
 
 	private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {
@@ -379,5 +389,43 @@ public class AuthenticationService implements IAuthenticationService {
 		}
 
 		return Mono.just(jwtClaims);
+	}
+
+	public Mono<Boolean> updateNewPassword(RequestUpdatePassword requestPassword) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(requestPassword.getOldPassword()
+		                .equals(requestPassword.getNewPassword())
+		                && requestPassword.getNewPassword()
+		                        .equals(requestPassword.getConfirmPassword())),
+
+		        (ca, passwordEqual) -> this.userService.checkPasswordEqual(ULong.valueOf(ca.getUser()
+		                .getId()), requestPassword.getNewPassword()),
+
+		        // add password policy service to verify the password when implemented
+
+		        (ca, passwordEqual, passwordMatches) -> Mono.just(true),
+
+		        (ca, passwordEqual, passwordMatches, isValidPasswordPolicy) ->
+
+				{
+			        if (passwordEqual.booleanValue() && passwordMatches.booleanValue()
+			                && isValidPasswordPolicy.booleanValue()) {
+
+				        Map<String, Object> updateMap = new HashMap<>();
+				        updateMap.put("password", requestPassword.getNewPassword());
+				        return this.userService.update(ULong.valueOf(ca.getUser()
+				                .getId()), updateMap)
+				                .map(Objects::nonNull);
+			        }
+
+			        return Mono.empty();
+
+		        }
+
+		);
 	}
 }

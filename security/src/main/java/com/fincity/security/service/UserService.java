@@ -400,5 +400,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .map(val -> val > 0);
 	}
 
-// getUserListFromClientIds
+	public Mono<Boolean> checkPasswordEqual(ULong userId, String newPassword) {
+		return this.dao.checkPasswordEqual(userId, newPassword);
+	}
 }
