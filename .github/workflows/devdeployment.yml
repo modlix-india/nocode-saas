@@ -43,6 +43,7 @@ jobs:
         working-directory: ./admin
         run: |
           mvn install
+          ls -lrt ./target/*
           aws s3 sync ./target/*.jar s3://nclc-deployment/development
       - name: Building config
         working-directory: ./config
