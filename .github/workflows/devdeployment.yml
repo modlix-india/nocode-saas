@@ -44,7 +44,7 @@ jobs:
         run: |
           mvn install
           export jarfile=`ls ./target/*.jar`
-          aws s3 sync $jarfile s3://nclc-deployment/development
+          aws s3 cp $jarfile s3://nclc-deployment/development/admin.jar
       - name: Building config
         working-directory: ./config
         run: |
