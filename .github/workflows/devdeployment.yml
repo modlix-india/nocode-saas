@@ -42,12 +42,12 @@ jobs:
       - name: Building admin
         working-directory: ./admin
         run: |
-          mvn clean install
+          mvn install
           aws s3 sync ./target/*.jar s3://nclc-deployment/development
       - name: Building config
         working-directory: ./config
         run: |
-          mvn clean install
+          mvn install
           aws s3 sync ./target/*.jar s3://nclc-deployment/development
       - name: Building eureka
         working-directory: ./eureka
