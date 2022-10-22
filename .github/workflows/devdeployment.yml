@@ -1,14 +1,12 @@
-name: Setup Binary Artifacts
+name: Dev Deployment
 
 on:
   #To trigger manually
   workflow_dispatch:
-  # push:
-  #   branches: [development]
+  push:
+    branches: [development]
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
   ENVIRONMENT: development
 
 jobs:
@@ -35,27 +33,35 @@ jobs:
       - name: Building commons-mongo
         working-directory: ./commons-mongo
         run: mvn clean install
-      - name: Login to GitHub Package Registry
-        uses: docker/login-action@v1.9.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Building admin
         working-directory: ./admin
-        run: mvn compile jib:build
+        run: mvn clean install
       - name: Building config
         working-directory: ./config
-        run: mvn compile jib:build
+        run: mvn clean install
       - name: Building eureka
         working-directory: ./eureka
-        run: mvn compile jib:build
+        run: mvn clean install
       - name: Building gateway
         working-directory: ./gateway
-        run: mvn compile jib:build
+        run: mvn clean install
       - name: Building security
         working-directory: ./security
-        run: mvn compile jib:build
+        run: mvn clean install
       - name: Building ui
         working-directory: ./ui
-        run: mvn compile jib:build
+        run: mvn clean install
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+      - name: Deploy
+        run: |
+          aws s3 sync ./admin/target/*.jar s3://nclc-deployment/development
+          aws s3 sync ./config/target/*.jar s3://nclc-deployment/development
+          aws s3 sync ./eureka/target/*.jar s3://nclc-deployment/development
+          aws s3 sync ./gateway/target/*.jar s3://nclc-deployment/development
+          aws s3 sync ./security/target/*.jar s3://nclc-deployment/development
+          aws s3 sync ./ui/target/*.jar s3://nclc-deployment/development
