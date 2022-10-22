@@ -43,7 +43,8 @@ jobs:
         working-directory: ./admin
         run: |
           mvn install
-          aws s3 sync ./target/*.jar s3://nclc-deployment/development
+          export jarfile=`ls ./target/*.jar`
+          aws s3 cp $jarfile s3://nclc-deployment/development/admin.jar
       - name: Building config
         working-directory: ./config
         run: |
