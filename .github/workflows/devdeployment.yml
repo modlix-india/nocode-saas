@@ -42,31 +42,36 @@ jobs:
       - name: Building admin
         working-directory: ./admin
         run: |
-          mvn install
+          mvn clean install
           export jarfile=`ls ./target/*.jar`
           aws s3 cp $jarfile s3://nclc-deployment/development/admin.jar
       - name: Building config
         working-directory: ./config
         run: |
-          mvn install
-          aws s3 sync ./target/*.jar s3://nclc-deployment/development
+          mvn clean install
+          export jarfile=`ls ./target/*.jar`
+          aws s3 cp $jarfile s3://nclc-deployment/development/config.jar
       - name: Building eureka
         working-directory: ./eureka
-        run: mvn clean install
-      - name: Deploy
-        run: aws s3 sync ./eureka/target/*.jar s3://nclc-deployment/development
+        run: |
+          mvn clean install
+          export jarfile=`ls ./target/*.jar`
+          aws s3 cp $jarfile s3://nclc-deployment/development/eureka.jar
       - name: Building gateway
         working-directory: ./gateway
-        run: mvn clean install
-      - name: Deploy
-        run: aws s3 sync ./gateway/target/*.jar s3://nclc-deployment/development
+        run: |
+          mvn clean install
+          export jarfile=`ls ./target/*.jar`
+          aws s3 cp $jarfile s3://nclc-deployment/development/gateway.jar
       - name: Building security
         working-directory: ./security
-        run: mvn clean install
-      - name: Deploy
-        run: aws s3 sync ./security/target/*.jar s3://nclc-deployment/development
+        run: |
+          mvn clean install
+          export jarfile=`ls ./target/*.jar`
+          aws s3 cp $jarfile s3://nclc-deployment/development/security.jar
       - name: Building ui
         working-directory: ./ui
-        run: mvn clean install
-      - name: Deploy
-        run: aws s3 sync ./ui/target/*.jar s3://nclc-deployment/development
+        run: |
+          mvn clean install
+          export jarfile=`ls ./target/*.jar`
+          aws s3 cp $jarfile s3://nclc-deployment/development/ui.jar
