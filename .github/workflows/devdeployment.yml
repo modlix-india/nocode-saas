@@ -33,35 +33,39 @@ jobs:
       - name: Building commons-mongo
         working-directory: ./commons-mongo
         run: mvn clean install
-      - name: Building admin
-        working-directory: ./admin
-        run: mvn clean install
-      - name: Building config
-        working-directory: ./config
-        run: mvn clean install
-      - name: Building eureka
-        working-directory: ./eureka
-        run: mvn clean install
-      - name: Building gateway
-        working-directory: ./gateway
-        run: mvn clean install
-      - name: Building security
-        working-directory: ./security
-        run: mvn clean install
-      - name: Building ui
-        working-directory: ./ui
-        run: mvn clean install
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
+      - name: Building admin
+        working-directory: ./admin
+        run: mvn clean install
       - name: Deploy
-        run: |
-          aws s3 sync ./admin/target/*.jar s3://nclc-deployment/development
-          aws s3 sync ./config/target/*.jar s3://nclc-deployment/development
-          aws s3 sync ./eureka/target/*.jar s3://nclc-deployment/development
-          aws s3 sync ./gateway/target/*.jar s3://nclc-deployment/development
-          aws s3 sync ./security/target/*.jar s3://nclc-deployment/development
-          aws s3 sync ./ui/target/*.jar s3://nclc-deployment/development
+        run: aws s3 sync ./admin/target/*.jar s3://nclc-deployment/development
+      - name: Building config
+        working-directory: ./config
+        run: mvn clean install
+      - name: Deploy
+        run: aws s3 sync ./config/target/*.jar s3://nclc-deployment/development
+      - name: Building eureka
+        working-directory: ./eureka
+        run: mvn clean install
+      - name: Deploy
+        run: aws s3 sync ./eureka/target/*.jar s3://nclc-deployment/development
+      - name: Building gateway
+        working-directory: ./gateway
+        run: mvn clean install
+      - name: Deploy
+        run: aws s3 sync ./gateway/target/*.jar s3://nclc-deployment/development
+      - name: Building security
+        working-directory: ./security
+        run: mvn clean install
+      - name: Deploy
+        run: aws s3 sync ./security/target/*.jar s3://nclc-deployment/development
+      - name: Building ui
+        working-directory: ./ui
+        run: mvn clean install
+      - name: Deploy
+        run: aws s3 sync ./ui/target/*.jar s3://nclc-deployment/development
