@@ -33,45 +33,35 @@ jobs:
       - name: Building commons-mongo
         working-directory: ./commons-mongo
         run: mvn clean install
+      - name: Building admin
+        working-directory: ./admin
+        run: mvn clean install
+      - name: Building config
+        working-directory: ./config
+        run: mvn clean install
+      - name: Building eureka
+        working-directory: ./eureka
+        run: mvn clean install
+      - name: Building gateway
+        working-directory: ./gateway
+        run: mvn clean install
+      - name: Building security
+        working-directory: ./security
+        run: mvn clean install
+      - name: Building ui
+        working-directory: ./ui
+        run: mvn clean install
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
-      - name: Building admin
-        working-directory: ./admin
+      - name: Moving jars to S3
         run: |
-          mvn clean install
-          export jarfile=`ls ./target/*.jar`
-          aws s3 cp $jarfile s3://nclc-deployment/development/admin.jar
-      - name: Building config
-        working-directory: ./config
-        run: |
-          mvn clean install
-          export jarfile=`ls ./target/*.jar`
-          aws s3 cp $jarfile s3://nclc-deployment/development/config.jar
-      - name: Building eureka
-        working-directory: ./eureka
-        run: |
-          mvn clean install
-          export jarfile=`ls ./target/*.jar`
-          aws s3 cp $jarfile s3://nclc-deployment/development/eureka.jar
-      - name: Building gateway
-        working-directory: ./gateway
-        run: |
-          mvn clean install
-          export jarfile=`ls ./target/*.jar`
-          aws s3 cp $jarfile s3://nclc-deployment/development/gateway.jar
-      - name: Building security
-        working-directory: ./security
-        run: |
-          mvn clean install
-          export jarfile=`ls ./target/*.jar`
-          aws s3 cp $jarfile s3://nclc-deployment/development/security.jar
-      - name: Building ui
-        working-directory: ./ui
-        run: |
-          mvn clean install
-          export jarfile=`ls ./target/*.jar`
-          aws s3 cp $jarfile s3://nclc-deployment/development/ui.jar
+          aws s3 cp ./admin/target/*.jar s3://nclc-deployment/development/admin.jar
+          aws s3 cp ./config/target/*.jar s3://nclc-deployment/development/config.jar
+          aws s3 cp ./eureka/target/*.jar s3://nclc-deployment/development/eureka.jar
+          aws s3 cp ./gateway/target/*.jar s3://nclc-deployment/development/gateway.jar
+          aws s3 cp ./security/target/*.jar s3://nclc-deployment/development/security.jar
+          aws s3 cp ./ui/target/*.jar s3://nclc-deployment/development/ui.jar
