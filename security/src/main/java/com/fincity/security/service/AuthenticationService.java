@@ -29,6 +29,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
+
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
@@ -135,7 +136,11 @@ public class AuthenticationService implements IAuthenticationService {
 		        linClient -> userService.findByClientIdsUserName(linClient.getId(), authRequest.getUserName(),
 		                authRequest.getIdentifierType()),
 
+		        // check user status whether active or inactive
+
 		        (linClient, user) -> this.clientService.readInternal(user.getClientId()),
+
+		        // check client status whether active or inactive
 
 		        (linClient, user, client) -> this.checkPassword(authRequest, user),
 
@@ -189,7 +194,10 @@ public class AuthenticationService implements IAuthenticationService {
 		}
 
 		Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(u.getId()
-		        .toBigInteger(), tokenKey, timeInMinutes, host, port, linClient.getId().toBigInteger(), linClient.getCode());
+		        .toBigInteger(), tokenKey, timeInMinutes, host, port,
+		        linClient.getId()
+		                .toBigInteger(),
+		        linClient.getCode());
 
 		if (authRequest.isCookie())
 			response.addCookie(ResponseCookie.from("Authentication", token.getT1())
@@ -348,9 +356,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
 
-		        (claims, u, typ) -> Mono
-		                .just(new ContextAuthentication(u.toContextUser(), true, claims.getLoggedInClientId(), claims.getLoggedInClientCode(),
-		                        typ.getT1(), typ.getT2(), tokenObject.getToken(), tokenObject.getExpiresAt())));
+		        (claims, u,
+		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
+		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
+		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
 	}
 
 	private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {
