@@ -39,10 +39,10 @@ public class InheritanceService {
 			        if (cList != null)
 				        return Mono.just(cList);
 
-			        return this.repo.findOneByNameAndApplicationNameAndClientCode(appName, appName, clientCode)
+			        return this.repo.findOneByNameAndAppCodeAndClientCode(appName, appName, clientCode)
 			                .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
-			                        : this.repo.findOneByNameAndApplicationNameAndClientCode(e.getName(),
-			                                e.getApplicationName(), e.getBaseClientCode()))
+			                        : this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(),
+			                                e.getAppCode(), e.getBaseClientCode()))
 			                .map(Application::getClientCode)
 			                .collectList();
 		        },

@@ -9,8 +9,8 @@ import reactor.core.publisher.Mono;
 @Repository
 public interface PersonalizationRepository extends IUIRepository<Personalization> {
 
-	public Mono<Personalization> findOneByNameAndApplicationNameAndCreatedBy(String name, String applicationName,
+	public Mono<Personalization> findOneByNameAndAppCodeAndCreatedBy(String name, String applicationName,
 	        String createdBy);
 
-	public Mono<Long> deleteByNameAndApplicationNameAndCreatedBy(String name, String applicationName, String createdBy);
+	public Mono<Long> deleteByNameAndAppCodeAndCreatedBy(String name, String applicationName, String createdBy);
 }

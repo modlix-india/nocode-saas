@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fincity.saas.commons.codec.RedisJSONCodec;
 import com.fincity.saas.commons.codec.RedisObjectCodec;
 import com.fincity.saas.commons.jackson.CommonsSerializationModule;
+import com.fincity.saas.commons.jackson.TupleSerializationModule;
 
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -49,6 +50,7 @@ public class AbstractBaseConfiguration implements WebFluxConfigurer {
 		this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_NULL, Include.ALWAYS));
 		this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_EMPTY, Include.ALWAYS));
 		this.objectMapper.registerModule(new CommonsSerializationModule());
+		this.objectMapper.registerModule(new TupleSerializationModule());
 
 		this.objectCodec = "object".equals(codecType) ? new RedisObjectCodec() : new RedisJSONCodec(this.objectMapper);
 	}

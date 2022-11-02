@@ -1,7 +1,6 @@
 package com.fincity.gateway;
 
 import java.net.URI;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -18,6 +17,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.CacheService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
@@ -25,16 +25,12 @@ import reactor.util.function.Tuples;
 public class GatewayFilter implements GlobalFilter, Ordered {
 
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
-	private static final String CACHE_NAME_GATEWAY_URL_CLIENTCODE = "gatewayClientCode";
 
 	@Autowired
 	private CacheService cacheService;
 
 	@Autowired
 	private IFeignSecurityClient security;
-
-	@Autowired
-	private IFeignUIClient ui;
 
 	@Override
 	public int getOrder() {
@@ -58,20 +54,11 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		final Tuple3<String, String, String> shpTuple = this.getSchemeHostPort(exchange);
 
-		return FlatMapUtil.flatMapMono(
-
-		        () -> this.getAppNClientCodes(shpTuple.getT1(), shpTuple.getT2(), shpTuple.getT3()),
-
-		        t -> t.get(1)
-		                .isBlank()
-		                        ? this.getClientCode(shpTuple.getT1(), shpTuple.getT2(), shpTuple.getT3())
-		                                .map(code -> List.of(t.get(0),code))
-		                        : Mono.just(t),
-
-		        (t, finT) -> this.rewriteRequest(exchange, finT, chain));
+		return this.getClientCode(shpTuple.getT1(), shpTuple.getT2(), shpTuple.getT3())
+		        .flatMap(t -> this.rewriteRequest(exchange, t, chain));
 	}
 
-	public Mono<Void> rewriteRequest(ServerWebExchange exchange, List<String> finT,
+	public Mono<Void> rewriteRequest(ServerWebExchange exchange, Tuple2<String, String> finT,
 	        GatewayFilterChain chain) {
 
 		String requestPath = exchange.getRequest()
@@ -80,16 +67,14 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		int apiIndex = requestPath.indexOf("/api/");
 		String modifiedRequestPath = requestPath;
 
-		String appCode = finT.get(0)
-		        .isBlank() ? null : finT.get(0);
-		String clientCode = finT.get(1)
-		        .isBlank() ? null : finT.get(1);
+		String appCode = finT.getT2();
+		String clientCode = finT.getT1();
 
 		if (apiIndex != -1) {
 			modifiedRequestPath = "/api/" + requestPath.substring(apiIndex + 4);
 			String[] parts = requestPath.substring(0, apiIndex)
 			        .split("/");
-			if (parts.length > 0)
+			if (parts.length > 0 && !parts[0].isBlank())
 				appCode = parts[0];
 			if (parts.length > 1)
 				clientCode = parts[1];
@@ -136,7 +121,7 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		return Tuples.of(uriScheme, uriHost, uriPort);
 	}
 
-	private Mono<String> getClientCode(String uriScheme, String uriHost, String uriPort) {
+	private Mono<Tuple2<String, String>> getClientCode(String uriScheme, String uriHost, String uriPort) {
 
 		Mono<String> uriKey = cacheService.makeKey(uriScheme, uriHost, ":", uriPort);
 
@@ -144,37 +129,9 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		        () -> uriKey,
 
-		        key -> cacheService.get(CACHE_NAME_GATEWAY_URL_CLIENTCODE, key)
-		                .map(Object::toString)
+		        key -> cacheService.<Tuple2<String, String>>get(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, key)
 		                .switchIfEmpty(Mono.defer(() -> this.security.getClientCode(uriScheme, uriHost, uriPort)
-		                        .defaultIfEmpty("")
-		                        .map(cod ->
-								{
-
-			                        cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENTCODE, cod, key);
-			                        return cod;
-		                        }))));
+		                        .defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))
+		                        .flatMap(cod -> cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, cod, key)))));
 	}
-
-	@SuppressWarnings("unchecked")
-	private Mono<List<String>> getAppNClientCodes(String uriScheme, String uriHost, String uriPort) {
-
-		Mono<String> uriKey = cacheService.makeKey(uriScheme, uriHost, ":", uriPort);
-
-		return FlatMapUtil.flatMapMono(
-
-		        () -> uriKey,
-
-		        key -> cacheService.get(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, key)
-		                .map(e -> (List<String>) e)
-		                .switchIfEmpty(Mono.defer(() -> this.ui.getAppNClientCode(uriScheme, uriHost, uriPort)
-		                        .defaultIfEmpty(List.of("", ""))
-		                        .map(tup ->
-								{
-
-			                        cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, tup, key);
-			                        return tup;
-		                        }))));
-	}
-
 }

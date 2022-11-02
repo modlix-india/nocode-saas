@@ -1,6 +1,7 @@
 package com.fincity.security.dao;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
@@ -34,6 +35,7 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -68,12 +70,14 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .select(SECURITY_CLIENT.CODE.as("clientCode"))
 		        .from(SECURITY_USER)
 		        .leftJoin(SECURITY_CLIENT_MANAGE)
-		        .on(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
 		        .leftJoin(SECURITY_CLIENT)
 		        .on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
 		        .where(field.eq(userName)
 		                .and(SECURITY_USER.CLIENT_ID.eq(clientId)
-		                        .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId))))
+		                        .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)))
+		                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE))
+		                .and(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE)))
 		        .limit(1))
 		        .map(e -> e.into(User.class));
 	}
@@ -92,7 +96,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	public Mono<User> setPermissions(User user) {
 
-		SelectOrderByStep<Record1<String>> query = this.dslContext.select(SECURITY_PERMISSION.NAME)
+		SelectOrderByStep<Record3<String, String, String>> query = this.dslContext
+		        .select(SECURITY_CLIENT.CODE, SECURITY_PERMISSION.NAME, SECURITY_APP.APP_CODE)
 		        .from(SECURITY_USER_ROLE_PERMISSION)
 		        .join(SECURITY_ROLE)
 		        .on(SECURITY_ROLE.ID.eq(SECURITY_USER_ROLE_PERMISSION.ROLE_ID))
@@ -100,20 +105,37 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_ROLE.ID))
 		        .join(SECURITY_PERMISSION)
 		        .on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
+		        .join(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(SECURITY_PERMISSION.CLIENT_ID))
+		        .leftJoin(SECURITY_APP)
+		        .on(SECURITY_APP.ID.eq(SECURITY_PERMISSION.APP_ID))
 		        .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId()))
-		        .union(this.dslContext.select(SECURITY_PERMISSION.NAME)
+		        .union(this.dslContext.select(SECURITY_CLIENT.CODE, SECURITY_PERMISSION.NAME, SECURITY_APP.APP_CODE)
 		                .from(SECURITY_USER_ROLE_PERMISSION)
 		                .join(SECURITY_PERMISSION)
 		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID))
+		                .join(SECURITY_CLIENT)
+		                .on(SECURITY_CLIENT.ID.eq(SECURITY_PERMISSION.CLIENT_ID))
+		                .leftJoin(SECURITY_APP)
+		                .on(SECURITY_APP.ID.eq(SECURITY_PERMISSION.APP_ID))
 		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId())))
-		        .union(this.dslContext.select(DSL.concat("ROLE_", SECURITY_ROLE.NAME))
+		        .union(this.dslContext
+		                .select(SECURITY_CLIENT.CODE, DSL.concat("ROLE_", SECURITY_ROLE.NAME), SECURITY_APP.APP_CODE)
 		                .from(SECURITY_USER_ROLE_PERMISSION)
 		                .join(SECURITY_ROLE)
 		                .on(SECURITY_ROLE.ID.eq(SECURITY_USER_ROLE_PERMISSION.ROLE_ID))
+		                .join(SECURITY_CLIENT)
+		                .on(SECURITY_CLIENT.ID.eq(SECURITY_ROLE.CLIENT_ID))
+		                .leftJoin(SECURITY_APP)
+		                .on(SECURITY_APP.ID.eq(SECURITY_ROLE.APP_ID))
 		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId())));
 
 		return Flux.from(query)
-		        .map(Record1::value1)
+		        .map(r -> (r.value3() == null ? ""
+		                : r.value3()
+		                        .toUpperCase() + ".")
+		                + ("SYSTEM".equals(r.value1()) ? r.value2() : r.value1() + "_" + r.value2()))
+		        .map(r -> "Authorities." + r.replace(' ', '_'))
 		        .collectList()
 		        .map(e ->
 				{

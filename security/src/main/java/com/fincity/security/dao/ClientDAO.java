@@ -302,4 +302,22 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 		return Mono.just(userList);
 	}
+
+	public Mono<String> getClientCodeById(ULong id) {
+
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
+		        .from(SECURITY_CLIENT)
+		        .where(SECURITY_CLIENT.ID.eq(id))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(e ->
+				{
+			        System.out.println("Babu : " + id + " : " + e);
+			        return e;
+		        })
+		        .switchIfEmpty(Mono.defer(() -> {
+		        	System.out.println("It is empty...");
+		        	return Mono.just("KIRAN");
+		        })).log();
+	}
 }

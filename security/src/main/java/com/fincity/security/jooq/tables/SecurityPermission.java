@@ -15,12 +15,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function8;
+import org.jooq.Function9;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row8;
+import org.jooq.Row9;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -70,6 +70,11 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
      * permission
      */
     public final TableField<SecurityPermissionRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(256).nullable(false), this, "Name of the permission");
+
+    /**
+     * The column <code>security.security_permission.APP_ID</code>.
+     */
+    public final TableField<SecurityPermissionRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED, this, "");
 
     /**
      * The column <code>security.security_permission.DESCRIPTION</code>.
@@ -158,10 +163,11 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
 
     @Override
     public List<ForeignKey<SecurityPermissionRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PERMISSION_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_PERMISSION_CLIENT_ID, Keys.FK2_PERMISSION_APP_ID);
     }
 
     private transient SecurityClient _securityClient;
+    private transient SecurityApp _securityApp;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
@@ -172,6 +178,17 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
             _securityClient = new SecurityClient(this, Keys.FK1_PERMISSION_CLIENT_ID);
 
         return _securityClient;
+    }
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityApp securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityApp(this, Keys.FK2_PERMISSION_APP_ID);
+
+        return _securityApp;
     }
 
     @Override
@@ -214,18 +231,18 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row8 type methods
+    // Row9 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row8<ULong, ULong, String, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row8) super.fieldsRow();
+    public Row9<ULong, ULong, String, ULong, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row9) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function8<? super ULong, ? super ULong, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function9<? super ULong, ? super ULong, ? super String, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -233,7 +250,7 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function8<? super ULong, ? super ULong, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function9<? super ULong, ? super ULong, ? super String, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

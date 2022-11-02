@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.common.security.util.RolePermissionUtil;
 
 import lombok.Data;
 import lombok.ToString;
@@ -57,9 +56,7 @@ public class ContextUser implements Serializable {
 
 		if (this.grantedAuthorities == null) {
 			this.grantedAuthorities = this.stringAuthorities.parallelStream()
-			        .map(RolePermissionUtil::toAuthorityString)
 			        .map(SimpleGrantedAuthority::new)
-//			        .map(GrantedAuthority.class::cast)
 			        .collect(Collectors.toSet());
 		}
 		return this.grantedAuthorities;

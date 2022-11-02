@@ -11,8 +11,8 @@ eureka:
   instance:
     prefer-ip-address: true
 
-server:
-  shutdown: graceful
+# server:
+#   shutdown: graceful
 
 management:
   security:
@@ -45,3 +45,6 @@ jwt:
       expiry: 525600
     default:
       expiry: 30
+
+ui:
+  jsURL: https://nclc-dev.s3.ap-south-1.amazonaws.com

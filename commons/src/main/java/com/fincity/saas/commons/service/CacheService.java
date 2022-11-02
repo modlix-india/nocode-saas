@@ -101,8 +101,7 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		        .collect(Collectors.joining());
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T> Mono<T> put(String cName, Object value, Object... keys) {
+	public <T> Mono<T> put(String cName, T value, Object... keys) {
 
 		String cacheName = this.redisPrefix + "-" + cName;
 
@@ -123,7 +122,7 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		        })
 		        .subscribe();
 
-		return Mono.just((T) value);
+		return Mono.just(value);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -144,13 +143,7 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 
 			        return value.switchIfEmpty(
 			                Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
-			                		.map(v -> {
-			        					
-			        					System.err.println(cacheName + " -- " + key +" -- "+v);
-			        					
-			        					return v;
-			        				})
-			                        .map(vw -> (T) vw)));
+			                		.map(vw -> (T) vw)));
 		        });
 	}
 

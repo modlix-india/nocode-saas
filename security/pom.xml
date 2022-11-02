@@ -254,7 +254,7 @@
 								<driver>com.mysql.cj.jdbc.Driver</driver>
 								<url>jdbc:mysql://localhost:3306/security</url>
 								<user>root</user>
-								<password>root</password>
+								<password>Kiran@123</password>
 							</jdbc>
 							<generator>
 								<database>
