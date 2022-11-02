@@ -20,7 +20,7 @@ public abstract class AbstractUIDTO<D extends AbstractUIDTO<D>> extends Abstract
 	private String message;
 	private String clientCode;
 	private String permission;
-	private String applicationName;
+	private String appCode;
 	private String baseClientCode;
 
 	private int version = 1;
@@ -39,7 +39,7 @@ public abstract class AbstractUIDTO<D extends AbstractUIDTO<D>> extends Abstract
 		        .setMessage(obj.getMessage())
 		        .setClientCode(obj.getClientCode())
 		        .setPermission(obj.getPermission())
-		        .setApplicationName(obj.getApplicationName())
+		        .setAppCode(obj.getAppCode())
 		        .setBaseClientCode(obj.getBaseClientCode())
 		        .setVersion(obj.getVersion());
 

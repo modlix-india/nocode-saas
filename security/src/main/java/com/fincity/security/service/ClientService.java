@@ -42,7 +42,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_URL = "clientClientURL";
-	private static final String CACHE_NAME_CLIENT_CODE_ID = "clientCodeId";
+	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
 
 	private static final String CACHE_CLIENT_URI = "uri";
 
@@ -65,7 +65,7 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	public void setUserService(UserService userService) {
 		this.userService = userService;
 	}
-	
+
 	public void setPackageService(PackageService packageService) {
 		this.packageService = packageService;
 	}
@@ -311,12 +311,12 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 
 	public Mono<Client> getClientBy(String clientCode) {
 
-		return cacheService.get(CACHE_NAME_CLIENT_CODE_ID, clientCode)
+		return cacheService.get(CACHE_NAME_CLIENT_CODE, clientCode)
 		        .map(Client.class::cast)
 		        .switchIfEmpty(Mono.defer(() -> this.dao.getClientBy(clientCode)
 		                .map(client ->
 						{
-			                cacheService.put(CACHE_NAME_CLIENT_CODE_ID, client, clientCode);
+			                cacheService.put(CACHE_NAME_CLIENT_CODE, client, clientCode);
 			                return client;
 		                })));
 	}

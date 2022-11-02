@@ -31,7 +31,7 @@ public class StyleThemeService extends AbstractAppbasedUIService<StyleTheme, Sty
 
 		return flatMapMono(
 
-		        () -> styleService.read(entity.getStyleName(), entity.getApplicationName(), entity.getClientCode()),
+		        () -> styleService.read(entity.getStyleName(), entity.getAppCode(), entity.getClientCode()),
 
 		        style -> DifferenceExtractor.extract(entity.getVariables(), style.getVariables()),
 
@@ -46,7 +46,7 @@ public class StyleThemeService extends AbstractAppbasedUIService<StyleTheme, Sty
 
 		        () -> super.read(id),
 
-		        entity -> styleService.read(entity.getStyleName(), entity.getApplicationName(), entity.getClientCode()),
+		        entity -> styleService.read(entity.getStyleName(), entity.getAppCode(), entity.getClientCode()),
 
 		        (entity, style) -> DifferenceApplicator.apply(entity.getVariables(), style.getVariables()),
 
@@ -61,7 +61,7 @@ public class StyleThemeService extends AbstractAppbasedUIService<StyleTheme, Sty
 
 		        () -> super.readInternal(id),
 
-		        entity -> styleService.read(entity.getStyleName(), entity.getApplicationName(), entity.getClientCode()),
+		        entity -> styleService.read(entity.getStyleName(), entity.getAppCode(), entity.getClientCode()),
 
 		        (entity, style) -> DifferenceApplicator.apply(entity.getVariables(), style.getVariables()),
 

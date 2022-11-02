@@ -87,7 +87,7 @@ public class PersonalizationService extends AbstractAppbasedUIService<Personaliz
 		                .map(Object::toString),
 
 		        id -> id == null ? Mono.empty()
-		                : this.repo.findOneByNameAndApplicationNameAndCreatedBy(appName, name, id),
+		                : this.repo.findOneByNameAndAppCodeAndCreatedBy(appName, name, id),
 
 		        (id, person) ->
 				{
@@ -97,7 +97,7 @@ public class PersonalizationService extends AbstractAppbasedUIService<Personaliz
 
 			        if (person == null) {
 				        person = ((Personalization) new Personalization().setName(name)
-				                .setApplicationName(appName));
+				                .setAppCode(appName));
 
 				        person.setPersonalization(personalization);
 				        return this.create(person)
@@ -121,7 +121,7 @@ public class PersonalizationService extends AbstractAppbasedUIService<Personaliz
 		                .map(Object::toString),
 
 		        id -> id == null ? Mono.empty()
-		                : this.repo.findOneByNameAndApplicationNameAndCreatedBy(appName, name, id)
+		                : this.repo.findOneByNameAndAppCodeAndCreatedBy(appName, name, id)
 		                        .map(Personalization::getPersonalization)
 
 		).defaultIfEmpty(Map.of());
@@ -136,7 +136,7 @@ public class PersonalizationService extends AbstractAppbasedUIService<Personaliz
 		                .map(Object::toString),
 
 		        id -> id == null ? Mono.empty()
-		                : this.repo.deleteByNameAndApplicationNameAndCreatedBy(appName, name, id)
+		                : this.repo.deleteByNameAndAppCodeAndCreatedBy(appName, name, id)
 		                        .map(e -> e != 0l)
 
 		).defaultIfEmpty(Boolean.FALSE);

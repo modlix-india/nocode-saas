@@ -44,7 +44,7 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	private SecurityMessageResourceService securityMessageResourceService;
 
 	@Override
-	@PreAuthorize("hasPermission('Authorities.Role_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Role_CREATE')")
 	public Mono<Role> create(Role entity) {
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .flatMap(ca ->
@@ -76,19 +76,20 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 		        });
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Role_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Role_READ')")
 	@Override
 	public Mono<Role> read(ULong id) {
 		return super.read(id);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Role_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Role_READ')")
 	@Override
 	public Mono<Page<Role>> readPageFilter(Pageable pageable, AbstractCondition cond) {
 		return super.readPageFilter(pageable, cond);
+
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Role_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Role_UPDATE')")
 	@Override
 	public Mono<Role> update(Role entity) {
 
@@ -100,7 +101,7 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 		                                StringFormatter.format(msg, "User", entity.getId()))))));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Role_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Role_UPDATE')")
 	@Override
 	public Mono<Role> update(ULong key, Map<String, Object> fields) {
 		return this.dao.canBeUpdated(key)

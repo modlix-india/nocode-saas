@@ -10,13 +10,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
-import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.service.ClientService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @RestController
 @RequestMapping("api/security/clients")
@@ -34,12 +35,12 @@ public class ClientController
 		        .map(ResponseEntity::ok);
 	}
 
-	@GetMapping("/internal/getClientCode")
-	public Mono<ResponseEntity<String>> getClientCode(@RequestParam String scheme, @RequestParam String host,
+	@GetMapping("/internal/getClientNAppCode")
+	public Mono<ResponseEntity<Tuple2<String, String>>> getClientNAppCode(@RequestParam String scheme, @RequestParam String host,
 	        @RequestParam String port) {
 		return this.service.getClientPattern(scheme, host, port)
-		        .map(ClientUrlPattern::getClientCode)
-		        .defaultIfEmpty("SYSTEM")
+		        .map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
+		        .defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))
 		        .map(ResponseEntity::ok);
 	}
 

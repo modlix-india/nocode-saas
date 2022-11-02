@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
@@ -24,6 +25,7 @@ import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
+@Service
 public class PermissionService
         extends AbstractJOOQUpdatableDataService<SecurityPermissionRecord, ULong, Permission, PermissionDAO> {
 
@@ -70,7 +72,8 @@ public class PermissionService
 				                if (managed.booleanValue())
 					                return Mono.just(p);
 
-				                return messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+				                return messageResourceService
+				                        .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                        .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
 				                                StringFormatter.format(msg, PERMISSION, id))));
 			                });
@@ -81,7 +84,7 @@ public class PermissionService
 	@PreAuthorize("hasAuthority('Authorities.Permission_READ')")
 	@Override
 	public Mono<Page<Permission>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-
+		
 		return this.dao.readPageFilter(pageable, condition);
 	}
 

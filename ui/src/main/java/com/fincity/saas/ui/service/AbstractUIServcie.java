@@ -50,7 +50,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
         extends AbstractMongoUpdatableDataService<String, D, R> {
 
 	private static final String CLIENT_CODE = "clientCode";
-	private static final String APPLICATION_NAME = "applicationName";
+	private static final String APP_CODE = "appCode";
 
 	protected static final String CREATE = "CREATE";
 	protected static final String UPDATE = "UPDATE";
@@ -117,7 +117,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		                created) -> isVersionable()
 		                        ? versionService.create(new Version().setClientCode(cEntity.getClientCode())
 		                                .setObjectName(entity.getName())
-		                                .setObjectApplicationName(entity.getApplicationName())
+		                                .setObjectAppCode(entity.getAppCode())
 		                                .setObjectType(ObjectType.APPLICATION)
 		                                .setVersionNumber(1)
 		                                .setMessage(entity.getMessage())
@@ -149,8 +149,8 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		        Criteria.where("name")
 		                .is(cca.getName()),
-		        Criteria.where(APPLICATION_NAME)
-		                .is(cca.getApplicationName()),
+		        Criteria.where(APP_CODE)
+		                .is(cca.getAppCode()),
 		        Criteria.where(CLIENT_CODE)
 		                .is(cca.getClientCode())
 
@@ -218,7 +218,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		                created) -> isVersionable()
 		                        ? versionService.create(new Version().setClientCode(entity.getClientCode())
 		                                .setObjectName(entity.getName())
-		                                .setObjectApplicationName(entity.getApplicationName())
+		                                .setObjectAppCode(entity.getAppCode())
 		                                .setObjectType(ObjectType.APPLICATION)
 		                                .setVersionNumber(1)
 		                                .setMessage(entity.getMessage())
@@ -240,10 +240,10 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	protected Mono<D> evictRecursively(D f) {
 
 		Flux.just(f)
-		        .expandDeep(e -> this.repo.findByNameAndApplicationNameAndBaseClientCode(e.getName(),
-		                e.getApplicationName(), e.getClientCode()))
+		        .expandDeep(e -> this.repo.findByNameAndAppCodeAndBaseClientCode(e.getName(),
+		                e.getAppCode(), e.getClientCode()))
 		        .subscribe(e -> cacheService
-		                .evict(this.getCacheName(), e.getName(), "-", e.getApplicationName(), "-", e.getClientCode())
+		                .evict(this.getCacheName(), e.getName(), "-", e.getAppCode(), "-", e.getClientCode())
 		                .subscribe());
 
 		return Mono.just(f);
@@ -260,8 +260,8 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		        () -> exists,
 
-		        entity -> this.repo.countByNameAndApplicationNameAndBaseClientCode(entity.getName(),
-		                entity.getApplicationName(), entity.getClientCode()),
+		        entity -> this.repo.countByNameAndAppCodeAndBaseClientCode(entity.getName(),
+		                entity.getAppCode(), entity.getClientCode()),
 
 		        (entity, count) -> SecurityContextUtil.getUsersContextAuthentication(),
 
@@ -278,7 +278,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 				                UIMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id);
 
 			        cacheService
-			                .evict(this.getCacheName(), entity.getName(), "-", entity.getApplicationName(), "-",
+			                .evict(this.getCacheName(), entity.getName(), "-", entity.getAppCode(), "-",
 			                        entity.getClientCode())
 			                .subscribe();
 			        return super.delete(id);
@@ -296,7 +296,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		Flux<D> x = Mono.just(entity)
 		        .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
-		                : this.repo.findOneByNameAndApplicationNameAndClientCode(e.getName(), e.getApplicationName(),
+		                : this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(), e.getAppCode(),
 		                        e.getBaseClientCode()));
 
 		return x.collectList()
@@ -347,7 +347,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) {
 
-		final String appName = params.getFirst(APPLICATION_NAME) == null ? "" : params.getFirst(APPLICATION_NAME);
+		final String appName = params.getFirst(APP_CODE) == null ? "" : params.getFirst(APP_CODE);
 
 		Mono<Tuple2<ComplexCondition, List<String>>> condition = paramToConditionLRO(params, appName);
 
@@ -439,15 +439,15 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 				                .setValue(inheritance.stream()
 				                        .collect(Collectors.joining(","))));
 
-			        String applicationName = params.getFirst(APPLICATION_NAME);
-			        conditions.add(new FilterCondition().setField(APPLICATION_NAME)
+			        String applicationName = params.getFirst(APP_CODE);
+			        conditions.add(new FilterCondition().setField(APP_CODE)
 			                .setOperator(FilterConditionOperator.EQUALS)
 			                .setValue(applicationName));
 
 			        conditions.addAll(params.entrySet()
 			                .stream()
 			                .filter(e -> !e.getKey()
-			                        .equals(APPLICATION_NAME)
+			                        .equals(APP_CODE)
 			                        && !e.getKey()
 			                                .equals(CLIENT_CODE))
 			                .filter(e -> Objects.nonNull(e.getValue()))
@@ -477,7 +477,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		        (key, cApp) -> Mono.justOrEmpty(cApp)
 		                .switchIfEmpty(Mono.defer(
-		                        () -> this.repo.findOneByNameAndApplicationNameAndClientCode(name, appCode, clientCode)
+		                        () -> this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode)
 		                                .map(this.pojoClass::cast))),
 
 		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)

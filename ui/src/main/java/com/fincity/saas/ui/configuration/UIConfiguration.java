@@ -22,9 +22,6 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
 
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService,
-
-		        "/api/ui/page/*", "/api/ui/application", "/api/ui/function/*", "/api/ui/theme/*",
-		        "/api/ui/internal/cache/reset/*", "/manifest.json", "/api/ui/applications/internal/getAppNClientCode");
+		return this.springSecurityFilterChain(http, authService, "/**");
 	}
 }

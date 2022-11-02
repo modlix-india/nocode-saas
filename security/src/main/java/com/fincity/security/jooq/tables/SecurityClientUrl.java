@@ -15,12 +15,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function7;
+import org.jooq.Function8;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row7;
+import org.jooq.Row8;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -68,7 +68,12 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
      * The column <code>security.security_client_url.URL_PATTERN</code>. URL
      * Pattern to identify user's Client ID
      */
-    public final TableField<SecurityClientUrlRecord, String> URL_PATTERN = createField(DSL.name("URL_PATTERN"), SQLDataType.VARCHAR(256).nullable(false), this, "URL Pattern to identify user's Client ID");
+    public final TableField<SecurityClientUrlRecord, String> URL_PATTERN = createField(DSL.name("URL_PATTERN"), SQLDataType.VARCHAR(512).nullable(false), this, "URL Pattern to identify user's Client ID");
+
+    /**
+     * The column <code>security.security_client_url.APP_CODE</code>.
+     */
+    public final TableField<SecurityClientUrlRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>security.security_client_url.CREATED_BY</code>. ID of
@@ -151,10 +156,11 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
 
     @Override
     public List<ForeignKey<SecurityClientUrlRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_CLIENT_URL_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_CLIENT_URL_CLIENT_ID, Keys.FK1_CLIENT_URL_APP_CODE);
     }
 
     private transient SecurityClient _securityClient;
+    private transient SecurityApp _securityApp;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
@@ -165,6 +171,17 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
             _securityClient = new SecurityClient(this, Keys.FK1_CLIENT_URL_CLIENT_ID);
 
         return _securityClient;
+    }
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityApp securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityApp(this, Keys.FK1_CLIENT_URL_APP_CODE);
+
+        return _securityApp;
     }
 
     @Override
@@ -207,18 +224,18 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row7 type methods
+    // Row8 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row7<ULong, ULong, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row7) super.fieldsRow();
+    public Row8<ULong, ULong, String, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row8) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function7<? super ULong, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function8<? super ULong, ? super ULong, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -226,7 +243,7 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function7<? super ULong, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function8<? super ULong, ? super ULong, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

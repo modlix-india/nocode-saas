@@ -1,11 +1,14 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.jooq.Field;
@@ -20,7 +23,6 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
@@ -34,7 +36,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class PermissionDAO extends AbstractUpdatableDAO<SecurityPermissionRecord, ULong, Permission> {
+public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionRecord, ULong, Permission> {
 
 	protected PermissionDAO() {
 		super(Permission.class, SECURITY_PERMISSION, SECURITY_PERMISSION.ID);
@@ -129,5 +131,47 @@ public class PermissionDAO extends AbstractUpdatableDAO<SecurityPermissionRecord
 			return SECURITY_PACKAGE.BASE;
 
 		return super.getField(fieldName);
+	}
+
+	@Override
+	protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .map(ca ->
+				{
+
+			        var cAlias = SECURITY_CLIENT.as("codeClient");
+
+			        SelectJoinStep<Record> mainQuery = dslContext.select(Arrays.asList(table.fields()))
+			                .select(DSL
+			                        .replace(DSL.concat("Authorities.",
+			                                DSL.concat(
+			                                        DSL.if_(SECURITY_APP.APP_CODE.isNull(), "",
+			                                                DSL.concat(DSL.upper(SECURITY_APP.APP_CODE), ".")),
+			                                        DSL.if_(cAlias.CODE.eq("SYSTEM"), SECURITY_PERMISSION.NAME,
+			                                                DSL.concat(DSL.concat(cAlias.CODE, "_"),
+			                                                        SECURITY_PERMISSION.NAME)))),
+			                                " ", "_")
+			                        .as("AUTHORITY"))
+			                .from(table)
+			                .leftJoin(cAlias)
+			                .on(cAlias.ID.eq(SECURITY_PERMISSION.CLIENT_ID))
+			                .leftJoin(SECURITY_APP)
+			                .on(SECURITY_APP.ID.eq(SECURITY_PERMISSION.APP_ID));
+
+			        SelectJoinStep<Record1<Integer>> countQuery = dslContext.select(DSL.count())
+			                .from(table);
+
+			        if (ca.getClientTypeCode()
+			                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
+				        return Tuples.of(mainQuery, countQuery);
+
+			        return this.addJoinCondition(mainQuery, countQuery, this.getClientIDField());
+		        });
+	}
+
+	@Override
+	protected Field<ULong> getClientIDField() {
+		return SECURITY_PERMISSION.CLIENT_ID;
 	}
 }

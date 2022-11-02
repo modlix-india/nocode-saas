@@ -16,6 +16,7 @@
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
 		<nocode-kirun-version>1.4.1</nocode-kirun-version>
+		<feign-reactor.version>3.2.6</feign-reactor.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -61,6 +62,12 @@
 			<groupId>com.fincity.nocode</groupId>
 			<artifactId>kirun-java</artifactId>
 			<version>${nocode-kirun-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.playtika.reactivefeign</groupId>
+			<artifactId>feign-reactor-spring-cloud-starter</artifactId>
+			<version>${feign-reactor.version}</version>
+			<type>pom</type>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>

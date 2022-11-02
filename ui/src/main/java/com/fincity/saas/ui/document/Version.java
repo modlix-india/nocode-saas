@@ -21,7 +21,7 @@ public class Version extends AbstractDTO<String, String> {
 	private static final long serialVersionUID = -4689349735902306562L;
 
 	private String objectName;
-	private String objectApplicationName;
+	private String objectAppCode;
 	private String clientCode;
 	private String message;
 

@@ -22,6 +22,7 @@ public class ClientUrlPattern {
 	private final String identifier;
 	private final String clientCode;
 	private final String urlPattern;
+	private final String appCode;
 
 	private Tuple3<Protocol, String, Integer> hostnPort = null;
 

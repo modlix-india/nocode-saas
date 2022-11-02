@@ -1,5 +1,6 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
@@ -8,6 +9,7 @@ import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMI
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -15,16 +17,23 @@ import java.util.stream.Stream;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
+import org.jooq.Record;
 import org.jooq.Record1;
+import org.jooq.SelectJoinStep;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityRolePermissionRecord;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Component
 public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, Role> {
@@ -221,5 +230,41 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		filterStream.forEach(filteredClientList::add);
 
 		return Mono.just(filteredClientList);
+	}
+
+	@Override
+	protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .map(ca ->
+				{
+
+			        var cAlias = SECURITY_CLIENT.as("codeClient");
+
+			        SelectJoinStep<Record> mainQuery = dslContext.select(Arrays.asList(table.fields()))
+			                .select(DSL
+			                        .replace(DSL.concat("Authorities.", DSL.concat(
+			                                DSL.if_(SECURITY_APP.APP_CODE.isNull(), "",
+			                                        DSL.concat(DSL.upper(SECURITY_APP.APP_CODE), ".")),
+			                                DSL.if_(cAlias.CODE.eq("SYSTEM"), DSL.concat("ROLE_", SECURITY_ROLE.NAME),
+			                                        DSL.concat(DSL.concat(cAlias.CODE, "_ROLE_"),
+			                                                SECURITY_ROLE.NAME)))),
+			                                " ", "_")
+			                        .as("AUTHORITY"))
+			                .from(table)
+			                .leftJoin(cAlias)
+			                .on(cAlias.ID.eq(SECURITY_ROLE.CLIENT_ID))
+			                .leftJoin(SECURITY_APP)
+			                .on(SECURITY_APP.ID.eq(SECURITY_ROLE.APP_ID));
+
+			        SelectJoinStep<Record1<Integer>> countQuery = dslContext.select(DSL.count())
+			                .from(table);
+
+			        if (ca.getClientTypeCode()
+			                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
+				        return Tuples.of(mainQuery, countQuery);
+
+			        return this.addJoinCondition(mainQuery, countQuery, this.getClientIDField());
+		        });
 	}
 }
