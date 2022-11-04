@@ -26,6 +26,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
@@ -401,4 +402,60 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 // getUserListFromClientIds
+
+	public Mono<Boolean> checkPasswordEqual(ULong userId, String newPassword) {
+		return this.dao.checkPasswordEqual(userId, newPassword);
+	}
+
+	public Mono<Boolean> updateNewPassword(RequestUpdatePassword requestPassword) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(requestPassword.getOldPassword()
+		                .equals(requestPassword.getNewPassword())
+		                && requestPassword.getNewPassword()
+		                        .equals(requestPassword.getConfirmPassword())),
+
+		        (ca, passwordEqual) ->
+				{
+			        System.out.println(passwordEqual + " from passequal");
+			        return this.checkPasswordEqual(ULong.valueOf(ca.getUser()
+			                .getId()), requestPassword.getNewPassword());
+		        },
+
+		        // add password policy service to verify the password when implemented
+
+		        (ca, passwordEqual, passwordMatches) ->
+				{
+
+			        System.out.println(passwordMatches + " from passwordMatches ");
+			        return Mono.just(true);
+		        },
+
+		        (ca, passwordEqual, passwordMatches, isValidPasswordPolicy) ->
+
+				{
+			        if (!passwordEqual.booleanValue() && !passwordMatches.booleanValue()
+			                && isValidPasswordPolicy.booleanValue()) {
+
+				        Map<String, Object> updateMap = new HashMap<>();
+				        updateMap.put("password", requestPassword.getNewPassword());
+
+				        this.update(ULong.valueOf(ca.getUser()
+				                .getId()), updateMap)
+				                .subscribe(); // not able to update
+
+				        return Mono.just(true);
+			        }
+
+			        return Mono.empty();
+
+		        }
+
+		).log()
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                "Password cannot be updated"));
+	}
 }
