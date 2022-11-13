@@ -47,9 +47,9 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
 
 	@Autowired
 	protected S service;
-	
+
 	@InitBinder
-	public void initBinder(DataBinder binder){
+	public void initBinder(DataBinder binder) {
 		binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
 			@Override
 			public void setAsText(String text) {
@@ -74,41 +74,54 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
 				setValue(UShort.valueOf(text));
 			}
 		});
-    }
-
+	}
 
 	@PostMapping
 	public Mono<ResponseEntity<D>> create(@RequestBody D entity) {
-		return this.service.create(entity).map(ResponseEntity::ok);
+		return this.service.create(entity)
+		        .map(ResponseEntity::ok);
 	}
 
 	@GetMapping(PATH_ID)
 	public Mono<ResponseEntity<D>> read(@PathVariable(PATH_VARIABLE_ID) final I id, ServerHttpRequest request) {
-		return this.service.read(id).map(ResponseEntity::ok);
+		return this.service.read(id)
+		        .map(ResponseEntity::ok)
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 
 	@GetMapping()
 	public Mono<ResponseEntity<Page<D>>> readPageFilter(Pageable pageable, ServerHttpRequest request) {
 		pageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, PATH_VARIABLE_ID) : pageable);
 		return this.service.readPageFilter(pageable, this.parameterMapToMap(request.getQueryParams()))
-				.map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok);
 	}
 
 	protected AbstractCondition parameterMapToMap(MultiValueMap<String, String> multiValueMap) {
 
-		List<AbstractCondition> conditions = multiValueMap.entrySet().stream().map(e -> {
-			List<String> value = e.getValue();
-			if (value == null || value.isEmpty())
-				return new FilterCondition().setField(e.getKey()).setOperator(FilterConditionOperator.EQUALS)
-						.setValue("");
+		List<AbstractCondition> conditions = multiValueMap.entrySet()
+		        .stream()
+		        .map(e ->
+				{
+			        List<String> value = e.getValue();
+			        if (value == null || value.isEmpty())
+				        return new FilterCondition().setField(e.getKey())
+				                .setOperator(FilterConditionOperator.EQUALS)
+				                .setValue("");
 
-			if (value.size() == 1)
-				return new FilterCondition().setField(e.getKey()).setOperator(FilterConditionOperator.EQUALS)
-						.setValue(value.get(0));
+			        if (value.size() == 1)
+				        return new FilterCondition().setField(e.getKey())
+				                .setOperator(FilterConditionOperator.EQUALS)
+				                .setValue(value.get(0));
 
-			return new FilterCondition().setField(e.getKey()).setOperator(FilterConditionOperator.IN)
-					.setValue(value.stream().map(v -> v.replace(",", "\\,")).collect(Collectors.joining(",")));
-		}).map(AbstractCondition.class::cast).toList();
+			        return new FilterCondition().setField(e.getKey())
+			                .setOperator(FilterConditionOperator.IN)
+			                .setValue(value.stream()
+			                        .map(v -> v.replace(",", "\\,"))
+			                        .collect(Collectors.joining(",")));
+		        })
+		        .map(AbstractCondition.class::cast)
+		        .toList();
 
 		if (conditions.isEmpty())
 			return null;
@@ -116,7 +129,8 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
 		if (conditions.size() == 1)
 			return conditions.get(0);
 
-		return new ComplexCondition().setConditions(conditions).setOperator(ComplexConditionOperator.AND);
+		return new ComplexCondition().setConditions(conditions)
+		        .setOperator(ComplexConditionOperator.AND);
 	}
 
 	@PostMapping(PATH_QUERY)
@@ -124,12 +138,14 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
 
 		Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-		return this.service.readPageFilter(pageable, query.getCondition()).map(ResponseEntity::ok);
+		return this.service.readPageFilter(pageable, query.getCondition())
+		        .map(ResponseEntity::ok);
 	}
 
 	@DeleteMapping(PATH_ID)
 	@ResponseStatus(value = HttpStatus.NO_CONTENT)
 	public void delete(@PathVariable(PATH_VARIABLE_ID) final I id) {
-		this.service.delete(id).subscribe();
+		this.service.delete(id)
+		        .subscribe();
 	}
 }

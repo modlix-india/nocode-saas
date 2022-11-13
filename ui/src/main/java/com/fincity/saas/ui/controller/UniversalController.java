@@ -35,7 +35,9 @@ public class UniversalController {
 	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return jsService.getJSObject()
-		        .map(e -> checkSumObjectToResponseEntity(eTag, e));
+		        .map(e -> checkSumObjectToResponseEntity(eTag, e))
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 
 	@GetMapping(value = "manifest/manifest.json", produces = MimeTypeUtils.APPLICATION_JSON_VALUE)
@@ -44,7 +46,9 @@ public class UniversalController {
 	        @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return manifestService.getManifest(appCode, clientCode)
-		        .map(e -> checkSumObjectToResponseEntity(eTag, e));
+		        .map(e -> checkSumObjectToResponseEntity(eTag, e))
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 
 	@GetMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
@@ -53,7 +57,9 @@ public class UniversalController {
 	        @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return indexHTMLService.getIndexHTML(appCode, clientCode)
-		        .map(e -> checkSumObjectToResponseEntity(eTag, e));
+		        .map(e -> checkSumObjectToResponseEntity(eTag, e))
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 
 	private ResponseEntity<String> checkSumObjectToResponseEntity(String eTag, ChecksumObject e) {

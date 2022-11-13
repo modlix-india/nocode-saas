@@ -39,7 +39,9 @@ public class EngineController {
 	        @RequestHeader("clientCode") String clientCode) {
 
 		return this.appService.read(appCode, appCode, clientCode)
-		        .map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok)
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 
 	@GetMapping("page/{pageName}")
@@ -47,7 +49,9 @@ public class EngineController {
 	        @RequestHeader("clientCode") String clientCode, @PathVariable("pageName") String pageName) {
 
 		return this.pageService.read(pageName, appCode, clientCode)
-		        .map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok)
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 
 	@GetMapping(value = "theme/{themeName}", produces = { "text/css" })
@@ -55,7 +59,9 @@ public class EngineController {
 	        @RequestHeader("clientCode") String clientCode, @PathVariable("themeName") String themeName) {
 
 		return this.themeService.readCSS(themeName, appCode, clientCode)
-		        .map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok)
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 
 	@GetMapping("function/{functionName}")
@@ -63,6 +69,8 @@ public class EngineController {
 	        @RequestHeader("clientCode") String clientCode, @PathVariable("functionName") String pageName) {
 
 		return this.functionService.read(pageName, appCode, clientCode)
-		        .map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok)
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
 	}
 }

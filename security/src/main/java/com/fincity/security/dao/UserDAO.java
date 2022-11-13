@@ -140,7 +140,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(e ->
 				{
 			        List<String> auths = new ArrayList<>(e);
-			        auths.add("Logged IN");
+			        auths.add("Authorities.Logged_IN");
 			        return auths;
 		        })
 		        .map(user::setAuthorities);
