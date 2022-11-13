@@ -27,7 +27,7 @@ public class Version extends AbstractDTO<String, String> {
 
 	public enum ObjectType {
 
-		APPLICATION("Application"), FUNCTION("Function"), PAGE("Page"), THEME("Theme");
+		APPLICATION("Application"), FUNCTION("Function"), PAGE("Page"), STYLE("Style"), STYLETHEME("StyleTheme");
 
 		private final String typeString;
 

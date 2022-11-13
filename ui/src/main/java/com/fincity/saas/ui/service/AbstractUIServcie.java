@@ -118,7 +118,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		                        ? versionService.create(new Version().setClientCode(cEntity.getClientCode())
 		                                .setObjectName(entity.getName())
 		                                .setObjectAppCode(entity.getAppCode())
-		                                .setObjectType(ObjectType.APPLICATION)
+		                                .setObjectType(ObjectType.valueOf(this.pojoClass.getSimpleName().toUpperCase()))
 		                                .setVersionNumber(1)
 		                                .setMessage(entity.getMessage())
 		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
@@ -131,8 +131,9 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	}
 
 	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, D entity) {
-		
-		if (entity == null) return Mono.just(false);
+
+		if (entity == null)
+			return Mono.just(false);
 
 		return flatMapMono(
 		        () -> SecurityContextUtil.hasAuthority("Authorities." + this.pojoClass.getSimpleName() + "_" + method,
@@ -219,7 +220,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		                        ? versionService.create(new Version().setClientCode(entity.getClientCode())
 		                                .setObjectName(entity.getName())
 		                                .setObjectAppCode(entity.getAppCode())
-		                                .setObjectType(ObjectType.APPLICATION)
+		                                .setObjectType(ObjectType.valueOf(this.pojoClass.getSimpleName().toUpperCase()))
 		                                .setVersionNumber(1)
 		                                .setMessage(entity.getMessage())
 		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
@@ -240,8 +241,8 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	protected Mono<D> evictRecursively(D f) {
 
 		Flux.just(f)
-		        .expandDeep(e -> this.repo.findByNameAndAppCodeAndBaseClientCode(e.getName(),
-		                e.getAppCode(), e.getClientCode()))
+		        .expandDeep(e -> this.repo.findByNameAndAppCodeAndBaseClientCode(e.getName(), e.getAppCode(),
+		                e.getClientCode()))
 		        .subscribe(e -> cacheService
 		                .evict(this.getCacheName(), e.getName(), "-", e.getAppCode(), "-", e.getClientCode())
 		                .subscribe());
@@ -260,8 +261,8 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		        () -> exists,
 
-		        entity -> this.repo.countByNameAndAppCodeAndBaseClientCode(entity.getName(),
-		                entity.getAppCode(), entity.getClientCode()),
+		        entity -> this.repo.countByNameAndAppCodeAndBaseClientCode(entity.getName(), entity.getAppCode(),
+		                entity.getClientCode()),
 
 		        (entity, count) -> SecurityContextUtil.getUsersContextAuthentication(),
 
@@ -327,12 +328,20 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	protected Mono<D> extractOverride(D entity, D mergedSources) {
 		if (entity == null)
 			return Mono.empty();
+		
+		if (mergedSources == null)
+			return Mono.just(entity);
+		
 		return entity.makeOverride(mergedSources);
 	}
 
 	protected Mono<D> applyOverride(D entity, D mergedSources) {
 		if (entity == null)
 			return Mono.empty();
+		
+		if (mergedSources == null)
+			return Mono.just(entity);
+		
 		return entity.applyOverride(mergedSources);
 	}
 
@@ -366,7 +375,9 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 			        Map<String, ListResultObject> things = new HashMap<>();
 
 			        String clientCode = tup.getT2()
-			                .get(0);
+			                .isEmpty() ? null
+			                        : tup.getT2()
+			                                .get(0);
 
 			        for (ListResultObject lro : list) {
 
@@ -375,7 +386,8 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 					        continue;
 				        }
 
-				        if (clientCode.equals(lro.getClientCode())) {
+				        if (lro.getClientCode()
+				                .equals(clientCode)) {
 					        things.put(lro.getName(), lro);
 				        }
 			        }
@@ -390,8 +402,15 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 			                .filter(e -> ids.contains(e.getId()))
 			                .toList();
 
-			        return Mono.just(new PageImpl<>(nList.subList((int) pageable.getOffset(),
-			                (int) pageable.getOffset() + pageable.getPageSize()), pageable, nList.size()));
+			        int from = (int) pageable.getOffset();
+			        int to = (int) pageable.getOffset() + pageable.getPageSize();
+
+			        if (nList.size() > from && nList.size() >= to)
+				        nList = nList.subList(from, to);
+			        else
+				        nList = List.of();
+
+			        return Mono.just(new PageImpl<>(nList, pageable, nList.size()));
 		        }));
 	}
 
@@ -476,8 +495,8 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		                .map(this.pojoClass::cast),
 
 		        (key, cApp) -> Mono.justOrEmpty(cApp)
-		                .switchIfEmpty(Mono.defer(
-		                        () -> this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode)
+		                .switchIfEmpty(Mono
+		                        .defer(() -> this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode)
 		                                .map(this.pojoClass::cast))),
 
 		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)

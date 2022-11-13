@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoLog;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -61,7 +62,7 @@ public class AuthenticationController {
 	@GetMapping(value = "internal/securityContextAuthentication", produces = {"application/json"} )
 	public Mono<ResponseEntity<ContextAuthentication>> contextAuthentication() {
 
-		return flatMapMono(
+		return flatMapMonoLog(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 

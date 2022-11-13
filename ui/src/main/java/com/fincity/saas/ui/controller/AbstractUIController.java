@@ -41,6 +41,6 @@ public class AbstractUIController<D extends AbstractUIDTO<D>, R extends IUIRepos
 		final Pageable finPageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, PATH_VARIABLE_ID)
 		        : pageable);
 		return this.service.readPageFilterLRO(finPageable, request.getQueryParams())
-		                .map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok);
 	}
 }
