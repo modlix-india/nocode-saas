@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -10,7 +11,10 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +25,15 @@ import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.SoxLog;
+import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
@@ -35,10 +46,24 @@ import reactor.core.publisher.Mono;
 public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
 	@Autowired
+	private CacheService cacheService;
+
+	@Autowired
 	private ClientService clientService;
 
 	@Autowired
+	private ClientPasswordPolicyService clientPasswordPolicyService;
+
+	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	@Autowired
+	private TokenService tokenService;
+
+	@Autowired
+	private SoxLogService soxLogService;
+
+	private static final String CACHE_NAME_TOKEN = "tokenCache";
 
 	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
@@ -407,55 +432,138 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return this.dao.checkPasswordEqual(userId, newPassword);
 	}
 
-	public Mono<Boolean> updateNewPassword(RequestUpdatePassword requestPassword) {
+	public Mono<Boolean> updateNewPassword(RequestUpdatePassword requestPassword, ServerHttpRequest request) {
+
+		// also check for userId for validation with path variable
+
+		// reset password only for active users
 
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(requestPassword.getOldPassword()
-		                .equals(requestPassword.getNewPassword())
-		                && requestPassword.getNewPassword()
-		                        .equals(requestPassword.getConfirmPassword())),
+		        ca -> Mono.just(ULong.valueOf(ca.getUser()
+		                .getId())),
 
-		        (ca, passwordEqual) ->
-				{
-			        System.out.println(passwordEqual + " from passequal");
-			        return this.checkPasswordEqual(ULong.valueOf(ca.getUser()
-			                .getId()), requestPassword.getNewPassword());
-		        },
+		        (ca, userId) -> this.dao.checkUserActive(userId),
 
-		        // add password policy service to verify the password when implemented
-
-		        (ca, passwordEqual, passwordMatches) ->
+		        (ca, userId, isActive) ->
 				{
 
-			        System.out.println(passwordMatches + " from passwordMatches ");
-			        return Mono.just(true);
-		        },
+			        // add password policy here check
+			        System.out.println("from ACTIVE user");
+			        if (isActive.booleanValue()) {
 
-		        (ca, passwordEqual, passwordMatches, isValidPasswordPolicy) ->
-
-				{
-			        if (!passwordEqual.booleanValue() && !passwordMatches.booleanValue()
-			                && isValidPasswordPolicy.booleanValue()) {
-
-				        Map<String, Object> updateMap = new HashMap<>();
-				        updateMap.put("password", requestPassword.getNewPassword());
-
-				        this.update(ULong.valueOf(ca.getUser()
-				                .getId()), updateMap)
-				                .subscribe(); // not able to update
-
-				        return Mono.just(true);
+				        return this.clientPasswordPolicyService.getPasswordPolicyByClientId(ULong.valueOf(ca.getUser()
+				                .getClientId()));
 			        }
 
 			        return Mono.empty();
+		        },
 
+		        (ca, userId, isActive, hasPolicy) ->
+				{
+
+			        if (hasPolicy != null) {
+
+				        return this.clientPasswordPolicyService.checkAllConditions(ULong.valueOf(ca.getUser()
+				                .getClientId()), requestPassword.getNewPassword());
+
+			        }
+
+			        return Mono.just(true);
+
+		        },
+
+		        (ca, userId, isActive, isValid, passwordPolicy) ->
+				{
+			        System.out.println(passwordPolicy);
+
+			        if (passwordPolicy.booleanValue())
+				        return this.dao.getPastPasswords(userId);
+
+			        return Mono.just(new HashSet<>());
+		        },
+
+		        (ca, userId, isActive, isValid, passwordPolicy, pastPasswords) -> passwordPolicy.booleanValue() // update
+		                                                                                                        // here
+		                ? Mono.just(pastPasswords.contains(requestPassword.getNewPassword()))
+		                : Mono.just(true),
+
+		        (ca, userId, isActive, isValid, passwordPolicy, pastPasswords, noPast) ->
+				{
+
+			        System.out.println("from pastpasswords");
+			        System.out.println(pastPasswords);
+
+			        return this.dao.updatePassword(userId, requestPassword.getNewPassword());
+
+//		        	noPast.booleanValue() ? this.dao.updatePassword(userId, requestPassword.getNewPassword())
+//		                : Mono.empty();	
+
+		        },
+
+		        (ca, userId, isActive, isValid, passwordPolicy, pastPasswords, noPast, passwordUpdated) ->
+				{
+			        System.out.println("from log");
+			        if (passwordUpdated.booleanValue()) {
+
+				        this.soxLogService.create(new SoxLog().setObjectId(userId)
+				                .setActionName(SecuritySoxLogActionName.OTHER)
+				                .setObjectName(SecuritySoxLogObjectName.USER)
+				                .setDescription("Password updated"))
+				                .subscribe();
+
+				        String bearerToken = request.getHeaders()
+				                .getFirst(HttpHeaders.AUTHORIZATION);
+
+				        if (bearerToken == null || bearerToken.isBlank()) {
+					        HttpCookie cookie = request.getCookies()
+					                .getFirst(HttpHeaders.AUTHORIZATION);
+					        if (cookie != null)
+						        bearerToken = cookie.getValue();
+				        }
+
+				        if (bearerToken != null) {
+
+					        bearerToken = bearerToken.trim();
+
+					        if (bearerToken.startsWith("Bearer ")) {
+						        bearerToken = bearerToken.substring(7);
+					        } else if (bearerToken.startsWith("Basic ")) {
+						        bearerToken = bearerToken.substring(6);
+					        }
+				        }
+
+				        if (bearerToken == null)
+					        return Mono.just(true);
+
+				        final String finToken = bearerToken;
+
+				        cacheService.evict(CACHE_NAME_TOKEN, finToken)
+				                .subscribe();
+
+				        return Mono.just(true); // delete through tokenservice
+			        }
+
+			        return Mono.empty();
 		        }
 
 		).log()
+
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                "Password cannot be updated"));
+
+//		.getPassHistoryCount() != null
+//                && passwordPolicy.getPassHistoryCount()
+//                        .intValue() > 0
+//		
+		// evict the user and delete cache if it exists
+
+		// delete user token for that session
+
+//		 this.clientPasswordPolicyService.checkAllConditions(ULong.valueOf(ca.getUser()
+//	                .getClientId()), requestPassword.getNewPassword())
 	}
+
 }

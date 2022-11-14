@@ -95,7 +95,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 			if (bearerToken.startsWith("Bearer ")) {
 				bearerToken = bearerToken.substring(7);
-			} else if (bearerToken.startsWith("basic ")) {
+			} else if (bearerToken.startsWith("Basic ")) {
 				bearerToken = bearerToken.substring(6);
 			}
 		}
@@ -222,7 +222,7 @@ public class AuthenticationService implements IAuthenticationService {
 	private Mono<Object> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
 
 		if (pol.getNoFailedAttempts() != null && pol.getNoFailedAttempts()
-		        .shortValue() >= u.getNoFailedAttempt()) {
+		        .shortValue() <= u.getNoFailedAttempt()) {
 
 			soxLogService.create(new SoxLog().setObjectId(u.getId())
 			        .setActionName(SecuritySoxLogActionName.LOGIN)
