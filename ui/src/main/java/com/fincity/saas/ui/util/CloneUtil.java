@@ -1,32 +1,45 @@
 package com.fincity.saas.ui.util;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public class CloneUtil {
-	
+
+	private static Logger logger = LoggerFactory.getLogger(CloneUtil.class);
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static Object cloneObject(Object obj) {
+	public static <T> T cloneObject(T obj) {
 
 		if (obj == null)
 			return obj;
 
 		if (obj instanceof Map map)
-			return cloneMapObject(map);
+			return (T) cloneMapObject(map);
 
 		if (obj instanceof List lst)
-			return cloneMapList(lst);
+			return (T) cloneMapList(lst);
+
+		try {
+			Constructor x = obj.getClass()
+			        .getConstructor(obj.getClass());
+			return (T) x.newInstance(obj);
+		} catch (Exception e) {
+			logger.error("Unable to create a clone instance for : {}", obj.getClass());
+		}
 
 		return obj;
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static List cloneMapList(List lst) {
+	public static <V> List<V> cloneMapList(List<V> lst) {
 
 		if (lst == null)
 			return List.of();
@@ -37,7 +50,7 @@ public class CloneUtil {
 		        .toList();
 	}
 
-	public static Map<String, Object> cloneMapObject(Map<String, Object> map) {
+	public static <K, V> Map<K, V> cloneMapObject(Map<K, V> map) {
 
 		if (map == null)
 			return Map.of();
@@ -48,7 +61,7 @@ public class CloneUtil {
 		        .map(e ->
 				{
 
-			        Object k = cloneObject(e.getValue());
+			        V k = cloneObject(e.getValue());
 
 			        if (k == null)
 				        return null;

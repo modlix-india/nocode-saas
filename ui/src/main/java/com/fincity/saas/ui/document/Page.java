@@ -8,11 +8,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.ui.model.ComponentDefinition;
+import com.fincity.saas.ui.util.CloneUtil;
 import com.fincity.saas.ui.util.DifferenceApplicator;
 import com.fincity.saas.ui.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -21,6 +23,7 @@ import reactor.core.publisher.Mono;
 @Document
 @CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1}", name = "pageFilteringIndex")
 @Accessors(chain = true)
+@NoArgsConstructor
 public class Page extends AbstractUIDTO<Page> {
 
 	private static final long serialVersionUID = 6899134951550453853L;
@@ -31,6 +34,17 @@ public class Page extends AbstractUIDTO<Page> {
 	private Map<String, FunctionDefinition> eventFunctions;
 	private String rootComponent;
 	private Map<String, ComponentDefinition> componentDefinition;
+	
+	public Page(Page page) {
+		
+		super(page);
+		this.device = page.device;
+		this.translations = CloneUtil.cloneMapStringMap(page.translations);
+		this.properties = CloneUtil.cloneMapObject(page.properties);
+		this.eventFunctions = CloneUtil.cloneMapObject(page.eventFunctions);
+		this.rootComponent = page.rootComponent;
+		this.componentDefinition = CloneUtil.cloneMapObject(page.componentDefinition);
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
