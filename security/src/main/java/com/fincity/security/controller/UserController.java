@@ -3,7 +3,6 @@ package com.fincity.security.controller;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,10 +56,10 @@ public class UserController extends AbstractJOOQDataController<SecurityUserRecor
 	}
 
 	@PostMapping("{userId}/updatePassword")
-	public Mono<ResponseEntity<Boolean>> updatePasswordForUser(@RequestBody RequestUpdatePassword passwordRequest,
-	        ServerHttpRequest request) {
+	public Mono<ResponseEntity<Boolean>> updatePasswordForUser(@PathVariable ULong userId,
+	        @RequestBody RequestUpdatePassword passwordRequest) {
 
-		return this.userService.updateNewPassword(passwordRequest, request)
+		return this.userService.updateNewPassword(userId, passwordRequest)
 		        .map(ResponseEntity::ok);
 	}
 }
