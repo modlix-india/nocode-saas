@@ -6,6 +6,18 @@ security:
     flyway:
       url: jdbc:mysql://localhost:3306/security
 
+files:
+  db:
+    url: r2dbc:mysql://localhost:3306/files?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/files
+  resources:
+    location:
+      static: /Users/kirangrandhi/Downloads/resources/static
+      secured: /Users/kirangrandhi/Downloads/resources/secured
+
 ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin

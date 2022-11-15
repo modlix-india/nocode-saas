@@ -1,8 +1,11 @@
 package com.fincity.saas.commons.model.condition;
 
+import com.fincity.saas.commons.util.StringUtil;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import reactor.core.publisher.Flux;
 
 @Data
 @Accessors(chain = true)
@@ -17,4 +20,13 @@ public class FilterCondition extends AbstractCondition {
 	private String toValue;
 	private boolean isValueField = false;
 	private boolean isToValueField = false;
+
+	@Override
+	public Flux<AbstractCondition> findConditionWithField(String fieldName) {
+
+		if (StringUtil.safeEquals(field, fieldName))
+			return Flux.just(this);
+		
+		return Flux.empty();
+	}
 }
