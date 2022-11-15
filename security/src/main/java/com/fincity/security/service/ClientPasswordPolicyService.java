@@ -97,24 +97,39 @@ public class ClientPasswordPolicyService extends
 
 		return flatMapMono(
 
-		        () -> passwordPolicy.isAtleastOneUppercase() ? checkExistsInBetween(password, 65, 90) : Mono.just(true),
+		        () -> passwordPolicy.isAtleastOneUppercase() ? checkExistsInBetween(password, 'A', 'Z')
+		                : Mono.just(true),
 
 		        isUpper -> passwordPolicy.isAtleastoneLowercase()
-		                ? checkExistsInBetween(password, 96, 122).map(val -> val && isUpper)
+		                ? checkExistsInBetween(password, 'a', 'z').map(val -> val && isUpper)
 		                : Mono.just(isUpper),
 
 		        (isUpper, isLower) -> passwordPolicy.isAtleastOneDigit()
-		                ? checkExistsInBetween(password, 48, 57).map(val -> val && isLower && isUpper)
+		                ? checkExistsInDigits(password, 48, 57).map(val -> val && isLower && isUpper)
 		                : Mono.just(isUpper && isLower)
 
 		);
 	}
 
-	public Mono<Boolean> checkExistsInBetween(String password, int minBoundary, int maxBoundary) {
+	public Mono<Boolean> checkExistsInDigits(String password, int minBoundary, int maxBoundary) {
 
 		for (int i = 0; i < password.length(); i++) {
 
 			int ch = password.charAt(i);
+			System.out.print(ch + " ");
+			if (ch >= minBoundary && ch <= maxBoundary)
+				return Mono.just(true);
+
+		}
+		System.out.println();
+		return Mono.just(false);
+	}
+
+	public Mono<Boolean> checkExistsInBetween(String password, char minBoundary, char maxBoundary) {
+
+		for (int i = 0; i < password.length(); i++) {
+
+			char ch = password.charAt(i);
 			System.out.print(ch + " ");
 			if (ch >= minBoundary && ch <= maxBoundary)
 				return Mono.just(true);
@@ -147,7 +162,7 @@ public class ClientPasswordPolicyService extends
 			if (specialCharacters.contains(ch))
 				return Mono.just(true);
 		}
-		return Mono.empty();
+		return Mono.just(false);
 	}
 
 	public Mono<Boolean> checkRegexPattern(String password, String regex) {
