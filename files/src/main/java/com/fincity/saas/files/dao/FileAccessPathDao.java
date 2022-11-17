@@ -2,17 +2,62 @@ package com.fincity.saas.files.dao;
 
 import static com.fincity.saas.files.jooq.tables.FilesAccessPath.FILES_ACCESS_PATH;
 
+import java.util.List;
+
+import org.jooq.Record1;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
 import com.fincity.saas.files.model.FilesAccessPath;
+
+import reactor.core.publisher.Mono;
 
 @Service
 public class FileAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathRecord, ULong, FilesAccessPath> {
 
 	protected FileAccessPathDao() {
 		super(FilesAccessPath.class, FILES_ACCESS_PATH, FILES_ACCESS_PATH.ID);
+	}
+
+	public Mono<Boolean> hasPathReadAccess(String path, ULong userId, String clientCode,
+	        FilesAccessPathResourceType resourceType, List<String> accessList) {
+
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(FILES_ACCESS_PATH)
+		        .where(DSL.and(
+
+		                FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
+		                DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
+		                DSL.concat(path)
+		                        .like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
+		                                DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))))
+
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(e -> e != 0);
+	}
+
+	public Mono<Boolean> hasPathWriteAccess(String path, ULong userId, String clientCode,
+	        FilesAccessPathResourceType resourceType, List<String> accessList) {
+
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(FILES_ACCESS_PATH)
+		        .where(DSL.and(
+
+		                FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
+		                DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
+		                FILES_ACCESS_PATH.WRITE_ACCESS.ne(Byte.valueOf((byte) 0)),
+
+		                DSL.concat(path)
+		                        .like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
+		                                DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))))
+
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(e -> e != 0);
 	}
 }

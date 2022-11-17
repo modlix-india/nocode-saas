@@ -1,18 +1,31 @@
 package com.fincity.saas.files.service;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.files.enumerations.FilesSort;
+import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.FileDetail;
+import com.fincity.saas.files.util.FileExtensionUtil;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractFilesResourceService {
@@ -20,57 +33,129 @@ public abstract class AbstractFilesResourceService {
 	@Autowired
 	private FilesMessageResourceService msgService;
 
-	public Mono<List<FileDetail>> list(String clientCode, String resourcePath, String filter, FilesSort sort) {
+	@Autowired
+	private FileAccessPathService fileAccessService;
 
-		Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
+	private static Logger logger = LoggerFactory.getLogger(AbstractFilesResourceService.class);
+
+	private static final Map<String, Comparator<File>> COMPARATORS = new HashMap<>(Map.of(
+
+	        "TYPE",
+	        Comparator.<File, String>comparing(e -> e.isDirectory() ? " " : FileExtensionUtil.get(e.getName()),
+	                String.CASE_INSENSITIVE_ORDER),
+
+	        "SIZE", Comparator.comparingLong(File::length),
+
+	        "NAME", Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER),
+
+	        "LASTMODIFIED", Comparator.comparingLong(File::lastModified)));
+
+	public Mono<Page<FileDetail>> list(String clientCode, String resourcePath, String filter, Pageable page) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.checkReadPermission(),
+		        () -> this.fileAccessService.hasReadAccess(resourcePath, clientCode,
+		                FilesAccessPathResourceType.STATIC),
 
-		        hasPermission -> hasPermission ? Mono.empty() : M
+		        hasPermission ->
+				{
 
-		);
+			        if (!hasPermission.booleanValue())
+				        return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PATH,
+				                this.getResourceType(), resourcePath);
 
-		if (!Files.isDirectory(path))
-			throw new PrimeException(HttpStatus.BAD_REQUEST, ASSET_NOT_A_DIRECTORY.getResponseMsg(),
-			        ASSET_NOT_A_DIRECTORY.getResponseCode());
+			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
-		if (filter == null || filter.trim()
-		        .isEmpty())
-			filter = "";
-		else
-			filter = filter.trim()
-			        .toUpperCase();
+			        if (!Files.isDirectory(path))
+				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
+				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
 
-		final String fileFilter = filter;
+			        String nameFilter = "";
+			        if (filter == null || filter.trim()
+			                .isEmpty())
+				        nameFilter = "";
+			        else
+				        nameFilter = filter.trim()
+				                .toUpperCase();
 
-		if (sort == null)
-			sort = FileSort.TYPE_ASC;
+			        Comparator<File> sortComparator = getComparator(page);
 
-		try (Stream<Path> stream = Files.find(path, 1, (paths, attr) -> attr.isRegularFile() || attr.isDirectory())) {
-			return stream.filter(e -> !e.equals(path))
-			        .map(Path::toFile)
-			        .filter(obj -> obj.getName()
-			                .toUpperCase()
-			                .contains(fileFilter))
-			        .sorted(sort.getComparator())
-			        .map(this::convertToSAMFile)
-			        .collect(Collectors.toList());
-		} catch (IOException ex) {
-			logger.error("Unable to search folder {}.", path, ex);
-			throw new PrimeException(HttpStatus.INTERNAL_SERVER_ERROR, ASSET_FILE_SEARCH_FAILURE.getResponseMsg(),
-			        ASSET_FILE_SEARCH_FAILURE.getResponseCode());
+			        try (Stream<Path> stream = Files.find(path, 1,
+			                (paths, attr) -> attr.isRegularFile() || attr.isDirectory())) {
+
+				        String stringNameFilter = nameFilter;
+
+				        return Flux.fromStream(stream)
+				                .filter(e -> !e.equals(path))
+				                .map(Path::toFile)
+				                .filter(obj -> obj.getName()
+				                        .toUpperCase()
+				                        .contains(stringNameFilter))
+				                .sort(sortComparator)
+				                .map(e -> this.convertToFileDetail(path, e))
+				                .skip(page.getOffset())
+				                .take(page.getPageSize())
+				                .collectList();
+			        } catch (IOException ex) {
+				        return msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
+				                FilesMessageResourceService.UNKNOWN_ERROR);
+			        }
+		        })
+		        .map(list -> PageableExecutionUtils.getPage(list, page, () -> -1));
+	}
+
+	private Comparator<File> getComparator(Pageable page) {
+
+		if (page == null || page.getSort()
+		        .isEmpty() || page.getSort()
+		                .isUnsorted()) {
+
+			return COMPARATORS.get("TYPE");
+		} else {
+
+			return page.getSort()
+			        .stream()
+			        .map(e ->
+					{
+				        if (!COMPARATORS.containsKey(e.getProperty()
+				                .toUpperCase()))
+					        return null;
+
+				        if (e.getDirection()
+				                .isDescending())
+					        return COMPARATORS.get(e.getProperty())
+					                .reversed();
+
+				        return COMPARATORS.get(e.getProperty());
+			        })
+			        .filter(Objects::nonNull)
+			        .reduce(Comparator::thenComparing)
+			        .orElse(COMPARATORS.get("TYPE"));
 		}
 	}
 
-	private Mono<Boolean> checkReadPermission() {
-		return SecurityContextUtil
-		        .hasAuthority("Authorities." + this.getResourceType() + "_Files_READ || Authorities."
-		                + this.getResourceType() + "_Files_WRITE")
-		        .flatMap(hasPermission -> hasPermission ? Mono.just(true)
-		                : msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_RESOURCE,
-		                        "Read", this.getResourceType()));
+	private FileDetail convertToFileDetail(Path base, File file) {
+
+		FileDetail damFile = new FileDetail().setName(file.getName())
+		        .setFullFileName(file.getAbsolutePath()
+		                .replaceFirst(base.toString(), ""))
+		        .setDirectory(file.isDirectory())
+		        .setSize(file.length());
+		try {
+			BasicFileAttributes basicAttrributes = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+			if (basicAttrributes != null) {
+				damFile.setCreatedDate(basicAttrributes.creationTime()
+				        .toMillis())
+				        .setLastAccessTime(basicAttrributes.lastAccessTime()
+				                .toMillis())
+				        .setLastModifiedTime(basicAttrributes.lastModifiedTime()
+				                .toMillis());
+			}
+		} catch (IOException e) {
+
+			logger.debug("Unable to read attributes of file {} ", file.getAbsolutePath(), e);
+		}
+		return damFile;
 	}
 
 	public abstract String getBaseLocation();

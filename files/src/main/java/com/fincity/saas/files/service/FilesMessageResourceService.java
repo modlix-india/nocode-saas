@@ -33,6 +33,7 @@ public class FilesMessageResourceService extends AbstractMessageService {
 	public static final String FORBIDDEN_RESOURCE = "forbidden_resource";
 	public static final String FORBIDDEN_PATH = "forbidden_path";
 	public static final String ACCESS_ONLY_TO_ONE = "access_only_to_one";
+	public static final String NOT_A_DIRECTORY = "not_a_directory";
 	
 
 	public FilesMessageResourceService() {

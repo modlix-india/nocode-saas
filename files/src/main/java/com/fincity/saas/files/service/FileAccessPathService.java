@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.GrantedAuthority;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -18,6 +19,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FileAccessPathDao;
@@ -37,11 +39,16 @@ public class FileAccessPathService
 	private static final String USER_ID = "userId";
 	private static final String ACCESS_NAME = "accessName";
 
+	private static final String CACHE_NAME_ACCESS_PATH = "accessPath";
+
 	@Autowired
 	private FilesMessageResourceService msgService;
 
 	@Autowired
 	private IFeignSecurityService securityService;
+
+	@Autowired
+	private CacheService cacheService;
 
 	@Override
 	public Mono<FilesAccessPath> create(FilesAccessPath entity) {
@@ -292,19 +299,65 @@ public class FileAccessPathService
 
 	public Mono<Boolean> hasReadAccess(String path, String clientCode, FilesAccessPathResourceType resourceType) {
 
-		return FlatMapUtil.flatMapMono(
+		Mono<String> mKey = cacheService.makeKey(clientCode, ":", resourceType, ":read:", path);
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+		return mKey.flatMap(e -> cacheService.<Boolean>get(CACHE_NAME_ACCESS_PATH, e))
+		        .switchIfEmpty(Mono.defer(() ->
 
-		        ca -> ca.isSystemClient() ? Mono.just(true)
-		                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+				FlatMapUtil.flatMapMono(
 
-		        (ca, managed) ->
-				{
-			        if (!managed)
-				        return Mono.just(false);
+				        SecurityContextUtil::getUsersContextAuthentication,
 
-			        return this.dao.
-		        });
+				        ca -> ca.isSystemClient() ? Mono.just(true)
+				                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+
+				        (ca, managed) ->
+						{
+					        if (!managed.booleanValue())
+						        return Mono.just(false);
+
+					        return this.dao.hasPathReadAccess(path, ULong.valueOf(ca.getUser()
+					                .getId()), clientCode, resourceType, ca.getAuthorities()
+					                        .stream()
+					                        .map(GrantedAuthority::getAuthority)
+					                        .toList());
+				        },
+
+				        (ca, managed, value) -> mKey
+				                .flatMap(key -> cacheService.<Boolean>put(CACHE_NAME_ACCESS_PATH, value, key))
+
+				)));
+	}
+
+	public Mono<Boolean> hasWriteAccess(String path, String clientCode, FilesAccessPathResourceType resourceType) {
+
+		Mono<String> mKey = cacheService.makeKey(clientCode, ":", resourceType, ":write:", path);
+
+		return mKey.flatMap(e -> cacheService.<Boolean>get(CACHE_NAME_ACCESS_PATH, e))
+		        .switchIfEmpty(Mono.defer(() ->
+
+				FlatMapUtil.flatMapMono(
+
+				        SecurityContextUtil::getUsersContextAuthentication,
+
+				        ca -> ca.isSystemClient() ? Mono.just(true)
+				                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+
+				        (ca, managed) ->
+						{
+					        if (!managed.booleanValue())
+						        return Mono.just(false);
+
+					        return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
+					                .getId()), clientCode, resourceType, ca.getAuthorities()
+					                        .stream()
+					                        .map(GrantedAuthority::getAuthority)
+					                        .toList());
+				        },
+
+				        (ca, managed, value) -> mKey
+				                .flatMap(key -> cacheService.<Boolean>put(CACHE_NAME_ACCESS_PATH, value, key))
+
+				)));
 	}
 }

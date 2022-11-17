@@ -14,12 +14,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function11;
+import org.jooq.Function12;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row11;
+import org.jooq.Row12;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -57,6 +57,11 @@ public class FilesAccessPath extends TableImpl<FilesAccessPathRecord> {
      * The column <code>files.files_access_path.ID</code>. Primary key
      */
     public final TableField<FilesAccessPathRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
+
+    /**
+     * The column <code>files.files_access_path.CLIENT_CODE</code>. Client code
+     */
+    public final TableField<FilesAccessPathRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
 
     /**
      * The column <code>files.files_access_path.USER_ID</code>. USER ID
@@ -205,18 +210,18 @@ public class FilesAccessPath extends TableImpl<FilesAccessPathRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row11 type methods
+    // Row12 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row11<ULong, ULong, FilesAccessPathResourceType, String, Byte, String, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row11) super.fieldsRow();
+    public Row12<ULong, String, ULong, FilesAccessPathResourceType, String, Byte, String, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row12) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function11<? super ULong, ? super ULong, ? super FilesAccessPathResourceType, ? super String, ? super Byte, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function12<? super ULong, ? super String, ? super ULong, ? super FilesAccessPathResourceType, ? super String, ? super Byte, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -224,7 +229,7 @@ public class FilesAccessPath extends TableImpl<FilesAccessPathRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super ULong, ? super FilesAccessPathResourceType, ? super String, ? super Byte, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super ULong, ? super String, ? super ULong, ? super FilesAccessPathResourceType, ? super String, ? super Byte, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

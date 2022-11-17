@@ -14,8 +14,12 @@ import lombok.experimental.Accessors;
 public class FileDetail {
 
 	private String name;
-	private boolean isFolder;
+	private boolean isDirectory;
 	private long size;
+	private String fullFileName;
+	private long createdDate;
+	private long lastModifiedTime;
+	private long lastAccessTime;
 
 	@JsonIgnore
 	private FileTime modifiedTime;
