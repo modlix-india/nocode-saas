@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -29,6 +30,7 @@ import com.fincity.saas.files.model.FilesAccessPath;
 
 import reactor.core.publisher.Mono;
 
+@Service
 public class FileAccessPathService
         extends AbstractJOOQUpdatableDataService<FilesAccessPathRecord, ULong, FilesAccessPath, FileAccessPathDao> {
 
@@ -297,8 +299,9 @@ public class FileAccessPathService
 		        (e, clientCode) -> super.delete(id));
 	}
 
-	public Mono<Boolean> hasReadAccess(String path, String clientCode, FilesAccessPathResourceType resourceType) {
+	public Mono<Boolean> hasReadAccess(String actualPath, String clientCode, FilesAccessPathResourceType resourceType) {
 
+		String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
 		Mono<String> mKey = cacheService.makeKey(clientCode, ":", resourceType, ":read:", path);
 
 		return mKey.flatMap(e -> cacheService.<Boolean>get(CACHE_NAME_ACCESS_PATH, e))

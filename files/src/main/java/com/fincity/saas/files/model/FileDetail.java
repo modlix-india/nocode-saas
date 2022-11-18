@@ -16,7 +16,8 @@ public class FileDetail {
 	private String name;
 	private boolean isDirectory;
 	private long size;
-	private String fullFileName;
+	private String filePath;
+	private String url;
 	private long createdDate;
 	private long lastModifiedTime;
 	private long lastAccessTime;

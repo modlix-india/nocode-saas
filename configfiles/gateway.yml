@@ -9,7 +9,7 @@ spring:
           uri: lb://security
           predicates:
             - Path=/api/security/**, /*/api/security/**, /*/*/api/security/**, /*/*/*/api/security/**, /*/*/*/*/api/security/**
-       - id: files
+        - id: files
           uri: lb://files
           predicates:
             - Path=/api/files/**, /*/api/files/**, /*/*/api/files/**, /*/*/*/api/files/**, /*/*/*/*/api/files/**

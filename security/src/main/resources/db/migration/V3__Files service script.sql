@@ -14,8 +14,8 @@ INSERT INTO `security`.`security_permission` (CLIENT_ID, NAME, APP_ID, DESCRIPTI
 SELECT ID from `security`.`security_role` WHERE NAME = 'Files Manager' LIMIT 1 INTO @v_role_files;
 
 INSERT IGNORE INTO `security`.`security_role_permission` (ROLE_ID, PERMISSION_ID) VALUES
-	(@v_role_static_files, (SELECT ID FROM `security`.`security_permission` WHERE NAME = 'Static Files PATH' LIMIT 1)),
-	(@v_role_static_files, (SELECT ID FROM `security`.`security_permission` WHERE NAME = 'Secured Files PATH' LIMIT 1));
+	(@v_role_files, (SELECT ID FROM `security`.`security_permission` WHERE NAME = 'Static Files PATH' LIMIT 1)),
+	(@v_role_files, (SELECT ID FROM `security`.`security_permission` WHERE NAME = 'Secured Files PATH' LIMIT 1));
 	
 SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'sysadmin' LIMIT 1 INTO @v_user_sysadmin;
 

@@ -2,6 +2,9 @@ package com.fincity.saas.files.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,10 +18,15 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ZeroCopyHttpOutputMessage;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
@@ -64,11 +72,13 @@ public abstract class AbstractFilesResourceService {
 				        return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PATH,
 				                this.getResourceType(), resourcePath);
 
-			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
+			        String rp = URLDecoder.decode(resourcePath, StandardCharsets.UTF_8).replace('+',' ');
+
+			        Path path = Paths.get(this.getBaseLocation(), clientCode, rp);
 
 			        if (!Files.isDirectory(path))
 				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
-				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
+				                FilesMessageResourceService.NOT_A_DIRECTORY, rp);
 
 			        String nameFilter = "";
 			        if (filter == null || filter.trim()
@@ -80,8 +90,10 @@ public abstract class AbstractFilesResourceService {
 
 			        Comparator<File> sortComparator = getComparator(page);
 
-			        try (Stream<Path> stream = Files.find(path, 1,
-			                (paths, attr) -> attr.isRegularFile() || attr.isDirectory())) {
+			        try {
+
+				        Stream<Path> stream = Files.find(path, 1,
+				                (paths, attr) -> attr.isRegularFile() || attr.isDirectory());
 
 				        String stringNameFilter = nameFilter;
 
@@ -92,7 +104,7 @@ public abstract class AbstractFilesResourceService {
 				                        .toUpperCase()
 				                        .contains(stringNameFilter))
 				                .sort(sortComparator)
-				                .map(e -> this.convertToFileDetail(path, e))
+				                .map(e -> this.convertToFileDetail(resourcePath, clientCode, e))
 				                .skip(page.getOffset())
 				                .take(page.getPageSize())
 				                .collectList();
@@ -134,11 +146,12 @@ public abstract class AbstractFilesResourceService {
 		}
 	}
 
-	private FileDetail convertToFileDetail(Path base, File file) {
+	private FileDetail convertToFileDetail(String resourcePath, String clientCode, File file) {
 
 		FileDetail damFile = new FileDetail().setName(file.getName())
-		        .setFullFileName(file.getAbsolutePath()
-		                .replaceFirst(base.toString(), ""))
+		        .setFilePath(resourcePath + "/" + file.getName())
+		        .setUrl("api/files/static" + (file.isDirectory() ? "" : "/file/" + clientCode) + resourcePath + "/"
+		                + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8).replace("+", "%20"))
 		        .setDirectory(file.isDirectory())
 		        .setSize(file.length());
 		try {
@@ -157,8 +170,29 @@ public abstract class AbstractFilesResourceService {
 		}
 		return damFile;
 	}
+	
+	public Mono<Void> downloadFile(String path, ServerHttpResponse response) {
+		
+		return FlatMapUtil.flatMapMono(
+				
+				() -> this.resolveFileToRead(path),
+				
+				fp -> {
+					
+					ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
+					response.getHeaders()
+					        .set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + path. + "");
+					response.getHeaders()
+					        .setContentType(MediaType.APPLICATION_OCTET_STREAM);
+					
+					return zeroCopyResponse.writeWith(file, 0, file.length());
+				}
+				);
+	}
 
 	public abstract String getBaseLocation();
 
 	public abstract String getResourceType();
+
+	public abstract Mono<Path> resolveFileToRead(String filePath);
 }

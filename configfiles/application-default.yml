@@ -15,8 +15,8 @@ files:
       url: jdbc:mysql://localhost:3306/files
   resources:
     location:
-      static: /Users/kirangrandhi/Downloads/resources/static
-      secured: /Users/kirangrandhi/Downloads/resources/secured
+      static: C:/fincity/resources/static
+      secured: C:/fincity/resources/secured
 
 ui:
   mongo:
