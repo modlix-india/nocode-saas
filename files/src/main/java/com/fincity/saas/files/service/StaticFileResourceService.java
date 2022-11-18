@@ -12,6 +12,9 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class StaticFileResourceService extends AbstractFilesResourceService {
+	
+	private static final String URI_PART_FILE = "api/files/static/file";
+	private static final int URI_PART_FILE_LENGTH = URI_PART_FILE.length();
 
 	@Value("${files.resources.location.static}")
 	private String location;
@@ -34,9 +37,12 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 	}
 
 	@Override
-	public Mono<Path> resolveFileToRead(String filePath) {
+	public Mono<Path> resolveFileToRead(String requestURI) {
+
+		String path = requestURI.substring(requestURI.indexOf(URI_PART_FILE) + URI_PART_FILE_LENGTH,
+				requestURI.length() - (requestURI.endsWith("/") ? 1 : 0));
 		
-		return Mono.just(Paths.get(this.staticResourceLocation, filePath));
+		return Mono.just(Paths.get(this.staticResourceLocation, path));
 	}
 
 	

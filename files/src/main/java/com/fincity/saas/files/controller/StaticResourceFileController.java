@@ -1,7 +1,5 @@
 package com.fincity.saas.files.controller;
 
-import java.io.IOException;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.service.StaticFileResourceService;
 
@@ -26,9 +25,6 @@ public class StaticResourceFileController {
 
 	private static final String URI_PART = "api/files/static";
 	private static final int URI_PART_LENGTH = URI_PART.length();
-
-	private static final String URI_PART_FILE = URI_PART + "/file";
-	private static final int URI_PART_FILE_LENGTH = URI_PART_FILE.length();
 
 	@Autowired
 	private StaticFileResourceService service;
@@ -53,14 +49,18 @@ public class StaticResourceFileController {
 	}
 
 	@GetMapping("/file/**")
-	public Mono<Void> downloadFile(ServerHttpRequest request, ServerHttpResponse response) throws IOException {
+	public Mono<Void> downloadFile(@RequestParam(required = false) Integer width,
+	        @RequestParam(required = false) Integer height,
+	        @RequestParam(required = false, defaultValue = "false") Boolean download,
+	        @RequestParam(required = false, defaultValue = "true") Boolean keepAspectRatio,
+	        @RequestParam(required = false, defaultValue = "#000000") String bandColor, ServerHttpRequest request,
+	        ServerHttpResponse response) {
 
-		String uri = request.getURI()
-		        .toString();
-
-		String path = uri.substring(uri.indexOf(URI_PART_FILE) + URI_PART_FILE_LENGTH,
-		        uri.length() - (uri.endsWith("/") ? 1 : 0));
-
-		return service.downloadFile(path, response);
+		return service.downloadFile(new DownloadOptions()
+		        .setHeight(height)
+		        .setWidth(width)
+		        .setKeepAspectRatio(keepAspectRatio)
+		        .setBandColor(bandColor)
+		        , request, response);
 	}
 }

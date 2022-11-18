@@ -9,8 +9,8 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class DownloadOptions {
 
-	private String path;
 	private Integer width;
 	private Integer height;
 	private Boolean keepAspectRatio = Boolean.TRUE;
+	private String bandColor;
 }

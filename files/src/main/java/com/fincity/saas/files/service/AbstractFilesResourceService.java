@@ -18,18 +18,16 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ZeroCopyHttpOutputMessage;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
+import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.util.FileExtensionUtil;
 
@@ -171,13 +169,15 @@ public abstract class AbstractFilesResourceService {
 		return damFile;
 	}
 	
-	public Mono<Void> downloadFile(String path, ServerHttpResponse response) {
+	public Mono<Void> downloadFile(DownloadOptions downloadOptions, ServerHttpRequest request, ServerHttpResponse response) {
 		
 		return FlatMapUtil.flatMapMono(
 				
-				() -> this.resolveFileToRead(path),
+				() -> this.resolveFileToRead(request.getURI().toString()),
 				
 				fp -> {
+
+					
 					
 					ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
 					response.getHeaders()
