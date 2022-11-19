@@ -41,6 +41,7 @@ import org.springframework.http.ZeroCopyHttpOutputMessage;
 import org.springframework.http.codec.ResourceHttpMessageWriter;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.util.FileSystemUtils;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -75,7 +76,9 @@ public abstract class AbstractFilesResourceService {
 
 	        "LASTMODIFIED", Comparator.comparingLong(File::lastModified)));
 
-	public Mono<Page<FileDetail>> list(String clientCode, String resourcePath, String filter, Pageable page) {
+	public Mono<Page<FileDetail>> list(String clientCode, String uri, String filter, Pageable page) {
+
+		String resourcePath = this.resolvePathForList(uri);
 
 		return FlatMapUtil.flatMapMono(
 
@@ -297,7 +300,7 @@ public abstract class AbstractFilesResourceService {
 
 	private Mono<Void> sendFileWhenRanges(DownloadOptions downloadOptions, ServerHttpRequest request,
 	        ServerHttpResponse response, File actualFile) {
-		
+
 		ResourceHttpMessageWriter writer = new ResourceHttpMessageWriter();
 		if (!downloadOptions.hasModification()) {
 			return writer.write(Mono.just(new FileSystemResource(actualFile)), null, null, null, request, response,
@@ -306,11 +309,10 @@ public abstract class AbstractFilesResourceService {
 			byte[] bytes = this.applyOptionsMakeResource(downloadOptions, actualFile);
 
 			if (bytes.length == 0)
-				return writer.write(Mono.just(new FileSystemResource(actualFile)), null, null, null, request,
-				        response, Map.of());
+				return writer.write(Mono.just(new FileSystemResource(actualFile)), null, null, null, request, response,
+				        Map.of());
 
-			return writer.write(Mono.just(new ByteArrayResource(bytes)), null, null, null, request, response,
-			        Map.of());
+			return writer.write(Mono.just(new ByteArrayResource(bytes)), null, null, null, request, response, Map.of());
 		}
 	}
 
@@ -385,7 +387,7 @@ public abstract class AbstractFilesResourceService {
 		        .booleanValue() || options.getBandColor() == null)
 
 			return image;
-		
+
 		return applyBands(options, image, scalingMode);
 	}
 
@@ -415,9 +417,56 @@ public abstract class AbstractFilesResourceService {
 		return image;
 	}
 
+	public Mono<Boolean> delete(String clientCode, String uri) {
+
+		String rp = this.resolvePathForList(uri);
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.fileAccessService.hasWriteAccess(rp, clientCode, this.getResourceType()),
+
+		        hasPermission ->
+				{
+
+			        if (!hasPermission.booleanValue()) {
+				        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+				                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
+			        }
+
+			        String resourcePath = URLDecoder.decode(rp, StandardCharsets.UTF_8)
+			                .replace('+', ' ');
+
+			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
+
+			        if (Files.isDirectory(path)) {
+
+				        try {
+					        return Mono.just(FileSystemUtils.deleteRecursively(path));
+				        } catch (IOException e) {
+					        this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+					                FilesMessageResourceService.UNABLE_TO_DEL_FILE, path.toString());
+				        }
+			        } else {
+				        try {
+					        return Mono.just(Files.deleteIfExists(path));
+				        } catch (IOException e) {
+					        this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+					                FilesMessageResourceService.UNABLE_TO_DEL_FILE, path.toString());
+				        }
+			        }
+
+			        return Mono.just(true);
+		        }
+
+		);
+	}
+
 	public abstract String getBaseLocation();
 
-	public abstract String getResourceType();
+	public abstract FilesAccessPathResourceType getResourceType();
 
 	public abstract Mono<Path> resolveFileToRead(String filePath);
+
+	public abstract String resolvePathForList(String uri);
+
 }
