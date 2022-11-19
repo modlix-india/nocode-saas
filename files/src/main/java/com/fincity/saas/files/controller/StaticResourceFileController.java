@@ -53,14 +53,17 @@ public class StaticResourceFileController {
 	        @RequestParam(required = false) Integer height,
 	        @RequestParam(required = false, defaultValue = "false") Boolean download,
 	        @RequestParam(required = false, defaultValue = "true") Boolean keepAspectRatio,
-	        @RequestParam(required = false, defaultValue = "#000000") String bandColor, ServerHttpRequest request,
+	        @RequestParam(required = false) String bandColor,
+	        @RequestParam(required = false, defaultValue = "HORIZONTAL") DownloadOptions.ResizeDirection resizeDirection, 
+	        @RequestParam(required = false, defaultValue = "false") Boolean noCache, ServerHttpRequest request,
 	        ServerHttpResponse response) {
 
-		return service.downloadFile(new DownloadOptions()
-		        .setHeight(height)
+		return service.downloadFile(new DownloadOptions().setHeight(height)
 		        .setWidth(width)
 		        .setKeepAspectRatio(keepAspectRatio)
 		        .setBandColor(bandColor)
-		        , request, response);
+		        .setResizeDirection(resizeDirection)
+		        .setNoCache(noCache)
+		        .setDownload(download), request, response);
 	}
 }

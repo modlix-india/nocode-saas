@@ -1,5 +1,7 @@
 package com.fincity.saas.files.service;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -12,15 +14,15 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class StaticFileResourceService extends AbstractFilesResourceService {
-	
+
 	private static final String URI_PART_FILE = "api/files/static/file";
 	private static final int URI_PART_FILE_LENGTH = URI_PART_FILE.length();
 
 	@Value("${files.resources.location.static}")
 	private String location;
-	
+
 	private String staticResourceLocation;
-	
+
 	@PostConstruct
 	private void initialize() {
 		this.staticResourceLocation = location.replace("/", "\\\\");
@@ -30,7 +32,7 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 	public String getBaseLocation() {
 		return this.staticResourceLocation;
 	}
-	
+
 	@Override
 	public String getResourceType() {
 		return "Static";
@@ -39,11 +41,16 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 	@Override
 	public Mono<Path> resolveFileToRead(String requestURI) {
 
-		String path = requestURI.substring(requestURI.indexOf(URI_PART_FILE) + URI_PART_FILE_LENGTH,
-				requestURI.length() - (requestURI.endsWith("/") ? 1 : 0));
-		
-		return Mono.just(Paths.get(this.staticResourceLocation, path));
+		String path = requestURI.substring(requestURI.indexOf(URI_PART_FILE) + URI_PART_FILE_LENGTH);
+
+		int index = path.indexOf('?');
+		if (index != -1)
+			path = path.substring(0, index);
+
+		if (path.endsWith("/"))
+			path = path.substring(0, path.length() - 1);
+
+		return Mono.just(Paths.get(this.staticResourceLocation, URLDecoder.decode(path, StandardCharsets.UTF_8)));
 	}
 
-	
 }
