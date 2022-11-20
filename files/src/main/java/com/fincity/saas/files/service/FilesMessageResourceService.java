@@ -35,6 +35,7 @@ public class FilesMessageResourceService extends AbstractMessageService {
 	public static final String ACCESS_ONLY_TO_ONE = "access_only_to_one";
 	public static final String NOT_A_DIRECTORY = "not_a_directory";
 	public static final String UNABLE_TO_DEL_FILE = "unable_to_del_file";
+	public static final String PATH_NOT_FOUND = "path_not_found";
 	
 
 	public FilesMessageResourceService() {

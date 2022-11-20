@@ -23,7 +23,7 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.files.dao.FileAccessPathDao;
+import com.fincity.saas.files.dao.FilesAccessPathDao;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
 import com.fincity.saas.files.model.FilesAccessPath;
@@ -31,8 +31,8 @@ import com.fincity.saas.files.model.FilesAccessPath;
 import reactor.core.publisher.Mono;
 
 @Service
-public class FileAccessPathService
-        extends AbstractJOOQUpdatableDataService<FilesAccessPathRecord, ULong, FilesAccessPath, FileAccessPathDao> {
+public class FilesAccessPathService
+        extends AbstractJOOQUpdatableDataService<FilesAccessPathRecord, ULong, FilesAccessPath, FilesAccessPathDao> {
 
 	private static final String RESOURCE_TYPE = "resourceType";
 	private static final String PATH = "path";

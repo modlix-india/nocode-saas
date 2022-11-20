@@ -20,11 +20,11 @@ import com.fincity.saas.files.model.FilesAccessPath;
 import reactor.core.publisher.Mono;
 
 @Service
-public class FileAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathRecord, ULong, FilesAccessPath> {
+public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathRecord, ULong, FilesAccessPath> {
 
-	private static final Logger logger = LoggerFactory.getLogger(FileAccessPathDao.class);
+	private static final Logger logger = LoggerFactory.getLogger(FilesAccessPathDao.class);
 
-	protected FileAccessPathDao() {
+	protected FilesAccessPathDao() {
 		super(FilesAccessPath.class, FILES_ACCESS_PATH, FILES_ACCESS_PATH.ID);
 	}
 
