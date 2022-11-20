@@ -6,11 +6,13 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.ui.util.CloneUtil;
 import com.fincity.saas.ui.util.DifferenceApplicator;
 import com.fincity.saas.ui.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -19,12 +21,20 @@ import reactor.core.publisher.Mono;
 @Document
 @CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1, 'styleName': 1}", name = "stylethemeFilteringIndex")
 @Accessors(chain = true)
+@NoArgsConstructor
 public class StyleTheme extends AbstractUIDTO<StyleTheme> {
 
 	private static final long serialVersionUID = 4355909627072800292L;
 
 	private String styleName;
 	private Map<String, Map<String, String>> variables;
+
+	public StyleTheme(StyleTheme styleTheme) {
+
+		super(styleTheme);
+		this.styleName = styleTheme.styleName;
+		this.variables = CloneUtil.cloneMapStringMap(styleTheme.variables);
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -36,7 +46,7 @@ public class StyleTheme extends AbstractUIDTO<StyleTheme> {
 
 			        () -> DifferenceApplicator.apply(this.variables, base.variables),
 
-			        (v) ->
+			        v ->
 					{
 				        this.variables = (Map<String, Map<String, String>>) v;
 				        return Mono.just(this);

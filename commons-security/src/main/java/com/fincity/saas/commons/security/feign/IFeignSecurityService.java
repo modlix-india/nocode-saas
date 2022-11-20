@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.security.feign;
 
+import java.math.BigInteger;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,4 +21,7 @@ public interface IFeignSecurityService {
 
 	@GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
 	public Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
+	
+	@GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
+	public Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
 }

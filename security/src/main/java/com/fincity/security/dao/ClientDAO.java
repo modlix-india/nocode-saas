@@ -206,6 +206,31 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e == 1);
 	}
 
+	public Mono<Boolean> isUserBeingManaged(ULong userId, String clientCode) {
+
+		Table<SecurityClientRecord> orig = SECURITY_CLIENT.asTable("orig");
+		Table<SecurityClientRecord> manage = SECURITY_CLIENT.asTable("manage");
+
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(SECURITY_USER)
+		        .leftJoin(SECURITY_CLIENT_MANAGE)
+		        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		        .leftJoin(manage)
+		        .on(manage.field("ID", ULong.class)
+		                .eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID))
+		        .leftJoin(orig)
+		        .on(orig.field("ID", ULong.class)
+		                .eq(SECURITY_USER.CLIENT_ID))
+		        .where(DSL.or(SECURITY_USER.ID.eq(userId)
+		                .and(manage.field("CODE", String.class)
+		                        .eq(clientCode)),
+		                orig.field("CODE", String.class)
+		                        .eq(clientCode)))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(e -> e == 1);
+	}
+
 	public Mono<Client> getClientBy(String clientCode) {
 
 		return Flux.from(this.dslContext.select(SECURITY_CLIENT.fields())
@@ -315,9 +340,11 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 			        System.out.println("Babu : " + id + " : " + e);
 			        return e;
 		        })
-		        .switchIfEmpty(Mono.defer(() -> {
-		        	System.out.println("It is empty...");
-		        	return Mono.just("KIRAN");
-		        })).log();
+		        .switchIfEmpty(Mono.defer(() ->
+				{
+			        System.out.println("It is empty...");
+			        return Mono.just("KIRAN");
+		        }))
+		        .log();
 	}
 }

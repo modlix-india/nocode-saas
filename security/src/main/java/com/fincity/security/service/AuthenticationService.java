@@ -29,7 +29,6 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
-
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
@@ -357,7 +356,7 @@ public class AuthenticationService implements IAuthenticationService {
 		        (claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
 
 		        (claims, u,
-		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
+		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser().setClientCode(typ.getT2()), true,
 		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
 		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
 	}

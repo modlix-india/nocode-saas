@@ -1,7 +1,10 @@
 package com.fincity.gateway;
 
 import java.net.URI;
+import java.util.WeakHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -31,6 +34,10 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 	@Autowired
 	private IFeignSecurityClient security;
+
+	private WeakHashMap<String, Tuple2<String, String>> urlClientCode = new WeakHashMap<>();
+
+	private static final Logger logger = LoggerFactory.getLogger(GatewayFilter.class);
 
 	@Override
 	public int getOrder() {
@@ -71,23 +78,67 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		String clientCode = finT.getT1();
 
 		if (apiIndex != -1) {
-			modifiedRequestPath = "/api/" + requestPath.substring(apiIndex + 4);
-			String[] parts = requestPath.substring(0, apiIndex)
-			        .split("/");
-			if (parts.length > 0 && !parts[0].isBlank())
-				appCode = parts[0];
-			if (parts.length > 1)
-				clientCode = parts[1];
+
+			modifiedRequestPath = requestPath.substring(apiIndex);
+			String beforeAPI = requestPath.substring(0, apiIndex);
+			Tuple2<String, String> codes = this.urlClientCode.get(beforeAPI);
+			if (codes != null) {
+
+				return modifyRequest(exchange, chain, modifiedRequestPath, codes.getT1(), codes.getT2());
+			} else {
+
+				String pagePath = beforeAPI.substring(0, beforeAPI.indexOf("/page/") + 1);
+				return modifyRequest(exchange, chain, modifiedRequestPath, pagePath.split("/"), clientCode, appCode,
+				        beforeAPI);
+			}
 		}
+
+		int pageIndex = requestPath.indexOf("/page/");
+		String beforePage = requestPath.substring(0, pageIndex + 1);
+
+		Tuple2<String, String> codes = this.urlClientCode.get(beforePage);
+		if (codes != null) {
+
+			return modifyRequest(exchange, chain, modifiedRequestPath, codes.getT1(), codes.getT2());
+		} else {
+
+			return modifyRequest(exchange, chain, modifiedRequestPath, beforePage.split("/"), clientCode, appCode,
+			        beforePage);
+		}
+	}
+
+	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
+	        String[] pageParts, String clientCode, String appCode, String beforeBreakPath) {
+
+		int ind = 0;
+
+		if (pageParts.length > ind && pageParts[ind].isBlank())
+			ind++;
+		if (pageParts.length > ind && !pageParts[ind].isBlank()) {
+
+			appCode = pageParts[ind];
+			ind++;
+			if (pageParts.length > ind && !pageParts[ind].isBlank() && "SYSTEM".equals(clientCode)) {
+				clientCode = pageParts[ind];
+			}
+
+			urlClientCode.put(beforeBreakPath, Tuples.of(clientCode, appCode));
+		}
+
+		return modifyRequest(exchange, chain, modifiedRequestPath, clientCode, appCode);
+	}
+
+	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
+	        String clientCode, String appCode) {
 
 		Builder req = exchange.getRequest()
 		        .mutate();
-		if (clientCode != null)
-			req.header("clientCode", clientCode);
 
-		if (appCode != null)
-			req.header("appCode", appCode);
+		logger.debug("{} : clientCode - {}, appCode - {}", exchange.getRequest()
+		        .getPath(), clientCode, appCode);
 
+		req.header("clientCode", clientCode);
+		req.header("appCode", appCode);
 		ServerHttpRequest modifiedRequest = req.path(modifiedRequestPath)
 		        .build();
 

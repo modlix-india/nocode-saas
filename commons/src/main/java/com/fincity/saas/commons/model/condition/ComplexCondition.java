@@ -2,9 +2,12 @@ package com.fincity.saas.commons.model.condition;
 
 import java.util.List;
 
+import com.fincity.saas.commons.util.StringUtil;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import reactor.core.publisher.Flux;
 
 @Data
 @Accessors(chain = true)
@@ -15,4 +18,13 @@ public class ComplexCondition extends AbstractCondition {
 
 	private ComplexConditionOperator operator;
 	private List<AbstractCondition> conditions;
+
+	public Flux<AbstractCondition> findConditionWithField(String fieldName) {
+
+		if (StringUtil.safeIsBlank(fieldName))
+			return Flux.empty();
+
+		return Flux.fromIterable(this.conditions)
+		        .flatMap(c -> c.findConditionWithField(fieldName));
+	}
 }
