@@ -246,7 +246,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private Condition filterConditionFilter(FilterCondition fc) { // NOSONAR
+	protected Condition filterConditionFilter(FilterCondition fc) { // NOSONAR
 		// Just 16 beyond the limit.
 
 		Field field = this.getField(fc.getField()); // NOSONAR
@@ -361,7 +361,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		return value;
 	}
 
-	private Mono<Condition> complexConditionFilter(ComplexCondition cc) {
+	protected Mono<Condition> complexConditionFilter(ComplexCondition cc) {
 
 		if (cc.getConditions() == null || cc.getConditions()
 		        .isEmpty())
