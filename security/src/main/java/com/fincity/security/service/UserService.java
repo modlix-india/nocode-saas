@@ -415,6 +415,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return this.dao.checkPasswordEqual(userId, newPassword);
 	}
 
+
 	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {
 
 		// also check for userId for validation with path variable
