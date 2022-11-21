@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,10 +23,14 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
@@ -37,7 +42,13 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	private ClientService clientService;
 
 	@Autowired
+	private ClientPasswordPolicyService clientPasswordPolicyService;
+
+	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	@Autowired
+	private SoxLogService soxLogService;
 
 	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
@@ -403,4 +414,110 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	public Mono<Boolean> checkPasswordEqual(ULong userId, String newPassword) {
 		return this.dao.checkPasswordEqual(userId, newPassword);
 	}
+
+
+	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {
+
+		// also check for userId for validation with path variable
+
+		Mono<ContextUser> ca = SecurityContextUtil.getUsersContextAuthentication()
+		        .map(ContextAuthentication::getUser);
+
+		Mono<ULong> loggedInUserId = ca.map(ContextUser::getId)
+		        .map(ULong::valueOf);
+
+		Mono<ULong> loggedInClientId = ca.map(ContextUser::getClientId)
+		        .map(ULong::valueOf);
+
+		// reset password only for active users
+
+		return flatMapMono(
+
+		        () -> loggedInUserId,
+
+		        // checking userid of path variable and currently logged in user
+		        userId -> reqUserId != null ? Mono.just(reqUserId.equals(userId)) : Mono.empty(),
+
+		        (userId, isMatching) -> isMatching.booleanValue() ? this.dao.checkUserActive(userId) : Mono.empty(),
+
+		        (userId, isMatching, isActive) -> loggedInClientId,
+
+		        (userId, isMatching, isActive, clientId) ->
+				{
+
+			        // add password policy here check
+			        System.out.println("from ACTIVE user");
+
+			        if (isActive.booleanValue()) {
+
+				        return this.clientPasswordPolicyService.getPasswordPolicyByClientId(clientId);
+			        }
+
+			        return Mono.empty();
+		        },
+
+		        (userId, isMatching, isActive, clientId, hasPolicy) ->
+				{
+
+			        if (hasPolicy != null) {
+
+				        return this.clientPasswordPolicyService.checkAllConditions(clientId,
+				                requestPassword.getNewPassword());
+
+			        }
+
+			        return Mono.just(true);
+
+		        },
+
+		        (userId, isMatching, isActive, clientId, hasPolicy, isValid) ->
+				{
+
+			        if (isValid.booleanValue())
+				        return this.dao.getPastPasswords(userId);
+
+			        return Mono.just(new HashSet<>());
+		        },
+
+		        (userId, isMatching, isActive, clientId, hasPolicy, isValid,
+		                pastPasswords) -> pastPasswords != null && !pastPasswords.isEmpty() ? Mono.just(
+		                        pastPasswords.contains(requestPassword.getNewPassword()) && isValid.booleanValue())
+		                        : Mono.just(isValid),
+
+		        (userId, isMatching, isActive, clientId, hasPolicy, isValid, pastPasswords, noPast) ->
+				{
+
+			        System.out.println("from pastpasswords");
+			        System.out.println(pastPasswords);
+
+			        // check old password matching it or not
+
+			        return this.dao.updatePassword(userId, requestPassword.getNewPassword());
+
+		        },
+		        (userId, isMatching, isActive, clientId, hasPolicy, isValid, pastPasswords, noPast, passwordUpdated) ->
+				{
+
+			        System.out.println("from log");
+			        if (passwordUpdated.booleanValue()) {
+
+				        this.soxLogService.create(new SoxLog().setObjectId(userId)
+				                .setActionName(SecuritySoxLogActionName.OTHER)
+				                .setObjectName(SecuritySoxLogObjectName.USER)
+				                .setDescription("Password updated"))
+				                .subscribe();
+
+				        return Mono.just(true);
+			        }
+
+			        return Mono.empty();
+		        }
+
+		).log()
+
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                "Password cannot be updated"));
+
+	}
+
 }
