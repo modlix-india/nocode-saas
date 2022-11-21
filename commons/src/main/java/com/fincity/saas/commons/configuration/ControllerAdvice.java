@@ -8,6 +8,8 @@ import java.util.Optional;
 
 import javax.annotation.Priority;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.http.HttpHeaders;
@@ -41,9 +43,13 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+	
+	private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
 
 	@Override
 	public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+		
+		logger.debug("Exception Occurred : ", ex);
 
 		Mono<ServerResponse> sr = null;
 

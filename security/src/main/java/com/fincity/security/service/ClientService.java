@@ -308,6 +308,11 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
 		return this.dao.isBeingManagedBy(managingClientCode, clientCode);
 	}
+	
+	public Mono<Boolean> isUserBeingManaged(ULong userId, String clientCode) {
+
+		return this.dao.isUserBeingManaged(userId, clientCode);
+	}
 
 	public Mono<Client> getClientBy(String clientCode) {
 
