@@ -18,7 +18,6 @@ import com.fincity.saas.common.security.jwt.VerificationResponse;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
-import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.service.AuthenticationService;
 
 import reactor.core.publisher.Mono;
@@ -70,10 +69,4 @@ public class AuthenticationController {
 		        contextAuthentication -> Mono.just(ResponseEntity.<ContextAuthentication>ok(contextAuthentication)));
 	}
 
-	@PostMapping(value = "updatePassword")
-	public Mono<ResponseEntity<Boolean>> updatePassword(@RequestBody RequestUpdatePassword requestPassword) {
-		return this.service.updateNewPassword(requestPassword)
-		        .map(ResponseEntity::ok);
-
-	}
 }

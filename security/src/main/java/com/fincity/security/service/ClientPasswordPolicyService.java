@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
@@ -33,27 +34,26 @@ public class ClientPasswordPolicyService extends
 	        Arrays.asList('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '-', '+', '=', '{', '}', '[',
 	                ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?'));
 
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
 	@Override
 	protected Mono<ClientPasswordPolicy> updatableEntity(ClientPasswordPolicy entity) {
-
-		return null;
+		return super.update(entity);
 	}
 
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-		return null;
+		return Mono.just(fields);
 	}
 
-	public Mono<ClientPasswordPolicy> getPasswordPolicyByClientId(ULong clientId) {
-		return this.dao.getByClientId(clientId);
+	public Mono<Boolean> checkPasswordPolicyExists(ULong clientId) {
+		return this.dao.checkClientPasswordPolicyExists(clientId);
 	}
 
 	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
 
 		return flatMapMono(
 
-		        () -> this.getPasswordPolicyByClientId(clientId),
+		        () -> this.dao.getByClientId(clientId),
 
 		        passwordPolicy -> passwordPolicy != null ? checkAlphanumericExists(passwordPolicy, password)
 		                : Mono.empty(),
@@ -62,13 +62,18 @@ public class ClientPasswordPolicyService extends
 		                ? checkInSpecialCharacters(password).map(val -> val && isAlphaNumberic)
 		                : Mono.just(isAlphaNumberic),
 
-		        (passwordPolicy, isAlphaNumberic, isSpecial) -> passwordPolicy.isSpacesAllowed()
-		                ? Mono.just(password.contains(" "))
-		                        .map(val -> val && isAlphaNumberic && isSpecial)
-		                : Mono.just(isAlphaNumberic && isSpecial),
+		        // re check here
+		        (passwordPolicy, isAlphaNumberic, isSpecial) ->
+
+				!passwordPolicy.isSpacesAllowed() && password.contains(" ") ?
+
+				        Mono.just(false) : Mono.just(isAlphaNumberic && isSpecial),
 
 		        (passwordPolicy, isAlphaNumberic, isSpecial, isSpace) ->
 				{
+			        if (!isSpace.booleanValue())
+				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				                SecurityMessageResourceService.SPACES_MISSING);
 
 			        String regex = passwordPolicy.getRegex();
 			        return regex != null && !regex.contains("")
@@ -76,9 +81,14 @@ public class ClientPasswordPolicyService extends
 			                        .map(val -> val && isAlphaNumberic && isSpecial && isSpace)
 			                : Mono.just(isAlphaNumberic && isSpecial && isSpace);
 
+		        }, (passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex) -> {
+
+			        if (!isRegex.booleanValue())
+				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				                SecurityMessageResourceService.REGEX_MISMATCH);
+
+			        return checkStrengthOfPassword(passwordPolicy, password);
 		        },
-		        (passwordPolicy, isAlphaNumberic, isSpecial, isSpace,
-		                isRegex) -> checkStrengthOfPassword(passwordPolicy, password),
 
 		        (passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex, isLength) ->
 
@@ -93,82 +103,120 @@ public class ClientPasswordPolicyService extends
 		        securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, CLIENT_PASSWORD_POLICY_ERROR));
 	}
 
-	public Mono<Boolean> checkAlphanumericExists(ClientPasswordPolicy passwordPolicy, String password) {
+	private Mono<Boolean> checkAlphanumericExists(ClientPasswordPolicy passwordPolicy, String password) {
 
 		return flatMapMono(
 
 		        () -> passwordPolicy.isAtleastOneUppercase() ? checkExistsInBetween(password, 'A', 'Z')
 		                : Mono.just(true),
 
-		        isUpper -> passwordPolicy.isAtleastoneLowercase()
-		                ? checkExistsInBetween(password, 'a', 'z').map(val -> val && isUpper)
-		                : Mono.just(isUpper),
+		        isUpper ->
+				{
 
-		        (isUpper, isLower) -> passwordPolicy.isAtleastOneDigit()
-		                ? checkExistsInDigits(password, 48, 57).map(val -> val && isLower && isUpper)
-		                : Mono.just(isUpper && isLower)
+			        if (!isUpper.booleanValue())
+				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				                SecurityMessageResourceService.CAPTIAL_LETTERS_MISSING);
+
+			        return passwordPolicy.isAtleastoneLowercase()
+			                ? checkExistsInBetween(password, 'a', 'z').map(val -> val && isUpper)
+			                : Mono.just(isUpper);
+		        },
+
+		        (isUpper, isLower) ->
+				{
+
+			        if (!isLower.booleanValue())
+				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				                SecurityMessageResourceService.SMALL_LETTERS_MISSING);
+
+			        return passwordPolicy.isAtleastOneDigit()
+			                ? checkExistsInDigits(password, 48, 57).map(val -> val && isLower && isUpper)
+			                : Mono.just(isUpper && isLower);
+		        },
+
+		        (isUpper, isLower, isNumeric) ->
+				{
+			        if (!isNumeric.booleanValue())
+				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				                SecurityMessageResourceService.NUMBERS_MISSING);
+
+			        return Mono.just(isUpper && isLower && isNumeric);
+
+		        }
 
 		);
 	}
 
-	public Mono<Boolean> checkExistsInDigits(String password, int minBoundary, int maxBoundary) {
+	private Mono<Boolean> checkExistsInDigits(String password, int minBoundary, int maxBoundary) {
 
 		for (int i = 0; i < password.length(); i++) {
 
 			int ch = password.charAt(i);
-			System.out.print(ch + " ");
+
 			if (ch >= minBoundary && ch <= maxBoundary)
 				return Mono.just(true);
 
 		}
-		System.out.println();
 		return Mono.just(false);
 	}
 
-	public Mono<Boolean> checkExistsInBetween(String password, char minBoundary, char maxBoundary) {
+	private Mono<Boolean> checkExistsInBetween(String password, char minBoundary, char maxBoundary) {
 
 		for (int i = 0; i < password.length(); i++) {
 
 			char ch = password.charAt(i);
-			System.out.print(ch + " ");
+
 			if (ch >= minBoundary && ch <= maxBoundary)
 				return Mono.just(true);
 
 		}
-		System.out.println();
+
 		return Mono.just(false);
 	}
 
-	public Mono<Boolean> checkStrengthOfPassword(ClientPasswordPolicy passwordPolicy, String password) {
+	private Mono<Boolean> checkStrengthOfPassword(ClientPasswordPolicy passwordPolicy, String password) {
 
 		boolean isValid = true;
 
-		if (passwordPolicy.getPassMaxLength() != null && passwordPolicy.getPassMinLength() != null)
+		if (passwordPolicy.getPassMaxLength() != null && passwordPolicy.getPassMinLength() != null) {
+
+			if (password.length() > passwordPolicy.getPassMaxLength()
+			        .intValue())
+				return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        SecurityMessageResourceService.MAX_LENGTH_ERROR);
+
+			if (password.length() < passwordPolicy.getPassMinLength()
+			        .intValue())
+				return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        SecurityMessageResourceService.MIN_LENGTH_ERROR);
+
 			isValid = password.length() <= passwordPolicy.getPassMaxLength()
 			        .intValue()
 			        && password.length() >= passwordPolicy.getPassMinLength()
 			                .intValue();
-
-		System.out.println(isValid + " from length of password ");
+		}
 
 		return Mono.just(isValid);
 
 	}
 
-	public Mono<Boolean> checkInSpecialCharacters(String password) {
+	private Mono<Boolean> checkInSpecialCharacters(String password) {
 
 		for (int i = 0; i < password.length(); i++) {
 			Character ch = password.charAt(i);
 			if (specialCharacters.contains(ch))
 				return Mono.just(true);
 		}
-		return Mono.just(false);
+
+		return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+		        SecurityMessageResourceService.SPECIAL_CHARACTERS_MISSING);
 	}
 
-	public Mono<Boolean> checkRegexPattern(String password, String regex) {
+	private Mono<Boolean> checkRegexPattern(String password, String regex) {
 
 		Pattern pattern = Pattern.compile(regex);
 		Matcher matches = pattern.matcher(password);
 		return Mono.just(matches.find());
 	}
+
 }

@@ -25,8 +25,6 @@ public class ClientPasswordPolicyDAO
 		super(ClientPasswordPolicy.class, SECURITY_CLIENT_PASSWORD_POLICY, SECURITY_CLIENT_PASSWORD_POLICY.ID);
 	}
 
-	// add query to fetch client password policy record for the selected client
-
 	public Mono<ClientPasswordPolicy> getByClientId(ULong clientId) {
 
 		return Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT_PASSWORD_POLICY)
@@ -44,5 +42,14 @@ public class ClientPasswordPolicyDAO
 		        .map(Record1::value1)
 		        .collectList()
 		        .map(HashSet::new);
+	}
+
+	public Mono<Boolean> checkClientPasswordPolicyExists(ULong clientId) {
+		return Mono.from(this.dslContext.selectCount()
+		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)))
+		        .map(Record1::value1)
+		        .map(count -> count > 0);
+
 	}
 }
