@@ -1,10 +1,12 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.jooq.types.ULong;
@@ -24,7 +26,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.UserDAO;
-import com.fincity.security.dto.PastPassword;
+import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
@@ -436,40 +438,23 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		        userId -> checkHierarchy(userId, reqUserId, requestPassword.getNewPassword()),
 
-		        (userId, isUpdatable) ->
-				{
-			        System.out.println(isUpdatable + " from update password");
-			        return isUpdatable.booleanValue() ? reqClientId : Mono.empty();
-		        },
+		        (userId, isUpdatable) -> isUpdatable.booleanValue() ? reqClientId : Mono.empty(),
 
-		        (userId, isUpdatable, clientId) ->
-				{
-			        System.out.println(clientId + " from up pa 1");
-			        this.clientPasswordPolicyService.checkPasswordPolicyExists(clientId)
-			                .subscribe(System.out::println);
-			        return clientId != null ? this.clientPasswordPolicyService.checkPasswordPolicyExists(clientId)
-			                : Mono.empty();
-		        },
+		        (userId, isUpdatable, clientId) -> clientId != null
+		                ? this.clientPasswordPolicyService.getPolicyByClientId(clientId)
+		                : Mono.empty(),
 
-		        (userId, isUpdatable, clientId, passwordPolicy) ->
-				{
-			        System.out.println(clientId + " from up pa 2");
-			        System.out.println(passwordPolicy);
-			        return passwordPolicy.booleanValue()
-			                ? this.clientPasswordPolicyService.checkAllConditions(clientId,
-			                        requestPassword.getNewPassword())
-			                : Mono.just(true);
-		        },
+		        (userId, isUpdatable, clientId, passwordPolicy) -> passwordPolicy != null
+		                ? this.clientPasswordPolicyService.checkAllConditions(clientId,
+		                        requestPassword.getNewPassword())
+		                : Mono.just(true),
 
 		        (userId, isUpdatable, clientId, passwordPolicy, isValid) ->
-				{
-			        System.out.println(isValid + " from valid password policy step");
 
-			        return isValid.booleanValue() ? this.addBasedOnHistoryCount(new PastPassword().setUserId(reqUserId)
-			                .setPassword(requestPassword.getNewPassword())) : Mono.empty();
-			        // REWORK on
-			        // created by
-		        },
+				isValid.booleanValue()
+				        ? this.addBasedOnHistoryCount(reqUserId, requestPassword.getNewPassword(), userId,
+				                passwordPolicy)
+				        : Mono.empty(),
 
 		        (userId, isUpdatable, clientId, passwordPolicy, isValid,
 		                addPastPassword) -> addPastPassword.booleanValue()
@@ -478,7 +463,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		        (userId, isUpdatable, clientId, passwordPolicy, isValid, addPastPassword, passwordUpdated) ->
 				{
-			        System.out.println(passwordUpdated + " from last step ");
+
 			        if (passwordUpdated.booleanValue()) {
 				        this.soxLogService.create(new SoxLog().setObjectId(userId)
 				                .setActionName(SecuritySoxLogActionName.OTHER)
@@ -511,13 +496,9 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		        () -> clientService.getClientPasswordPolicy(clientId),
 
-		        passwordPolicy ->
-				{
-			        System.out.println(passwordPolicy + " from history count method");
-			        return passwordPolicy != null && passwordPolicy.getPassHistoryCount() != null
-			                ? Mono.just(passwordPolicy.getPassHistoryCount())
-			                : Mono.just(UShort.valueOf(0));
-		        });
+		        passwordPolicy -> passwordPolicy != null && passwordPolicy.getPassHistoryCount() != null
+		                ? Mono.just(passwordPolicy.getPassHistoryCount())
+		                : Mono.just(UShort.valueOf(0)));
 
 	}
 
@@ -527,38 +508,30 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return this.dao.fetchPasswordsById(userId);
 	}
 
-	public Mono<Integer> getCountForSelectedUser(ULong userId) {
-		return this.dao.fetchPasswordsCount(userId);
-	}
-
 	// add new password based on history count which was applicable for that
 	// selected user id
 
-	public Mono<Boolean> addBasedOnHistoryCount(PastPassword pastPassword) {
-
-		System.out.println(pastPassword.getUserId() + " from add past");
+	public Mono<Boolean> addBasedOnHistoryCount(ULong reqUserId, String password, ULong lUserId,
+	        ClientPasswordPolicy passwordPolicy) {
 
 		return flatMapMono(
 
-		        () -> Mono.just(pastPassword.getUserId()),
+		        () -> Mono.just(reqUserId),
 
-		        userId ->
-				{
-			        System.out.println(" from 3rd last step of past password");
-			        return this.getCountForSelectedUser(userId);
-		        },
+		        userId -> this.dao.fetchPasswordsCount(userId),
 
-		        (userId, pastPasswordCount) -> this.dao.fetchPasswordsCount(userId),
+		        (userId, pastPasswordCount) -> passwordPolicy.getPassHistoryCount() != null
+		                ? Mono.just(passwordPolicy.getPassHistoryCount())
+		                : Mono.just(0),
 
 		        (userId, pastPasswordCount, historyCount) ->
 				{
-			        System.out.println(pastPasswordCount + " " + historyCount + " from last step of past password");
 
-			        if (historyCount != null && pastPasswordCount.intValue() >= historyCount.intValue()
-			                && pastPasswordCount > 0)
-				        return deletePastPassword(userId);
+			        if (historyCount != null && pastPasswordCount >= historyCount.intValue() && pastPasswordCount > 0) {
+				        deletePastPassword(userId).subscribe();
+			        }
 
-			        this.dao.addPastPassword(pastPassword)
+			        this.dao.addPastPassword(reqUserId, password, lUserId)
 			                .subscribe();
 			        return Mono.just(true);
 
@@ -585,13 +558,13 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 	public Mono<Boolean> checkHierarchy(ULong userId, ULong reqUserId, String newPassword) {
 
+		if (newPassword == null)
+			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
+
 		if (userId != null && reqUserId != null && userId.equals(reqUserId)) {
 			// also check password of old and new password
 			// check user active return only if it is
-
-			if (newPassword == null)
-				return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
 
 			return flatMapMono(
 
@@ -605,46 +578,49 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
 
-			).log();
+			);
 		}
 
-		Mono<ContextUser> ca = SecurityContextUtil.getUsersContextAuthentication()
-		        .map(ContextAuthentication::getUser);
+		return flatMapMonoWithNull(
 
-		Mono<Boolean> isSystemClient = SecurityContextUtil.getUsersContextAuthentication()
-		        .map(ContextAuthentication::isSystemClient);
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-		Mono<ULong> loggedInClientId = ca.map(ContextUser::getClientId)
-		        .map(ULong::valueOf);
+		        ca -> Mono.just(ca.isSystemClient()),
 
-		Mono<ULong> reqClientId = this.dao.readById(reqUserId)
-		        .map(User::getClientId);
-
-		return flatMapMono(
-
-		        () -> isSystemClient,
-
-		        isSys -> loggedInClientId,
-
-		        (isSys, lClientId) -> reqClientId,
-
-		        (isSys, lClientId, rClientId) -> this.clientService.isBeingManagedBy(lClientId, rClientId),
-
-		        (isSys, lClientId, rClientId, isManages) ->
+		        (ca, isSys) -> isSys.booleanValue() ? Mono.justOrEmpty(Optional.empty())
+		                : this.dao.readById(reqUserId)
+		                        .map(User::getClientId),
+		        (ca, isSys, rClientId) ->
 				{
-			        System.out.println("request in last step of hierarchy");
-			        if (isSys.booleanValue() || lClientId.equals(rClientId) || isManages.booleanValue()) {
-				        return checkUserEditAcess(userId);
-			        }
-			        return Mono.just(false);
-		        });
 
+			        if (isSys.booleanValue())
+				        return Mono.just(true);
+
+			        return Mono.just(rClientId.toBigInteger()
+			                .equals(ca.getUser()
+			                        .getClientId()));
+		        },
+
+		        (ca, isSys, rClientId, isSameClient) ->
+				{
+
+			        if (isSameClient.booleanValue())
+				        return Mono.just(true);
+
+			        return this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                .getClientId()), rClientId);
+		        },
+
+		        (ca, isSys, rclientId, isSameClient, isManaged) ->
+				{
+
+			        if (!isManaged.booleanValue())
+				        return Mono.just(false);
+
+			        return SecurityContextUtil.hasAuthority("Authorities.User_UPDATE");
+		        }
+
+		);
 	}
 
-	// checking authorized or not implement it
-	@PreAuthorize("hasAuthority('Authorities.User_Update')")
-	public Mono<Boolean> checkUserEditAcess(ULong userId) {
-		System.out.println("is it authorised?");
-		return Mono.just(true);
-	}
 }

@@ -49,6 +49,10 @@ public class ClientPasswordPolicyService extends
 		return this.dao.checkClientPasswordPolicyExists(clientId);
 	}
 
+	public Mono<ClientPasswordPolicy> getPolicyByClientId(ULong clientId) {
+		return this.dao.getByClientId(clientId);
+	}
+
 	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
 
 		return flatMapMono(

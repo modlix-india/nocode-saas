@@ -37,7 +37,6 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.PastPassword;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -485,8 +484,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	public Mono<Boolean> deletePastPasswordBasedOnUserId(ULong userId) {
 
-		System.out.println(" from delete past password ");
-
 		Mono<ULong> deletableId = Mono.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.ID)
 		        .from(SECURITY_PAST_PASSWORDS)
 		        .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
@@ -496,7 +493,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		DeleteQuery<SecurityPastPasswordsRecord> query = this.dslContext.deleteQuery(SECURITY_PAST_PASSWORDS);
 
-		return deletableId.map(id -> {
+		return deletableId.flatMap(id -> {
 			query.addConditions(SECURITY_PAST_PASSWORDS.ID.eq(id));
 			return Mono.from(query);
 		})
@@ -511,13 +508,12 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(Record1::value1);
 	}
 
-	public Mono<Boolean> addPastPassword(PastPassword pastPassword) {
+	public Mono<Boolean> addPastPassword(ULong reqUserId, String password, ULong lUserId) {
 
-		return Mono
-		        .from(this.dslContext
-		                .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID,
-		                        SECURITY_PAST_PASSWORDS.PASSWORD, SECURITY_PAST_PASSWORDS.CREATED_AT)
-		                .values(pastPassword.getUserId(), pastPassword.getPassword(), LocalDateTime.now()))
+		return Mono.from(this.dslContext
+		        .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
+		                SECURITY_PAST_PASSWORDS.CREATED_AT, SECURITY_PAST_PASSWORDS.CREATED_BY)
+		        .values(reqUserId, password, LocalDateTime.now(), lUserId))
 		        .map(Objects::nonNull);
 	}
 
