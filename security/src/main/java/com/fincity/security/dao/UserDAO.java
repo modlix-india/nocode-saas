@@ -472,7 +472,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	}
 
-	public Mono<List<String>> fetchPasswordsById(ULong userId) {
+	public Mono<List<String>> fetchPastPasswords(ULong userId) { // fetch history limit from password policy and add
+	                                                             // limit with it
 
 		return Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.PASSWORD)
 		        .from(SECURITY_PAST_PASSWORDS)

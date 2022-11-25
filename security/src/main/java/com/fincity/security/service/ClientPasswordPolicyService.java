@@ -45,10 +45,6 @@ public class ClientPasswordPolicyService extends
 		return Mono.just(fields);
 	}
 
-	public Mono<Boolean> checkPasswordPolicyExists(ULong clientId) {
-		return this.dao.checkClientPasswordPolicyExists(clientId);
-	}
-
 	public Mono<ClientPasswordPolicy> getPolicyByClientId(ULong clientId) {
 		return this.dao.getByClientId(clientId);
 	}
@@ -69,14 +65,13 @@ public class ClientPasswordPolicyService extends
 		        // re check here
 		        (passwordPolicy, isAlphaNumberic, isSpecial) ->
 
-				!passwordPolicy.isSpacesAllowed() && password.contains(" ") ?
-
-				        Mono.just(false) : Mono.just(isAlphaNumberic && isSpecial),
+				passwordPolicy.isSpacesAllowed() ? Mono.just(isAlphaNumberic && isSpecial)
+				        : Mono.just(password.contains(" ") && isAlphaNumberic && isSpecial),
 
 		        (passwordPolicy, isAlphaNumberic, isSpecial, isSpace) ->
 				{
 			        if (!isSpace.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 				                SecurityMessageResourceService.SPACES_MISSING);
 
 			        String regex = passwordPolicy.getRegex();
@@ -88,7 +83,7 @@ public class ClientPasswordPolicyService extends
 		        }, (passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex) -> {
 
 			        if (!isRegex.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 				                SecurityMessageResourceService.REGEX_MISMATCH);
 
 			        return checkStrengthOfPassword(passwordPolicy, password);
@@ -118,7 +113,7 @@ public class ClientPasswordPolicyService extends
 				{
 
 			        if (!isUpper.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 				                SecurityMessageResourceService.CAPTIAL_LETTERS_MISSING);
 
 			        return passwordPolicy.isAtleastoneLowercase()
@@ -130,7 +125,7 @@ public class ClientPasswordPolicyService extends
 				{
 
 			        if (!isLower.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 				                SecurityMessageResourceService.SMALL_LETTERS_MISSING);
 
 			        return passwordPolicy.isAtleastOneDigit()
@@ -141,7 +136,7 @@ public class ClientPasswordPolicyService extends
 		        (isUpper, isLower, isNumeric) ->
 				{
 			        if (!isNumeric.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 				                SecurityMessageResourceService.NUMBERS_MISSING);
 
 			        return Mono.just(isUpper && isLower && isNumeric);
@@ -186,13 +181,13 @@ public class ClientPasswordPolicyService extends
 
 			if (password.length() > passwordPolicy.getPassMaxLength()
 			        .intValue())
-				return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				        SecurityMessageResourceService.MAX_LENGTH_ERROR);
+				return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+				        SecurityMessageResourceService.MAX_LENGTH_ERROR, passwordPolicy.getPassMaxLength());
 
 			if (password.length() < passwordPolicy.getPassMinLength()
 			        .intValue())
-				return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				        SecurityMessageResourceService.MIN_LENGTH_ERROR);
+				return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+				        SecurityMessageResourceService.MIN_LENGTH_ERROR, passwordPolicy.getPassMinLength());
 
 			isValid = password.length() <= passwordPolicy.getPassMaxLength()
 			        .intValue()
@@ -212,7 +207,7 @@ public class ClientPasswordPolicyService extends
 				return Mono.just(true);
 		}
 
-		return securityMessageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+		return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 		        SecurityMessageResourceService.SPECIAL_CHARACTERS_MISSING);
 	}
 

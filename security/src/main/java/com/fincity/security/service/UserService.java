@@ -4,7 +4,6 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -500,13 +499,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                ? Mono.just(passwordPolicy.getPassHistoryCount())
 		                : Mono.just(UShort.valueOf(0)));
 
-	}
-
-	// delete past password
-
-	public Mono<List<String>> fetchList(ULong userId) {
-		return this.dao.fetchPasswordsById(userId);
-	}
+	}	
 
 	// add new password based on history count which was applicable for that
 	// selected user id
