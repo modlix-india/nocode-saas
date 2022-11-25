@@ -18,17 +18,17 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.RoleDao;
 import com.fincity.security.dto.Role;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRecord, ULong, Role, RoleDao> {
+public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRoleRecord, ULong, Role, RoleDao> {
 
 	private static final String DESCRIPTION = "description";
 
@@ -42,6 +42,11 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	@Override
+	public SecuritySoxLogObjectName getSoxObjectName() {
+		return SecuritySoxLogObjectName.ROLE;
+	}
 
 	@Override
 	@PreAuthorize("hasAuthority('Authorities.Role_CREATE')")

@@ -19,16 +19,13 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
-import com.fincity.security.dto.SoxLog;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
-import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 
@@ -36,7 +33,8 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
 @Service
-public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
+public class ClientService
+        extends AbstractSecurityUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
 
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
@@ -52,9 +50,6 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 	@Autowired
 	private ClientUrlService clientUrlService;
 
-	@Autowired
-	private SoxLogService soxLogService;
-
 	private PackageService packageService;
 
 	private UserService userService;
@@ -68,6 +63,11 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 
 	public void setPackageService(PackageService packageService) {
 		this.packageService = packageService;
+	}
+
+	@Override
+	public SecuritySoxLogObjectName getSoxObjectName() {
+		return SecuritySoxLogObjectName.CLIENT;
 	}
 
 	public Mono<Client> getClientBy(ServerHttpRequest request) {
@@ -160,10 +160,6 @@ public class ClientService extends AbstractJOOQUpdatableDataService<SecurityClie
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .flatMap(ca -> super.create(entity).map(e ->
 				{
-			        soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
-			                .setObjectId(e.getId())
-			                .setDescription("Created")
-			                .setObjectName(SecuritySoxLogObjectName.CLIENT));
 			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
 				        SecurityContextUtil.getUsersContextUser()
 				                .map(ContextUser::getClientId)

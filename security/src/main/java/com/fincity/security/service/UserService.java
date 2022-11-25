@@ -23,6 +23,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
@@ -31,7 +32,7 @@ import com.fincity.security.util.ULongUtil;
 import reactor.core.publisher.Mono;
 
 @Service
-public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
+public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
 	@Autowired
 	private ClientService clientService;
@@ -66,6 +67,12 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return SecurityContextUtil.getUsersContextUser()
 		        .map(ContextUser::getId)
 		        .map(ULong::valueOf);
+	}
+
+	@Override
+	public SecuritySoxLogObjectName getSoxObjectName() {
+
+		return SecuritySoxLogObjectName.USER;
 	}
 
 	@PreAuthorize("hasPermission('Authorities.User_CREATE')")

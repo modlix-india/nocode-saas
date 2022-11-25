@@ -406,4 +406,8 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 		return rec.into(this.pojoClass);
 	}
+	
+    public Mono<Class<D>> getPojoClass() {
+        return Mono.just(this.pojoClass);
+    }
 }
