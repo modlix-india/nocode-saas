@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import java.io.Serializable;
+import java.util.Map;
 
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -17,6 +18,8 @@ import reactor.core.publisher.Mono;
 
 public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>, O extends AbstractUpdatableDAO<R, I, D>>
         extends AbstractJOOQUpdatableDataService<R, I, D, O> {
+
+	private static final String UPDATED = "updated";
 
 	@Autowired
 	private SoxLogService soxService;
@@ -60,4 +63,58 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 		});
 	}
 
+	@Override
+	public Mono<D> update(D entity) {
+
+		return super.update(entity).map(e -> {
+
+			this.dao.getPojoClass()
+			        .map(Class::getSimpleName)
+			        .flatMap(
+			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			                        .setObjectName(getSoxObjectName())
+			                        .setObjectId(ULong.valueOf(e.getId()
+			                                .toString()))
+			                        .setDescription(description + UPDATED)))
+			        .subscribe();
+
+			return e;
+		});
+	}
+
+	@Override
+	protected Mono<D> updatableEntity(D entity) {
+		return super.update(entity).map(e -> {
+
+			this.dao.getPojoClass()
+			        .map(Class::getSimpleName)
+			        .flatMap(
+			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			                        .setObjectName(getSoxObjectName())
+			                        .setObjectId(ULong.valueOf(e.getId()
+			                                .toString()))
+			                        .setDescription(description + UPDATED)))
+			        .subscribe();
+
+			return e;
+		});
+	}
+
+	@Override
+	public Mono<D> update(I key, Map<String, Object> fields) {
+		return super.update(key, fields).map(e -> {
+
+			this.dao.getPojoClass()
+			        .map(Class::getSimpleName)
+			        .flatMap(
+			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			                        .setObjectName(getSoxObjectName())
+			                        .setObjectId(ULong.valueOf(e.getId()
+			                                .toString()))
+			                        .setDescription(description + UPDATED)))
+			        .subscribe();
+
+			return e;
+		});
+	}
 }
