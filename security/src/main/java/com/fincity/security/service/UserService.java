@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,9 +20,9 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -39,6 +40,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	@Autowired
+	private SoxLogService soxLogService;
 
 	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
@@ -106,7 +110,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		                        u.getPhoneNumber())
 		                .map(b -> u))
 		        .flatMap(u -> this.dao.create(u))
-		        .flatMap(u -> this.setPassword(u, password))
+		        .flatMap(u ->
+				{
+
+			        this.soxLogService.create(
+
+			                new SoxLog().setActionName(CREATE)
+			                        .setObjectId(u.getId())
+			                        .setObjectName(getSoxObjectName())
+			                        .setDescription("User created"))
+			                .subscribe();
+			        // As this is not calling parent create method. Need to track log status by
+			        // adding soxlog method here
+
+			        return this.setPassword(u, password);
+		        })
 		        .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
 		                .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 		                .flatMap(msg -> Mono.error(

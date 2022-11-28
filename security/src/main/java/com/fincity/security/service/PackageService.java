@@ -39,6 +39,7 @@ public class PackageService extends
 
 	private static final String NAME = "name";
 
+	@Autowired
 	private ClientService clientService;
 
 	@Autowired
@@ -49,10 +50,6 @@ public class PackageService extends
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
-
-	public void setClientService(ClientService clientService) {
-		this.clientService = clientService;
-	}
 
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {

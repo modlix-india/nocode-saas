@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.Map;
 
 import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
@@ -13,13 +12,14 @@ import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
+import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>, O extends AbstractUpdatableDAO<R, I, D>>
         extends AbstractJOOQUpdatableDataService<R, I, D, O> {
 
-	private static final String UPDATED = "updated";
+	private static final String UPDATED = " updated ";
 
 	@Autowired
 	private SoxLogService soxService;
@@ -36,8 +36,7 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			        .flatMap(
 			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
 			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULong.valueOf(e.getId()
-			                                .toString()))
+			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + " created ")))
 			        .subscribe();
 
@@ -56,7 +55,7 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.DELETE)
 			                        .setObjectName(getSoxObjectName())
 			                        .setDescription(description + " deleted ")
-			                        .setObjectId(ULong.valueOf(id.toString()))))
+			                        .setObjectId(ULongUtil.valueOf(id))))
 			        .subscribe();
 
 			return e;
@@ -73,8 +72,7 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			        .flatMap(
 			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULong.valueOf(e.getId()
-			                                .toString()))
+			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + UPDATED)))
 			        .subscribe();
 
@@ -91,8 +89,7 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			        .flatMap(
 			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULong.valueOf(e.getId()
-			                                .toString()))
+			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + UPDATED)))
 			        .subscribe();
 
@@ -109,8 +106,7 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			        .flatMap(
 			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULong.valueOf(e.getId()
-			                                .toString()))
+			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + UPDATED)))
 			        .subscribe();
 
