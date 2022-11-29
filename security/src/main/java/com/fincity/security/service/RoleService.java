@@ -136,9 +136,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		Map<String, Object> newFields = new HashMap<>();
 
 		if (fields.containsKey(NAME))
-			newFields.put(NAME, fields.containsKey(NAME));
+			newFields.put(NAME, fields.get(NAME));
 		if (fields.containsKey(DESCRIPTION))
-			newFields.put(DESCRIPTION, fields.containsKey(DESCRIPTION));
+			newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
 
 		return Mono.just(newFields);
 	}

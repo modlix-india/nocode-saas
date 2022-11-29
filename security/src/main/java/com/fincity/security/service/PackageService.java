@@ -56,7 +56,7 @@ public class PackageService extends
 		return SecuritySoxLogObjectName.PACKAGE;
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Package_CREATE')")
 	@Override
 	public Mono<Package> create(Package entity) {
 
@@ -94,19 +94,19 @@ public class PackageService extends
 
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Package_READ')")
 	@Override
 	public Mono<Package> read(ULong id) {
 		return super.read(id);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Package_READ')")
 	@Override
 	public Mono<Page<Package>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 		return super.readPageFilter(pageable, condition);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Package_UPDATE')")
 	@Override
 	public Mono<Package> update(Package entity) {
 		return this.dao.canBeUpdated(entity.getId())
@@ -117,7 +117,7 @@ public class PackageService extends
 		                                StringFormatter.format(msg, "User", entity.getId()))))));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Package_UPDATE')")
 	@Override
 	public Mono<Package> update(ULong key, Map<String, Object> fields) {
 		return this.dao.canBeUpdated(key)
@@ -152,11 +152,11 @@ public class PackageService extends
 		Map<String, Object> newFields = new HashMap<>();
 
 		if (fields.containsKey(NAME))
-			newFields.put(NAME, fields.containsKey(NAME));
+			newFields.put(NAME, fields.get(NAME));
 		if (fields.containsKey(DESCRIPTION))
-			newFields.put(DESCRIPTION, fields.containsKey(DESCRIPTION));
+			newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
 		if (fields.containsKey(CODE))
-			newFields.put(CODE, fields.containsKey(CODE));
+			newFields.put(CODE, fields.get(CODE));
 
 		if (!fields.containsKey(BASE))
 			return Mono.just(newFields);
@@ -166,10 +166,16 @@ public class PackageService extends
 				{
 
 			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				        newFields.put(BASE, fields.containsKey(BASE));
+				        newFields.put(BASE, fields.get(BASE));
 
 			        return newFields;
 		        });
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Package_DELETE')")
+	@Override
+	public Mono<Integer> delete(ULong id) {
+		return super.delete(id);
 	}
 
 	protected Mono<Boolean> isBasePackage(ULong packageId) {
