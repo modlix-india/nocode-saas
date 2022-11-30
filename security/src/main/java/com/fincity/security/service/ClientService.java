@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.net.URI;
 import java.util.Map;
@@ -8,6 +9,7 @@ import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -44,26 +46,24 @@ public class ClientService
 
 	private static final String CACHE_CLIENT_URI = "uri";
 
+	private static final String ASSIGNED_PACKAGE = " Package is assigned to Client ";
+
 	@Autowired
 	private CacheService cacheService;
 
 	@Autowired
 	private ClientUrlService clientUrlService;
 
+	@Autowired
+	@Lazy
 	private PackageService packageService;
 
+	@Autowired
+	@Lazy
 	private UserService userService;
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
-
-	public void setUserService(UserService userService) {
-		this.userService = userService;
-	}
-
-	public void setPackageService(PackageService packageService) {
-		this.packageService = packageService;
-	}
 
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
@@ -262,7 +262,7 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
 	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
 
-		return flatMapMono(
+		return flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -285,7 +285,13 @@ public class ClientService
 			        if ((!basePackage.booleanValue() && clientApplicable.booleanValue())
 			                && (ca.isSystemClient() || isManaged.booleanValue())) {
 
-				        return this.dao.addPackageToClient(clientId, packageId);
+				        return this.dao.addPackageToClient(clientId, packageId)
+				                .map(e ->
+								{
+					                if (e.booleanValue())
+						                super.assignLog(clientId, ASSIGNED_PACKAGE);
+					                return e;
+				                });
 
 			        }
 
@@ -304,7 +310,7 @@ public class ClientService
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
 		return this.dao.isBeingManagedBy(managingClientCode, clientCode);
 	}
-	
+
 	public Mono<Boolean> isUserBeingManaged(ULong userId, String clientCode) {
 
 		return this.dao.isUserBeingManaged(userId, clientCode);

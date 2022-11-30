@@ -22,7 +22,7 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 	private static final String UPDATED = " updated ";
 
 	@Autowired
-	private SoxLogService soxService;
+	private SoxLogService soxLogService;
 
 	public abstract SecuritySoxLogObjectName getSoxObjectName();
 
@@ -33,8 +33,8 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName) // adding description of the operation coming from mono<class<D>>
-			        .flatMap(
-			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
+			        .flatMap(description -> soxLogService
+			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
 			                        .setObjectName(getSoxObjectName())
 			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + " created ")))
@@ -51,8 +51,8 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
-			        .flatMap(
-			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.DELETE)
+			        .flatMap(description -> soxLogService
+			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.DELETE)
 			                        .setObjectName(getSoxObjectName())
 			                        .setDescription(description + " deleted ")
 			                        .setObjectId(ULongUtil.valueOf(id))))
@@ -69,8 +69,8 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
-			        .flatMap(
-			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			        .flatMap(description -> soxLogService
+			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                        .setObjectName(getSoxObjectName())
 			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + UPDATED)))
@@ -86,8 +86,8 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
-			        .flatMap(
-			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			        .flatMap(description -> soxLogService
+			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                        .setObjectName(getSoxObjectName())
 			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + UPDATED)))
@@ -103,8 +103,8 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
-			        .flatMap(
-			                description -> soxService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			        .flatMap(description -> soxLogService
+			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                        .setObjectName(getSoxObjectName())
 			                        .setObjectId(ULongUtil.valueOf(e.getId()))
 			                        .setDescription(description + UPDATED)))
@@ -112,5 +112,23 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			return e;
 		});
+	}
+
+	public void assignLog(I id, String description) {
+
+		soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.ASSIGN)
+		        .setObjectName(getSoxObjectName())
+		        .setObjectId(ULongUtil.valueOf(id))
+		        .setDescription(description))
+		        .subscribe();
+	}
+
+	public void unAssignLog(I id, String description) {
+
+		soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UNASSIGN)
+		        .setObjectName(getSoxObjectName())
+		        .setObjectId(ULongUtil.valueOf(id))
+		        .setDescription(description))
+		        .subscribe();
 	}
 }

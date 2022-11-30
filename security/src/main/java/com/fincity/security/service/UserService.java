@@ -35,6 +35,14 @@ import reactor.core.publisher.Mono;
 @Service
 public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
+	private static final String ASSIGNED_PERMISSION = " Permission is assigned to the user ";
+
+	private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
+
+	private static final String UNASSIGNED_PERMISSION = " Permission is removed from the selected user";
+
+	private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
+
 	@Autowired
 	private ClientService clientService;
 
@@ -276,8 +284,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        if (ca.isSystemClient() || isManaged.booleanValue())
 
 				        return this.dao.removingPermissionFromUser(userId, permissionId)
-				                .map(val -> val > 0)
-				                .filter(Boolean::booleanValue);
+				                .map(val ->
+								{
+					                boolean removed = val > 0;
+
+					                if (removed)
+						                super.unAssignLog(userId, UNASSIGNED_PERMISSION);
+
+					                return removed;
+				                });
 
 			        return Mono.empty();
 
@@ -303,7 +318,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        if (ca.isSystemClient() || isManaged.booleanValue())
 
 				        return this.dao.removeRoleForUser(userId, roleId)
-				                .map(val -> val > 0);
+				                .map(val ->
+								{
+					                boolean removed = val > 0;
+					                if (removed)
+						                super.unAssignLog(userId, UNASSIGNED_ROLE);
+
+					                return removed;
+				                });
 
 			        return Mono.empty();
 		        }
@@ -332,25 +354,34 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        },
 
 		        (contextAuth, user, isManaged) ->
+				{
 
-				isManaged.booleanValue() ? flatMapMono(
+			        System.out.println(isManaged + " from 2nd last step of assign permission");
 
-				        () -> clientService.checkPermissionAvailableForGivenClient(user.getClientId(), permissionId),
+			        return isManaged.booleanValue() ? flatMapMono(
 
-				        havePermission -> this.dao.checkPermissionExistsForUser(user.getClientId(), permissionId),
+			                () -> clientService.checkPermissionAvailableForGivenClient(user.getClientId(),
+			                        permissionId),
 
-				        (havePermission, permissionCreated) -> Mono.just(havePermission && permissionCreated)
+			                havePermission -> this.dao.checkPermissionExistsForUser(user.getClientId(), permissionId),
 
-				) : Mono.empty(),
+			                (havePermission, permissionCreated) -> Mono.just(havePermission && permissionCreated)
+
+				) : Mono.empty();
+
+		        },
 
 		        (contextAuth, user, isManaged, hasPermission) ->
 				{
+			        System.out.println(hasPermission + " from last step of assign permission");
 
-			        if (((Boolean) hasPermission).booleanValue())
+			        if (((Boolean) hasPermission).booleanValue()) {
+
+				        super.assignLog(userId, ASSIGNED_PERMISSION + permissionId);
 
 				        return this.dao.assigningPermissionToUser(userId, permissionId)
 				                .map(val -> val > 0);
-
+			        }
 			        return Mono.empty();
 		        }
 
@@ -398,8 +429,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				{
 
-			        if (((Boolean) roleApplicable).booleanValue())
+			        if (((Boolean) roleApplicable).booleanValue()) {
+
+				        super.assignLog(userId, ASSIGNED_ROLE + roleId);
+
 				        return this.dao.checkRoleCreatedByUser(userId, roleId);
+			        }
 
 			        return Mono.empty();
 		        }
@@ -425,5 +460,4 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .map(val -> val > 0);
 	}
 
-// getUserListFromClientIds
 }
