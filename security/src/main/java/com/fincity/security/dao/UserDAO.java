@@ -415,18 +415,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.just(users);
 	}
 
-	public Mono<Boolean> checkPasswordEqual(ULong userId, String newPassword) {
 
-		return Mono.from(
-
-		        this.dslContext.select(SECURITY_USER.PASSWORD)
-		                .from(SECURITY_USER)
-		                .where(SECURITY_USER.ID.eq(userId))
-		                .limit(1))
-		        .map(Record1::value1)
-		        .map(pass -> pass.equals(newPassword));
-
-	}
 
 	public Mono<Set<String>> getPastPasswords(ULong userId) {
 

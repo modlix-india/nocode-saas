@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
@@ -46,6 +47,9 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 	@Autowired
 	private ClientPasswordPolicyService clientPasswordPolicyService;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
@@ -414,10 +418,6 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .map(val -> val > 0);
 	}
 
-	public Mono<Boolean> checkPasswordEqual(ULong userId, String newPassword) {
-		return this.dao.checkPasswordEqual(userId, newPassword);
-	}
-
 	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {
 
 		Mono<ContextUser> ca = SecurityContextUtil.getUsersContextAuthentication()
@@ -431,17 +431,17 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		// reset password only for active users
 
-		return flatMapMono(
+		return flatMapMonoWithNull(
 
 		        () -> loggedInUserId,
 
 		        userId -> checkHierarchy(userId, reqUserId, requestPassword.getNewPassword()),
 
-		        (userId, isUpdatable) -> isUpdatable.booleanValue() ? reqClientId : Mono.empty(),
+		        (userId, isUpdatable) -> isUpdatable.booleanValue() ? reqClientId : Mono.justOrEmpty(Optional.empty()),
 
 		        (userId, isUpdatable, clientId) -> clientId != null
 		                ? this.clientPasswordPolicyService.getPolicyByClientId(clientId)
-		                : Mono.empty(),
+		                : Mono.justOrEmpty(Optional.empty()),
 
 		        (userId, isUpdatable, clientId, passwordPolicy) -> passwordPolicy != null
 		                ? this.clientPasswordPolicyService.checkAllConditions(clientId,
@@ -499,7 +499,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                ? Mono.just(passwordPolicy.getPassHistoryCount())
 		                : Mono.just(UShort.valueOf(0)));
 
-	}	
+	}
 
 	// add new password based on history count which was applicable for that
 	// selected user id
@@ -521,11 +521,12 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 				{
 
 			        if (historyCount != null && pastPasswordCount >= historyCount.intValue() && pastPasswordCount > 0) {
-				        deletePastPassword(userId).subscribe();
+				        deletePastPassword(userId).subscribe(); // don't delete password
 			        }
 
 			        this.dao.addPastPassword(reqUserId, password, lUserId)
-			                .subscribe();
+			                .subscribe(); // encode and add to past password
+
 			        return Mono.just(true);
 
 		        }
@@ -561,13 +562,16 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 			return flatMapMono(
 
-			        () -> this.dao.checkUserActive(reqUserId),
+			        () -> this.dao.readById(reqUserId),
 
-			        isActive -> isActive.booleanValue() ? this.dao.checkPasswordEqual(reqUserId, newPassword)
+			        requestedUser -> this.dao.checkUserActive(reqUserId),
+
+			        (requestedUser, isActive) -> isActive.booleanValue()
+			                ? this.checkPasswordEquality(requestedUser, newPassword)
 			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.USER_NOT_ACTIVE),
 
-			        (isActive, passwordEqual) -> !passwordEqual.booleanValue() ? Mono.just(true)
+			        (requestedUser, isActive, passwordEqual) -> passwordEqual.booleanValue() ? Mono.just(true)
 			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
 
@@ -614,6 +618,39 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        }
 
 		);
+	}
+
+	public Mono<Boolean> checkPasswordEquality(User user, String newPassword) {
+
+		if (user.isPasswordHashed()) {
+			if (!passwordEncoder.matches(user.getPassword(), user.getId() + newPassword)) {
+				this.dao.increaseFailedAttempt(user.getId())
+				        .subscribe();
+
+				soxLogService.create(new SoxLog().setObjectId(user.getId())
+				        .setActionName(SecuritySoxLogActionName.UPDATE)
+				        .setObjectName(SecuritySoxLogObjectName.USER)
+				        .setDescription("Given Password is mismatching with existing."))
+				        .subscribe();
+
+				return Mono.just(false);
+			}
+		} else {
+			if (!user.getPassword()
+			        .equals(newPassword)) {
+				this.dao.increaseFailedAttempt(user.getId())
+				        .subscribe();
+
+				soxLogService.create(new SoxLog().setObjectId(user.getId())
+				        .setActionName(SecuritySoxLogActionName.UPDATE)
+				        .setObjectName(SecuritySoxLogObjectName.USER)
+				        .setDescription("Given Password is mismatching with existing."))
+				        .subscribe();
+				return Mono.just(false);
+			}
+		}
+
+		return Mono.just(true);
 	}
 
 }

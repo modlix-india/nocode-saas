@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.security.service.SecurityMessageResourceService.CLIENT_PASSWORD_POLICY_ERROR;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +43,16 @@ public class ClientPasswordPolicyService extends
 
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+
+		if (fields == null || key == null)
+			return Mono.just(new HashMap<String, Object>());
+
+		fields.remove("clientId");
+		fields.remove("updatedAt");
+		fields.remove("updatedBy");
+		fields.remove("createdAt");
+		fields.remove("createdBy");
+
 		return Mono.just(fields);
 	}
 
