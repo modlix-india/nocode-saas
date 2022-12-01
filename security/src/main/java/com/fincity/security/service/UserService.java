@@ -470,11 +470,6 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 			        if (isPastPassword.booleanValue()) {
 
-//				        this.addBasedOnHistoryCount(reqUserId, requestPassword.getNewPassword(), userId)
-//				                .subscribe();
-
-//			        	this.dao.updatePassword(reqUserId, requestPassword.getNewPassword())
-
 				        return this.dao.setPassword(reqUserId, requestPassword.getNewPassword(), userId)
 				                .map(e ->
 								{
@@ -491,23 +486,8 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 			        return Mono.justOrEmpty(Optional.empty());
 		        }
 
-		).log()
-
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                "Password cannot be updated"));
-
-	}
-
-	// add new password based on history count which was applicable for that
-	// selected user id
-
-	public Mono<Boolean> addBasedOnHistoryCount(ULong reqUserId, String password, ULong lUserId) {
-
-		return flatMapMono(
-
-		        () -> Mono.just(reqUserId),
-
-		        userId -> this.dao.addPastPassword(reqUserId, password, lUserId)).log();
+		).switchIfEmpty(
+		        securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, "Password cannot be updated"));
 
 	}
 
@@ -532,7 +512,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 			        () -> this.dao.readById(reqUserId),
 
-			        requestedUser -> this.dao.checkUserActive(reqUserId),
+			        requestedUser -> Mono.just(SecurityUserStatusCode.ACTIVE.equals(requestedUser.getStatusCode())),
 
 			        (requestedUser, isActive) -> isActive.booleanValue()
 			                ? this.checkPasswordEquality(requestedUser, newPassword)

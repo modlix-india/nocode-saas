@@ -10,13 +10,10 @@ import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
-import static com.fincity.security.jooq.tables.SecurityUserToken.SECURITY_USER_TOKEN;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import org.jooq.Condition;
@@ -44,7 +41,6 @@ import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
-import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.util.ByteUtil;
@@ -418,8 +414,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	public Mono<List<PastPassword>> getPastPasswords(ULong userId, UShort historyPasswordCount) {
 
-		// don't return set of strings instead return record of past password
-
 		return Flux.from(
 
 		        this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
@@ -430,65 +424,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(e -> e.into(PastPassword.class))
 		        .collectList();
 
-	}
-
-	public Mono<Boolean> updatePassword(ULong userId, String newPassword) {
-
-//		String encryptedPassword = encoder.encode(userId + newPassword);
-//		System.out.println(encryptedPassword);
-
-		return Mono.from(
-
-		        this.dslContext.update(SECURITY_USER)
-		                .set(SECURITY_USER.PASSWORD, newPassword)
-		                .set(SECURITY_USER.NO_FAILED_ATTEMPT, Short.valueOf((short) 0))
-		                .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-		                .set(SECURITY_USER.PASSWORD_HASHED, (byte) 1)
-		                .where(SECURITY_USER.ID.eq(userId)))
-		        .map(val -> val > 0);
-	}
-
-	public Mono<Boolean> checkUserActive(ULong userId) {
-		return Mono.from(
-
-		        this.dslContext.select(SECURITY_USER.STATUS_CODE)
-		                .from(SECURITY_USER)
-		                .where(SECURITY_USER.ID.eq(userId)))
-		        .map(Record1::value1)
-		        .filter(status -> status.equals(SecurityUserStatusCode.ACTIVE))
-		        .map(Objects::nonNull);
-	}
-
-	public Mono<Boolean> deleteToken(ULong tokenId) {
-
-		DeleteQuery<SecurityUserTokenRecord> query = this.dslContext.deleteQuery(SECURITY_USER_TOKEN);
-		query.addConditions(SECURITY_USER_TOKEN.ID.eq(tokenId));
-
-		return Mono.from(query)
-		        .map(val -> val > 0);
-
-	}
-
-	public Mono<List<String>> fetchPastPasswords(ULong userId) { // fetch history limit from password policy and add
-	                                                             // limit with it
-
-		return Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.PASSWORD)
-		        .from(SECURITY_PAST_PASSWORDS)
-		        .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
-		        .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.asc()))
-		        .map(Record1::value1)
-		        .collectList();
-	}
-
-	public Mono<Boolean> addPastPassword(ULong reqUserId, String password, ULong lUserId) {
-
-		String encryptedPassword = encoder.encode(reqUserId + password);
-
-		return Mono.from(this.dslContext
-		        .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
-		                SECURITY_PAST_PASSWORDS.CREATED_AT, SECURITY_PAST_PASSWORDS.CREATED_BY)
-		        .values(reqUserId, encryptedPassword, LocalDateTime.now(), lUserId))
-		        .map(Objects::nonNull);
 	}
 
 }
