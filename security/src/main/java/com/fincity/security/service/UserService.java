@@ -26,7 +26,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.UserDAO;
-import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
@@ -37,6 +36,7 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.util.ULongUtil;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -437,11 +437,14 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		        userId -> checkHierarchy(userId, reqUserId, requestPassword.getNewPassword()),
 
-		        (userId, isUpdatable) -> isUpdatable.booleanValue() ? reqClientId : Mono.justOrEmpty(Optional.empty()),
+		        (userId, isUpdatable) ->
 
-		        (userId, isUpdatable, clientId) -> clientId != null
-		                ? this.clientPasswordPolicyService.getPolicyByClientId(clientId)
-		                : Mono.justOrEmpty(Optional.empty()),
+				isUpdatable.booleanValue() ? reqClientId : Mono.justOrEmpty(Optional.empty()),
+
+		        (userId, isUpdatable, clientId) ->
+
+				clientId != null ? this.clientPasswordPolicyService.getPolicyByClientId(clientId)
+				        : Mono.justOrEmpty(Optional.empty()),
 
 		        (userId, isUpdatable, clientId, passwordPolicy) -> passwordPolicy != null
 		                ? this.clientPasswordPolicyService.checkAllConditions(clientId,
@@ -449,35 +452,43 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                : Mono.just(true),
 
 		        (userId, isUpdatable, clientId, passwordPolicy, isValid) ->
-
-				isValid.booleanValue()
-				        ? this.addBasedOnHistoryCount(reqUserId, requestPassword.getNewPassword(), userId,
-				                passwordPolicy)
-				        : Mono.empty(),
-
-		        (userId, isUpdatable, clientId, passwordPolicy, isValid,
-		                addPastPassword) -> addPastPassword.booleanValue()
-		                        ? this.dao.updatePassword(reqUserId, requestPassword.getNewPassword())
-		                        : Mono.empty(),
-
-		        (userId, isUpdatable, clientId, passwordPolicy, isValid, addPastPassword, passwordUpdated) ->
 				{
 
-			        if (passwordUpdated.booleanValue()) {
-				        this.soxLogService.create(new SoxLog().setObjectId(userId)
-				                .setActionName(SecuritySoxLogActionName.OTHER)
-				                .setObjectName(SecuritySoxLogObjectName.USER)
-				                .setDescription("Password updated"))
-				                .subscribe();
-
-				        this.dao.makeUserActive(reqUserId)
-				                .subscribe(); // making user active if it is another state
-
+			        if (isValid.booleanValue()) {
+				        if (passwordPolicy != null && passwordPolicy.getPassHistoryCount() != null) {
+					        return this.checkPasswordInPastPasswords(reqUserId, requestPassword.getNewPassword(),
+					                passwordPolicy.getPassHistoryCount());
+				        }
 				        return Mono.just(true);
 			        }
 
-			        return Mono.empty();
+			        return Mono.justOrEmpty(Optional.empty());
+		        },
 
+		        (userId, isUpdatable, clientId, passwordPolicy, isValid, isPastPassword) ->
+				{
+
+			        if (isPastPassword.booleanValue()) {
+
+//				        this.addBasedOnHistoryCount(reqUserId, requestPassword.getNewPassword(), userId)
+//				                .subscribe();
+
+//			        	this.dao.updatePassword(reqUserId, requestPassword.getNewPassword())
+
+				        return this.dao.setPassword(reqUserId, requestPassword.getNewPassword(), userId)
+				                .map(e ->
+								{
+					                this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
+					                        .setActionName(SecuritySoxLogActionName.OTHER)
+					                        .setObjectName(SecuritySoxLogObjectName.USER)
+					                        .setDescription("Password updated"))
+					                        .subscribe();
+
+					                return e > 0;
+				                });
+			        }
+
+			        return Mono.justOrEmpty(Optional.empty());
 		        }
 
 		).log()
@@ -487,58 +498,17 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 	}
 
-	// add past password check here with dao and service here
-
-	public Mono<UShort> getHistoryCount(ULong clientId) {
-
-		return flatMapMono(
-
-		        () -> clientService.getClientPasswordPolicy(clientId),
-
-		        passwordPolicy -> passwordPolicy != null && passwordPolicy.getPassHistoryCount() != null
-		                ? Mono.just(passwordPolicy.getPassHistoryCount())
-		                : Mono.just(UShort.valueOf(0)));
-
-	}
-
 	// add new password based on history count which was applicable for that
 	// selected user id
 
-	public Mono<Boolean> addBasedOnHistoryCount(ULong reqUserId, String password, ULong lUserId,
-	        ClientPasswordPolicy passwordPolicy) {
+	public Mono<Boolean> addBasedOnHistoryCount(ULong reqUserId, String password, ULong lUserId) {
 
 		return flatMapMono(
 
 		        () -> Mono.just(reqUserId),
 
-		        userId -> this.dao.fetchPasswordsCount(userId),
+		        userId -> this.dao.addPastPassword(reqUserId, password, lUserId)).log();
 
-		        (userId, pastPasswordCount) -> passwordPolicy.getPassHistoryCount() != null
-		                ? Mono.just(passwordPolicy.getPassHistoryCount())
-		                : Mono.just(0),
-
-		        (userId, pastPasswordCount, historyCount) ->
-				{
-
-			        if (historyCount != null && pastPasswordCount >= historyCount.intValue() && pastPasswordCount > 0) {
-				        deletePastPassword(userId).subscribe(); // don't delete password
-			        }
-
-			        this.dao.addPastPassword(reqUserId, password, lUserId)
-			                .subscribe(); // encode and add to past password
-
-			        return Mono.just(true);
-
-		        }
-
-		).log();
-
-	}
-
-	// delete past password record based on oldest time stamp for selected userId
-	public Mono<Boolean> deletePastPassword(ULong userId) {
-
-		return this.dao.deletePastPasswordBasedOnUserId(userId);
 	}
 
 	// check the hierarchy with client id and user id as per the comment given
@@ -557,8 +527,6 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
 
 		if (userId != null && reqUserId != null && userId.equals(reqUserId)) {
-			// also check password of old and new password
-			// check user active return only if it is
 
 			return flatMapMono(
 
@@ -571,7 +539,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.USER_NOT_ACTIVE),
 
-			        (requestedUser, isActive, passwordEqual) -> passwordEqual.booleanValue() ? Mono.just(true)
+			        (requestedUser, isActive, passwordEqual) -> !passwordEqual.booleanValue() ? Mono.just(true)
 			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
 
@@ -624,6 +592,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		if (user.isPasswordHashed()) {
 			if (!passwordEncoder.matches(user.getPassword(), user.getId() + newPassword)) {
+
 				this.dao.increaseFailedAttempt(user.getId())
 				        .subscribe();
 
@@ -653,4 +622,39 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return Mono.just(true);
 	}
 
+	private Mono<Boolean> checkPasswordInPastPasswords(ULong reqUserId, String newPassword,
+	        UShort historyPasswordCount) {
+
+		return flatMapMonoWithNull(
+
+		        () -> this.dao.readById(reqUserId),
+
+		        user -> this.dao.getPastPasswords(reqUserId, historyPasswordCount),
+
+		        (user, pastPasswords) ->
+				{
+			        if (pastPasswords == null || pastPasswords.isEmpty() || historyPasswordCount.intValue() == 0)
+				        return Mono.just(true);
+
+			        return Flux.fromIterable(pastPasswords)
+			                .map(pastPassword ->
+							{
+
+				                if (pastPassword.isPasswordHashed())
+					                return passwordEncoder.matches(pastPassword.getPassword(), reqUserId + newPassword);
+
+				                else
+					                return pastPassword.getPassword()
+					                        .equals(newPassword);
+
+			                })
+			                .filter(l -> !l.booleanValue())
+			                .count()
+			                .map(count -> count > 0);
+
+		        }
+
+		);
+
+	}
 }

@@ -28,6 +28,7 @@ import org.jooq.SelectOrderByStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.jooq.types.UShort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,10 +38,10 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.PastPassword;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jooq.tables.records.SecurityPastPasswordsRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
@@ -415,27 +416,34 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.just(users);
 	}
 
+	public Mono<List<PastPassword>> getPastPasswords(ULong userId, UShort historyPasswordCount) {
 
-
-	public Mono<Set<String>> getPastPasswords(ULong userId) {
+		// don't return set of strings instead return record of past password
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_PAST_PASSWORDS.PASSWORD)
+		        this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
 		                .from(SECURITY_PAST_PASSWORDS)
-		                .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId)))
-		        .map(Record1::value1)
-		        .collectList()
-		        .map(HashSet::new);
+		                .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
+		                .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
+		                .limit(historyPasswordCount))
+		        .map(e -> e.into(PastPassword.class))
+		        .collectList();
+
 	}
 
 	public Mono<Boolean> updatePassword(ULong userId, String newPassword) {
+
+//		String encryptedPassword = encoder.encode(userId + newPassword);
+//		System.out.println(encryptedPassword);
 
 		return Mono.from(
 
 		        this.dslContext.update(SECURITY_USER)
 		                .set(SECURITY_USER.PASSWORD, newPassword)
 		                .set(SECURITY_USER.NO_FAILED_ATTEMPT, Short.valueOf((short) 0))
+		                .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+		                .set(SECURITY_USER.PASSWORD_HASHED, (byte) 1)
 		                .where(SECURITY_USER.ID.eq(userId)))
 		        .map(val -> val > 0);
 	}
@@ -472,46 +480,15 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .collectList();
 	}
 
-	public Mono<Boolean> deletePastPasswordBasedOnUserId(ULong userId) {
-
-		Mono<ULong> deletableId = Mono.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.ID)
-		        .from(SECURITY_PAST_PASSWORDS)
-		        .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
-		        .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.asc())
-		        .limit(1))
-		        .map(Record1::value1);
-
-		DeleteQuery<SecurityPastPasswordsRecord> query = this.dslContext.deleteQuery(SECURITY_PAST_PASSWORDS);
-
-		return deletableId.flatMap(id -> {
-			query.addConditions(SECURITY_PAST_PASSWORDS.ID.eq(id));
-			return Mono.from(query);
-		})
-		        .map(Objects::nonNull);
-	}
-
-	public Mono<Integer> fetchPasswordsCount(ULong userId) {
-
-		return Mono.from(this.dslContext.selectCount()
-		        .from(SECURITY_PAST_PASSWORDS)
-		        .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId)))
-		        .map(Record1::value1);
-	}
-
 	public Mono<Boolean> addPastPassword(ULong reqUserId, String password, ULong lUserId) {
+
+		String encryptedPassword = encoder.encode(reqUserId + password);
 
 		return Mono.from(this.dslContext
 		        .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
 		                SECURITY_PAST_PASSWORDS.CREATED_AT, SECURITY_PAST_PASSWORDS.CREATED_BY)
-		        .values(reqUserId, password, LocalDateTime.now(), lUserId))
+		        .values(reqUserId, encryptedPassword, LocalDateTime.now(), lUserId))
 		        .map(Objects::nonNull);
 	}
 
-	public Mono<Boolean> makeUserActive(ULong userId) {
-
-		return Mono.from(this.dslContext.update(SECURITY_USER)
-		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-		        .where(SECURITY_USER.ID.eq(userId)))
-		        .map(Objects::nonNull);
-	}
 }
