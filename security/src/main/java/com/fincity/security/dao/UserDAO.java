@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
+import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
@@ -25,7 +26,6 @@ import org.jooq.SelectOrderByStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
-import org.jooq.types.UShort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -412,18 +412,20 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.just(users);
 	}
 
-	public Mono<List<PastPassword>> getPastPasswords(ULong userId, UShort historyPasswordCount) {
+	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {
 
-		return Flux.from(
-
-		        this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.PASS_HISTORY_COUNT)
+		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId))
+		        .limit(1))
+		        .flatMapMany(cnt -> Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
 		                .from(SECURITY_PAST_PASSWORDS)
 		                .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
 		                .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
-		                .limit(historyPasswordCount))
+		                .limit(cnt.value1())))
 		        .map(e -> e.into(PastPassword.class))
-		        .collectList();
-
+		        .collectList()
+		        .defaultIfEmpty(List.of());
 	}
 
 }

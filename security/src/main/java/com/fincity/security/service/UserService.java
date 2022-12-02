@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.jooq.types.ULong;
-import org.jooq.types.UShort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +24,7 @@ import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
@@ -36,7 +36,6 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.util.ULongUtil;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -420,74 +419,38 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {
 
-		Mono<ContextUser> ca = SecurityContextUtil.getUsersContextAuthentication()
-		        .map(ContextAuthentication::getUser);
-
-		Mono<ULong> loggedInUserId = ca.map(ContextUser::getId)
-		        .map(ULong::valueOf);
-
-		Mono<ULong> reqClientId = this.dao.readById(reqUserId)
-		        .map(User::getClientId);
+		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
+			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
 
 		// reset password only for active users
 
-		return flatMapMonoWithNull(
+		return flatMapMono(
 
-		        () -> loggedInUserId,
+		        () -> this.dao.readById(reqUserId),
 
-		        userId -> checkHierarchy(userId, reqUserId, requestPassword.getNewPassword()),
+		        user -> this.checkHierarchy(user, reqUserId, requestPassword.getNewPassword()),
 
-		        (userId, isUpdatable) ->
+		        (user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(user.getClientId(),
+		                requestPassword.getNewPassword()),
 
-				isUpdatable.booleanValue() ? reqClientId : Mono.justOrEmpty(Optional.empty()),
+		        (user, isUpdatable, isValid) -> this.checkPasswordInPastPasswords(user,
+		                requestPassword.getNewPassword()),
 
-		        (userId, isUpdatable, clientId) ->
+		        (user, isUpdatable, isValid, isPastPassword) -> this.dao
+		                .setPassword(reqUserId, requestPassword.getNewPassword(), user.getId())
+		                .map(e ->
+						{
+			                this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
+			                        .setActionName(SecuritySoxLogActionName.OTHER)
+			                        .setObjectName(SecuritySoxLogObjectName.USER)
+			                        .setDescription("Password updated"))
+			                        .subscribe();
 
-				clientId != null ? this.clientPasswordPolicyService.getPolicyByClientId(clientId)
-				        : Mono.justOrEmpty(Optional.empty()),
-
-		        (userId, isUpdatable, clientId, passwordPolicy) -> passwordPolicy != null
-		                ? this.clientPasswordPolicyService.checkAllConditions(clientId,
-		                        requestPassword.getNewPassword())
-		                : Mono.just(true),
-
-		        (userId, isUpdatable, clientId, passwordPolicy, isValid) ->
-				{
-
-			        if (isValid.booleanValue()) {
-				        if (passwordPolicy != null && passwordPolicy.getPassHistoryCount() != null) {
-					        return this.checkPasswordInPastPasswords(reqUserId, requestPassword.getNewPassword(),
-					                passwordPolicy.getPassHistoryCount());
-				        }
-				        return Mono.just(true);
-			        }
-
-			        return Mono.justOrEmpty(Optional.empty());
-		        },
-
-		        (userId, isUpdatable, clientId, passwordPolicy, isValid, isPastPassword) ->
-				{
-
-			        if (isPastPassword.booleanValue()) {
-
-				        return this.dao.setPassword(reqUserId, requestPassword.getNewPassword(), userId)
-				                .map(e ->
-								{
-					                this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
-					                        .setActionName(SecuritySoxLogActionName.OTHER)
-					                        .setObjectName(SecuritySoxLogObjectName.USER)
-					                        .setDescription("Password updated"))
-					                        .subscribe();
-
-					                return e > 0;
-				                });
-			        }
-
-			        return Mono.justOrEmpty(Optional.empty());
-		        }
-
-		).switchIfEmpty(
-		        securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, "Password cannot be updated"));
+			                return e > 0;
+		                }))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                "Password cannot be updated"));
 
 	}
 
@@ -500,13 +463,10 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	// 4.) if no client id matches check logged in user's client id is managing user
 	// id's client id if logged in user has user edit access the update password
 
-	public Mono<Boolean> checkHierarchy(ULong userId, ULong reqUserId, String newPassword) {
+	public Mono<Boolean> checkHierarchy(User user, ULong reqUserId, String newPassword) {
 
-		if (newPassword == null)
-			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
-
-		if (userId != null && reqUserId != null && userId.equals(reqUserId)) {
+		if (user.getId()
+		        .equals(reqUserId)) {
 
 			return flatMapMono(
 
@@ -519,9 +479,10 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.USER_NOT_ACTIVE),
 
-			        (requestedUser, isActive, passwordEqual) -> !passwordEqual.booleanValue() ? Mono.just(true)
-			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			        (requestedUser, isActive, passwordEqual) -> passwordEqual.booleanValue()
+			                ? securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
+			                : Mono.just(true)
 
 			);
 		}
@@ -568,73 +529,38 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		);
 	}
 
-	public Mono<Boolean> checkPasswordEquality(User user, String newPassword) {
+	public Mono<Boolean> checkPasswordEquality(User u, String newPassword) {
 
-		if (user.isPasswordHashed()) {
-			if (!passwordEncoder.matches(user.getPassword(), user.getId() + newPassword)) {
+		if (u.isPasswordHashed()) {
+			if (passwordEncoder.matches(u.getId() + newPassword, u.getPassword()))
+				return Mono.just(true);
+		} else if (StringUtil.safeEquals(newPassword, u.getPassword()))
+			return Mono.just(true);
 
-				this.dao.increaseFailedAttempt(user.getId())
-				        .subscribe();
-
-				soxLogService.create(new SoxLog().setObjectId(user.getId())
-				        .setActionName(SecuritySoxLogActionName.UPDATE)
-				        .setObjectName(SecuritySoxLogObjectName.USER)
-				        .setDescription("Given Password is mismatching with existing."))
-				        .subscribe();
-
-				return Mono.just(false);
-			}
-		} else {
-			if (!user.getPassword()
-			        .equals(newPassword)) {
-				this.dao.increaseFailedAttempt(user.getId())
-				        .subscribe();
-
-				soxLogService.create(new SoxLog().setObjectId(user.getId())
-				        .setActionName(SecuritySoxLogActionName.UPDATE)
-				        .setObjectName(SecuritySoxLogObjectName.USER)
-				        .setDescription("Given Password is mismatching with existing."))
-				        .subscribe();
-				return Mono.just(false);
-			}
-		}
-
-		return Mono.just(true);
+		return Mono.just(false);
 	}
 
-	private Mono<Boolean> checkPasswordInPastPasswords(ULong reqUserId, String newPassword,
-	        UShort historyPasswordCount) {
+	private Mono<Boolean> checkPasswordInPastPasswords(User user, String newPassword) {
 
-		return flatMapMonoWithNull(
+		return flatMapMono(
 
-		        () -> this.dao.readById(reqUserId),
+		        () -> this.dao.getPastPasswordsBasedOnPolicy(user.getId(), user.getClientId()),
 
-		        user -> this.dao.getPastPasswords(reqUserId, historyPasswordCount),
-
-		        (user, pastPasswords) ->
+		        pastPasswords ->
 				{
-			        if (pastPasswords == null || pastPasswords.isEmpty() || historyPasswordCount.intValue() == 0)
-				        return Mono.just(true);
 
-			        return Flux.fromIterable(pastPasswords)
-			                .map(pastPassword ->
-							{
+			        for (var pastPassword : pastPasswords) {
+				        if ((pastPassword.isPasswordHashed()
+				                && passwordEncoder.matches(pastPassword.getPassword(), user.getId() + newPassword))
+				                || (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
+				                        .equals(newPassword)))
+					        return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+					                SecurityMessageResourceService.ALREADY_EXISTS);
 
-				                if (pastPassword.isPasswordHashed())
-					                return passwordEncoder.matches(pastPassword.getPassword(), reqUserId + newPassword);
+			        }
 
-				                else
-					                return pastPassword.getPassword()
-					                        .equals(newPassword);
-
-			                })
-			                .filter(l -> !l.booleanValue())
-			                .count()
-			                .map(count -> count > 0);
-
-		        }
-
-		);
+			        return Mono.just(true);
+		        });
 
 	}
 }
