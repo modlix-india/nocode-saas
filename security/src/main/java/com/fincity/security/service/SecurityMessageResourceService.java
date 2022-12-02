@@ -48,6 +48,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String USER_NOT_ACTIVE = "user_not_active";
 	public static final String OLD_NEW_PASSWORD_MATCH = "old_new_password_match";
 	public static final String NEW_PASSWORD_MISSING = "new_password_missing";
+	public static final String PASSWORD_USER_ERROR = "password_used_error";
 
 	public SecurityMessageResourceService() {
 

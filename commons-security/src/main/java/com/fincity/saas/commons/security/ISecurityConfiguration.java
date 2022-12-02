@@ -16,51 +16,42 @@ import com.fincity.saas.commons.security.service.IAuthenticationService;
 import reactor.core.publisher.Mono;
 
 public interface ISecurityConfiguration {
-
-	default SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
-	        IAuthenticationService authService, String... exclusionList) {
-		http.csrf()
-		        .disable()
-		        .cors()
-		        .disable()
-		        .authorizeExchange(exchanges ->
-				{
-			        var pathMatchers = exchanges.pathMatchers(HttpMethod.OPTIONS, "/**")
-			                .permitAll()
-			                .pathMatchers("**/internal/**")
-			                .permitAll()
-			                .pathMatchers("/actuator/**")
-			                .permitAll();
-
-			        for (String exclusion : exclusionList) {
-				        pathMatchers.pathMatchers(exclusion)
-				                .permitAll();
-			        }
-
-			        pathMatchers.pathMatchers("/api/**")
-			                .authenticated();
-		        })
-		        .addFilterAt(new JWTTokenFilter(authService), SecurityWebFiltersOrder.HTTP_BASIC)
-		        .httpBasic()
-		        .authenticationEntryPoint(new HttpBasicServerAuthenticationEntryPoint() {
-
-			        @Override
-			        public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
-
-				        return Mono.fromRunnable(() -> {
-					        ServerHttpResponse response = exchange.getResponse();
-					        response.setStatusCode(HttpStatus.UNAUTHORIZED);
-					        response.getHeaders()
-					                .remove("WWW-Authenticate");
-				        });
-			        }
-		        })
-		        .and()
-		        .formLogin()
-		        .disable()
-		        .logout()
-		        .disable();
-
-		return http.build();
-	}
+    default SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
+            IAuthenticationService authService, String... exclusionList) {
+        http.csrf()
+                .disable()
+                .cors()
+                .disable()
+                .authorizeExchange()
+                .pathMatchers(HttpMethod.OPTIONS)
+                .permitAll()
+                .pathMatchers("**/internal/**")
+                .permitAll()
+                .pathMatchers("/actuator/**")
+                .permitAll()
+                .pathMatchers(exclusionList)
+                .permitAll()
+                .anyExchange()
+                .authenticated()
+                .and()
+                .addFilterAt(new JWTTokenFilter(authService), SecurityWebFiltersOrder.HTTP_BASIC)
+                .httpBasic()
+                .authenticationEntryPoint(new HttpBasicServerAuthenticationEntryPoint() {
+                    @Override
+                    public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
+                        return Mono.fromRunnable(() -> {
+                            ServerHttpResponse response = exchange.getResponse();
+                            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                            response.getHeaders()
+                                    .remove("WWW-Authenticate");
+                        });
+                    }
+                })
+                .and()
+                .formLogin()
+                .disable()
+                .logout()
+                .disable();
+        return http.build();
+    }
 }

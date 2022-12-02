@@ -1,11 +1,8 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.security.service.SecurityMessageResourceService.CLIENT_PASSWORD_POLICY_ERROR;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -17,7 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientPasswordPolicyDAO;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
@@ -28,17 +27,65 @@ import reactor.core.publisher.Mono;
 public class ClientPasswordPolicyService extends
         AbstractJOOQUpdatableDataService<SecurityClientPasswordPolicyRecord, ULong, ClientPasswordPolicy, ClientPasswordPolicyDAO> {
 
+	private static final String CLIENT_PASSWORD_POLICY = "client password policy";
+
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
-	private final Set<Character> specialCharacters = new HashSet<>(
-	        Arrays.asList('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '-', '+', '=', '{', '}', '[',
-	                ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?'));
+	@Autowired
+	private ClientService clientService;
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
+	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
+	        '_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
+	@Override
+	public Mono<ClientPasswordPolicy> create(ClientPasswordPolicy entity) {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+
+		        .flatMap(ca ->
+				{
+
+			        ULong currentUser = ULong.valueOf(ca.getLoggedInFromClientId());
+
+			        if (ca.isSystemClient() || currentUser.equals(entity.getClientId()))
+				        return super.create(entity);
+
+			        return this.clientService.isBeingManagedBy(currentUser, entity.getClientId())
+			                .flatMap(managed -> managed.booleanValue() ? super.create(entity) : Mono.empty());
+		        })
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
+	@Override
+	public Mono<ClientPasswordPolicy> read(ULong id) {
+
+		return super.read(id);
+	}
+
 	@Override
 	protected Mono<ClientPasswordPolicy> updatableEntity(ClientPasswordPolicy entity) {
-		return super.update(entity);
+		return this.read(entity.getId())
+		        .map(e ->
+				{
+			        e.setAtleastOneDigit(entity.isAtleastOneDigit());
+			        e.setAtleastoneLowercase(entity.isAtleastoneLowercase());
+			        e.setAtleastOneSpecialChar(entity.isAtleastOneSpecialChar());
+			        e.setAtleastOneUppercase(entity.isAtleastOneUppercase());
+			        e.setNoFailedAttempts(entity.getNoFailedAttempts());
+			        e.setPassExpiryInDays(entity.getPassExpiryInDays());
+			        e.setPassExpiryWarnInDays(entity.getPassExpiryWarnInDays());
+			        e.setPassHistoryCount(entity.getPassHistoryCount());
+			        e.setPassMaxLength(entity.getPassMaxLength());
+			        e.setPassMinLength(entity.getPassMinLength());
+			        e.setPercentageName(entity.getPercentageName());
+			        e.setRegex(entity.getRegex());
+			        e.setSpacesAllowed(entity.isSpacesAllowed());
+			        return e;
+		        });
 	}
 
 	@Override
@@ -56,157 +103,123 @@ public class ClientPasswordPolicyService extends
 		return Mono.just(fields);
 	}
 
-	public Mono<ClientPasswordPolicy> getPolicyByClientId(ULong clientId) {
-		return this.dao.getByClientId(clientId);
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
+	@Override
+	public Mono<ClientPasswordPolicy> update(ULong key, Map<String, Object> fields) {
+		return this.dao.canBeUpdated(key)
+		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
+	@Override
+	public Mono<ClientPasswordPolicy> update(ClientPasswordPolicy entity) {
+
+		return this.dao.canBeUpdated(entity.getId())
+		        .flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
+	@Override
+	public Mono<Integer> delete(ULong id) {
+		return this.dao.canBeUpdated(id)
+		        .flatMap(e -> e.booleanValue() ? super.delete(id) : Mono.empty())
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
 
 	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
 
 		return flatMapMono(
 
-		        () -> this.dao.getByClientId(clientId),
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        passwordPolicy -> passwordPolicy != null ? checkAlphanumericExists(passwordPolicy, password)
-		                : Mono.empty(),
+		        ca -> this.dao.getByClientId(clientId, ULong.valueOf(ca.getLoggedInFromClientId())),
 
-		        (passwordPolicy, isAlphaNumberic) -> passwordPolicy.isAtleastOneSpecialChar()
-		                ? checkInSpecialCharacters(password).map(val -> val && isAlphaNumberic)
-		                : Mono.just(isAlphaNumberic),
+		        (ca, passwordPolicy) -> checkAlphanumericExists(passwordPolicy, password),
 
-		        // re check here
-		        (passwordPolicy, isAlphaNumberic, isSpecial) ->
+		        (ca, passwordPolicy, isAlphaNumberic) -> checkInSpecialCharacters(password),
 
-				passwordPolicy.isSpacesAllowed() ? Mono.just(isAlphaNumberic && isSpecial)
-				        : Mono.just(password.contains(" ") && isAlphaNumberic && isSpecial),
-
-		        (passwordPolicy, isAlphaNumberic, isSpecial, isSpace) ->
+		        (ca, passwordPolicy, isAlphaNumberic, isSpecial) ->
 				{
-			        if (!isSpace.booleanValue())
+
+			        if (passwordPolicy.isSpacesAllowed())
+				        return Mono.just(true);
+
+			        if (password.indexOf(' ') != -1)
 				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 				                SecurityMessageResourceService.SPACES_MISSING);
 
-			        String regex = passwordPolicy.getRegex();
-			        return regex != null && !regex.contains("")
-			                ? checkRegexPattern(password, regex)
-			                        .map(val -> val && isAlphaNumberic && isSpecial && isSpace)
-			                : Mono.just(isAlphaNumberic && isSpecial && isSpace);
-
-		        }, (passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex) -> {
-
-			        if (!isRegex.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                SecurityMessageResourceService.REGEX_MISMATCH);
-
-			        return checkStrengthOfPassword(passwordPolicy, password);
+			        return Mono.just(true);
 		        },
 
-		        (passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex, isLength) ->
+		        (ca, passwordPolicy, isAlphaNumberic, isSpecial, isSpace) ->
+				{
 
-				isLength.booleanValue() ? Mono.just(isAlphaNumberic && isSpecial && isSpace && isRegex) : Mono.empty(),
+			        String regex = passwordPolicy.getRegex();
 
-		        (passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex, isLength, isValid) -> Mono
-		                .just(isAlphaNumberic && isSpecial && isSpace && isRegex && isValid)
+			        if (StringUtil.safeIsBlank(regex))
+				        return Mono.just(true);
 
-		// Add past passwords and history check later in that past passwords service
+			        return checkRegexPattern(password, regex);
 
-		).switchIfEmpty(
-		        securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, CLIENT_PASSWORD_POLICY_ERROR));
+		        },
+
+		        (ca, passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex) -> this
+		                .checkStrengthOfPassword(passwordPolicy, password))
+		        .defaultIfEmpty(true);
 	}
 
 	private Mono<Boolean> checkAlphanumericExists(ClientPasswordPolicy passwordPolicy, String password) {
 
-		return flatMapMono(
-
-		        () -> passwordPolicy.isAtleastOneUppercase() ? checkExistsInBetween(password, 'A', 'Z')
-		                : Mono.just(true),
-
-		        isUpper ->
-				{
-
-			        if (!isUpper.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                SecurityMessageResourceService.CAPTIAL_LETTERS_MISSING);
-
-			        return passwordPolicy.isAtleastoneLowercase()
-			                ? checkExistsInBetween(password, 'a', 'z').map(val -> val && isUpper)
-			                : Mono.just(isUpper);
-		        },
-
-		        (isUpper, isLower) ->
-				{
-
-			        if (!isLower.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                SecurityMessageResourceService.SMALL_LETTERS_MISSING);
-
-			        return passwordPolicy.isAtleastOneDigit()
-			                ? checkExistsInDigits(password, 48, 57).map(val -> val && isLower && isUpper)
-			                : Mono.just(isUpper && isLower);
-		        },
-
-		        (isUpper, isLower, isNumeric) ->
-				{
-			        if (!isNumeric.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                SecurityMessageResourceService.NUMBERS_MISSING);
-
-			        return Mono.just(isUpper && isLower && isNumeric);
-
-		        }
-
-		);
-	}
-
-	private Mono<Boolean> checkExistsInDigits(String password, int minBoundary, int maxBoundary) {
-
-		for (int i = 0; i < password.length(); i++) {
-
-			int ch = password.charAt(i);
-
-			if (ch >= minBoundary && ch <= maxBoundary)
-				return Mono.just(true);
-
+		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'A', 'Z')) {
+			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.CAPTIAL_LETTERS_MISSING);
 		}
-		return Mono.just(false);
+
+		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'a', 'z')) {
+			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.SMALL_LETTERS_MISSING);
+		}
+
+		if (passwordPolicy.isAtleastOneDigit() && !checkExistsInBetween(password, '0', '9')) {
+			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.NUMBERS_MISSING);
+		}
+
+		return Mono.just(true);
 	}
 
-	private Mono<Boolean> checkExistsInBetween(String password, char minBoundary, char maxBoundary) {
+	private boolean checkExistsInBetween(String password, char minBoundary, char maxBoundary) {
 
 		for (int i = 0; i < password.length(); i++) {
 
 			char ch = password.charAt(i);
 
 			if (ch >= minBoundary && ch <= maxBoundary)
-				return Mono.just(true);
+				return true;
 
 		}
 
-		return Mono.just(false);
+		return false;
 	}
 
 	private Mono<Boolean> checkStrengthOfPassword(ClientPasswordPolicy passwordPolicy, String password) {
 
-		boolean isValid = true;
+		if (passwordPolicy.getPassMaxLength() != null && password.length() > passwordPolicy.getPassMaxLength()
+		        .intValue())
+			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.MAX_LENGTH_ERROR, passwordPolicy.getPassMaxLength());
 
-		if (passwordPolicy.getPassMaxLength() != null && passwordPolicy.getPassMinLength() != null) {
+		if (passwordPolicy.getPassMinLength() != null && password.length() < passwordPolicy.getPassMinLength()
+		        .intValue())
+			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.MIN_LENGTH_ERROR, passwordPolicy.getPassMinLength());
 
-			if (password.length() > passwordPolicy.getPassMaxLength()
-			        .intValue())
-				return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				        SecurityMessageResourceService.MAX_LENGTH_ERROR, passwordPolicy.getPassMaxLength());
-
-			if (password.length() < passwordPolicy.getPassMinLength()
-			        .intValue())
-				return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				        SecurityMessageResourceService.MIN_LENGTH_ERROR, passwordPolicy.getPassMinLength());
-
-			isValid = password.length() <= passwordPolicy.getPassMaxLength()
-			        .intValue()
-			        && password.length() >= passwordPolicy.getPassMinLength()
-			                .intValue();
-		}
-
-		return Mono.just(isValid);
+		return Mono.just(true);
 
 	}
 
@@ -226,7 +239,11 @@ public class ClientPasswordPolicyService extends
 
 		Pattern pattern = Pattern.compile(regex);
 		Matcher matches = pattern.matcher(password);
-		return Mono.just(matches.find());
+		if (!matches.find())
+			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.REGEX_MISMATCH);
+
+		return Mono.just(true);
 	}
 
 }

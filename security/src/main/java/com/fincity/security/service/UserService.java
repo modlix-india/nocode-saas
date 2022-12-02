@@ -555,7 +555,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 				                || (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
 				                        .equals(newPassword)))
 					        return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					                SecurityMessageResourceService.ALREADY_EXISTS);
+					                SecurityMessageResourceService.PASSWORD_USER_ERROR);
 
 			        }
 
