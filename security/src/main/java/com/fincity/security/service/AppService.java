@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -35,38 +36,63 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	@Autowired
 	private SecurityMessageResourceService messageResourceService;
-	
-	
+
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_CREATE')")
 	@Override
 	public Mono<App> create(App entity) {
-		return super.create(entity);
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+				{
+
+			        ULong clientId = ULong.valueOf(ca.getUser()
+			                .getClientId());
+
+			        if (entity.getClientId() == null)
+				        entity.setClientId(clientId);
+
+			        if (ca.isSystemClient() || entity.getClientId()
+			                .equals(clientId))
+				        return Mono.just(entity);
+
+			        return this.clientService.isBeingManagedBy(clientId, entity.getClientId())
+			                .flatMap(managed -> managed.booleanValue() ? Mono.just(entity) : Mono.empty());
+		        },
+
+		        (ca, app) -> super.create(app)
+
+		)
+		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, "Application")));
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_UPDATE')")
 	@Override
 	public Mono<App> update(App entity) {
 		return super.update(entity);
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_UPDATE')")
 	@Override
 	public Mono<App> update(ULong key, Map<String, Object> fields) {
 		return super.update(key, fields);
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_READ')")
 	@Override
 	public Mono<App> read(ULong id) {
 		return super.read(id);
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_READ')")
 	@Override
 	public Mono<Page<App>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 		return super.readPageFilter(pageable, condition);
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
