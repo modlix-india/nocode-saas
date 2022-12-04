@@ -36,9 +36,9 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, Role> {
+public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, Role> {
 
-	public RoleDao() {
+	public RoleDAO() {
 		super(Role.class, SECURITY_ROLE, SECURITY_ROLE.ID);
 	}
 
@@ -204,9 +204,9 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 	public Mono<Set<ULong>> getClientListFromAnotherRole(ULong roleId, ULong permissionId, Set<ULong> clientList) {
 
-		Set<ULong> filteredClientList = new HashSet<ULong>();
+		Set<ULong> filteredClientList = new HashSet<>();
 
-		Set<ULong> differentRoleClientList = new HashSet<ULong>();
+		Set<ULong> differentRoleClientList = new HashSet<>();
 
 		Flux.from(
 

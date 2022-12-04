@@ -29,7 +29,7 @@ import reactor.core.publisher.Mono;
 @Service
 public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppRecord, ULong, App, AppDAO> {
 
-	private static final String APP = "APP";
+	private static final String APPLICATION = "Application";
 
 	@Autowired
 	private ClientService clientService;
@@ -66,19 +66,25 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		)
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                SecurityMessageResourceService.FORBIDDEN_CREATE, "Application")));
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_UPDATE')")
 	@Override
 	public Mono<App> update(App entity) {
-		return super.update(entity);
+		return this.read(entity.getClientId())
+		        .flatMap(e -> super.update(entity))
+		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity.getId())));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_UPDATE')")
 	@Override
 	public Mono<App> update(ULong key, Map<String, Object> fields) {
-		return super.update(key, fields);
+		return this.read(key)
+		        .flatMap(e -> super.update(key, fields))
+		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, key)));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_READ')")
@@ -96,7 +102,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
-		return super.delete(id);
+		return this.read(id)
+		        .flatMap(e -> super.delete(id))
+		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id)));
 	}
 
 	@Override
@@ -123,7 +132,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                                .flatMap(msg -> Mono
 				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
-				                                                StringFormatter.format(msg, APP, entity.getId()))));
+				                                                StringFormatter.format(msg, APPLICATION, entity.getId()))));
 			                        });
 
 		                }));
@@ -154,10 +163,18 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                                .flatMap(msg -> Mono
 				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
-				                                                StringFormatter.format(msg, APP, key))));
+				                                                StringFormatter.format(msg, APPLICATION, key))));
 			                        });
 
 		                }));
+	}
+
+	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
+		return this.dao.hasReadAccess(appCode, clientCode);
+	}
+
+	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
+		return this.dao.hasWriteAccess(appCode, clientCode);
 	}
 
 }
