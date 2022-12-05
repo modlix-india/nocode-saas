@@ -19,6 +19,8 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
 	private static final String CACHE_NAME_BEING_MANAGED = "beingManaged";
 	private static final String CACHE_NAME_USER_BEING_MANAGED = "userBeingManaged";
+	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
+	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
 
 	@Autowired(required = false)
 	private IFeignSecurityService feignAuthService;
@@ -51,10 +53,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
 		}
 
 		return this.feignAuthService.contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port)
-		        .map(Authentication.class::cast)
-
-		;
-
+		        .map(Authentication.class::cast);
 	}
 
 	public Mono<Boolean> isBeingManaged(String managingClientCode, String clientCode) {
@@ -65,10 +64,8 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
 		        key -> cacheService.<Boolean>get(CACHE_NAME_BEING_MANAGED, key),
 
-		        (key, value) -> value == null
-		                ? this.feignAuthService.isBeingManaged(managingClientCode, clientCode)
-		                        .flatMap(v -> cacheService.put(CACHE_NAME_BEING_MANAGED, v, key))
-		                : Mono.just(value));
+		        (key, value) -> value == null ? this.feignAuthService.isBeingManaged(managingClientCode, clientCode)
+		                .flatMap(v -> cacheService.put(CACHE_NAME_BEING_MANAGED, v, key)) : Mono.just(value));
 	}
 
 	public Mono<Boolean> isUserBeingManaged(Object userId, String clientCode) {
@@ -89,7 +86,44 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
 			        return this.feignAuthService.isUserBeingManaged(biUserId, clientCode)
 			                .flatMap(v -> cacheService.put(CACHE_NAME_USER_BEING_MANAGED, v, key));
+		        });
+	}
 
+	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        () -> cacheService.makeKey(appCode, ":", appCode),
+
+		        key -> cacheService.<Boolean>get(CACHE_NAME_APP_READ_ACCESS, key),
+
+		        (key, value) ->
+				{
+
+			        if (value != null)
+				        return Mono.just(value);
+
+			        return this.feignAuthService.hasReadAccess(appCode, clientCode)
+			                .flatMap(v -> cacheService.put(CACHE_NAME_APP_READ_ACCESS, v, key));
+		        });
+	}
+	
+	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        () -> cacheService.makeKey(appCode, ":", appCode),
+
+		        key -> cacheService.<Boolean>get(CACHE_NAME_APP_WRITE_ACCESS, key),
+
+		        (key, value) ->
+				{
+
+			        if (value != null)
+				        return Mono.just(value);
+
+			        return this.feignAuthService.hasWriteAccess(appCode, clientCode)
+			                .flatMap(v -> cacheService.put(CACHE_NAME_APP_WRITE_ACCESS, v, key));
 		        });
 	}
 }
