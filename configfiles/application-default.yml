@@ -18,7 +18,7 @@ files:
       static: C:/fincity/resources/static
       secured: C:/fincity/resources/secured
 
-files:
+data:
   db:
     url: r2dbc:mysql://localhost:3306/data?serverTimezone=UTC
     username: root
