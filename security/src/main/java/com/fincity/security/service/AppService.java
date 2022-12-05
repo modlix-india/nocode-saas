@@ -30,6 +30,7 @@ import reactor.core.publisher.Mono;
 public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppRecord, ULong, App, AppDAO> {
 
 	private static final String APPLICATION = "Application";
+	private static final String APPLICATION_ACCESS = "Application access";
 
 	@Autowired
 	private ClientService clientService;
@@ -130,9 +131,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 				                        return messageResourceService
 				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-				                                .flatMap(msg -> Mono
-				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
-				                                                StringFormatter.format(msg, APPLICATION, entity.getId()))));
+				                                .flatMap(msg -> Mono.error(() -> new GenericException(
+				                                        HttpStatus.NOT_FOUND,
+				                                        StringFormatter.format(msg, APPLICATION, entity.getId()))));
 			                        });
 
 		                }));
@@ -175,6 +176,86 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
 		return this.dao.hasWriteAccess(appCode, clientCode);
+	}
+
+	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> ca.isSystemClient() ? Mono.just(true)
+		                : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), clientId),
+
+		        (ca, clientAccess) ->
+				{
+
+			        if (!clientAccess.booleanValue())
+				        return Mono.empty();
+
+			        return this.read(appId)
+			                .map(App::getClientId)
+			                .flatMap(
+			                        cid -> cid.equals(clientId) ? this.dao.addClientAccess(appId, clientId, writeAccess)
+			                                : Mono.empty());
+		        })
+		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)));
+	}
+
+	public Mono<Boolean> removeClient(ULong appId, ULong accessId) {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca ->
+				{
+
+			        if (ca.isSystemClient()) {
+				        return this.dao.removeClientAccess(appId, accessId);
+			        }
+
+			        return this.dao.readById(appId)
+			                .flatMap(e ->
+							{
+
+				                if (!e.getClientId()
+				                        .toBigInteger()
+				                        .equals(ca.getUser()
+				                                .getClientId()))
+					                return Mono.empty();
+
+				                return this.dao.removeClientAccess(appId, accessId);
+			                });
+		        })
+		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.UNABLE_TO_DELETE, APPLICATION_ACCESS, accessId)));
+	}
+
+	public Mono<Boolean> updateClientAccess(ULong accessId, boolean writeAccess) {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca ->
+				{
+
+			        if (ca.isSystemClient()) {
+				        return this.dao.updateClientAccess(accessId, writeAccess);
+			        }
+
+			        return this.dao.readById(accessId)
+			                .flatMap(e ->
+							{
+
+				                if (!e.getClientId()
+				                        .toBigInteger()
+				                        .equals(ca.getUser()
+				                                .getClientId()))
+					                return Mono.empty();
+
+				                return this.dao.updateClientAccess(accessId, writeAccess);
+			                });
+		        })
+		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS, accessId)));
 	}
 
 }

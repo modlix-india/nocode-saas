@@ -19,10 +19,12 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.App;
+import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import reactor.core.publisher.Mono;
@@ -100,7 +102,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			        List<Condition> conditions = new ArrayList<>();
 			        conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
 			        if (accessType == 1) {
-			        	conditions.add(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
+				        conditions.add(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
 			        }
 
 			        SelectConditionStep<Record1<ULong>> inQuery = this.dslContext.select(SECURITY_APP_ACCESS.APP_ID)
@@ -120,5 +122,45 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			                .map(Record1::value1)
 			                .map(e -> e != 0);
 		        });
+	}
+
+	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
+
+		UByte edit = UByte.valueOf(writeAccess ? 1 : 0);
+
+		return SecurityContextUtil.getUsersContextUser()
+		        .map(ContextUser::getId)
+		        .map(ULong::valueOf)
+		        .flatMap(userId -> Mono.fromCompletionStage(this.dslContext.insertInto(SECURITY_APP_ACCESS)
+		                .columns(SECURITY_APP_ACCESS.APP_ID, SECURITY_APP_ACCESS.CLIENT_ID,
+		                        SECURITY_APP_ACCESS.EDIT_ACCESS, SECURITY_APP_ACCESS.CREATED_BY)
+		                .values(appId, clientId, edit, userId)
+		                .onDuplicateKeyUpdate()
+		                .set(SECURITY_APP_ACCESS.EDIT_ACCESS, edit)
+		                .set(SECURITY_APP_ACCESS.UPDATED_BY, userId)
+		                .executeAsync()))
+		        .map(e -> e == 1);
+	}
+
+	public Mono<Boolean> removeClientAccess(ULong appId, ULong accessId) {
+
+		return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_ACCESS)
+		        .where(SECURITY_APP_ACCESS.ID.eq(accessId)
+		                .and(SECURITY_APP_ACCESS.APP_ID.eq(appId))))
+		        .map(e -> e == 1);
+	}
+
+	public Mono<Boolean> updateClientAccess(ULong accessId, boolean writeAccess) {
+
+		return Mono.from(this.dslContext.update(SECURITY_APP_ACCESS)
+		        .set(SECURITY_APP_ACCESS.EDIT_ACCESS, UByte.valueOf(writeAccess ? 1 : 0))
+		        .where(SECURITY_APP_ACCESS.ID.eq(accessId)))
+		        .map(e -> e == 1);
+	}
+
+	public Mono<SecurityAppAccessRecord> readClientAccess(ULong accessId) {
+
+		return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
+		        .where(SECURITY_APP_ACCESS.ID.eq(accessId)));
 	}
 }
