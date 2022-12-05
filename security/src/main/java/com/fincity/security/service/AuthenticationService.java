@@ -29,6 +29,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
@@ -94,7 +95,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 			if (bearerToken.startsWith("Bearer ")) {
 				bearerToken = bearerToken.substring(7);
-			} else if (bearerToken.startsWith("basic ")) {
+			} else if (bearerToken.startsWith("Basic ")) {
 				bearerToken = bearerToken.substring(6);
 			}
 		}
@@ -221,7 +222,7 @@ public class AuthenticationService implements IAuthenticationService {
 	private Mono<Object> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
 
 		if (pol.getNoFailedAttempts() != null && pol.getNoFailedAttempts()
-		        .shortValue() >= u.getNoFailedAttempt()) {
+		        .shortValue() <= u.getNoFailedAttempt()) {
 
 			soxLogService.create(new SoxLog().setObjectId(u.getId())
 			        .setActionName(SecuritySoxLogActionName.LOGIN)
@@ -238,40 +239,20 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<Boolean> checkPassword(AuthenticationRequest authRequest, User u) {
 
-		if (!u.isPasswordHashed()) {
-			if (!authRequest.getPassword()
-			        .equals(u.getPassword())) {
+		if (u.isPasswordHashed()) {
+			if (pwdEncoder.matches(u.getId() + authRequest.getPassword(), u.getPassword()))
+				return Mono.just(true);
+		} else if (StringUtil.safeEquals(authRequest.getPassword(), u.getPassword()))
+			return Mono.just(true);
 
-				userService.increaseFailedAttempt(u.getId())
-				        .subscribe();
+		userService.increaseFailedAttempt(u.getId())
+		        .subscribe();
 
-				soxLogService.create(new SoxLog().setObjectId(u.getId())
-				        .setActionName(SecuritySoxLogActionName.LOGIN)
-				        .setObjectName(SecuritySoxLogObjectName.USER)
-				        .setDescription("Password mismatch"))
-				        .subscribe();
-				return this.credentialError()
-				        .map(e -> false);
+		soxLogService.createLog(u.getId(), SecuritySoxLogActionName.UPDATE, SecuritySoxLogObjectName.USER,
+		        "Given Password is mismatching with existing.");
 
-			}
-		} else {
-			if (!pwdEncoder.matches(u.getId() + authRequest.getPassword(), u.getPassword())) {
-
-				userService.increaseFailedAttempt(u.getId())
-				        .subscribe();
-
-				soxLogService.create(new SoxLog().setObjectId(u.getId())
-				        .setActionName(SecuritySoxLogActionName.LOGIN)
-				        .setObjectName(SecuritySoxLogObjectName.USER)
-				        .setDescription("Password mismatch"))
-				        .subscribe();
-
-				return this.credentialError()
-				        .map(e -> false);
-			}
-		}
-
-		return Mono.just(true);
+		return this.credentialError()
+		        .map(e -> false);
 	}
 
 	private Mono<? extends AuthenticationResponse> credentialError() {
@@ -356,7 +337,7 @@ public class AuthenticationService implements IAuthenticationService {
 		        (claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
 
 		        (claims, u,
-		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser().setClientCode(typ.getT2()), true,
+		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
 		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
 		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
 	}
@@ -388,4 +369,5 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return Mono.just(jwtClaims);
 	}
+
 }

@@ -1,5 +1,8 @@
 package com.fincity.saas.commons.configuration;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,8 +74,8 @@ public class AbstractBaseConfiguration implements WebFluxConfigurer {
 	}
 
 	@Bean
-	PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder(BCryptPasswordEncoder.BCryptVersion.$2Y, 31);
+	PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
+        return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
 	}
 
 	@Bean

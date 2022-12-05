@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
+import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
@@ -34,6 +35,7 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.PastPassword;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -409,4 +411,21 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		return Mono.just(users);
 	}
+
+	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {
+
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.PASS_HISTORY_COUNT)
+		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId))
+		        .limit(1))
+		        .flatMapMany(cnt -> Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
+		                .from(SECURITY_PAST_PASSWORDS)
+		                .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
+		                .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
+		                .limit(cnt.value1())))
+		        .map(e -> e.into(PastPassword.class))
+		        .collectList()
+		        .defaultIfEmpty(List.of());
+	}
+
 }

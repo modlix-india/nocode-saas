@@ -36,6 +36,19 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String REMOVE_PERMISSION_FROM_ROLE_ERROR = "remove_permission_from_role_error";
 	public static final String REMOVE_PACKAGE_ERR0R = "remove_package_error";
 	public static final String ROLE_REMOVE_FROM_PACKAGE_ERROR = "role_remove_from_package_error";
+	public static final String CLIENT_PASSWORD_POLICY_ERROR = "client_password_policy_error";
+	public static final String CAPTIAL_LETTERS_MISSING = "capital_letters_missing";
+	public static final String SMALL_LETTERS_MISSING = "small_letters_missing";
+	public static final String NUMBERS_MISSING = "numbers_missing";
+	public static final String SPECIAL_CHARACTERS_MISSING = "special_characters_missing";
+	public static final String SPACES_MISSING = "spaces_missing";
+	public static final String REGEX_MISMATCH = "regex_mismatch";
+	public static final String MIN_LENGTH_ERROR = "min_length_error";
+	public static final String MAX_LENGTH_ERROR = "max_length_error";
+	public static final String USER_NOT_ACTIVE = "user_not_active";
+	public static final String OLD_NEW_PASSWORD_MATCH = "old_new_password_match";
+	public static final String NEW_PASSWORD_MISSING = "new_password_missing";
+	public static final String PASSWORD_USER_ERROR = "password_used_error";
 
 	public SecurityMessageResourceService() {
 
