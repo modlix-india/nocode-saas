@@ -1,10 +1,12 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.jooq.types.ULong;
@@ -13,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
@@ -21,13 +24,17 @@ import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
+
+import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
@@ -45,6 +52,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	@Autowired
 	private ClientService clientService;
+
+	@Autowired
+	private ClientPasswordPolicyService clientPasswordPolicyService;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
@@ -460,4 +473,150 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .map(val -> val > 0);
 	}
 
+	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {
+
+		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
+			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
+
+		// reset password only for active users
+
+		return flatMapMono(
+
+		        () -> this.dao.readById(reqUserId),
+
+		        user -> this.checkHierarchy(user, reqUserId, requestPassword.getNewPassword()),
+
+		        (user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(user.getClientId(),
+		                requestPassword.getNewPassword()),
+
+		        (user, isUpdatable, isValid) -> this.checkPasswordInPastPasswords(user,
+		                requestPassword.getNewPassword()),
+
+		        (user, isUpdatable, isValid, isPastPassword) -> this.dao
+		                .setPassword(reqUserId, requestPassword.getNewPassword(), user.getId())
+		                .map(e ->
+						{
+			                this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
+			                        .setActionName(SecuritySoxLogActionName.OTHER)
+			                        .setObjectName(SecuritySoxLogObjectName.USER)
+			                        .setDescription("Password updated"))
+			                        .subscribe();
+
+			                return e > 0;
+		                }))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                "Password cannot be updated"));
+
+	}
+
+	// check the hierarchy with client id and user id as per the comment given
+	// 1.) same user id
+	// 2.) logged in user's client id matches given user's client id if logged in
+	// user has user edit access update the password
+	// 3.) logged in user's client id is system if logged in user has user edit
+	// access update the password
+	// 4.) if no client id matches check logged in user's client id is managing user
+	// id's client id if logged in user has user edit access the update password
+
+	public Mono<Boolean> checkHierarchy(User user, ULong reqUserId, String newPassword) {
+
+		if (user.getId()
+		        .equals(reqUserId)) {
+
+			return flatMapMono(
+
+			        () -> this.dao.readById(reqUserId),
+
+			        requestedUser -> Mono.just(SecurityUserStatusCode.ACTIVE.equals(requestedUser.getStatusCode())),
+
+			        (requestedUser, isActive) -> isActive.booleanValue()
+			                ? this.checkPasswordEquality(requestedUser, newPassword)
+			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.USER_NOT_ACTIVE),
+
+			        (requestedUser, isActive, passwordEqual) -> passwordEqual.booleanValue()
+			                ? securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
+			                : Mono.just(true)
+
+			);
+		}
+
+		return flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(ca.isSystemClient()),
+
+		        (ca, isSys) -> isSys.booleanValue() ? Mono.justOrEmpty(Optional.empty())
+		                : this.dao.readById(reqUserId)
+		                        .map(User::getClientId),
+		        (ca, isSys, rClientId) ->
+				{
+
+			        if (isSys.booleanValue())
+				        return Mono.just(true);
+
+			        return Mono.just(rClientId.toBigInteger()
+			                .equals(ca.getUser()
+			                        .getClientId()));
+		        },
+
+		        (ca, isSys, rClientId, isSameClient) ->
+				{
+
+			        if (isSameClient.booleanValue())
+				        return Mono.just(true);
+
+			        return this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                .getClientId()), rClientId);
+		        },
+
+		        (ca, isSys, rclientId, isSameClient, isManaged) ->
+				{
+
+			        if (!isManaged.booleanValue())
+				        return Mono.just(false);
+
+			        return SecurityContextUtil.hasAuthority("Authorities.User_UPDATE");
+		        }
+
+		);
+	}
+
+	public Mono<Boolean> checkPasswordEquality(User u, String newPassword) {
+
+		if (u.isPasswordHashed()) {
+			if (passwordEncoder.matches(u.getId() + newPassword, u.getPassword()))
+				return Mono.just(true);
+		} else if (StringUtil.safeEquals(newPassword, u.getPassword()))
+			return Mono.just(true);
+
+		return Mono.just(false);
+	}
+
+	private Mono<Boolean> checkPasswordInPastPasswords(User user, String newPassword) {
+
+		return flatMapMono(
+
+		        () -> this.dao.getPastPasswordsBasedOnPolicy(user.getId(), user.getClientId()),
+
+		        pastPasswords ->
+				{
+
+			        for (var pastPassword : pastPasswords) {
+				        if ((pastPassword.isPasswordHashed()
+				                && passwordEncoder.matches(pastPassword.getPassword(), user.getId() + newPassword))
+				                || (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
+				                        .equals(newPassword)))
+					        return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+					                SecurityMessageResourceService.PASSWORD_USER_ERROR);
+
+			        }
+
+			        return Mono.just(true);
+		        });
+
+	}
 }
