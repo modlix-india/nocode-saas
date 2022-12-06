@@ -34,7 +34,7 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 	private DataMessageResourceService msgService;
 
 	private static final Set<String> updatableFields = Set.of("namespace", "name", "isVersioned", "isAudited",
-	        "createAuth", "readAuth", "updateAuth", "deleteAuth", "status");
+	        "createAuth", "readAuth", "updateAuth", "deleteAuth");
 
 	@Override
 	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Storage_CREATE')")
@@ -125,7 +125,6 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 			        storage.setNamespace(entity.getNamespace());
 			        storage.setUpdateAuth(entity.getUpdateAuth());
 			        storage.setReadAuth(entity.getReadAuth());
-			        storage.setStatus(entity.getStatus());
 
 			        if (ca.isSystemClient())
 				        return Mono.just(storage);
@@ -167,6 +166,7 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 	}
 
 	@Override
+	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Storage_DELETE')")
 	public Mono<Integer> delete(ULong id) {
 
 		return FlatMapUtil.flatMapMono(

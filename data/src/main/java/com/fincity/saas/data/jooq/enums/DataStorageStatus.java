@@ -19,7 +19,9 @@ public enum DataStorageStatus implements EnumType {
 
     READONLY("READONLY"),
 
-    INACTIVE("INACTIVE");
+    INACTIVE("INACTIVE"),
+
+    DELETED("DELETED");
 
     private final String literal;
 

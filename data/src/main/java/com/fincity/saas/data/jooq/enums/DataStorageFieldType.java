@@ -35,7 +35,9 @@ public enum DataStorageFieldType implements EnumType {
 
     DATE("DATE"),
 
-    TIMESTAMP("TIMESTAMP");
+    TIMESTAMP("TIMESTAMP"),
+
+    UUID("UUID");
 
     private final String literal;
 

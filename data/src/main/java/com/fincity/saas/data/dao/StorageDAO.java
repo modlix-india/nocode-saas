@@ -2,6 +2,9 @@ package com.fincity.saas.data.dao;
 
 import static com.fincity.saas.data.jooq.tables.DataStorage.DATA_STORAGE;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
@@ -9,6 +12,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.data.dto.Storage;
 import com.fincity.saas.data.dto.StorageField;
+import com.fincity.saas.data.jooq.enums.DataStorageFieldType;
 import com.fincity.saas.data.jooq.tables.records.DataStorageRecord;
 import com.fincity.saas.data.util.DBNameUtil;
 
@@ -34,19 +38,26 @@ public class StorageDAO extends AbstractUpdatableDAO<DataStorageRecord, ULong, S
 		        storage ->
 				{
 
-//			        if (pojo.getFields() != null)
-//				        return Flux.fromIterable(pojo.getFields())
-//				                .flatMap(e -> this.createField(storage.getId(), e))
-//				                .collectList();
+			        List<StorageField> fields = new ArrayList<>();
+			        fields.add(new StorageField().setName("_id")
+			                .setType(DataStorageFieldType.UUID)
+			                .setDefaultValue("uuid_short()"));
 
-			        return Mono.just(storage);
+			        if (pojo.getFields() != null && !pojo.getFields()
+			                .isEmpty())
+				        fields.addAll(pojo.getFields());
+
+			        return Flux.fromIterable(fields)
+			                .flatMap(e -> this.createField(storage.getId(), e))
+			                .collectList()
+			                .map(e -> storage);
 		        }
 
 		);
 	}
-	
+
 	private Mono<StorageField> createField(ULong storageId, StorageField field) {
-		
+
 		return null;
 	}
 }

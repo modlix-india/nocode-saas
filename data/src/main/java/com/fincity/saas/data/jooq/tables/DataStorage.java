@@ -10,8 +10,6 @@ import com.fincity.saas.data.jooq.enums.DataStorageStatus;
 import com.fincity.saas.data.jooq.tables.records.DataStorageRecord;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
 import java.util.function.Function;
 
 import org.jooq.Field;
@@ -202,11 +200,6 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
     @Override
     public UniqueKey<DataStorageRecord> getPrimaryKey() {
         return Keys.KEY_DATA_STORAGE_PRIMARY;
-    }
-
-    @Override
-    public List<UniqueKey<DataStorageRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_DATA_STORAGE_UK1_DATA_STRG);
     }
 
     @Override
