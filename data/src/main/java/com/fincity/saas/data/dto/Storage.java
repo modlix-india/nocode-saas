@@ -5,6 +5,7 @@ import java.util.List;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.data.jooq.enums.DataStorageStatus;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,7 +23,12 @@ public class Storage extends AbstractUpdatableDTO<ULong, ULong>{
 	private String dbName;
 	private Boolean isVersioned;
 	private Boolean isAudited;
+	private String createAuth;
+	private String readAuth;
+	private String updateAuth;
+	private String deleteAuth;
+	private String internalName;
+	private DataStorageStatus status = DataStorageStatus.ACTIVE;
 	
 	private List<StorageField> fields;
-	private List<StorageRefField> refs;
 }

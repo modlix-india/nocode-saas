@@ -9,7 +9,6 @@ import com.fincity.saas.data.jooq.tables.DataConnection;
 import com.fincity.saas.data.jooq.tables.DataStorage;
 import com.fincity.saas.data.jooq.tables.DataStorageActivity;
 import com.fincity.saas.data.jooq.tables.DataStorageField;
-import com.fincity.saas.data.jooq.tables.DataStorageRefField;
 
 
 /**
@@ -42,9 +41,4 @@ public class Tables {
      * The table <code>data.data_storage_field</code>.
      */
     public static final DataStorageField DATA_STORAGE_FIELD = DataStorageField.DATA_STORAGE_FIELD;
-
-    /**
-     * The table <code>data.data_storage_ref_field</code>.
-     */
-    public static final DataStorageRefField DATA_STORAGE_REF_FIELD = DataStorageRefField.DATA_STORAGE_REF_FIELD;
 }

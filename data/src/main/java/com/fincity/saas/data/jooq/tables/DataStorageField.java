@@ -5,6 +5,7 @@ package com.fincity.saas.data.jooq.tables;
 
 
 import com.fincity.saas.data.jooq.Data;
+import com.fincity.saas.data.jooq.Indexes;
 import com.fincity.saas.data.jooq.Keys;
 import com.fincity.saas.data.jooq.enums.DataStorageFieldType;
 import com.fincity.saas.data.jooq.tables.records.DataStorageFieldRecord;
@@ -16,12 +17,13 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function10;
+import org.jooq.Function11;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row10;
+import org.jooq.Row11;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -70,7 +72,7 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
      * The column <code>data.data_storage_field.TYPE</code>. Data type of the
      * field
      */
-    public final TableField<DataStorageFieldRecord, DataStorageFieldType> TYPE = createField(DSL.name("TYPE"), SQLDataType.VARCHAR(7).nullable(false).asEnumDataType(com.fincity.saas.data.jooq.enums.DataStorageFieldType.class), this, "Data type of the field");
+    public final TableField<DataStorageFieldRecord, DataStorageFieldType> TYPE = createField(DSL.name("TYPE"), SQLDataType.VARCHAR(9).nullable(false).asEnumDataType(com.fincity.saas.data.jooq.enums.DataStorageFieldType.class), this, "Data type of the field");
 
     /**
      * The column <code>data.data_storage_field.SIZE</code>.
@@ -87,6 +89,11 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
      * The column <code>data.data_storage_field.DEFAULT_VALUE</code>.
      */
     public final TableField<DataStorageFieldRecord, String> DEFAULT_VALUE = createField(DSL.name("DEFAULT_VALUE"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column <code>data.data_storage_field.REF_STORAGE_FIELD_ID</code>.
+     */
+    public final TableField<DataStorageFieldRecord, ULong> REF_STORAGE_FIELD_ID = createField(DSL.name("REF_STORAGE_FIELD_ID"), SQLDataType.BIGINTUNSIGNED, this, "");
 
     /**
      * The column <code>data.data_storage_field.CREATED_BY</code>. ID of the
@@ -151,6 +158,11 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.DATA_STORAGE_FIELD_FK2_STRG_FLD_STRG_FILD_IDX);
+    }
+
+    @Override
     public Identity<DataStorageFieldRecord, ULong> getIdentity() {
         return (Identity<DataStorageFieldRecord, ULong>) super.getIdentity();
     }
@@ -167,10 +179,11 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
 
     @Override
     public List<ForeignKey<DataStorageFieldRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_STRG_FLD_STRG_ID);
+        return Arrays.asList(Keys.FK1_STRG_FLD_STRG_ID, Keys.FK2_STRG_FLD_STRG_FILD);
     }
 
     private transient DataStorage _dataStorage;
+    private transient DataStorageField _dataStorageField;
 
     /**
      * Get the implicit join path to the <code>data.data_storage</code> table.
@@ -180,6 +193,17 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
             _dataStorage = new DataStorage(this, Keys.FK1_STRG_FLD_STRG_ID);
 
         return _dataStorage;
+    }
+
+    /**
+     * Get the implicit join path to the <code>data.data_storage_field</code>
+     * table.
+     */
+    public DataStorageField dataStorageField() {
+        if (_dataStorageField == null)
+            _dataStorageField = new DataStorageField(this, Keys.FK2_STRG_FLD_STRG_FILD);
+
+        return _dataStorageField;
     }
 
     @Override
@@ -222,18 +246,18 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row10 type methods
+    // Row11 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row10<ULong, String, DataStorageFieldType, UShort, ULong, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row10) super.fieldsRow();
+    public Row11<ULong, String, DataStorageFieldType, UShort, ULong, String, ULong, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row11) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function10<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function11<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -241,7 +265,7 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

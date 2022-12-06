@@ -9,7 +9,6 @@ import com.fincity.saas.data.jooq.tables.DataConnection;
 import com.fincity.saas.data.jooq.tables.DataStorage;
 import com.fincity.saas.data.jooq.tables.DataStorageActivity;
 import com.fincity.saas.data.jooq.tables.DataStorageField;
-import com.fincity.saas.data.jooq.tables.DataStorageRefField;
 
 import java.util.Arrays;
 import java.util.List;
@@ -58,11 +57,6 @@ public class Data extends SchemaImpl {
     public final DataStorageField DATA_STORAGE_FIELD = DataStorageField.DATA_STORAGE_FIELD;
 
     /**
-     * The table <code>data.data_storage_ref_field</code>.
-     */
-    public final DataStorageRefField DATA_STORAGE_REF_FIELD = DataStorageRefField.DATA_STORAGE_REF_FIELD;
-
-    /**
      * No further instances allowed
      */
     private Data() {
@@ -82,8 +76,7 @@ public class Data extends SchemaImpl {
             DataConnection.DATA_CONNECTION,
             DataStorage.DATA_STORAGE,
             DataStorageActivity.DATA_STORAGE_ACTIVITY,
-            DataStorageField.DATA_STORAGE_FIELD,
-            DataStorageRefField.DATA_STORAGE_REF_FIELD
+            DataStorageField.DATA_STORAGE_FIELD
         );
     }
 }

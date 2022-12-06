@@ -31,6 +31,9 @@ public class DataMessageResourceService extends AbstractMessageService {
 	public static final String CANNOT_CHANGE_PREF = "cannot_change_pref";
 	public static final String UNABLE_TO_CREAT_OBJECT = "unable_to_create_object";
 	public static final String FORBIDDEN_RESOURCE = "forbidden_resource";
+	public static final String STORAGE_NOT_ACTIVE = "storage_not_active";
+	public static final String FIELD_MANDATORY = "field_mandatory";
+	public static final String VALUE_NOT_ALLOWED = "value_not_allowed";
 
 	public DataMessageResourceService() {
 

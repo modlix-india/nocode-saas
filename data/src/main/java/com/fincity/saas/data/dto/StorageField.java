@@ -20,4 +20,5 @@ public class StorageField extends AbstractUpdatableDTO<ULong, ULong> {
 	private UShort size;
 	private ULong storageId;
 	private String defaultValue;
+	private ULong refStorageFieldId;
 }

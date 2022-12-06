@@ -6,6 +6,7 @@ package com.fincity.saas.data.jooq.tables;
 
 import com.fincity.saas.data.jooq.Data;
 import com.fincity.saas.data.jooq.Keys;
+import com.fincity.saas.data.jooq.enums.DataStorageStatus;
 import com.fincity.saas.data.jooq.tables.records.DataStorageRecord;
 
 import java.time.LocalDateTime;
@@ -15,12 +16,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function12;
+import org.jooq.Function18;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row12;
+import org.jooq.Row18;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -98,6 +99,35 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
     public final TableField<DataStorageRecord, Byte> IS_AUDITED = createField(DSL.name("IS_AUDITED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Audited if it is true");
 
     /**
+     * The column <code>data.data_storage.CREATE_AUTH</code>. Authorization
+     * expression for creating a row
+     */
+    public final TableField<DataStorageRecord, String> CREATE_AUTH = createField(DSL.name("CREATE_AUTH"), SQLDataType.VARCHAR(512), this, "Authorization expression for creating a row");
+
+    /**
+     * The column <code>data.data_storage.READ_AUTH</code>. Authorization
+     * expression for reading a row
+     */
+    public final TableField<DataStorageRecord, String> READ_AUTH = createField(DSL.name("READ_AUTH"), SQLDataType.VARCHAR(512), this, "Authorization expression for reading a row");
+
+    /**
+     * The column <code>data.data_storage.UPDATE_AUTH</code>. Authorization
+     * expression for updating a row
+     */
+    public final TableField<DataStorageRecord, String> UPDATE_AUTH = createField(DSL.name("UPDATE_AUTH"), SQLDataType.VARCHAR(512), this, "Authorization expression for updating a row");
+
+    /**
+     * The column <code>data.data_storage.DELETE_AUTH</code>. Authorization
+     * expression for deleting a row
+     */
+    public final TableField<DataStorageRecord, String> DELETE_AUTH = createField(DSL.name("DELETE_AUTH"), SQLDataType.VARCHAR(512), this, "Authorization expression for deleting a row");
+
+    /**
+     * The column <code>data.data_storage.INTERNAL_NAME</code>.
+     */
+    public final TableField<DataStorageRecord, String> INTERNAL_NAME = createField(DSL.name("INTERNAL_NAME"), SQLDataType.CHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>data.data_storage.CREATED_BY</code>. ID of the user who
      * created this row
      */
@@ -120,6 +150,11 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
      * is updated
      */
     public final TableField<DataStorageRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+
+    /**
+     * The column <code>data.data_storage.STATUS</code>.
+     */
+    public final TableField<DataStorageRecord, DataStorageStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.saas.data.jooq.enums.DataStorageStatus.class), this, "");
 
     private DataStorage(Name alias, Table<DataStorageRecord> aliased) {
         this(alias, aliased, null);
@@ -214,18 +249,18 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row12 type methods
+    // Row18 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row12<ULong, String, String, String, String, String, Byte, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row12) super.fieldsRow();
+    public Row18<ULong, String, String, String, String, String, Byte, Byte, String, String, String, String, String, ULong, LocalDateTime, ULong, LocalDateTime, DataStorageStatus> fieldsRow() {
+        return (Row18) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function12<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -233,7 +268,7 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

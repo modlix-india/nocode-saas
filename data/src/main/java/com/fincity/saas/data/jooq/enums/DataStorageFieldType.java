@@ -31,7 +31,11 @@ public enum DataStorageFieldType implements EnumType {
 
     BOOLEAN("BOOLEAN"),
 
-    REF("REF");
+    REF("REF"),
+
+    DATE("DATE"),
+
+    TIMESTAMP("TIMESTAMP");
 
     private final String literal;
 
