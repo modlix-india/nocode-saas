@@ -14,7 +14,7 @@ spring:
         - id: ui
           uri: lb://ui
           predicates:
-            - Path=/api/ui/**, /*/api/ui/**, /*/*/api/ui/**, /*/*/*/api/ui/**, /*/*/*/*/api/ui/**
+            - Path=/api/ui/**, /*/api/ui/**, /*/*/api/ui/**, /*/*/*/api/ui/**, /*/*/*/*/*/api/ui/**, /*/*/*/*/*/*/api/ui/**, /*/*/*/*/*/*/api/ui/**, /*/*/*/*/*/*/*/api/ui/**,
 
 redis:
   cache:

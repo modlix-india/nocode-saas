@@ -4,6 +4,7 @@
 package com.fincity.security.jooq;
 
 
+import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
@@ -26,6 +27,7 @@ public class Indexes {
     // -------------------------------------------------------------------------
 
     public static final Index SECURITY_SOX_LOG_CREATED_AT = Internal.createIndex(DSL.name("CREATED_AT"), SecuritySoxLog.SECURITY_SOX_LOG, new OrderField[] { SecuritySoxLog.SECURITY_SOX_LOG.CREATED_AT }, false);
+    public static final Index SECURITY_APP_ACCESS_FK1_APP_CLIENT_ID = Internal.createIndex(DSL.name("FK1_APP_CLIENT_ID"), SecurityAppAccess.SECURITY_APP_ACCESS, new OrderField[] { SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID }, false);
     public static final Index SECURITY_USER_K1_USER_NAME = Internal.createIndex(DSL.name("K1_USER_NAME"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.USER_NAME }, false);
     public static final Index SECURITY_USER_K2_EMAIL_ID = Internal.createIndex(DSL.name("K2_EMAIL_ID"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.EMAIL_ID }, false);
     public static final Index SECURITY_USER_K3_PHONE_NUMBER = Internal.createIndex(DSL.name("K3_PHONE_NUMBER"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.PHONE_NUMBER }, false);

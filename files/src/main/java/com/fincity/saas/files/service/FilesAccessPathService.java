@@ -19,7 +19,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -47,7 +47,7 @@ public class FilesAccessPathService
 	private FilesMessageResourceService msgService;
 
 	@Autowired
-	private IFeignSecurityService securityService;
+	private FeignAuthenticationService securityService;
 
 	@Autowired
 	private CacheService cacheService;

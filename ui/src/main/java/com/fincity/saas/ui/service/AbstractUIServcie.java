@@ -33,7 +33,7 @@ import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoUpdatableDataService;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.ui.document.AbstractUIDTO;
 import com.fincity.saas.ui.document.ListResultObject;
@@ -72,7 +72,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	protected VersionService versionService;
 
 	@Autowired
-	protected IFeignSecurityService securityService;
+	protected FeignAuthenticationService securityService;
 
 	@Autowired
 	private InheritanceService inheritanceService;

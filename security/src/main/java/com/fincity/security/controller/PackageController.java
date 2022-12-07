@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/packages")
 public class PackageController
-        extends AbstractJOOQDataController<SecurityPackageRecord, ULong, Package, PackageDAO, PackageService> {
+        extends AbstractJOOQUpdatableDataController<SecurityPackageRecord, ULong, Package, PackageDAO, PackageService> {
 
 	@Autowired
 	private PackageService packageService;
