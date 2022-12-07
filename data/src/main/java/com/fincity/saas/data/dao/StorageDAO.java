@@ -1,6 +1,7 @@
 package com.fincity.saas.data.dao;
 
 import static com.fincity.saas.data.jooq.tables.DataStorage.DATA_STORAGE;
+import static com.fincity.saas.data.jooq.tables.DataStorageField.DATA_STORAGE_FIELD;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,10 @@ public class StorageDAO extends AbstractUpdatableDAO<DataStorageRecord, ULong, S
 	@Override
 	public Mono<Storage> create(Storage pojo) {
 
-		pojo.setInternalName(DBNameUtil.uniqueName(32, pojo.getAppCode(), pojo.getNamespace(), pojo.getName()));
+		final String storageName = pojo.getName()
+		        .charAt(0) == '_' ? "T" + pojo.getName() : pojo.getName();
+
+		pojo.setInternalName(DBNameUtil.uniqueName(32, pojo.getAppCode(), pojo.getNamespace(), storageName));
 
 		return FlatMapUtil.flatMapMono(
 
@@ -40,23 +44,22 @@ public class StorageDAO extends AbstractUpdatableDAO<DataStorageRecord, ULong, S
 
 			        List<StorageField> fields = new ArrayList<>();
 			        fields.add(new StorageField().setName("_id")
-			                .setType(DataStorageFieldType.UUID));
+			                .setType(DataStorageFieldType.UUID)
+			                .setInternalName("_id"));
 
 			        if (pojo.getFields() != null && !pojo.getFields()
 			                .isEmpty())
 				        fields.addAll(pojo.getFields());
 
 			        return Flux.fromIterable(fields)
-			                .flatMap(e -> this.createField(storage.getId(), e))
+			                .map(e -> e.setInternalName(DBNameUtil.uniqueName(32, storageName, e.getName())))
+			                .map(e -> e.setStorageId(storage.getId()))
+			                .map(e -> this.dslContext.newRecord(DATA_STORAGE_FIELD, e))
 			                .collectList()
+			                .flatMap(e -> Mono.from(this.dslContext.batchInsert(e)))
 			                .map(e -> storage);
 		        }
 
 		);
-	}
-
-	private Mono<StorageField> createField(ULong storageId, StorageField field) {
-
-		return null;
 	}
 }

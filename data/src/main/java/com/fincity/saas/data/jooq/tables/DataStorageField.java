@@ -17,13 +17,13 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function11;
+import org.jooq.Function12;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row11;
+import org.jooq.Row12;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -94,6 +94,12 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
      * The column <code>data.data_storage_field.REF_STORAGE_FIELD_ID</code>.
      */
     public final TableField<DataStorageFieldRecord, ULong> REF_STORAGE_FIELD_ID = createField(DSL.name("REF_STORAGE_FIELD_ID"), SQLDataType.BIGINTUNSIGNED, this, "");
+
+    /**
+     * The column <code>data.data_storage_field.INTERNAL_NAME</code>. Name with
+     * the storage field created.
+     */
+    public final TableField<DataStorageFieldRecord, String> INTERNAL_NAME = createField(DSL.name("INTERNAL_NAME"), SQLDataType.CHAR(64).nullable(false), this, "Name with the storage field created.");
 
     /**
      * The column <code>data.data_storage_field.CREATED_BY</code>. ID of the
@@ -246,18 +252,18 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row11 type methods
+    // Row12 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row11<ULong, String, DataStorageFieldType, UShort, ULong, String, ULong, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row11) super.fieldsRow();
+    public Row12<ULong, String, DataStorageFieldType, UShort, ULong, String, ULong, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row12) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function11<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function12<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -265,7 +271,7 @@ public class DataStorageField extends TableImpl<DataStorageFieldRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super ULong, ? super String, ? super DataStorageFieldType, ? super UShort, ? super ULong, ? super String, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

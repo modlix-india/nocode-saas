@@ -49,16 +49,13 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 		        (ca, name) ->
 				{
 
-			        if (entity.getClientCode() == null)
-				        entity.setClientCode(ca.getClientCode());
-
 			        if (entity.getStatus() == null)
 				        entity.setStatus(DataStorageStatus.ACTIVE);
 
 			        if (ca.isSystemClient())
 				        return Mono.just(entity);
 
-			        return this.authService.hasWriteAccess(entity.getAppCode(), entity.getClientCode())
+			        return this.authService.hasWriteAccess(entity.getAppCode(), ca.getClientCode())
 			                .filter(Boolean::booleanValue)
 			                .map(e -> entity);
 		        },
@@ -129,7 +126,7 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 			        if (ca.isSystemClient())
 				        return Mono.just(storage);
 
-			        return this.authService.hasWriteAccess(storage.getAppCode(), storage.getClientCode())
+			        return this.authService.hasWriteAccess(storage.getAppCode(), ca.getClientCode())
 			                .filter(Boolean::booleanValue)
 			                .map(e -> storage);
 		        })
@@ -157,7 +154,7 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 			        if (ca.isSystemClient())
 				        return Mono.just(newFields);
 
-			        return this.authService.hasWriteAccess(storage.getAppCode(), storage.getClientCode())
+			        return this.authService.hasWriteAccess(storage.getAppCode(), ca.getClientCode())
 			                .filter(Boolean::booleanValue)
 			                .map(e -> newFields);
 		        })
@@ -181,7 +178,7 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 			        if (ca.isSystemClient())
 				        return super.delete(id);
 
-			        return this.authService.hasWriteAccess(storage.getAppCode(), storage.getClientCode())
+			        return this.authService.hasWriteAccess(storage.getAppCode(), ca.getClientCode())
 			                .filter(Boolean::booleanValue)
 			                .flatMap(e -> super.delete(id));
 

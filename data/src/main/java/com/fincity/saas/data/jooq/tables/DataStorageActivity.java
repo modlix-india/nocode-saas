@@ -15,12 +15,13 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function7;
+import org.jooq.Function8;
 import org.jooq.Identity;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row7;
+import org.jooq.Row8;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -69,7 +70,13 @@ public class DataStorageActivity extends TableImpl<DataStorageActivityRecord> {
      * The column <code>data.data_storage_activity.OPERATION</code>. The
      * operation to be done on the database
      */
-    public final TableField<DataStorageActivityRecord, String> OPERATION = createField(DSL.name("OPERATION"), SQLDataType.CLOB, this, "The operation to be done on the database");
+    public final TableField<DataStorageActivityRecord, String> OPERATION = createField(DSL.name("OPERATION"), SQLDataType.CHAR(64).nullable(false), this, "The operation to be done on the database");
+
+    /**
+     * The column <code>data.data_storage_activity.OP_DATA</code>. Operation
+     * data
+     */
+    public final TableField<DataStorageActivityRecord, JSON> OP_DATA = createField(DSL.name("OP_DATA"), SQLDataType.JSON, this, "Operation data");
 
     /**
      * The column <code>data.data_storage_activity.CREATED_BY</code>. ID of the
@@ -200,18 +207,18 @@ public class DataStorageActivity extends TableImpl<DataStorageActivityRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row7 type methods
+    // Row8 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row7<ULong, ULong, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row7) super.fieldsRow();
+    public Row8<ULong, ULong, String, JSON, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row8) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function7<? super ULong, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function8<? super ULong, ? super ULong, ? super String, ? super JSON, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -219,7 +226,7 @@ public class DataStorageActivity extends TableImpl<DataStorageActivityRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function7<? super ULong, ? super ULong, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function8<? super ULong, ? super ULong, ? super String, ? super JSON, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

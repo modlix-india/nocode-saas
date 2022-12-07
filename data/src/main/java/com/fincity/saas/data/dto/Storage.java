@@ -16,7 +16,6 @@ public class Storage extends AbstractUpdatableDTO<ULong, ULong>{
 
 	private static final long serialVersionUID = 2036189433494750985L;
 	
-	private String clientCode;
 	private String appCode;
 	private String namespace;
 	private String name;
