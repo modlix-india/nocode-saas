@@ -1,7 +1,6 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.net.URI;
 import java.util.Map;
@@ -46,7 +45,7 @@ public class ClientService
 
 	private static final String CACHE_CLIENT_URI = "uri";
 
-	private static final String ASSIGNED_PACKAGE = " Package is assigned to Client ";
+	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
 	@Autowired
 	private CacheService cacheService;
@@ -262,49 +261,76 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
 	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
 
-		return flatMapMonoWithNull(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> packageService.isBasePackage(packageId),
-
-		        (ca, basePackage) -> this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), clientId),
-
-		        (ca, basePackage, isManaged) -> isManaged.booleanValue()
-		                ? this.packageService.getClientIdFromPackage(packageId)
-		                : Mono.empty(),
-
-		        (ca, basePackage, isManaged, clientIdFromPackage) -> isManaged.booleanValue()
-		                ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), clientIdFromPackage)
-		                : Mono.empty(),
-
-		        (ca, basePackage, isManaged, clientIdFromPackage, clientApplicable) ->
+		return this.dao.checkPackageAssignedForClient(clientId, packageId)
+		        .flatMap(result ->
 				{
-			        if ((!basePackage.booleanValue() && clientApplicable.booleanValue())
-			                && (ca.isSystemClient() || isManaged.booleanValue())) {
+			        if (result.booleanValue())
+				        return Mono.just(true);
 
-				        return this.dao.addPackageToClient(clientId, packageId)
-				                .map(e ->
-								{
-					                if (e.booleanValue())
-						                super.assignLog(clientId, ASSIGNED_PACKAGE);
-					                return e;
-				                });
+			        return flatMapMono(
 
-			        }
+			                SecurityContextUtil::getUsersContextAuthentication,
 
-			        return Mono.empty();
+			                ca -> this.dao.getPackage(packageId),
+
+			                // check package's client is being managed by the logged in client user
+
+			                (ca, packageR) ->
+							{
+
+				                if (packageR == null || packageR.isBase())
+					                return Mono.empty(); // instead of throwing error try to handle it another way if
+					                                     // possible
+
+				                return this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+				                        .getClientId()), clientId)
+				                        .flatMap(
+				                                isManaged -> isManaged.booleanValue()
+				                                        ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+				                                                .getClientId()), packageR.getClientId())
+				                                        : Mono.just(false));
+
+			                },
+
+			                (ca, packageR, isManaged) ->
+
+							{
+
+				                if (isManaged.booleanValue() || ca.isSystemClient()) {
+
+					                return this.dao.addPackageToClient(clientId, packageId)
+					                        .map(e ->
+											{
+						                        if (e.booleanValue())
+							                        super.assignLog(clientId, ASSIGNED_PACKAGE + packageId);
+
+						                        return e;
+					                        });
+
+				                }
+
+				                return Mono.empty();
+			                }
+
+				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+
 		        }
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+				);
 
 	}
 
 	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
 		return this.dao.checkPermissionAvailableForGivenClient(clientId, permissionId);
+	}
+
+	public Mono<Boolean> checkPermissionAvailableForSelectedClient(ULong clientId, ULong permissionId) {
+		return this.dao.checkPermissionAvailableForSelectedClient(clientId, permissionId);
+	}
+
+	public Mono<Boolean> checkPermissionCreatedBySelectedClient(ULong clientId, ULong permissionId) {
+		return this.dao.checkPermissionCreatedBySelectedClient(clientId, permissionId);
 	}
 
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
@@ -338,6 +364,10 @@ public class ClientService
 
 	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
 		return this.dao.checkRoleApplicableForSelectedClient(clientId, roleId);
+	}
+
+	public Mono<Boolean> checkRoleCreatedBySelectedClient(ULong clientId, ULong roleId) {
+		return this.dao.checkRoleCreatedBySelectedClient(clientId, roleId);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
@@ -413,4 +443,5 @@ public class ClientService
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
 	}
+
 }

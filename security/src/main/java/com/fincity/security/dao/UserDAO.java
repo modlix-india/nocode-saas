@@ -15,6 +15,7 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.jooq.Condition;
@@ -325,42 +326,12 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                .values(userId, permissionId));
 	}
 
-	public Mono<Boolean> checkPermissionExistsForUser(ULong userId, ULong permissionId) {
-		return Mono.from(
-
-		        this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.ID)
-		                .from(SECURITY_USER_ROLE_PERMISSION)
-		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
-		                        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
-		                .limit(1)
-
-		)
-		        .map(Record1::value1)
-		        .map(val -> val.intValue() > 0);
-
-	}
-
 	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
-		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
-		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
-		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
-		        .execute() > 0);
-	}
 
-	public Mono<Boolean> checkRoleCreatedByUserWithPermission(ULong roleId, ULong userId, ULong permissionId) {
-		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
+		return Mono.from(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
 		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
-		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
-		                .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
-		        .execute() > 0);
-	}
-
-	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
-		return Mono.just(this.dslContext
-		        .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
-		                SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
-		        .values(userId, roleId)
-		        .execute() > 0);
+		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))))
+		        .map(Objects::nonNull);
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong loggedInClientId, ULong userId) {
@@ -379,20 +350,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			                        .and(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(givenUser.getClientId())))
 			                .execute() > 0);
 		        }
-
-		);
-	}
-
-	public Mono<Boolean> assigningRoleToUser(ULong userId, ULong roleId) {
-		return
-
-		Mono.just(
-
-		        this.dslContext
-		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
-		                        SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
-		                .values(userId, roleId)
-		                .execute() > 0
 
 		);
 	}
@@ -426,6 +383,45 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(e -> e.into(PastPassword.class))
 		        .collectList()
 		        .defaultIfEmpty(List.of());
+	}
+
+	public Mono<Boolean> checkPermissionAssignedForUser(ULong userId, ULong permissionId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)
+		                        .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
+
+		)
+		        .map(Record1::value1)
+		        .map(count -> count > 0);
+	}
+
+	public Mono<Boolean> checkRoleAssignedForUser(ULong userId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                        .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
+
+		)
+		        .map(Record1::value1)
+		        .map(count -> count > 0);
+	}
+
+	public Mono<Boolean> addRoleToUser(ULong userId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext
+		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+		                        SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+		                .values(userId, roleId))
+		        .map(Objects::nonNull);
 	}
 
 }

@@ -30,6 +30,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String ROLE_FORBIDDEN = "role_forbidden_for_selected_user";
 	public static final String ASSIGN_PERMISSION_ERROR = "assign_permission_error";
 	public static final String ASSIGN_PACKAGE_ERROR = "assign_package_error";
+	public static final String ASSIGN_ROLE_ERROR = "assign_role_error";
 	public static final String REMOVE_PERMISSION_ERROR = "remove_permission_error";
 	public static final String ROLE_REMOVE_ERROR = "role_remove_error";
 	public static final String ASSIGN_PERMISSION_ERROR_FOR_ROLE = "assign_permission_error_for_role";
@@ -49,6 +50,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String OLD_NEW_PASSWORD_MATCH = "old_new_password_match";
 	public static final String NEW_PASSWORD_MISSING = "new_password_missing";
 	public static final String PASSWORD_USER_ERROR = "password_used_error";
+	public static final String LOGGED_IN_USER_ERROR = "logged_in_user_error";
 
 	public SecurityMessageResourceService() {
 

@@ -11,6 +11,7 @@ import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_R
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityRolePermissionRecord;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
@@ -64,35 +66,38 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 	}
 
-	public Mono<ULong> getClientIdFromRole(ULong roleId) {
+	public Mono<Boolean> checkPermissionExistsForRole(ULong roleId, ULong permissionId) {
 
 		return Mono.from(
 
-		        this.dslContext.select(SECURITY_ROLE.CLIENT_ID)
-		                .from(SECURITY_ROLE)
-		                .where(SECURITY_ROLE.ID.eq(roleId))
-		                .limit(1))
-		        .map(Record1::value1);
+		        this.dslContext.selectCount()
+		                .from(SECURITY_ROLE_PERMISSION)
+		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId))))
+		        .map(Record1::value1)
+		        .map(val -> val > 0);
 	}
 
-	public Mono<ULong> getClientIdFromPermission(ULong permissionId) {
+	public Mono<Permission> getPermissionRecord(ULong permissionId) {
 
 		return Mono.from(
 
-		        this.dslContext.select(SECURITY_PERMISSION.CLIENT_ID)
+		        this.dslContext.select(SECURITY_PERMISSION.fields())
 		                .from(SECURITY_PERMISSION)
-		                .where(SECURITY_PERMISSION.ID.eq(permissionId)))
-		        .map(Record1::value1);
+		                .where(SECURITY_PERMISSION.ID.eq(permissionId))
+		                .limit(1))
+		        .map(e -> e.into(Permission.class));
 	}
 
-	public Mono<Integer> addPermission(ULong roleId, ULong permissionId) {
+	public Mono<Boolean> addPermission(ULong roleId, ULong permissionId) {
 
 		return Mono.from(
 
 		        this.dslContext
 		                .insertInto(SECURITY_ROLE_PERMISSION, SECURITY_ROLE_PERMISSION.ROLE_ID,
 		                        SECURITY_ROLE_PERMISSION.PERMISSION_ID)
-		                .values(roleId, permissionId));
+		                .values(roleId, permissionId))
+		        .map(e -> e > 0);
 
 	}
 
@@ -101,7 +106,7 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		Condition rolePermissionCondition = SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)
 		        .and(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId));
 
-		Condition roleCondition = SECURITY_ROLE.ID.eq(roleId);
+//		Condition roleCondition = SECURITY_ROLE.ID.eq(roleId);
 
 		Condition packageCondition = SECURITY_PACKAGE.BASE.eq((byte) 1);
 
@@ -119,11 +124,10 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE.ID))
 		                .leftJoin(SECURITY_CLIENT)
 		                .on(SECURITY_CLIENT.ID.eq(SECURITY_PACKAGE.CLIENT_ID))
-		                .where(rolePermissionCondition.or(packageCondition)
-		                        .or(roleCondition))
+		                .where(rolePermissionCondition.or(packageCondition))
 		                .limit(1))
 		        .map(Record1::value1)
-		        .map(value -> value.intValue() > 0);
+		        .map(Objects::nonNull);
 
 	}
 

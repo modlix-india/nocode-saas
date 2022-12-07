@@ -3,12 +3,14 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
-import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
+import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
+import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Record1;
@@ -258,5 +260,37 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		        .forEach(filteredClientList::add);
 
 		return Mono.just(filteredClientList);
+	}
+
+	public Mono<Boolean> checkRoleAvailableForGivenPackage(ULong packageId, ULong roleId) {
+
+		Condition rolePackageCondition = SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId)
+		        .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId));
+
+		Condition packageCondition = SECURITY_PACKAGE.BASE.eq((byte) 1);
+
+		return Mono.from(
+
+		        this.dslContext.select(SECURITY_PACKAGE.ID)
+		                .from(SECURITY_PACKAGE_ROLE)
+		                .leftJoin(SECURITY_PACKAGE)
+		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_PACKAGE.ID))
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE.ID))
+		                .where(rolePackageCondition.or(packageCondition))
+		                .limit(1))
+		        .map(Record1::value1)
+		        .map(Objects::nonNull);
+	}
+
+	public Mono<Boolean> addRoleToPackage(ULong packageId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext
+		                .insertInto(SECURITY_PACKAGE_ROLE, SECURITY_PACKAGE_ROLE.PACKAGE_ID,
+		                        SECURITY_PACKAGE_ROLE.ROLE_ID)
+		                .values(packageId, roleId))
+		        .map(e -> e > 0);
 	}
 }

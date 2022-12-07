@@ -156,10 +156,11 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
 
     @Override
     public List<ForeignKey<SecurityClientUrlRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_CLIENT_URL_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_CLIENT_URL_CLIENT_ID, Keys.FK1_CLIENT_URL_APP_CODE);
     }
 
     private transient SecurityClient _securityClient;
+    private transient SecurityApp _securityApp;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
@@ -170,6 +171,17 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
             _securityClient = new SecurityClient(this, Keys.FK1_CLIENT_URL_CLIENT_ID);
 
         return _securityClient;
+    }
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityApp securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityApp(this, Keys.FK1_CLIENT_URL_APP_CODE);
+
+        return _securityApp;
     }
 
     @Override

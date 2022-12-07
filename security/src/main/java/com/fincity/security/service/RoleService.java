@@ -34,6 +34,8 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 	private static final String NAME = "name";
 
+	private static final String ASSIGNED_PERMISSION = " Permission is assigned to Role ";
+
 	@Autowired
 	private ClientService clientService;
 
@@ -146,49 +148,67 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
 	public Mono<Boolean> assignPermissionToRole(ULong roleId, ULong permissionId) {
 
-		return flatMapMono(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> this.dao.getClientIdFromRole(roleId),
-
-		        (ca, roleClientId) -> this.dao.getClientIdFromPermission(permissionId),
-
-		        (ca, roleClientId, permissionClientId) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), roleClientId),
-
-		        (ca, roleClientId, permissionClientId,
-		                clientManaged) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), permissionClientId),
-
-		        (ca, roleClientId, permissionClientId, roleManaged, permissionManaged) -> Mono
-		                .just(roleManaged.booleanValue() && permissionManaged.booleanValue()),
-
-		        (ca, roleClientId, permissionClientId, roleManaged, permissionManaged, managesBoth) ->
-
-				this.dao.checkPermissionAvailableForGivenRole(roleId, permissionId),
-
-		        (ca, roleClientId, permissionClientId, roleManaged, permissionManaged, managesBoth,
-		                permissionAvailable) ->
-
+		return this.dao.checkPermissionExistsForRole(roleId, permissionId)
+		        .flatMap(result ->
 				{
 
-			        if ((ca.isSystemClient() || managesBoth.booleanValue())
-			                && (roleClientId.equals(permissionClientId) || permissionAvailable.booleanValue()))
+			        if (result.booleanValue())
+				        return Mono.just(true);
 
-				        return this.dao.addPermission(roleId, permissionId)
-				                .map(val -> val > 0);
+			        return flatMapMono(
 
-			        return Mono.empty();
+			                SecurityContextUtil::getUsersContextAuthentication,
 
-		        }
+			                ca -> this.dao.readById(roleId),
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId, roleId));
-	}
+			                (ca, roleRecord) -> this.dao.getPermissionRecord(permissionId),
 
-	public Mono<ULong> getClientIdFromRole(ULong roleId) {
-		return this.dao.getClientIdFromRole(roleId);
+			                (ca, roleRecord, permissionRecord) ->
+
+							clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+							        .getClientId()), roleRecord.getClientId())
+							        .flatMap(this::checkTruth),
+
+			                (ca, roleRecord, permissionRecord, roleManaged) ->
+
+							clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+							        .getClientId()), permissionRecord.getClientId())
+							        .flatMap(this::checkTruth),
+
+			                (ca, roleRecord, permissionRecord, roleManaged, permissionManaged) ->
+
+							Mono.just(roleRecord.getClientId()
+							        .equals(permissionRecord.getClientId())),
+
+			                (ca, roleRecord, permissionRecord, roleManaged, permissionManaged, sameClient) ->
+
+							sameClient.booleanValue() ? Mono.just(true)
+							        : this.dao.checkPermissionAvailableForGivenRole(roleId, permissionId),
+
+			                // check permission part
+			                // of client or is
+			                // it base package
+
+			                (ca, roleRecord, permissionRecord, roleManaged, permissionManaged, sameClient,
+			                        hasPermission) ->
+							{
+				                if (hasPermission.booleanValue())
+					                return this.dao.addPermission(roleId, permissionId)
+					                        .map(e ->
+											{
+						                        if (e.booleanValue())
+							                        super.assignLog(roleId, ASSIGNED_PERMISSION);
+						                        return e;
+					                        });
+
+				                return Mono.empty();
+			                }
+
+				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId, roleId));
+
+		        });
+
 	}
 
 	public Mono<Set<ULong>> fetchPermissionsFromRole(ULong roleId) {
@@ -262,4 +282,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
 	}
 
+	private Mono<Boolean> checkTruth(Boolean b) {
+		return b.booleanValue() ? Mono.just(b) : Mono.empty();
+	}
 }

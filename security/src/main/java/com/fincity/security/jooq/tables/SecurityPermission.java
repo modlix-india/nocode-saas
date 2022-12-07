@@ -163,10 +163,11 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
 
     @Override
     public List<ForeignKey<SecurityPermissionRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PERMISSION_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_PERMISSION_CLIENT_ID, Keys.FK2_PERMISSION_APP_ID);
     }
 
     private transient SecurityClient _securityClient;
+    private transient SecurityApp _securityApp;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
@@ -177,6 +178,17 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
             _securityClient = new SecurityClient(this, Keys.FK1_PERMISSION_CLIENT_ID);
 
         return _securityClient;
+    }
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityApp securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityApp(this, Keys.FK2_PERMISSION_APP_ID);
+
+        return _securityApp;
     }
 
     @Override

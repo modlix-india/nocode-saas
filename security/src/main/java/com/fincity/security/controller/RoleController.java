@@ -32,7 +32,7 @@ public class RoleController
 		        .map(ResponseEntity::ok);
 	}
 
-	@GetMapping("{roleId}/removesPermission/{permissionId}")
+	@GetMapping("{roleId}/removePermission/{permissionId}")
 	public Mono<ResponseEntity<Boolean>> removePermission(@PathVariable ULong roleId,
 	        @PathVariable ULong permissionId) {
 
