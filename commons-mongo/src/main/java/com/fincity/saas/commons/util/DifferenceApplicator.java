@@ -1,4 +1,4 @@
-package com.fincity.saas.ui.util;
+package com.fincity.saas.commons.util;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -9,7 +9,7 @@ import com.fincity.nocode.kirun.engine.model.Position;
 import com.fincity.nocode.kirun.engine.model.Statement;
 import com.fincity.nocode.kirun.engine.model.StatementGroup;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.ui.model.ComponentDefinition;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -59,7 +59,7 @@ public class DifferenceApplicator {
 		        .flatMap(e -> e.isEmpty() ? Mono.justOrEmpty(Map.of()) : Mono.justOrEmpty(e));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static Mono<Object> apply(Object override, Object base) {
 
 		if (override == null)
@@ -68,8 +68,8 @@ public class DifferenceApplicator {
 		if (override instanceof Map && base instanceof Map)
 			return apply((Map<String, Object>) override, (Map<String, Object>) base).map(e -> e);
 
-		if (override instanceof ComponentDefinition inc)
-			return apply(inc, (ComponentDefinition) base);
+		if (override instanceof IDifferentiable inc)
+			return inc.applyOverride((IDifferentiable) base);
 
 		if (override instanceof FunctionDefinition ifd && base instanceof FunctionDefinition efd)
 			return apply(ifd, efd);
@@ -252,33 +252,6 @@ public class DifferenceApplicator {
 		        }
 
 		);
-	}
-
-	@SuppressWarnings("unchecked")
-	private static Mono<Object> apply(ComponentDefinition override, ComponentDefinition base) {
-		if (base == null)
-			return override.isOverride() ? Mono.empty() : Mono.justOrEmpty(override);
-
-		return FlatMapUtil.flatMapMono(
-
-		        () -> apply(override.getProperties(), base.getProperties()),
-
-		        propMap -> applyMapBoolean(override.getChildren(), base.getChildren()),
-
-		        (propMap, childMap) ->
-				{
-
-			        override.setChildren(childMap);
-			        override.setProperties((Map<String, Object>) propMap);
-			        override.setKey(base.getKey());
-			        override.setOverride(true);
-			        if (override.getType() == null)
-				        override.setType(base.getType());
-			        if (override.getName() == null)
-				        override.setName(base.getName());
-
-			        return Mono.justOrEmpty(override);
-		        });
 	}
 
 	private DifferenceApplicator() {

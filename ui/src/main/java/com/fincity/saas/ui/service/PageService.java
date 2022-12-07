@@ -10,13 +10,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.mongo.service.AbstractAppbasedOverridableDataService;
+import com.fincity.saas.commons.mongo.service.CoreMessageResourceService;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.repository.PageRepository;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class PageService extends AbstractAppbasedUIService<Page, PageRepository> {
+public class PageService extends AbstractAppbasedOverridableDataService<Page, PageRepository> {
 
 	public PageService() {
 		super(Page.class);
@@ -33,7 +35,7 @@ public class PageService extends AbstractAppbasedUIService<Page, PageRepository>
 				{
 			        if (existing.getVersion() != entity.getVersion())
 				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                UIMessageResourceService.VERSION_MISMATCH);
+				                CoreMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setDevice(entity.getDevice())
 			                .setTranslations(entity.getTranslations())

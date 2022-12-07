@@ -1,4 +1,4 @@
-package com.fincity.saas.ui.controller;
+package com.fincity.saas.commons.mongo.controller;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -10,15 +10,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.mongo.controller.AbstractMongoUpdatableDataController;
-import com.fincity.saas.ui.document.AbstractUIDTO;
-import com.fincity.saas.ui.document.ListResultObject;
-import com.fincity.saas.ui.repository.IUIRepository;
-import com.fincity.saas.ui.service.AbstractUIServcie;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.model.ListResultObject;
+import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
 
 import reactor.core.publisher.Mono;
 
-public class AbstractUIController<D extends AbstractUIDTO<D>, R extends IUIRepository<D>, S extends AbstractUIServcie<D, R>>
+public class AbstractOverridableDataController<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>, S extends AbstractOverridableDataServcie<D, R>>
         extends AbstractMongoUpdatableDataController<String, D, R, S> {
 
 	@Override

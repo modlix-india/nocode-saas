@@ -4,8 +4,9 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
-import com.fincity.saas.ui.util.DifferenceApplicator;
-import com.fincity.saas.ui.util.DifferenceExtractor;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -19,7 +20,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1}", name = "filterFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
-public class Function extends AbstractUIDTO<Function> {
+public class Function extends AbstractOverridableDTO<Function> {
 
 	private static final long serialVersionUID = 2733397732360134939L;
 

@@ -1,4 +1,4 @@
-package com.fincity.saas.ui.util;
+package com.fincity.saas.commons.util;
 
 import static com.fincity.saas.commons.util.EqualsUtil.safeEquals;
 
@@ -12,7 +12,7 @@ import com.fincity.nocode.kirun.engine.model.Position;
 import com.fincity.nocode.kirun.engine.model.Statement;
 import com.fincity.nocode.kirun.engine.model.StatementGroup;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.ui.model.ComponentDefinition;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
@@ -82,7 +82,7 @@ public class DifferenceExtractor {
 		        .flatMap(e -> Mono.just(e.isEmpty() ? Map.of() : e));
 	}
 
-	@SuppressWarnings({ "unchecked" })
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static Mono<Object> extract(Object incoming, Object existing) { // NOSONAR
 
 		// Splitting the below logic makes no sense.
@@ -103,8 +103,8 @@ public class DifferenceExtractor {
 		if (existing instanceof Map && incoming instanceof Map)
 			return extract((Map<String, Object>) incoming, (Map<String, Object>) existing).map(e -> e);
 
-		if (existing instanceof ComponentDefinition exc && incoming instanceof ComponentDefinition inc)
-			return extract(inc, exc);
+		if (existing instanceof IDifferentiable exc && incoming instanceof IDifferentiable inc)
+			return exc.extractDifference(inc);
 
 		if (existing instanceof FunctionDefinition efd && incoming instanceof FunctionDefinition ifd)
 			return extract(ifd, efd);
@@ -308,31 +308,6 @@ public class DifferenceExtractor {
 		        }
 
 		);
-	}
-
-	@SuppressWarnings({ "unchecked" })
-	private static Mono<Object> extract(ComponentDefinition incoming, ComponentDefinition existing) {
-
-		return FlatMapUtil.flatMapMono(
-
-		        () -> extract(incoming.getProperties(), existing.getProperties()).defaultIfEmpty(Map.of()),
-
-		        propDiff -> extractMapBoolean(incoming.getChildren(), existing.getChildren()).defaultIfEmpty(Map.of()),
-
-		        (propDiff, childDiff) ->
-				{
-
-			        ComponentDefinition cd = new ComponentDefinition();
-			        cd.setName(incoming.getName()
-			                .equals(existing.getName()) ? null : existing.getName());
-			        cd.setOverride(true);
-			        cd.setType(incoming.getType()
-			                .equals(existing.getType()) ? null : existing.getType());
-			        cd.setProperties((Map<String, Object>) propDiff);
-			        cd.setChildren(childDiff);
-
-			        return Mono.just(cd);
-		        });
 	}
 
 	private DifferenceExtractor() {

@@ -7,10 +7,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.util.CloneUtil;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.ui.model.ComponentDefinition;
-import com.fincity.saas.ui.util.CloneUtil;
-import com.fincity.saas.ui.util.DifferenceApplicator;
-import com.fincity.saas.ui.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -24,7 +25,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1}", name = "pageFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
-public class Page extends AbstractUIDTO<Page> {
+public class Page extends AbstractOverridableDTO<Page> {
 
 	private static final long serialVersionUID = 6899134951550453853L;
 

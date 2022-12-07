@@ -6,9 +6,10 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.ui.util.CloneUtil;
-import com.fincity.saas.ui.util.DifferenceApplicator;
-import com.fincity.saas.ui.util.DifferenceExtractor;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.util.CloneUtil;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,7 +23,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1, 'styleName': 1}", name = "stylethemeFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
-public class StyleTheme extends AbstractUIDTO<StyleTheme> {
+public class StyleTheme extends AbstractOverridableDTO<StyleTheme> {
 
 	private static final long serialVersionUID = 4355909627072800292L;
 

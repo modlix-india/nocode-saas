@@ -10,13 +10,15 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.mongo.service.AbstractAppbasedOverridableDataService;
+import com.fincity.saas.commons.mongo.service.CoreMessageResourceService;
 import com.fincity.saas.ui.document.Personalization;
 import com.fincity.saas.ui.repository.PersonalizationRepository;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class PersonalizationService extends AbstractAppbasedUIService<Personalization, PersonalizationRepository> {
+public class PersonalizationService extends AbstractAppbasedOverridableDataService<Personalization, PersonalizationRepository> {
 
 	protected PersonalizationService() {
 		super(Personalization.class);
@@ -46,11 +48,11 @@ public class PersonalizationService extends AbstractAppbasedUIService<Personaliz
 			                        .getId()
 			                        .toString()))
 				        return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				                UIMessageResourceService.CANNOT_CHANGE_PREF);
+				                CoreMessageResourceService.CANNOT_CHANGE_PREF);
 
 			        if (existing.getVersion() != entity.getVersion())
 				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                UIMessageResourceService.VERSION_MISMATCH);
+				                CoreMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setPersonalization(entity.getPersonalization());
 

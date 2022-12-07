@@ -1,13 +1,12 @@
-package com.fincity.saas.ui.service;
+package com.fincity.saas.commons.mongo.service;
 
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.mongo.service.AbstractMongoDataService;
-import com.fincity.saas.ui.document.Version;
-import com.fincity.saas.ui.repository.VersionRepository;
+import com.fincity.saas.commons.mongo.document.Version;
+import com.fincity.saas.commons.mongo.repository.VersionRepository;
 
 import reactor.core.publisher.Mono;
 

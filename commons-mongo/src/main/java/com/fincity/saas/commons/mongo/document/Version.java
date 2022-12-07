@@ -1,4 +1,4 @@
-package com.fincity.saas.ui.document;
+package com.fincity.saas.commons.mongo.document;
 
 import java.util.Map;
 

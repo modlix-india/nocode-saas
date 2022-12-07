@@ -1,4 +1,4 @@
-package com.fincity.saas.ui.document;
+package com.fincity.saas.commons.mongo.model;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @NoArgsConstructor
-public abstract class AbstractUIDTO<D extends AbstractUIDTO<D>> extends AbstractUpdatableDTO<String, String> {
+public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>> extends AbstractUpdatableDTO<String, String> {
 
 	private static final long serialVersionUID = -7561098495897714431L;
 
@@ -25,7 +25,7 @@ public abstract class AbstractUIDTO<D extends AbstractUIDTO<D>> extends Abstract
 
 	private int version = 1;
 
-	protected AbstractUIDTO(D obj) {
+	protected AbstractOverridableDTO(D obj) {
 		this.clone(obj);
 	}
 

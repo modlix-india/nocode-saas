@@ -1,13 +1,13 @@
-package com.fincity.saas.ui.repository;
+package com.fincity.saas.commons.mongo.repository;
 
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
-import com.fincity.saas.ui.document.AbstractUIDTO;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public interface IUIRepository<D extends AbstractUIDTO<D>> extends ReactiveCrudRepository<D, String> {
+public interface IOverridableDataRepository<D extends AbstractOverridableDTO<D>> extends ReactiveCrudRepository<D, String> {
 
 	public Mono<D> findOneByNameAndAppCodeAndClientCode(String name, String applicationName, String clientCode);
 

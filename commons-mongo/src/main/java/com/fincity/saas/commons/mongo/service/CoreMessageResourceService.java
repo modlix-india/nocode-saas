@@ -1,4 +1,4 @@
-package com.fincity.saas.ui.service;
+package com.fincity.saas.commons.mongo.service;
 
 import java.util.Locale;
 import java.util.Map;
@@ -12,7 +12,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import reactor.core.publisher.Mono;
 
 @Service
-public class UIMessageResourceService extends AbstractMessageService {
+public class CoreMessageResourceService extends AbstractMessageService {
 
 	public static final String OBJECT_NOT_FOUND = "object_not_found";
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
@@ -32,7 +32,7 @@ public class UIMessageResourceService extends AbstractMessageService {
 	public static final String UNABLE_TO_CREAT_OBJECT = "unable_to_create_object";
 	public static final String APPLICATION_NAME_REQUIRED = "application_name_required";
 
-	public UIMessageResourceService() {
+	public CoreMessageResourceService() {
 
 		super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
 	}

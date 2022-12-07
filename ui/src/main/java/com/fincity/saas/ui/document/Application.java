@@ -5,9 +5,10 @@ import java.util.Map;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.ui.util.CloneUtil;
-import com.fincity.saas.ui.util.DifferenceApplicator;
-import com.fincity.saas.ui.util.DifferenceExtractor;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.util.CloneUtil;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,7 +21,7 @@ import reactor.core.publisher.Mono;
 @Document
 @Accessors(chain = true)
 @NoArgsConstructor
-public class Application extends AbstractUIDTO<Application> {
+public class Application extends AbstractOverridableDTO<Application> {
 
 	private static final long serialVersionUID = 4162610982706108795L;
 

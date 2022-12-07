@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import com.fincity.saas.commons.mongo.service.AbstractAppbasedOverridableDataService;
+import com.fincity.saas.commons.mongo.service.CoreMessageResourceService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Style;
@@ -26,7 +28,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Service
-public class StyleService extends AbstractAppbasedUIService<Style, StyleRepository> {
+public class StyleService extends AbstractAppbasedOverridableDataService<Style, StyleRepository> {
 
 	private static final String WIDE_SCREEN = "wideScreen";
 	/* Minimum width 1281px */
@@ -102,7 +104,7 @@ public class StyleService extends AbstractAppbasedUIService<Style, StyleReposito
 				{
 			        if (existing.getVersion() != entity.getVersion())
 				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                UIMessageResourceService.VERSION_MISMATCH);
+				                CoreMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setStyles(entity.getStyles())
 			                .setVariables(entity.getVariables())

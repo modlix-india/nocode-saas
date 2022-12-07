@@ -1,4 +1,4 @@
-package com.fincity.saas.ui.util;
+package com.fincity.saas.commons.util;
 
 import java.lang.reflect.Constructor;
 import java.util.List;

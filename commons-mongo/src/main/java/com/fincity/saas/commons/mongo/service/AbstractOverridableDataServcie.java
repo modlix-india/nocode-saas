@@ -1,8 +1,8 @@
-package com.fincity.saas.ui.service;
+package com.fincity.saas.commons.mongo.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
-import static com.fincity.saas.ui.service.UIMessageResourceService.FORBIDDEN_CREATE;
+import static com.fincity.saas.commons.mongo.service.CoreMessageResourceService.FORBIDDEN_CREATE;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,21 +32,20 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import com.fincity.saas.commons.mongo.service.AbstractMongoUpdatableDataService;
+import com.fincity.saas.commons.mongo.document.Version;
+import com.fincity.saas.commons.mongo.document.Version.ObjectType;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.model.ListResultObject;
+import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.ui.document.AbstractUIDTO;
-import com.fincity.saas.ui.document.ListResultObject;
-import com.fincity.saas.ui.document.Version;
-import com.fincity.saas.ui.document.Version.ObjectType;
-import com.fincity.saas.ui.repository.IUIRepository;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IUIRepository<D>>
+public abstract class AbstractOverridableDataServcie<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>>
         extends AbstractMongoUpdatableDataService<String, D, R> {
 
 	private static final String CLIENT_CODE = "clientCode";
@@ -66,7 +65,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	protected ObjectMapper objectMapper;
 
 	@Autowired
-	protected UIMessageResourceService messageResourceService;
+	protected CoreMessageResourceService messageResourceService;
 
 	@Autowired
 	protected VersionService versionService;
@@ -75,12 +74,12 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 	protected FeignAuthenticationService securityService;
 
 	@Autowired
-	private InheritanceService inheritanceService;
+	private com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
 
 	protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
 	};
 
-	protected AbstractUIServcie(Class<D> pojoClass) {
+	protected AbstractOverridableDataServcie(Class<D> pojoClass) {
 		super(pojoClass);
 	}
 
@@ -158,7 +157,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		)), this.pojoClass)
 		        .flatMap(c -> c > 0
 		                ? messageResourceService.throwMessage(HttpStatus.CONFLICT,
-		                        UIMessageResourceService.ALREADY_EXISTS, this.pojoClass.getSimpleName(), cca.getName())
+		                        CoreMessageResourceService.ALREADY_EXISTS, this.pojoClass.getSimpleName(), cca.getName())
 		                : Mono.just(cca));
 	}
 
@@ -179,7 +178,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 		                : Mono.empty())
 
 		        .switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-		                UIMessageResourceService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id));
+		                CoreMessageResourceService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id));
 	}
 
 	public Mono<D> readInternal(String id) {
@@ -255,7 +254,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 		Mono<D> exists = this.repo.findById(id)
 		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-		                UIMessageResourceService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id));
+		                CoreMessageResourceService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id));
 
 		return flatMapMono(
 
@@ -276,7 +275,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 
 			        if (count > 0l)
 				        return messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				                UIMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id);
+				                CoreMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id);
 
 			        cacheService
 			                .evict(this.getCacheName(), entity.getName(), "-", entity.getAppCode(), "-",
@@ -284,7 +283,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 			                .subscribe();
 			        return super.delete(id);
 		        }).switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-		                UIMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id));
+		                CoreMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id));
 	}
 
 	protected Mono<D> getMergedSources(D entity) {
@@ -515,7 +514,7 @@ public abstract class AbstractUIServcie<D extends AbstractUIDTO<D>, R extends IU
 			        } catch (Exception e) {
 
 				        return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-				                UIMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.pojoClass.getSimpleName());
+				                CoreMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.pojoClass.getSimpleName());
 			        }
 		        },
 
