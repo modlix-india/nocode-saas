@@ -10,18 +10,16 @@ import com.fincity.saas.data.jooq.enums.DataStorageStatus;
 import com.fincity.saas.data.jooq.tables.records.DataStorageRecord;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
 import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function17;
+import org.jooq.Function18;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row17;
+import org.jooq.Row18;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -60,6 +58,11 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
      * The column <code>data.data_storage.ID</code>. Primary key
      */
     public final TableField<DataStorageRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
+
+    /**
+     * The column <code>data.data_storage.CLIENT_CODE</code>. Client code
+     */
+    public final TableField<DataStorageRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
 
     /**
      * The column <code>data.data_storage.APP_CODE</code>. Application code
@@ -202,11 +205,6 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
     }
 
     @Override
-    public List<UniqueKey<DataStorageRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_DATA_STORAGE_UK1_DATA_STRG);
-    }
-
-    @Override
     public DataStorage as(String alias) {
         return new DataStorage(DSL.name(alias), this);
     }
@@ -246,18 +244,18 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row17 type methods
+    // Row18 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row17<ULong, String, String, String, String, UByte, UByte, String, String, String, String, String, ULong, LocalDateTime, ULong, LocalDateTime, DataStorageStatus> fieldsRow() {
-        return (Row17) super.fieldsRow();
+    public Row18<ULong, String, String, String, String, String, UByte, UByte, String, String, String, String, String, ULong, LocalDateTime, ULong, LocalDateTime, DataStorageStatus> fieldsRow() {
+        return (Row18) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function17<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super UByte, ? super UByte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super UByte, ? super UByte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -265,7 +263,7 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function17<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super UByte, ? super UByte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super UByte, ? super UByte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

@@ -4,6 +4,7 @@
 package com.fincity.saas.data.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.saas.data.jooq.Data;
 import com.fincity.saas.data.jooq.Keys;
 import com.fincity.saas.data.jooq.tables.records.DataStorageActivityRecord;
@@ -11,13 +12,13 @@ import com.fincity.saas.data.jooq.tables.records.DataStorageActivityRecord;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Function8;
 import org.jooq.Identity;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
@@ -76,7 +77,7 @@ public class DataStorageActivity extends TableImpl<DataStorageActivityRecord> {
      * The column <code>data.data_storage_activity.OP_DATA</code>. Operation
      * data
      */
-    public final TableField<DataStorageActivityRecord, JSON> OP_DATA = createField(DSL.name("OP_DATA"), SQLDataType.JSON, this, "Operation data");
+    public final TableField<DataStorageActivityRecord, Map> OP_DATA = createField(DSL.name("OP_DATA"), SQLDataType.JSON, this, "Operation data", new JSONMysqlMapConvertor());
 
     /**
      * The column <code>data.data_storage_activity.CREATED_BY</code>. ID of the
@@ -211,14 +212,14 @@ public class DataStorageActivity extends TableImpl<DataStorageActivityRecord> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Row8<ULong, ULong, String, JSON, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+    public Row8<ULong, ULong, String, Map, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
         return (Row8) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function8<? super ULong, ? super ULong, ? super String, ? super JSON, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function8<? super ULong, ? super ULong, ? super String, ? super Map, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -226,7 +227,7 @@ public class DataStorageActivity extends TableImpl<DataStorageActivityRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function8<? super ULong, ? super ULong, ? super String, ? super JSON, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function8<? super ULong, ? super ULong, ? super String, ? super Map, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

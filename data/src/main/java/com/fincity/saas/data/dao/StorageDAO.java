@@ -1,10 +1,12 @@
 package com.fincity.saas.data.dao;
 
 import static com.fincity.saas.data.jooq.tables.DataStorage.DATA_STORAGE;
+import static com.fincity.saas.data.jooq.tables.DataStorageActivity.DATA_STORAGE_ACTIVITY;
 import static com.fincity.saas.data.jooq.tables.DataStorageField.DATA_STORAGE_FIELD;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.data.dto.Storage;
 import com.fincity.saas.data.dto.StorageField;
+import com.fincity.saas.data.enums.StorageActivityOperation;
 import com.fincity.saas.data.jooq.enums.DataStorageFieldType;
 import com.fincity.saas.data.jooq.tables.records.DataStorageRecord;
 import com.fincity.saas.data.util.DBNameUtil;
@@ -57,9 +60,19 @@ public class StorageDAO extends AbstractUpdatableDAO<DataStorageRecord, ULong, S
 			                .map(e -> this.dslContext.newRecord(DATA_STORAGE_FIELD, e))
 			                .collectList()
 			                .flatMap(e -> Mono.from(this.dslContext.batchInsert(e)))
-			                .map(e -> storage);
-		        }
+			                .flatMap(e -> Flux.from(this.dslContext.selectFrom(DATA_STORAGE_FIELD)
+			                        .where(DATA_STORAGE_FIELD.STORAGE_ID.eq(storage.getId())))
+			                        .collectList());
+		        },
 
-		);
+		        (storage, c) ->
+				{
+
+			        return Mono.from(this.dslContext.insertInto(DATA_STORAGE_ACTIVITY)
+			                .columns(DATA_STORAGE_ACTIVITY.STORAGE_ID, DATA_STORAGE_ACTIVITY.OPERATION,
+			                        DATA_STORAGE_ACTIVITY.OP_DATA)
+			                .values(storage.getId(), StorageActivityOperation.CREATE.name(), Map.of()))
+			                .map(e -> storage);
+		        });
 	}
 }

@@ -253,7 +253,7 @@
 									<forcedTypes>
 										<forcedType>
 											<name>MYSqlJSON</name>
-											<includeExpression>DB_CONNECTION</includeExpression>
+											<includeExpression>DB_CONNECTION|OP_DATA</includeExpression>
 											<includeTypes>.*</includeTypes>
 										</forcedType>
 									</forcedTypes>
