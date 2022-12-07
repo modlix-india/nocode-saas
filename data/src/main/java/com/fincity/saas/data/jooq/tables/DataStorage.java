@@ -29,6 +29,7 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UByte;
 import org.jooq.types.ULong;
 
 
@@ -88,13 +89,13 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
      * The column <code>data.data_storage.IS_VERSIONED</code>. Versioned if it
      * is true
      */
-    public final TableField<DataStorageRecord, Byte> IS_VERSIONED = createField(DSL.name("IS_VERSIONED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Versioned if it is true");
+    public final TableField<DataStorageRecord, UByte> IS_VERSIONED = createField(DSL.name("IS_VERSIONED"), SQLDataType.TINYINTUNSIGNED.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINTUNSIGNED)), this, "Versioned if it is true");
 
     /**
      * The column <code>data.data_storage.IS_AUDITED</code>. Audited if it is
      * true
      */
-    public final TableField<DataStorageRecord, Byte> IS_AUDITED = createField(DSL.name("IS_AUDITED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Audited if it is true");
+    public final TableField<DataStorageRecord, UByte> IS_AUDITED = createField(DSL.name("IS_AUDITED"), SQLDataType.TINYINTUNSIGNED.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINTUNSIGNED)), this, "Audited if it is true");
 
     /**
      * The column <code>data.data_storage.CREATE_AUTH</code>. Authorization
@@ -246,14 +247,14 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Row18<ULong, String, String, String, String, String, Byte, Byte, String, String, String, String, String, ULong, LocalDateTime, ULong, LocalDateTime, DataStorageStatus> fieldsRow() {
+    public Row18<ULong, String, String, String, String, String, UByte, UByte, String, String, String, String, String, ULong, LocalDateTime, ULong, LocalDateTime, DataStorageStatus> fieldsRow() {
         return (Row18) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super UByte, ? super UByte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -261,7 +262,7 @@ public class DataStorage extends TableImpl<DataStorageRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Byte, ? super Byte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super UByte, ? super UByte, ? super String, ? super String, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super DataStorageStatus, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

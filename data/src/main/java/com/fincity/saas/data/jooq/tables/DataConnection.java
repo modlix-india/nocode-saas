@@ -4,6 +4,7 @@
 package com.fincity.saas.data.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.saas.data.jooq.Data;
 import com.fincity.saas.data.jooq.Keys;
 import com.fincity.saas.data.jooq.enums.DataConnectionDbType;
@@ -12,17 +13,17 @@ import com.fincity.saas.data.jooq.tables.records.DataConnectionRecord;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function11;
+import org.jooq.Function10;
 import org.jooq.Identity;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row11;
+import org.jooq.Row10;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -32,6 +33,7 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UByte;
 import org.jooq.types.ULong;
 
 
@@ -67,11 +69,6 @@ public class DataConnection extends TableImpl<DataConnectionRecord> {
     public final TableField<DataConnectionRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
 
     /**
-     * The column <code>data.data_connection.APP_CODE</code>. Application code
-     */
-    public final TableField<DataConnectionRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "Application code");
-
-    /**
      * The column <code>data.data_connection.DB_NAME</code>. Name of the
      * database
      */
@@ -87,13 +84,13 @@ public class DataConnection extends TableImpl<DataConnectionRecord> {
      * The column <code>data.data_connection.DB_CONNECTION</code>. JSON
      * connection details
      */
-    public final TableField<DataConnectionRecord, JSON> DB_CONNECTION = createField(DSL.name("DB_CONNECTION"), SQLDataType.JSON, this, "JSON connection details");
+    public final TableField<DataConnectionRecord, Map> DB_CONNECTION = createField(DSL.name("DB_CONNECTION"), SQLDataType.JSON, this, "JSON connection details", new JSONMysqlMapConvertor());
 
     /**
      * The column <code>data.data_connection.DEFAULT_DB</code>. Default db
      * connection for all the data
      */
-    public final TableField<DataConnectionRecord, Byte> DEFAULT_DB = createField(DSL.name("DEFAULT_DB"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Default db connection for all the data");
+    public final TableField<DataConnectionRecord, UByte> DEFAULT_DB = createField(DSL.name("DEFAULT_DB"), SQLDataType.TINYINTUNSIGNED.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINTUNSIGNED)), this, "Default db connection for all the data");
 
     /**
      * The column <code>data.data_connection.CREATED_BY</code>. ID of the user
@@ -212,18 +209,18 @@ public class DataConnection extends TableImpl<DataConnectionRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row11 type methods
+    // Row10 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row11<ULong, String, String, String, DataConnectionDbType, JSON, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row11) super.fieldsRow();
+    public Row10<ULong, String, String, DataConnectionDbType, Map, UByte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row10) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function11<? super ULong, ? super String, ? super String, ? super String, ? super DataConnectionDbType, ? super JSON, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function10<? super ULong, ? super String, ? super String, ? super DataConnectionDbType, ? super Map, ? super UByte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -231,7 +228,7 @@ public class DataConnection extends TableImpl<DataConnectionRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super String, ? super String, ? super String, ? super DataConnectionDbType, ? super JSON, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super String, ? super String, ? super DataConnectionDbType, ? super Map, ? super UByte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

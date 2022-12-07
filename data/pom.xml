@@ -243,6 +243,20 @@
 								<database>
 									<includes>data_.*</includes>
 									<inputSchema>data</inputSchema>
+									<customTypes>
+										<customType>
+											<name>MYSqlJSON</name>
+											<type>java.util.Map</type>
+											<converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor</converter>
+										</customType>
+									</customTypes>
+									<forcedTypes>
+										<forcedType>
+											<name>MYSqlJSON</name>
+											<includeExpression>DB_CONNECTION</includeExpression>
+											<includeTypes>.*</includeTypes>
+										</forcedType>
+									</forcedTypes>
 								</database>
 								<generate>
 									<deprecated>false</deprecated>

@@ -40,8 +40,7 @@ public class StorageDAO extends AbstractUpdatableDAO<DataStorageRecord, ULong, S
 
 			        List<StorageField> fields = new ArrayList<>();
 			        fields.add(new StorageField().setName("_id")
-			                .setType(DataStorageFieldType.UUID)
-			                .setDefaultValue("uuid_short()"));
+			                .setType(DataStorageFieldType.UUID));
 
 			        if (pojo.getFields() != null && !pojo.getFields()
 			                .isEmpty())
