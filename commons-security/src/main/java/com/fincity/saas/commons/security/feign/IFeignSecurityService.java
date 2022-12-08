@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.security.feign;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -31,5 +32,9 @@ public interface IFeignSecurityService {
 	
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/apps/internal/hasWriteAccess}")
 	public Mono<Boolean> hasWriteAccess(@RequestParam String appCode,
+	        @RequestParam String clientCode);
+	
+	@GetMapping("${security.feign.hasWriteAccess:/api/security/apps/internal/appInheritance}")
+	public Mono<List<String>> appInheritance(@RequestParam String appCode,
 	        @RequestParam String clientCode);
 }

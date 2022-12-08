@@ -16,7 +16,6 @@ import org.springframework.http.server.reactive.ServerHttpRequest.Builder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.CacheService;
 
 import reactor.core.publisher.Mono;
@@ -28,6 +27,9 @@ import reactor.util.function.Tuples;
 public class GatewayFilter implements GlobalFilter, Ordered {
 
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+
+	private static final String DEFAULT_CLIENT = "SYSTEM";
+	private static final String DEFAULT_APP = "nothing";
 
 	@Autowired
 	private CacheService cacheService;
@@ -68,64 +70,43 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 	public Mono<Void> rewriteRequest(ServerWebExchange exchange, Tuple2<String, String> finT,
 	        GatewayFilterChain chain) {
 
-		String requestPath = exchange.getRequest()
-		        .getPath()
-		        .toString();
-		int apiIndex = requestPath.indexOf("/api/");
-		String modifiedRequestPath = requestPath;
-
 		String appCode = finT.getT2();
 		String clientCode = finT.getT1();
 
-		if (apiIndex != -1) {
+		String requestPath = exchange.getRequest()
+		        .getPath()
+		        .toString();
 
-			modifiedRequestPath = requestPath.substring(apiIndex);
-			String beforeAPI = requestPath.substring(0, apiIndex);
-			Tuple2<String, String> codes = this.urlClientCode.get(beforeAPI);
+		int apiIndex = requestPath.indexOf("/api/");
+
+		String appClientCodePart = requestPath.substring(0,
+		        apiIndex == -1 ? requestPath.indexOf("/page/") + 2 : apiIndex);
+
+		String modifiedRequestPath = (apiIndex == -1) ? requestPath : requestPath.substring(apiIndex);
+		if (DEFAULT_CLIENT.equals(clientCode) && DEFAULT_APP.equals(appCode)) {
+
+			Tuple2<String, String> codes = this.urlClientCode.get(appClientCodePart);
+
 			if (codes != null) {
 
-				return modifyRequest(exchange, chain, modifiedRequestPath, codes.getT1(), codes.getT2());
+				appCode = codes.getT1();
+				clientCode = codes.getT2();
 			} else {
 
-				String pagePath = beforeAPI.substring(0, beforeAPI.indexOf("/page/") + 1);
-				return modifyRequest(exchange, chain, modifiedRequestPath, pagePath.split("/"), clientCode, appCode,
-				        beforeAPI);
-			}
-		}
+				String[] parts = appClientCodePart.split("/");
+				if (parts.length > 1) {
 
-		int pageIndex = requestPath.indexOf("/page/");
-		String beforePage = requestPath.substring(0, pageIndex + 1);
-
-		Tuple2<String, String> codes = this.urlClientCode.get(beforePage);
-		if (codes != null) {
-
-			return modifyRequest(exchange, chain, modifiedRequestPath, codes.getT1(), codes.getT2());
-		} else {
-
-			return modifyRequest(exchange, chain, modifiedRequestPath, beforePage.split("/"), clientCode, appCode,
-			        beforePage);
-		}
-	}
-
-	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
-	        String[] pageParts, String clientCode, String appCode, String beforeBreakPath) {
-
-		int ind = 0;
-
-		if (pageParts.length > ind && pageParts[ind].isBlank())
-			ind++;
-		if (pageParts.length > ind && !pageParts[ind].isBlank()) {
-
-			appCode = pageParts[ind];
-			ind++;
-			if (pageParts.length > ind && !pageParts[ind].isBlank() && "SYSTEM".equals(clientCode)) {
-				clientCode = pageParts[ind];
+					appCode = parts[1];
+					if (parts.length > 2)
+						clientCode = parts[2];
+				}
+				this.urlClientCode.put(appClientCodePart, Tuples.of(appCode, clientCode));
 			}
 
-			urlClientCode.put(beforeBreakPath, Tuples.of(clientCode, appCode));
 		}
 
-		return modifyRequest(exchange, chain, modifiedRequestPath, clientCode, appCode);
+		return this.modifyRequest(exchange, chain, modifiedRequestPath, clientCode, appCode);
+
 	}
 
 	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
@@ -174,15 +155,11 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 	private Mono<Tuple2<String, String>> getClientCode(String uriScheme, String uriHost, String uriPort) {
 
-		Mono<String> uriKey = cacheService.makeKey(uriScheme, uriHost, ":", uriPort);
+		return cacheService.cacheValueOrGet(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE,
 
-		return FlatMapUtil.flatMapMono(
+		        () -> this.security.getClientCode(uriScheme, uriHost, uriPort)
+		                .defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP)),
 
-		        () -> uriKey,
-
-		        key -> cacheService.<Tuple2<String, String>>get(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, key)
-		                .switchIfEmpty(Mono.defer(() -> this.security.getClientCode(uriScheme, uriHost, uriPort)
-		                        .defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))
-		                        .flatMap(cod -> cacheService.put(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE, cod, key)))));
+		        uriScheme, uriHost, ":", uriPort);
 	}
 }

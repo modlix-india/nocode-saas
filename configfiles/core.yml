@@ -1,0 +1,21 @@
+spring:
+  data:
+    mongodb:
+      uri: ${core.mongo.uri}
+
+  boot:
+    admin:
+      client:
+        instance:
+          name: Core
+  cloud:
+    gateway:
+      routes:
+        - id: core
+          uri: lb://core
+          predicates:
+            - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
+
+redis:
+  cache:
+    prefix: cor
