@@ -1,5 +1,7 @@
 package com.fincity.security.controller;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,6 +33,14 @@ public class AppController
 	        @RequestParam String clientCode) {
 
 		return this.service.hasReadAccess(appCode, clientCode)
+		        .map(ResponseEntity::ok);
+	} 
+	
+	@GetMapping("/internal/appInheritance")
+	public Mono<ResponseEntity<List<String>>> appInheritance(@RequestParam String appCode,
+	        @RequestParam String clientCode) {
+
+		return this.service.appInheritance(appCode, clientCode)
 		        .map(ResponseEntity::ok);
 	} 
 	

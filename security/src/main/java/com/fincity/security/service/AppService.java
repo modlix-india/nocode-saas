@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -256,6 +257,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        })
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS, accessId)));
+	}
+
+	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+		
+		return this.dao.appInheritance(appCode, clientCode);
 	}
 
 }

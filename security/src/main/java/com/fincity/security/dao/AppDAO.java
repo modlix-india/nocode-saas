@@ -163,4 +163,16 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
 		        .where(SECURITY_APP_ACCESS.ID.eq(accessId)));
 	}
+
+	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
+		        .from(SECURITY_APP)
+		        .leftJoin(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
+		        .where(SECURITY_APP.APP_CODE.eq(appCode))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(code -> clientCode.equals(code) ? List.of(code) : List.of(code, clientCode));
+	}
 }
