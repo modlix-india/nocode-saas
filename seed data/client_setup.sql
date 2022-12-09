@@ -828,7 +828,8 @@ select id from security.security_app where app_code = 'caapp' limit 1 into @v_ap
 
 INSERT INTO `security`.`security_app_access` (`CLIENT_ID`, `APP_ID`, `EDIT_ACCESS`) VALUES 
     (@v_clienta1, @v_app_caapp, '0'),
-    (@v_clienta2, @v_app_caapp, '1');
+    (@v_clienta2, @v_app_caapp, '1'),
+	(@v_clienta, @v_app_appbuilder, '1');
 
 -- adding package to client
 
@@ -853,5 +854,4 @@ insert into security.security_user_role_permission(user_id, role_id)
 select (select id from security.security_user where user_name = 'userC001' limit 1),
  role_id from security.security_package_role where package_id 
 	in (select package_id from security.security_client_package where client_id = @v_clientc);
-
 

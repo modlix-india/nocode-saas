@@ -56,9 +56,9 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				        return Tuples.of(mainQuery, countQuery);
 
 			        return Tuples.of((SelectJoinStep<Record>) mainQuery.leftJoin(SECURITY_APP_ACCESS)
-			                .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)),
+			                .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID).and(SECURITY_APP_ACCESS.CLIENT_ID.eq(ULong.valueOf(ca.getUser().getClientId())))),
 			                (SelectJoinStep<Record1<Integer>>) countQuery.leftJoin(SECURITY_APP_ACCESS)
-			                        .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)));
+			                .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID).and(SECURITY_APP_ACCESS.CLIENT_ID.eq(ULong.valueOf(ca.getUser().getClientId())))));
 		        });
 	}
 
@@ -76,7 +76,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			        ULong clientId = ULong.valueOf(ca.getUser()
 			                .getClientId());
 
-			        return condition.map(c -> DSL.and(c, SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId)
+			        return condition.map(c -> DSL.and(c, SECURITY_APP.CLIENT_ID.eq(clientId)
 			                .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))));
 		        })
 		        .switchIfEmpty(condition);
