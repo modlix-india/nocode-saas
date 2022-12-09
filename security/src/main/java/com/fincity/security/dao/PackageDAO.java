@@ -5,8 +5,11 @@ import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
+import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
+import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Component;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityPackageRoleRecord;
+import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -35,18 +39,6 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 	protected Field<ULong> getClientIDField() {
 
 		return SECURITY_PACKAGE.CLIENT_ID;
-	}
-
-	public Mono<ULong> getClientIdFromPackage(ULong packageId) {
-		return Mono.from(
-
-		        this.dslContext.select(SECURITY_PACKAGE.CLIENT_ID)
-		                .from(SECURITY_PACKAGE)
-		                .where(SECURITY_PACKAGE.ID.eq(packageId))
-		                .limit(1)
-
-		)
-		        .map(Record1::value1);
 	}
 
 	public Mono<Set<ULong>> getRolesFromPackage(ULong packageId) {
@@ -123,29 +115,6 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		        .forEach(filterPermissions::add);
 
 		return Mono.just(filterPermissions);
-	}
-
-	public Mono<Integer> removeRole(ULong packageId, ULong roleId) {
-
-		DeleteQuery<SecurityPackageRoleRecord> query = this.dslContext.deleteQuery(SECURITY_PACKAGE_ROLE);
-
-		query.addConditions(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId)
-		        .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)));
-
-		return Mono.from(query);
-	}
-
-	public Mono<Boolean> checkRoleFromBasePackage(ULong roleId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_PACKAGE.ID)
-		        .from(SECURITY_PACKAGE_ROLE)
-		        .leftJoin(SECURITY_PACKAGE)
-		        .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-		        .where(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)
-		                .and(SECURITY_PACKAGE.BASE.eq((byte) 1)))
-		        .limit(1))
-		        .map(Record1::value1)
-		        .map(val -> val.intValue() > 0);
 	}
 
 	public Mono<Set<ULong>> getClientListFromPackage(ULong packageId, ULong roleId) {
@@ -262,7 +231,7 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		return Mono.just(filteredClientList);
 	}
 
-	public Mono<Boolean> checkRoleAvailableForGivenPackage(ULong packageId, ULong roleId) {
+	public Mono<Boolean> checkRoleAvailableForGivenPackage(ULong packageId, ULong roleId) { // update here
 
 		Condition rolePackageCondition = SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId)
 		        .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId));
@@ -293,4 +262,99 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		                .values(packageId, roleId))
 		        .map(e -> e > 0);
 	}
+
+	public Mono<Boolean> checkRoleAssignedForPackage(ULong packageId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_PACKAGE_ROLE)
+		                .where(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)
+		                        .and(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId))))
+		        .map(Record1::value1)
+		        .map(count -> count > 0);
+	}
+
+	public Mono<Boolean> removeRole(ULong packageId, ULong roleId) {
+
+		DeleteQuery<SecurityPackageRoleRecord> query = this.dslContext.deleteQuery(SECURITY_PACKAGE_ROLE);
+
+		query.addConditions(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId)
+		        .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)));
+
+		return Mono.from(query)
+		        .map(value -> value > 0);
+	}
+
+	public Mono<Boolean> checkRoleFromBasePackage(ULong packageId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_PACKAGE_ROLE)
+		                .leftJoin(SECURITY_PACKAGE)
+		                .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_PACKAGE.ID))
+		                .where(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)
+		                        .and(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId))
+		                        .and(SECURITY_PACKAGE.BASE.eq((byte) 1))))
+		        .map(Record1::value1)
+		        .map(count -> count > 0);
+
+	}
+
+	public Mono<List<ULong>> getUsersListFromPackage(ULong packageId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_USER.ID)
+		                .from(SECURITY_CLIENT_PACKAGE)
+		                .leftJoin(SECURITY_USER)
+		                .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		                .where(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
+		        .map(Record1::value1)
+		        .collectList();
+	}
+
+	public Mono<List<ULong>> getUsersListFromPackageForOtherRole(ULong packageId, ULong roleId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_USER.ID)
+		                .from(SECURITY_PACKAGE_ROLE)
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+		                .leftJoin(SECURITY_USER)
+		                .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		                .where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.ne(packageId)
+		                        .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId))))
+		        .map(Record1::value1)
+		        .collectList();
+	}
+
+	public Mono<Boolean> removeRoleFromUsers(ULong roleId, List<ULong> userIds) {
+
+		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
+		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
+
+		query.addConditions(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		        .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userIds)));
+
+		return Mono.from(query)
+		        .map(count -> count > 0);
+	}
+
+	public Mono<List<ULong>> getPermissionsFromBasePackage(ULong packageId, List<ULong> permissions) {
+
+		// update require here
+
+		return Flux.from(this.dslContext.select(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
+		        .from(SECURITY_ROLE_PERMISSION)
+		        .leftJoin(SECURITY_PACKAGE_ROLE)
+		        .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
+		        .leftJoin(SECURITY_PACKAGE)
+		        .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_PACKAGE.ID)))
+		        .map(Record1::value1)
+		        .collectList();
+	}
+
 }

@@ -36,7 +36,7 @@ public class RoleController
 	public Mono<ResponseEntity<Boolean>> removePermission(@PathVariable ULong roleId,
 	        @PathVariable ULong permissionId) {
 
-		return this.roleService.assignPermissionToRole(roleId, permissionId)
+		return this.roleService.removePermissionFromRole(roleId, permissionId)
 		        .map(ResponseEntity::ok);
 	}
 

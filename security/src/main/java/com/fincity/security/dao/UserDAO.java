@@ -356,6 +356,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	public Mono<Set<ULong>> getUserListFromClientIds(Set<ULong> clientList) {
 
+		// change to reactive approach
+
 		Set<ULong> users = new HashSet<>();
 
 		Flux.from(
