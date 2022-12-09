@@ -840,18 +840,40 @@ insert into security.security_client_package (client_id, package_id)
 insert into security.security_client_package (client_id, package_id) 
     select @v_clientc, ID from security.security_package where base = 0 and code not in ('CLITYP', 'APPSYS', 'CLIENT');
 
+select id from security.security_user where user_name = 'userA001' limit 1 into @v_user_usera001;
+select id from security.security_user where user_name = 'userA002' limit 1 into @v_user_usera002;
+select id from security.security_user where user_name = 'userB001' limit 1 into @v_user_userb001;
+select id from security.security_user where user_name = 'userC002' limit 1 into @v_user_userc002;
+select id from security.security_user where user_name = 'userA1002' limit 1 into @v_user_usera1002;
+select id from security.security_user where user_name = 'userA2001' limit 1 into @v_user_usera2001;
+
 insert into security.security_user_role_permission(user_id, role_id)
-select (select id from security.security_user where user_name = 'userA001' limit 1),
+select @v_user_usera001,
  role_id from security.security_package_role where package_id 
 	in (select package_id from security.security_client_package where client_id = @v_clienta);
 
 insert into security.security_user_role_permission(user_id, role_id)
-select (select id from security.security_user where user_name = 'userB001' limit 1),
+select @v_user_userb001,
  role_id from security.security_package_role where package_id 
 	in (select package_id from security.security_client_package where client_id = @v_clientb);
 
 insert into security.security_user_role_permission(user_id, role_id)
-select (select id from security.security_user where user_name = 'userC001' limit 1),
+select @v_user_userc002,
  role_id from security.security_package_role where package_id 
 	in (select package_id from security.security_client_package where client_id = @v_clientc);
+
+-- Adding logins for the users
+-- Used the following query to genereate the values...
+-- SELECT concat('@v_user_',lower(u.user_name)), t.token, t.part_token, t.expires_at, '0.0.0.0' FROM security.security_user_token t left join security.security_user u on u.id = t.user_id;
+
+INSERT INTO `security`.`security_user_token` (`USER_ID`,`TOKEN`,`PART_TOKEN`,`EXPIRES_AT`, `IP_ADDRESS`)
+VALUES
+(@v_user_sysadmin,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjoxLCJsb2dnZWRJbkNsaWVudENvZGUiOiJTWVNURU0iLCJ1c2VySWQiOjEsImlhdCI6MTY3MDU5ODY3NywiZXhwIjoxNzAyMTM0Njc3fQ.qI44rXQe6FjhhWHVStwmwhP7p6XqMk-9CZ05jLDwUcyrXhJ6-05BwUS3TmoZi8_VtS1JA7ra_Yw8LTNXpMofgw','jLDwUcyrXhJ6-05BwUS3TmoZi8_VtS1JA7ra_Yw8LTNXpMofgw','2023-12-09 15:11:18','0.0.0.0'),
+(@v_user_usera001,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjoyLCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElBIiwidXNlcklkIjoyLCJpYXQiOjE2NzA1OTg2ODgsImV4cCI6MTcwMjEzNDY4OH0.EXvrcfmm1Rad-I4HOkYV7Ynhp8oe1yj72fL_j7BXDC5_2z3kkfpUqcOW-fQkyn0i9055Q_4BXul214HL-JdNNg','j7BXDC5_2z3kkfpUqcOW-fQkyn0i9055Q_4BXul214HL-JdNNg','2023-12-09 15:11:28','0.0.0.0'),
+(@v_user_usera002,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjoyLCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElBIiwidXNlcklkIjozLCJpYXQiOjE2NzA1OTg2OTIsImV4cCI6MTcwMjEzNDY5Mn0.rHb4nkhYHjz5lQ46_QOVKDtmeH6MdXvk5ug-0NEt5_V46o4_zJ4kwd9c5a1205qm4hMtx5n_E5N35wRMAAGOjg','0NEt5_V46o4_zJ4kwd9c5a1205qm4hMtx5n_E5N35wRMAAGOjg','2023-12-09 15:11:33','0.0.0.0'),
+(@v_user_usera1002,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjoyLCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElBIiwidXNlcklkIjo5LCJpYXQiOjE2NzA1OTg2OTYsImV4cCI6MTcwMjEzNDY5Nn0.GT7Hkd0CsKhZkOFmYQI3bMLBZG8RMkgFJdvg8NcxPDzttXpTZW_BVne-2oM4K3E5-nQ08jiV4C5A1zcaqOBpOg','8NcxPDzttXpTZW_BVne-2oM4K3E5-nQ08jiV4C5A1zcaqOBpOg','2023-12-09 15:11:37','0.0.0.0'),
+(@v_user_usera2001,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjoyLCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElBIiwidXNlcklkIjoxMCwiaWF0IjoxNjcwNTk4NzAwLCJleHAiOjE3MDIxMzQ3MDB9.bTk3ohOGS1X9yXnWyDYY33op5fPqzTaC-Rkw7CJpf2SuwVjSvoe1Ls-oZb-_ra6jSynX5KAIRn2_wU-09S8uww','7CJpf2SuwVjSvoe1Ls-oZb-_ra6jSynX5KAIRn2_wU-09S8uww','2023-12-09 15:11:40','0.0.0.0'),
+(@v_user_userb001,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjozLCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElCIiwidXNlcklkIjo0LCJpYXQiOjE2NzA1OTg3MTIsImV4cCI6MTcwMjEzNDcxMn0.52d1ecS7bjzItZJLjVWTAQd3lDFgzefg2vwzQChTMZyTKH4ztaCblS2nQbUKP4YCJ0b4gYM409SxrhSC6Bj7Xw','QChTMZyTKH4ztaCblS2nQbUKP4YCJ0b4gYM409SxrhSC6Bj7Xw','2023-12-09 15:11:52','0.0.0.0'),
+(@v_user_userc002,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjo0LCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElDIiwidXNlcklkIjo3LCJpYXQiOjE2NzA1OTg3MjQsImV4cCI6MTcwMjEzNDcyNH0.zIaTJDFuPNc4OhoRi87LcbXkx5YAwoWY5w55VvBGNhgxo5E3VrSZR3AqsuSIUaN3M4e57hbCahIL_FXK6vfV7g','VvBGNhgxo5E3VrSZR3AqsuSIUaN3M4e57hbCahIL_FXK6vfV7g','2023-12-09 15:12:04','0.0.0.0');
+
 

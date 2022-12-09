@@ -83,7 +83,7 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		        apiIndex == -1 ? requestPath.indexOf("/page/") + 2 : apiIndex);
 
 		String modifiedRequestPath = (apiIndex == -1) ? requestPath : requestPath.substring(apiIndex);
-		if (DEFAULT_CLIENT.equals(clientCode) && DEFAULT_APP.equals(appCode)) {
+		if (DEFAULT_CLIENT.equals(clientCode)) {
 
 			Tuple2<String, String> codes = this.urlClientCode.get(appClientCodePart);
 

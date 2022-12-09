@@ -49,5 +49,6 @@ redis:
 logging:
   level:
     root: INFO
-    com:
-      fincity: DEBUG
+    com.fincity: DEBUG
+    org.jooq: DEBUG
+    org.jooq.tools.LoggerListener: DEBUG

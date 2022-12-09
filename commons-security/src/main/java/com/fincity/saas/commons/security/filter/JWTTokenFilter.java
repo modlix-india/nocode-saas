@@ -1,5 +1,9 @@
 package com.fincity.saas.commons.security.filter;
 
+import java.util.List;
+
+import javax.naming.AuthenticationException;
+
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -10,6 +14,7 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +36,10 @@ public class JWTTokenFilter implements WebFilter {
 		boolean isBasic = tuple.getT1();
 		String bearerToken = tuple.getT2();
 
+		List<String> clientCode = request.getHeaders()
+		        .get("clientCode");
+		final String cc = clientCode == null || clientCode.isEmpty() ? null : clientCode.get(0);
+
 		return
 
 		FlatMapUtil.flatMapMonoWithNull(
@@ -38,10 +47,18 @@ public class JWTTokenFilter implements WebFilter {
 		        () -> !bearerToken.isBlank() ? this.authService.getAuthentication(isBasic, bearerToken, request)
 		                : Mono.empty(),
 
-		        ca -> ca != null
-		                ? Mono.just(ReactiveSecurityContextHolder
-		                        .withSecurityContext(Mono.just(new SecurityContextImpl(ca))))
-		                : Mono.empty(),
+		        ca ->
+				{
+
+			        if (ca == null)
+				        return Mono.empty();
+
+			        if (cc != null && !cc.equals(((ContextAuthentication) ca).getLoggedInFromClientCode()))
+				        return Mono.error(new AuthenticationException("Trying to access with a cross site token."));
+
+			        return Mono.just(
+			                ReactiveSecurityContextHolder.withSecurityContext(Mono.just(new SecurityContextImpl(ca))));
+		        },
 
 		        (ca, ctx) -> ctx == null ? chain.filter(exchange)
 		                : chain.filter(exchange)
