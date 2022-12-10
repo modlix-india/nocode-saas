@@ -138,7 +138,7 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 			return Mono.just(false);
 
 		return flatMapMono(
-		        () -> SecurityContextUtil.hasAuthority("Authorities." + this.pojoClass.getSimpleName() + "_" + method,
+		        () -> SecurityContextUtil.hasAuthority("Authorities.APPBUILDER." + this.pojoClass.getSimpleName() + "_" + method,
 		                ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
 
 		        access -> ca.getClientCode()
