@@ -4,15 +4,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 
-import org.springframework.stereotype.Service;
-
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 
 import reactor.core.publisher.Mono;
 
-@Service
-public class CoreMessageResourceService extends AbstractMessageService {
+public abstract class AbstractMongoMessageResourceService extends AbstractMessageService {
 
 	public static final String OBJECT_NOT_FOUND = "object_not_found";
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
@@ -31,8 +28,9 @@ public class CoreMessageResourceService extends AbstractMessageService {
 	public static final String CANNOT_CHANGE_PREF = "cannot_change_pref";
 	public static final String UNABLE_TO_CREAT_OBJECT = "unable_to_create_object";
 	public static final String APPLICATION_NAME_REQUIRED = "application_name_required";
+	public static final String FORBIDDEN_APP_ACCESS = "forbidden_app_access";
 
-	public CoreMessageResourceService() {
+	protected AbstractMongoMessageResourceService() {
 
 		super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
 	}

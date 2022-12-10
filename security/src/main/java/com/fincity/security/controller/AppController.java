@@ -24,7 +24,7 @@ import com.fincity.security.service.AppService;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/security/apps")
+@RequestMapping("api/security/applications")
 public class AppController
         extends AbstractJOOQUpdatableDataController<SecurityAppRecord, ULong, App, AppDAO, AppService> {
 

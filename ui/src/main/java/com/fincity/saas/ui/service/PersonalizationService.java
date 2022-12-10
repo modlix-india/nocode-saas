@@ -1,6 +1,7 @@
 package com.fincity.saas.ui.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.util.Map;
 
@@ -10,15 +11,15 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.mongo.service.AbstractAppbasedOverridableDataService;
-import com.fincity.saas.commons.mongo.service.CoreMessageResourceService;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Personalization;
 import com.fincity.saas.ui.repository.PersonalizationRepository;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class PersonalizationService extends AbstractAppbasedOverridableDataService<Personalization, PersonalizationRepository> {
+public class PersonalizationService extends AbstractOverridableDataServcie<Personalization, PersonalizationRepository> {
 
 	protected PersonalizationService() {
 		super(Personalization.class);
@@ -48,11 +49,11 @@ public class PersonalizationService extends AbstractAppbasedOverridableDataServi
 			                        .getId()
 			                        .toString()))
 				        return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				                CoreMessageResourceService.CANNOT_CHANGE_PREF);
+				                AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
 
 			        if (existing.getVersion() != entity.getVersion())
 				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                CoreMessageResourceService.VERSION_MISMATCH);
+				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setPersonalization(entity.getPersonalization());
 
@@ -68,7 +69,8 @@ public class PersonalizationService extends AbstractAppbasedOverridableDataServi
 	}
 
 	@Override
-	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, Personalization entity) {
+	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, Personalization entity,
+	        boolean checkAppWriteAccess) {
 
 		if (CREATE.equals(method) || UPDATE.equals(method))
 			return Mono.just(true);
@@ -88,8 +90,7 @@ public class PersonalizationService extends AbstractAppbasedOverridableDataServi
 		                .map(ContextUser::getId)
 		                .map(Object::toString),
 
-		        id -> id == null ? Mono.empty()
-		                : this.repo.findOneByNameAndAppCodeAndCreatedBy(appName, name, id),
+		        id -> id == null ? Mono.empty() : this.repo.findOneByNameAndAppCodeAndCreatedBy(appName, name, id),
 
 		        (id, person) ->
 				{

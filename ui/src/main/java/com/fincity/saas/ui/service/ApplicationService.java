@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
-import com.fincity.saas.commons.mongo.service.CoreMessageResourceService;
+import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 
@@ -38,7 +38,7 @@ public class ApplicationService extends AbstractOverridableDataServcie<Applicati
 				{
 			        if (existing.getVersion() != entity.getVersion())
 				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                CoreMessageResourceService.VERSION_MISMATCH);
+				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setProperties(entity.getProperties())
 			                .setTranslations(entity.getTranslations())

@@ -8,8 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.commons.mongo.service.AbstractAppbasedOverridableDataService;
-import com.fincity.saas.commons.mongo.service.CoreMessageResourceService;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.ui.document.StyleTheme;
@@ -18,7 +18,7 @@ import com.fincity.saas.ui.repository.StyleThemeRepository;
 import reactor.core.publisher.Mono;
 
 @Service
-public class StyleThemeService extends AbstractAppbasedOverridableDataService<StyleTheme, StyleThemeRepository> {
+public class StyleThemeService extends AbstractOverridableDataServcie<StyleTheme, StyleThemeRepository> {
 
 	@Autowired
 	private StyleService styleService;
@@ -81,7 +81,7 @@ public class StyleThemeService extends AbstractAppbasedOverridableDataService<St
 				{
 			        if (existing.getVersion() != entity.getVersion())
 				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                CoreMessageResourceService.VERSION_MISMATCH);
+				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setVariables(entity.getVariables());
 

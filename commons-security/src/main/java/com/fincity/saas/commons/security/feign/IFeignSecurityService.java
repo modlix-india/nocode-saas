@@ -26,15 +26,15 @@ public interface IFeignSecurityService {
 	@GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
 	public Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
 
-	@GetMapping("${security.feign.hasReadAccess:/api/security/apps/internal/hasReadAccess}")
+	@GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
 	public Mono<Boolean> hasReadAccess(@RequestParam String appCode,
 	        @RequestParam String clientCode);
 	
-	@GetMapping("${security.feign.hasWriteAccess:/api/security/apps/internal/hasWriteAccess}")
+	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/hasWriteAccess}")
 	public Mono<Boolean> hasWriteAccess(@RequestParam String appCode,
 	        @RequestParam String clientCode);
 	
-	@GetMapping("${security.feign.hasWriteAccess:/api/security/apps/internal/appInheritance}")
+	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
 	public Mono<List<String>> appInheritance(@RequestParam String appCode,
 	        @RequestParam String clientCode);
 }
