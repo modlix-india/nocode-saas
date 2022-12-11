@@ -3,8 +3,8 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -182,19 +182,19 @@ public class PackageService extends
 		return super.delete(id);
 	}
 
-	public Mono<Set<ULong>> getRolesFromPackage(ULong packageId) {
+	public Mono<List<ULong>> getRolesFromPackage(ULong packageId) {
 		return this.dao.getRolesFromPackage(packageId);
 	}
 
-	public Mono<Set<ULong>> getRolesAfterOmittingFromBasePackage(Set<ULong> roles) {
-		return this.dao.getRolesAfterOmittingFromBasePackage(roles);
+	public Mono<List<ULong>> getPermissionsFromPackage(ULong packageId, List<ULong> roles) {
+		return this.dao.getPermissionsFromPackage(packageId, roles);
 	}
 
-	public Mono<Set<ULong>> getPermissionsFromPackage(ULong packageId) {
-		return this.dao.getPermissionsFromPackage(packageId);
+	public Mono<List<ULong>> omitRolesFromBasePackage(List<ULong> roles) {
+		return this.dao.omitRolesFromBasePackage(roles);
 	}
 
-	public Mono<Set<ULong>> omitPermissionsFromBasePackage(Set<ULong> permissions) {
+	public Mono<List<ULong>> omitPermissionsFromBasePackage(List<ULong> permissions) {
 		return this.dao.omitPermissionsFromBasePackage(permissions);
 	}
 
@@ -301,11 +301,19 @@ public class PackageService extends
 			                (ca, packageRecord, sysOrManaged, roleRemoved) -> this.dao
 			                        .checkRoleFromBasePackage(packageId, roleId),
 
-			                (ca, packageRecord, sysOrManaged, roleRemoved,
-			                        isBase) -> isBase.booleanValue() ? Mono.just(true) : Mono.just(true)
-			        // call a function from here
+			                (ca, packageRecord, sysOrManaged, roleRemoved, isBase) -> isBase.booleanValue()
+			                        ? Mono.just(true)
+			                        : this.removeRole(packageId, roleId),
 
-			        );
+			                (ca, packageRecord, sysOrManaged, roleRemoved, isBase, removedRole) ->
+							{
+				                if (removedRole.booleanValue())
+					                super.unAssignLog(packageId, UNASSIGNED_ROLE + roleId);
+
+				                return Mono.just(removedRole);
+			                }
+
+				);
 		        });
 	}
 
@@ -319,8 +327,10 @@ public class PackageService extends
 
 		        (packageUsers, usersFromOtherRole) ->
 				{
+			        // check null conditions
 			        System.out.println("packageUsers " + packageUsers);
 			        System.out.println("usersFromOtherRole " + usersFromOtherRole);
+
 			        packageUsers.removeAll(usersFromOtherRole);
 			        System.out.println("packageUsers " + packageUsers);
 			        return this.dao.removeRoleFromUsers(roleId, packageUsers);
@@ -330,8 +340,35 @@ public class PackageService extends
 
 		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList) -> this.dao
 		                .getPermissionsFromBasePackage(packageId, permissionsList),
-		                
-		                
+
+		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList) ->
+				{
+
+			        // edit conditions
+			        if (permissionsList != null && !permissionsList.isEmpty())
+				        if (omitPermissionsList != null && !omitPermissionsList.isEmpty())
+					        permissionsList.removeAll(omitPermissionsList);
+			        return Mono.just(permissionsList);
+		        },
+
+		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList,
+		                finalPermissionsList) -> this.dao.getUsersListFromPackage(packageId)
+
+		        ,
+		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList,
+		                finalPermissionsList, users) -> this.dao.getUsersListFromPackageForOtherRole(packageId, roleId),
+
+		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList,
+		                finalPermissionsList, users, omitUsers) ->
+				{
+
+			        if (users != null && !users.isEmpty())
+				        if (omitUsers != null && !omitUsers.isEmpty())
+					        users.removeAll(omitUsers);
+
+			        // remove permissions from users
+			        return userService.removeFromPermissionList(users, finalPermissionsList);
+		        }
 
 		);
 	}

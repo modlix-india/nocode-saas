@@ -305,13 +305,24 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(query);
 	}
 
-	public Mono<Integer> removingPermissionFromUser(ULong userId, ULong permissionId) {
+	public Mono<Integer> removePermissionFromUser(ULong userId, ULong permissionId) {
 
 		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
 		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
 
 		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
 		        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)));
+
+		return Mono.from(query);
+	}
+
+	public Mono<Integer> removePermissionListFromUser(List<ULong> userList, List<ULong> permissionList) {
+
+		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
+		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
+
+		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userList)
+		        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.in(permissionList)));
 
 		return Mono.from(query);
 	}

@@ -5,6 +5,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -278,6 +279,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .flatMap(this.dao::setPermissions);
 	}
 
+	public Mono<Boolean> removePermission(ULong userId, ULong permissionId) {
+		return this.dao.removePermissionFromUser(userId, permissionId)
+		        .map(value -> value > 0);
+	}
+
+	public Mono<Boolean> removeFromPermissionList(List<ULong> userList, List<ULong> permissionList) {
+
+		return this.dao.removePermissionListFromUser(userList, permissionList)
+		        .map(value -> value > 0);
+	}
+
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
 	public Mono<Boolean> removePermissionFromUser(ULong userId, ULong permissionId) {
 		return flatMapMono(
@@ -296,7 +308,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 			        if (ca.isSystemClient() || isManaged.booleanValue())
 
-				        return this.dao.removingPermissionFromUser(userId, permissionId)
+				        return this.dao.removePermissionFromUser(userId, permissionId)
 				                .map(val ->
 								{
 					                boolean removed = val > 0;
@@ -628,4 +640,5 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        });
 
 	}
+
 }
