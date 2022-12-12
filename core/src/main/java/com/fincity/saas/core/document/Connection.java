@@ -5,12 +5,13 @@ import java.util.Map;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import reactor.core.publisher.Mono;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -18,7 +19,7 @@ import lombok.experimental.Accessors;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "connectionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
-public class Connection extends AbstractUpdatableDTO<String, String> {
+public class Connection extends AbstractOverridableDTO<Connection> {
 	
 	private static final long serialVersionUID = 2103048070747418809L;
 	
@@ -27,4 +28,14 @@ public class Connection extends AbstractUpdatableDTO<String, String> {
 	private String appCode;
 	
 	private Map<String, Object> connectionDetails; // NOSONAR
+
+	@Override
+	public Mono<Connection> applyOverride(Connection base) {
+		return Mono.just(this);
+	}
+
+	@Override
+	public Mono<Connection> makeOverride(Connection base) {
+		return Mono.just(this);
+	}
 }
