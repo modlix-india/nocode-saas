@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.commons.mongo.document.Function;
+import com.fincity.saas.commons.mongo.service.FunctionService;
 import com.fincity.saas.ui.document.Application;
-import com.fincity.saas.ui.document.Function;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.service.ApplicationService;
-import com.fincity.saas.ui.service.FunctionService;
 import com.fincity.saas.ui.service.PageService;
 import com.fincity.saas.ui.service.StyleService;
 

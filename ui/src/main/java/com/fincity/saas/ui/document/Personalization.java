@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document
-@CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'id': 1}", name = "themeFilteringIndex")
+@CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'id': 1}", name = "personalizationFilteringIndex")
 @Accessors(chain = true)
 public class Personalization extends AbstractOverridableDTO<Personalization> {
 

@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document
-@CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'clientCode': 1}", name = "styleFilteringIndex")
+@CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "styleFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
 public class Style extends AbstractOverridableDTO<Style> {

@@ -1,29 +1,26 @@
-package com.fincity.saas.ui.service;
+package com.fincity.saas.core.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.ui.document.Function;
-import com.fincity.saas.ui.repository.FunctionRepository;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.core.document.Storage;
+import com.fincity.saas.core.repository.StorageRepository;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class FunctionService extends AbstractOverridableDataServcie<Function, FunctionRepository> {
+public class StorageService extends AbstractOverridableDataServcie<Storage, StorageRepository> {
 
-	
-	public FunctionService() {
-		super(Function.class);
+	protected StorageService() {
+		super(Storage.class);
 	}
 
-
 	@Override
-	protected Mono<Function> updatableEntity(Function entity) {
-		
+	protected Mono<Storage> updatableEntity(Storage entity) {
 		return flatMapMono(
 
 		        () -> this.read(entity.getId()),
@@ -34,8 +31,10 @@ public class FunctionService extends AbstractOverridableDataServcie<Function, Fu
 				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
 				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-			        existing.setDefinition(entity.getDefinition());
-			        
+			        existing.setSchema(entity.getSchema())
+			                .setIsAudited(entity.getIsAudited())
+			                .setIsVersioned(entity.getIsVersioned());
+
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
