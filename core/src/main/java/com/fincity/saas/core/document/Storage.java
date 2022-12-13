@@ -30,6 +30,10 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private Map<String, Object> schema; // NOSONAR
 	private Boolean isAudited;
 	private Boolean isVersioned;
+	private String createAuth;
+	private String readAuth;
+	private String updateAuth;
+	private String deleteAuth;
 
 	public Storage(Storage store) {
 

@@ -21,12 +21,9 @@ import reactor.core.publisher.Mono;
 @NoArgsConstructor
 public class Connection extends AbstractOverridableDTO<Connection> {
 	
-	private static final long serialVersionUID = 2103048070747418809L;
+	private static final long serialVersionUID = -5507743337705010640L;
 	
-	private String name;
-	private String clientCode;
-	private String appCode;
-	
+	private String connectionType;
 	private Map<String, Object> connectionDetails; // NOSONAR
 
 	@Override

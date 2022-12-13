@@ -9,7 +9,7 @@ import com.fincity.saas.core.repository.StorageRepository;
 import com.fincity.saas.core.service.StorageService;
 
 @RestController
-@RequestMapping("api/core/stores")
-public class StoreController extends AbstractOverridableDataController<Storage, StorageRepository, StorageService> {
+@RequestMapping("api/core/storages")
+public class StorageController extends AbstractOverridableDataController<Storage, StorageRepository, StorageService> {
 
 }
