@@ -41,6 +41,10 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.schema = CloneUtil.cloneMapObject(store.schema);
 		this.isAudited = store.isAudited;
 		this.isVersioned = store.isVersioned;
+		this.createAuth = store.createAuth;
+		this.readAuth = store.readAuth;
+		this.updateAuth = store.updateAuth;
+		this.deleteAuth = store.deleteAuth;
 	}
 
 	@SuppressWarnings("unchecked")

@@ -20,11 +20,13 @@ import reactor.core.publisher.Mono;
 @Accessors(chain = true)
 @NoArgsConstructor
 public class Connection extends AbstractOverridableDTO<Connection> {
-	
+
 	private static final long serialVersionUID = -5507743337705010640L;
-	
+
 	private String connectionType;
 	private Map<String, Object> connectionDetails; // NOSONAR
+	private Integer order;
+	private Boolean defaultConnection = false;
 
 	@Override
 	public Mono<Connection> applyOverride(Connection base) {
