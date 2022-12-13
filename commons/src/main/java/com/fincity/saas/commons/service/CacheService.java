@@ -161,15 +161,29 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 			        return value.switchIfEmpty(
 			                Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
 			                        .map(vw -> (T) vw)));
-		        });
+		        })
+		        .map(e -> e instanceof CacheObject c ? (T) c.getObject() : e);
 	}
 
+	@SuppressWarnings("unchecked")
 	public <T> Mono<T> cacheValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
 
 		return this.makeKey(keys)
-		        .flatMap(key -> this.<T>get(cName, key)
+		        .flatMap(key -> this.get(cName, key)
 		                .switchIfEmpty(Mono.defer(() -> supplier.get()
-		                        .flatMap(value -> this.put(cName, value, key)))));
+		                        .flatMap(value -> this.put(cName, value, key)))))
+		        .map(e -> (T) (e instanceof CacheObject co ? co.getObject() : e));
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> Mono<T> cacheEmptyValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
+
+		return this.makeKey(keys)
+		        .flatMap(key -> this.<CacheObject>get(cName, key)
+		                .switchIfEmpty(Mono.defer(() -> supplier.get()
+		                        .flatMap(value -> this.put(cName, new CacheObject(value), key))
+		                        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), keys))))))
+		        .map(e -> (T) e.getObject());
 	}
 
 	public Mono<Boolean> evictAll(String cName) {
