@@ -5,6 +5,7 @@ package com.fincity.security.jooq;
 
 
 import com.fincity.security.jooq.tables.SecurityApp;
+import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
@@ -34,6 +35,11 @@ public class Tables {
      * The table <code>security.security_app</code>.
      */
     public static final SecurityApp SECURITY_APP = SecurityApp.SECURITY_APP;
+
+    /**
+     * The table <code>security.security_app_access</code>.
+     */
+    public static final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
 
     /**
      * The table <code>security.security_client</code>.

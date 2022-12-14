@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
@@ -41,9 +42,9 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, Role> {
+public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, Role> {
 
-	public RoleDao() {
+	public RoleDAO() {
 		super(Role.class, SECURITY_ROLE, SECURITY_ROLE.ID);
 	}
 
@@ -163,6 +164,60 @@ public class RoleDao extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		        .map(Record1::value1)
 		        .map(value -> value > 0);
 
+	}
+
+	public Mono<Set<ULong>> getClientListFromAssignedRoleAndPermission(ULong roleId, ULong permissionId) {
+
+		Set<ULong> clientList = new HashSet<>();
+
+		Flux.from(
+
+		        this.dslContext.selectDistinct(SECURITY_CLIENT_PACKAGE.CLIENT_ID)
+		                .from(SECURITY_ROLE_PERMISSION)
+		                .leftJoin(SECURITY_PACKAGE_ROLE)
+		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
+
+		)
+		        .map(Record1::value1)
+		        .toIterable()
+		        .forEach(clientList::add);
+
+		return Mono.just(clientList);
+
+	}
+
+	public Mono<Set<ULong>> getClientListFromAnotherRole(ULong roleId, ULong permissionId, Set<ULong> clientList) {
+
+		Set<ULong> filteredClientList = new HashSet<>();
+
+		Set<ULong> differentRoleClientList = new HashSet<>();
+
+		Flux.from(
+
+		        this.dslContext.selectDistinct(SECURITY_CLIENT_PACKAGE.CLIENT_ID)
+		                .from(SECURITY_ROLE_PERMISSION)
+		                .leftJoin(SECURITY_PACKAGE_ROLE)
+		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.ne(roleId)
+		                        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
+
+		)
+		        .map(Record1::value1)
+		        .toIterable()
+		        .forEach(differentRoleClientList::add);
+
+		Stream<ULong> filterStream = clientList.stream()
+		        .filter(client -> !differentRoleClientList.contains(client));
+
+		filterStream.forEach(filteredClientList::add);
+
+		return Mono.just(filteredClientList);
 	}
 
 	@Override

@@ -24,4 +24,12 @@ public interface IFeignSecurityService {
 	
 	@GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
 	public Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
+
+	@GetMapping("${security.feign.hasReadAccess:/api/security/apps/internal/hasReadAccess}")
+	public Mono<Boolean> hasReadAccess(@RequestParam String appCode,
+	        @RequestParam String clientCode);
+	
+	@GetMapping("${security.feign.hasWriteAccess:/api/security/apps/internal/hasWriteAccess}")
+	public Mono<Boolean> hasWriteAccess(@RequestParam String appCode,
+	        @RequestParam String clientCode);
 }

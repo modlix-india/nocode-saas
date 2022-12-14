@@ -21,8 +21,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/security/users")
-public class UserController
-        extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAO, UserService> {
+public class UserController extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAO, UserService> {
 
 	@Autowired
 	private UserService userService;

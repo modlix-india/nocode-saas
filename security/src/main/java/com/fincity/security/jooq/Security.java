@@ -5,6 +5,7 @@ package com.fincity.security.jooq;
 
 
 import com.fincity.security.jooq.tables.SecurityApp;
+import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
@@ -48,6 +49,11 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app</code>.
      */
     public final SecurityApp SECURITY_APP = SecurityApp.SECURITY_APP;
+
+    /**
+     * The table <code>security.security_app_access</code>.
+     */
+    public final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
 
     /**
      * The table <code>security.security_client</code>.
@@ -151,6 +157,7 @@ public class Security extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             SecurityApp.SECURITY_APP,
+            SecurityAppAccess.SECURITY_APP_ACCESS,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientManage.SECURITY_CLIENT_MANAGE,
             SecurityClientPackage.SECURITY_CLIENT_PACKAGE,
