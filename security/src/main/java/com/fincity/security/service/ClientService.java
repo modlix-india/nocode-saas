@@ -369,7 +369,8 @@ public class ClientService
 		        .flatMap(result ->
 				{
 			        if (!result.booleanValue())
-				        return Mono.just(true);
+				        return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+				                SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
 
 			        return flatMapMono(
 
@@ -378,7 +379,7 @@ public class ClientService
 			                ca -> ca.isSystemClient() ? Mono.just(true)
 			                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
 			                                .getClientId()), clientId)
-			                                .flatMap(this::checkTruth),
+			                                .flatMap(this::getTruthOrEmpty),
 
 			                (ca, sysOrManaged) -> this.dao.removePackage(clientId, packageId),
 
@@ -406,7 +407,7 @@ public class ClientService
 
 	}
 
-	public Mono<Boolean> checkTruth(Boolean b) {
+	public Mono<Boolean> getTruthOrEmpty(Boolean b) {
 		return b.booleanValue() ? Mono.just(b) : Mono.empty();
 	}
 }

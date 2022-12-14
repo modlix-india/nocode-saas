@@ -2,9 +2,12 @@ package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.fincity.security.util.BooleanUtil;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -221,28 +224,18 @@ public class PackageService extends
 							ca.isSystemClient() ? Mono.just(true)
 							        : flatMapMono(() -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
 							                .getClientId()), packageRecord.getClientId())
-							                .flatMap(this::checkTruth),
+							                .flatMap(BooleanUtil::getTruthOrEmpty),
 
 							                roleManaged -> this.clientService
 							                        .isBeingManagedBy(ULong.valueOf(ca.getUser()
 							                                .getClientId()), roleRecord.getClientId())
-							                        .flatMap(this::checkTruth)),
+							                        .flatMap(BooleanUtil::getTruthOrEmpty)),
 
 			                (ca, packageRecord, roleRecord, rolePackageManaged) ->
 
 							packageRecord.getClientId()
 							        .equals(roleRecord.getClientId()) ? Mono.just(true)
 							                : this.dao.checkRoleAvailableForGivenPackage(packageId, roleId),
-
-			                // check
-			                // role is
-			                // part
-			                // of
-			                // package
-			                // which is
-			                // assigned
-			                // to
-			                // client
 
 			                (ca, packageRecord, roleRecord, rolePackageManaged, hasRole) ->
 							{
@@ -272,109 +265,94 @@ public class PackageService extends
 		        .flatMap(result ->
 				{
 			        if (!result.booleanValue())
-				        return Mono.just(true);
+				        return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+				                SecurityMessageResourceService.OBJECT_NOT_FOUND, packageId, roleId);
 
 			        return flatMapMono(
 
 			                SecurityContextUtil::getUsersContextAuthentication,
 
-			                ca -> this.dao.readById(packageId),
+			                ca -> ca.isSystemClient() ? Mono.just(true)
 
-			                (ca, packageRecord) -> ca.isSystemClient() ? Mono.just(true)
 			                        : flatMapMono(
 
-			                                () -> this.roleService.read(roleId),
+			                                () -> this.dao.readById(packageId),
 
-			                                roleRecord -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-			                                        .getClientId()),
+			                                packageRecord -> this.roleService.read(roleId),
 
-			                                        roleRecord.getClientId())
-			                                        .flatMap(this::checkTruth),
+			                                (packageRecord, roleRecord) -> this.clientService
+			                                        .isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                                                .getClientId()), roleRecord.getClientId())
+			                                        .flatMap(BooleanUtil::getTruthOrEmpty),
 
-			                                (roleRecord, roleManaged) -> this.clientService
+			                                (packageRecord, roleRecord, roleManaged) -> this.clientService
 			                                        .isBeingManagedBy(ULong.valueOf(ca.getUser()
 			                                                .getClientId()), packageRecord.getClientId())
-			                                        .flatMap(this::checkTruth)),
+			                                        .flatMap(BooleanUtil::getTruthOrEmpty)),
 
-			                (ca, packageRecord, sysOrManaged) -> this.dao.removeRole(packageId, roleId),
+			                (ca, sysOrManaged) -> this.dao.checkRoleFromBasePackage(roleId)
+			                        .flatMap(isBase ->
+									{
+				                        if (isBase.booleanValue())
+					                        return Mono.just(true);
 
-			                (ca, packageRecord, sysOrManaged, roleRemoved) -> this.dao
-			                        .checkRoleFromBasePackage(packageId, roleId),
+				                        return this.removeRole(packageId, roleId);
+			                        }
 
-			                (ca, packageRecord, sysOrManaged, roleRemoved, isBase) -> isBase.booleanValue()
-			                        ? Mono.just(true)
-			                        : this.removeRole(packageId, roleId),
+									),
 
-			                (ca, packageRecord, sysOrManaged, roleRemoved, isBase, removedRole) ->
-							{
-				                if (removedRole.booleanValue())
-					                super.unAssignLog(packageId, UNASSIGNED_ROLE + roleId);
+			                (ca, sysOrManaged, removeUsersRole) -> this.removePermissions(packageId, roleId)
+			                        .flatMap(BooleanUtil::getTruthOrEmpty),
 
-				                return Mono.just(removedRole);
-			                }
+			                (ca, sysOrManaged, removedUsersRole, removedUsersPermission) -> this.dao
+			                        .removeRole(packageId, roleId)
+			                        .map(removed ->
+									{
+
+				                        if (removed.booleanValue())
+					                        super.unAssignLog(packageId, UNASSIGNED_ROLE + roleId);
+
+				                        return removed;
+			                        })
 
 				);
-		        });
+		        })
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+
 	}
 
 	public Mono<Boolean> removeRole(ULong packageId, ULong roleId) {
 
 		return flatMapMono(
 
-		        () -> this.dao.getUsersListFromPackage(packageId),
+		        () -> this.dao.getUsersListFromPackage(packageId)
+		                .flatMap(packageUsers -> packageUsers.isEmpty() ? Mono.just(new ArrayList<ULong>())
+		                        : this.dao.getUsersListFromRoleForOtherPackages(packageId, roleId, packageUsers)),
 
-		        packageUsers -> this.dao.getUsersListFromPackageForOtherRole(packageId, roleId),
-
-		        (packageUsers, usersFromOtherRole) ->
-				{
-			        // check null conditions
-			        System.out.println("packageUsers " + packageUsers);
-			        System.out.println("usersFromOtherRole " + usersFromOtherRole);
-
-			        packageUsers.removeAll(usersFromOtherRole);
-			        System.out.println("packageUsers " + packageUsers);
-			        return this.dao.removeRoleFromUsers(roleId, packageUsers);
-		        },
-
-		        (packageUsers, usersFromOtherRole, rolesRemoved) -> this.roleService.getPermissionsIdFromRole(roleId),
-
-		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList) -> this.dao
-		                .getPermissionsFromBasePackage(packageId, permissionsList),
-
-		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList) ->
-				{
-
-			        // edit conditions
-			        if (permissionsList != null && !permissionsList.isEmpty())
-				        if (omitPermissionsList != null && !omitPermissionsList.isEmpty())
-					        permissionsList.removeAll(omitPermissionsList);
-			        return Mono.just(permissionsList);
-		        },
-
-		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList,
-		                finalPermissionsList) -> this.dao.getUsersListFromPackage(packageId)
-
-		        ,
-		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList,
-		                finalPermissionsList, users) -> this.dao.getUsersListFromPackageForOtherRole(packageId, roleId),
-
-		        (packageUsers, usersFromOtherRole, rolesRemoved, permissionsList, omitPermissionsList,
-		                finalPermissionsList, users, omitUsers) ->
-				{
-
-			        if (users != null && !users.isEmpty())
-				        if (omitUsers != null && !omitUsers.isEmpty())
-					        users.removeAll(omitUsers);
-
-			        // remove permissions from users
-			        return userService.removeFromPermissionList(users, finalPermissionsList);
-		        }
+		        usersList -> this.dao.removeRoleFromUsers(roleId, usersList)
 
 		);
 	}
 
-	private Mono<Boolean> checkTruth(Boolean b) {
-		return b.booleanValue() ? Mono.just(b) : Mono.empty();
+	public Mono<Boolean> removePermissions(ULong packageId, ULong roleId) {
+
+		return flatMapMono(
+
+		        () -> this.roleService.getPermissionsFromRole(roleId)
+		                .flatMap(permissions -> permissions.isEmpty() ? Mono.just(new ArrayList<ULong>())
+		                        : this.dao.removePermissionsPartOfBasePackage(permissions)),
+
+		        permissionsList -> this.dao.getUsersListFromPackage(packageId)
+		                .flatMap(users -> users.isEmpty() ? Mono.just(new ArrayList<ULong>())
+		                        : this.dao.removeUsersWithPermissionsFromRoleForOtherPackages(packageId,
+		                                permissionsList, users)),
+
+		        (permissionsList, usersList) -> !usersList.isEmpty() && !permissionsList.isEmpty()
+		                ? userService.removeFromPermissionList(usersList, permissionsList)
+		                : Mono.just(true)
+
+		);
 	}
 
 }

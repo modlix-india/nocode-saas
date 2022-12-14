@@ -2,6 +2,7 @@ package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,18 +20,18 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.RoleDAO;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
+import com.fincity.security.util.BooleanUtil;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRecord, ULong, Role, RoleDAO> {
+public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRoleRecord, ULong, Role, RoleDAO> {
 
 	private static final String DESCRIPTION = "description";
 
@@ -46,6 +47,7 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
+	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
 		return SecuritySoxLogObjectName.ROLE;
 	}
@@ -165,41 +167,40 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 			                (ca, roleRecord, permissionRecord) ->
 
-							clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-							        .getClientId()), roleRecord.getClientId())
-							        .flatMap(this::checkTruth),
+							ca.isSystemClient() ? Mono.just(true)
+							        : flatMapMono(
 
-			                (ca, roleRecord, permissionRecord, roleManaged) ->
+							                () -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+							                        .getClientId()), roleRecord.getClientId())
+							                        .flatMap(BooleanUtil::getTruthOrEmpty),
 
-							clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-							        .getClientId()), permissionRecord.getClientId())
-							        .flatMap(this::checkTruth),
+							                permissionManaged -> clientService
+							                        .isBeingManagedBy(ULong.valueOf(ca.getUser()
+							                                .getClientId()), permissionRecord.getClientId())
+							                        .flatMap(BooleanUtil::getTruthOrEmpty)
 
-			                (ca, roleRecord, permissionRecord, roleManaged, permissionManaged) ->
+									)
 
-							Mono.just(roleRecord.getClientId()
-							        .equals(permissionRecord.getClientId())),
+			                ,
 
-			                (ca, roleRecord, permissionRecord, roleManaged, permissionManaged, sameClient) ->
+			                (ca, roleRecord, permissionRecord, sysOrManaged) ->
 
-							sameClient.booleanValue() ? Mono.just(true)
-							        : this.dao.checkPermissionAvailableForGivenRole(roleId, permissionId),
+							roleRecord.getClientId()
+							        .equals(permissionRecord.getClientId()) ? Mono.just(true)
+							                : this.dao.checkPermissionAvailableForGivenRole(roleId, permissionId),
 
-			                // check permission part
-			                // of client or is
-			                // it base package
-
-			                (ca, roleRecord, permissionRecord, roleManaged, permissionManaged, sameClient,
-			                        hasPermission) ->
+			                (ca, roleRecord, permissionRecord, sysOrManaged, hasPermission) ->
 							{
 				                if (hasPermission.booleanValue())
+
 					                return this.dao.addPermission(roleId, permissionId)
+					                        .filter(Boolean::booleanValue)
 					                        .map(e ->
 											{
-						                        if (e.booleanValue())
-//							                        super.assignLog(roleId, ASSIGNED_PERMISSION);
-							                        return e;
-					                        });
+						                        super.assignLog(roleId, ASSIGNED_PERMISSION);
+						                        return e;
+					                        })
+					                        .defaultIfEmpty(false);
 
 				                return Mono.empty();
 			                }
@@ -222,7 +223,8 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 		        .flatMap(result ->
 				{
 			        if (!result.booleanValue())
-				        return Mono.just(true);
+				        return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+				                SecurityMessageResourceService.OBJECT_NOT_FOUND, roleId, permissionId);
 
 			        return flatMapMono(
 
@@ -233,21 +235,20 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 			                (ca, roleRecord) -> ca.isSystemClient() ? Mono.just(true)
 			                        : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
 			                                .getClientId()), roleRecord.getClientId())
-			                                .flatMap(this::checkTruth),
+			                                .flatMap(BooleanUtil::getTruthOrEmpty),
 
 			                (ca, roleRecord, sysOrManaged) -> this.dao.removePermissionFromRole(roleId, permissionId),
 
 			                (ca, roleRecord, sysOrManaged, permissionRemoved) -> this.dao
-			                        .checkPermissionBelongsToBasePackage(roleId, permissionId),
+			                        .checkPermissionBelongsToBasePackage(permissionId),
 
 			                (ca, roleRecord, sysOrManaged, permissionRemoved, isBase) -> isBase.booleanValue() ?
 
 			                        Mono.just(true)
 			                        : this.removePermission(roleId, permissionId, roleRecord.getClientId())
-			                                .flatMap(this::checkTruth)
 			                                .map(e ->
 											{
-//				                                super.assignLog(roleId, UNASSIGNED_PERMISSION + permissionId);
+				                                super.assignLog(roleId, UNASSIGNED_PERMISSION + permissionId);
 				                                return e;
 			                                })
 
@@ -260,11 +261,6 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 	public Mono<Boolean> removePermission(ULong roleId, ULong permissionId, ULong roleClientId) {
 
-//		Find all the users of the clients who have the package assigned to this role
-//		and users of the role's client id and omit those users who belong to the clients
-//		who get this permission from a different role and remove the permission if assigned
-//		 to these users directly.
-
 		return flatMapMono(
 
 		        () -> this.dao.getUsersListFromRole(roleId),
@@ -275,33 +271,22 @@ public class RoleService extends AbstractJOOQUpdatableDataService<SecurityRoleRe
 
 		        (roleUsers, roleClientUsers, differentRoleUsers) ->
 				{
-			        System.out.println(roleUsers + " roleUsers ");
-			        System.out.println(roleClientUsers + " roleClientUsers ");
-			        System.out.println(differentRoleUsers + " differentRoleUsers ");
 
-			        roleUsers.addAll(roleClientUsers);
-			        roleUsers.removeAll(differentRoleUsers);
+			        List<ULong> finalUsers = new ArrayList<>(roleUsers);
 
-			        System.out.println(" after omiting users list " + roleUsers);
+			        finalUsers.addAll(roleClientUsers);
+			        if (!differentRoleUsers.isEmpty() && !finalUsers.isEmpty())
+				        finalUsers.removeAll(differentRoleUsers);
 
-			        return Mono.just(roleUsers);
-		        },
-
-		        (roleUsers, roleClientUsers, differentRoleUsers, finalUsers) ->
-				{
-			        System.out.println(" calling from last step of remove permission subroutine");
-			        return this.dao.removePemissionFromUsers(permissionId, finalUsers);
+			        return finalUsers.isEmpty() ? Mono.just(true)
+			                : this.dao.removePemissionFromUsers(permissionId, finalUsers);
 		        }
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
 	}
 
-	private Mono<Boolean> checkTruth(Boolean b) {
-		return b.booleanValue() ? Mono.just(b) : Mono.empty();
-	}
-
-	public Mono<List<ULong>> getPermissionsIdFromRole(ULong roleId) {
+	public Mono<List<ULong>> getPermissionsFromRole(ULong roleId) {
 
 		return this.dao.getPermissionsFromRole(roleId);
 	}
