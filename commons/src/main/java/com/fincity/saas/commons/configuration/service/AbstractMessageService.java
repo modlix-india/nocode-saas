@@ -40,6 +40,11 @@ public class AbstractMessageService {
 		        .map(e -> StringFormatter.format(e, params));
 	}
 
+	public void throwNonReactiveMessage(HttpStatus status, String messageId, Object... params) {
+
+		throw new GenericException(status, this.getDefaultLocaleMessage(messageId, params));
+	}
+
 	public <T> Mono<T> throwMessage(HttpStatus status, String messageId, Object... params) {
 
 		return Mono.defer(() -> this.getMessage(messageId, params)
@@ -47,7 +52,7 @@ public class AbstractMessageService {
 		        .flatMap(Mono::error));
 
 	}
-	
+
 	public <T> Mono<T> throwMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
 
 		return Mono.defer(() -> this.getMessage(messageId, params)

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.repository.StorageRepository;
 
@@ -17,6 +18,14 @@ public class StorageService extends AbstractOverridableDataServcie<Storage, Stor
 
 	protected StorageService() {
 		super(Storage.class);
+	}
+
+	@Override
+	public Mono<Storage> create(Storage entity) {
+
+		entity.setUniqueName(UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(), entity.getName()));
+
+		return super.create(entity);
 	}
 
 	@Override

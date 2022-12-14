@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.util;
+package com.fincity.saas.commons.mongo.util;
 
 import java.util.Comparator;
 import java.util.Map;

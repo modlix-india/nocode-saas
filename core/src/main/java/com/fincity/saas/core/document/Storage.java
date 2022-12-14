@@ -7,9 +7,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
-import com.fincity.saas.commons.util.CloneUtil;
-import com.fincity.saas.commons.util.DifferenceApplicator;
-import com.fincity.saas.commons.util.DifferenceExtractor;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
+import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -28,6 +28,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private static final long serialVersionUID = -5399288837130565200L;
 
 	private Map<String, Object> schema; // NOSONAR
+	private String uniqueName;
 	private Boolean isAudited;
 	private Boolean isVersioned;
 	private String createAuth;

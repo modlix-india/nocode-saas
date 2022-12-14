@@ -4,6 +4,9 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -21,12 +24,20 @@ import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.repository.ConnectionRepository;
 
+import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Mono;
 
 @Service
 public class ConnectionService extends AbstractOverridableDataServcie<Connection, ConnectionRepository> {
 
 	private static final String CACHE_NAME_CONNECTION = "connCache";
+
+	@Autowired(required = false)
+	@Qualifier("pubRedisAsyncCommand")
+	private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+
+	@Value("${redis.connection.eviction.channel:connectionChannel}")
+	private String channel;
 
 	protected ConnectionService() {
 		super(Connection.class);
@@ -66,7 +77,31 @@ public class ConnectionService extends AbstractOverridableDataServcie<Connection
 		        .flatMap(e -> cacheService
 		                .evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
 		                        e.getConnectionType())
-		                .map(b -> e));
+		                .map(b -> e))
+		        .flatMap(e ->
+				{
+
+			        if (pubAsyncCommand == null)
+				        return Mono.just(e);
+
+			        return Mono
+			                .fromCompletionStage(
+			                        pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
+			                .map(x -> e);
+		        });
+	}
+
+	@Override
+	public Mono<Boolean> delete(String id) {
+
+		return super.delete(id).flatMap(e -> {
+
+			if (pubAsyncCommand == null)
+				return Mono.just(e);
+
+			return Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, "Connection : " + id))
+			        .map(x -> e);
+		});
 	}
 
 	@Override

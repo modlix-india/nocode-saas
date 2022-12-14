@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.util;
+package com.fincity.saas.commons.mongo.util;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -9,7 +9,7 @@ import com.fincity.nocode.kirun.engine.model.Position;
 import com.fincity.nocode.kirun.engine.model.Statement;
 import com.fincity.nocode.kirun.engine.model.StatementGroup;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.difference.IDifferentiable;
+import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 

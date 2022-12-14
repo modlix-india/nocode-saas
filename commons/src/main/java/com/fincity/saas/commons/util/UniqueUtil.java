@@ -1,17 +1,28 @@
-package com.fincity.saas.data.util;
+package com.fincity.saas.commons.util;
 
-import static com.fincity.saas.commons.util.UniqueUtil.base36UUID;
+import java.nio.ByteBuffer;
+import java.util.UUID;
 
-public class DBNameUtil {
+public class UniqueUtil {
 
-	public static String uniqueName(int maxLength, String... name) {
+	public static String base36UUID() {
+
+		UUID uuid = UUID.randomUUID();
+		long l = ByteBuffer.wrap(uuid.toString()
+		        .getBytes())
+		        .getLong();
+
+		return Long.toString(l, 0x24);
+	}
+	
+	public static String uniqueName(int maxLength, String... name) { //NOSONAR
 
 		StringBuilder sb = new StringBuilder(maxLength);
 
 		int i = 0;
 		maxLength -= 15;
 
-		for (String str : name) {
+		for (String str : name) { //NOSONAR
 
 			if (i > maxLength)
 				break;
@@ -38,6 +49,6 @@ public class DBNameUtil {
 		        .toString();
 	}
 
-	private DBNameUtil() {
+	private UniqueUtil() {
 	}
 }
