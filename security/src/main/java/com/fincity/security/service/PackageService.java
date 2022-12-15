@@ -201,7 +201,6 @@ public class PackageService extends
 		return this.dao.omitPermissionsFromBasePackage(permissions);
 	}
 
-	// improve readability
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_Package')")
 	public Mono<Boolean> assignRoleToPackage(ULong packageId, ULong roleId) {
 
@@ -222,39 +221,50 @@ public class PackageService extends
 			                (ca, packageRecord, roleRecord) ->
 
 							ca.isSystemClient() ? Mono.just(true)
-							        : flatMapMono(() -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-							                .getClientId()), packageRecord.getClientId())
-							                .flatMap(BooleanUtil::getTruthOrEmpty),
-
-							                roleManaged -> this.clientService
-							                        .isBeingManagedBy(ULong.valueOf(ca.getUser()
-							                                .getClientId()), roleRecord.getClientId())
-							                        .flatMap(BooleanUtil::getTruthOrEmpty)),
+							        : checkRoleAndPackageClientIsManaged(ULong.valueOf(ca.getUser()
+							                .getClientId()), packageRecord.getClientId(), roleRecord.getClientId()),
 
 			                (ca, packageRecord, roleRecord, rolePackageManaged) ->
 
-							packageRecord.getClientId()
-							        .equals(roleRecord.getClientId()) ? Mono.just(true)
-							                : this.dao.checkRoleAvailableForGivenPackage(packageId, roleId),
+							Mono.just(packageRecord.getClientId()
+							        .equals(roleRecord.getClientId()))
+							        .flatMap(e ->
+									{
+								        if (e.booleanValue())
+									        return Mono.just(e);
+
+								        return this.dao.checkRoleAvailableForGivenPackage(packageId, roleId)
+								                .flatMap(BooleanUtil::getTruthOrEmpty);
+							        }),
 
 			                (ca, packageRecord, roleRecord, rolePackageManaged, hasRole) ->
-							{
 
-				                if (hasRole.booleanValue())
-
-					                return this.dao.addRoleToPackage(packageId, roleId)
-					                        .map(e ->
-											{
-						                        super.assignLog(packageId, ASSIGNED_ROLE);
-						                        return e;
-					                        });
-
-				                return Mono.empty();
-			                }
+							this.dao.addRoleToPackage(packageId, roleId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(packageId, ASSIGNED_ROLE);
+								        return e;
+							        })
 
 				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 				        SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
 		        });
+
+	}
+
+	private Mono<Boolean> checkRoleAndPackageClientIsManaged(ULong loggedInClientId, ULong packageClientId,
+	        ULong roleClientId) {
+
+		return flatMapMono(
+
+		        () -> this.clientService.isBeingManagedBy(loggedInClientId, packageClientId)
+		                .flatMap(BooleanUtil::getTruthOrEmpty),
+
+		        roleManaged -> this.clientService.isBeingManagedBy(loggedInClientId, roleClientId)
+		                .flatMap(BooleanUtil::getTruthOrEmpty)
+
+		);
 
 	}
 
@@ -290,7 +300,9 @@ public class PackageService extends
 			                                                .getClientId()), packageRecord.getClientId())
 			                                        .flatMap(BooleanUtil::getTruthOrEmpty)),
 
-			                (ca, sysOrManaged) -> this.dao.checkRoleFromBasePackage(roleId)
+			                (ca, sysOrManaged) -> this.dao.removeRole(packageId, roleId),
+
+			                (ca, sysOrManaged, roleRemoved) -> this.dao.checkRoleFromBasePackage(roleId)
 			                        .flatMap(isBase ->
 									{
 				                        if (isBase.booleanValue())
@@ -301,11 +313,8 @@ public class PackageService extends
 
 									),
 
-			                (ca, sysOrManaged, removeUsersRole) -> this.removePermissions(packageId, roleId)
-			                        .flatMap(BooleanUtil::getTruthOrEmpty),
-
-			                (ca, sysOrManaged, removedUsersRole, removedUsersPermission) -> this.dao
-			                        .removeRole(packageId, roleId)
+			                (ca, sysOrManaged, roleRemoved, removeUsersRole) -> this
+			                        .removePermissions(packageId, roleId)
 			                        .map(removed ->
 									{
 

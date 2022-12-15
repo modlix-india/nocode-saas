@@ -36,6 +36,7 @@ import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.util.BooleanUtil;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
@@ -292,36 +293,31 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
 	public Mono<Boolean> removePermissionFromUser(ULong userId, ULong permissionId) {
+
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.dao.readById(userId),
+		        ca ->
 
-		        (ca, user) ->
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.dao.readById(userId)
 
-				clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-				        .getClientId()), user.getClientId()),
+				                .flatMap(user -> this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+				                        .getClientId()), user.getClientId())),
 
-		        (ca, user, isManaged) ->
-				{
+		        (ca, isManaged) ->
 
-			        if (ca.isSystemClient() || isManaged.booleanValue())
+				this.dao.removePermissionFromUser(userId, permissionId)
+				        .map(val ->
+						{
+					        boolean removed = val > 0;
 
-				        return this.dao.removePermissionFromUser(userId, permissionId)
-				                .map(val ->
-								{
-					                boolean removed = val > 0;
+					        if (removed)
+						        super.unAssignLog(userId, UNASSIGNED_PERMISSION);
 
-					                if (removed)
-						                super.unAssignLog(userId, UNASSIGNED_PERMISSION);
-
-					                return removed;
-				                });
-
-			        return Mono.empty();
-
-		        }
+					        return removed;
+				        })
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
@@ -335,31 +331,29 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        ca -> this.dao.readById(userId),
 
-		        (ca, user) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), user.getClientId()),
+		        (ca, user) ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+				                .getClientId()), user.getClientId())
+				                .flatMap(BooleanUtil::getTruthOrEmpty),
 
 		        (ca, user, isManaged) ->
-				{
-			        if (ca.isSystemClient() || isManaged.booleanValue())
 
-				        return this.dao.removeRoleForUser(userId, roleId)
-				                .map(val ->
-								{
-					                boolean removed = val > 0;
-					                if (removed)
-						                super.unAssignLog(userId, UNASSIGNED_ROLE);
+				this.dao.removeRoleForUser(userId, roleId)
+				        .map(val ->
+						{
+					        boolean removed = val > 0;
+					        if (removed)
+						        super.unAssignLog(userId, UNASSIGNED_ROLE);
 
-					                return removed;
-				                });
-
-			        return Mono.empty();
-		        }
+					        return removed;
+				        })
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 
-	// improve readability
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
 	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
 
@@ -377,46 +371,27 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                contextAuth -> this.dao.readById(userId),
 
 			                (contextAuth, user) ->
-							{
 
-				                if (contextAuth.isSystemClient())
-					                return Mono.just(true);
+							contextAuth.isSystemClient() ? Mono.just(true) :
 
-				                return clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
-				                        .getClientId()), user.getClientId())
-				                        .flatMap(e -> e.booleanValue() ? Mono.just(e)
-				                                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				                                        SecurityMessageResourceService.LOGGED_IN_USER_ERROR));
-			                },
+							        clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
+							                .getClientId()), user.getClientId())
+							                .flatMap(BooleanUtil::getTruthOrEmpty),
 
 			                (contextAuth, user, sysOrManaged) -> this.clientService
-			                        .checkPermissionAvailableForSelectedClient(user.getClientId(), permissionId),
+			                        .checkPermissionExistsOrCreatedForClient(user.getClientId(), permissionId)
+			                        .flatMap(BooleanUtil::getTruthOrEmpty),
 
-			                (contextAuth, user, sysOrManaged, permissionAvailable) -> permissionAvailable.booleanValue()
-			                        ? Mono.just(true)
-			                        : this.clientService
-			                                .checkPermissionCreatedBySelectedClient(user.getClientId(), permissionId)
-			                                .map(Boolean::booleanValue),
+			                (contextAuth, user, sysOrManaged, hasPermission) ->
 
-			                (contextAuth, user, sysOrManaged, permissionAvailable, hasPermission) ->
-							{
+							this.dao.assignPermissionToUser(userId, permissionId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(userId, ASSIGNED_PERMISSION + permissionId);
 
-				                if (hasPermission.booleanValue()) {
-
-					                return this.dao.assigningPermissionToUser(userId, permissionId)
-					                        .map(e ->
-											{
-						                        boolean assigned = e > 0;
-						                        if (assigned)
-							                        super.assignLog(userId, ASSIGNED_PERMISSION + permissionId);
-
-						                        return assigned;
-					                        });
-				                }
-
-				                return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR); // throw an error
-			                }
+								        return e;
+							        })
 
 				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 				        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
@@ -440,40 +415,28 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                ca -> this.dao.readById(userId),
 
 			                (ca, user) ->
-							{
 
-				                if (ca.isSystemClient())
-					                return Mono.just(true);
+							ca.isSystemClient() ? Mono.just(true) :
 
-				                return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-				                        .getClientId()), user.getClientId())
-				                        .flatMap(e -> e.booleanValue() ? Mono.just(e) : Mono.empty());
+							        clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+							                .getClientId()), user.getClientId())
+							                .flatMap(BooleanUtil::getTruthOrEmpty),
 
-			                },
+			                (ca, user, sysOrManaged) ->
 
-			                (ca, user, sysOrManaged) -> this.clientService
-			                        .checkRoleApplicableForSelectedClient(user.getClientId(), roleId),
+							this.clientService.checkRoleExistsOrCreatedForClient(user.getClientId(), roleId)
+							        .flatMap(BooleanUtil::getTruthOrEmpty),
 
-			                (ca, user, sysOrManaged, checkClientApplicable) -> this.clientService
-			                        .checkRoleCreatedBySelectedClient(user.getClientId(), roleId),
+			                (ca, user, sysOrManaged, roleApplicable) ->
 
-			                (ca, user, sysOrManaged, checkClientApplicable, roleCreated) ->
-							{
+							this.dao.addRoleToUser(userId, roleId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(userId, ASSIGNED_ROLE + roleId);
 
-				                if (checkClientApplicable.booleanValue() || roleCreated.booleanValue()) {
-
-					                return this.dao.addRoleToUser(userId, roleId)
-					                        .map(e ->
-											{
-						                        if (e.booleanValue())
-							                        super.assignLog(userId, ASSIGNED_ROLE + roleId);
-
-						                        return e;
-					                        });
-				                }
-
-				                return Mono.empty();
-			                }
+								        return e;
+							        })
 
 				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 				        SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
@@ -499,8 +462,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
 			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
-
-		// reset password only for active users
 
 		return flatMapMono(
 

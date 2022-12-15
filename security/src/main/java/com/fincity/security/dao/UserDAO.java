@@ -327,14 +327,15 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(query);
 	}
 
-	public Mono<Integer> assigningPermissionToUser(ULong userId, ULong permissionId) {
+	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
 
 		return Mono.from(
 
 		        this.dslContext
 		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
 		                        SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
-		                .values(userId, permissionId));
+		                .values(userId, permissionId))
+		        .map(value -> value > 0);
 	}
 
 	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
@@ -409,7 +410,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		)
 		        .map(Record1::value1)
-		        .map(count -> count > 0);
+		        .map(count -> count == 1);
 	}
 
 	public Mono<Boolean> checkRoleAssignedForUser(ULong userId, ULong roleId) {
@@ -423,7 +424,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		)
 		        .map(Record1::value1)
-		        .map(count -> count > 0);
+		        .map(count -> count == 1);
 	}
 
 	public Mono<Boolean> addRoleToUser(ULong userId, ULong roleId) {

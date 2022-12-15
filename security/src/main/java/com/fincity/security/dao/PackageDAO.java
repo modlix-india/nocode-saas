@@ -298,23 +298,30 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 
 	public Mono<List<ULong>> omitRolesFromBasePackage(List<ULong> roles) {
 
-		return Flux.from(this.dslContext.select(SECURITY_ROLE.ID)
+		return Flux.from(this.dslContext.selectDistinct(SECURITY_ROLE.ID)
 		        .from(SECURITY_ROLE)
 		        .leftJoin(SECURITY_PACKAGE_ROLE)
 		        .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE.ID))
 		        .leftJoin(SECURITY_PACKAGE)
 		        .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-		        .where(SECURITY_PACKAGE.BASE.eq((byte) 1)))
-		        .map(Record1::value1)
+		        .where(SECURITY_PACKAGE.BASE.eq((byte) 1))
+		        .and(SECURITY_ROLE.ID.in(roles)))
 		        .collectList()
-		        .flatMap(otherRoles ->
+		        .map(records -> records.isEmpty() ? new ArrayList<ULong>()
+		                : records.stream()
+		                        .map(Record1::value1)
+		                        .filter(Objects::nonNull)
+		                        .toList())
+		        .map(omittedRoles ->
 				{
-			        if (roles == null || otherRoles == null)
-				        return Mono.just(List.of());
+			        List<ULong> finalRoles = new ArrayList<>(roles);
 
-			        roles.removeAll(otherRoles); // edit here
-			        return Mono.just(roles);
-		        });
+			        if (!omittedRoles.isEmpty())
+				        omittedRoles.forEach(finalRoles::remove);
+			        return finalRoles;
+		        })
+
+		;
 
 	}
 
@@ -322,7 +329,7 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
+		        this.dslContext.selectDistinct(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
 		                .from(SECURITY_PACKAGE_ROLE)
 		                .leftJoin(SECURITY_ROLE_PERMISSION)
 		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
@@ -336,7 +343,7 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
+		        this.dslContext.selectDistinct(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
 		                .from(SECURITY_PACKAGE)
 		                .leftJoin(SECURITY_PACKAGE_ROLE)
 		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
@@ -345,14 +352,16 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		                .where(SECURITY_ROLE_PERMISSION.PERMISSION_ID.in(permissions)
 		                        .and(SECURITY_PACKAGE.BASE.eq((byte) 1))))
 		        .map(Record1::value1)
+		        .filter(Objects::nonNull)
 		        .collectList()
-		        .flatMap(otherPermissions ->
+		        .map(otherPermissions ->
 				{
+
 			        if (permissions == null || otherPermissions == null)
-				        return Mono.just(List.of());
+				        return new ArrayList<>();
 
 			        permissions.removeAll(otherPermissions);
-			        return Mono.just(permissions);
+			        return permissions;
 		        });
 
 	}

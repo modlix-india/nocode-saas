@@ -63,7 +63,7 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)
 		                        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId))))
 		        .map(Record1::value1)
-		        .map(val -> val > 0);
+		        .map(val -> val == 1);
 	}
 
 	public Mono<Permission> getPermissionRecord(ULong permissionId) {

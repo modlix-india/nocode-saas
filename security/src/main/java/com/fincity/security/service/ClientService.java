@@ -29,6 +29,7 @@ import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.util.BooleanUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -46,6 +47,8 @@ public class ClientService
 	private static final String CACHE_CLIENT_URI = "uri";
 
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
+
+	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
 
 	@Autowired
 	private CacheService cacheService;
@@ -273,44 +276,24 @@ public class ClientService
 
 			                ca -> this.dao.getPackage(packageId),
 
-			                // check package's client is being managed by the logged in client user
+			                (ca, packageRecord) -> BooleanUtil.getTruthOrEmpty(packageRecord.isBase()),
 
-			                (ca, packageR) ->
-							{
+			                (ca, packageRecord, basePackage) ->
 
-				                if (packageR == null || packageR.isBase())
-					                return Mono.empty(); // instead of throwing error try to handle it another way if
-					                                     // possible
+							ca.isSystemClient() ? Mono.just(true)
+							        : checkClientAndPackageManaged(ULong.valueOf(ca.getUser()
+							                .getClientId()), clientId, packageRecord.getClientId()),
 
-				                return this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-				                        .getClientId()), clientId)
-				                        .flatMap(
-				                                isManaged -> isManaged.booleanValue()
-				                                        ? this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-				                                                .getClientId()), packageR.getClientId())
-				                                        : Mono.just(false));
+			                (ca, packageRecord, basePackage, isManaged) ->
 
-			                },
+							this.dao.addPackageToClient(clientId, packageId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(clientId, ASSIGNED_PACKAGE + packageId);
 
-			                (ca, packageR, isManaged) ->
-
-							{
-
-				                if (isManaged.booleanValue() || ca.isSystemClient()) {
-
-					                return this.dao.addPackageToClient(clientId, packageId)
-					                        .map(e ->
-											{
-						                        if (e.booleanValue())
-							                        super.assignLog(clientId, ASSIGNED_PACKAGE + packageId);
-
-						                        return e;
-					                        });
-
-				                }
-
-				                return Mono.empty();
-			                }
+								        return e;
+							        })
 
 				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 				        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
@@ -321,16 +304,19 @@ public class ClientService
 
 	}
 
-	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
-		return this.dao.checkPermissionAvailableForGivenClient(clientId, permissionId);
+	private Mono<Boolean> checkClientAndPackageManaged(ULong loggedInClientId, ULong clientId, ULong packageClientId) {
+
+		return flatMapMono(
+
+		        () -> this.isBeingManagedBy(loggedInClientId, clientId)
+		                .flatMap(BooleanUtil::getTruthOrEmpty),
+
+		        clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
+		                .flatMap(BooleanUtil::getTruthOrEmpty));
 	}
 
-	public Mono<Boolean> checkPermissionAvailableForSelectedClient(ULong clientId, ULong permissionId) {
-		return this.dao.checkPermissionAvailableForSelectedClient(clientId, permissionId);
-	}
-
-	public Mono<Boolean> checkPermissionCreatedBySelectedClient(ULong clientId, ULong permissionId) {
-		return this.dao.checkPermissionCreatedBySelectedClient(clientId, permissionId);
+	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
+		return this.dao.checkPermissionExistsOrCreatedForClient(clientId, permissionId);
 	}
 
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
@@ -354,12 +340,8 @@ public class ClientService
 		                })));
 	}
 
-	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
-		return this.dao.checkRoleApplicableForSelectedClient(clientId, roleId);
-	}
-
-	public Mono<Boolean> checkRoleCreatedBySelectedClient(ULong clientId, ULong roleId) {
-		return this.dao.checkRoleCreatedBySelectedClient(clientId, roleId);
+	public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {
+		return this.dao.checkRoleExistsOrCreatedForClient(clientId, roleId);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
@@ -379,26 +361,36 @@ public class ClientService
 			                ca -> ca.isSystemClient() ? Mono.just(true)
 			                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
 			                                .getClientId()), clientId)
-			                                .flatMap(this::getTruthOrEmpty),
+			                                .flatMap(BooleanUtil::getTruthOrEmpty),
 
-			                (ca, sysOrManaged) -> this.dao.removePackage(clientId, packageId),
+			                (ca, sysOrManaged) -> this.packageService.getRolesFromPackage(packageId),
 
-			                (ca, sysOrManaged, packageRemoved) -> this.packageService.getRolesFromPackage(packageId),
+			                (ca, sysOrManaged, roles) -> this.packageService.omitRolesFromBasePackage(roles),
 
-			                (ca, sysOrManaged, packageRemoved, roles) -> this.packageService
-			                        .omitRolesFromBasePackage(roles),
+			                (ca, sysOrManaged, roles, finalRoles) -> this.dao.findAndRemoveRolesFromUsers(finalRoles,
+			                        packageId),
 
-			                (ca, sysOrManaged, packageRemoved, roles, finalRoles) -> this.dao
-			                        .findAndRemoveRolesFromUsers(finalRoles),
-
-			                (ca, sysOrManaged, packageRemoved, roles, finalRoles, rolesRemoved) -> this.packageService
+			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved) -> this.packageService
 			                        .getPermissionsFromPackage(packageId, finalRoles),
 
-			                (ca, sysOrManaged, packageRemoved, roles, finalRoles, rolesRemoved,
-			                        permissions) -> this.packageService.omitPermissionsFromBasePackage(permissions),
+			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions) -> this.packageService
+			                        .omitPermissionsFromBasePackage(permissions),
 
-			                (ca, sysOrManaged, packageRemoved, roles, finalRoles, rolesRemoved, permissions,
-			                        finalPermissions) -> this.dao.findAndRemovePermissionsFromUsers(finalPermissions)
+			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions,
+			                        finalPermissions) -> this.dao.findAndRemovePermissionsFromUsers(finalPermissions,
+			                                packageId),
+
+			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions, finalPermissions,
+			                        rolesPermissionsRemoved) ->
+
+							this.dao.removePackage(clientId, packageId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.unAssignLog(packageId, UNASSIGNED_PACKAGE + clientId);
+
+								        return e;
+							        })
 
 				);
 		        })
@@ -407,7 +399,4 @@ public class ClientService
 
 	}
 
-	public Mono<Boolean> getTruthOrEmpty(Boolean b) {
-		return b.booleanValue() ? Mono.just(b) : Mono.empty();
-	}
 }

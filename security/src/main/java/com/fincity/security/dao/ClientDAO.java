@@ -158,37 +158,30 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 	}
 
-	public Mono<Boolean> checkPermissionCreatedBySelectedClient(ULong clientId, ULong permissionId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_PERMISSION.ID)
-		        .from(SECURITY_PERMISSION)
-		        .where(SECURITY_PERMISSION.CLIENT_ID.eq(clientId)
-		                .and(SECURITY_PERMISSION.ID.eq(permissionId))))
-		        .map(Record1::value1)
-		        .map(Objects::nonNull);
-	}
-
-	public Mono<Boolean> checkPermissionAvailableForSelectedClient(ULong clientId, ULong permissionId) {
+	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
 
 		Condition clientCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
 		        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId));
 
+		Condition assignedOrBasePackageCondition = clientCondition.or(SECURITY_PACKAGE.BASE.eq((byte) 1));
+
+		Condition permissionCreatedCondition = SECURITY_PERMISSION.CLIENT_ID.eq(clientId);
+
 		return Mono.from(
 
-		        this.dslContext.select(SECURITY_ROLE_PERMISSION.ROLE_ID)
-		                .from(SECURITY_ROLE_PERMISSION)
+		        this.dslContext.selectCount()
+		                .from(SECURITY_PERMISSION)
+		                .leftJoin(SECURITY_ROLE_PERMISSION)
+		                .on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
 		                .leftJoin(SECURITY_PACKAGE_ROLE)
 		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
 		                .leftJoin(SECURITY_CLIENT_PACKAGE)
 		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
 		                .leftJoin(SECURITY_PACKAGE)
 		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
-		                .where(SECURITY_PACKAGE.BASE.eq((byte) 1)
-		                        .or(clientCondition))
-
-		                .limit(1))
+		                .where(assignedOrBasePackageCondition.or(permissionCreatedCondition)))
 		        .map(Record1::value1)
-		        .map(Objects::nonNull);
+		        .map(count -> count > 0);
 	}
 
 	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
@@ -278,12 +271,16 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e.into(Client.class));
 	}
 
-	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
+	public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {
 
 		Condition packageCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
 		        .or(SECURITY_PACKAGE.BASE.eq((byte) 1));
 
 		Condition roleCondition = SECURITY_ROLE.ID.eq(roleId);
+
+		Condition roleExistsCondition = packageCondition.and(roleCondition);
+
+		Condition roleCreatedCondition = SECURITY_ROLE.CLIENT_ID.eq(clientId);
 
 		return Mono.from(
 
@@ -295,7 +292,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
 		                .leftJoin(SECURITY_CLIENT_PACKAGE)
 		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-		                .where(packageCondition.and(roleCondition)))
+		                .where(roleExistsCondition.or(roleCreatedCondition)))
 
 		        .map(Record1::value1)
 		        .map(val -> val.intValue() > 0);
@@ -309,20 +306,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .and(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)));
 
 		return Mono.from(query)
-		        .map(val -> val > 0);
-	}
-
-	public Mono<Set<ULong>> getClientListFromPackage(ULong packageId) {
-
-		Set<ULong> clientList = new HashSet<ULong>();
-
-		Flux.from(this.dslContext.select(SECURITY_CLIENT_PACKAGE.CLIENT_ID)
-		        .from(SECURITY_CLIENT_PACKAGE)
-		        .where(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
-		        .map(Record1::value1)
-		        .map(client -> clientList.add(client));
-
-		return Mono.just(clientList);
+		        .map(val -> val == 1);
 	}
 
 	public Mono<Set<ULong>> getUsersListFromClient(Set<ULong> clients) {
@@ -350,16 +334,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e.into(com.fincity.security.dto.Package.class));
 	}
 
-	public Mono<Boolean> checkRoleCreatedBySelectedClient(ULong clientId, ULong roleId) {
-
-		return Mono.from(this.dslContext.selectCount()
-		        .from(SECURITY_ROLE)
-		        .where(SECURITY_ROLE.ID.eq(roleId)
-		                .and(SECURITY_ROLE.CLIENT_ID.eq(clientId))))
-		        .map(Record1::value1)
-		        .map(Objects::nonNull);
-	}
-
 	public Mono<Boolean> checkPackageAssignedForClient(ULong clientId, ULong packageId) {
 
 		return Mono.from(
@@ -369,10 +343,10 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
 		                        .and(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId))))
 		        .map(Record1::value1)
-		        .map(value -> value > 0);
+		        .map(value -> value == 1);
 	}
 
-	public Mono<Boolean> findAndRemoveRolesFromUsers(List<ULong> roles) {
+	public Mono<Boolean> findAndRemoveRolesFromUsers(List<ULong> roles, ULong packageId) {
 
 		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
 		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
@@ -381,14 +355,16 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_USER.ID)
+		        this.dslContext.selectDistinct(SECURITY_USER.ID)
 		                .from(SECURITY_PACKAGE_ROLE)
 		                .leftJoin(SECURITY_CLIENT_PACKAGE)
 		                .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
 		                .leftJoin(SECURITY_USER)
 		                .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
-		                .where(SECURITY_PACKAGE_ROLE.ROLE_ID.in(roles)))
+		                .where(SECURITY_PACKAGE_ROLE.ROLE_ID.in(roles)
+		                        .and(SECURITY_PACKAGE_ROLE.PACKAGE_ID.in(packageId))))
 		        .map(Record1::value1)
+		        .filter(Objects::nonNull)
 		        .collectList()
 		        .flatMap(userList ->
 				{
@@ -398,12 +374,12 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 			        query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userList));
 
 			        return Mono.from(query)
-			                .map(value -> value > 0);
+			                .map(value -> value == 1);
 		        });
 
 	}
 
-	public Mono<Boolean> findAndRemovePermissionsFromUsers(List<ULong> permissions) {
+	public Mono<Boolean> findAndRemovePermissionsFromUsers(List<ULong> permissions, ULong packageId) {
 
 		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
 		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
@@ -412,7 +388,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_USER.ID)
+		        this.dslContext.selectDistinct(SECURITY_USER.ID)
 		                .from(SECURITY_ROLE_PERMISSION)
 		                .leftJoin(SECURITY_PACKAGE_ROLE)
 		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
@@ -420,7 +396,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
 		                .leftJoin(SECURITY_USER)
 		                .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
-		                .where(SECURITY_ROLE_PERMISSION.PERMISSION_ID.in(permissions)))
+		                .where(SECURITY_ROLE_PERMISSION.PERMISSION_ID.in(permissions)
+		                        .and(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId))))
 		        .map(Record1::value1)
 		        .collectList()
 		        .flatMap(userList ->
