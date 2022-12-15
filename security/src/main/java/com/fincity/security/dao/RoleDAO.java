@@ -13,11 +13,8 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Stream;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
@@ -117,31 +114,15 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 	}
 
-	public Mono<Set<ULong>> fetchPermissionsFromRole(ULong roleId) {
-
-		Set<ULong> permissionList = new HashSet<>();
-
-		Flux.from(
-
-		        this.dslContext.select(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
-		                .from(SECURITY_ROLE_PERMISSION)
-		                .leftJoin(SECURITY_PACKAGE_ROLE)
-		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
-		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)))
-		        .map(Record1::value1)
-		        .map(permissionList::add);
-
-		return Mono.just(permissionList);
-	}
-
-	public Mono<Integer> removePermissionFromRole(ULong roleId, ULong permissionId) {
+	public Mono<Boolean> removePermissionFromRole(ULong roleId, ULong permissionId) {
 
 		DeleteQuery<SecurityRolePermissionRecord> query = this.dslContext.deleteQuery(SECURITY_ROLE_PERMISSION);
 
 		query.addConditions(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)
 		        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)));
 
-		return Mono.from(query);
+		return Mono.from(query)
+		        .map(value -> value == 1);
 	}
 
 	public Mono<Boolean> checkPermissionBelongsToBasePackage(ULong permissionId) {
@@ -157,62 +138,8 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		                .where(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)
 		                        .and(SECURITY_PACKAGE.BASE.eq((byte) 1))))
 		        .map(Record1::value1)
-		        .map(value -> value > 0);
+		        .map(value -> value == 1);
 
-	}
-
-	public Mono<Set<ULong>> getClientListFromAssignedRoleAndPermission(ULong roleId, ULong permissionId) {
-
-		Set<ULong> clientList = new HashSet<>();
-
-		Flux.from(
-
-		        this.dslContext.selectDistinct(SECURITY_CLIENT_PACKAGE.CLIENT_ID)
-		                .from(SECURITY_ROLE_PERMISSION)
-		                .leftJoin(SECURITY_PACKAGE_ROLE)
-		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
-		                .leftJoin(SECURITY_CLIENT_PACKAGE)
-		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)
-		                        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
-
-		)
-		        .map(Record1::value1)
-		        .toIterable()
-		        .forEach(clientList::add);
-
-		return Mono.just(clientList);
-
-	}
-
-	public Mono<Set<ULong>> getClientListFromAnotherRole(ULong roleId, ULong permissionId, Set<ULong> clientList) {
-
-		Set<ULong> filteredClientList = new HashSet<>();
-
-		Set<ULong> differentRoleClientList = new HashSet<>();
-
-		Flux.from(
-
-		        this.dslContext.selectDistinct(SECURITY_CLIENT_PACKAGE.CLIENT_ID)
-		                .from(SECURITY_ROLE_PERMISSION)
-		                .leftJoin(SECURITY_PACKAGE_ROLE)
-		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
-		                .leftJoin(SECURITY_CLIENT_PACKAGE)
-		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.ne(roleId)
-		                        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
-
-		)
-		        .map(Record1::value1)
-		        .toIterable()
-		        .forEach(differentRoleClientList::add);
-
-		Stream<ULong> filterStream = clientList.stream()
-		        .filter(client -> !differentRoleClientList.contains(client));
-
-		filterStream.forEach(filteredClientList::add);
-
-		return Mono.just(filteredClientList);
 	}
 
 	@Override
@@ -253,7 +180,7 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 
 	public Mono<List<ULong>> getUsersListFromRole(ULong roleId) {
 
-		return Flux.from(this.dslContext.select(SECURITY_USER.ID)
+		return Flux.from(this.dslContext.selectDistinct(SECURITY_USER.ID)
 		        .from(SECURITY_PACKAGE_ROLE)
 		        .leftJoin(SECURITY_CLIENT_PACKAGE)
 		        .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
@@ -261,7 +188,7 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		        .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
 		        .where(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)))
 		        .collectList()
-		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(List.of())
+		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(new ArrayList<>())
 		                : Mono.just(records.stream()
 		                        .map(Record1::value1)
 		                        .filter(Objects::nonNull)
@@ -274,19 +201,17 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 	public Mono<List<ULong>> getUsersListFromClient(ULong clientId) {
 
 		return Flux.from(this.dslContext.selectDistinct(SECURITY_USER.ID)
-		        .from(SECURITY_CLIENT)
-		        .leftJoin(SECURITY_USER)
-		        .on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
-		        .where(SECURITY_CLIENT.ID.eq(clientId)))
+		        .where(SECURITY_USER.CLIENT_ID.eq(clientId)))
 		        .collectList()
-		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(List.of())
+		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(new ArrayList<>())
 		                : Mono.just(records.stream()
 		                        .map(Record1::value1)
 		                        .filter(Objects::nonNull)
 		                        .toList()));
 	}
 
-	public Mono<List<ULong>> getUsersListFromDifferentRole(ULong roleId, ULong permissionId) {
+	public Mono<List<ULong>> omitUsersListFromDifferentRole(ULong roleId, ULong permissionId,
+	        List<ULong> permissionUsers) {
 
 		return Flux.from(
 
@@ -301,11 +226,21 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.ne(roleId)
 		                        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId))))
 		        .collectList()
-		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(List.of())
+		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(new ArrayList<>())
 		                : Mono.just(records.stream()
 		                        .map(Record1::value1)
 		                        .filter(Objects::nonNull)
-		                        .toList()));
+		                        .toList()))
+		        .map(omittedPermissionUsers ->
+				{
+			        List<ULong> users = new ArrayList<>(permissionUsers);
+
+			        if (omittedPermissionUsers.isEmpty())
+				        omittedPermissionUsers.forEach(users::remove);
+
+			        return users;
+
+		        });
 
 	}
 

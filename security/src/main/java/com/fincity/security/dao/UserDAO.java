@@ -316,7 +316,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(query);
 	}
 
-	public Mono<Integer> removePermissionListFromUser(List<ULong> userList, List<ULong> permissionList) {
+	public Mono<Boolean> removePermissionListFromUser(List<ULong> userList, List<ULong> permissionList) {
 
 		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
 		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
@@ -324,7 +324,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userList)
 		        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.in(permissionList)));
 
-		return Mono.from(query);
+		return Mono.from(query)
+		        .map(count -> count > 0);
 	}
 
 	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
@@ -364,23 +365,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        }
 
 		);
-	}
-
-	public Mono<Set<ULong>> getUserListFromClientIds(Set<ULong> clientList) {
-
-		// change to reactive approach
-
-		Set<ULong> users = new HashSet<>();
-
-		Flux.from(
-
-		        this.dslContext.select(SECURITY_USER.ID)
-		                .from(SECURITY_USER)
-		                .where(SECURITY_USER.CLIENT_ID.in(clientList)))
-		        .map(Record1::value1)
-		        .map(users::add);
-
-		return Mono.just(users);
 	}
 
 	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {

@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -168,7 +167,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 			                (ca, roleRecord, permissionRecord) ->
 
 							ca.isSystemClient() ? Mono.just(true)
-							        : checkPermissionAndRoleClientIsManaged(ULong.valueOf(ca.getUser()
+							        : this.checkPermissionAndRoleClientsAreManaged(ULong.valueOf(ca.getUser()
 							                .getClientId()), roleRecord.getClientId(), permissionRecord.getClientId()),
 
 			                (ca, roleRecord, permissionRecord, sysOrManaged) ->
@@ -202,7 +201,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 	}
 
-	private Mono<Boolean> checkPermissionAndRoleClientIsManaged(ULong loggedInClientId, ULong roleClientId,
+	private Mono<Boolean> checkPermissionAndRoleClientsAreManaged(ULong loggedInClientId, ULong roleClientId,
 	        ULong permissionClientId) {
 
 		return flatMapMono(
@@ -214,10 +213,6 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		                .flatMap(BooleanUtil::getTruthOrEmpty)
 
 		);
-	}
-
-	public Mono<Set<ULong>> fetchPermissionsFromRole(ULong roleId) {
-		return this.dao.fetchPermissionsFromRole(roleId);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
@@ -241,20 +236,25 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 			                                .getClientId()), roleRecord.getClientId())
 			                                .flatMap(BooleanUtil::getTruthOrEmpty),
 
-			                (ca, roleRecord, sysOrManaged) -> this.dao.removePermissionFromRole(roleId, permissionId),
-
-			                (ca, roleRecord, sysOrManaged, permissionRemoved) -> this.dao
+			                (ca, roleRecord, sysOrManaged) -> this.dao
 			                        .checkPermissionBelongsToBasePackage(permissionId),
 
-			                (ca, roleRecord, sysOrManaged, permissionRemoved, isBase) -> isBase.booleanValue() ?
+			                (ca, roleRecord, sysOrManaged, fromBase) -> fromBase.booleanValue() ?
 
 			                        Mono.just(true)
-			                        : this.removePermission(roleId, permissionId, roleRecord.getClientId())
-			                                .map(e ->
-											{
-				                                super.assignLog(roleId, UNASSIGNED_PERMISSION + permissionId);
-				                                return e;
-			                                })
+			                        : this.removePermissionsFromUsers(roleId, permissionId, roleRecord.getClientId())
+			                                .flatMap(BooleanUtil::getTruthOrEmpty),
+
+			                (ca, roleRecord, sysOrManaged, fromBase, permissionsRemoved) ->
+
+							this.dao.removePermissionFromRole(roleId, permissionId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(roleId, UNASSIGNED_PERMISSION + permissionId);
+
+								        return e;
+							        })
 
 				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 				        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
@@ -263,7 +263,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 	}
 
-	public Mono<Boolean> removePermission(ULong roleId, ULong permissionId, ULong roleClientId) {
+	private Mono<Boolean> removePermissionsFromUsers(ULong roleId, ULong permissionId, ULong roleClientId) {
 
 		return flatMapMono(
 
@@ -271,20 +271,23 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 		        roleUsers -> this.dao.getUsersListFromClient(roleClientId),
 
-		        (roleUsers, roleClientUsers) -> this.dao.getUsersListFromDifferentRole(roleId, permissionId),
-
-		        (roleUsers, roleClientUsers, differentRoleUsers) ->
+		        (roleUsers, roleClientUsers) ->
 				{
 
-			        List<ULong> finalUsers = new ArrayList<>(roleUsers);
+			        if (roleUsers.isEmpty())
+				        return Mono.just(new ArrayList<>());
 
-			        finalUsers.addAll(roleClientUsers);
-			        if (!differentRoleUsers.isEmpty() && !finalUsers.isEmpty())
-				        finalUsers.removeAll(differentRoleUsers);
+			        else if (roleClientUsers.isEmpty())
+				        return this.dao.omitUsersListFromDifferentRole(roleId, permissionId, roleUsers);
 
-			        return finalUsers.isEmpty() ? Mono.just(true)
-			                : this.dao.removePemissionFromUsers(permissionId, finalUsers);
-		        }
+			        roleClientUsers.stream()
+			                .forEach(roleUsers::remove);
+
+			        return this.dao.omitUsersListFromDifferentRole(roleId, permissionId, roleUsers);
+		        },
+
+		        (roleUsers, roleClientUsers, finalRoleUsers) -> finalRoleUsers.isEmpty() ? Mono.just(true)
+		                : this.dao.removePemissionFromUsers(permissionId, finalRoleUsers)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));

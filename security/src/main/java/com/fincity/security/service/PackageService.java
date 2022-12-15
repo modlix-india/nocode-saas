@@ -221,7 +221,7 @@ public class PackageService extends
 			                (ca, packageRecord, roleRecord) ->
 
 							ca.isSystemClient() ? Mono.just(true)
-							        : checkRoleAndPackageClientIsManaged(ULong.valueOf(ca.getUser()
+							        : this.checkRoleAndPackageClientsAreManaged(ULong.valueOf(ca.getUser()
 							                .getClientId()), packageRecord.getClientId(), roleRecord.getClientId()),
 
 			                (ca, packageRecord, roleRecord, rolePackageManaged) ->
@@ -253,7 +253,7 @@ public class PackageService extends
 
 	}
 
-	private Mono<Boolean> checkRoleAndPackageClientIsManaged(ULong loggedInClientId, ULong packageClientId,
+	private Mono<Boolean> checkRoleAndPackageClientsAreManaged(ULong loggedInClientId, ULong packageClientId,
 	        ULong roleClientId) {
 
 		return flatMapMono(
@@ -290,39 +290,35 @@ public class PackageService extends
 
 			                                packageRecord -> this.roleService.read(roleId),
 
-			                                (packageRecord, roleRecord) -> this.clientService
-			                                        .isBeingManagedBy(ULong.valueOf(ca.getUser()
-			                                                .getClientId()), roleRecord.getClientId())
-			                                        .flatMap(BooleanUtil::getTruthOrEmpty),
+			                                (packageRecord, roleRecord) -> this.checkRoleAndPackageClientsAreManaged(
+			                                        ULong.valueOf(ca.getUser()
+			                                                .getClientId()),
+			                                        packageRecord.getClientId(), roleRecord.getClientId())
 
-			                                (packageRecord, roleRecord, roleManaged) -> this.clientService
-			                                        .isBeingManagedBy(ULong.valueOf(ca.getUser()
-			                                                .getClientId()), packageRecord.getClientId())
-			                                        .flatMap(BooleanUtil::getTruthOrEmpty)),
+									),
 
-			                (ca, sysOrManaged) -> this.dao.removeRole(packageId, roleId),
-
-			                (ca, sysOrManaged, roleRemoved) -> this.dao.checkRoleFromBasePackage(roleId)
+			                (ca, sysOrManaged) -> this.dao.checkRoleFromBasePackage(roleId)
 			                        .flatMap(isBase ->
 									{
 				                        if (isBase.booleanValue())
 					                        return Mono.just(true);
 
-				                        return this.removeRole(packageId, roleId);
-			                        }
+				                        return this.removeRoleFromUsers(packageId, roleId);
+			                        }),
 
-									),
+			                (ca, sysOrManaged, removeUsersRole) -> this.removePermissionsFromUsers(packageId, roleId),
 
-			                (ca, sysOrManaged, roleRemoved, removeUsersRole) -> this
-			                        .removePermissions(packageId, roleId)
-			                        .map(removed ->
+			                (ca, sysOrManaged, removeUsersRole, removeUsersPermission) ->
+
+							this.dao.removeRole(packageId, roleId)
+							        .map(removed ->
 									{
 
-				                        if (removed.booleanValue())
-					                        super.unAssignLog(packageId, UNASSIGNED_ROLE + roleId);
+								        if (removed.booleanValue())
+									        super.unAssignLog(packageId, UNASSIGNED_ROLE + roleId);
 
-				                        return removed;
-			                        })
+								        return removed;
+							        })
 
 				);
 		        })
@@ -331,7 +327,7 @@ public class PackageService extends
 
 	}
 
-	public Mono<Boolean> removeRole(ULong packageId, ULong roleId) {
+	private Mono<Boolean> removeRoleFromUsers(ULong packageId, ULong roleId) {
 
 		return flatMapMono(
 
@@ -344,7 +340,7 @@ public class PackageService extends
 		);
 	}
 
-	public Mono<Boolean> removePermissions(ULong packageId, ULong roleId) {
+	private Mono<Boolean> removePermissionsFromUsers(ULong packageId, ULong roleId) {
 
 		return flatMapMono(
 

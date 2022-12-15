@@ -184,33 +184,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(count -> count > 0);
 	}
 
-	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
-
-		Condition clientCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
-
-		        .or(SECURITY_PACKAGE.CLIENT_ID.eq(clientId))
-		        .or(SECURITY_PACKAGE.BASE.eq((byte) 1));
-
-		Condition permissionCondition = SECURITY_PERMISSION.ID.eq(permissionId);
-
-		return Mono.from(
-
-		        this.dslContext.select(SECURITY_PACKAGE.ID)
-		                .from(SECURITY_PACKAGE)
-		                .leftJoin(SECURITY_CLIENT_PACKAGE)
-		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
-		                .leftJoin(SECURITY_PACKAGE_ROLE)
-		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-		                .leftJoin(SECURITY_ROLE_PERMISSION)
-		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
-		                .leftJoin(SECURITY_PERMISSION)
-		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
-		                .where(clientCondition.and(permissionCondition)))
-		        .map(Record1::value1)
-		        .map(value -> value.intValue() > 0);
-
-	}
-
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
 
 		if (managingClientCode.equals(clientCode))
@@ -307,21 +280,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 		return Mono.from(query)
 		        .map(val -> val == 1);
-	}
-
-	public Mono<Set<ULong>> getUsersListFromClient(Set<ULong> clients) {
-
-		Set<ULong> userList = new HashSet<ULong>();
-
-		Flux.from(
-
-		        this.dslContext.select(SECURITY_USER.ID)
-		                .from(SECURITY_USER)
-		                .where(SECURITY_USER.CLIENT_ID.in(clients)))
-		        .map(Record1::value1)
-		        .map(user -> userList.add(user));
-
-		return Mono.just(userList);
 	}
 
 	public Mono<com.fincity.security.dto.Package> getPackage(ULong packageId) {

@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +28,6 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
-
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -287,8 +285,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> removeFromPermissionList(List<ULong> userList, List<ULong> permissionList) {
 
-		return this.dao.removePermissionListFromUser(userList, permissionList)
-		        .map(value -> value > 0);
+		return this.dao.removePermissionListFromUser(userList, permissionList);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
@@ -451,10 +448,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
-	}
-
-	public Mono<Set<ULong>> getUserListFromClients(Set<ULong> clientList) {
-		return this.dao.getUserListFromClientIds(clientList);
 	}
 
 	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {

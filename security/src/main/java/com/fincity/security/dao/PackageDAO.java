@@ -252,38 +252,6 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 
 	}
 
-	public Mono<List<ULong>> getUsersFromPermissionsListWithDifferentPackage(ULong packageId, List<ULong> permissions) {
-
-		return Flux.from(
-
-		        this.dslContext.select(SECURITY_USER.ID)
-		                .from(SECURITY_ROLE_PERMISSION)
-		                .leftJoin(SECURITY_PACKAGE_ROLE)
-		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
-		                .leftJoin(SECURITY_CLIENT_PACKAGE)
-		                .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
-		                .leftJoin(SECURITY_USER)
-		                .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
-		                .where(SECURITY_ROLE_PERMISSION.PERMISSION_ID.in(permissions)
-		                        .and(SECURITY_PACKAGE_ROLE.PACKAGE_ID.ne(packageId))))
-		        .collectList()
-		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(new ArrayList<ULong>())
-		                : Mono.just(records.stream()
-		                        .map(Record1::value1)
-		                        .filter(Objects::nonNull)
-		                        .toList()))
-		        .map(basePermissions ->
-				{
-
-			        ArrayList<ULong> iPermissions = new ArrayList<>(permissions);
-
-			        if (!basePermissions.isEmpty())
-				        basePermissions.forEach(iPermissions::remove);
-
-			        return iPermissions;
-		        });
-	}
-
 	public Mono<List<ULong>> getRolesFromPackage(ULong packageId) {
 
 		return Flux.from(
