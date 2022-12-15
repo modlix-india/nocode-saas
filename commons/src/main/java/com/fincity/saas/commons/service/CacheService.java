@@ -183,7 +183,7 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		                .switchIfEmpty(Mono.defer(() -> supplier.get()
 		                        .flatMap(value -> this.put(cName, new CacheObject(value), key))
 		                        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), keys))))))
-		        .map(e -> (T) e.getObject());
+		        .flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
 	}
 
 	public Mono<Boolean> evictAll(String cName) {

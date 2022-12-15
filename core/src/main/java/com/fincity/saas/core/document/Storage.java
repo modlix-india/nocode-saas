@@ -46,6 +46,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.readAuth = store.readAuth;
 		this.updateAuth = store.updateAuth;
 		this.deleteAuth = store.deleteAuth;
+		this.uniqueName = store.uniqueName;
 	}
 
 	@SuppressWarnings("unchecked")

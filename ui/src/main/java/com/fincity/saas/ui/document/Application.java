@@ -79,7 +79,7 @@ public class Application extends AbstractOverridableDTO<Application> {
 		if (base == null)
 			return starting;
 
-		return FlatMapUtil.flatMapMonoWithNullLog(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> starting,
 

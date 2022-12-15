@@ -33,7 +33,6 @@ import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.document.Version;
-import com.fincity.saas.commons.mongo.document.Version.ObjectType;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.model.ListResultObject;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
@@ -118,8 +117,8 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 		                        ? versionService.create(new Version().setClientCode(cEntity.getClientCode())
 		                                .setObjectName(entity.getName())
 		                                .setObjectAppCode(entity.getAppCode())
-		                                .setObjectType(ObjectType.valueOf(this.pojoClass.getSimpleName()
-		                                        .toUpperCase()))
+		                                .setObjectType(this.pojoClass.getSimpleName()
+		                                        .toUpperCase())
 		                                .setVersionNumber(1)
 		                                .setMessage(entity.getMessage())
 		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
@@ -138,14 +137,19 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 			return Mono.just(false);
 
 		return flatMapMono(
-		        () -> SecurityContextUtil.hasAuthority("Authorities.APPBUILDER." + this.pojoClass.getSimpleName() + "_" + method,
-		                ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
+		        () -> SecurityContextUtil.hasAuthority(
+		                "Authorities.APPBUILDER." + this.pojoClass.getSimpleName() + "_" + method, ca.getAuthorities())
+		                        ? Mono.just(true)
+		                        : Mono.empty(),
 
-		        access -> ca.getClientCode()
-		                .equals(entity.getClientCode()) ? Mono.just(true)
-		                        : this.securityService.isBeingManaged(ca.getClientCode(), entity.getClientCode()),
-		        (access, managed) ->
+		        access ->
 				{
+			        if (ca.getClientCode()
+			                .equals(entity.getClientCode()))
+				        return Mono.just(true);
+
+			        return this.securityService.isBeingManaged(ca.getClientCode(), entity.getClientCode());
+		        }, (access, managed) -> {
 
 			        if (!managed.booleanValue())
 				        return Mono.empty();
@@ -169,8 +173,8 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 
 		)), this.pojoClass)
 		        .flatMap(c -> c > 0 ? messageResourceService.throwMessage(HttpStatus.CONFLICT,
-		                AbstractMongoMessageResourceService.ALREADY_EXISTS, this.pojoClass.getSimpleName(), cca.getName())
-		                : Mono.just(cca));
+		                AbstractMongoMessageResourceService.ALREADY_EXISTS, this.pojoClass.getSimpleName(),
+		                cca.getName()) : Mono.just(cca));
 	}
 
 	@Override
@@ -228,8 +232,8 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 		                        ? versionService.create(new Version().setClientCode(entity.getClientCode())
 		                                .setObjectName(entity.getName())
 		                                .setObjectAppCode(entity.getAppCode())
-		                                .setObjectType(ObjectType.valueOf(this.pojoClass.getSimpleName()
-		                                        .toUpperCase()))
+		                                .setObjectType(this.pojoClass.getSimpleName()
+		                                        .toUpperCase())
 		                                .setVersionNumber(1)
 		                                .setMessage(entity.getMessage())
 		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
@@ -285,7 +289,8 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 
 			        if (count > 0l)
 				        return messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				                AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(), id);
+				                AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.pojoClass.getSimpleName(),
+				                id);
 
 			        cacheService
 			                .evict(this.getCacheName(), entity.getName(), "-", entity.getAppCode(), "-",
@@ -552,7 +557,8 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 			        } catch (Exception e) {
 
 				        return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-				                AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.pojoClass.getSimpleName());
+				                AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT,
+				                this.pojoClass.getSimpleName());
 			        }
 		        },
 

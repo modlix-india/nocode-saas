@@ -26,18 +26,18 @@ import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/core/data/{storage}/")
+@RequestMapping("api/core/data/")
 public class AppDataController {
 
 	public static final String PATH_VARIABLE_ID = "id";
 	public static final String PATH_VARIABLE_STORAGE = "storage";
-	public static final String PATH_ID = "/{" + PATH_VARIABLE_ID + "}";
-	public static final String PATH_QUERY = "query";
+	public static final String PATH_ID = "{storage}/{" + PATH_VARIABLE_ID + "}";
+	public static final String PATH_QUERY = "{storage}/query";
 
 	@Autowired
 	private AppDataService service;
 
-	@PostMapping
+	@PostMapping("{storage}")
 	public Mono<ResponseEntity<Map<String, Object>>> create(
 	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
 	        @RequestHeader String clientCode, @RequestBody DataObject entity) {
@@ -55,7 +55,7 @@ public class AppDataController {
 		        .map(ResponseEntity::ok);
 	}
 
-	@GetMapping()
+	@GetMapping("{storage}")
 	public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilter(
 	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
 	        @RequestHeader String clientCode, Pageable pageable, ServerHttpRequest request) {

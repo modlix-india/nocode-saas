@@ -62,7 +62,7 @@ public class AuthenticationController {
 	@GetMapping(value = "internal/securityContextAuthentication", produces = { "application/json" })
 	public Mono<ResponseEntity<ContextAuthentication>> contextAuthentication() {
 
-		return flatMapMonoLog(
+		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 

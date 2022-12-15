@@ -20,7 +20,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableEurekaClient
 @EnableFeignClients
 @EnableReactiveFeignClients(basePackages =  "com.fincity")
-@EnableReactiveMongoRepositories
+@EnableReactiveMongoRepositories(basePackages =  "com.fincity")
 @EnableWebFlux
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity

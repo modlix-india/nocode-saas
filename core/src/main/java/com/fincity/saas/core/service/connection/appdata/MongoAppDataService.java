@@ -10,18 +10,25 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.util.BsonUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.kirun.engine.json.schema.validator.SchemaValidator;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.CoreMessageResourceService;
+import com.fincity.saas.core.service.StorageService;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.mongodb.client.model.Filters;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
@@ -51,6 +58,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	@Value("${redis.connection.eviction.channel:connectionChannel}")
 	private String channel;
+
+	@Autowired
+	private StorageService storageService;
 
 	@PostConstruct
 	private void init() {
@@ -85,18 +95,38 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	public Mono<Map<String, Object>> createWithoutAuth(Connection conn, Storage storage, DataObject dataObject) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMonoWithNullLog(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
-		        
-		        ca -> Mono.just(SchemaValidator.validate(null, storage.getSchema(), null, dataObject.getData())),
 
-		        ca -> Mono.from(this.getCollection(conn, storage)
-		                .insertOne(new Document(BJsonUtil.from(dataObject.getData())))),
+		        ca -> storageService.getSchema(storage),
 
-		        (ca, result) -> this.getCollection(conn, storage).find(Filters.eq("_id", result.getInsertedId())).first(),
+		        (ca, schema) ->
+				{
+
+			        try {
+
+				        JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
+				                .getAsJsonObject();
+				        return Mono.just((JsonObject) SchemaValidator.validate(null, schema, null, job));
+			        } catch (Exception ex) {
+				        return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
+				                CoreMessageResourceService.SCHEMA_VALIDATION_ERROR);
+			        }
+		        },
+
+		        (ca, schema, je) -> Mono.from(this.getCollection(conn, storage)
+		                .insertOne(new Document(BJsonUtil.from(je)))),
+
+		        (ca, schema, je, result) -> Mono.from(this.getCollection(conn, storage)
+		                .find(Filters.eq("_id", result.getInsertedId()))
+		                .first()),
 		        
-				);
+				(ca, scheme, je, result, doc) -> {
+					doc.remove("_id");
+					doc.append("_id", result.getInsertedId().asObjectId().getValue().toHexString());
+					return Mono.just(doc);
+				});
 	}
 
 	@Override

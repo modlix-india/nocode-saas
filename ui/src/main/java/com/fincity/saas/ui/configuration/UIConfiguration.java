@@ -8,6 +8,7 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 import com.fincity.saas.commons.mongo.configuration.AbstractMongoConfiguration;
+import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 
@@ -18,6 +19,7 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
 	@PostConstruct
 	public void initialize() {
 		super.initialize();
+		this.objectMapper.registerModule(new KIRuntimeSerializationModule());
 	}
 
 	@Bean

@@ -25,23 +25,7 @@ public class Version extends AbstractDTO<String, String> {
 	private String clientCode;
 	private String message;
 
-	public enum ObjectType {
-
-		APPLICATION("Application"), FUNCTION("Function"), PAGE("Page"), STYLE("Style"), STYLETHEME("StyleTheme");
-
-		private final String typeString;
-
-		private ObjectType(String typeString) {
-			this.typeString = typeString;
-		}
-
-		@Override
-		public String toString() {
-			return this.typeString;
-		}
-	}
-
-	private ObjectType objectType;
+	private String objectType;
 
 	private Map<String, Object> object; // NOSONAR
 	private int versionNumber = 1;
