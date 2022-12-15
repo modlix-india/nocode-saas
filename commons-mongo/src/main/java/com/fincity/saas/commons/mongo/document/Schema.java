@@ -30,7 +30,7 @@ public class Schema extends AbstractOverridableDTO<Schema> {
 
 	public Schema(Schema fun) {
 		super(fun);
-		this.definition = CloneUtil.cloneMapObject(definition);
+		this.definition = CloneUtil.cloneMapObject(fun.definition);
 	}
 
 	@SuppressWarnings("unchecked")

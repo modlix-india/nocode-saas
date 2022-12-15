@@ -13,8 +13,6 @@ public class BJsonUtil {
 
 		@SuppressWarnings("unchecked")
 		Map<String, Object> map = new Gson().fromJson(job, Map.class);
-		System.out.println(job);
-		System.out.println(map);
 		return new Document(map);
 	}
 
