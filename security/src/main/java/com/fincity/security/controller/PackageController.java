@@ -24,6 +24,14 @@ public class PackageController
 	@Autowired
 	private PackageService packageService;
 
+	@GetMapping("/{packageId}/assignRole/{roleId}")
+	public Mono<ResponseEntity<Boolean>> assignRole(@PathVariable ULong packageId, @PathVariable ULong roleId) {
+
+		return packageService.assignRoleToPackage(packageId, roleId)
+		        .map(ResponseEntity::ok);
+
+	}
+
 	@GetMapping("/{packageId}/removeRole/{roleId}")
 	public Mono<ResponseEntity<Boolean>> removeRole(@PathVariable ULong packageId, @PathVariable ULong roleId) {
 
