@@ -101,7 +101,8 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
 
         List<AbstractCondition> conditions = multiValueMap.entrySet()
                 .stream()
-                .map(e -> {
+                .map(e ->
+                {
                     List<String> value = e.getValue();
                     if (value == null || value.isEmpty())
                         return new FilterCondition().setField(e.getKey())
