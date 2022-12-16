@@ -4,10 +4,6 @@
 package com.fincity.security.jooq.tables;
 
 
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
-
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +28,10 @@ import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
+
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
 
 
 /**

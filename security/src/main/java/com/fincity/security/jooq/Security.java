@@ -4,6 +4,13 @@
 package com.fincity.security.jooq;
 
 
+import java.util.Arrays;
+import java.util.List;
+
+import org.jooq.Catalog;
+import org.jooq.Table;
+import org.jooq.impl.SchemaImpl;
+
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityClient;
@@ -23,13 +30,6 @@ import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
-
-import java.util.Arrays;
-import java.util.List;
-
-import org.jooq.Catalog;
-import org.jooq.Table;
-import org.jooq.impl.SchemaImpl;
 
 
 /**

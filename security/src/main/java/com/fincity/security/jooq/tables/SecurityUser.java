@@ -4,12 +4,6 @@
 package com.fincity.security.jooq.tables;
 
 
-import com.fincity.security.jooq.Indexes;
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +28,12 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
+
+import com.fincity.security.jooq.Indexes;
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 
 
 /**

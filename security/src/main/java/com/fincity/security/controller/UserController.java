@@ -42,14 +42,14 @@ public class UserController extends AbstractJOOQUpdatableDataController<Security
 	}
 
 	@GetMapping("{userId}/removeRole/{roleId}")
-	public Mono<ResponseEntity<Boolean>> removeRoleFromUser(@PathVariable ULong userId, @PathVariable ULong roleId) {
+	public Mono<ResponseEntity<Boolean>> removeRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
 
 		return userService.removeRoleFromUser(userId, roleId)
 		        .map(ResponseEntity::ok);
 	}
 
 	@GetMapping("{userId}/assignRole/{roleId}")
-	public Mono<ResponseEntity<Boolean>> assignRoleToUser(@PathVariable ULong userId, @PathVariable ULong roleId) {
+	public Mono<ResponseEntity<Boolean>> assignRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
 
 		return userService.assignRoleToUser(userId, roleId)
 		        .map(ResponseEntity::ok);

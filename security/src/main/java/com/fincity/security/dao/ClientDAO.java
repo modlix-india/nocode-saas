@@ -10,8 +10,11 @@ import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMI
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
+import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.jooq.Condition;
@@ -32,6 +35,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -154,31 +158,30 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 	}
 
-	public Mono<Boolean> checkPermissionAvailableForGivenClient(ULong clientId, ULong permissionId) {
+	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
 
 		Condition clientCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
+		        .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId));
 
-		        .or(SECURITY_PACKAGE.CLIENT_ID.eq(clientId))
-		        .or(SECURITY_PACKAGE.BASE.eq((byte) 1));
+		Condition assignedOrBasePackageCondition = clientCondition.or(SECURITY_PACKAGE.BASE.eq((byte) 1));
 
-		Condition permissionCondition = SECURITY_PERMISSION.ID.eq(permissionId);
+		Condition permissionCreatedCondition = SECURITY_PERMISSION.CLIENT_ID.eq(clientId);
 
 		return Mono.from(
 
-		        this.dslContext.select(SECURITY_PACKAGE.ID)
-		                .from(SECURITY_PACKAGE)
-		                .leftJoin(SECURITY_CLIENT_PACKAGE)
-		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
-		                .leftJoin(SECURITY_PACKAGE_ROLE)
-		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+		        this.dslContext.selectCount()
+		                .from(SECURITY_PERMISSION)
 		                .leftJoin(SECURITY_ROLE_PERMISSION)
-		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
-		                .leftJoin(SECURITY_PERMISSION)
-		                .on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
-		                .where(clientCondition.and(permissionCondition)))
+		                .on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
+		                .leftJoin(SECURITY_PACKAGE_ROLE)
+		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+		                .leftJoin(SECURITY_PACKAGE)
+		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+		                .where(assignedOrBasePackageCondition.or(permissionCreatedCondition)))
 		        .map(Record1::value1)
-		        .map(value -> value.intValue() > 0);
-
+		        .map(count -> count > 0);
 	}
 
 	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
@@ -241,50 +244,29 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e.into(Client.class));
 	}
 
-	public Mono<Boolean> checkClientApplicableForGivenPackage(ULong packageId, ULong clientId) {
-		return Mono.just(
-
-		        this.dslContext.select(DSL.count())
-		                .from(SECURITY_PACKAGE)
-		                .where(SECURITY_PACKAGE.ID.eq(packageId)
-		                        .and(SECURITY_PACKAGE.CLIENT_ID.eq(clientId)))
-		                .execute() > 0
-
-		);
-	}
-
-	public Mono<Boolean> checkPackageApplicableForGivenClient(ULong clientId, ULong packageId) {
-		return Mono.just(
-
-		        this.dslContext.select(DSL.count())
-		                .from(SECURITY_CLIENT_PACKAGE)
-		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
-		                        .and(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
-		                .execute() > 0
-
-		);
-	}
-
-	public Mono<Boolean> checkRoleApplicableForSelectedClient(ULong clientId, ULong roleId) {
+	public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {
 
 		Condition packageCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
-		        .or(SECURITY_PACKAGE.BASE.eq((byte) 1))
-		        .or(SECURITY_PACKAGE.CLIENT_ID.eq(clientId));
+		        .or(SECURITY_PACKAGE.BASE.eq((byte) 1));
 
 		Condition roleCondition = SECURITY_ROLE.ID.eq(roleId);
 
+		Condition roleExistsCondition = packageCondition.and(roleCondition);
+
+		Condition roleCreatedCondition = SECURITY_ROLE.CLIENT_ID.eq(clientId);
+
 		return Mono.from(
 
-		        this.dslContext.select(SECURITY_ROLE.ID)
+		        this.dslContext.selectCount()
 		                .from(SECURITY_ROLE)
 		                .leftJoin(SECURITY_PACKAGE_ROLE)
 		                .on(SECURITY_ROLE.ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
 		                .leftJoin(SECURITY_PACKAGE)
-		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+		                .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
 		                .leftJoin(SECURITY_CLIENT_PACKAGE)
 		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-		                .where(packageCondition.and(roleCondition))
-		                .limit(1))
+		                .where(roleExistsCondition.or(roleCreatedCondition)))
+
 		        .map(Record1::value1)
 		        .map(val -> val.intValue() > 0);
 	}
@@ -297,54 +279,96 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .and(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)));
 
 		return Mono.from(query)
-		        .map(val -> val > 0);
+		        .map(val -> val == 1);
 	}
 
-	public Mono<Set<ULong>> getClientListFromPackage(ULong packageId) {
+	public Mono<com.fincity.security.dto.Package> getPackage(ULong packageId) {
 
-		Set<ULong> clientList = new HashSet<ULong>();
-
-		Flux.from(this.dslContext.select(SECURITY_CLIENT_PACKAGE.CLIENT_ID)
-		        .from(SECURITY_CLIENT_PACKAGE)
-		        .where(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)))
-		        .map(Record1::value1)
-		        .map(client -> clientList.add(client));
-
-		return Mono.just(clientList);
-	}
-
-	public Mono<Set<ULong>> getUsersListFromClient(Set<ULong> clients) {
-
-		Set<ULong> userList = new HashSet<ULong>();
-
-		Flux.from(
-
-		        this.dslContext.select(SECURITY_USER.ID)
-		                .from(SECURITY_USER)
-		                .where(SECURITY_USER.CLIENT_ID.in(clients)))
-		        .map(Record1::value1)
-		        .map(user -> userList.add(user));
-
-		return Mono.just(userList);
-	}
-
-	public Mono<String> getClientCodeById(ULong id) {
-
-		return Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
-		        .from(SECURITY_CLIENT)
-		        .where(SECURITY_CLIENT.ID.eq(id))
+		return Mono.from(this.dslContext.select(SECURITY_PACKAGE.fields())
+		        .from(SECURITY_PACKAGE)
+		        .where(SECURITY_PACKAGE.ID.eq(packageId))
 		        .limit(1))
-		        .map(Record1::value1)
-		        .map(e ->
-				{
-			        System.out.println("Babu : " + id + " : " + e);
-			        return e;
-		        })
-		        .switchIfEmpty(Mono.defer(() ->
-				{
-			        System.out.println("It is empty...");
-			        return Mono.just("KIRAN");
-		        }))
-		        .log();
+		        .filter(Objects::nonNull)
+		        .map(e -> e.into(com.fincity.security.dto.Package.class));
 	}
+
+	public Mono<Boolean> checkPackageAssignedForClient(ULong clientId, ULong packageId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_CLIENT_PACKAGE)
+		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
+		                        .and(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId))))
+		        .map(Record1::value1)
+		        .map(value -> value == 1);
+	}
+
+	public Mono<Boolean> findAndRemoveRolesFromUsers(List<ULong> roles, ULong packageId) {
+
+		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
+		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
+
+		query.addConditions(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.in(roles));
+
+		return Flux.from(
+
+		        this.dslContext.selectDistinct(SECURITY_USER.ID)
+		                .from(SECURITY_PACKAGE_ROLE)
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+		                .leftJoin(SECURITY_USER)
+		                .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		                .where(SECURITY_PACKAGE_ROLE.ROLE_ID.in(roles)
+		                        .and(SECURITY_PACKAGE_ROLE.PACKAGE_ID.in(packageId))))
+		        .map(Record1::value1)
+		        .filter(Objects::nonNull)
+		        .collectList()
+		        .flatMap(userList ->
+				{
+			        if (userList == null || userList.isEmpty())
+				        return Mono.just(false);
+
+			        query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userList));
+
+			        return Mono.from(query)
+			                .map(value -> value == 1);
+		        });
+
+	}
+
+	public Mono<Boolean> findAndRemovePermissionsFromUsers(List<ULong> permissions, ULong packageId) {
+
+		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
+		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
+
+		query.addConditions(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.in(permissions));
+
+		return Flux.from(
+
+		        this.dslContext.selectDistinct(SECURITY_USER.ID)
+		                .from(SECURITY_ROLE_PERMISSION)
+		                .leftJoin(SECURITY_PACKAGE_ROLE)
+		                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
+		                .leftJoin(SECURITY_CLIENT_PACKAGE)
+		                .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+		                .leftJoin(SECURITY_USER)
+		                .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		                .where(SECURITY_ROLE_PERMISSION.PERMISSION_ID.in(permissions)
+		                        .and(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId))))
+		        .map(Record1::value1)
+		        .collectList()
+		        .flatMap(userList ->
+				{
+			        if (userList == null || userList.isEmpty())
+				        return Mono.just(false);
+
+			        query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userList));
+
+			        return Mono.from(query)
+			                .map(value -> value > 0);
+		        });
+
+	}
+
 }
