@@ -40,9 +40,9 @@ public class AbstractMessageService {
 		        .map(e -> StringFormatter.format(e, params));
 	}
 
-	public void throwNonReactiveMessage(HttpStatus status, String messageId, Object... params) {
+	public GenericException nonReactiveMessage(HttpStatus status, String messageId, Object... params) {
 
-		throw new GenericException(status, this.getDefaultLocaleMessage(messageId, params));
+		return new GenericException(status, this.getDefaultLocaleMessage(messageId, params));
 	}
 
 	public <T> Mono<T> throwMessage(HttpStatus status, String messageId, Object... params) {

@@ -116,7 +116,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		                .subscribeOn(Schedulers.boundedElastic()),
 
 		        (ca, schema, je) -> Mono.from(this.getCollection(conn, storage)
-		                .insertOne(new Document(BJsonUtil.from(je)))),
+		                .insertOne(BJsonUtil.from(je))),
 
 		        (ca, schema, je, result) -> Mono.from(this.getCollection(conn, storage)
 		                .find(Filters.eq("_id", result.getInsertedId()))
@@ -172,7 +172,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        : mongoClients.computeIfAbsent("Connection : " + conn.getId(), key -> this.getMongoClient(conn));
 
 		if (client == null)
-			msgService.throwNonReactiveMessage(HttpStatus.NOT_FOUND,
+			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
 			        CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
 		return client.getDatabase(storage.getClientCode() + "_" + storage.getAppCode())
@@ -184,7 +184,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        : mongoClients.computeIfAbsent("Connection : " + conn.getId(), key -> this.getMongoClient(conn));
 
 		if (client == null)
-			msgService.throwNonReactiveMessage(HttpStatus.NOT_FOUND,
+			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
 			        CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
 		return client.getDatabase(storage.getClientCode() + "_" + storage.getAppCode())
@@ -196,7 +196,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        : mongoClients.computeIfAbsent("Connection : " + conn.getId(), key -> this.getMongoClient(conn));
 
 		if (client == null)
-			msgService.throwNonReactiveMessage(HttpStatus.NOT_FOUND,
+			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
 			        CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
 		return client.getDatabase(storage.getClientCode() + "_" + storage.getAppCode())
@@ -207,7 +207,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		if (conn.getConnectionDetails() == null || StringUtil.safeIsBlank(conn.getConnectionDetails()
 		        .get("url")))
-			msgService.throwNonReactiveMessage(HttpStatus.NOT_FOUND,
+			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
 			        CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
 		return MongoClients.create(conn.getConnectionDetails()

@@ -1,4 +1,4 @@
-package com.fincity.security.util;
+package com.fincity.saas.commons.jooq.util;
 
 import java.math.BigInteger;
 

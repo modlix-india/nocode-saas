@@ -1,19 +1,90 @@
 package com.fincity.saas.commons.mongo.util;
 
-import java.util.Map;
+import java.util.Map.Entry;
 
+import org.bson.BsonArray;
+import org.bson.BsonBoolean;
+import org.bson.BsonDocument;
+import org.bson.BsonDouble;
+import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonNull;
+import org.bson.BsonString;
+import org.bson.BsonValue;
 import org.bson.Document;
 
-import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 public class BJsonUtil {
 
 	public static Document from(JsonObject job) {
 
-		@SuppressWarnings("unchecked")
-		Map<String, Object> map = new Gson().fromJson(job, Map.class);
-		return new Document(map);
+		Document doc = new Document();
+
+		for (Entry<String, BsonValue> entry : ((BsonDocument) fromElement(job)).entrySet()) {
+
+			doc.append(entry.getKey(), entry.getValue());
+		}
+
+		return doc;
+	}
+
+	private static BsonValue fromElement(JsonElement value) { // NOSONAR
+		// It doesn't make sense to break this method.
+
+		if (value.isJsonNull()) {
+
+			return BsonNull.VALUE;
+		} else if (value.isJsonObject()) {
+
+			BsonDocument doc = new BsonDocument();
+
+			for (Entry<String, JsonElement> entry : value.getAsJsonObject()
+			        .entrySet()) {
+
+				doc.append(entry.getKey(), fromElement(entry.getValue()));
+			}
+
+			return doc;
+		} else if (value.isJsonArray()) {
+
+			JsonArray ja = value.getAsJsonArray();
+
+			BsonArray ba = new BsonArray(ja.size());
+			for (JsonElement je : ja)
+				ba.add(fromElement(je));
+
+			return ba;
+		} else if (value.isJsonPrimitive()) {
+
+			JsonPrimitive jp = value.getAsJsonPrimitive();
+
+			if (jp.isBoolean())
+				return BsonBoolean.valueOf(jp.getAsBoolean());
+
+			if (jp.isString())
+				return new BsonString(jp.getAsString());
+
+			if (jp.isNumber()) {
+
+				Double bd = jp.getAsNumber()
+				        .doubleValue();
+				if (bd.doubleValue() == bd.intValue()) {
+					return new BsonInt32(bd.intValue());
+				} else if (bd.doubleValue() == bd.longValue()) {
+					return new BsonInt64(bd.longValue());
+				} else if (bd.doubleValue() == bd.floatValue()) {
+					return new BsonDouble(bd);
+				}
+			}
+
+			return new BsonString(jp.getAsString());
+		}
+
+		return new BsonString(value.getAsString());
 	}
 
 	private BJsonUtil() {

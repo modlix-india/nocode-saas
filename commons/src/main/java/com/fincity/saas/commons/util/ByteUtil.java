@@ -1,4 +1,4 @@
-package com.fincity.security.util;
+package com.fincity.saas.commons.util;
 
 public class ByteUtil {
 

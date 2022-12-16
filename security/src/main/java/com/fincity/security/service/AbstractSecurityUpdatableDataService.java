@@ -8,11 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
-import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
