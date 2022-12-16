@@ -4,6 +4,12 @@
 package com.fincity.security.jooq;
 
 
+import org.jooq.ForeignKey;
+import org.jooq.TableField;
+import org.jooq.UniqueKey;
+import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
+
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityClient;
@@ -42,12 +48,6 @@ import com.fincity.security.jooq.tables.records.SecuritySoxLogRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
-
-import org.jooq.ForeignKey;
-import org.jooq.TableField;
-import org.jooq.UniqueKey;
-import org.jooq.impl.DSL;
-import org.jooq.impl.Internal;
 
 
 /**

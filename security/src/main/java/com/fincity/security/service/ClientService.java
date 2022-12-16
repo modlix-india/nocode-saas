@@ -23,13 +23,13 @@ import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.util.BooleanUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -276,7 +276,7 @@ public class ClientService
 
 			                ca -> this.dao.getPackage(packageId),
 
-			                (ca, packageRecord) -> BooleanUtil.getTruthOrEmpty(packageRecord.isBase()),
+			                (ca, packageRecord) -> BooleanUtil.safeValueOfWithEmpty(packageRecord.isBase()),
 
 			                (ca, packageRecord, basePackage) ->
 
@@ -309,10 +309,10 @@ public class ClientService
 		return flatMapMono(
 
 		        () -> this.isBeingManagedBy(loggedInClientId, clientId)
-		                .flatMap(BooleanUtil::getTruthOrEmpty),
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 		        clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
-		                .flatMap(BooleanUtil::getTruthOrEmpty));
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty));
 	}
 
 	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
@@ -361,7 +361,7 @@ public class ClientService
 			                ca -> ca.isSystemClient() ? Mono.just(true)
 			                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
 			                                .getClientId()), clientId)
-			                                .flatMap(BooleanUtil::getTruthOrEmpty),
+			                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, sysOrManaged) -> this.packageService.getRolesFromPackage(packageId),
 

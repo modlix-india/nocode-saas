@@ -20,11 +20,11 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.RoleDAO;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
-import com.fincity.security.util.BooleanUtil;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
@@ -180,7 +180,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 									        return Mono.just(e);
 
 								        return this.dao.checkPermissionAvailableForGivenRole(roleId, permissionId)
-								                .flatMap(BooleanUtil::getTruthOrEmpty);
+								                .flatMap(BooleanUtil::safeValueOfWithEmpty);
 							        }),
 
 			                (ca, roleRecord, permissionRecord, sysOrManaged, hasPermission) ->
@@ -207,10 +207,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		return flatMapMono(
 
 		        () -> clientService.isBeingManagedBy(loggedInClientId, roleClientId)
-		                .flatMap(BooleanUtil::getTruthOrEmpty),
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 		        roleManaged -> clientService.isBeingManagedBy(loggedInClientId, permissionClientId)
-		                .flatMap(BooleanUtil::getTruthOrEmpty)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty)
 
 		);
 	}
@@ -234,7 +234,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 			                (ca, roleRecord) -> ca.isSystemClient() ? Mono.just(true)
 			                        : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
 			                                .getClientId()), roleRecord.getClientId())
-			                                .flatMap(BooleanUtil::getTruthOrEmpty),
+			                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, roleRecord, sysOrManaged) -> this.dao
 			                        .checkPermissionBelongsToBasePackage(permissionId),
@@ -243,7 +243,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 			                        Mono.just(true)
 			                        : this.removePermissionsFromUsers(roleId, permissionId, roleRecord.getClientId())
-			                                .flatMap(BooleanUtil::getTruthOrEmpty),
+			                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, roleRecord, sysOrManaged, fromBase, permissionsRemoved) ->
 

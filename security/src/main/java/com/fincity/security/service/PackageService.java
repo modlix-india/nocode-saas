@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.security.util.BooleanUtil;
-
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -22,6 +20,7 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -234,7 +233,7 @@ public class PackageService extends
 									        return Mono.just(e);
 
 								        return this.dao.checkRoleAvailableForGivenPackage(packageId, roleId)
-								                .flatMap(BooleanUtil::getTruthOrEmpty);
+								                .flatMap(BooleanUtil::safeValueOfWithEmpty);
 							        }),
 
 			                (ca, packageRecord, roleRecord, rolePackageManaged, hasRole) ->
@@ -259,10 +258,10 @@ public class PackageService extends
 		return flatMapMono(
 
 		        () -> this.clientService.isBeingManagedBy(loggedInClientId, packageClientId)
-		                .flatMap(BooleanUtil::getTruthOrEmpty),
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 		        roleManaged -> this.clientService.isBeingManagedBy(loggedInClientId, roleClientId)
-		                .flatMap(BooleanUtil::getTruthOrEmpty)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty)
 
 		);
 

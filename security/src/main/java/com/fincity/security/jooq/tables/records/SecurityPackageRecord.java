@@ -4,8 +4,6 @@
 package com.fincity.security.jooq.tables.records;
 
 
-import com.fincity.security.jooq.tables.SecurityPackage;
-
 import java.time.LocalDateTime;
 
 import org.jooq.Field;
@@ -14,6 +12,8 @@ import org.jooq.Record10;
 import org.jooq.Row10;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
+
+import com.fincity.security.jooq.tables.SecurityPackage;
 
 
 /**

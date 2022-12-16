@@ -24,6 +24,7 @@ import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.SoxLog;
@@ -34,7 +35,6 @@ import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.RequestUpdatePassword;
-import com.fincity.security.util.BooleanUtil;
 import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
@@ -333,7 +333,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				ca.isSystemClient() ? Mono.just(true)
 				        : clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
 				                .getClientId()), user.getClientId())
-				                .flatMap(BooleanUtil::getTruthOrEmpty),
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 		        (ca, user, isManaged) ->
 
@@ -373,11 +373,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 							        clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
 							                .getClientId()), user.getClientId())
-							                .flatMap(BooleanUtil::getTruthOrEmpty),
+							                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (contextAuth, user, sysOrManaged) -> this.clientService
 			                        .checkPermissionExistsOrCreatedForClient(user.getClientId(), permissionId)
-			                        .flatMap(BooleanUtil::getTruthOrEmpty),
+			                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (contextAuth, user, sysOrManaged, hasPermission) ->
 
@@ -417,12 +417,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 							        clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
 							                .getClientId()), user.getClientId())
-							                .flatMap(BooleanUtil::getTruthOrEmpty),
+							                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, user, sysOrManaged) ->
 
 							this.clientService.checkRoleExistsOrCreatedForClient(user.getClientId(), roleId)
-							        .flatMap(BooleanUtil::getTruthOrEmpty),
+							        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, user, sysOrManaged, roleApplicable) ->
 
