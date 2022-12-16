@@ -56,9 +56,13 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				        return Tuples.of(mainQuery, countQuery);
 
 			        return Tuples.of((SelectJoinStep<Record>) mainQuery.leftJoin(SECURITY_APP_ACCESS)
-			                .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)),
+			                .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)
+			                        .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(ULong.valueOf(ca.getUser()
+			                                .getClientId())))),
 			                (SelectJoinStep<Record1<Integer>>) countQuery.leftJoin(SECURITY_APP_ACCESS)
-			                        .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)));
+			                        .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)
+			                                .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(ULong.valueOf(ca.getUser()
+			                                        .getClientId())))));
 		        });
 	}
 
@@ -76,7 +80,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			        ULong clientId = ULong.valueOf(ca.getUser()
 			                .getClientId());
 
-			        return condition.map(c -> DSL.and(c, SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId)
+			        return condition.map(c -> DSL.and(c, SECURITY_APP.CLIENT_ID.eq(clientId)
 			                .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))));
 		        })
 		        .switchIfEmpty(condition);
@@ -84,44 +88,37 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
 
-		return hasAccess(appCode, clientCode, 1);
+		return hasOnlyInternalAccess(appCode, clientCode, 1);
 	}
 
 	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
-		return hasAccess(appCode, clientCode, 0);
+		return hasOnlyInternalAccess(appCode, clientCode, 0);
 	}
 
-	private Mono<Boolean> hasAccess(String appCode, String clientCode, int accessType) {
-		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca ->
-				{
+	private Mono<Boolean> hasOnlyInternalAccess(String appCode, String clientCode, int accessType) {
+		
+		List<Condition> conditions = new ArrayList<>();
+		conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
+		if (accessType == 1) {
+			conditions.add(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
+		}
 
-			        if (ca.isSystemClient())
-				        return Mono.just(true);
+		SelectConditionStep<Record1<ULong>> inQuery = this.dslContext.select(SECURITY_APP_ACCESS.APP_ID)
+		        .from(SECURITY_APP_ACCESS)
+		        .leftJoin(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(SECURITY_APP_ACCESS.CLIENT_ID))
+		        .where(DSL.and(conditions));
 
-			        List<Condition> conditions = new ArrayList<>();
-			        conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
-			        if (accessType == 1) {
-				        conditions.add(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
-			        }
-
-			        SelectConditionStep<Record1<ULong>> inQuery = this.dslContext.select(SECURITY_APP_ACCESS.APP_ID)
-			                .from(SECURITY_APP_ACCESS)
-			                .leftJoin(SECURITY_CLIENT)
-			                .on(SECURITY_CLIENT.ID.eq(SECURITY_APP_ACCESS.CLIENT_ID))
-			                .where(DSL.and(conditions));
-
-			        return Mono.from(this.dslContext.select(DSL.count())
-			                .from(SECURITY_APP)
-			                .leftJoin(SECURITY_CLIENT)
-			                .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
-			                .where(SECURITY_APP.APP_CODE.eq(appCode)
-			                        .and(SECURITY_CLIENT.CODE.eq(clientCode)
-			                                .or(SECURITY_APP.ID.in(inQuery))))
-			                .limit(1))
-			                .map(Record1::value1)
-			                .map(e -> e != 0);
-		        });
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(SECURITY_APP)
+		        .leftJoin(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
+		        .where(SECURITY_APP.APP_CODE.eq(appCode)
+		                .and(SECURITY_CLIENT.CODE.eq(clientCode)
+		                        .or(SECURITY_APP.ID.in(inQuery))))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(e -> e != 0);
 	}
 
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
@@ -162,5 +159,17 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 		return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
 		        .where(SECURITY_APP_ACCESS.ID.eq(accessId)));
+	}
+
+	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
+		        .from(SECURITY_APP)
+		        .leftJoin(SECURITY_CLIENT)
+		        .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
+		        .where(SECURITY_APP.APP_CODE.eq(appCode))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .map(code -> clientCode.equals(code) ? List.of(code) : List.of(code, clientCode));
 	}
 }

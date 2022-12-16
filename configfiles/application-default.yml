@@ -30,6 +30,10 @@ ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
 
+core:
+  mongo:
+    uri: mongodb://root:Kiran%40123@localhost:27017/core?authSource=admin
+
 spring:
   flyway:
     enabled: false
@@ -45,5 +49,6 @@ redis:
 logging:
   level:
     root: INFO
-    com:
-      fincity: DEBUG
+    com.fincity: DEBUG
+    org.jooq: DEBUG
+    org.jooq.tools.LoggerListener: DEBUG

@@ -58,14 +58,9 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
 	public Mono<Boolean> isBeingManaged(String managingClientCode, String clientCode) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
-
-		        () -> cacheService.makeKey(managingClientCode, ":", clientCode),
-
-		        key -> cacheService.<Boolean>get(CACHE_NAME_BEING_MANAGED, key),
-
-		        (key, value) -> value == null ? this.feignAuthService.isBeingManaged(managingClientCode, clientCode)
-		                .flatMap(v -> cacheService.put(CACHE_NAME_BEING_MANAGED, v, key)) : Mono.just(value));
+		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED,
+		        () -> this.feignAuthService.isBeingManaged(managingClientCode, clientCode), managingClientCode, ":",
+		        clientCode);
 	}
 
 	public Mono<Boolean> isUserBeingManaged(Object userId, String clientCode) {
@@ -107,7 +102,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
 			                .flatMap(v -> cacheService.put(CACHE_NAME_APP_READ_ACCESS, v, key));
 		        });
 	}
-	
+
 	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
 
 		return FlatMapUtil.flatMapMonoWithNull(

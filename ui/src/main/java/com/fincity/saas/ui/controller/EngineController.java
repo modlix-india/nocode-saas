@@ -8,11 +8,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.commons.mongo.document.Function;
+import com.fincity.saas.commons.mongo.service.FunctionService;
 import com.fincity.saas.ui.document.Application;
-import com.fincity.saas.ui.document.Function;
 import com.fincity.saas.ui.document.Page;
+import com.fincity.saas.ui.document.Style;
 import com.fincity.saas.ui.service.ApplicationService;
-import com.fincity.saas.ui.service.FunctionService;
 import com.fincity.saas.ui.service.PageService;
 import com.fincity.saas.ui.service.StyleService;
 
@@ -54,11 +55,12 @@ public class EngineController {
 		                .build())));
 	}
 
-	@GetMapping(value = "theme/{themeName}", produces = { "text/css" })
+	@GetMapping(value = "style/{styleName}", produces = { "text/css" })
 	public Mono<ResponseEntity<String>> theme(@RequestHeader("appCode") String appCode,
-	        @RequestHeader("clientCode") String clientCode, @PathVariable("themeName") String themeName) {
+	        @RequestHeader("clientCode") String clientCode, @PathVariable("styleName") String themeName) {
 
-		return this.themeService.readCSS(themeName, appCode, clientCode)
+		return this.themeService.read(themeName, appCode, clientCode)
+				.map(Style::getStyleString)
 		        .map(ResponseEntity::ok)
 		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
 		                .build())));

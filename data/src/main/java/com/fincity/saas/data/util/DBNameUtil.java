@@ -1,6 +1,6 @@
 package com.fincity.saas.data.util;
 
-import static com.fincity.saas.commons.util.UUIDUtil.base36UUID;
+import static com.fincity.saas.commons.util.UniqueUtil.base36UUID;
 
 public class DBNameUtil {
 

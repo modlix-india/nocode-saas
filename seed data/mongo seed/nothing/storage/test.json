@@ -1,0 +1,18 @@
+{
+  "appCode": "nothing",
+  "clientCode": "SYSTEM",
+  "name": "test",
+  "isAudited": true,
+  "isVersioned": true,
+  "deleteAuth": "Authorities.LOGGED_IN",
+  "version": 1,
+  "schema": {
+    "type": "OBJECT",
+    "properties": {
+      "name": { "type": "STRING" },
+      "number": { "type": "INTEGER" },
+      "longNumber": { "type": "LONG" },
+      "array": { "type": "ARRAY", "items": { "type": "STRING" } }
+    }
+  }
+}

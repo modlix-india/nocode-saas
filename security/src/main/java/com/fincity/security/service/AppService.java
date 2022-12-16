@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -18,11 +19,11 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
-import com.fincity.security.util.ULongUtil;
 
 import reactor.core.publisher.Mono;
 
@@ -256,6 +257,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        })
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS, accessId)));
+	}
+
+	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+		
+		return this.dao.appInheritance(appCode, clientCode);
 	}
 
 }

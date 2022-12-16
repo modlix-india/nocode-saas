@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "title": "Under Construction",
+    "defaultPage": "underConstruction",
+    "links": {
+      "07f57e24-c919-4c3e-8846-98d16cb04f71": {
+        "rel": "stylesheet",
+        "href": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
+      }
+    }
+  },
+  "name": "nothing",
+  "message": "default page",
+  "clientCode": "SYSTEM",
+  "appCode": "nothing"
+}

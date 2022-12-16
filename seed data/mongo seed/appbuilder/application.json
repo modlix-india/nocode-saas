@@ -1,0 +1,18 @@
+{
+  "name": "appbuilder",
+  "clientCode": "SYSTEM",
+  "message": "JUST CREATED",
+  "properties": {
+    "title": "Application Builder",
+    "defaultPage": "home",
+    "shellPage": "shellPage",
+    "forbiddenPage": "forbiddenPage",
+    "loginPage": "loginPage",
+    "links": {
+      "07f57e24-c919-4c3e-8846-98d16cb04f72": {
+        "rel": "stylesheet",
+        "href": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
+      }
+    }
+  }
+}

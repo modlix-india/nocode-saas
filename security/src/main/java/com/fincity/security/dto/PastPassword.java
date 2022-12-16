@@ -13,8 +13,9 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = false)
 public class PastPassword extends AbstractDTO<ULong, ULong> {
 
+	private static final long serialVersionUID = 4360853737062991688L;
+
 	private ULong userId;
 	private String password;
 	private boolean passwordHashed;
-
 }
