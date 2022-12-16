@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +44,20 @@ public class AppDataController {
 	        @RequestHeader String clientCode, @RequestBody DataObject entity) {
 
 		return this.service.create(appCode, clientCode, storageName, entity)
+		        .map(ResponseEntity::ok);
+	}
+
+	@PutMapping(value= {PATH_ID, "{storage}"})
+	public Mono<ResponseEntity<Map<String, Object>>> create(
+	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(name = PATH_VARIABLE_ID, required = false) final String id,
+	        @RequestBody DataObject entity) {
+
+		if (id != null)
+			entity.getData()
+			        .put("_id", id);
+
+		return this.service.update(appCode, clientCode, storageName, entity)
 		        .map(ResponseEntity::ok);
 	}
 
