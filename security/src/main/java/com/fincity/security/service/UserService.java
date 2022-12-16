@@ -223,6 +223,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		return this.dao
 		        .checkAvailability(entity.getId(), entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber())
+		        .map(BooleanUtil::safeValueOf)
 		        .flatMap(e -> super.update(entity));
 	}
 
@@ -238,6 +239,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        e.setLastName(entity.getLastName());
 			        e.setMiddleName(entity.getMiddleName());
 			        e.setLocaleCode(entity.getLocaleCode());
+			        e.setStatusCode(entity.getStatusCode());
 			        return e;
 		        });
 	}
