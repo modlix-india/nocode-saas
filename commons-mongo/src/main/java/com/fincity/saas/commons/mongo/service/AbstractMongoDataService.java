@@ -108,67 +108,61 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 		if (fc == null || fc.getField() == null)
 			return Mono.empty();
 
+		Criteria crit = Criteria.where(fc.getField());
+
 		switch (fc.getOperator()) {
 		case BETWEEN:
-			return Mono.just(new Criteria(fc.getField()).andOperator(new Criteria(fc.getField()).gte(fc.getValue()),
-			        new Criteria(fc.getField()).lte(fc.getToValue())));
+			return Mono.just(new Criteria().andOperator(crit.gte(fc.getValue()), crit.lte(fc.getToValue())));
 
 		case EQUALS:
-			return Mono.just(Criteria.where(fc.getField())
-			        .is(fc.getValue()));
+			return Mono.just(crit.is(fc.getValue()));
 
 		case GREATER_THAN:
-			return Mono.just(Criteria.where(fc.getField())
-			        .gt(fc.getValue()));
+			return Mono.just(crit.gt(fc.getValue()));
 
 		case GREATER_THAN_EQUAL:
-			return Mono.just(Criteria.where(fc.getField())
-			        .gte(fc.getValue()));
+			return Mono.just(crit.gte(fc.getValue()));
 
 		case LESS_THAN:
-			return Mono.just(Criteria.where(fc.getField())
-			        .lt(fc.getValue()));
+			return Mono.just(crit.lt(fc.getValue()));
 
 		case LESS_THAN_EQUAL:
-			return Mono.just(Criteria.where(fc.getField())
-			        .lte(fc.getValue()));
+			return Mono.just(crit.lte(fc.getValue()));
 
 		case IS_FALSE:
-			return Mono.just(Criteria.where(fc.getField())
-			        .is(false));
+			return Mono.just(crit.is(false));
 
 		case IS_TRUE:
-			return Mono.just(Criteria.where(fc.getField())
-			        .is(true));
+			return Mono.just(crit.is(true));
 
 		case IS_NULL:
-			return Mono.just(Criteria.where(fc.getField())
-			        .isNull());
+			return Mono.just(crit.isNull());
 
 		case IN:
-			return Mono.just(Criteria.where(fc.getField())
-			        .in(this.multiFieldValue(fc.getValue())));
+			return Mono.just(crit.in(this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
 
 		case LIKE:
-			return Mono.just(Criteria.where(fc.getField())
-			        .is(fc.getValue()));
+			return Mono.just(crit.is(fc.getValue()));
 
 		case STRING_LOOSE_EQUAL:
-			return Mono.just(Criteria.where(fc.getField())
-			        .regex("/" + fc.getValue() + "/"));
+			return Mono.just(crit.regex("/" + fc.getValue() + "/"));
 
 		default:
 			return Mono.empty();
 		}
 	}
 
-	private List<Object> multiFieldValue(String value) {
+	private List<Object> multiFieldValue(Object objValue, List<Object> values) {
 
-		if (value == null || value.isBlank())
+		if (values != null && !values.isEmpty())
+			return values;
+
+		if (objValue == null)
 			return List.of();
 
 		int from = 0;
-		String iValue = value.trim();
+		String iValue = objValue.toString()
+		        .trim();
 
 		List<Object> obj = new ArrayList<>();
 		for (int i = 0; i < iValue.length(); i++) { // NOSONAR
@@ -209,6 +203,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 	}
 
 	public Mono<Boolean> delete(I id) {
-		return this.repo.deleteById(id).thenReturn(true);
+		return this.repo.deleteById(id)
+		        .thenReturn(true);
 	}
 }
