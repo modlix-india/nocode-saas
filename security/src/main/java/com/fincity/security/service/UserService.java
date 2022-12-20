@@ -141,8 +141,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                        .setObjectName(getSoxObjectName())
 			                        .setDescription("User created"))
 			                .subscribe();
-			        // As this is not calling parent create method. Need to track log status by
-			        // adding soxlog method here
 
 			        return this.setPassword(u, password);
 		        })
@@ -159,10 +157,19 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	private Mono<User> setPassword(User u, String password) {
-		this.getLoggedInUserId()
-		        .flatMap(e -> this.dao.setPassword(u.getId(), password, e))
-		        .subscribe();
-		return Mono.just(u);
+
+		return flatMapMono(
+
+		        this::getLoggedInUserId,
+
+		        loggedInUserId -> this.dao.setPassword(u.getId(), password, loggedInUserId)
+		                .map(result -> result > 0)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (loggedInUserId, passwordSet) -> Mono.just(u)
+
+		);
+
 	}
 
 	@Override
