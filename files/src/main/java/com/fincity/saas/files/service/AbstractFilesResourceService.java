@@ -527,7 +527,7 @@ public abstract class AbstractFilesResourceService {
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode, this.getResourceType()),
 
@@ -541,22 +541,32 @@ public abstract class AbstractFilesResourceService {
 			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
 			        if (!Files.exists(path))
-				        this.msgService.throwMessage(HttpStatus.NOT_FOUND, FilesMessageResourceService.PATH_NOT_FOUND,
-				                resourcePath);
+				        try {
+					        Files.createDirectories(path);
+				        } catch (IOException e) {
+					        return this.msgService.throwMessage(HttpStatus.NOT_FOUND,
+					                FilesMessageResourceService.PATH_NOT_FOUND, resourcePath);
+				        }
 
 			        if (!Files.isDirectory(path))
 				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
 				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
 
-			        Path file = path.resolve(fileName == null ? fp.filename() : fileName);
+			        Path file = path.resolve(fileName == null ? fp.filename()
+			                : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName));
 
 			        if (Files.exists(file) && !ovr)
 				        return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
 				                FilesMessageResourceService.ALREADY_EXISTS, "File", file.getFileName());
+		        
 
-			        return fp.transferTo(file)
-			                .thenReturn(this.convertToFileDetail(urlResourcePath, clientCode, file.toFile()));
-		        });
+			        return Mono.just(file);
+
+		        }, 
+				
+				(hasPermission, file) -> fp.transferTo(file),
+				
+				(hasPermission, file, fil) -> Mono.just(this.convertToFileDetail(urlResourcePath, clientCode, file.toFile())));
 	}
 
 	private Tuple2<String, String> resolvePathWithClientCode(String uri) {

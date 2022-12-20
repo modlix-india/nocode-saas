@@ -351,7 +351,7 @@ public class FilesAccessPathService
 					        if (!managed.booleanValue())
 						        return Mono.just(false);
 
-					        return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
+					        return this.dao.hasPathWriteAccess(path.isBlank() ? "/" : path, ULong.valueOf(ca.getUser()
 					                .getId()), clientCode, resourceType, ca.getAuthorities()
 					                        .stream()
 					                        .map(GrantedAuthority::getAuthority)
