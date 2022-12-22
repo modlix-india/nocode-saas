@@ -21,7 +21,7 @@ public interface IAppDataService {
 	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id);
 
 	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Pageable page,
-	        AbstractCondition condition);
+	        Boolean count, AbstractCondition condition);
 
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
 }

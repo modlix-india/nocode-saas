@@ -213,6 +213,7 @@ public class FilesAccessPathService
 				        List<String> list = cs.stream()
 				                .filter(FilterCondition.class::isInstance)
 				                .map(e -> ((FilterCondition) e).getValue())
+				                .map(Object::toString)
 				                .distinct()
 				                .toList();
 
