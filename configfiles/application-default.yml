@@ -18,14 +18,6 @@ files:
       static: C:/fincity/resources/static
       secured: C:/fincity/resources/secured
 
-data:
-  db:
-    url: r2dbc:mysql://localhost:3306/data?serverTimezone=UTC
-    username: root
-    password: Kiran@123
-    flyway:
-      url: jdbc:mysql://localhost:3306/data
-
 ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
@@ -33,6 +25,12 @@ ui:
 core:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/core?authSource=admin
+  db:
+    url: r2dbc:mysql://localhost:3306/core?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/core
 
 spring:
   flyway:

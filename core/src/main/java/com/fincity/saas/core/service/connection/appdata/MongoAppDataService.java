@@ -8,6 +8,8 @@ import java.util.function.Function;
 
 import javax.annotation.PostConstruct;
 
+import org.bson.BsonDateTime;
+import org.bson.BsonInt64;
 import org.bson.BsonObjectId;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -23,7 +25,9 @@ import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.kirun.engine.HybridRepository;
 import com.fincity.nocode.kirun.engine.json.schema.validator.SchemaValidator;
+import com.fincity.nocode.kirun.engine.repository.KIRunSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -58,6 +62,8 @@ import reactor.core.scheduler.Schedulers;
 
 @Service
 public class MongoAppDataService extends RedisPubSubAdapter<String, String> implements IAppDataService {
+
+	private static final String CREATED_AT = "createdAt";
 
 	@Autowired
 	private MongoClient defaultClient;
@@ -114,7 +120,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
 			                .getAsJsonObject();
 			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()), job);
+			                new HybridRepository<>(new KIRunSchemaRepository(),
+			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+			                job);
 		        })
 		                .subscribeOn(Schedulers.boundedElastic()),
 
@@ -125,8 +133,31 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		                .find(Filters.eq("_id", result.getInsertedId()))
 		                .first()),
 
-		        (ca, scheme, je, result, doc) ->
+		        (ca, schema, je, result, doc) ->
 				{
+
+			        if (!storage.getIsAudited()
+			                .booleanValue()
+			                && !storage.getIsVersioned()
+			                        .booleanValue())
+				        return Mono.empty();
+
+			        Document versionDocument = new Document();
+			        versionDocument.append("objectId", result.getInsertedId());
+			        versionDocument.append("message", dataObject.getMessage());
+			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
+			        versionDocument.append("operation", "CREATE");
+			        if (ca != null && ca.getUser() != null)
+				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
+				                .getId()
+				                .longValue()));
+			        if (storage.getIsVersioned()
+			                .booleanValue())
+				        versionDocument.append("object", new Document(dataObject.getData()));
+
+			        return Mono.from(this.getVersionCollection(conn, storage)
+			                .insertOne(versionDocument));
+		        }, (ca, scheme, je, result, doc, versionResult) -> {
 			        doc.remove("_id");
 			        doc.append("_id", result.getInsertedId()
 			                .asObjectId()
@@ -180,6 +211,29 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		        (ca, scheme, je, result, doc) ->
 				{
+
+			        if (!storage.getIsAudited()
+			                .booleanValue()
+			                && !storage.getIsVersioned()
+			                        .booleanValue())
+				        return Mono.empty();
+
+			        Document versionDocument = new Document();
+			        versionDocument.append("objectId", objectId);
+			        versionDocument.append("message", dataObject.getMessage());
+			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
+			        versionDocument.append("operation", "UPDATE");
+			        if (ca != null && ca.getUser() != null)
+				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
+				                .getId()
+				                .longValue()));
+			        if (storage.getIsVersioned()
+			                .booleanValue())
+				        versionDocument.append("object", new Document(dataObject.getData()));
+
+			        return Mono.from(this.getVersionCollection(conn, storage)
+			                .insertOne(versionDocument));
+		        }, (ca, scheme, je, result, doc, versionResult) -> {
 			        doc.remove("_id");
 			        doc.append("_id", key);
 			        return Mono.just(doc);
@@ -432,18 +486,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		return client.getDatabase(storage.getClientCode() + "_" + storage.getAppCode())
 		        .getCollection(storage.getUniqueName());
-	}
-
-	private MongoCollection<Document> getAuditCollection(Connection conn, Storage storage) {
-		MongoClient client = conn == null ? defaultClient
-		        : mongoClients.computeIfAbsent(getConnectionString(conn), key -> this.getMongoClient(conn));
-
-		if (client == null)
-			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
-			        CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
-
-		return client.getDatabase(storage.getClientCode() + "_" + storage.getAppCode())
-		        .getCollection(storage.getUniqueName() + "_audit");
 	}
 
 	private MongoCollection<Document> getVersionCollection(Connection conn, Storage storage) {
