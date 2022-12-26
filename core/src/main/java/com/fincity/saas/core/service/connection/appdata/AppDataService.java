@@ -42,7 +42,8 @@ public class AppDataService {
 		this.services.putAll(Map.of(ConnectionSubType.MONGO, (IAppDataService) mongoAppDataService));
 	}
 
-	public Mono<Map<String, Object>> create(String appCode, String clientCode, String storageName, DataObject dataObject) {
+	public Mono<Map<String, Object>> create(String appCode, String clientCode, String storageName,
+	        DataObject dataObject) {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
@@ -56,7 +57,8 @@ public class AppDataService {
 		        (conn, dataService, storage) -> dataService.create(conn, storage, dataObject));
 	}
 
-	public Mono<Map<String, Object>> update(String appCode, String clientCode, String storageName, DataObject dataObject) {
+	public Mono<Map<String, Object>> update(String appCode, String clientCode, String storageName,
+	        DataObject dataObject) {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
@@ -83,8 +85,8 @@ public class AppDataService {
 		        (conn, dataService, storage) -> dataService.read(conn, storage, id));
 	}
 
-	public Mono<Page<Map<String, Object>>> readPage(String appCode, String clientCode, String storageName, Pageable page,
-	        AbstractCondition condition) {
+	public Mono<Page<Map<String, Object>>> readPage(String appCode, String clientCode, String storageName,
+	        Pageable page, Boolean count, AbstractCondition condition) {
 		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
@@ -94,7 +96,7 @@ public class AppDataService {
 
 		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
 
-		        (conn, dataService, storage) -> dataService.readPage(conn, storage, page, condition));
+		        (conn, dataService, storage) -> dataService.readPage(conn, storage, page, count, condition));
 	}
 
 	public Mono<Boolean> delete(String appCode, String clientCode, String storageName, String id) {

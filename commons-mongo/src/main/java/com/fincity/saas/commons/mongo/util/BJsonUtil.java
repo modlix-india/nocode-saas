@@ -32,7 +32,7 @@ public class BJsonUtil {
 		return doc;
 	}
 
-	private static BsonValue fromElement(JsonElement value) { // NOSONAR
+	public static BsonValue fromElement(JsonElement value) { // NOSONAR
 		// It doesn't make sense to break this method.
 
 		if (value.isJsonNull()) {
