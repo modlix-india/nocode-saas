@@ -281,7 +281,7 @@ public abstract class AbstractFilesResourceService {
 		return Mono.just(true);
 	}
 
-	private Mono<Void> makeMatchesStartDownload(DownloadOptions downloadOptions, ServerHttpRequest request,
+	protected Mono<Void> makeMatchesStartDownload(DownloadOptions downloadOptions, ServerHttpRequest request,
 	        ServerHttpResponse response, Path file, long fileMillis, String fileETag) {
 		var respHeaders = response.getHeaders();
 		var reqHeaders = request.getHeaders();
@@ -558,18 +558,18 @@ public abstract class AbstractFilesResourceService {
 			        if (Files.exists(file) && !ovr)
 				        return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
 				                FilesMessageResourceService.ALREADY_EXISTS, "File", file.getFileName());
-		        
 
 			        return Mono.just(file);
 
-		        }, 
-				
-				(hasPermission, file) -> fp.transferTo(file),
-				
-				(hasPermission, file, fil) -> Mono.just(this.convertToFileDetail(urlResourcePath, clientCode, file.toFile())));
+		        },
+
+		        (hasPermission, file) -> fp.transferTo(file),
+
+		        (hasPermission, file, fil) -> Mono
+		                .just(this.convertToFileDetail(urlResourcePath, clientCode, file.toFile())));
 	}
 
-	private Tuple2<String, String> resolvePathWithClientCode(String uri) {
+	protected Tuple2<String, String> resolvePathWithClientCode(String uri) {
 
 		String path = uri.substring(uri.indexOf(this.uriPartFile) + this.uriPartFileLength);
 		String origPath = path;

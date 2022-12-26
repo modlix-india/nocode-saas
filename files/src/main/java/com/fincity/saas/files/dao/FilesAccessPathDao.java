@@ -13,9 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.files.dto.FilesAccessPath;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
-import com.fincity.saas.files.model.FilesAccessPath;
+
 
 import reactor.core.publisher.Mono;
 

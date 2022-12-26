@@ -26,7 +26,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FilesAccessPathDao;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
-import com.fincity.saas.files.model.FilesAccessPath;
+import com.fincity.saas.files.dto.FilesAccessPath;
 
 import reactor.core.publisher.Mono;
 
@@ -302,7 +302,8 @@ public class FilesAccessPathService
 	public Mono<Boolean> hasReadAccess(String actualPath, String clientCode, FilesAccessPathResourceType resourceType) {
 
 		String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
-		Mono<String> mKey = cacheService.makeKey(clientCode, ":", resourceType, ":read:", path);
+
+		Mono<String> mKey = Mono.just(clientCode + ":" + resourceType + ":read:" + path);
 
 		return mKey.flatMap(e -> cacheService.<Boolean>get(CACHE_NAME_ACCESS_PATH, e))
 		        .switchIfEmpty(Mono.defer(() ->
@@ -329,7 +330,8 @@ public class FilesAccessPathService
 				        (ca, managed, value) -> mKey
 				                .flatMap(key -> cacheService.<Boolean>put(CACHE_NAME_ACCESS_PATH, value, key))
 
-				)));
+				)))
+		        .defaultIfEmpty(false);
 	}
 
 	public Mono<Boolean> hasWriteAccess(String path, String clientCode, FilesAccessPathResourceType resourceType) {
