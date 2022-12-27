@@ -17,9 +17,9 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.service.CacheService;
@@ -162,11 +162,13 @@ public class ClientService
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .flatMap(ca -> super.create(entity).map(e ->
 				{
-			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
-				        SecurityContextUtil.getUsersContextUser()
-				                .map(ContextUser::getClientId)
-				                .map(manageClientId -> this.addManageRecord(ULong.valueOf(manageClientId), e.getId()))
+
+			        if (!ca.isSystemClient()) {
+
+				        this.addManageRecord(ULongUtil.valueOf(ca.getUser()
+				                .getClientId()), e.getId())
 				                .subscribe();
+
 			        }
 
 			        return e;
