@@ -12,7 +12,6 @@ import java.time.temporal.ChronoUnit;
 
 import javax.annotation.PostConstruct;
 
-import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +22,14 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.files.dto.FilesSecuredAccessKey;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -45,14 +44,11 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
 	private String securedResourceLocation;
 
-	@Value("${files.timeLimit}")
+	@Value("${files.timeLimit:365}")
 	private Long defaultAccessTimeLimit;
 
-	@Value("${files.timeUnit}")
+	@Value("${files.timeUnit:DAYS}")
 	private ChronoUnit defaultChronoUnit;
-
-	@Value("${files.accessLimit}")
-	private Long defaultAccessLimit;
 
 	@Value("${files.secureKeyURI}")
 	private String secureAccessPathUri;
@@ -178,14 +174,19 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 			return filesMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 			        FilesMessageResourceService.TIME_UNIT_ERROR);
 
-		time = safeIsBlank(time) ? time : defaultAccessTimeLimit;
-		unit = safeIsBlank(unit) ? unit : defaultChronoUnit;
+		if (time == null && limit != null)
+			return filesMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        FilesMessageResourceService.TIME_SPAN_ERROR);
+
+		time = time == null || time.toString()
+		        .isBlank() ? defaultAccessTimeLimit : time;
+		unit = safeIsBlank(unit) ? defaultChronoUnit : unit;
 		int pathIndex = path.indexOf('?');
 		path = pathIndex != -1 ? path.substring(0, pathIndex) : path;
 
 		FilesSecuredAccessKey fileSecuredAccessKey = new FilesSecuredAccessKey().setPath(path)
 		        .setAccessKey(UniqueUtil.base36UUID())
-		        .setAccessLimit(ULong.valueOf(safeIsBlank(limit) ? limit : defaultAccessLimit))
+		        .setAccessLimit(ULongUtil.valueOf(limit))
 		        .setAccessTill(LocalDateTime.now()
 		                .plus(time, unit));
 

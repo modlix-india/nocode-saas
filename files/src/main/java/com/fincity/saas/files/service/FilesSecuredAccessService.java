@@ -1,14 +1,15 @@
 package com.fincity.saas.files.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import java.time.LocalDateTime;
 
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
-import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FilesSecuredAccessKeyDao;
 import com.fincity.saas.files.dto.FilesSecuredAccessKey;
 import com.fincity.saas.files.jooq.tables.records.FilesSecuredAccessKeyRecord;
@@ -25,22 +26,29 @@ public class FilesSecuredAccessService extends
 
 	public Mono<String> getAccessPathByKey(String accessKey) {
 
-		return FlatMapUtil.flatMapMono(
+		return flatMapMono(
 
 		        () -> this.getAccessRecordByPath(accessKey),
 
 		        accessKeyObject -> this.checkAccessWithinTime(accessKeyObject)
 		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (accessKeyObject, inTime) -> this.checkAccountCount(accessKeyObject)
-		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+		        (accessKeyObject, inTime) -> StringUtil.safeIsBlank(accessKeyObject.getAccessLimit())
+		                ? Mono.just(accessKeyObject.getPath())
+		                : flatMapMono(
 
-		        (accessKeyObject, inTime,
-		                inCount) -> this.dao
-		                        .setAccessCount(accessKeyObject.getId(),
-		                                ULongUtil.valueOf(accessKeyObject.getAccessedCount()
-		                                        .add(1)))
-		                        .flatMap(e -> e.booleanValue() ? Mono.just(accessKeyObject.getPath()) : Mono.empty()));
+		                        () -> this.checkAccountCount(accessKeyObject)
+		                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		                        inCount -> this.dao.incrementAccessCount(accessKeyObject.getId())
+		                                .flatMap(hasAccess ->
+										{
+			                                if (hasAccess.booleanValue())
+				                                return Mono.just(accessKeyObject.getPath());
+			                                return Mono.empty();
+		                                })
+
+						));
 	}
 
 	private Mono<Boolean> checkAccountCount(FilesSecuredAccessKey accessObject) { // edit here

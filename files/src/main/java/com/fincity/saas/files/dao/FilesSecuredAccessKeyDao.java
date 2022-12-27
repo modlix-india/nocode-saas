@@ -29,13 +29,15 @@ public class FilesSecuredAccessKeyDao extends AbstractDAO<FilesSecuredAccessKeyR
 
 	}
 
-	public Mono<Boolean> setAccessCount(ULong id, ULong count) {
+	public Mono<Boolean> incrementAccessCount(ULong id) {
 
 		return Mono.from(
 
 		        this.dslContext.update(FILES_SECURED_ACCESS_KEY)
-		                .set(FILES_SECURED_ACCESS_KEY.ACCESSED_COUNT, count)
-		                .where(FILES_SECURED_ACCESS_KEY.ID.eq(id)))
+		                .set(FILES_SECURED_ACCESS_KEY.ACCESSED_COUNT, FILES_SECURED_ACCESS_KEY.ACCESSED_COUNT.add(1))
+		                .where(FILES_SECURED_ACCESS_KEY.ID.eq(id)
+		                        .and(FILES_SECURED_ACCESS_KEY.ACCESSED_COUNT
+		                                .le(FILES_SECURED_ACCESS_KEY.ACCESS_LIMIT))))
 		        .map(result -> result > 0);
 	}
 }
