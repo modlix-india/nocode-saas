@@ -17,6 +17,8 @@ files:
     location:
       static: C:/fincity/resources/static
       secured: C:/fincity/resources/secured
+  secureKeyURI: /api/files/secured/downloadFileByKey/      
+
 
 data:
   db:
