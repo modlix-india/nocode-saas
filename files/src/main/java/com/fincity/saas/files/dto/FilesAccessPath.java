@@ -1,4 +1,4 @@
-package com.fincity.saas.files.model;
+package com.fincity.saas.files.dto;
 
 import org.jooq.types.ULong;
 

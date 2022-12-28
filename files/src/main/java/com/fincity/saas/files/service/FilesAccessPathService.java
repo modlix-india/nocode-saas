@@ -20,13 +20,12 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FilesAccessPathDao;
+import com.fincity.saas.files.dto.FilesAccessPath;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
-import com.fincity.saas.files.model.FilesAccessPath;
 
 import reactor.core.publisher.Mono;
 
@@ -41,16 +40,11 @@ public class FilesAccessPathService
 	private static final String USER_ID = "userId";
 	private static final String ACCESS_NAME = "accessName";
 
-	private static final String CACHE_NAME_ACCESS_PATH = "accessPath";
-
 	@Autowired
 	private FilesMessageResourceService msgService;
 
 	@Autowired
 	private FeignAuthenticationService securityService;
-
-	@Autowired
-	private CacheService cacheService;
 
 	@Override
 	public Mono<FilesAccessPath> create(FilesAccessPath entity) {
@@ -303,65 +297,52 @@ public class FilesAccessPathService
 	public Mono<Boolean> hasReadAccess(String actualPath, String clientCode, FilesAccessPathResourceType resourceType) {
 
 		String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
-		Mono<String> mKey = cacheService.makeKey(clientCode, ":", resourceType, ":read:", path);
 
-		return mKey.flatMap(e -> cacheService.<Boolean>get(CACHE_NAME_ACCESS_PATH, e))
-		        .switchIfEmpty(Mono.defer(() ->
+		return FlatMapUtil.flatMapMono(
 
-				FlatMapUtil.flatMapMono(
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-				        SecurityContextUtil::getUsersContextAuthentication,
+		        ca -> ca.isSystemClient() ? Mono.just(true)
+		                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
 
-				        ca -> ca.isSystemClient() ? Mono.just(true)
-				                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+		        (ca, managed) ->
+				{
+			        if (!managed.booleanValue())
+				        return Mono.just(false);
 
-				        (ca, managed) ->
-						{
-					        if (!managed.booleanValue())
-						        return Mono.just(false);
+			        return this.dao.hasPathReadAccess(path, ULong.valueOf(ca.getUser()
+			                .getId()), clientCode, resourceType, ca.getAuthorities()
+			                        .stream()
+			                        .map(GrantedAuthority::getAuthority)
+			                        .toList());
+		        })
+		        .defaultIfEmpty(false);
 
-					        return this.dao.hasPathReadAccess(path, ULong.valueOf(ca.getUser()
-					                .getId()), clientCode, resourceType, ca.getAuthorities()
-					                        .stream()
-					                        .map(GrantedAuthority::getAuthority)
-					                        .toList());
-				        },
-
-				        (ca, managed, value) -> mKey
-				                .flatMap(key -> cacheService.<Boolean>put(CACHE_NAME_ACCESS_PATH, value, key))
-
-				)));
 	}
 
-	public Mono<Boolean> hasWriteAccess(String path, String clientCode, FilesAccessPathResourceType resourceType) {
+	public Mono<Boolean> hasWriteAccess(String actualPath, String clientCode,
+	        FilesAccessPathResourceType resourceType) {
 
-		Mono<String> mKey = cacheService.makeKey(clientCode, ":", resourceType, ":write:", path);
+		String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
 
-		return mKey.flatMap(e -> cacheService.<Boolean>get(CACHE_NAME_ACCESS_PATH, e))
-		        .switchIfEmpty(Mono.defer(() ->
+		return FlatMapUtil.flatMapMono(
 
-				FlatMapUtil.flatMapMono(
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-				        SecurityContextUtil::getUsersContextAuthentication,
+		        ca -> ca.isSystemClient() ? Mono.just(true)
+		                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
 
-				        ca -> ca.isSystemClient() ? Mono.just(true)
-				                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+		        (ca, managed) ->
+				{
+			        if (!managed.booleanValue())
+				        return Mono.just(false);
 
-				        (ca, managed) ->
-						{
-					        if (!managed.booleanValue())
-						        return Mono.just(false);
-
-					        return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
-					                .getId()), clientCode, resourceType, ca.getAuthorities()
-					                        .stream()
-					                        .map(GrantedAuthority::getAuthority)
-					                        .toList());
-				        },
-
-				        (ca, managed, value) -> mKey
-				                .flatMap(key -> cacheService.<Boolean>put(CACHE_NAME_ACCESS_PATH, value, key))
-
-				)));
+			        return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
+			                .getId()), clientCode, resourceType, ca.getAuthorities()
+			                        .stream()
+			                        .map(GrantedAuthority::getAuthority)
+			                        .toList());
+		        })
+		        .defaultIfEmpty(false);
 	}
 }

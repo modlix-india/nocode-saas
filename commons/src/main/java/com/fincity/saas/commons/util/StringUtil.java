@@ -22,7 +22,7 @@ public class StringUtil {
 
 	public static boolean safeIsBlank(Object object) {
 
-		return object != null && object.toString()
+		return object == null || object.toString()
 		        .isBlank();
 	}
 
