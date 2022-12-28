@@ -50,7 +50,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	@Value("${files.timeUnit:DAYS}")
 	private ChronoUnit defaultChronoUnit;
 
-	@Value("${files.secureKeyURI}")
+	@Value("${files.secureKeyURI:api/files/secured/downloadFileByKey/}")
 	private String secureAccessPathUri;
 
 	@Autowired
