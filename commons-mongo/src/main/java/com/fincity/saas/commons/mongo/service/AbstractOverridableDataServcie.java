@@ -138,7 +138,7 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 
 		return flatMapMono(
 		        () -> SecurityContextUtil.hasAuthority(
-		                "Authorities." + this.appNameAccessPrefix() + this.pojoClass.getSimpleName() + "_" + method,
+		                "Authorities." + this.getAppNamePrefixWithDot() + this.pojoClass.getSimpleName() + "_" + method,
 		                ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
 
 		        access ->
@@ -159,9 +159,10 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 		        }).defaultIfEmpty(false);
 	}
 
-	protected String appNameAccessPrefix() {
+	protected String getAppNamePrefixWithDot() {
 
-		return "APPBUILDER.";
+		return "APPBUILDER."; //NOSONAR
+		// Need this to override for those roles without app builder.
 	}
 
 	private Mono<D> checkIfExists(D cca) {

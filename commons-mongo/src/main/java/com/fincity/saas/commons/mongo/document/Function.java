@@ -26,11 +26,13 @@ public class Function extends AbstractOverridableDTO<Function> {
 
 	private static final long serialVersionUID = 2733397732360134939L;
 
-	private Map<String, Object> definition; //NOSONAR
+	private Map<String, Object> definition; // NOSONAR
+	private String executeAuth;
 
 	public Function(Function fun) {
 		super(fun);
 		this.definition = CloneUtil.cloneMapObject(definition);
+		this.executeAuth = fun.executeAuth;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -42,6 +44,8 @@ public class Function extends AbstractOverridableDTO<Function> {
 			        .map(a ->
 					{
 				        this.definition = (Map<String, Object>) a;
+				        if (this.executeAuth == null)
+					        this.executeAuth = base.executeAuth;
 				        return this;
 			        });
 
@@ -60,6 +64,10 @@ public class Function extends AbstractOverridableDTO<Function> {
 		                .map(k ->
 						{
 			                e.definition = (Map<String, Object>) k;
+
+			                if (this.executeAuth != null && this.executeAuth.equals(base.executeAuth))
+				                this.executeAuth = null;
+
 			                return e;
 		                }));
 	}

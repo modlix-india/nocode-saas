@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.HybridRepository;
 import com.fincity.nocode.kirun.engine.json.schema.validator.SchemaValidator;
-import com.fincity.nocode.kirun.engine.repository.KIRunSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -42,6 +41,7 @@ import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
+import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.StorageService;
@@ -120,7 +120,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
 			                .getAsJsonObject();
 			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                new HybridRepository<>(new KIRunSchemaRepository(),
+			                new HybridRepository<>(new CoreSchemaRepository(),
 			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
 			                job);
 		        })
