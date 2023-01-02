@@ -5,6 +5,7 @@ package com.fincity.saas.files.jooq;
 
 
 import com.fincity.saas.files.jooq.tables.FilesAccessPath;
+import com.fincity.saas.files.jooq.tables.FilesSecuredAccessKey;
 
 import java.util.Arrays;
 import java.util.List;
@@ -33,6 +34,11 @@ public class Files extends SchemaImpl {
     public final FilesAccessPath FILES_ACCESS_PATH = FilesAccessPath.FILES_ACCESS_PATH;
 
     /**
+     * The table <code>files.files_secured_access_key</code>.
+     */
+    public final FilesSecuredAccessKey FILES_SECURED_ACCESS_KEY = FilesSecuredAccessKey.FILES_SECURED_ACCESS_KEY;
+
+    /**
      * No further instances allowed
      */
     private Files() {
@@ -48,7 +54,8 @@ public class Files extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
-            FilesAccessPath.FILES_ACCESS_PATH
+            FilesAccessPath.FILES_ACCESS_PATH,
+            FilesSecuredAccessKey.FILES_SECURED_ACCESS_KEY
         );
     }
 }
