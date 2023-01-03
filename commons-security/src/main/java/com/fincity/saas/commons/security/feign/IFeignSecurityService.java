@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 public interface IFeignSecurityService {
 
 	@GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
-	public Mono<ContextAuthentication> contextAuthentication(@RequestHeader("Authorization") String authorization,
+	public Mono<ContextAuthentication> contextAuthentication(@RequestHeader(name = "Authorization", required = false) String authorization,
 	        @RequestHeader("X-Forwarded-Host") String forwardedHost,
 	        @RequestHeader("X-Forwarded-Port") String forwardedPort);
 

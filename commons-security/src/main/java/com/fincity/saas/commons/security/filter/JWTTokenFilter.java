@@ -44,8 +44,7 @@ public class JWTTokenFilter implements WebFilter {
 
 		FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> !bearerToken.isBlank() ? this.authService.getAuthentication(isBasic, bearerToken, request)
-		                : Mono.empty(),
+		        () -> this.authService.getAuthentication(isBasic, bearerToken, request),
 
 		        ca ->
 				{

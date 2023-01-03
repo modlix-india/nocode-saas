@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.jwt.JWTClaims;
 import com.fincity.saas.common.security.jwt.JWTUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -267,6 +269,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, ServerHttpRequest request) {
 
+		if (StringUtil.safeIsBlank(bearerToken)) {
+			return this.makeAnonySpringAuthentication(request);
+		}
+
 		return flatMapMonoWithNull(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
@@ -340,6 +346,40 @@ public class AuthenticationService implements IAuthenticationService {
 		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
 		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
 		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
+	}
+
+	private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {
+
+		List<String> clientCode = request.getHeaders()
+		        .get("clientCode");
+
+		Mono<Client> loggedInClient = (clientCode != null && !clientCode.isEmpty())
+		        ? this.clientService.getClientBy(clientCode.get(0))
+		        : this.clientService.getClientBy(request);
+
+		return loggedInClient.map(e -> new ContextAuthentication(new ContextUser().setId(BigInteger.ZERO)
+		        .setCreatedBy(BigInteger.ZERO)
+		        .setUpdatedBy(BigInteger.ZERO)
+		        .setCreatedAt(LocalDateTime.now())
+		        .setUpdatedAt(LocalDateTime.now())
+		        .setClientId(e.getId()
+		                .toBigInteger())
+		        .setUserName("_Anonymous")
+		        .setEmailId("nothing@nothing")
+		        .setPhoneNumber("+910000000000")
+		        .setFirstName("Anonymous")
+		        .setLastName("")
+		        .setLocaleCode("en")
+		        .setPassword("")
+		        .setPasswordHashed(false)
+		        .setAccountNonExpired(true)
+		        .setAccountNonLocked(true)
+		        .setCredentialsNonExpired(true)
+		        .setNoFailedAttempt((short) 0)
+		        .setStringAuthorities(List.of("Authorities._Anonymous")), false,
+		        e.getId()
+		                .toBigInteger(),
+		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX));
 	}
 
 	private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {

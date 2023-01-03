@@ -2,9 +2,6 @@ package com.fincity.saas.commons.mongo.document;
 
 import java.util.Map;
 
-import org.springframework.data.mongodb.core.index.CompoundIndex;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
@@ -18,49 +15,47 @@ import reactor.core.publisher.Mono;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Document
-@CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "functionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
-public class Function extends AbstractOverridableDTO<Function> {
+public class AbstractSchema<D extends AbstractSchema<D>> extends AbstractOverridableDTO<D> {
 
-	private static final long serialVersionUID = 2733397732360134939L;
+	private static final long serialVersionUID = 2089418665068611650L;
 
-	private Map<String, Object> definition; //NOSONAR
+	private Map<String, Object> definition; // NOSONAR
 
-	public Function(Function fun) {
+	protected AbstractSchema(D fun) {
 		super(fun);
-		this.definition = CloneUtil.cloneMapObject(definition);
+		this.definition = CloneUtil.cloneMapObject(fun.getDefinition());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<Function> applyOverride(Function base) {
+	public Mono<D> applyOverride(D base) {
 
 		if (base != null)
-			return DifferenceApplicator.apply(this.definition, base.definition)
+			return DifferenceApplicator.apply(this.definition, base.getDefinition())
 			        .map(a ->
 					{
 				        this.definition = (Map<String, Object>) a;
-				        return this;
+				        return (D) this;
 			        });
 
-		return Mono.just(this);
+		return Mono.just((D) this);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<Function> makeOverride(Function base) {
+	public Mono<D> makeOverride(D base) {
 
 		if (base == null)
-			return Mono.just(this);
+			return Mono.just((D) this);
 
 		return Mono.just(this)
-		        .flatMap(e -> DifferenceExtractor.extract(this.definition, e.definition)
+		        .flatMap(e -> DifferenceExtractor.extract(e.definition, base.getDefinition())
 		                .map(k ->
 						{
 			                e.definition = (Map<String, Object>) k;
-			                return e;
+			                return (D) e;
 		                }));
 	}
 }
