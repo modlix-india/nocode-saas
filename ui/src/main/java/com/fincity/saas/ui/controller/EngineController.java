@@ -8,14 +8,14 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.saas.commons.mongo.document.Function;
-import com.fincity.saas.commons.mongo.service.FunctionService;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.document.Style;
+import com.fincity.saas.ui.document.UIFunction;
 import com.fincity.saas.ui.service.ApplicationService;
 import com.fincity.saas.ui.service.PageService;
 import com.fincity.saas.ui.service.StyleService;
+import com.fincity.saas.ui.service.UIFunctionService;
 
 import reactor.core.publisher.Mono;
 
@@ -33,7 +33,7 @@ public class EngineController {
 	private StyleService themeService;
 
 	@Autowired
-	private FunctionService functionService;
+	private UIFunctionService functionService;
 
 	@GetMapping("application")
 	public Mono<ResponseEntity<Application>> application(@RequestHeader("appCode") String appCode,
@@ -60,17 +60,18 @@ public class EngineController {
 	        @RequestHeader("clientCode") String clientCode, @PathVariable("styleName") String themeName) {
 
 		return this.themeService.read(themeName, appCode, clientCode)
-				.map(Style::getStyleString)
+		        .map(Style::getStyleString)
 		        .map(ResponseEntity::ok)
 		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
 		                .build())));
 	}
 
-	@GetMapping("function/{functionName}")
-	public Mono<ResponseEntity<Function>> function(@RequestHeader("appCode") String appCode,
-	        @RequestHeader("clientCode") String clientCode, @PathVariable("functionName") String pageName) {
+	@GetMapping("function/{namespace}/{name}")
+	public Mono<ResponseEntity<UIFunction>> function(@RequestHeader("appCode") String appCode,
+	        @RequestHeader("clientCode") String clientCode, @PathVariable("namespace") String namespace,
+	        @PathVariable("name") String name) {
 
-		return this.functionService.read(pageName, appCode, clientCode)
+		return this.functionService.read(namespace + "." + name, appCode, clientCode)
 		        .map(ResponseEntity::ok)
 		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
 		                .build())));

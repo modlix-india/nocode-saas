@@ -96,7 +96,7 @@ public class ClientService
 		return getClientPattern(uriScheme, uriHost, uriPort).map(ClientUrlPattern::getIdentifier)
 		        .map(ULong::valueOf)
 		        .defaultIfEmpty(ULong.valueOf(1l))
-		        .flatMap(id -> this.dao.readById(id));
+		        .flatMap(id -> this.dao.readInternal(id));
 	}
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {

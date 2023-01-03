@@ -84,9 +84,11 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 
 	@Override
 	public Mono<D> create(D entity) {
+		
+		//TODO: CHECK FOR APPCODE
 
 		@SuppressWarnings("unchecked")
-		Mono<D> crtEnt = flatMapMono(
+		Mono<D> crtEnt = FlatMapUtil.flatMapMonoLog(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -102,7 +104,7 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
 		                this.pojoClass.getSimpleName()));
 
-		return flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMonoWithNullLog(
 
 		        () -> crtEnt,
 
@@ -138,9 +140,8 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 
 		return flatMapMono(
 		        () -> SecurityContextUtil.hasAuthority(
-		                "Authorities.APPBUILDER." + this.pojoClass.getSimpleName() + "_" + method, ca.getAuthorities())
-		                        ? Mono.just(true)
-		                        : Mono.empty(),
+		                "Authorities." + this.getAppNamePrefixWithDot() + this.getObjectName() + "_" + method,
+		                ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
 
 		        access ->
 				{
@@ -158,6 +159,16 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 			                ? this.securityService.hasWriteAccess(entity.getAppCode(), ca.getClientCode())
 			                : this.securityService.hasReadAccess(entity.getAppCode(), ca.getClientCode());
 		        }).defaultIfEmpty(false);
+	}
+
+	protected String getObjectName() {
+		return this.pojoClass.getSimpleName();
+	}
+
+	protected String getAppNamePrefixWithDot() {
+
+		return "APPBUILDER."; //NOSONAR
+		// Need this to override for those roles without app builder.
 	}
 
 	private Mono<D> checkIfExists(D cca) {

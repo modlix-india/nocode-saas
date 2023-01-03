@@ -1,4 +1,19 @@
 spring:
+  r2dbc:
+    url: ${core.db.url}
+    username: ${core.db.username}
+    password: ${core.db.password}
+    pool:
+      initial-size: 2
+      max-size: 4
+      max-idle-time: 30m
+      validation-query: SELECT 1
+  flyway:
+    enabled: true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${core.db.flyway.url}
+    user: ${core.db.username}
+    password: ${core.db.password}
   data:
     mongodb:
       uri: ${core.mongo.uri}

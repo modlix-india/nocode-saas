@@ -49,6 +49,12 @@ public class DifferenceExtractor {
 		        .distinct()
 		        .subscribeOn(Schedulers.boundedElastic())
 		        .flatMap(e -> extract(incoming.get(e), existing.get(e)).map(d -> Tuples.of(e, d)))
+		        .map(e ->
+				{
+
+			        System.err.println(e);
+			        return e;
+		        })
 		        .collectMap(Tuple2::getT1, tup -> tup.getT2() == JsonNull.INSTANCE ? null : tup.getT2(), HashMap::new)
 		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e));
 	}

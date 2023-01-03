@@ -20,4 +20,6 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String FORBIDDEN_DELETE_STORAGE = "forbidden_delete_storage";
 	
 	public static final String SCHEMA_VALIDATION_ERROR = "schema_validation_error";
+	
+	public static final String WORKFLOW_TRIGGER_MISSING = "workflow_trigger_missing";
 }
