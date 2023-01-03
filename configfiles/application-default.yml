@@ -22,6 +22,16 @@ ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
 
+core:
+  mongo:
+    uri: mongodb://root:Kiran%40123@localhost:27017/core?authSource=admin
+  db:
+    url: r2dbc:mysql://localhost:3306/core?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/core
+
 spring:
   flyway:
     enabled: false
@@ -37,5 +47,6 @@ redis:
 logging:
   level:
     root: INFO
-    com:
-      fincity: DEBUG
+    com.fincity: DEBUG
+    org.jooq: DEBUG
+    org.jooq.tools.LoggerListener: DEBUG

@@ -4,14 +4,14 @@
 package com.fincity.security.jooq.tables.records;
 
 
-import com.fincity.security.jooq.tables.SecurityUserRolePermission;
-
 import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.Record4;
 import org.jooq.Row4;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
+
+import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 
 
 /**

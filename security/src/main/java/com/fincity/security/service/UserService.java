@@ -1,10 +1,13 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
@@ -19,25 +23,47 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
-import com.fincity.security.util.ULongUtil;
+import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
+public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
+
+	private static final String ASSIGNED_PERMISSION = " Permission is assigned to the user ";
+
+	private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
+
+	private static final String UNASSIGNED_PERMISSION = " Permission is removed from the selected user";
+
+	private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
 
 	@Autowired
 	private ClientService clientService;
 
 	@Autowired
+	private ClientPasswordPolicyService clientPasswordPolicyService;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+
+	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	@Autowired
+	private SoxLogService soxLogService;
 
 	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
@@ -66,6 +92,12 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return SecurityContextUtil.getUsersContextUser()
 		        .map(ContextUser::getId)
 		        .map(ULong::valueOf);
+	}
+
+	@Override
+	public SecuritySoxLogObjectName getSoxObjectName() {
+
+		return SecuritySoxLogObjectName.USER;
 	}
 
 	@PreAuthorize("hasPermission('Authorities.User_CREATE')")
@@ -99,7 +131,19 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		                        u.getPhoneNumber())
 		                .map(b -> u))
 		        .flatMap(u -> this.dao.create(u))
-		        .flatMap(u -> this.setPassword(u, password))
+		        .flatMap(u ->
+				{
+
+			        this.soxLogService.create(
+
+			                new SoxLog().setActionName(CREATE)
+			                        .setObjectId(u.getId())
+			                        .setObjectName(getSoxObjectName())
+			                        .setDescription("User created"))
+			                .subscribe();
+
+			        return this.setPassword(u, password);
+		        })
 		        .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
 		                .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 		                .flatMap(msg -> Mono.error(
@@ -113,10 +157,19 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 	}
 
 	private Mono<User> setPassword(User u, String password) {
-		this.getLoggedInUserId()
-		        .flatMap(e -> this.dao.setPassword(u.getId(), password, e))
-		        .subscribe();
-		return Mono.just(u);
+
+		return flatMapMono(
+
+		        this::getLoggedInUserId,
+
+		        loggedInUserId -> this.dao.setPassword(u.getId(), password, loggedInUserId)
+		                .map(result -> result > 0)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (loggedInUserId, passwordSet) -> Mono.just(u)
+
+		);
+
 	}
 
 	@Override
@@ -177,6 +230,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		return this.dao
 		        .checkAvailability(entity.getId(), entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber())
+		        .map(BooleanUtil::safeValueOf)
 		        .flatMap(e -> super.update(entity));
 	}
 
@@ -192,6 +246,7 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 			        e.setLastName(entity.getLastName());
 			        e.setMiddleName(entity.getMiddleName());
 			        e.setLocaleCode(entity.getLocaleCode());
+			        e.setStatusCode(entity.getStatusCode());
 			        return e;
 		        });
 	}
@@ -232,31 +287,43 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		        .flatMap(this.dao::setPermissions);
 	}
 
+	public Mono<Boolean> removePermission(ULong userId, ULong permissionId) {
+		return this.dao.removePermissionFromUser(userId, permissionId)
+		        .map(value -> value > 0);
+	}
+
+	public Mono<Boolean> removeFromPermissionList(List<ULong> userList, List<ULong> permissionList) {
+
+		return this.dao.removePermissionListFromUser(userList, permissionList);
+	}
+
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
 	public Mono<Boolean> removePermissionFromUser(ULong userId, ULong permissionId) {
+
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.dao.readById(userId),
+		        ca ->
 
-		        (ca, user) ->
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.dao.readById(userId)
 
-				clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-				        .getClientId()), user.getClientId()),
+				                .flatMap(user -> this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+				                        .getClientId()), user.getClientId())),
 
-		        (ca, user, isManaged) ->
-				{
+		        (ca, isManaged) ->
 
-			        if (ca.isSystemClient() || isManaged.booleanValue())
+				this.dao.removePermissionFromUser(userId, permissionId)
+				        .map(val ->
+						{
+					        boolean removed = val > 0;
 
-				        return this.dao.removingPermissionFromUser(userId, permissionId)
-				                .map(val -> val > 0)
-				                .filter(Boolean::booleanValue);
+					        if (removed)
+						        super.unAssignLog(userId, UNASSIGNED_PERMISSION);
 
-			        return Mono.empty();
-
-		        }
+					        return removed;
+				        })
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
@@ -270,18 +337,24 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 		        ca -> this.dao.readById(userId),
 
-		        (ca, user) -> clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), user.getClientId()),
+		        (ca, user) ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+				                .getClientId()), user.getClientId())
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 		        (ca, user, isManaged) ->
-				{
-			        if (ca.isSystemClient() || isManaged.booleanValue())
 
-				        return this.dao.removeRoleForUser(userId, roleId)
-				                .map(val -> val > 0);
+				this.dao.removeRoleForUser(userId, roleId)
+				        .map(val ->
+						{
+					        boolean removed = val > 0;
+					        if (removed)
+						        super.unAssignLog(userId, UNASSIGNED_ROLE);
 
-			        return Mono.empty();
-		        }
+					        return removed;
+				        })
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
@@ -289,98 +362,93 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
 	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
-		return flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        contextAuth -> this.dao.readById(userId),
-
-		        (contextAuth, user) ->
+		return this.dao.checkPermissionAssignedForUser(userId, permissionId)
+		        .flatMap(result ->
 				{
 
-			        if (contextAuth.isSystemClient())
-				        return Mono.just(true);
+			        if (result.booleanValue())
+				        return Mono.just(result);
 
-			        return clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
-			                .getClientId()), user.getClientId())
-			                .flatMap(e -> e.booleanValue() ? Mono.just(e) : Mono.empty());
-		        },
+			        return flatMapMono(
 
-		        (contextAuth, user, isManaged) ->
+			                SecurityContextUtil::getUsersContextAuthentication,
 
-				isManaged.booleanValue() ? flatMapMono(
+			                contextAuth -> this.dao.readById(userId),
 
-				        () -> clientService.checkPermissionAvailableForGivenClient(user.getClientId(), permissionId),
+			                (contextAuth, user) ->
 
-				        havePermission -> this.dao.checkPermissionExistsForUser(user.getClientId(), permissionId),
+							contextAuth.isSystemClient() ? Mono.just(true) :
 
-				        (havePermission, permissionCreated) -> Mono.just(havePermission && permissionCreated)
+							        clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
+							                .getClientId()), user.getClientId())
+							                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				) : Mono.empty(),
+			                (contextAuth, user, sysOrManaged) -> this.clientService
+			                        .checkPermissionExistsOrCreatedForClient(user.getClientId(), permissionId)
+			                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (contextAuth, user, isManaged, hasPermission) ->
-				{
+			                (contextAuth, user, sysOrManaged, hasPermission) ->
 
-			        if (((Boolean) hasPermission).booleanValue())
+							this.dao.assignPermissionToUser(userId, permissionId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(userId, ASSIGNED_PERMISSION + permissionId);
 
-				        return this.dao.assigningPermissionToUser(userId, permissionId)
-				                .map(val -> val > 0);
+								        return e;
+							        })
 
-			        return Mono.empty();
-		        }
+				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
+		        });
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
 	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
-		return flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> this.dao.readById(userId),
-
-		        (ca, user) ->
+		return this.dao.checkRoleAssignedForUser(userId, roleId)
+		        .flatMap(result ->
 				{
+			        if (result.booleanValue())
+				        return Mono.just(result);
 
-			        if (ca.isSystemClient())
-				        return Mono.just(true);
+			        return flatMapMono(
 
-			        return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-			                .getClientId()), user.getClientId())
-			                .flatMap(e -> e.booleanValue() ? Mono.just(e) : Mono.empty());
+			                SecurityContextUtil::getUsersContextAuthentication,
 
-		        },
+			                ca -> this.dao.readById(userId),
 
-		        (ca, user, sysOrManaged) ->
+			                (ca, user) ->
 
-				sysOrManaged.booleanValue() ?
+							ca.isSystemClient() ? Mono.just(true) :
 
-				        flatMapMono(
+							        clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+							                .getClientId()), user.getClientId())
+							                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				                () -> this.clientService.checkRoleApplicableForSelectedClient(user.getClientId(),
-				                        roleId),
+			                (ca, user, sysOrManaged) ->
 
-				                roleApplicable -> this.dao.checkRoleCreatedByUser(userId, roleId),
+							this.clientService.checkRoleExistsOrCreatedForClient(user.getClientId(), roleId)
+							        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				                (roleApplicable, roleCreated) -> Mono
-				                        .just(roleApplicable.booleanValue() || roleCreated.booleanValue())
+			                (ca, user, sysOrManaged, roleApplicable) ->
 
-						) : Mono.empty(),
+							this.dao.addRoleToUser(userId, roleId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(userId, ASSIGNED_ROLE + roleId);
 
-		        (ca, user, sysOrManaged, roleApplicable) ->
+								        return e;
+							        })
 
-				{
+				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				        SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
 
-			        if (((Boolean) roleApplicable).booleanValue())
-				        return this.dao.checkRoleCreatedByUser(userId, roleId);
+		        });
 
-			        return Mono.empty();
-		        }
-
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong loggedInClientId, ULong userId) {
@@ -391,14 +459,149 @@ public class UserService extends AbstractJOOQUpdatableDataService<SecurityUserRe
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
 	}
 
-	public Mono<Set<ULong>> getUserListFromClients(Set<ULong> clientList) {
-		return this.dao.getUserListFromClientIds(clientList);
+	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {
+
+		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
+			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
+
+		return flatMapMono(
+
+		        () -> this.dao.readById(reqUserId),
+
+		        user -> this.checkHierarchy(user, reqUserId, requestPassword.getNewPassword()),
+
+		        (user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(user.getClientId(),
+		                requestPassword.getNewPassword()),
+
+		        (user, isUpdatable, isValid) -> this.checkPasswordInPastPasswords(user,
+		                requestPassword.getNewPassword()),
+
+		        (user, isUpdatable, isValid, isPastPassword) -> this.dao
+		                .setPassword(reqUserId, requestPassword.getNewPassword(), user.getId())
+		                .map(e ->
+						{
+			                this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
+			                        .setActionName(SecuritySoxLogActionName.OTHER)
+			                        .setObjectName(SecuritySoxLogObjectName.USER)
+			                        .setDescription("Password updated"))
+			                        .subscribe();
+
+			                return e > 0;
+		                }))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                "Password cannot be updated"));
+
 	}
 
-	public Mono<Boolean> removingPermissionFromUser(ULong userId, ULong permissionId) {
-		return this.dao.removingPermissionFromUser(userId, permissionId)
-		        .map(val -> val > 0);
+	// check the hierarchy with client id and user id as per the comment given
+	// 1.) same user id
+	// 2.) logged in user's client id matches given user's client id if logged in
+	// user has user edit access update the password
+	// 3.) logged in user's client id is system if logged in user has user edit
+	// access update the password
+	// 4.) if no client id matches check logged in user's client id is managing user
+	// id's client id if logged in user has user edit access the update password
+
+	public Mono<Boolean> checkHierarchy(User user, ULong reqUserId, String newPassword) {
+
+		if (user.getId()
+		        .equals(reqUserId)) {
+
+			return flatMapMono(
+
+			        () -> this.dao.readById(reqUserId),
+
+			        requestedUser -> Mono.just(SecurityUserStatusCode.ACTIVE.equals(requestedUser.getStatusCode())),
+
+			        (requestedUser, isActive) -> isActive.booleanValue()
+			                ? this.checkPasswordEquality(requestedUser, newPassword)
+			                : securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.USER_NOT_ACTIVE),
+
+			        (requestedUser, isActive, passwordEqual) -> passwordEqual.booleanValue()
+			                ? securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
+			                : Mono.just(true)
+
+			);
+		}
+
+		return flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(ca.isSystemClient()),
+
+		        (ca, isSys) -> isSys.booleanValue() ? Mono.justOrEmpty(Optional.empty())
+		                : this.dao.readById(reqUserId)
+		                        .map(User::getClientId),
+		        (ca, isSys, rClientId) ->
+				{
+
+			        if (isSys.booleanValue())
+				        return Mono.just(true);
+
+			        return Mono.just(rClientId.toBigInteger()
+			                .equals(ca.getUser()
+			                        .getClientId()));
+		        },
+
+		        (ca, isSys, rClientId, isSameClient) ->
+				{
+
+			        if (isSameClient.booleanValue())
+				        return Mono.just(true);
+
+			        return this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                .getClientId()), rClientId);
+		        },
+
+		        (ca, isSys, rclientId, isSameClient, isManaged) ->
+				{
+
+			        if (!isManaged.booleanValue())
+				        return Mono.just(false);
+
+			        return SecurityContextUtil.hasAuthority("Authorities.User_UPDATE");
+		        }
+
+		);
 	}
 
-// getUserListFromClientIds
+	public Mono<Boolean> checkPasswordEquality(User u, String newPassword) {
+
+		if (u.isPasswordHashed()) {
+			if (passwordEncoder.matches(u.getId() + newPassword, u.getPassword()))
+				return Mono.just(true);
+		} else if (StringUtil.safeEquals(newPassword, u.getPassword()))
+			return Mono.just(true);
+
+		return Mono.just(false);
+	}
+
+	private Mono<Boolean> checkPasswordInPastPasswords(User user, String newPassword) {
+
+		return flatMapMono(
+
+		        () -> this.dao.getPastPasswordsBasedOnPolicy(user.getId(), user.getClientId()),
+
+		        pastPasswords ->
+				{
+
+			        for (var pastPassword : pastPasswords) {
+				        if ((pastPassword.isPasswordHashed()
+				                && passwordEncoder.matches(pastPassword.getPassword(), user.getId() + newPassword))
+				                || (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
+				                        .equals(newPassword)))
+					        return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+					                SecurityMessageResourceService.PASSWORD_USER_ERROR);
+
+			        }
+
+			        return Mono.just(true);
+		        });
+
+	}
+
 }

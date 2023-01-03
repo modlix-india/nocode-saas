@@ -29,7 +29,6 @@ public class ContextUser implements Serializable {
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
 	private BigInteger clientId;
-	private String clientCode;
 	private String userName;
 	private String emailId;
 	private String phoneNumber;

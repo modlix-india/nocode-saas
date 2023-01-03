@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.jwt.JWTClaims;
 import com.fincity.saas.common.security.jwt.JWTUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -29,6 +31,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
@@ -94,7 +97,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 			if (bearerToken.startsWith("Bearer ")) {
 				bearerToken = bearerToken.substring(7);
-			} else if (bearerToken.startsWith("basic ")) {
+			} else if (bearerToken.startsWith("Basic ")) {
 				bearerToken = bearerToken.substring(6);
 			}
 		}
@@ -221,7 +224,7 @@ public class AuthenticationService implements IAuthenticationService {
 	private Mono<Object> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
 
 		if (pol.getNoFailedAttempts() != null && pol.getNoFailedAttempts()
-		        .shortValue() >= u.getNoFailedAttempt()) {
+		        .shortValue() <= u.getNoFailedAttempt()) {
 
 			soxLogService.create(new SoxLog().setObjectId(u.getId())
 			        .setActionName(SecuritySoxLogActionName.LOGIN)
@@ -238,40 +241,20 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<Boolean> checkPassword(AuthenticationRequest authRequest, User u) {
 
-		if (!u.isPasswordHashed()) {
-			if (!authRequest.getPassword()
-			        .equals(u.getPassword())) {
+		if (u.isPasswordHashed()) {
+			if (pwdEncoder.matches(u.getId() + authRequest.getPassword(), u.getPassword()))
+				return Mono.just(true);
+		} else if (StringUtil.safeEquals(authRequest.getPassword(), u.getPassword()))
+			return Mono.just(true);
 
-				userService.increaseFailedAttempt(u.getId())
-				        .subscribe();
+		userService.increaseFailedAttempt(u.getId())
+		        .subscribe();
 
-				soxLogService.create(new SoxLog().setObjectId(u.getId())
-				        .setActionName(SecuritySoxLogActionName.LOGIN)
-				        .setObjectName(SecuritySoxLogObjectName.USER)
-				        .setDescription("Password mismatch"))
-				        .subscribe();
-				return this.credentialError()
-				        .map(e -> false);
+		soxLogService.createLog(u.getId(), SecuritySoxLogActionName.UPDATE, SecuritySoxLogObjectName.USER,
+		        "Given Password is mismatching with existing.");
 
-			}
-		} else {
-			if (!pwdEncoder.matches(u.getId() + authRequest.getPassword(), u.getPassword())) {
-
-				userService.increaseFailedAttempt(u.getId())
-				        .subscribe();
-
-				soxLogService.create(new SoxLog().setObjectId(u.getId())
-				        .setActionName(SecuritySoxLogActionName.LOGIN)
-				        .setObjectName(SecuritySoxLogObjectName.USER)
-				        .setDescription("Password mismatch"))
-				        .subscribe();
-
-				return this.credentialError()
-				        .map(e -> false);
-			}
-		}
-
-		return Mono.just(true);
+		return this.credentialError()
+		        .map(e -> false);
 	}
 
 	private Mono<? extends AuthenticationResponse> credentialError() {
@@ -285,6 +268,10 @@ public class AuthenticationService implements IAuthenticationService {
 	}
 
 	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, ServerHttpRequest request) {
+
+		if (StringUtil.safeIsBlank(bearerToken)) {
+			return this.makeAnonySpringAuthentication(request);
+		}
 
 		return flatMapMonoWithNull(
 
@@ -356,9 +343,43 @@ public class AuthenticationService implements IAuthenticationService {
 		        (claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
 
 		        (claims, u,
-		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser().setClientCode(typ.getT2()), true,
+		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
 		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
 		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
+	}
+
+	private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {
+
+		List<String> clientCode = request.getHeaders()
+		        .get("clientCode");
+
+		Mono<Client> loggedInClient = (clientCode != null && !clientCode.isEmpty())
+		        ? this.clientService.getClientBy(clientCode.get(0))
+		        : this.clientService.getClientBy(request);
+
+		return loggedInClient.map(e -> new ContextAuthentication(new ContextUser().setId(BigInteger.ZERO)
+		        .setCreatedBy(BigInteger.ZERO)
+		        .setUpdatedBy(BigInteger.ZERO)
+		        .setCreatedAt(LocalDateTime.now())
+		        .setUpdatedAt(LocalDateTime.now())
+		        .setClientId(e.getId()
+		                .toBigInteger())
+		        .setUserName("_Anonymous")
+		        .setEmailId("nothing@nothing")
+		        .setPhoneNumber("+910000000000")
+		        .setFirstName("Anonymous")
+		        .setLastName("")
+		        .setLocaleCode("en")
+		        .setPassword("")
+		        .setPasswordHashed(false)
+		        .setAccountNonExpired(true)
+		        .setAccountNonLocked(true)
+		        .setCredentialsNonExpired(true)
+		        .setNoFailedAttempt((short) 0)
+		        .setStringAuthorities(List.of("Authorities._Anonymous")), false,
+		        e.getId()
+		                .toBigInteger(),
+		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX));
 	}
 
 	private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {
@@ -388,4 +409,5 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return Mono.just(jwtClaims);
 	}
+
 }

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
@@ -22,7 +22,7 @@ import reactor.util.function.Tuples;
 @RestController
 @RequestMapping("api/security/clients")
 public class ClientController
-        extends AbstractJOOQDataController<SecurityClientRecord, ULong, Client, ClientDAO, ClientService> {
+        extends AbstractJOOQUpdatableDataController<SecurityClientRecord, ULong, Client, ClientDAO, ClientService> {
 
 	@Autowired
 	private ClientService clientService;
@@ -34,7 +34,7 @@ public class ClientController
 		return this.service.isBeingManagedBy(managingClientCode, clientCode)
 		        .map(ResponseEntity::ok);
 	}
-	
+
 	@GetMapping("/internal/isUserBeingManaged")
 	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
 	        @RequestParam String clientCode) {
@@ -44,8 +44,8 @@ public class ClientController
 	}
 
 	@GetMapping("/internal/getClientNAppCode")
-	public Mono<ResponseEntity<Tuple2<String, String>>> getClientNAppCode(@RequestParam String scheme, @RequestParam String host,
-	        @RequestParam String port) {
+	public Mono<ResponseEntity<Tuple2<String, String>>> getClientNAppCode(@RequestParam String scheme,
+	        @RequestParam String host, @RequestParam String port) {
 		return this.service.getClientPattern(scheme, host, port)
 		        .map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
 		        .defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))
@@ -63,4 +63,5 @@ public class ClientController
 		return clientService.removePackageFromClient(clientId, packageId)
 		        .map(ResponseEntity::ok);
 	}
+
 }

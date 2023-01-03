@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.security.feign;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -15,7 +16,7 @@ import reactor.core.publisher.Mono;
 public interface IFeignSecurityService {
 
 	@GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
-	public Mono<ContextAuthentication> contextAuthentication(@RequestHeader("Authorization") String authorization,
+	public Mono<ContextAuthentication> contextAuthentication(@RequestHeader(name = "Authorization", required = false) String authorization,
 	        @RequestHeader("X-Forwarded-Host") String forwardedHost,
 	        @RequestHeader("X-Forwarded-Port") String forwardedPort);
 
@@ -24,4 +25,16 @@ public interface IFeignSecurityService {
 	
 	@GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
 	public Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
+
+	@GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
+	public Mono<Boolean> hasReadAccess(@RequestParam String appCode,
+	        @RequestParam String clientCode);
+	
+	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/hasWriteAccess}")
+	public Mono<Boolean> hasWriteAccess(@RequestParam String appCode,
+	        @RequestParam String clientCode);
+	
+	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
+	public Mono<List<String>> appInheritance(@RequestParam String appCode,
+	        @RequestParam String clientCode);
 }

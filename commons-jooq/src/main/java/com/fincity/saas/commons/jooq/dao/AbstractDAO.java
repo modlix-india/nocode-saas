@@ -258,29 +258,29 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		switch (fc.getOperator()) {
 		case BETWEEN:
 			return field
-			        .between(fc.isValueField() ? (Field<?>) this.getField(fc.getValue())
+			        .between(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
 			                : this.fieldValue(field, fc.getValue()))
-			        .and(fc.isToValueField() ? (Field<?>) this.getField(fc.getToValue())
+			        .and(fc.isToValueField() ? (Field<?>) this.getField(fc.getField())
 			                : this.fieldValue(field, fc.getToValue()));
 
 		case EQUALS:
-			return field.eq(fc.isValueField() ? (Field<?>) this.getField(fc.getValue())
+			return field.eq(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
 			        : this.fieldValue(field, fc.getValue()));
 
 		case GREATER_THAN:
-			return field.gt(fc.isValueField() ? (Field<?>) this.getField(fc.getValue())
+			return field.gt(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
 			        : this.fieldValue(field, fc.getValue()));
 
 		case GREATER_THAN_EQUAL:
-			return field.ge(fc.isValueField() ? (Field<?>) this.getField(fc.getValue())
+			return field.ge(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
 			        : this.fieldValue(field, fc.getValue()));
 
 		case LESS_THAN:
-			return field.lt(fc.isValueField() ? (Field<?>) this.getField(fc.getValue())
+			return field.lt(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
 			        : this.fieldValue(field, fc.getValue()));
 
 		case LESS_THAN_EQUAL:
-			return field.le(fc.isValueField() ? (Field<?>) this.getField(fc.getValue())
+			return field.le(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
 			        : this.fieldValue(field, fc.getValue()));
 
 		case IS_FALSE:
@@ -293,10 +293,11 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 			return field.isNull();
 
 		case IN:
-			return field.in(this.multiFieldValue(field, fc.getValue()));
+			return field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
 
 		case LIKE:
-			return field.like(fc.getValue());
+			return field.like(fc.getValue()
+			        .toString());
 
 		case STRING_LOOSE_EQUAL:
 			return field.like("%" + fc.getValue() + "%");
@@ -306,13 +307,17 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		}
 	}
 
-	private List<Object> multiFieldValue(Field<?> field, String value) {
+	private List<Object> multiFieldValue(Field<?> field, Object obValue, List<Object> values) {
 
-		if (value == null || value.isBlank())
+		if (values != null && !values.isEmpty())
+			return values;
+
+		if (obValue == null)
 			return List.of();
 
 		int from = 0;
-		String iValue = value.trim();
+		String iValue = obValue.toString()
+		        .trim();
 
 		List<Object> obj = new ArrayList<>();
 		for (int i = 0; i < iValue.length(); i++) { // NOSONAR
@@ -337,25 +342,28 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	}
 
-	private Object fieldValue(Field<?> field, String value) {
+	private Object fieldValue(Field<?> field, Object value) {
 
 		DataType<?> dt = field.getDataType();
 
 		if (dt.isString() || dt.isJSON() || dt.isEnum())
-			return value;
+			return value.toString();
 
 		if (dt.isNumeric()) {
 
-			if (dt.hasPrecision())
-				return Double.valueOf(value);
+			if (value instanceof Number)
+				return value;
 
-			return Long.valueOf(value);
+			if (dt.hasPrecision())
+				return Double.valueOf(value.toString());
+
+			return Long.valueOf(value.toString());
 		}
 
 		if (dt.isDate() || dt.isDateTime() || dt.isTime() || dt.isTimestamp()) {
 
 			return value.equals("now") ? LocalDateTime.now()
-			        : LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(value)), ZoneId.of("UTC"));
+			        : LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(value.toString())), ZoneId.of("UTC"));
 		}
 
 		return value;
@@ -405,5 +413,9 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		        .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2)));
 
 		return rec.into(this.pojoClass);
+	}
+
+	public Mono<Class<D>> getPojoClass() {
+		return Mono.just(this.pojoClass);
 	}
 }

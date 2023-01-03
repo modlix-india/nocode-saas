@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity.AuthorizeExchangeSpec;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
@@ -16,37 +17,32 @@ import com.fincity.saas.commons.security.service.IAuthenticationService;
 import reactor.core.publisher.Mono;
 
 public interface ISecurityConfiguration {
-
 	default SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
 	        IAuthenticationService authService, String... exclusionList) {
-		http.csrf()
+		AuthorizeExchangeSpec permits = http.csrf()
 		        .disable()
 		        .cors()
 		        .disable()
-		        .authorizeExchange(exchanges ->
-				{
-			        var pathMatchers = exchanges.pathMatchers(HttpMethod.OPTIONS, "/**")
-			                .permitAll()
-			                .pathMatchers("**/internal/**")
-			                .permitAll()
-			                .pathMatchers("/actuator/**")
-			                .permitAll();
+		        .authorizeExchange()
+		        .pathMatchers(HttpMethod.OPTIONS)
+		        .permitAll()
+		        .pathMatchers("**/internal/**")
+		        .permitAll()
+		        .pathMatchers("/actuator/**")
+		        .permitAll();
 
-			        for (String exclusion : exclusionList) {
-				        pathMatchers.pathMatchers(exclusion)
-				                .permitAll();
-			        }
+		if (exclusionList != null && exclusionList.length != 0)
+			permits = permits.pathMatchers(exclusionList)
+			        .permitAll();
 
-			        pathMatchers.pathMatchers("/api/**")
-			                .authenticated();
-		        })
+		permits.anyExchange()
+		        .authenticated()
+		        .and()
 		        .addFilterAt(new JWTTokenFilter(authService), SecurityWebFiltersOrder.HTTP_BASIC)
 		        .httpBasic()
 		        .authenticationEntryPoint(new HttpBasicServerAuthenticationEntryPoint() {
-
 			        @Override
 			        public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
-
 				        return Mono.fromRunnable(() -> {
 					        ServerHttpResponse response = exchange.getResponse();
 					        response.setStatusCode(HttpStatus.UNAUTHORIZED);
@@ -60,7 +56,6 @@ public interface ISecurityConfiguration {
 		        .disable()
 		        .logout()
 		        .disable();
-
 		return http.build();
 	}
 }

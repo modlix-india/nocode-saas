@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,18 +17,19 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.PermissionDAO;
 import com.fincity.security.dto.Permission;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
-import com.fincity.security.util.ULongUtil;
 
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
 
 @Service
 public class PermissionService
-        extends AbstractJOOQUpdatableDataService<SecurityPermissionRecord, ULong, Permission, PermissionDAO> {
+        extends AbstractSecurityUpdatableDataService<SecurityPermissionRecord, ULong, Permission, PermissionDAO> {
 
 	private static final String PERMISSION = "Permission";
 
@@ -36,6 +38,11 @@ public class PermissionService
 
 	@Autowired
 	private ClientService clientService;
+
+	@Override
+	public SecuritySoxLogObjectName getSoxObjectName() {
+		return SecuritySoxLogObjectName.PERMISSION;
+	}
 
 	@PreAuthorize("hasAuthority('Authorities.Permission_CREATE')")
 	@Override
@@ -84,7 +91,7 @@ public class PermissionService
 	@PreAuthorize("hasAuthority('Authorities.Permission_READ')")
 	@Override
 	public Mono<Page<Permission>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-		
+
 		return this.dao.readPageFilter(pageable, condition);
 	}
 
@@ -167,29 +174,35 @@ public class PermissionService
 	@Override
 	public Mono<Integer> delete(ULong id) {
 
-		return ((PermissionService) AopContext.currentProxy()).read(id)
+		return this.read(id)
 		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
 		                .flatMap(ca ->
 						{
 
-			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+			                if (ca.isSystemClient())
 				                return super.delete(id);
 
-			                return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
 			                        .getClientId()), existing.getClientId())
 			                        .flatMap(managed ->
 									{
 				                        if (managed.booleanValue())
 					                        return super.delete(id);
 
-				                        return messageResourceService
+				                        return this.messageResourceService
 				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
 				                                .flatMap(msg -> Mono
 				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
 				                                                StringFormatter.format(msg, PERMISSION, id))));
 			                        });
 
-		                }));
+		                }))
+		        .onErrorResume(
+		                ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
+		                        ? this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
+		                                SecurityMessageResourceService.DELETE_PERMISSION_ERROR)
+		                        : Mono.error(ex));
+
 	}
 
 }

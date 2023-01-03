@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
@@ -19,10 +19,18 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/packages")
 public class PackageController
-        extends AbstractJOOQDataController<SecurityPackageRecord, ULong, Package, PackageDAO, PackageService> {
+        extends AbstractJOOQUpdatableDataController<SecurityPackageRecord, ULong, Package, PackageDAO, PackageService> {
 
 	@Autowired
 	private PackageService packageService;
+
+	@GetMapping("/{packageId}/assignRole/{roleId}")
+	public Mono<ResponseEntity<Boolean>> assignRole(@PathVariable ULong packageId, @PathVariable ULong roleId) {
+
+		return packageService.assignRoleToPackage(packageId, roleId)
+		        .map(ResponseEntity::ok);
+
+	}
 
 	@GetMapping("/{packageId}/removeRole/{roleId}")
 	public Mono<ResponseEntity<Boolean>> removeRole(@PathVariable ULong packageId, @PathVariable ULong roleId) {

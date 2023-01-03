@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
+import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
@@ -14,6 +15,7 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.jooq.Condition;
@@ -33,7 +35,9 @@ import org.springframework.stereotype.Component;
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.PastPassword;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -41,7 +45,6 @@ import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.service.SecurityMessageResourceService;
-import com.fincity.security.util.ByteUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -302,7 +305,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(query);
 	}
 
-	public Mono<Integer> removingPermissionFromUser(ULong userId, ULong permissionId) {
+	public Mono<Integer> removePermissionFromUser(ULong userId, ULong permissionId) {
 
 		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
 		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
@@ -313,52 +316,35 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(query);
 	}
 
-	public Mono<Integer> assigningPermissionToUser(ULong userId, ULong permissionId) {
+	public Mono<Boolean> removePermissionListFromUser(List<ULong> userList, List<ULong> permissionList) {
+
+		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
+		        .deleteQuery(SECURITY_USER_ROLE_PERMISSION);
+
+		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userList)
+		        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.in(permissionList)));
+
+		return Mono.from(query)
+		        .map(count -> count > 0);
+	}
+
+	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
 
 		return Mono.from(
 
 		        this.dslContext
 		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
 		                        SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
-		                .values(userId, permissionId));
-	}
-
-	public Mono<Boolean> checkPermissionExistsForUser(ULong userId, ULong permissionId) {
-		return Mono.from(
-
-		        this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.ID)
-		                .from(SECURITY_USER_ROLE_PERMISSION)
-		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
-		                        .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
-		                .limit(1)
-
-		)
-		        .map(Record1::value1)
-		        .map(val -> val.intValue() > 0);
-
+		                .values(userId, permissionId))
+		        .map(value -> value > 0);
 	}
 
 	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
-		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
-		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
-		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
-		        .execute() > 0);
-	}
 
-	public Mono<Boolean> checkRoleCreatedByUserWithPermission(ULong roleId, ULong userId, ULong permissionId) {
-		return Mono.just(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
+		return Mono.from(this.dslContext.selectFrom(SECURITY_USER_ROLE_PERMISSION)
 		        .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
-		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
-		                .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)))
-		        .execute() > 0);
-	}
-
-	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
-		return Mono.just(this.dslContext
-		        .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
-		                SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
-		        .values(userId, roleId)
-		        .execute() > 0);
+		                .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))))
+		        .map(Objects::nonNull);
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong loggedInClientId, ULong userId) {
@@ -381,32 +367,59 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		);
 	}
 
-	public Mono<Boolean> assigningRoleToUser(ULong userId, ULong roleId) {
-		return
+	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {
 
-		Mono.just(
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.PASS_HISTORY_COUNT)
+		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId))
+		        .limit(1))
+		        .flatMapMany(cnt -> Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
+		                .from(SECURITY_PAST_PASSWORDS)
+		                .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
+		                .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
+		                .limit(cnt.value1())))
+		        .map(e -> e.into(PastPassword.class))
+		        .collectList()
+		        .defaultIfEmpty(List.of());
+	}
+
+	public Mono<Boolean> checkPermissionAssignedForUser(ULong userId, ULong permissionId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)
+		                        .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
+
+		)
+		        .map(Record1::value1)
+		        .map(count -> count == 1);
+	}
+
+	public Mono<Boolean> checkRoleAssignedForUser(ULong userId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
+		                        .and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
+
+		)
+		        .map(Record1::value1)
+		        .map(count -> count == 1);
+	}
+
+	public Mono<Boolean> addRoleToUser(ULong userId, ULong roleId) {
+
+		return Mono.from(
 
 		        this.dslContext
 		                .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
 		                        SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
-		                .values(userId, roleId)
-		                .execute() > 0
-
-		);
+		                .values(userId, roleId))
+		        .map(Objects::nonNull);
 	}
 
-	public Mono<Set<ULong>> getUserListFromClientIds(Set<ULong> clientList) {
-
-		Set<ULong> users = new HashSet<>();
-
-		Flux.from(
-
-		        this.dslContext.select(SECURITY_USER.ID)
-		                .from(SECURITY_USER)
-		                .where(SECURITY_USER.CLIENT_ID.in(clientList)))
-		        .map(Record1::value1)
-		        .map(users::add);
-
-		return Mono.just(users);
-	}
 }

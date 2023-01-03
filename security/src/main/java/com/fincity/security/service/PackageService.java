@@ -2,10 +2,12 @@ package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -18,18 +20,20 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
-import com.fincity.security.util.ULongUtil;
 
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
 
 @Service
 public class PackageService extends
-        AbstractJOOQUpdatableDataService<SecurityPackageRecord, ULong, com.fincity.security.dto.Package, PackageDAO> {
+        AbstractSecurityUpdatableDataService<SecurityPackageRecord, ULong, com.fincity.security.dto.Package, PackageDAO> {
 
 	private static final String BASE = "base";
 
@@ -39,6 +43,13 @@ public class PackageService extends
 
 	private static final String NAME = "name";
 
+	private static final String PACKAGE = "package";
+
+	private static final String ASSIGNED_ROLE = " Role is assigned to Package ";
+
+	private static final String UNASSIGNED_ROLE = " Role is removed from Package ";
+
+	@Autowired
 	private ClientService clientService;
 
 	@Autowired
@@ -50,11 +61,12 @@ public class PackageService extends
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
-	public void setClientService(ClientService clientService) {
-		this.clientService = clientService;
+	@Override
+	public SecuritySoxLogObjectName getSoxObjectName() {
+		return SecuritySoxLogObjectName.PACKAGE;
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Package_CREATE')")
 	@Override
 	public Mono<Package> create(Package entity) {
 
@@ -92,19 +104,19 @@ public class PackageService extends
 
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Package_READ')")
 	@Override
 	public Mono<Package> read(ULong id) {
 		return super.read(id);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Package_READ')")
 	@Override
 	public Mono<Page<Package>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 		return super.readPageFilter(pageable, condition);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Package_UPDATE')")
 	@Override
 	public Mono<Package> update(Package entity) {
 		return this.dao.canBeUpdated(entity.getId())
@@ -115,7 +127,7 @@ public class PackageService extends
 		                                StringFormatter.format(msg, "User", entity.getId()))))));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Package_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Package_UPDATE')")
 	@Override
 	public Mono<Package> update(ULong key, Map<String, Object> fields) {
 		return this.dao.canBeUpdated(key)
@@ -150,11 +162,11 @@ public class PackageService extends
 		Map<String, Object> newFields = new HashMap<>();
 
 		if (fields.containsKey(NAME))
-			newFields.put(NAME, fields.containsKey(NAME));
+			newFields.put(NAME, fields.get(NAME));
 		if (fields.containsKey(DESCRIPTION))
-			newFields.put(DESCRIPTION, fields.containsKey(DESCRIPTION));
+			newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
 		if (fields.containsKey(CODE))
-			newFields.put(CODE, fields.containsKey(CODE));
+			newFields.put(CODE, fields.get(CODE));
 
 		if (!fields.containsKey(BASE))
 			return Mono.just(newFields);
@@ -164,144 +176,219 @@ public class PackageService extends
 				{
 
 			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				        newFields.put(BASE, fields.containsKey(BASE));
+				        newFields.put(BASE, fields.get(BASE));
 
 			        return newFields;
 		        });
 	}
 
-	protected Mono<Boolean> isBasePackage(ULong packageId) {
-		return this.dao.readById(packageId)
-		        .map(Package::isBase);
+	@PreAuthorize("hasAuthority('Authorities.Package_DELETE')")
+	@Override
+	public Mono<Integer> delete(ULong id) {
+		return this.read(id)
+		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca ->
+						{
+			                if (ca.isSystemClient())
+				                return super.delete(id);
+
+			                return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                        .getClientId()), existing.getClientId())
+			                        .flatMap(managed ->
+									{
+
+				                        if (managed.booleanValue())
+					                        return super.delete(id);
+
+				                        return this.securityMessageResourceService
+				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+				                                .flatMap(msg -> Mono
+				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
+				                                                StringFormatter.format(msg, PACKAGE, id))));
+			                        });
+		                })
+
+				)
+		        .onErrorResume(
+		                ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
+		                        ? this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
+		                                SecurityMessageResourceService.DELETE_PACKAGE_ERROR)
+		                        : Mono.error(ex));
 	}
 
-	public Mono<ULong> getClientIdFromPackage(ULong packageId) {
-		return this.dao.getClientIdFromPackage(packageId);
-	}
-
-	public Mono<Set<ULong>> getRolesFromPackage(ULong packageId) {
+	public Mono<List<ULong>> getRolesFromPackage(ULong packageId) {
 		return this.dao.getRolesFromPackage(packageId);
 	}
 
-	public Mono<Set<ULong>> getRolesAfterOmittingFromBasePackage(Set<ULong> roles) {
-		return this.dao.getRolesAfterOmittingFromBasePackage(roles);
+	public Mono<List<ULong>> getPermissionsFromPackage(ULong packageId, List<ULong> roles) {
+		return this.dao.getPermissionsFromPackage(packageId, roles);
 	}
 
-	public Mono<Set<ULong>> getPermissionsFromPackage(ULong packageId) {
-		return this.dao.getPermissionsFromPackage(packageId);
+	public Mono<List<ULong>> omitRolesFromBasePackage(List<ULong> roles) {
+		return this.dao.omitRolesFromBasePackage(roles);
 	}
 
-	public Mono<Set<ULong>> omitPermissionsFromBasePackage(Set<ULong> permissions) {
+	public Mono<List<ULong>> omitPermissionsFromBasePackage(List<ULong> permissions) {
 		return this.dao.omitPermissionsFromBasePackage(permissions);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Role')")
-	public Mono<Boolean> removeRoleFromPackage(ULong packageId, ULong roleId) {
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_Package')")
+	public Mono<Boolean> assignRoleToPackage(ULong packageId, ULong roleId) {
 
-		Mono<Boolean> isSystemOrManaged = flatMapMono(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> this.dao.readById(packageId),
-
-		        (ca, packageRecord) -> this.roleService.getClientIdFromRole(roleId),
-
-		        (ca, packageRecord, clientIdFromRole) -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                .getClientId()), packageRecord.getClientId()),
-
-		        (ca, packageRecord, clientIdFromRole,
-		                isPackageManaged) -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), clientIdFromRole),
-
-		        (ca, packageRecord, clientIdFromRole, isPackageManaged, isRoleManaged) ->
+		return this.dao.checkRoleAssignedForPackage(packageId, roleId)
+		        .flatMap(result ->
 				{
+			        if (result.booleanValue())
+				        return Mono.just(result);
 
-			        if (ca.isSystemClient() || (isPackageManaged.booleanValue() && isRoleManaged.booleanValue()))
-				        return Mono.just(true);
+			        return flatMapMono(
 
-			        return Mono.empty();
-		        }
+			                SecurityContextUtil::getUsersContextAuthentication,
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+			                ca -> this.dao.readById(packageId),
 
-		Mono<Boolean> isBasePackage = flatMapMono(
+			                (ca, packageRecord) -> this.roleService.read(roleId),
 
-		        () -> isSystemOrManaged,
+			                (ca, packageRecord, roleRecord) ->
 
-		        sysOrManaged -> sysOrManaged.booleanValue() ? this.dao.removeRole(packageId, roleId) : Mono.empty(),
+							ca.isSystemClient() ? Mono.just(true)
+							        : this.checkRoleAndPackageClientsAreManaged(ULong.valueOf(ca.getUser()
+							                .getClientId()), packageRecord.getClientId(), roleRecord.getClientId()),
 
-		        (sysOrManaged, roleRemoved) -> this.dao.checkRoleFromBasePackage(roleId)
+			                (ca, packageRecord, roleRecord, rolePackageManaged) ->
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+							Mono.just(packageRecord.getClientId()
+							        .equals(roleRecord.getClientId()))
+							        .flatMap(e ->
+									{
+								        if (e.booleanValue())
+									        return Mono.just(e);
 
-		Mono<Set<ULong>> requiredPermissionList = flatMapMono(
+								        return this.dao.checkRoleAvailableForGivenPackage(packageId, roleId)
+								                .flatMap(BooleanUtil::safeValueOfWithEmpty);
+							        }),
 
-		        () -> isBasePackage,
+			                (ca, packageRecord, roleRecord, rolePackageManaged, hasRole) ->
 
-		        isBase -> this.dao.getClientListFromPackage(packageId, roleId),
+							this.dao.addRoleToPackage(packageId, roleId)
+							        .map(e ->
+									{
+								        if (e.booleanValue())
+									        super.assignLog(packageId, ASSIGNED_ROLE);
+								        return e;
+							        })
 
-		        (isBase, clientList) -> this.dao.getFilteredClientListFromDifferentPackage(packageId, roleId,
-		                clientList),
+				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				        SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
+		        });
 
-		        (isBase, clientList, filteredClientList) -> this.userService.getUserListFromClients(filteredClientList),
+	}
 
-		        (isBase, clientList, filteredClientList, users) ->
-				{
-			        if (users == null) {
-				        return Mono.empty();
-			        }
-
-			        users.stream()
-			                .forEach(userId -> this.userService.removeRoleFromUser(userId, roleId));
-
-			        return Mono.just(true);
-		        },
-
-		        (isBase, clientList, filteredClientList, users, roleRemoved) -> // fetch permissions from role
-
-				this.roleService.fetchPermissionsFromRole(roleId),
-
-		        (isBase, clientList, filteredClientList, users, roleRemoved, permissionList) ->
-
-				// omit permission from base package
-				this.dao.omitPermissionFromBasePackage(roleId, permissionList)
-
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+	private Mono<Boolean> checkRoleAndPackageClientsAreManaged(ULong loggedInClientId, ULong packageClientId,
+	        ULong roleClientId) {
 
 		return flatMapMono(
 
-		        () -> requiredPermissionList,
+		        () -> this.clientService.isBeingManagedBy(loggedInClientId, packageClientId)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        permissionList -> // get permissions from given package
+		        roleManaged -> this.clientService.isBeingManagedBy(loggedInClientId, roleClientId)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty)
 
-				this.dao.fetchClientsFromGivenPackage(packageId),
-
-		        (permissionList, clients) -> // omit users from different package
-
-				this.dao.omitClientsFromDifferentPackage(packageId, clients, permissionList),
-
-		        (permissionList, clients, filteredClientList) -> // get users from clients
-
-				this.userService.getUserListFromClients(filteredClientList),
-
-		        (permissionList, clients, filteredClientList, finalUsers) -> // delete permissions from users
-				{
-			        if (permissionList == null || finalUsers == null)
-				        return Mono.empty();
-
-			        permissionList.stream()
-			                .forEach(permissionId -> finalUsers.stream()
-			                        .forEach(
-			                                userId -> this.userService.removePermissionFromUser(userId, permissionId)));
-
-			        return Mono.just(true);
-		        }
-
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+		);
 
 	}
+
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_Package')")
+	public Mono<Boolean> removeRoleFromPackage(ULong packageId, ULong roleId) {
+
+		return this.dao.checkRoleAssignedForPackage(packageId, roleId)
+		        .flatMap(result ->
+				{
+			        if (!result.booleanValue())
+				        return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+				                SecurityMessageResourceService.OBJECT_NOT_FOUND, packageId, roleId);
+
+			        return flatMapMono(
+
+			                SecurityContextUtil::getUsersContextAuthentication,
+
+			                ca -> ca.isSystemClient() ? Mono.just(true)
+
+			                        : flatMapMono(
+
+			                                () -> this.dao.readById(packageId),
+
+			                                packageRecord -> this.roleService.read(roleId),
+
+			                                (packageRecord, roleRecord) -> this.checkRoleAndPackageClientsAreManaged(
+			                                        ULong.valueOf(ca.getUser()
+			                                                .getClientId()),
+			                                        packageRecord.getClientId(), roleRecord.getClientId())
+
+									),
+
+			                (ca, sysOrManaged) -> this.dao.checkRoleFromBasePackage(roleId)
+			                        .flatMap(isBase ->
+									{
+				                        if (isBase.booleanValue())
+					                        return Mono.just(true);
+
+				                        return this.removeRoleFromUsers(packageId, roleId);
+			                        }),
+
+			                (ca, sysOrManaged, removeUsersRole) -> this.removePermissionsFromUsers(packageId, roleId),
+
+			                (ca, sysOrManaged, removeUsersRole, removeUsersPermission) ->
+
+							this.dao.removeRole(packageId, roleId)
+							        .map(removed ->
+									{
+
+								        if (removed.booleanValue())
+									        super.unAssignLog(packageId, UNASSIGNED_ROLE + roleId);
+
+								        return removed;
+							        })
+
+				);
+		        })
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+
+	}
+
+	private Mono<Boolean> removeRoleFromUsers(ULong packageId, ULong roleId) {
+
+		return flatMapMono(
+
+		        () -> this.dao.getUsersListFromPackage(packageId)
+		                .flatMap(packageUsers -> packageUsers.isEmpty() ? Mono.just(new ArrayList<ULong>())
+		                        : this.dao.getUsersListFromRoleForOtherPackages(packageId, roleId, packageUsers)),
+
+		        usersList -> this.dao.removeRoleFromUsers(roleId, usersList)
+
+		);
+	}
+
+	private Mono<Boolean> removePermissionsFromUsers(ULong packageId, ULong roleId) {
+
+		return flatMapMono(
+
+		        () -> this.roleService.getPermissionsFromRole(roleId)
+		                .flatMap(permissions -> permissions.isEmpty() ? Mono.just(new ArrayList<ULong>())
+		                        : this.dao.removePermissionsPartOfBasePackage(permissions)),
+
+		        permissionsList -> this.dao.getUsersListFromPackage(packageId)
+		                .flatMap(users -> users.isEmpty() ? Mono.just(new ArrayList<ULong>())
+		                        : this.dao.removeUsersWithPermissionsFromRoleForOtherPackages(packageId,
+		                                permissionsList, users)),
+
+		        (permissionsList, usersList) -> !usersList.isEmpty() && !permissionsList.isEmpty()
+		                ? userService.removeFromPermissionList(usersList, permissionsList)
+		                : Mono.just(true)
+
+		);
+	}
+
 }

@@ -36,7 +36,9 @@ public class FilesMessageResourceService extends AbstractMessageService {
 	public static final String NOT_A_DIRECTORY = "not_a_directory";
 	public static final String UNABLE_TO_DEL_FILE = "unable_to_del_file";
 	public static final String PATH_NOT_FOUND = "path_not_found";
-	
+	public static final String TIME_UNIT_ERROR = "time_unit_error";
+	public static final String TIME_SPAN_ERROR = "time_span_error";
+	public static final String SECURED_KEY_CREATION_ERROR = "secured_key_creation_error";
 
 	public FilesMessageResourceService() {
 
