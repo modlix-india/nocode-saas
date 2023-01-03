@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -40,6 +42,8 @@ public class PackageService extends
 	private static final String DESCRIPTION = "description";
 
 	private static final String NAME = "name";
+
+	private static final String PACKAGE = "package";
 
 	private static final String ASSIGNED_ROLE = " Role is assigned to Package ";
 
@@ -181,7 +185,35 @@ public class PackageService extends
 	@PreAuthorize("hasAuthority('Authorities.Package_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
-		return super.delete(id);
+		return this.read(id)
+		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca ->
+						{
+			                if (ca.isSystemClient())
+				                return super.delete(id);
+
+			                return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                        .getClientId()), existing.getClientId())
+			                        .flatMap(managed ->
+									{
+
+				                        if (managed.booleanValue())
+					                        return super.delete(id);
+
+				                        return this.securityMessageResourceService
+				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+				                                .flatMap(msg -> Mono
+				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
+				                                                StringFormatter.format(msg, PACKAGE, id))));
+			                        });
+		                })
+
+				)
+		        .onErrorResume(
+		                ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
+		                        ? this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
+		                                SecurityMessageResourceService.DELETE_PACKAGE_ERROR)
+		                        : Mono.error(ex));
 	}
 
 	public Mono<List<ULong>> getRolesFromPackage(ULong packageId) {
