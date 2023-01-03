@@ -50,6 +50,9 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String OLD_NEW_PASSWORD_MATCH = "old_new_password_match";
 	public static final String NEW_PASSWORD_MISSING = "new_password_missing";
 	public static final String PASSWORD_USER_ERROR = "password_used_error";
+	public static final String DELETE_PERMISSION_ERROR = "delete_permission_error";
+	public static final String DELETE_PACKAGE_ERROR = "delete_package_error";
+	public static final String DELETE_ROLE_ERROR = "delete_role_error";
 
 	public SecurityMessageResourceService() {
 

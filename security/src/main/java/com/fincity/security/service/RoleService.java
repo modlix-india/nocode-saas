@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -39,6 +41,8 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	private static final String ASSIGNED_PERMISSION = " Permission is assigned to Role ";
 
 	private static final String UNASSIGNED_PERMISSION = " Permission is remove from Role ";
+
+	private static final String ROLE = "role";
 
 	@Autowired
 	private ClientService clientService;
@@ -144,6 +148,42 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 			newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
 
 		return Mono.just(newFields);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Role_DELETE')")
+	@Override
+	public Mono<Integer> delete(ULong id) {
+
+		return this.read(id)
+		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca ->
+						{
+			                if (ca.isSystemClient())
+				                return super.delete(id);
+
+			                return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                        .getClientId()), existing.getClientId())
+			                        .flatMap(managed ->
+									{
+
+				                        if (managed.booleanValue())
+					                        return super.delete(id);
+
+				                        return this.securityMessageResourceService
+				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+				                                .flatMap(msg -> Mono
+				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
+				                                                StringFormatter.format(msg, ROLE, id))));
+			                        });
+		                })
+
+				)
+		        .onErrorResume(
+		                ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
+		                        ? this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
+		                                SecurityMessageResourceService.DELETE_ROLE_ERROR)
+		                        : Mono.error(ex));
+
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
