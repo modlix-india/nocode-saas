@@ -44,7 +44,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-public abstract class AbstractOverridableDataServcie<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>>
+public abstract class AbstractOverridableDataService<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>>
         extends AbstractMongoUpdatableDataService<String, D, R> {
 
 	private static final String CLIENT_CODE = "clientCode";
@@ -78,7 +78,7 @@ public abstract class AbstractOverridableDataServcie<D extends AbstractOverridab
 	protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
 	};
 
-	protected AbstractOverridableDataServcie(Class<D> pojoClass) {
+	protected AbstractOverridableDataService(Class<D> pojoClass) {
 		super(pojoClass);
 	}
 

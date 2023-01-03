@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Personalization;
 import com.fincity.saas.ui.repository.PersonalizationRepository;
@@ -19,7 +19,7 @@ import com.fincity.saas.ui.repository.PersonalizationRepository;
 import reactor.core.publisher.Mono;
 
 @Service
-public class PersonalizationService extends AbstractOverridableDataServcie<Personalization, PersonalizationRepository> {
+public class PersonalizationService extends AbstractOverridableDataService<Personalization, PersonalizationRepository> {
 
 	protected PersonalizationService() {
 		super(Personalization.class);

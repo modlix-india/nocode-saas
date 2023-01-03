@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.repository.StorageRepository;
@@ -15,7 +15,7 @@ import com.fincity.saas.core.repository.StorageRepository;
 import reactor.core.publisher.Mono;
 
 @Service
-public class StorageService extends AbstractOverridableDataServcie<Storage, StorageRepository> {
+public class StorageService extends AbstractOverridableDataService<Storage, StorageRepository> {
 
 	public static final String CACHE_NAME_STORAGE_SCHEMA = "storageSchema";
 

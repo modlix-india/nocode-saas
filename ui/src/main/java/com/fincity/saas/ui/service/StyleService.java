@@ -6,14 +6,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.ui.document.Style;
 import com.fincity.saas.ui.repository.StyleRepository;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class StyleService extends AbstractOverridableDataServcie<Style, StyleRepository> {
+public class StyleService extends AbstractOverridableDataService<Style, StyleRepository> {
 
 	protected StyleService() {
 		super(Style.class);
