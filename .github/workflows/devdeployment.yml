@@ -54,6 +54,9 @@ jobs:
       - name: Building files
         working-directory: ./files
         run: mvn clean install
+      - name: Building core
+        working-directory: ./core
+        run: mvn clean install
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -69,3 +72,4 @@ jobs:
           aws s3 cp ./security/target/*.jar s3://nclc-deployment/development/security.jar
           aws s3 cp ./ui/target/*.jar s3://nclc-deployment/development/ui.jar
           aws s3 cp ./files/target/*.jar s3://nclc-deployment/development/files.jar
+          aws s3 cp ./core/target/*.jar s3://nclc-deployment/development/core.jar
