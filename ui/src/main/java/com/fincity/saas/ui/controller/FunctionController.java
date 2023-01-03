@@ -4,12 +4,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
-import com.fincity.saas.commons.mongo.document.Function;
-import com.fincity.saas.commons.mongo.repository.FunctionRepository;
-import com.fincity.saas.commons.mongo.service.FunctionService;
+import com.fincity.saas.ui.document.UIFunction;
+import com.fincity.saas.ui.repository.UIFunctionDocumentRepository;
+import com.fincity.saas.ui.service.UIFunctionService;
 
 @RestController
 @RequestMapping("api/ui/functions")
 public class FunctionController
-        extends AbstractOverridableDataController<Function, FunctionRepository, FunctionService> {
+        extends AbstractOverridableDataController<UIFunction, UIFunctionDocumentRepository, UIFunctionService> {
 }

@@ -41,6 +41,6 @@ public class CoreConfiguration extends AbstractMongoConfiguration implements ISe
 
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService);
+		return this.springSecurityFilterChain(http, authService, "/api/core/function/**");
 	}
 }

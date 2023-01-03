@@ -4,12 +4,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
-import com.fincity.saas.commons.mongo.document.Schema;
-import com.fincity.saas.commons.mongo.repository.SchemaRepository;
-import com.fincity.saas.commons.mongo.service.SchemaService;
+import com.fincity.saas.ui.document.UISchema;
+import com.fincity.saas.ui.repository.UISchemaDocumentRepository;
+import com.fincity.saas.ui.service.UISchemaService;
 
 @RestController
 @RequestMapping("api/ui/schemas")
 public class SchemaController
-        extends AbstractOverridableDataController<Schema, SchemaRepository, SchemaService> {
+        extends AbstractOverridableDataController<UISchema, UISchemaDocumentRepository, UISchemaService> {
 }

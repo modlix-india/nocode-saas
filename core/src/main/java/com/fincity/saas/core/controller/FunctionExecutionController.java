@@ -7,6 +7,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MultiValueMap;
@@ -30,11 +32,16 @@ import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.FunctionExecutionParameters;
-import com.fincity.saas.commons.mongo.service.FunctionService;
-import com.fincity.saas.commons.mongo.service.SchemaService;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.mongo.function.DefinitionFunction;
+import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
+import com.fincity.saas.core.service.CoreFunctionService;
+import com.fincity.saas.core.service.CoreMessageResourceService;
+import com.fincity.saas.core.service.CoreSchemaService;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -60,41 +67,46 @@ public class FunctionExecutionController {
 	        SchemaType.INTEGER, Integer::valueOf);
 
 	@Autowired
-	private FunctionService functionService;
+	private CoreFunctionService functionService;
 
 	@Autowired
-	private SchemaService schemaService;
+	private CoreSchemaService schemaService;
+
+	@Autowired
+	private CoreMessageResourceService msgService;
 
 	@GetMapping(PATH)
-	public Mono<ResponseEntity<Object>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
 	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
 	        ServerHttpRequest request) {
 
-		return this.execute(namespace, name, appCode, clientCode, request);
+		return this.execute(namespace, name, appCode, clientCode, null, request);
 	}
 
 	@GetMapping(PATH_FULL_NAME)
-	public Mono<ResponseEntity<Object>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
 	        @PathVariable(PATH_VARIABLE_NAME) String fullName, ServerHttpRequest request) {
 
 		Tuple2<String, String> tup = this.splitName(fullName);
 
-		return this.execute(tup.getT1(), tup.getT2(), appCode, clientCode, request);
+		return this.execute(tup.getT1(), tup.getT2(), appCode, clientCode, null, request);
 	}
 
 	@PostMapping(PATH)
-	public Mono<ResponseEntity<Object>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
 	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
 	        @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 		        : new Gson().fromJson(jsonString, JsonObject.class);
 
-		return this.execute(namespace, name, appCode, clientCode, job);
+		return this.execute(namespace, name, appCode, clientCode, job.entrySet()
+		        .stream()
+		        .collect(Collectors.toMap(Entry::getKey, Entry::getValue)), null);
 	}
 
 	@PostMapping(PATH_FULL_NAME)
-	public Mono<ResponseEntity<Object>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
 	        @PathVariable(PATH_VARIABLE_NAME) String fullName, @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
@@ -102,7 +114,9 @@ public class FunctionExecutionController {
 
 		Tuple2<String, String> tup = this.splitName(fullName);
 
-		return this.execute(tup.getT1(), tup.getT2(), appCode, clientCode, job);
+		return this.execute(tup.getT1(), tup.getT2(), appCode, clientCode, job.entrySet()
+		        .stream()
+		        .collect(Collectors.toMap(Entry::getKey, Entry::getValue)), null);
 	}
 
 	private Tuple2<String, String> splitName(String fullName) {
@@ -119,51 +133,52 @@ public class FunctionExecutionController {
 		return Tuples.of(namespace, name);
 	}
 
-	private Mono<ResponseEntity<Object>> execute(String namespace, String name, String appCode, String clientCode,
-	        ServerHttpRequest request) {
+	private Mono<ResponseEntity<String>> execute(String namespace, String name, String appCode, String clientCode,
+	        Map<String, JsonElement> job, ServerHttpRequest request) {
 
-		return Mono.fromCallable(() -> {
+		return FlatMapUtil.flatMapMono(
 
-			Function fun = this.functionService.getFunctionRepository(appCode, clientCode)
-			        .find(namespace, name);
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-			Repository<Schema> schemaRepository = new HybridRepository<>(new CoreSchemaRepository(),
-			        schemaService.getSchemaRepository(appCode, clientCode));
+		        ca -> Mono.fromCallable(() ->
+				{
 
-			return fun.execute(new FunctionExecutionParameters(new HybridRepository<>(new CoreFunctionRepository(),
-			        functionService.getFunctionRepository(appCode, clientCode)), schemaRepository)
-			        .setArguments(this.getRequestParamsToArguments(fun.getSignature()
-			                .getParameters(), request, schemaRepository)));
-		})
-		        .flatMap(this::extractOutpuEvent)
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .map(ResponseEntity::ok);
+			        Function fun = this.functionService.getFunctionRepository(appCode, clientCode)
+			                .find(namespace, name);
+
+			        Repository<Schema> schemaRepository = new HybridRepository<>(new CoreSchemaRepository(),
+			                schemaService.getSchemaRepository(appCode, clientCode));
+
+			        return Tuples.of(fun, schemaRepository);
+		        })
+		                .subscribeOn(Schedulers.boundedElastic()),
+
+		        (ca, tup2) ->
+				{
+
+			        if (tup2.getT1() instanceof DefinitionFunction df
+			                && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
+			                && !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
+				        return msgService.throwMessage(HttpStatus.FORBIDDEN,
+				                AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
+
+			        }
+
+			        return Mono.just(tup2.getT1()
+			                .execute(
+			                        new FunctionExecutionParameters(
+			                                new HybridRepository<>(new CoreFunctionRepository(),
+			                                        functionService.getFunctionRepository(appCode, clientCode)),
+			                                tup2.getT2())
+			                                .setArguments(job == null ? getRequestParamsToArguments(tup2.getT1()
+			                                        .getSignature()
+			                                        .getParameters(), request, tup2.getT2()) : job)));
+		        },
+
+		        (ca, tup2, output) -> this.extractOutpuEvent(output));
 	}
 
-	private Mono<ResponseEntity<Object>> execute(String namespace, String name, String appCode, String clientCode,
-	        JsonObject job) {
-
-		return Mono.fromCallable(() -> {
-
-			Function fun = this.functionService.getFunctionRepository(appCode, clientCode)
-			        .find(namespace, name);
-
-			Repository<Schema> schemaRepository = new HybridRepository<>(new CoreSchemaRepository(),
-			        schemaService.getSchemaRepository(appCode, clientCode));
-
-			return fun.execute(new FunctionExecutionParameters(new HybridRepository<>(new CoreFunctionRepository(),
-			        functionService.getFunctionRepository(appCode, clientCode)), schemaRepository)
-			        .setArguments(job.entrySet()
-			                .stream()
-			                .collect(Collectors.toMap(Entry::getKey, Entry::getValue))));
-		})
-		        .flatMap(this::extractOutpuEvent)
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .map(ResponseEntity::ok);
-
-	}
-
-	private Mono<Map<String, JsonElement>> extractOutpuEvent(FunctionOutput e) {
+	private Mono<ResponseEntity<String>> extractOutpuEvent(FunctionOutput e) {
 		EventResult er = null;
 
 		while ((er = e.next()) != null) {
@@ -171,7 +186,22 @@ public class FunctionExecutionController {
 			if (!Event.OUTPUT.equals(er.getName()))
 				continue;
 
-			return Mono.just(er.getResult());
+			Map<String, JsonElement> result = er.getResult();
+
+			if (result == null || result.isEmpty())
+				return Mono.just(ResponseEntity.ok()
+				        .contentLength(0l)
+				        .contentType(MediaType.APPLICATION_JSON)
+				        .body(""));
+
+			JsonObject resultObj = new JsonObject();
+			for (var eachEntry : result.entrySet())
+				resultObj.add(eachEntry.getKey(), eachEntry.getValue());
+
+			return Mono.just((new Gson()).toJson(resultObj))
+			        .map(objString -> ResponseEntity.ok()
+			                .contentType(MediaType.APPLICATION_JSON)
+			                .body(objString));
 		}
 
 		return Mono.empty();
@@ -210,6 +240,12 @@ public class FunctionExecutionController {
 
 			        if (type.contains(SchemaType.DOUBLE)) {
 				        return jsonElement(e, value, param, SchemaType.DOUBLE);
+			        } else if (type.contains(SchemaType.FLOAT)) {
+				        return jsonElement(e, value, param, SchemaType.FLOAT);
+			        } else if (type.contains(SchemaType.LONG)) {
+				        return jsonElement(e, value, param, SchemaType.LONG);
+			        } else if (type.contains(SchemaType.INTEGER)) {
+				        return jsonElement(e, value, param, SchemaType.INTEGER);
 			        }
 
 			        return null;

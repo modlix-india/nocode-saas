@@ -28,7 +28,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration impleme
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, AuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, "/api/security/authenticate",
-		        "/api/security/clients/internal/**", "/api/security/applications/internal/**");
+		        "/api/security/clients/internal/**", "/api/security/applications/internal/**",
+		        "/api/security/internal/securityContextAuthentication");
 	}
 
 }

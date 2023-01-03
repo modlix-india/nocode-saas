@@ -29,8 +29,9 @@ public abstract class AbstractMongoMessageResourceService extends AbstractMessag
 	public static final String UNABLE_TO_CREAT_OBJECT = "unable_to_create_object";
 	public static final String APPLICATION_NAME_REQUIRED = "application_name_required";
 	public static final String FORBIDDEN_APP_ACCESS = "forbidden_app_access";
-	public static final String FUNCTION_NAME_MISSING = "function_name_missing";
-	public static final String FUNCTION_NAME_CHANGE ="function_name_change";
+	public static final String NAME_MISSING = "name_missing";
+	public static final String NAME_CHANGE = "name_change";
+	public static final String FORBIDDEN_EXECUTION = "forbidden_execution";
 
 	protected AbstractMongoMessageResourceService() {
 

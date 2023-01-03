@@ -36,7 +36,6 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.mongo.service.SchemaService;
 import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
@@ -44,6 +43,7 @@ import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.CoreMessageResourceService;
+import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -87,7 +87,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	private StorageService storageService;
 
 	@Autowired
-	private SchemaService schemaService;
+	private CoreSchemaService schemaService;
 
 	@PostConstruct
 	private void init() {
@@ -120,7 +120,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
 			                .getAsJsonObject();
 			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                new HybridRepository<>(new CoreSchemaRepository(),
+			                new HybridRepository<>(
+			                        new CoreSchemaRepository(),
 			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
 			                job);
 		        })
