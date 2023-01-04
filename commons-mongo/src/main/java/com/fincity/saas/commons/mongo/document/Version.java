@@ -14,7 +14,7 @@ import lombok.experimental.Accessors;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document
-@CompoundIndex(def = "{'objectApplicationName': 1, 'objectName': 1, 'clientCode': 1}", name = "versionFilteringIndex")
+@CompoundIndex(def = "{'objectAppCode': 1, 'objectName': 1, 'clientCode': 1}", name = "versionFilteringIndex")
 @Accessors(chain = true)
 public class Version extends AbstractDTO<String, String> {
 

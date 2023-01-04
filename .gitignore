@@ -36,3 +36,5 @@ mvnw
 mvnw.cmd
 maven-wrapper.jar
 **/.mvn/
+
+*.log
