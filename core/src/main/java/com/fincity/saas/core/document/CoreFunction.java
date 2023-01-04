@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.saas.commons.mongo.document.AbstractFunction;
 
-@Document
+@Document(collection = "function")
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "coreFunctionFilteringIndex")
 public class CoreFunction extends AbstractFunction<CoreFunction> {
 

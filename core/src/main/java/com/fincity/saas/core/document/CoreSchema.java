@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 
-@Document
+@Document(collection = "schema")
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "coreSchemaFilteringIndex")
 public class CoreSchema extends AbstractSchema<CoreSchema> {
 

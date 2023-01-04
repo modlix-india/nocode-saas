@@ -368,7 +368,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	private Mono<Bson> filterConditionFilter(FilterCondition fc) {
 
-		if (fc == null || fc.getField() == null)
+		if (fc == null || fc.getField() == null || fc.getValue() == null)
 			return Mono.empty();
 
 		switch (fc.getOperator()) {
@@ -407,7 +407,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			return Mono.just(Filters.regex(fc.getField(), StringUtil.safeValueOf(fc.getValue(), "")));
 
 		case STRING_LOOSE_EQUAL:
-			return Mono.just(Filters.regex(fc.getField(), "/" + fc.getValue() + "/"));
+			return Mono.just(Filters.regex(fc.getField(), fc.getValue().toString()));
 
 		default:
 			return Mono.empty();
