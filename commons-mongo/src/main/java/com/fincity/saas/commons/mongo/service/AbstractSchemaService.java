@@ -15,7 +15,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R extends IOverridableDataRepository<D>>
-        extends AbstractOverridableDataServcie<D, R> {
+        extends AbstractOverridableDataService<D, R> {
 
 	protected AbstractSchemaService(Class<D> pojoClass) {
 		super(pojoClass);

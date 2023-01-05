@@ -22,7 +22,7 @@ import com.google.gson.GsonBuilder;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R extends IOverridableDataRepository<D>>
-        extends AbstractOverridableDataServcie<D, R> {
+        extends AbstractOverridableDataService<D, R> {
 
 	protected AbstractFunctionService(Class<D> pojoClass) {
 		super(pojoClass);

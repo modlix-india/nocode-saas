@@ -79,34 +79,51 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		int apiIndex = requestPath.indexOf("/api/");
 
+		if (apiIndex == -1 && requestPath.endsWith("/manifest/manifest.json")) {
+
+			Tuple2<String, String> codes = this.getCodesFromURL(appCode, clientCode,
+			        requestPath.substring(0, requestPath.indexOf("/manifest/")));
+			appCode = codes.getT1();
+			clientCode = codes.getT2();
+
+			return this.modifyRequest(exchange, chain, "/manifest/manifest.json", clientCode, appCode);
+		}
+
 		String appClientCodePart = requestPath.substring(0,
 		        apiIndex == -1 ? requestPath.indexOf("/page/") + 2 : apiIndex);
 
 		String modifiedRequestPath = (apiIndex == -1) ? requestPath : requestPath.substring(apiIndex);
 		if (DEFAULT_CLIENT.equals(clientCode)) {
 
-			Tuple2<String, String> codes = this.urlClientCode.get(appClientCodePart);
-
-			if (codes != null) {
-
-				appCode = codes.getT1();
-				clientCode = codes.getT2();
-			} else {
-
-				String[] parts = appClientCodePart.split("/");
-				if (parts.length > 1) {
-
-					appCode = parts[1];
-					if (parts.length > 2)
-						clientCode = parts[2];
-				}
-				this.urlClientCode.put(appClientCodePart, Tuples.of(appCode, clientCode));
-			}
-
+			Tuple2<String, String> codes = this.getCodesFromURL(appCode, clientCode, appClientCodePart);
+			appCode = codes.getT1();
+			clientCode = codes.getT2();
 		}
 
 		return this.modifyRequest(exchange, chain, modifiedRequestPath, clientCode, appCode);
 
+	}
+
+	private Tuple2<String, String> getCodesFromURL(String appCode, String clientCode, String appClientCodePart) {
+
+		Tuple2<String, String> codes = this.urlClientCode.get(appClientCodePart);
+
+		if (codes != null) {
+			return codes;
+		}
+
+		String[] parts = appClientCodePart.split("/");
+		if (parts.length > 1) {
+
+			appCode = parts[1];
+			if (parts.length > 2)
+				clientCode = parts[2];
+		}
+
+		codes = Tuples.of(appCode, clientCode);
+		this.urlClientCode.put(appClientCodePart, codes);
+
+		return codes;
 	}
 
 	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,

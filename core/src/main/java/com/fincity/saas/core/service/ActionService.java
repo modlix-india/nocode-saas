@@ -6,14 +6,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.core.document.Action;
 import com.fincity.saas.core.repository.ActionRepository;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class ActionService extends AbstractOverridableDataServcie<Action, ActionRepository> {
+public class ActionService extends AbstractOverridableDataService<Action, ActionRepository> {
 
 	protected ActionService() {
 		super(Action.class);

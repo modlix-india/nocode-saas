@@ -18,7 +18,7 @@ import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.enums.ConnectionType;
@@ -28,7 +28,7 @@ import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Mono;
 
 @Service
-public class ConnectionService extends AbstractOverridableDataServcie<Connection, ConnectionRepository> {
+public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
 
 	private static final String CACHE_NAME_CONNECTION = "connCache";
 

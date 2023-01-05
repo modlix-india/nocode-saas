@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
@@ -18,7 +18,7 @@ import com.fincity.saas.ui.repository.ApplicationRepository;
 import reactor.core.publisher.Mono;
 
 @Service
-public class ApplicationService extends AbstractOverridableDataServcie<Application, ApplicationRepository> {
+public class ApplicationService extends AbstractOverridableDataService<Application, ApplicationRepository> {
 
 	@Autowired
 	private PageService pageService;

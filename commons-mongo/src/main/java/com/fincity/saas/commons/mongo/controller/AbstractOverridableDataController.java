@@ -13,11 +13,11 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.model.ListResultObject;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataServcie;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 
 import reactor.core.publisher.Mono;
 
-public class AbstractOverridableDataController<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>, S extends AbstractOverridableDataServcie<D, R>>
+public class AbstractOverridableDataController<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>, S extends AbstractOverridableDataService<D, R>>
         extends AbstractMongoUpdatableDataController<String, D, R, S> {
 
 	@Override
