@@ -41,16 +41,16 @@ public class IndexHTMLService {
 
 				        () -> appService.read(appCode, appCode, clientCode),
 
-				        this::indexFromApp)));
+				        app -> this.indexFromApp(app, appCode, clientCode))));
 	}
 
 	@SuppressWarnings("unchecked")
-	private Mono<ChecksumObject> indexFromApp(Application app) {
+	private Mono<ChecksumObject> indexFromApp(Application app, String appCode, String clientCode) {
 
 		Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
 		StringBuilder str = new StringBuilder(
-		        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><title>");
+		        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /><title>");
 
 		Object title = appProps.get("title");
 		if (title == null)
@@ -63,7 +63,8 @@ public class IndexHTMLService {
 		processTagType(str, (Map<String, Object>) appProps.get("scripts"), "script", SCRIPT_FIELDS);
 		processTagType(str, (Map<String, Object>) appProps.get("metas"), "meta", META_FIELDS);
 
-		str.append("<link rel=\"manifest\" href=\"manifest/manifest.json\" /></head><body><div id=\"app\"></div>");
+		str.append("<link rel=\"manifest\" href=\"/" + appCode + "/" + clientCode
+		        + "/manifest/manifest.json\" /></head><body><div id=\"app\"></div>");
 
 		str.append("<script src=\"/js/index.js\"></script></body></html>");
 

@@ -107,8 +107,9 @@ public class ClientService
 
 		String finScheme = uriScheme;
 		String finHost = uriHost;
-		Integer finPort = Integer.valueOf(uriPort);
-
+		int comma = uriPort.indexOf(',');
+		Integer finPort = Integer.valueOf(comma == -1 ? uriPort : uriPort.substring(0, comma));
+		
 		return clientId.switchIfEmpty(Mono.defer(() -> clientUrlService.readAllAsClientURLPattern()
 		        .flatMapIterable(e -> e)
 		        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
