@@ -50,6 +50,10 @@ public class FeignAuthenticationService implements IAuthenticationService {
 		        .get("X-Forwarded-Port");
 		if (forwardedPort != null && !forwardedPort.isEmpty()) {
 			port = forwardedPort.get(0);
+			int ind = port.indexOf(',');
+			if (ind != -1) {
+				port = port.substring(0, ind);
+			}
 		}
 
 		return this.feignAuthService.contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port)

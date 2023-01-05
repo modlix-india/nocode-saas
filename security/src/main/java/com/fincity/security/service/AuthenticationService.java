@@ -9,6 +9,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
@@ -77,6 +79,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 	@Value("${jwt.token.default.expiry}")
 	private Integer defaultExpiryInMinutes;
+
+	private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);
 
 	@PreAuthorize("hasAuthority('Authorities.Logged_IN')")
 	public Mono<Integer> revoke(ServerHttpRequest request) {
@@ -270,6 +274,8 @@ public class AuthenticationService implements IAuthenticationService {
 	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, ServerHttpRequest request) {
 
 		if (StringUtil.safeIsBlank(bearerToken)) {
+
+			logger.debug("Empty token for auth: {}", request.getURI());
 			return this.makeAnonySpringAuthentication(request);
 		}
 
@@ -357,7 +363,7 @@ public class AuthenticationService implements IAuthenticationService {
 		        ? this.clientService.getClientBy(clientCode.get(0))
 		        : this.clientService.getClientBy(request);
 
-		return loggedInClient.map(e -> new ContextAuthentication(new ContextUser().setId(BigInteger.ZERO)
+		return loggedInClient.map(e -> (Authentication) new ContextAuthentication(new ContextUser().setId(BigInteger.ZERO)
 		        .setCreatedBy(BigInteger.ZERO)
 		        .setUpdatedBy(BigInteger.ZERO)
 		        .setCreatedAt(LocalDateTime.now())
@@ -379,7 +385,8 @@ public class AuthenticationService implements IAuthenticationService {
 		        .setStringAuthorities(List.of("Authorities._Anonymous")), false,
 		        e.getId()
 		                .toBigInteger(),
-		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX));
+		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX))
+				.log();
 	}
 
 	private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {
