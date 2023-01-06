@@ -1,7 +1,6 @@
 package com.fincity.gateway;
 
 import java.net.URI;
-import java.util.WeakHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.StringUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -27,6 +27,7 @@ import reactor.util.function.Tuples;
 public class GatewayFilter implements GlobalFilter, Ordered {
 
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+	private static final String CAHCE_NAME_URLPART = "clienturlpart";
 
 	private static final String DEFAULT_CLIENT = "SYSTEM";
 	private static final String DEFAULT_APP = "nothing";
@@ -36,8 +37,6 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 	@Autowired
 	private IFeignSecurityClient security;
-
-	private WeakHashMap<String, Tuple2<String, String>> urlClientCode = new WeakHashMap<>();
 
 	private static final Logger logger = LoggerFactory.getLogger(GatewayFilter.class);
 
@@ -81,12 +80,10 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		if (apiIndex == -1 && requestPath.endsWith("/manifest/manifest.json")) {
 
-			Tuple2<String, String> codes = this.getCodesFromURL(appCode, clientCode,
-			        requestPath.substring(0, requestPath.indexOf("/manifest/")));
-			appCode = codes.getT1();
-			clientCode = codes.getT2();
-
-			return this.modifyRequest(exchange, chain, "/manifest/manifest.json", clientCode, appCode);
+			return this
+			        .getCodesFromURL(appCode, clientCode, requestPath.substring(0, requestPath.indexOf("/manifest/")))
+			        .flatMap(codes -> this.modifyRequest(exchange, chain, "/manifest/manifest.json", codes.getT2(),
+			                codes.getT1()));
 		}
 
 		String appClientCodePart = requestPath.substring(0,
@@ -95,35 +92,37 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		String modifiedRequestPath = (apiIndex == -1) ? requestPath : requestPath.substring(apiIndex);
 		if (DEFAULT_CLIENT.equals(clientCode)) {
 
-			Tuple2<String, String> codes = this.getCodesFromURL(appCode, clientCode, appClientCodePart);
-			appCode = codes.getT1();
-			clientCode = codes.getT2();
+			return this.getCodesFromURL(appCode, clientCode, appClientCodePart)
+			        .flatMap(codes -> this.modifyRequest(exchange, chain, modifiedRequestPath, codes.getT2(),
+			                codes.getT1()));
 		}
 
 		return this.modifyRequest(exchange, chain, modifiedRequestPath, clientCode, appCode);
 
 	}
 
-	private Tuple2<String, String> getCodesFromURL(String appCode, String clientCode, String appClientCodePart) {
+	private Mono<Tuple2<String, String>> getCodesFromURL(String appCode, String clientCode, String appClientCodePart) {
 
-		Tuple2<String, String> codes = this.urlClientCode.get(appClientCodePart);
+		if (StringUtil.safeIsBlank(appClientCodePart) || StringUtil.safeEquals(appClientCodePart, "/")) {
 
-		if (codes != null) {
-			return codes;
+			return Mono.just(Tuples.of(appCode, clientCode));
 		}
 
-		String[] parts = appClientCodePart.split("/");
-		if (parts.length > 1) {
+		return cacheService.cacheValueOrGet(CAHCE_NAME_URLPART, () -> {
 
-			appCode = parts[1];
-			if (parts.length > 2)
-				clientCode = parts[2];
-		}
+			String[] parts = appClientCodePart.split("/");
+			String aCode = appCode;
+			String cCode = clientCode;
+			if (parts.length > 1) {
 
-		codes = Tuples.of(appCode, clientCode);
-		this.urlClientCode.put(appClientCodePart, codes);
+				aCode = parts[1];
+				if (parts.length > 2)
+					cCode = parts[2];
+			}
 
-		return codes;
+			return Mono.just(Tuples.of(aCode, cCode));
+
+		}, appClientCodePart);
 	}
 
 	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
@@ -177,6 +176,13 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		        () -> this.security.getClientCode(uriScheme, uriHost, uriPort)
 		                .defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP)),
 
-		        uriScheme, uriHost, ":", uriPort);
+		        uriScheme, uriHost, ":", uriPort)
+		        .map(e ->
+				{
+
+			        logger.debug("{} {} {} -> {}", uriScheme, uriHost, uriPort, e);
+
+			        return e;
+		        });
 	}
 }
