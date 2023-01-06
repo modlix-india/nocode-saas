@@ -4,6 +4,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.util.StringUtil;
 
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,7 @@ import reactor.util.function.Tuples;
 public class ClientUrlPattern {
 
 	public static final Pattern URL_PATTERN = Pattern
-	        .compile("(http\\:|https\\:){0,1}\\/\\/([a-z0-9\\.]+)([\\:]([0-9]{0,5})){0,1}");
+	        .compile("(http\\:\\/\\/|https\\:\\/\\/){0,1}([^\\:]+)([\\:]([0-9]{0,5})){0,1}");
 
 	private final String identifier;
 	private final String clientCode;
@@ -52,9 +53,9 @@ public class ClientUrlPattern {
 		String group = matcher.group(1);
 		Protocol protocol = Protocol.ANY;
 
-		if (group.equals("http:"))
+		if (StringUtil.safeEquals(group, "http://"))
 			protocol = Protocol.HTTP;
-		else if (group.equals("https:"))
+		else if (StringUtil.safeEquals(group, "https://"))
 			protocol = Protocol.HTTPS;
 
 		String port = matcher.group(4);
@@ -97,7 +98,7 @@ public class ClientUrlPattern {
 
 		if (tuple.getT1() == Protocol.HTTPS) {
 
-			if (!scheme.startsWith("https:"))
+			if (!scheme.startsWith("https"))
 				return false;
 
 			checkPort = 443;
