@@ -18,7 +18,7 @@ import reactor.util.function.Tuples;
 public class ClientUrlPattern {
 
 	public static final Pattern URL_PATTERN = Pattern
-	        .compile("(http\\:\\/\\/|https\\:\\/\\/){0,1}([^\\:]+)([\\:]([0-9]{0,5})){0,1}");
+	        .compile("(http\\:\\/\\/|https\\:\\/\\/)?([^\\:]+)(\\:(\\d{0,5}))?");
 
 	private final String identifier;
 	private final String clientCode;

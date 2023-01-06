@@ -41,7 +41,6 @@ public class ClientService
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
-	private static final String CACHE_NAME_CLIENT_URL = "clientClientURL";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
 
 	private static final String CACHE_CLIENT_URI = "uri";
@@ -101,23 +100,21 @@ public class ClientService
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
-		Mono<String> key = cacheService.makeKey(CACHE_CLIENT_URI, uriScheme, uriHost, ":", uriPort);
+		return cacheService.cacheValueOrGet(CACHE_CLIENT_URI, () -> {
 
-		Mono<ClientUrlPattern> clientId = key.flatMap(e -> cacheService.get(CACHE_NAME_CLIENT_URL, e));
+			String finScheme = uriScheme;
+			String finHost = uriHost;
+			int comma = uriPort.indexOf(',');
+			Integer finPort = Integer.valueOf(comma == -1 ? uriPort : uriPort.substring(0, comma));
 
-		String finScheme = uriScheme;
-		String finHost = uriHost;
-		int comma = uriPort.indexOf(',');
-		Integer finPort = Integer.valueOf(comma == -1 ? uriPort : uriPort.substring(0, comma));
-		
-		return clientId.switchIfEmpty(Mono.defer(() -> clientUrlService.readAllAsClientURLPattern()
-		        .flatMapIterable(e -> e)
-		        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
-		        .take(1)
-		        .collectList()
-		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
-		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k)
-		                .map(ClientUrlPattern.class::cast)))));
+			return clientUrlService.readAllAsClientURLPattern()
+			        .flatMapIterable(e -> e)
+			        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
+			        .take(1)
+			        .collectList()
+			        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)));
+
+		}, uriScheme, uriHost, ":", uriPort);
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
