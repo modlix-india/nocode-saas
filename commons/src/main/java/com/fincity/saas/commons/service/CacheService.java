@@ -21,6 +21,7 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Service
 public class CacheService extends RedisPubSubAdapter<String, String> {
@@ -182,8 +183,9 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		        .flatMap(key -> this.<CacheObject>get(cName, key)
 		                .switchIfEmpty(Mono.defer(() -> supplier.get()
 		                        .flatMap(value -> this.put(cName, new CacheObject(value), key))
-		                        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), keys))))))
-		        .flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
+		                        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), key))))))
+		        .flatMap(e -> e == null || e.getObject() == null ? Mono.empty() : Mono.justOrEmpty((T) e.getObject()))
+		        .subscribeOn(Schedulers.boundedElastic());
 	}
 
 	public Mono<Boolean> evictAll(String cName) {
