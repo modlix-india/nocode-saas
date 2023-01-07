@@ -33,6 +33,9 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
 		if (feignAuthService == null)
 			return Mono.empty();
+		
+		if (request.getURI().getPath().indexOf("actuator/") != -1)
+			return Mono.empty();
 
 		String host = request.getURI()
 		        .getHost();

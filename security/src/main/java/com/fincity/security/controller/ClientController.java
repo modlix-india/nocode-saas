@@ -1,8 +1,6 @@
 package com.fincity.security.controller;
 
 import org.jooq.types.ULong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,8 +23,6 @@ import reactor.util.function.Tuples;
 @RequestMapping("api/security/clients")
 public class ClientController
         extends AbstractJOOQUpdatableDataController<SecurityClientRecord, ULong, Client, ClientDAO, ClientService> {
-
-	private static final Logger logger = LoggerFactory.getLogger(ClientController.class);
 	
 	@Autowired
 	private ClientService clientService;
@@ -50,7 +46,6 @@ public class ClientController
 	@GetMapping("/internal/getClientNAppCode")
 	public Mono<ResponseEntity<Tuple2<String, String>>> getClientNAppCode(@RequestParam String scheme,
 	        @RequestParam String host, @RequestParam String port) {
-		logger.debug("Request : {} {} {}", scheme, host, port);
 		return this.service.getClientPattern(scheme, host, port)
 		        .map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
 		        .defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))

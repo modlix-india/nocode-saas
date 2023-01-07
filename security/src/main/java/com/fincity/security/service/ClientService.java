@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jooq.types.ULong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -19,7 +17,6 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -51,8 +48,6 @@ public class ClientService
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
 	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
-
-	private static final Logger logger = LoggerFactory.getLogger(ClientService.class);
 	
 	@Autowired
 	private CacheService cacheService;
@@ -105,7 +100,6 @@ public class ClientService
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
-		logger.debug("Getting pattern - {} {} {}", uriScheme, uriHost, uriPort);
 		return cacheService.cacheValueOrGet(CACHE_CLIENT_URI, () -> {
 
 			String finScheme = uriScheme;
@@ -113,16 +107,10 @@ public class ClientService
 			int comma = uriPort.indexOf(',');
 			Integer finPort = Integer.valueOf(comma == -1 ? uriPort : uriPort.substring(0, comma));
 			
-			logger.debug("In cache getting pattern - {} {} {}", uriScheme, uriHost, uriPort);
-			
 			return clientUrlService.readAllAsClientURLPattern()
 			        .flatMapIterable(e -> e)
-			        .map(FlatMapUtil::log)
 			        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
-			        .map(FlatMapUtil::log)
-			        .take(1)
-			        .collectList()
-			        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)));
+			        .next();
 
 		}, uriScheme, uriHost, ":", uriPort);
 	}
