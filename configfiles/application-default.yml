@@ -48,6 +48,5 @@ logging:
   level:
     root: INFO
     com.fincity: DEBUG
-    dev.miku: DEBUG
     org.jooq: DEBUG
     org.jooq.tools.LoggerListener: DEBUG
