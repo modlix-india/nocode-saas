@@ -10,6 +10,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.web.reactive.config.EnableWebFlux;
 
+import reactor.blockhound.BlockHound;
+
 @SpringBootApplication
 @EnableWebFlux
 @EnableWebFluxSecurity
@@ -20,6 +22,7 @@ import org.springframework.web.reactive.config.EnableWebFlux;
 public class SecurityApplication {
 
 	public static void main(String[] args) {
+		BlockHound.install();
 		SpringApplication.run(SecurityApplication.class, args);
 	}
 
