@@ -5,6 +5,7 @@ import javax.annotation.PostConstruct;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -16,13 +17,27 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 
+import io.r2dbc.pool.ConnectionPool;
+import io.r2dbc.pool.ConnectionPoolConfiguration;
+import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
+import io.r2dbc.spi.ConnectionFactoryOptions;
+import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
 
 @Configuration
 public class CoreConfiguration extends AbstractMongoConfiguration implements ISecurityConfiguration {
-	
+
 	@Autowired
 	private CoreMessageResourceService messageService;
+
+	@Value("${spring.r2dbc.url}")
+	private String url;
+
+	@Value("${spring.r2dbc.username}")
+	private String username;
+
+	@Value("${spring.r2dbc.password}")
+	private String password;
 
 	@PostConstruct
 	@Override
@@ -35,8 +50,17 @@ public class CoreConfiguration extends AbstractMongoConfiguration implements ISe
 	}
 
 	@Bean
-	DSLContext context(ConnectionFactory factory) {
-		return DSL.using(factory);
+	DSLContext context() {
+
+		Builder props = ConnectionFactoryOptions.parse(url)
+		        .mutate();
+		ConnectionFactory factory = ConnectionFactories.get(props.option(ConnectionFactoryOptions.DRIVER, "pool")
+		        .option(ConnectionFactoryOptions.PROTOCOL, "mysql")
+		        .option(ConnectionFactoryOptions.USER, username)
+		        .option(ConnectionFactoryOptions.PASSWORD, password)
+		        .build());
+		return DSL.using(new ConnectionPool(ConnectionPoolConfiguration.builder(factory)
+		        .build()));
 	}
 
 	@Bean
