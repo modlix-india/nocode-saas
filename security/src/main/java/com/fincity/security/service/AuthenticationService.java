@@ -403,6 +403,8 @@ public class AuthenticationService implements IAuthenticationService {
 		if (forwardedPort != null && !forwardedPort.isEmpty()) {
 			port = forwardedPort.get(0);
 		}
+		
+		System.err.println(host+" - "+port+" - "+jwtClaims.toString());
 
 		if (!host.equals(jwtClaims.getHostName()) || !port.equals(jwtClaims.getPort())) {
 
