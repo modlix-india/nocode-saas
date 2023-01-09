@@ -49,7 +49,6 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 		                .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID)))
 		        .map(e -> new ClientUrlPattern(e.value1()
 		                .toString(), e.value2(), e.value3(), e.value4()))
-		        .map(ClientUrlPattern::makeHostnPort)
-		        .log();
+		        .map(ClientUrlPattern::makeHostnPort);
 	}
 }
