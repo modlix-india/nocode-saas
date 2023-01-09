@@ -22,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.jwt.JWTClaims;
@@ -274,7 +275,7 @@ public class AuthenticationService implements IAuthenticationService {
 			return this.makeAnonySpringAuthentication(request);
 		}
 
-		return flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMonoWithNullLog(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
 		                .map(ContextAuthentication.class::cast),
@@ -406,7 +407,7 @@ public class AuthenticationService implements IAuthenticationService {
 		
 		System.err.println(host+" - "+port+" - "+jwtClaims.toString());
 
-		if (!host.equals(jwtClaims.getHostName()) || !port.equals(jwtClaims.getPort())) {
+		if (!host.equals(jwtClaims.getHostName())) {
 
 			return resourceService.throwMessage(HttpStatus.UNAUTHORIZED, SecurityMessageResourceService.UNKNOWN_TOKEN);
 		}
