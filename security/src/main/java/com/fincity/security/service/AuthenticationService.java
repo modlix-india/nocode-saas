@@ -146,11 +146,11 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (linClient, user, client) -> this.checkPassword(authRequest, user),
 
-		        (linClient, user, client, passwordChecked) -> clientService.getClientPasswordPolicy(client.getId()),
+		        (linClient, user, client, passwordChecked) -> clientService.getClientPasswordPolicy(client.getId())
+		                .flatMap(policy -> this.checkFailedAttempts(user, policy))
+		                .defaultIfEmpty(1),
 
-		        (linClient, user, client, passwordChecked, policy) -> this.checkFailedAttempts(user, policy),
-
-		        (linClient, user, client, passwordChecked, policy, j) ->
+		        (linClient, user, client, passwordChecked, j) ->
 				{
 
 			        userService.resetFailedAttempt(user.getId())
@@ -166,7 +166,8 @@ public class AuthenticationService implements IAuthenticationService {
 			        final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
 
 			        return makeToken(authRequest, request, response, hostAddress, user, client, linClient);
-		        }).switchIfEmpty(Mono.defer(this::credentialError));
+		        })
+		        .switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
 	private Mono<AuthenticationResponse> makeToken(AuthenticationRequest authRequest, ServerHttpRequest request,
@@ -221,7 +222,7 @@ public class AuthenticationService implements IAuthenticationService {
 		                .setAccessTokenExpiryAt(token.getT2()));
 	}
 
-	private Mono<Object> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
+	private Mono<Integer> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
 
 		if (pol.getNoFailedAttempts() != null && pol.getNoFailedAttempts()
 		        .shortValue() <= u.getNoFailedAttempt()) {
@@ -357,27 +358,28 @@ public class AuthenticationService implements IAuthenticationService {
 		        ? this.clientService.getClientBy(clientCode.get(0))
 		        : this.clientService.getClientBy(request);
 
-		return loggedInClient.map(e -> (Authentication) new ContextAuthentication(new ContextUser().setId(BigInteger.ZERO)
-		        .setCreatedBy(BigInteger.ZERO)
-		        .setUpdatedBy(BigInteger.ZERO)
-		        .setCreatedAt(LocalDateTime.now())
-		        .setUpdatedAt(LocalDateTime.now())
-		        .setClientId(e.getId()
-		                .toBigInteger())
-		        .setUserName("_Anonymous")
-		        .setEmailId("nothing@nothing")
-		        .setPhoneNumber("+910000000000")
-		        .setFirstName("Anonymous")
-		        .setLastName("")
-		        .setLocaleCode("en")
-		        .setPassword("")
-		        .setPasswordHashed(false)
-		        .setAccountNonExpired(true)
-		        .setAccountNonLocked(true)
-		        .setCredentialsNonExpired(true)
-		        .setNoFailedAttempt((short) 0)
-		        .setStringAuthorities(List.of("Authorities._Anonymous")), false,
-		        e.getId()
+		return loggedInClient.map(e -> (Authentication) new ContextAuthentication(
+		        new ContextUser().setId(BigInteger.ZERO)
+		                .setCreatedBy(BigInteger.ZERO)
+		                .setUpdatedBy(BigInteger.ZERO)
+		                .setCreatedAt(LocalDateTime.now())
+		                .setUpdatedAt(LocalDateTime.now())
+		                .setClientId(e.getId()
+		                        .toBigInteger())
+		                .setUserName("_Anonymous")
+		                .setEmailId("nothing@nothing")
+		                .setPhoneNumber("+910000000000")
+		                .setFirstName("Anonymous")
+		                .setLastName("")
+		                .setLocaleCode("en")
+		                .setPassword("")
+		                .setPasswordHashed(false)
+		                .setAccountNonExpired(true)
+		                .setAccountNonLocked(true)
+		                .setCredentialsNonExpired(true)
+		                .setNoFailedAttempt((short) 0)
+		                .setStringAuthorities(List.of("Authorities._Anonymous")),
+		        false, e.getId()
 		                .toBigInteger(),
 		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX));
 	}
