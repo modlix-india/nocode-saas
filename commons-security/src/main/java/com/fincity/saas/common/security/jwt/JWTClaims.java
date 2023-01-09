@@ -8,10 +8,12 @@ import java.util.Map;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import lombok.Data;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
+@ToString
 public class JWTClaims implements Serializable {
 
 	private static final long serialVersionUID = -6951503299014595535L;
