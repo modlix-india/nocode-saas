@@ -403,7 +403,7 @@ public class AuthenticationService implements IAuthenticationService {
 			port = forwardedPort.get(0);
 		}
 
-		if (!host.equals(jwtClaims.getHostName()) || !port.equals(jwtClaims.getPort())) {
+		if (!host.equals(jwtClaims.getHostName())) {
 
 			return resourceService.throwMessage(HttpStatus.UNAUTHORIZED, SecurityMessageResourceService.UNKNOWN_TOKEN);
 		}
