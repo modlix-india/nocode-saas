@@ -273,7 +273,7 @@ public class AuthenticationService implements IAuthenticationService {
 			return this.makeAnonySpringAuthentication(request);
 		}
 
-		return FlatMapUtil.flatMapMonoWithNullLog(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
 		                .map(ContextAuthentication.class::cast),
@@ -387,8 +387,6 @@ public class AuthenticationService implements IAuthenticationService {
 
 		String host = request.getURI()
 		        .getHost();
-		String port = "" + request.getURI()
-		        .getPort();
 
 		List<String> forwardedHost = request.getHeaders()
 		        .get("X-Forwarded-Host");
@@ -397,13 +395,7 @@ public class AuthenticationService implements IAuthenticationService {
 			host = forwardedHost.get(0);
 		}
 
-		List<String> forwardedPort = request.getHeaders()
-		        .get("X-Forwarded-Port");
-		if (forwardedPort != null && !forwardedPort.isEmpty()) {
-			port = forwardedPort.get(0);
-		}
-
-		if (!host.equals(jwtClaims.getHostName()) || !port.equals(jwtClaims.getPort())) {
+		if (!host.equals(jwtClaims.getHostName())) {
 
 			return resourceService.throwMessage(HttpStatus.UNAUTHORIZED, SecurityMessageResourceService.UNKNOWN_TOKEN);
 		}
