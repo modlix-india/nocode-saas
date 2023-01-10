@@ -102,14 +102,11 @@ public class ClientService
 
 		return cacheService.cacheValueOrGet(CACHE_CLIENT_URI, () -> {
 
-			String finScheme = uriScheme;
 			String finHost = uriHost;
-			int comma = uriPort.indexOf(',');
-			Integer finPort = Integer.valueOf(comma == -1 ? uriPort : uriPort.substring(0, comma));
-
+			
 			return clientUrlService.readAllAsClientURLPattern()
 			        .flatMapIterable(e -> e)
-			        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
+			        .filter(e -> e.isValidClientURLPattern(finHost, uriPort))
 			        .next();
 
 		}, uriScheme, uriHost, ":", uriPort);
