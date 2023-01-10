@@ -387,20 +387,12 @@ public class AuthenticationService implements IAuthenticationService {
 
 		String host = request.getURI()
 		        .getHost();
-		String port = "" + request.getURI()
-		        .getPort();
 
 		List<String> forwardedHost = request.getHeaders()
 		        .get("X-Forwarded-Host");
 
 		if (forwardedHost != null && !forwardedHost.isEmpty()) {
 			host = forwardedHost.get(0);
-		}
-
-		List<String> forwardedPort = request.getHeaders()
-		        .get("X-Forwarded-Port");
-		if (forwardedPort != null && !forwardedPort.isEmpty()) {
-			port = forwardedPort.get(0);
 		}
 
 		if (!host.equals(jwtClaims.getHostName())) {
