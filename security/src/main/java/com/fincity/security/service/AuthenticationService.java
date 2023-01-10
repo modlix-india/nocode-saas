@@ -1,7 +1,6 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
@@ -167,8 +166,7 @@ public class AuthenticationService implements IAuthenticationService {
 			        final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
 
 			        return makeToken(authRequest, request, response, hostAddress, user, client, linClient);
-		        })
-		        .switchIfEmpty(Mono.defer(this::credentialError));
+		        }).switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
 	private Mono<AuthenticationResponse> makeToken(AuthenticationRequest authRequest, ServerHttpRequest request,
@@ -404,10 +402,8 @@ public class AuthenticationService implements IAuthenticationService {
 		if (forwardedPort != null && !forwardedPort.isEmpty()) {
 			port = forwardedPort.get(0);
 		}
-		
-		System.err.println(host+" - "+port+" - "+jwtClaims.toString());
 
-		if (!host.equals(jwtClaims.getHostName())) {
+		if (!host.equals(jwtClaims.getHostName()) || !port.equals(jwtClaims.getPort())) {
 
 			return resourceService.throwMessage(HttpStatus.UNAUTHORIZED, SecurityMessageResourceService.UNKNOWN_TOKEN);
 		}
