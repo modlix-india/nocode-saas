@@ -5,13 +5,16 @@ import java.util.Map;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import reactor.core.publisher.Mono;
 
 @Data
+@NoArgsConstructor
 public class ComponentDefinition implements Serializable, IDifferentiable<ComponentDefinition> {
 
 	private static final long serialVersionUID = -8719079119317757579L;
@@ -23,6 +26,16 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 	private boolean override;
 	private Map<String, Boolean> children;
 	private String permission;
+	
+	public ComponentDefinition(ComponentDefinition cd) {
+		this.key = cd.key;
+		this.name = cd.name;
+		this.type = cd.type;
+		this.override = cd.override;
+		this.permission = cd.permission;
+		this.properties = CloneUtil.cloneMapObject(cd.properties);
+		this.children = CloneUtil.cloneMapObject(cd.children);
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
