@@ -63,6 +63,9 @@ public class IndexHTMLService {
 		processTagType(str, (Map<String, Object>) appProps.get("scripts"), "script", SCRIPT_FIELDS);
 		processTagType(str, (Map<String, Object>) appProps.get("metas"), "meta", META_FIELDS);
 
+		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode
+		        + "/api/ui/style\" />");
+		
 		str.append("<link rel=\"manifest\" href=\"/" + appCode + "/" + clientCode
 		        + "/manifest/manifest.json\" /></head><body><div id=\"app\"></div>");
 
