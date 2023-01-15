@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
+import com.fincity.saas.commons.mongo.util.MergeMapUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.document.Style;
@@ -124,22 +126,28 @@ public class EngineController {
 		        .flatMap(e -> this.themeService.read(e, appCode, clientCode))
 		        .map(StyleTheme::getVariables)
 		        .collectList()
-		        .map(lst -> lst.stream()
-		                .collect(Collectors.joining("\n")))
-		        .defaultIfEmpty("")
+		        .flatMap(lst -> {
+		        	if (lst == null || lst.isEmpty())
+		        		return Mono.empty();
+		        	
+		        	if (lst.size() == 1)
+		        		return Mono.just(lst.get(0));
+		        	
+		        	Map<String, Map<String, String>> finMap = lst.get(0);
+		        	
+		        	for (int i = 1; i<lst.size();i++)
+		        		finMap = MergeMapUtil.merge(finMap, lst.get(i));
+		        	
+		        	return Mono.just(finMap);
+		        })
+		        .defaultIfEmpty(Map.of())
 		        .map(ResponseEntity::ok);
 	}
 
 	private Mono<? extends List<String>> stylesThemesFromProps(Map<String, Map<String, Object>> styles) {
 		List<String> ss = styles.values()
 		        .stream()
-		        .sorted((a, b) ->
-				{
-		            Object objA = a.get("sequencence");
-		            Object objB = b.get("sequencence");
-		            return Integer.compare(objA == null ? 0 : Integer.parseInt(objA.toString()),
-		                    objB == null ? 0 : Integer.parseInt(objB.toString()));
-		        })
+		        .sorted(new MapWithOrderComparator())
 		        .map(e ->
 				{
 		            Object styleName = e.get("name");
