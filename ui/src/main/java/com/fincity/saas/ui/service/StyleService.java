@@ -38,4 +38,9 @@ public class StyleService extends AbstractOverridableDataService<Style, StyleRep
 			        return Mono.just(existing);
 		        });
 	}
+	
+	@Override
+	protected String getObjectName() {
+		return "Style";
+	}
 }
