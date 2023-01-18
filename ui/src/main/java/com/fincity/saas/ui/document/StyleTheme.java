@@ -20,20 +20,18 @@ import reactor.core.publisher.Mono;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document
-@CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1, 'styleName': 1}", name = "stylethemeFilteringIndex")
+@CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "stylethemeFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
 public class StyleTheme extends AbstractOverridableDTO<StyleTheme> {
 
 	private static final long serialVersionUID = 4355909627072800292L;
 
-	private String styleName;
 	private Map<String, Map<String, String>> variables;
 
 	public StyleTheme(StyleTheme styleTheme) {
 
 		super(styleTheme);
-		this.styleName = styleTheme.styleName;
 		this.variables = CloneUtil.cloneMapStringMap(styleTheme.variables);
 	}
 
