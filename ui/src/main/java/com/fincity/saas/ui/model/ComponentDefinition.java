@@ -26,6 +26,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 	private Map<String, Object> styleProperties; // NOSONAR
 	private boolean override;
 	private Map<String, Boolean> children;
+	private Integer displayOrder;
 	private String permission;
 
 	public ComponentDefinition(ComponentDefinition cd) {
@@ -36,6 +37,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		this.permission = cd.permission;
 		this.properties = CloneUtil.cloneMapObject(cd.properties);
 		this.styleProperties = CloneUtil.cloneMapObject(cd.styleProperties);
+		this.displayOrder = cd.displayOrder;
 		this.children = CloneUtil.cloneMapObject(cd.children);
 	}
 
@@ -67,6 +69,10 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 			        cd.setProperties((Map<String, Object>) propDiff);
 			        cd.setChildren(childDiff);
 			        cd.setStyleProperties((Map<String, Object>) styleDiff);
+			        if (this.displayOrder == incoming.displayOrder)
+			        	cd.setDisplayOrder(null);
+			        else
+			        	cd.setDisplayOrder(this.displayOrder);
 
 			        return Mono.just(cd);
 		        });
@@ -97,7 +103,9 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 				        this.setType(base.getType());
 			        if (this.getName() == null)
 				        this.setName(base.getName());
-
+			        if (this.getDisplayOrder() == null)
+			        	this.setDisplayOrder(base.getDisplayOrder());
+			        
 			        return Mono.justOrEmpty(this);
 		        });
 	}
