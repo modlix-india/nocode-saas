@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Document
+@Document(collection = "Theme")
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "stylethemeFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor

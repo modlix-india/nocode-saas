@@ -23,10 +23,11 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 	private String name;
 	private String type;
 	private Map<String, Object> properties; // NOSONAR
+	private Map<String, Object> styleProperties; // NOSONAR
 	private boolean override;
 	private Map<String, Boolean> children;
 	private String permission;
-	
+
 	public ComponentDefinition(ComponentDefinition cd) {
 		this.key = cd.key;
 		this.name = cd.name;
@@ -34,13 +35,14 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		this.override = cd.override;
 		this.permission = cd.permission;
 		this.properties = CloneUtil.cloneMapObject(cd.properties);
+		this.styleProperties = CloneUtil.cloneMapObject(cd.styleProperties);
 		this.children = CloneUtil.cloneMapObject(cd.children);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<ComponentDefinition> extractDifference(ComponentDefinition incoming) {
-		
+
 		return FlatMapUtil.flatMapMono(
 
 		        () -> DifferenceExtractor.extract(incoming.getProperties(), this.getProperties())
@@ -49,7 +51,11 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		        propDiff -> DifferenceExtractor.extractMapBoolean(incoming.getChildren(), this.getChildren())
 		                .defaultIfEmpty(Map.of()),
 
-		        (propDiff, childDiff) ->
+		        (propDiff, childDiff) -> DifferenceExtractor
+		                .extract(incoming.getStyleProperties(), this.getStyleProperties())
+		                .defaultIfEmpty(Map.of()),
+
+		        (propDiff, childDiff, styleDiff) ->
 				{
 
 			        ComponentDefinition cd = new ComponentDefinition();
@@ -60,11 +66,12 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 			                .equals(this.getType()) ? null : this.getType());
 			        cd.setProperties((Map<String, Object>) propDiff);
 			        cd.setChildren(childDiff);
+			        cd.setStyleProperties((Map<String, Object>) styleDiff);
 
 			        return Mono.just(cd);
 		        });
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public Mono<ComponentDefinition> applyOverride(ComponentDefinition base) {
 		if (base == null)
@@ -76,11 +83,14 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 
 		        propMap -> DifferenceApplicator.applyMapBoolean(this.getChildren(), base.getChildren()),
 
-		        (propMap, childMap) ->
+		        (propMap, childMap) -> DifferenceApplicator.apply(this.getStyleProperties(), base.getStyleProperties()),
+
+		        (propMap, childMap, stylePropMap) ->
 				{
 
 			        this.setChildren(childMap);
 			        this.setProperties((Map<String, Object>) propMap);
+			        this.setStyleProperties((Map<String, Object>) stylePropMap);
 			        this.setKey(base.getKey());
 			        this.setOverride(true);
 			        if (this.getType() == null)
