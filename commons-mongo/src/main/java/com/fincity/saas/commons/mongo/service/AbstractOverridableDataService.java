@@ -47,334 +47,339 @@ import reactor.util.function.Tuples;
 public abstract class AbstractOverridableDataService<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>>
         extends AbstractMongoUpdatableDataService<String, D, R> {
 
-    private static final String CLIENT_CODE = "clientCode";
-    private static final String APP_CODE = "appCode";
+	private static final String CLIENT_CODE = "clientCode";
+	private static final String APP_CODE = "appCode";
 
-    protected static final String CREATE = "CREATE";
-    protected static final String UPDATE = "UPDATE";
-    protected static final String READ = "READ";
-    protected static final String DELETE = "DELETE";
+	protected static final String CREATE = "CREATE";
+	protected static final String UPDATE = "UPDATE";
+	protected static final String READ = "READ";
+	protected static final String DELETE = "DELETE";
 
-    private static final String CACHE_NAME = "Cache";
+	private static final String CACHE_NAME = "Cache";
 
-    @Autowired
-    protected CacheService cacheService;
+	@Autowired
+	protected CacheService cacheService;
 
-    @Autowired
-    protected ObjectMapper objectMapper;
+	@Autowired
+	protected ObjectMapper objectMapper;
 
-    @Autowired
-    protected AbstractMongoMessageResourceService messageResourceService;
+	@Autowired
+	protected AbstractMongoMessageResourceService messageResourceService;
 
-    @Autowired
-    protected VersionService versionService;
+	@Autowired
+	protected VersionService versionService;
 
-    @Autowired
-    protected FeignAuthenticationService securityService;
+	@Autowired
+	protected FeignAuthenticationService securityService;
 
-    @Autowired
-    private com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
+	@Autowired
+	private com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
 
-    protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP=new TypeReference<Map<String,Object>>(){};
+	protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
+	};
 
-    protected AbstractOverridableDataService(Class<D> pojoClass) {
-        super(pojoClass);
-    }
+	protected AbstractOverridableDataService(Class<D> pojoClass) {
+		super(pojoClass);
+	}
 
-    @Override
-    public Mono<D> create(D entity) {
+	@Override
+	public Mono<D> create(D entity) {
 
-        // TODO: CHECK FOR APPCODE
+		// TODO: CHECK FOR APPCODE
 
-        @SuppressWarnings("unchecked")
-        Mono<D> crtEnt = FlatMapUtil.flatMapMono(
+		@SuppressWarnings("unchecked")
+		Mono<D> crtEnt = FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> (entity.getClientCode() == null) ? Mono.just((D) entity.setClientCode(ca.getClientCode()))
-                        : Mono.just(entity),
+		        ca -> (entity.getClientCode() == null) ? Mono.just((D) entity.setClientCode(ca.getClientCode()))
+		                : Mono.just(entity),
 
-                (ca, ent) -> this.checkIfExists(ent),
+		        (ca, ent) -> this.checkIfExists(ent),
 
-                (ca, ent, cent) -> this.accessCheck(ca, CREATE, ent, true),
+		        (ca, ent, cent) -> this.accessCheck(ca, CREATE, ent, true),
 
-                (ca, ent, cent, hasSecurity) -> hasSecurity.booleanValue() ? Mono.just(cent) : Mono.empty())
+		        (ca, ent, cent, hasSecurity) -> hasSecurity.booleanValue() ? Mono.just(cent) : Mono.empty())
 
-                .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
-                        this.getObjectName()));
+		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
+		                this.getObjectName()));
 
-        return FlatMapUtil.flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMonoWithNull(
 
-                () -> crtEnt,
+		        () -> crtEnt,
 
-                this::getMergedSources,
+		        this::getMergedSources,
 
-                this::extractOverride,
+		        this::extractOverride,
 
-                (cEntity, merged, overridden) -> super.create(overridden),
+		        (cEntity, merged, overridden) -> super.create(overridden),
 
-                (cEntity, merged, overridden,
-                        created) -> isVersionable()
-                                ? versionService.create(new Version().setClientCode(cEntity.getClientCode())
-                                        .setObjectName(entity.getName())
-                                        .setObjectAppCode(entity.getAppCode())
-                                        .setObjectType(this.getObjectName()
-                                                .toUpperCase())
-                                        .setVersionNumber(1)
-                                        .setMessage(entity.getMessage())
-                                        .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
-                                : Mono.empty(),
+		        (cEntity, merged, overridden,
+		                created) -> isVersionable()
+		                        ? versionService.create(new Version().setClientCode(cEntity.getClientCode())
+		                                .setObjectName(entity.getName())
+		                                .setObjectAppCode(entity.getAppCode())
+		                                .setObjectType(this.getObjectName()
+		                                        .toUpperCase())
+		                                .setVersionNumber(1)
+		                                .setMessage(entity.getMessage())
+		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
+		                        : Mono.empty(),
 
-                (cEntity, merged, overridden, created, version) -> this.read(created.getId()))
+		        (cEntity, merged, overridden, created, version) -> this.read(created.getId()))
 
-                .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
-                        this.getObjectName()));
-    }
+		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
+		                this.getObjectName()));
+	}
 
-    protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, D entity,
-            boolean checkAppWriteAccess) {
+	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, D entity,
+	        boolean checkAppWriteAccess) {
 
-        if (entity == null)
-            return Mono.just(false);
+		if (entity == null)
+			return Mono.just(false);
 
-        return flatMapMono(
-                () -> SecurityContextUtil.hasAuthority(
-                        "Authorities." + this.getAppNamePrefixWithDot() + this.getObjectName() + "_" + method,
-                        ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
+		return flatMapMono(
+		        () -> SecurityContextUtil.hasAuthority(
+		                "Authorities." + this.getAppNamePrefixWithDot() + this.getObjectName() + "_" + method,
+		                ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
 
-                access -> {
-                    if (ca.getClientCode()
-                            .equals(entity.getClientCode()))
-                        return Mono.just(true);
+		        access ->
+				{
+			        if (ca.getClientCode()
+			                .equals(entity.getClientCode()))
+				        return Mono.just(true);
 
-                    return this.securityService.isBeingManaged(ca.getClientCode(), entity.getClientCode());
-                }, (access, managed) -> {
+			        return this.securityService.isBeingManaged(ca.getClientCode(), entity.getClientCode());
+		        }, (access, managed) -> {
 
-                    if (!managed.booleanValue())
-                        return Mono.empty();
+			        if (!managed.booleanValue())
+				        return Mono.empty();
 
-                    return checkAppWriteAccess
-                            ? this.securityService.hasWriteAccess(entity.getAppCode(), ca.getClientCode())
-                            : this.securityService.hasReadAccess(entity.getAppCode(), ca.getClientCode());
-                }).defaultIfEmpty(false);
-    }
+			        return checkAppWriteAccess
+			                ? this.securityService.hasWriteAccess(entity.getAppCode(), ca.getClientCode())
+			                : this.securityService.hasReadAccess(entity.getAppCode(), ca.getClientCode());
+		        }).defaultIfEmpty(false);
+	}
 
-    protected String getObjectName() {
-        return this.pojoClass.getSimpleName();
-    }
+	protected String getObjectName() {
+		return this.pojoClass.getSimpleName();
+	}
 
-    protected String getAppNamePrefixWithDot() {
+	protected String getAppNamePrefixWithDot() {
 
-        return "APPBUILDER."; // NOSONAR
-        // Need this to override for those roles without app builder.
-    }
+		return "APPBUILDER."; // NOSONAR
+		// Need this to override for those roles without app builder.
+	}
 
-    private Mono<D> checkIfExists(D cca) {
+	private Mono<D> checkIfExists(D cca) {
 
-        return this.mongoTemplate.count(new Query(new Criteria().andOperator(
+		return this.mongoTemplate.count(new Query(new Criteria().andOperator(
 
-                Criteria.where("name")
-                        .is(cca.getName()),
-                Criteria.where(APP_CODE)
-                        .is(cca.getAppCode()),
-                Criteria.where(CLIENT_CODE)
-                        .is(cca.getClientCode())
+		        Criteria.where("name")
+		                .is(cca.getName()),
+		        Criteria.where(APP_CODE)
+		                .is(cca.getAppCode()),
+		        Criteria.where(CLIENT_CODE)
+		                .is(cca.getClientCode())
 
-        )), this.pojoClass)
-                .flatMap(c -> c > 0 ? messageResourceService.throwMessage(HttpStatus.CONFLICT,
-                        AbstractMongoMessageResourceService.ALREADY_EXISTS, this.getObjectName(),
-                        cca.getName()) : Mono.just(cca));
-    }
+		)), this.pojoClass)
+		        .flatMap(c -> c > 0
+		                ? messageResourceService.throwMessage(HttpStatus.CONFLICT,
+		                        AbstractMongoMessageResourceService.ALREADY_EXISTS, this.getObjectName(), cca.getName())
+		                : Mono.just(cca));
+	}
 
-    @Override
-    public Mono<D> read(String id) {
+	@Override
+	public Mono<D> read(String id) {
 
-        return flatMapMonoWithNull(
+		return flatMapMonoWithNull(
 
-                () -> super.read(id),
+		        () -> super.read(id),
 
-                entity -> SecurityContextUtil.getUsersContextAuthentication(),
+		        entity -> SecurityContextUtil.getUsersContextAuthentication(),
 
-                (entity, ca) -> this.accessCheck(ca, READ, entity, false),
+		        (entity, ca) -> this.accessCheck(ca, READ, entity, false),
 
-                (entity, ca, hasAccess) -> hasAccess.booleanValue() ? this.getMergedSources(entity) : Mono.empty(),
+		        (entity, ca, hasAccess) -> hasAccess.booleanValue() ? this.getMergedSources(entity) : Mono.empty(),
 
-                (entity, ca, hasAccess, merged) -> hasAccess.booleanValue() ? this.applyOverride(entity, merged)
-                        : Mono.empty())
+		        (entity, ca, hasAccess, merged) -> hasAccess.booleanValue() ? this.applyOverride(entity, merged)
+		                : Mono.empty())
 
-                .switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-                        AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
-    }
+		        .switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
+	}
 
-    public Mono<D> readInternal(String id) {
+	public Mono<D> readInternal(String id) {
 
-        return flatMapMonoWithNull(
+		return flatMapMonoWithNull(
 
-                () -> super.read(id),
+		        () -> super.read(id),
 
-                this::getMergedSources,
+		        this::getMergedSources,
 
-                this::applyOverride);
-    }
+		        this::applyOverride);
+	}
 
-    @Override
-    public Mono<D> update(D entity) {
+	@Override
+	public Mono<D> update(D entity) {
 
-        Mono<D> crtEnt = flatMapMono(
+		Mono<D> crtEnt = flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.accessCheck(ca, UPDATE, entity, true),
+		        ca -> this.accessCheck(ca, UPDATE, entity, true),
 
-                (ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty());
+		        (ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty());
 
-        return crtEnt.flatMap(e -> flatMapMonoWithNull(
+		return crtEnt.flatMap(e -> flatMapMonoWithNull(
 
-                () -> this.getMergedSources(e),
+		        () -> this.getMergedSources(e),
 
-                merged -> this.extractOverride(e, merged),
+		        merged -> this.extractOverride(e, merged),
 
-                (merged, overridden) -> super.update(overridden),
+		        (merged, overridden) -> super.update(overridden),
 
-                (merged, overridden,
-                        created) -> isVersionable()
-                                ? versionService.create(new Version().setClientCode(entity.getClientCode())
-                                        .setObjectName(entity.getName())
-                                        .setObjectAppCode(entity.getAppCode())
-                                        .setObjectType(this.getObjectName()
-                                                .toUpperCase())
-                                        .setVersionNumber(1)
-                                        .setMessage(entity.getMessage())
-                                        .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
-                                : Mono.empty(),
+		        (merged, overridden,
+		                created) -> isVersionable()
+		                        ? versionService.create(new Version().setClientCode(entity.getClientCode())
+		                                .setObjectName(entity.getName())
+		                                .setObjectAppCode(entity.getAppCode())
+		                                .setObjectType(this.getObjectName()
+		                                        .toUpperCase())
+		                                .setVersionNumber(1)
+		                                .setMessage(entity.getMessage())
+		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
+		                        : Mono.empty(),
 
-                (merged, overridden, created, version) -> this.read(created.getId()),
+		        (merged, overridden, created, version) -> this.read(created.getId()),
 
-                (m, o, c, v, f) -> {
+		        (m, o, c, v, f) ->
+				{
 
-                    this.evictRecursively(f)
-                            .subscribe();
+			        this.evictRecursively(f)
+			                .subscribe();
 
-                    return Mono.just(f);
-                }));
-    }
+			        return Mono.just(f);
+		        }));
+	}
 
-    protected Mono<D> evictRecursively(D f) {
+	protected Mono<D> evictRecursively(D f) {
 
-        Flux.just(f)
-                .expandDeep(e -> this.repo.findByNameAndAppCodeAndBaseClientCode(e.getName(), e.getAppCode(),
-                        e.getClientCode()))
-                .subscribe(e -> cacheService
-                        .evict(this.getCacheName(), e.getName(), "-", e.getAppCode(), "-", e.getClientCode())
-                        .subscribe());
+		Flux.just(f)
+		        .expandDeep(e -> this.repo.findByNameAndAppCodeAndBaseClientCode(e.getName(), e.getAppCode(),
+		                e.getClientCode()))
+		        .subscribe(e -> cacheService
+		                .evict(this.getCacheName(), e.getName(), "-", e.getAppCode(), "-", e.getClientCode())
+		                .subscribe());
 
-        return Mono.just(f);
-    }
+		return Mono.just(f);
+	}
 
-    @Override
-    public Mono<Boolean> delete(String id) {
+	@Override
+	public Mono<Boolean> delete(String id) {
 
-        Mono<D> exists = this.repo.findById(id)
-                .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-                        AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
+		Mono<D> exists = this.repo.findById(id)
+		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
 
-        return flatMapMono(
+		return flatMapMono(
 
-                () -> exists,
+		        () -> exists,
 
-                entity -> this.repo.countByNameAndAppCodeAndBaseClientCode(entity.getName(), entity.getAppCode(),
-                        entity.getClientCode()),
+		        entity -> this.repo.countByNameAndAppCodeAndBaseClientCode(entity.getName(), entity.getAppCode(),
+		                entity.getClientCode()),
 
-                (entity, count) -> SecurityContextUtil.getUsersContextAuthentication(),
+		        (entity, count) -> SecurityContextUtil.getUsersContextAuthentication(),
 
-                (entity, count, ca) -> this.accessCheck(ca, DELETE, entity, true),
+		        (entity, count, ca) -> this.accessCheck(ca, DELETE, entity, true),
 
-                (entity, count, ca, hasAccess) -> {
+		        (entity, count, ca, hasAccess) ->
+				{
 
-                    if (!hasAccess.booleanValue())
-                        return Mono.empty();
+			        if (!hasAccess.booleanValue())
+				        return Mono.empty();
 
-                    if (count > 0l)
-                        return messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-                                AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(),
-                                id);
+			        if (count > 0l)
+				        return messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				                AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id);
 
-                    cacheService
-                            .evict(this.getCacheName(), entity.getName(), "-", entity.getAppCode(), "-",
-                                    entity.getClientCode())
-                            .subscribe();
-                    return super.delete(id);
-                }).switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-                        AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
-    }
+			        cacheService
+			                .evict(this.getCacheName(), entity.getName(), "-", entity.getAppCode(), "-",
+			                        entity.getClientCode())
+			                .subscribe();
+			        return super.delete(id);
+		        }).switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		                AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
+	}
 
-    protected Mono<D> getMergedSources(D entity) {
+	protected Mono<D> getMergedSources(D entity) {
 
-        if (entity == null)
-            return Mono.empty();
+		if (entity == null)
+			return Mono.empty();
 
-        if (entity.getBaseClientCode() == null)
-            return Mono.empty();
+		if (entity.getBaseClientCode() == null)
+			return Mono.empty();
 
-        Flux<D> x = Mono.just(entity)
-                .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
-                        : this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(), e.getAppCode(),
-                                e.getBaseClientCode()));
+		Flux<D> x = Mono.just(entity)
+		        .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
+		                : this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(), e.getAppCode(),
+		                        e.getBaseClientCode()));
 
-        return x.collectList()
-                .flatMap(list -> {
-                    if (list.size() == 1)
-                        return Mono.empty();
+		return x.collectList()
+		        .flatMap(list ->
+				{
+			        if (list.size() == 1)
+				        return Mono.empty();
 
-                    if (list.size() == 2)
-                        return Mono.just(list.get(1));
+			        if (list.size() == 2)
+				        return Mono.just(list.get(1));
 
-                    Mono<D> current = Mono.just(list.get(list.size() - 2));
+			        Mono<D> current = Mono.just(list.get(list.size() - 2));
 
-                    for (int i = list.size() - 3; i >= 0; i--) {
-                        final int fi = i;
-                        current = current.flatMap(b -> list.get(fi)
-                                .applyOverride(b));
-                    }
+			        for (int i = list.size() - 3; i >= 0; i--) {
+				        final int fi = i;
+				        current = current.flatMap(b -> list.get(fi)
+				                .applyOverride(b));
+			        }
 
-                    return current;
-                });
-    }
+			        return current;
+		        });
+	}
 
-    protected boolean isVersionable() {
-        return true;
-    }
+	protected boolean isVersionable() {
+		return true;
+	}
 
-    protected Mono<D> extractOverride(D entity, D mergedSources) {
-        if (entity == null)
-            return Mono.empty();
+	protected Mono<D> extractOverride(D entity, D mergedSources) {
+		if (entity == null)
+			return Mono.empty();
 
-        if (mergedSources == null)
-            return Mono.just(entity);
+		if (mergedSources == null)
+			return Mono.just(entity);
 
-        return entity.makeOverride(mergedSources);
-    }
+		return entity.makeOverride(mergedSources);
+	}
 
-    protected Mono<D> applyOverride(D entity, D mergedSources) {
-        if (entity == null)
-            return Mono.empty();
+	protected Mono<D> applyOverride(D entity, D mergedSources) {
+		if (entity == null)
+			return Mono.empty();
 
-        if (mergedSources == null)
-            return Mono.just(entity);
+		if (mergedSources == null)
+			return Mono.just(entity);
 
-        return entity.applyOverride(mergedSources);
-    }
+		return entity.applyOverride(mergedSources);
+	}
 
-    @Override
-    protected Mono<String> getLoggedInUserId() {
+	@Override
+	protected Mono<String> getLoggedInUserId() {
 
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .map(ContextAuthentication::getUser)
-                .map(ContextUser::getId)
-                .map(Object::toString);
-    }
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .map(ContextAuthentication::getUser)
+		        .map(ContextUser::getId)
+		        .map(Object::toString);
+	}
 
-    public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) {
+	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) {
 
 		final String appCode = params.getFirst(APP_CODE) == null ? "" : params.getFirst(APP_CODE);
 
@@ -406,15 +411,14 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		        tup -> this.filter(tup.getT1()),
 
-		        (tup, crit) ->   this.mongoTemplate
-                    .find(new Query(crit).with(pageable.getSort()), ListResultObject.class,
-                            this.getObjectName()
-                                    .toLowerCase())
-                    .collectList() ,
+		        (tup, crit) -> this.mongoTemplate
+		                .find(new Query(crit).with(pageable.getSort()), ListResultObject.class, this.getObjectName()
+		                        .toLowerCase())
+		                .collectList(),
 
-    (tup,crit,list)->
+		        (tup, crit, list) ->
 
-    {
+				{
 			        Map<String, ListResultObject> things = new HashMap<>();
 
 			        String clientCode = tup.getT2()
@@ -440,10 +444,10 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 			        return Mono.just(new PageImpl<>(nList, pageable, nList.size()));
 		        });
 
-    return returnList.defaultIfEmpty(new PageImpl<>(List.of(),pageable,0));
-    }
+		return returnList.defaultIfEmpty(new PageImpl<>(List.of(), pageable, 0));
+	}
 
-    private List<ListResultObject> filterBasedOnPageSize(Pageable pageable, List<ListResultObject> list,
+	private List<ListResultObject> filterBasedOnPageSize(Pageable pageable, List<ListResultObject> list,
 	        Map<String, ListResultObject> things) {
 
 		Set<String> ids = things.values()
@@ -465,7 +469,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		return List.of();
 	}
 
-    private Mono<Tuple2<ComplexCondition, List<String>>> paramToConditionLRO(MultiValueMap<String, String> params,
+	private Mono<Tuple2<ComplexCondition, List<String>>> paramToConditionLRO(MultiValueMap<String, String> params,
 	        final String appCode) {
 
 		return FlatMapUtil.flatMapMono(
@@ -534,7 +538,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		        });
 	}
 
-    public Mono<D> read(String name, String appCode, String clientCode) {
+	public Mono<D> read(String name, String appCode, String clientCode) {
 
 		return FlatMapUtil.flatMapMonoWithNullLog(
 
@@ -564,8 +568,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 			        } catch (Exception e) {
 
 				        return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-				                AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT,
-				                this.getObjectName());
+				                AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.getObjectName());
 			        }
 		        },
 
@@ -583,11 +586,11 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		        });
 	}
 
-    protected Mono<D> applyChange(D object) {
+	protected Mono<D> applyChange(D object) {
 		return Mono.just(object);
 	}
 
-    protected String getCacheName() {
+	protected String getCacheName() {
 
 		return this.getObjectName() + CACHE_NAME;
 	}
