@@ -4,14 +4,16 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.Map;
 
+import javax.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 
@@ -25,6 +27,13 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 	protected ApplicationService() {
 		super(Application.class);
+	}
+
+	@PostConstruct
+	public void init() {
+		// this cyclic reference is need for picking shell page definition & the other
+		// page definitions in the page service from application properties.
+		this.pageService.setApplicationService(this);
 	}
 
 	@Override
@@ -53,8 +62,57 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 		        });
 	}
 
+	public Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode) {
+
+		return FlatMapUtil.flatMapMonoWithNullLog(
+
+		        () -> cacheService.makeKey("Properties : ", name, "-", appCode, "-", clientCode),
+
+		        key -> cacheService.get(this.getCacheName(), key)
+		                .map(this.pojoClass::cast),
+
+		        (key, cApp) -> Mono.justOrEmpty(cApp)
+		                .switchIfEmpty(Mono
+		                        .defer(() -> this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode)
+		                                .map(this.pojoClass::cast))),
+
+		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
+		                .flatMap(da -> this.readInternal(da.getId())
+		                        .map(this.pojoClass::cast)),
+
+		        (key, cApp, dbApp, mergedApp) ->
+				{
+
+			        if (cApp == null && mergedApp == null)
+				        return Mono.empty();
+
+			        try {
+				        return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
+				                .newInstance(cApp != null ? cApp : mergedApp));
+			        } catch (Exception e) {
+
+				        return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
+				                AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.getObjectName());
+			        }
+		        },
+
+		        (key, cApp, dbApp, mergedApp, clonedApp) ->
+				{
+
+			        if (clonedApp == null)
+				        return Mono.empty();
+
+			        if (cApp == null && mergedApp != null) {
+				        cacheService.put(this.getCacheName(), mergedApp, key);
+			        }
+
+			        return Mono.justOrEmpty(clonedApp.getProperties());
+		        })
+		        .defaultIfEmpty(Map.of());
+	}
+
 	@Override
-	protected Mono<Application> applyChange(Application object) {
+	protected Mono<Application> applyChange(String name, String appCode, String clientCode, Application object) {
 
 		if (object == null)
 			return Mono.empty();
@@ -79,8 +137,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 			        if (!showShellPage.booleanValue() && props.get("forbiddenPage") != null)
 				        pageName = props.get("forbiddenPage");
 
-			        return this.pageService.read(pageName.toString(), object.getAppCode(),
-			                object.getClientCode());
+			        return this.pageService.read(pageName.toString(), object.getAppCode(), object.getClientCode());
 
 		        },
 
