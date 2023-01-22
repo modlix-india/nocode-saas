@@ -379,7 +379,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		        .map(Object::toString);
 	}
 
-	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) {
+	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) { //NOSONAR
 
 		final String appCode = params.getFirst(APP_CODE) == null ? "" : params.getFirst(APP_CODE);
 
@@ -582,11 +582,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				        cacheService.put(this.getCacheName(), mergedApp, key);
 			        }
 
-			        return this.applyChange(clonedApp);
+			        return this.applyChange(name, appCode, clientCode, clonedApp);
 		        });
 	}
 
-	protected Mono<D> applyChange(D object) {
+	protected Mono<D> applyChange(String name, String appCode, String clientCode, D object) { // NOSONAR
+
 		return Mono.just(object);
 	}
 
