@@ -42,7 +42,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 			        existing.setProperties(entity.getProperties())
 			                .setTranslations(entity.getTranslations())
-			                .setLanguages(entity.getLanguages());
+			                .setLanguages(entity.getLanguages())
+			                .setPermission(entity.getPermission());
 
 			        existing.setMessage(entity.getMessage());
 			        existing.setDefaultLanguage(entity.getDefaultLanguage());

@@ -85,7 +85,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 			        }
 
 			        existing.setDefinition(entity.getDefinition());
-			        existing.setVersion(existing.getVersion() + 1);
+			        existing.setVersion(existing.getVersion() + 1).setPermission(entity.getPermission());
 
 			        return Mono.just(existing);
 		        });
