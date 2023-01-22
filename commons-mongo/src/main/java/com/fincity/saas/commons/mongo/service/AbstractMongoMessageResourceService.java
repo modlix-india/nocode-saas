@@ -32,6 +32,7 @@ public abstract class AbstractMongoMessageResourceService extends AbstractMessag
 	public static final String NAME_MISSING = "name_missing";
 	public static final String NAME_CHANGE = "name_change";
 	public static final String FORBIDDEN_EXECUTION = "forbidden_execution";
+	public static final String INTERNAL_ERROR_RECURSION = "internal_error_recursion";
 
 	protected AbstractMongoMessageResourceService() {
 
