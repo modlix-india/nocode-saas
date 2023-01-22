@@ -1,6 +1,7 @@
 package com.fincity.saas.ui.service;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -67,9 +68,8 @@ public class IndexHTMLService {
 		        + "/manifest/manifest.json\" /></head><body><div id=\"app\"></div>");
 
 		// Here the preference will be for the style from the style service.
-		
-		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode
-		        + "/api/ui/style\" />");
+
+		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/api/ui/style\" />");
 
 		str.append("<script src=\"/js/index.js\"></script></body></html>");
 
@@ -79,13 +79,16 @@ public class IndexHTMLService {
 	@SuppressWarnings("unchecked")
 	private void processTagType(StringBuilder str, Map<String, Object> tagType, String tag, String[] attributeList) {
 
-		if (tagType != null && tagType.isEmpty()) {
-			str.append(tagType.values()
-			        .stream()
-			        .map(e -> (Map<String, Object>) e)
-			        .sorted(new MapWithOrderComparator())
-			        .map(e -> this.toTagString(tag, e, attributeList)));
-		}
+		if (tagType == null || tagType.isEmpty())
+			return;
+
+		str.append(tagType.values()
+		        .stream()
+		        .map(e -> (Map<String, Object>) e)
+		        .sorted(new MapWithOrderComparator())
+		        .map(e -> this.toTagString(tag, e, attributeList))
+		        .peek(System.err::println)
+		        .collect(Collectors.joining()));
 	}
 
 	private String toTagString(String tag, Map<String, Object> attributes, String[] attributeList) {
