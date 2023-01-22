@@ -41,7 +41,8 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 			                .setProperties(entity.getProperties())
 			                .setEventFunctions(entity.getEventFunctions())
 			                .setRootComponent(entity.getRootComponent())
-			                .setComponentDefinition(entity.getComponentDefinition());
+			                .setComponentDefinition(entity.getComponentDefinition())
+			                .setPermission(entity.getPermission());
 
 			        existing.setVersion(existing.getVersion() + 1);
 
