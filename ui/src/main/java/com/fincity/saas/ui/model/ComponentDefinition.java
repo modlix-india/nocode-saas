@@ -28,6 +28,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 	private Map<String, Boolean> children;
 	private Integer displayOrder;
 	private String permission;
+	private Map<String, String> bindingPath;
 
 	public ComponentDefinition(ComponentDefinition cd) {
 		this.key = cd.key;
@@ -39,6 +40,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		this.styleProperties = CloneUtil.cloneMapObject(cd.styleProperties);
 		this.displayOrder = cd.displayOrder;
 		this.children = CloneUtil.cloneMapObject(cd.children);
+		this.bindingPath = CloneUtil.cloneMapObject(cd.bindingPath);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -56,8 +58,10 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		        (propDiff, childDiff) -> DifferenceExtractor
 		                .extract(incoming.getStyleProperties(), this.getStyleProperties())
 		                .defaultIfEmpty(Map.of()),
+		                
+		        (propDiff, childDiff, styleDiff) -> DifferenceExtractor.extract(incoming.getBindingPath(), this.getBindingPath()).defaultIfEmpty(Map.of()),
 
-		        (propDiff, childDiff, styleDiff) ->
+		        (propDiff, childDiff, styleDiff, bPath) ->
 				{
 
 			        ComponentDefinition cd = new ComponentDefinition();
@@ -70,9 +74,12 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 			        cd.setChildren(childDiff);
 			        cd.setStyleProperties((Map<String, Object>) styleDiff);
 			        if (this.displayOrder == incoming.displayOrder)
-			        	cd.setDisplayOrder(null);
+				        cd.setDisplayOrder(null);
 			        else
-			        	cd.setDisplayOrder(this.displayOrder);
+				        cd.setDisplayOrder(this.displayOrder);
+			        
+			        if (!bPath.isEmpty())
+			        	cd.setBindingPath((Map<String, String>) bPath);
 
 			        return Mono.just(cd);
 		        });
@@ -91,7 +98,9 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 
 		        (propMap, childMap) -> DifferenceApplicator.apply(this.getStyleProperties(), base.getStyleProperties()),
 
-		        (propMap, childMap, stylePropMap) ->
+		        (propMap, childMap, stylePropMap) -> DifferenceApplicator.apply(this.getBindingPath(), base.getBindingPath()),
+		        
+		        (propMap, childMap, stylePropMap, bPath) ->
 				{
 
 			        this.setChildren(childMap);
@@ -104,8 +113,11 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 			        if (this.getName() == null)
 				        this.setName(base.getName());
 			        if (this.getDisplayOrder() == null)
-			        	this.setDisplayOrder(base.getDisplayOrder());
+				        this.setDisplayOrder(base.getDisplayOrder());
 			        
+			        if (bPath!= null && !bPath.isEmpty())
+			        	this.setBindingPath((Map<String, String>) bPath);
+
 			        return Mono.justOrEmpty(this);
 		        });
 	}
