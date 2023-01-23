@@ -32,7 +32,7 @@ public class Page extends AbstractOverridableDTO<Page> {
 	private String device;
 	private Map<String, Map<String, String>> translations;
 	private Map<String, Object> properties; // NOSONAR
-	private Map<String, FunctionDefinition> eventFunctions;
+	private Map<String, Object> eventFunctions; //NOSONAR
 	private String rootComponent;
 	private Map<String, ComponentDefinition> componentDefinition;
 	
@@ -66,7 +66,7 @@ public class Page extends AbstractOverridableDTO<Page> {
 					{
 				        this.translations = (Map<String, Map<String, String>>) t;
 				        this.properties = (Map<String, Object>) p;
-				        this.eventFunctions = (Map<String, FunctionDefinition>) e;
+				        this.eventFunctions = (Map<String, Object>) e;
 				        this.componentDefinition = (Map<String, ComponentDefinition>) c;
 
 				        this.device = base.device;
@@ -101,7 +101,7 @@ public class Page extends AbstractOverridableDTO<Page> {
 			        obj.setProperties((Map<String, Object>) props);
 			        obj.setTranslations((Map<String, Map<String, String>>) trans);
 			        obj.setComponentDefinition((Map<String, ComponentDefinition>) cd);
-			        obj.setEventFunctions((Map<String, FunctionDefinition>) evs);
+			        obj.setEventFunctions((Map<String, Object>) evs);
 
 			        if (obj.rootComponent != null && obj.rootComponent.equals(base.rootComponent))
 				        obj.rootComponent = null;
