@@ -39,6 +39,7 @@ import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
+import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 
@@ -130,6 +131,12 @@ public class AuthenticationService implements IAuthenticationService {
 		Mono<Client> loggedInClient = (clientCode != null && !clientCode.isEmpty())
 		        ? this.clientService.getClientBy(clientCode.get(0))
 		        : this.clientService.getClientBy(request);
+
+		if (authRequest.getIdentifierType() == null) {
+			authRequest.setIdentifierType(StringUtil.safeIsBlank(authRequest.getUserName()) || authRequest.getUserName()
+			        .indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
+			                : AuthenticationIdentifierType.EMAIL_ID);
+		}
 
 		return flatMapMono(
 
