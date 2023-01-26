@@ -29,7 +29,7 @@ spring:
         - id: core
           uri: lb://core
           predicates:
-            - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
+            - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
 
 redis:
   cache:
