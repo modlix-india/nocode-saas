@@ -8,19 +8,19 @@ spring:
         - id: security
           uri: lb://security
           predicates:
-            - Path=/api/security/**, /*/api/security/**, /*/*/api/security/**, /*/*/*/api/security/**, /*/*/*/*/*/api/security/**, /*/*/*/*/*/*/api/security/**, /*/*/*/*/*/*/api/security/**, /*/*/*/*/*/*/*/api/security/**,
+            - Path=/api/security/**, /*/api/security/**, /*/*/api/security/**, /*/*/*/api/security/**, /*/*/*/*/api/security/**, /*/*/*/*/*/api/security/**, /*/*/*/*/*/*/api/security/**, /*/*/*/*/*/*/*/api/security/**,
         - id: files
           uri: lb://files
           predicates:
-            - Path=/api/files/**, /*/api/files/**, /*/*/api/files/**, /*/*/*/api/files/**, /*/*/*/*/*/api/files/**, /*/*/*/*/*/*/api/files/**, /*/*/*/*/*/*/api/files/**, /*/*/*/*/*/*/*/api/files/**,
+            - Path=/api/files/**, /*/api/files/**, /*/*/api/files/**, /*/*/*/api/files/**, /*/*/*/*/api/files/**, /*/*/*/*/*/api/files/**, /*/*/*/*/*/*/api/files/**, /*/*/*/*/*/*/*/api/files/**,
         - id: data
           uri: lb://data
           predicates:
-            - Path=/api/data/**, /*/api/data/**, /*/*/api/data/**, /*/*/*/api/data/**, /*/*/*/*/*/api/data/**, /*/*/*/*/*/*/api/data/**, /*/*/*/*/*/*/api/data/**, /*/*/*/*/*/*/*/api/data/**,
+            - Path=/api/data/**, /*/api/data/**, /*/*/api/data/**, /*/*/*/api/data/**, /*/*/*/*/api/data/**, /*/*/*/*/*/api/data/**, /*/*/*/*/*/*/api/data/**, /*/*/*/*/*/*/*/api/data/**,
         - id: core
           uri: lb://core
           predicates:
-            - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
+            - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
         - id: ui
           uri: lb://ui
           predicates:
