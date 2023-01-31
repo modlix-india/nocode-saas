@@ -1,6 +1,7 @@
 package com.fincity.saas.core.service.connection.appdata;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -71,7 +72,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Autowired
 	private CoreMessageResourceService msgService;
 
-	private Map<String, MongoClient> mongoClients;
+	private Map<String, MongoClient> mongoClients = new HashMap<>();
 
 	@Autowired(required = false)
 	@Qualifier("subRedisAsyncCommand")
@@ -459,8 +460,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(SecurityContextUtil.hasAuthority(authFun.apply(storage), ca.getUser()
-		                .getAuthorities())),
+		        ca -> Mono.justOrEmpty(SecurityContextUtil.hasAuthority(authFun.apply(storage), ca.getUser()
+		                .getAuthorities()) ? true : null),
 
 		        bifun)
 

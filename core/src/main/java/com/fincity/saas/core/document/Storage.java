@@ -29,8 +29,8 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 	private Map<String, Object> schema; // NOSONAR
 	private String uniqueName;
-	private Boolean isAudited;
-	private Boolean isVersioned;
+	private Boolean isAudited = false;
+	private Boolean isVersioned = false;
 	private String createAuth;
 	private String readAuth;
 	private String updateAuth;
