@@ -23,7 +23,7 @@ import reactor.util.function.Tuples;
 @RequestMapping("api/security/clients")
 public class ClientController
         extends AbstractJOOQUpdatableDataController<SecurityClientRecord, ULong, Client, ClientDAO, ClientService> {
-
+	
 	@Autowired
 	private ClientService clientService;
 

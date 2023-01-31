@@ -1,7 +1,6 @@
 package com.fincity.gateway;
 
 import java.net.URI;
-import java.util.WeakHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.StringUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -27,6 +27,7 @@ import reactor.util.function.Tuples;
 public class GatewayFilter implements GlobalFilter, Ordered {
 
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+	private static final String CAHCE_NAME_URLPART = "clienturlpart";
 
 	private static final String DEFAULT_CLIENT = "SYSTEM";
 	private static final String DEFAULT_APP = "nothing";
@@ -36,8 +37,6 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 	@Autowired
 	private IFeignSecurityClient security;
-
-	private WeakHashMap<String, Tuple2<String, String>> urlClientCode = new WeakHashMap<>();
 
 	private static final Logger logger = LoggerFactory.getLogger(GatewayFilter.class);
 
@@ -61,52 +60,59 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 			                .build())
 			        .build());
 
-		final Tuple3<String, String, String> shpTuple = this.getSchemeHostPort(exchange);
-
-		return this.getClientCode(shpTuple.getT1(), shpTuple.getT2(), shpTuple.getT3())
-		        .flatMap(t -> this.rewriteRequest(exchange, t, chain));
-	}
-
-	public Mono<Void> rewriteRequest(ServerWebExchange exchange, Tuple2<String, String> finT,
-	        GatewayFilterChain chain) {
-
-		String appCode = finT.getT2();
-		String clientCode = finT.getT1();
-
 		String requestPath = exchange.getRequest()
 		        .getPath()
 		        .toString();
 
-		int apiIndex = requestPath.indexOf("/api/");
+		int index = requestPath.indexOf("/api/");
+		String codesPart = "";
+		String modifiedPath = requestPath;
 
-		String appClientCodePart = requestPath.substring(0,
-		        apiIndex == -1 ? requestPath.indexOf("/page/") + 2 : apiIndex);
+		if (index != -1) {
 
-		String modifiedRequestPath = (apiIndex == -1) ? requestPath : requestPath.substring(apiIndex);
-		if (DEFAULT_CLIENT.equals(clientCode)) {
+			codesPart = requestPath.substring(0, index);
+			modifiedPath = requestPath.substring(index);
+		} else {
 
-			Tuple2<String, String> codes = this.urlClientCode.get(appClientCodePart);
+			index = requestPath.indexOf("/manifest/");
+			if (index != -1) {
 
-			if (codes != null) {
-
-				appCode = codes.getT1();
-				clientCode = codes.getT2();
+				codesPart = requestPath.substring(0, index);
+				modifiedPath = requestPath.substring(index);
 			} else {
 
-				String[] parts = appClientCodePart.split("/");
-				if (parts.length > 1) {
+				index = requestPath.indexOf("/page/");
 
-					appCode = parts[1];
-					if (parts.length > 2)
-						clientCode = parts[2];
+				if (index != -1) {
+					codesPart = requestPath.substring(0, index);
+					modifiedPath = requestPath.substring(index);
 				}
-				this.urlClientCode.put(appClientCodePart, Tuples.of(appCode, clientCode));
 			}
-
 		}
 
-		return this.modifyRequest(exchange, chain, modifiedRequestPath, clientCode, appCode);
+		final String finModifiedPath = modifiedPath;
+		return this.getCodesFromURL(codesPart)
+		        .switchIfEmpty(Mono.defer(() -> this.getClientCode(this.getSchemeHostPort(exchange))))
+		        .flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2()));
+	}
 
+	private Mono<Tuple2<String, String>> getCodesFromURL(String appClientCodePart) {
+
+		if (StringUtil.safeIsBlank(appClientCodePart) || StringUtil.safeEquals(appClientCodePart, "/")) {
+
+			return Mono.empty();
+		}
+
+		return cacheService.cacheValueOrGet(CAHCE_NAME_URLPART, () -> {
+
+			String[] parts = appClientCodePart.split("/");
+			if (parts.length > 2) {
+				return Mono.just(Tuples.of(parts[2], parts[1]));
+			}
+
+			return Mono.empty();
+
+		}, appClientCodePart);
 	}
 
 	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
@@ -153,13 +159,17 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		return Tuples.of(uriScheme, uriHost, uriPort);
 	}
 
-	private Mono<Tuple2<String, String>> getClientCode(String uriScheme, String uriHost, String uriPort) {
+	private Mono<Tuple2<String, String>> getClientCode(Tuple3<String, String, String> tup) {
+
+		String uriScheme = tup.getT1();
+		String uriHost = tup.getT2();
+		String uriPort = tup.getT3();
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE,
 
 		        () -> this.security.getClientCode(uriScheme, uriHost, uriPort)
 		                .defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP)),
 
-		        uriScheme, uriHost, ":", uriPort);
+		        uriScheme, ":", uriHost, ":", uriPort);
 	}
 }

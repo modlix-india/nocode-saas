@@ -41,7 +41,6 @@ public class ClientService
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
-	private static final String CACHE_NAME_CLIENT_URL = "clientClientURL";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
 
 	private static final String CACHE_CLIENT_URI = "uri";
@@ -101,22 +100,16 @@ public class ClientService
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
-		Mono<String> key = cacheService.makeKey(CACHE_CLIENT_URI, uriScheme, uriHost, ":", uriPort);
+		return cacheService.cacheValueOrGet(CACHE_CLIENT_URI, () -> {
 
-		Mono<ClientUrlPattern> clientId = key.flatMap(e -> cacheService.get(CACHE_NAME_CLIENT_URL, e));
+			String finHost = uriHost;
+			
+			return clientUrlService.readAllAsClientURLPattern()
+			        .flatMapIterable(e -> e)
+			        .filter(e -> e.isValidClientURLPattern(finHost, uriPort))
+			        .next();
 
-		String finScheme = uriScheme;
-		String finHost = uriHost;
-		Integer finPort = Integer.valueOf(uriPort);
-
-		return clientId.switchIfEmpty(Mono.defer(() -> clientUrlService.readAllAsClientURLPattern()
-		        .flatMapIterable(e -> e)
-		        .filter(e -> e.isValidClientURLPattern(finScheme, finHost, finPort))
-		        .take(1)
-		        .collectList()
-		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
-		        .flatMap(e -> key.flatMap(k -> cacheService.put(CACHE_NAME_CLIENT_URL, e, k)
-		                .map(ClientUrlPattern.class::cast)))));
+		}, uriScheme, uriHost, ":", uriPort);
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
@@ -126,33 +119,24 @@ public class ClientService
 		        .flatMap(this::getPotentialClientList);
 	}
 
-	public Mono<Set<ULong>> getPotentialClientList(ULong k) {
+	public Mono<Set<ULong>> getPotentialClientList(ULong id) {
 
-		Mono<Set<ULong>> clientList = cacheService.get(CACHE_NAME_CLIENT_RELATION, k);
-
-		return clientList.switchIfEmpty(Mono.defer(() -> this.dao.findManagedClientList(k)
-		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_RELATION, v, k))));
+		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_RELATION, () -> this.dao.findManagedClientList(id), id);
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
 		return this.dao.isBeingManagedBy(managingClientId, clientId);
 	}
 
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong clientId) {
+	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong id) {
 
-		Mono<ClientPasswordPolicy> policy = cacheService.get(CACHE_NAME_CLIENT_PWD_POLICY, clientId);
-
-		return policy.switchIfEmpty(Mono.defer(() -> this.dao.getClientPasswordPolicy(clientId)
-		        .switchIfEmpty(Mono.just(new ClientPasswordPolicy()))
-		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_PWD_POLICY, v, clientId))));
+		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
+		        () -> this.dao.getClientPasswordPolicy(id), id);
 	}
 
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 
-		Mono<Tuple2<String, String>> clientType = cacheService.get(CACHE_NAME_CLIENT_TYPE, id);
-
-		return clientType.switchIfEmpty(Mono.defer(() -> this.dao.getClientTypeNCode(id)
-		        .flatMap(v -> cacheService.put(CACHE_NAME_CLIENT_TYPE, v, id))));
+		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_TYPE, () -> this.dao.getClientTypeNCode(id), id);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_CREATE')")
@@ -332,14 +316,7 @@ public class ClientService
 
 	public Mono<Client> getClientBy(String clientCode) {
 
-		return cacheService.get(CACHE_NAME_CLIENT_CODE, clientCode)
-		        .map(Client.class::cast)
-		        .switchIfEmpty(Mono.defer(() -> this.dao.getClientBy(clientCode)
-		                .map(client ->
-						{
-			                cacheService.put(CACHE_NAME_CLIENT_CODE, client, clientCode);
-			                return client;
-		                })));
+		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_CODE, () -> this.dao.getClientBy(clientCode), clientCode);
 	}
 
 	public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {

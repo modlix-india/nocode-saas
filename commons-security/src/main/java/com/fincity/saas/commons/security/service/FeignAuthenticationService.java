@@ -8,7 +8,6 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
 
@@ -34,6 +33,11 @@ public class FeignAuthenticationService implements IAuthenticationService {
 		if (feignAuthService == null)
 			return Mono.empty();
 
+		if (request.getURI()
+		        .getPath()
+		        .indexOf("actuator/") != -1)
+			return Mono.empty();
+
 		String host = request.getURI()
 		        .getHost();
 		String port = "" + request.getURI()
@@ -50,6 +54,10 @@ public class FeignAuthenticationService implements IAuthenticationService {
 		        .get("X-Forwarded-Port");
 		if (forwardedPort != null && !forwardedPort.isEmpty()) {
 			port = forwardedPort.get(0);
+			int ind = port.indexOf(',');
+			if (ind != -1) {
+				port = port.substring(0, ind);
+			}
 		}
 
 		return this.feignAuthService.contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port)
@@ -65,60 +73,23 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
 	public Mono<Boolean> isUserBeingManaged(Object userId, String clientCode) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		return cacheService.cacheValueOrGet(CACHE_NAME_USER_BEING_MANAGED, () -> {
 
-		        () -> cacheService.makeKey(clientCode, ":", userId),
+			BigInteger biUserId = userId instanceof BigInteger id ? id : new BigInteger(userId.toString());
 
-		        key -> cacheService.<Boolean>get(CACHE_NAME_USER_BEING_MANAGED, key),
-
-		        (key, value) ->
-				{
-
-			        if (value != null)
-				        return Mono.just(value);
-
-			        BigInteger biUserId = userId instanceof BigInteger id ? id : new BigInteger(userId.toString());
-
-			        return this.feignAuthService.isUserBeingManaged(biUserId, clientCode)
-			                .flatMap(v -> cacheService.put(CACHE_NAME_USER_BEING_MANAGED, v, key));
-		        });
+			return this.feignAuthService.isUserBeingManaged(biUserId, clientCode);
+		}, clientCode, ":", userId);
 	}
 
 	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
-
-		        () -> cacheService.makeKey(appCode, ":", appCode),
-
-		        key -> cacheService.<Boolean>get(CACHE_NAME_APP_READ_ACCESS, key),
-
-		        (key, value) ->
-				{
-
-			        if (value != null)
-				        return Mono.just(value);
-
-			        return this.feignAuthService.hasReadAccess(appCode, clientCode)
-			                .flatMap(v -> cacheService.put(CACHE_NAME_APP_READ_ACCESS, v, key));
-		        });
+		return cacheService.cacheValueOrGet(CACHE_NAME_APP_READ_ACCESS,
+		        () -> this.feignAuthService.hasReadAccess(appCode, clientCode), appCode, ":", appCode);
 	}
 
 	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
-
-		        () -> cacheService.makeKey(appCode, ":", appCode),
-
-		        key -> cacheService.<Boolean>get(CACHE_NAME_APP_WRITE_ACCESS, key),
-
-		        (key, value) ->
-				{
-
-			        if (value != null)
-				        return Mono.just(value);
-
-			        return this.feignAuthService.hasWriteAccess(appCode, clientCode)
-			                .flatMap(v -> cacheService.put(CACHE_NAME_APP_WRITE_ACCESS, v, key));
-		        });
+		return cacheService.cacheValueOrGet(CACHE_NAME_APP_WRITE_ACCESS,
+		        () -> this.feignAuthService.hasWriteAccess(appCode, clientCode), appCode, ":", clientCode);
 	}
 }

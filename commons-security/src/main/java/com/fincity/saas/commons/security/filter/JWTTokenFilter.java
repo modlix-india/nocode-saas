@@ -13,7 +13,6 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 
@@ -40,28 +39,17 @@ public class JWTTokenFilter implements WebFilter {
 		        .get("clientCode");
 		final String cc = clientCode == null || clientCode.isEmpty() ? null : clientCode.get(0);
 
-		return
-
-		FlatMapUtil.flatMapMonoWithNull(
-
-		        () -> this.authService.getAuthentication(isBasic, bearerToken, request),
-
-		        ca ->
+		return this.authService.getAuthentication(isBasic, bearerToken, request)
+		        .flatMap(ca ->
 				{
-
-			        if (ca == null)
-				        return Mono.empty();
 
 			        if (cc != null && !cc.equals(((ContextAuthentication) ca).getLoggedInFromClientCode()))
 				        return Mono.error(new AuthenticationException("Trying to access with a cross site token."));
 
-			        return Mono.just(
-			                ReactiveSecurityContextHolder.withSecurityContext(Mono.just(new SecurityContextImpl(ca))));
-		        },
-
-		        (ca, ctx) -> ctx == null ? chain.filter(exchange)
-		                : chain.filter(exchange)
-		                        .contextWrite(ctx));
+			        return chain.filter(exchange)
+			                .contextWrite(ReactiveSecurityContextHolder
+			                        .withSecurityContext(Mono.just(new SecurityContextImpl(ca))));
+		        });
 	}
 
 	public Tuple2<Boolean, String> extractBasicNBearerToken(ServerHttpRequest request) {

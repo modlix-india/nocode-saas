@@ -85,7 +85,8 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 
 			        existing.setDefinition(entity.getDefinition());
 
-			        existing.setVersion(existing.getVersion() + 1);
+			        existing.setVersion(existing.getVersion() + 1)
+			        .setPermission(entity.getPermission());
 
 			        return Mono.just(existing);
 		        });

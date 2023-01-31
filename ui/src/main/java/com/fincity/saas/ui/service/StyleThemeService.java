@@ -39,4 +39,9 @@ public class StyleThemeService extends AbstractOverridableDataService<StyleTheme
 			        return Mono.just(existing);
 		        });
 	}
+	
+	@Override
+	protected String getObjectName() {
+		return "Theme";
+	}
 }

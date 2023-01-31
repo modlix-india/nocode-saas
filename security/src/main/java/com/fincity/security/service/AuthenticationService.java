@@ -1,7 +1,6 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
@@ -22,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.jwt.JWTClaims;
@@ -39,6 +39,7 @@ import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
+import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 
@@ -131,6 +132,12 @@ public class AuthenticationService implements IAuthenticationService {
 		        ? this.clientService.getClientBy(clientCode.get(0))
 		        : this.clientService.getClientBy(request);
 
+		if (authRequest.getIdentifierType() == null) {
+			authRequest.setIdentifierType(StringUtil.safeIsBlank(authRequest.getUserName()) || authRequest.getUserName()
+			        .indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
+			                : AuthenticationIdentifierType.EMAIL_ID);
+		}
+
 		return flatMapMono(
 
 		        () -> loggedInClient,
@@ -146,11 +153,11 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (linClient, user, client) -> this.checkPassword(authRequest, user),
 
-		        (linClient, user, client, passwordChecked) -> clientService.getClientPasswordPolicy(client.getId()),
+		        (linClient, user, client, passwordChecked) -> clientService.getClientPasswordPolicy(client.getId())
+		                .flatMap(policy -> this.checkFailedAttempts(user, policy))
+		                .defaultIfEmpty(1),
 
-		        (linClient, user, client, passwordChecked, policy) -> this.checkFailedAttempts(user, policy),
-
-		        (linClient, user, client, passwordChecked, policy, j) ->
+		        (linClient, user, client, passwordChecked, j) ->
 				{
 
 			        userService.resetFailedAttempt(user.getId())
@@ -221,7 +228,7 @@ public class AuthenticationService implements IAuthenticationService {
 		                .setAccessTokenExpiryAt(token.getT2()));
 	}
 
-	private Mono<Object> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
+	private Mono<Integer> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
 
 		if (pol.getNoFailedAttempts() != null && pol.getNoFailedAttempts()
 		        .shortValue() <= u.getNoFailedAttempt()) {
@@ -273,7 +280,7 @@ public class AuthenticationService implements IAuthenticationService {
 			return this.makeAnonySpringAuthentication(request);
 		}
 
-		return flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
 		                .map(ContextAuthentication.class::cast),
@@ -281,7 +288,8 @@ public class AuthenticationService implements IAuthenticationService {
 		        cachedCA -> checkTokenOrigin(request, this.extractClamis(bearerToken)),
 
 		        (cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
-		                : Mono.just(cachedCA));
+		                : Mono.just(cachedCA))
+		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request));
 	}
 
 	private Mono<Authentication> getAuthenticationIfNotInCache(boolean basic, String bearerToken,
@@ -357,27 +365,28 @@ public class AuthenticationService implements IAuthenticationService {
 		        ? this.clientService.getClientBy(clientCode.get(0))
 		        : this.clientService.getClientBy(request);
 
-		return loggedInClient.map(e -> new ContextAuthentication(new ContextUser().setId(BigInteger.ZERO)
-		        .setCreatedBy(BigInteger.ZERO)
-		        .setUpdatedBy(BigInteger.ZERO)
-		        .setCreatedAt(LocalDateTime.now())
-		        .setUpdatedAt(LocalDateTime.now())
-		        .setClientId(e.getId()
-		                .toBigInteger())
-		        .setUserName("_Anonymous")
-		        .setEmailId("nothing@nothing")
-		        .setPhoneNumber("+910000000000")
-		        .setFirstName("Anonymous")
-		        .setLastName("")
-		        .setLocaleCode("en")
-		        .setPassword("")
-		        .setPasswordHashed(false)
-		        .setAccountNonExpired(true)
-		        .setAccountNonLocked(true)
-		        .setCredentialsNonExpired(true)
-		        .setNoFailedAttempt((short) 0)
-		        .setStringAuthorities(List.of("Authorities._Anonymous")), false,
-		        e.getId()
+		return loggedInClient.map(e -> (Authentication) new ContextAuthentication(
+		        new ContextUser().setId(BigInteger.ZERO)
+		                .setCreatedBy(BigInteger.ZERO)
+		                .setUpdatedBy(BigInteger.ZERO)
+		                .setCreatedAt(LocalDateTime.now())
+		                .setUpdatedAt(LocalDateTime.now())
+		                .setClientId(e.getId()
+		                        .toBigInteger())
+		                .setUserName("_Anonymous")
+		                .setEmailId("nothing@nothing")
+		                .setPhoneNumber("+910000000000")
+		                .setFirstName("Anonymous")
+		                .setLastName("")
+		                .setLocaleCode("en")
+		                .setPassword("")
+		                .setPasswordHashed(false)
+		                .setAccountNonExpired(true)
+		                .setAccountNonLocked(true)
+		                .setCredentialsNonExpired(true)
+		                .setNoFailedAttempt((short) 0)
+		                .setStringAuthorities(List.of("Authorities._Anonymous")),
+		        false, e.getId()
 		                .toBigInteger(),
 		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX));
 	}
@@ -386,8 +395,6 @@ public class AuthenticationService implements IAuthenticationService {
 
 		String host = request.getURI()
 		        .getHost();
-		String port = "" + request.getURI()
-		        .getPort();
 
 		List<String> forwardedHost = request.getHeaders()
 		        .get("X-Forwarded-Host");
@@ -396,13 +403,7 @@ public class AuthenticationService implements IAuthenticationService {
 			host = forwardedHost.get(0);
 		}
 
-		List<String> forwardedPort = request.getHeaders()
-		        .get("X-Forwarded-Port");
-		if (forwardedPort != null && !forwardedPort.isEmpty()) {
-			port = forwardedPort.get(0);
-		}
-
-		if (!host.equals(jwtClaims.getHostName()) || !port.equals(jwtClaims.getPort())) {
+		if (!host.equals(jwtClaims.getHostName())) {
 
 			return resourceService.throwMessage(HttpStatus.UNAUTHORIZED, SecurityMessageResourceService.UNKNOWN_TOKEN);
 		}
