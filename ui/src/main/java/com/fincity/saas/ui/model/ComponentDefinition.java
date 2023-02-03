@@ -8,6 +8,7 @@ import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.ObjectUtil;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,6 +30,11 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 	private Integer displayOrder;
 	private String permission;
 	private Map<String, String> bindingPath;
+	private Map<String, String> bindingPath2;
+	private Map<String, String> bindingPath3;
+	private Map<String, String> bindingPath4;
+	private Map<String, String> bindingPath5;
+	private Map<String, String> bindingPath6;
 
 	public ComponentDefinition(ComponentDefinition cd) {
 		this.key = cd.key;
@@ -41,11 +47,17 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		this.displayOrder = cd.displayOrder;
 		this.children = CloneUtil.cloneMapObject(cd.children);
 		this.bindingPath = CloneUtil.cloneMapObject(cd.bindingPath);
+		this.bindingPath2 = CloneUtil.cloneMapObject(cd.bindingPath2);
+		this.bindingPath3 = CloneUtil.cloneMapObject(cd.bindingPath3);
+		this.bindingPath4 = CloneUtil.cloneMapObject(cd.bindingPath4);
+		this.bindingPath5 = CloneUtil.cloneMapObject(cd.bindingPath5);
+		this.bindingPath6 = CloneUtil.cloneMapObject(cd.bindingPath6);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<ComponentDefinition> extractDifference(ComponentDefinition incoming) {
+	public Mono<ComponentDefinition> extractDifference(ComponentDefinition incoming) { //NOSONAR
+		// Cannot split the logic
 
 		return FlatMapUtil.flatMapMono(
 
@@ -58,10 +70,31 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		        (propDiff, childDiff) -> DifferenceExtractor
 		                .extract(incoming.getStyleProperties(), this.getStyleProperties())
 		                .defaultIfEmpty(Map.of()),
-		                
-		        (propDiff, childDiff, styleDiff) -> DifferenceExtractor.extract(incoming.getBindingPath(), this.getBindingPath()).defaultIfEmpty(Map.of()),
 
-		        (propDiff, childDiff, styleDiff, bPath) ->
+		        (propDiff, childDiff, styleDiff) ->
+
+				FlatMapUtil.flatMapConsolidate(
+				        () -> DifferenceExtractor.extract(incoming.getBindingPath(), this.getBindingPath())
+				                .defaultIfEmpty(Map.of()),
+
+				        b1 -> DifferenceExtractor.extract(incoming.getBindingPath2(), this.getBindingPath2())
+				                .defaultIfEmpty(Map.of()),
+
+				        (b1, b2) -> DifferenceExtractor.extract(incoming.getBindingPath3(), this.getBindingPath3())
+				                .defaultIfEmpty(Map.of()),
+
+				        (b1, b2, b3) -> DifferenceExtractor.extract(incoming.getBindingPath4(), this.getBindingPath4())
+				                .defaultIfEmpty(Map.of()),
+
+				        (b1, b2, b3, b4) -> DifferenceExtractor
+				                .extract(incoming.getBindingPath5(), this.getBindingPath5())
+				                .defaultIfEmpty(Map.of()),
+
+				        (b1, b2, b3, b4, b5) -> DifferenceExtractor
+				                .extract(incoming.getBindingPath6(), this.getBindingPath6())
+				                .defaultIfEmpty(Map.of())),
+
+		        (propDiff, childDiff, styleDiff, bPaths) ->
 				{
 
 			        ComponentDefinition cd = new ComponentDefinition();
@@ -73,24 +106,46 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 			        cd.setProperties((Map<String, Object>) propDiff);
 			        cd.setChildren(childDiff);
 			        cd.setStyleProperties((Map<String, Object>) styleDiff);
-			        if (this.displayOrder == incoming.displayOrder)
+			        if (ObjectUtil.safeEquals(this.displayOrder, incoming.displayOrder))
 				        cd.setDisplayOrder(null);
 			        else
 				        cd.setDisplayOrder(this.displayOrder);
-			        
-			        if (!bPath.isEmpty())
-			        	cd.setBindingPath((Map<String, String>) bPath);
+
+			        if (!bPaths.getT1()
+			                .isEmpty())
+				        cd.setBindingPath((Map<String, String>) bPaths.getT1());
+
+			        if (!bPaths.getT2()
+			                .isEmpty())
+				        cd.setBindingPath((Map<String, String>) bPaths.getT2());
+
+			        if (!bPaths.getT3()
+			                .isEmpty())
+				        cd.setBindingPath((Map<String, String>) bPaths.getT3());
+
+			        if (!bPaths.getT4()
+			                .isEmpty())
+				        cd.setBindingPath((Map<String, String>) bPaths.getT4());
+
+			        if (!bPaths.getT5()
+			                .isEmpty())
+				        cd.setBindingPath((Map<String, String>) bPaths.getT5());
+
+			        if (!bPaths.getT6()
+			                .isEmpty())
+				        cd.setBindingPath((Map<String, String>) bPaths.getT6());
 
 			        return Mono.just(cd);
 		        });
 	}
 
 	@SuppressWarnings("unchecked")
-	public Mono<ComponentDefinition> applyOverride(ComponentDefinition base) {
+	public Mono<ComponentDefinition> applyOverride(ComponentDefinition base) { //NOSONAR
+		// Cannot split the logic
 		if (base == null)
 			return this.isOverride() ? Mono.empty() : Mono.justOrEmpty(this);
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> DifferenceApplicator.apply(this.getProperties(), base.getProperties()),
 
@@ -98,9 +153,25 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 
 		        (propMap, childMap) -> DifferenceApplicator.apply(this.getStyleProperties(), base.getStyleProperties()),
 
-		        (propMap, childMap, stylePropMap) -> DifferenceApplicator.apply(this.getBindingPath(), base.getBindingPath()),
-		        
-		        (propMap, childMap, stylePropMap, bPath) ->
+		        (propMap, childMap, stylePropMap) -> DifferenceApplicator.apply(this.getBindingPath(),
+		                base.getBindingPath()),
+
+		        (propMap, childMap, stylePropMap, bPath1) -> DifferenceApplicator.apply(this.getBindingPath2(),
+		                base.getBindingPath2()),
+
+		        (propMap, childMap, stylePropMap, bPath1, bPath2) -> DifferenceApplicator.apply(this.getBindingPath3(),
+		                base.getBindingPath3()),
+
+		        (propMap, childMap, stylePropMap, bPath1, bPath2, bPath3) -> DifferenceApplicator
+		                .apply(this.getBindingPath4(), base.getBindingPath4()),
+
+		        (propMap, childMap, stylePropMap, bPath1, bPath2, bPath3, bPath4) -> DifferenceApplicator
+		                .apply(this.getBindingPath5(), base.getBindingPath5()),
+
+		        (propMap, childMap, stylePropMap, bPath1, bPath2, bPath3, bPath4, bPath5) -> DifferenceApplicator
+		                .apply(this.getBindingPath6(), base.getBindingPath6()),
+
+		        (propMap, childMap, stylePropMap, bPath1, bPath2, bPath3, bPath4, bPath5, bPath6) ->
 				{
 
 			        this.setChildren(childMap);
@@ -114,9 +185,24 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 				        this.setName(base.getName());
 			        if (this.getDisplayOrder() == null)
 				        this.setDisplayOrder(base.getDisplayOrder());
-			        
-			        if (bPath!= null && !bPath.isEmpty())
-			        	this.setBindingPath((Map<String, String>) bPath);
+
+			        if (bPath1 != null && !bPath1.isEmpty())
+				        this.setBindingPath((Map<String, String>) bPath1);
+
+			        if (bPath2 != null && !bPath2.isEmpty())
+				        this.setBindingPath2((Map<String, String>) bPath2);
+
+			        if (bPath3 != null && !bPath3.isEmpty())
+				        this.setBindingPath3((Map<String, String>) bPath3);
+
+			        if (bPath4 != null && !bPath4.isEmpty())
+				        this.setBindingPath4((Map<String, String>) bPath4);
+
+			        if (bPath5 != null && !bPath5.isEmpty())
+				        this.setBindingPath5((Map<String, String>) bPath5);
+
+			        if (bPath6 != null && !bPath6.isEmpty())
+				        this.setBindingPath6((Map<String, String>) bPath6);
 
 			        return Mono.justOrEmpty(this);
 		        });

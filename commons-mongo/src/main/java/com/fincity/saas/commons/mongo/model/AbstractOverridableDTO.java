@@ -22,6 +22,7 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
 	private String permission;
 	private String appCode;
 	private String baseClientCode;
+	private Boolean notOverridable;
 
 	private int version = 1;
 
@@ -49,5 +50,7 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
 		this.setId(obj.getId())
 		        .setCreatedAt(obj.getCreatedAt())
 		        .setCreatedBy(obj.getCreatedBy());
+		
+		this.notOverridable  = obj.getNotOverridable();
 	}
 }

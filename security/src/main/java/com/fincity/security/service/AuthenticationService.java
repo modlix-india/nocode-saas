@@ -280,7 +280,7 @@ public class AuthenticationService implements IAuthenticationService {
 			return this.makeAnonySpringAuthentication(request);
 		}
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMonoWithNullLog(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
 		                .map(ContextAuthentication.class::cast),
@@ -342,7 +342,7 @@ public class AuthenticationService implements IAuthenticationService {
 	private Mono<ContextAuthentication> makeSpringAuthentication(ServerHttpRequest request, JWTClaims jwtClaims,
 	        TokenObject tokenObject) {
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 		        () -> checkTokenOrigin(request, jwtClaims),
 

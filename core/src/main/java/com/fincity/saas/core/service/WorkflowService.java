@@ -73,7 +73,7 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 	private Mono<Boolean> removeSchedularForTriggers(Workflow entity) {
 
 		// TODO: Need to write logic to remove triggers.
-		
+
 		return Mono.just(true);
 	}
 
@@ -84,15 +84,9 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 
 		        () -> this.read(id),
 
-		        entity -> this.removeSchedularForTriggers(entity),
+		        this::removeSchedularForTriggers,
 
 		        (entity, removed) -> super.delete(id));
-	}
-
-	@Override
-	protected String getAppNamePrefixWithDot() {
-
-		return "";
 	}
 
 }
