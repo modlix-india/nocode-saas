@@ -264,7 +264,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        doc.remove(ID); //removing id from the document
 			        if (storage.getIsVersioned()
 			                .booleanValue())
-				        versionDocument.append("object", new Document(doc)); // remove _id from doc
+				        versionDocument.append("object", new Document(doc)); 
 
 			        return Mono.from(this.getVersionCollection(conn, storage)
 			                .insertOne(versionDocument));
