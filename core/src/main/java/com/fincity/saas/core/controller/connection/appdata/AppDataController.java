@@ -14,6 +14,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -54,7 +55,7 @@ public class AppDataController {
 	}
 
 	@PutMapping(value = { PATH_ID, "{storage}" })
-	public Mono<ResponseEntity<Map<String, Object>>> create(
+	public Mono<ResponseEntity<Map<String, Object>>> update(
 	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
 	        @RequestHeader String clientCode, @PathVariable(name = PATH_VARIABLE_ID, required = false) final String id,
 	        @RequestBody DataObject entity) {
@@ -63,10 +64,25 @@ public class AppDataController {
 			entity.getData()
 			        .put("_id", id);
 
-		return this.service.update(appCode, clientCode, storageName, entity)
+		return this.service.update(appCode, clientCode, storageName, entity,true)
 		        .map(ResponseEntity::ok);
 	}
 
+	@PatchMapping(value = { PATH_ID, "{storage}" })
+	public Mono<ResponseEntity<Map<String, Object>>> updatePatch(
+	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(name = PATH_VARIABLE_ID, required = false) final String id,
+	        @RequestBody DataObject entity) {
+
+		if (id != null)
+			entity.getData()
+			        .put("_id", id);
+
+		return this.service.update(appCode, clientCode, storageName, entity, false)
+				.map(ResponseEntity::ok);
+
+	}
+	
 	@GetMapping(PATH_ID)
 	public Mono<ResponseEntity<Map<String, Object>>> read(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 	        @RequestHeader String appCode, @RequestHeader String clientCode,

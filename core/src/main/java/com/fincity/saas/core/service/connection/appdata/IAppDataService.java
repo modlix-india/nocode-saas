@@ -16,7 +16,7 @@ public interface IAppDataService {
 
 	public Mono<Map<String, Object>> create(Connection conn, Storage storage, DataObject dataObject);
 
-	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject);
+	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override);
 
 	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id);
 
