@@ -186,7 +186,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	public Mono<Map<String, Object>> updateWithoutAuth(Connection conn, Storage storage, DataObject dataObject,
-	        Boolean override) { // added override to differentiate between the incoming request in patch/put 
+	        Boolean override) { // added boolean override to differentiate between the incoming request in patch/put 
 
 		String key = StringUtil.safeValueOf(dataObject.getData()
 		        .get(ID));
@@ -261,14 +261,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
 				                .getId()
 				                .longValue()));
+			        doc.remove(ID); //removing id from the document
 			        if (storage.getIsVersioned()
 			                .booleanValue())
-				        versionDocument.append("object", new Document(dataObject.getData()));
+				        versionDocument.append("object", new Document(doc)); // remove _id from doc
 
 			        return Mono.from(this.getVersionCollection(conn, storage)
 			                .insertOne(versionDocument));
 		        }, (ca, scheme, overridableObject, je, result, doc, versionResult) -> {
-			        doc.remove(ID);
 			        doc.append(ID, key);
 			        return Mono.just(doc);
 		        });
