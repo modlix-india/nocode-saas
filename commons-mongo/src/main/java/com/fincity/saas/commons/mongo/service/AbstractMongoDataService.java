@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
+import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -181,6 +182,9 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
             obj.add(str);
             from = i + 1;
         }
+        String str = iValue.substring(from);
+        if (!StringUtil.isNullOrBlank(str))
+        	obj.add(str);
 
         return obj;
 

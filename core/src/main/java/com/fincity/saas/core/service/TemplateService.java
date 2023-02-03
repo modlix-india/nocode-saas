@@ -39,11 +39,5 @@ public class TemplateService extends AbstractOverridableDataService<Template, Te
 			        return Mono.just(existing);
 		        });
 	}
-	
-	@Override
-	protected String getAppNamePrefixWithDot() {
-		
-		return "";
-	}
 
 }
