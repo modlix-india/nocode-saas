@@ -72,9 +72,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 		                .map(this.pojoClass::cast),
 
 		        (key, cApp) -> Mono.justOrEmpty(cApp)
-		                .switchIfEmpty(Mono
-		                        .defer(() -> this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode)
-		                                .map(this.pojoClass::cast))),
+		                .switchIfEmpty(Mono.defer(() -> readIfExistsInBase(name, appCode, clientCode))),
 
 		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
 		                .flatMap(da -> this.readInternal(da.getId())

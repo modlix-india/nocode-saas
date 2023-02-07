@@ -8,9 +8,15 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.kirun.engine.Repository;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.util.StringUtil;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import reactor.core.publisher.Mono;
 
@@ -94,8 +100,12 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 		cacheService
 		        .cacheValueOrGet(CACHE_NAME_SCHEMA_REPO, () -> read(namespace + "." + name, appCode, clientCode),
 		                appCode, clientCode, namespace + "." + name)
-		        .map(s -> objectMapper.convertValue(s.getDefinition(),
-		                com.fincity.nocode.kirun.engine.json.schema.Schema.class))
+		        .map(s -> {
+		            Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+                            .create();
+                    return gson.fromJson(gson.toJsonTree(s.getDefinition()),
+                            Schema.class);
+		        })
 		        .block());
 	}
 }
