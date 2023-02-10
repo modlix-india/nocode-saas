@@ -39,7 +39,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Autowired
 	private SecurityMessageResourceService messageResourceService;
 
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
 	public Mono<App> create(App entity) {
 
@@ -71,7 +71,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
 	@Override
 	public Mono<App> update(App entity) {
 		return this.read(entity.getClientId())
@@ -80,7 +80,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity.getId())));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
 	@Override
 	public Mono<App> update(ULong key, Map<String, Object> fields) {
 		return this.read(key)
@@ -89,19 +89,19 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, key)));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Application_READ')")
 	@Override
 	public Mono<App> read(ULong id) {
 		return super.read(id);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Application_READ')")
 	@Override
 	public Mono<Page<App>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 		return super.readPageFilter(pageable, condition);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Application_DELETE')")
+	@PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
 		return this.read(id)

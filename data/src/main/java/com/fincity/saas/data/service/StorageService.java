@@ -37,7 +37,7 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 	        "createAuth", "readAuth", "updateAuth", "deleteAuth");
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Storage_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Storage_CREATE')")
 	public Mono<Storage> create(Storage entity) {
 
 		return FlatMapUtil.flatMapMono(
@@ -81,14 +81,14 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 	}
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Storage_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Storage_UPDATE')")
 	public Mono<Storage> update(Storage entity) {
 
 		return super.update(entity).flatMap(this::applyActivity);
 	}
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Storage_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Storage_UPDATE')")
 	public Mono<Storage> update(ULong key, Map<String, Object> fields) {
 
 		return super.update(key, fields).flatMap(this::applyActivity);
@@ -163,7 +163,7 @@ public class StorageService extends AbstractJOOQUpdatableDataService<DataStorage
 	}
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Storage_DELETE')")
+	@PreAuthorize("hasAuthority('Authorities.Storage_DELETE')")
 	public Mono<Integer> delete(ULong id) {
 
 		return FlatMapUtil.flatMapMono(
