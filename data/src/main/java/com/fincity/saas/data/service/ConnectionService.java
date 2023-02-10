@@ -35,7 +35,7 @@ public class ConnectionService
 	private static final Set<String> updatableFields = Set.of("dbConnection", "defaultDb");
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Connection_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Connection_CREATE')")
 	public Mono<Connection> create(Connection entity) {
 
 		return FlatMapUtil.flatMapMono(
@@ -74,14 +74,14 @@ public class ConnectionService
 	}
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Connection_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Connection_UPDATE')")
 	public Mono<Connection> update(Connection entity) {
 
 		return super.update(entity).flatMap(this::makeDefaultDB);
 	}
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Connection_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Connection_UPDATE')")
 	public Mono<Connection> update(ULong key, Map<String, Object> fields) {
 
 		return super.update(key, fields).flatMap(this::makeDefaultDB);
@@ -143,7 +143,7 @@ public class ConnectionService
 	}
 
 	@Override
-	@PreAuthorize("hasAuthority('Authorities.APPBUILDER.Connection_DELETE')")
+	@PreAuthorize("hasAuthority('Authorities.Connection_DELETE')")
 	public Mono<Integer> delete(ULong id) {
 
 		return FlatMapUtil.flatMapMono(
