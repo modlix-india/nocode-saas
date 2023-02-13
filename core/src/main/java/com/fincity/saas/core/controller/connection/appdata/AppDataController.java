@@ -8,8 +8,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
+import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 
@@ -64,7 +68,7 @@ public class AppDataController {
 			entity.getData()
 			        .put("_id", id);
 
-		return this.service.update(appCode, clientCode, storageName, entity,true)
+		return this.service.update(appCode, clientCode, storageName, entity, true)
 		        .map(ResponseEntity::ok);
 	}
 
@@ -79,10 +83,10 @@ public class AppDataController {
 			        .put("_id", id);
 
 		return this.service.update(appCode, clientCode, storageName, entity, false)
-				.map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok);
 
 	}
-	
+
 	@GetMapping(PATH_ID)
 	public Mono<ResponseEntity<Map<String, Object>>> read(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 	        @RequestHeader String appCode, @RequestHeader String clientCode,
@@ -132,5 +136,22 @@ public class AppDataController {
 
 		return this.service.delete(appCode, clientCode, storageName, id)
 		        .map(ResponseEntity::ok);
+	}
+
+	@GetMapping("template/{storage}")
+	public Mono<ResponseEntity<byte[]>> downloadTemplate(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+	        @RequestHeader String appCode, @RequestHeader String clientCode,
+	        @RequestParam(value = "type", defaultValue = "CSV") FlatFileType fileType, ServerHttpRequest request,
+	        ServerHttpResponse response) {
+
+		return this.service.downloadTemplate(appCode, clientCode, storageName, fileType, request, response)
+		        .map(bytes -> ResponseEntity.ok()
+		                .header(HttpHeaders.CONTENT_TYPE, fileType.getMimeType())
+		                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+		                        .filename(storageName + "." + fileType.toString()
+		                                .toLowerCase())
+		                        .build()
+		                        .toString())
+		                .body(bytes));
 	}
 }

@@ -437,7 +437,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 			        String clientCode = tup.getT2()
 			                .isEmpty() ? null
 			                        : tup.getT2()
-			                                .get(0);
+			                                .get(tup.getT2().size() - 1);
 
 			        for (ListResultObject lro : list) {
 
