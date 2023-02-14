@@ -1,7 +1,7 @@
 package com.fincity.saas.core.service.connection.appdata;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FileWriter;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,9 +12,6 @@ import java.util.stream.IntStream;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.CSVRecord;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -25,7 +22,6 @@ import org.bson.BsonObjectId;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
-import org.jooq.tools.csv.CSVReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,6 +68,8 @@ import com.mongodb.client.model.Sorts;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
+import com.opencsv.CSVWriter;
+import com.opencsv.ICSVWriter;
 
 import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -531,6 +529,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 			        storageSchema ->
 					{
+				        // change exception to be customised for project related errors
 
 				        List<String> headers = this.getHeaders(null, storage, storageSchema);
 
@@ -548,23 +547,39 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 						        return Mono.just(byteStream.toByteArray());
 
 					        } catch (Exception e) {
-						        e.printStackTrace();
+						        e.printStackTrace();// change to custom exception before committing
 					        }
 
-				        } else if (type == FlatFileType.CSV) { // change format to rfc check before committing
+				        } else if (type == FlatFileType.CSV) {
 
-					        try (FileWriter csvFile = new FileWriter(storage.getName());
-					                CSVPrinter csvWorkbook = new CSVPrinter(csvFile, CSVFormat.DEFAULT);) {
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter csvWorkBook = new CSVWriter(outputStream);) {
 
-						        csvWorkbook.printRecord(headers);
-						        
-
+						        csvWorkBook.writeNext(headers.toArray(new String[0]));
+						        outputStream.flush();
 						        return Mono.just(byteStream.toByteArray());
 
 					        } catch (Exception e) {
 						        e.printStackTrace();
 					        }
 
+				        } else if (type == FlatFileType.TSV) {
+
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter tsvWorkBook = new CSVWriter(outputStream, '\t',
+					                        ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
+					                        ICSVWriter.DEFAULT_LINE_END);) {
+
+						        tsvWorkBook.writeNext(headers.toArray(new String[0]));
+						        outputStream.flush();
+						        return Mono.just(byteStream.toByteArray());
+
+					        } catch (Exception e) {
+						        e.printStackTrace();
+					        }
+				        } else {
+// complete for xml type
+					        
 				        }
 				        return Mono.empty();
 			        });
