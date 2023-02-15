@@ -21,6 +21,7 @@
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 		<saas-commons-mongo-version>1.0.0</saas-commons-mongo-version>
 		<feign-reactor.version>3.2.6</feign-reactor.version>
+		<xlsx-streamer.version>2.1.0</xlsx-streamer.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -98,7 +99,7 @@
 		<dependency>
 			<groupId>com.monitorjbl</groupId>
 			<artifactId>xlsx-streamer</artifactId>
-			<version>2.1.0</version>
+			<version>${xlsx-streamer.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.opencsv</groupId>

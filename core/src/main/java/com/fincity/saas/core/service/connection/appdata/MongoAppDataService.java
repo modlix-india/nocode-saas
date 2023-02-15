@@ -523,13 +523,24 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	public Mono<byte[]> downloadTemplate(Connection conn, Storage storage, FlatFileType type, ServerHttpRequest request,
 	        ServerHttpResponse response) {
 
+		return this
+		        .genericOperation(storage,
+		                (ca, hasAccess) -> downloadTemplateWithoutAuth(conn, storage, type, request, response),
+		                Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
+		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
+		                CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR)));
+
+	}
+
+	private Mono<byte[]> downloadTemplateWithoutAuth(Connection conn, Storage storage, FlatFileType type,
+	        ServerHttpRequest request, ServerHttpResponse response) {
+
 		try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();) {
 
 			return FlatMapUtil.flatMapMono(() -> storageService.getSchema(storage),
 
 			        storageSchema ->
 					{
-				        // change exception to be customised for project related errors
 
 				        List<String> headers = this.getHeaders(null, storage, storageSchema);
 
@@ -547,7 +558,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 						        return Mono.just(byteStream.toByteArray());
 
 					        } catch (Exception e) {
-						        e.printStackTrace();// change to custom exception before committing
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
 					        }
 
 				        } else if (type == FlatFileType.CSV) {
@@ -560,7 +572,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 						        return Mono.just(byteStream.toByteArray());
 
 					        } catch (Exception e) {
-						        e.printStackTrace();
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
 					        }
 
 				        } else if (type == FlatFileType.TSV) {
@@ -575,31 +588,17 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 						        return Mono.just(byteStream.toByteArray());
 
 					        } catch (Exception e) {
-						        e.printStackTrace();
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
 					        }
-				        } else {
-// complete for xml type
-					        
 				        }
 				        return Mono.empty();
 			        });
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			return Mono.empty();
 		}
 
-		return Mono.empty();
-		// return this.genericOperation(storage, (ca, hasAccess) -> {
-//
-//			storageService.getSchema(storage)
-//			        .map(storageSchema ->
-//					{
-//				        if (type != FlatFileType.XML) {
-//					        List<String> headers = this.getHeaders(null, storage, storageSchema);
-//				        }
-//			        });
-//
-//		}, Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE).then();
 	}
 
 	private List<String> getHeaders(String prefix, Storage storage, Schema schema) {

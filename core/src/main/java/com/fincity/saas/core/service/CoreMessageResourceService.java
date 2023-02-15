@@ -24,4 +24,6 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String WORKFLOW_TRIGGER_MISSING = "workflow_trigger_missing";
 
 	public static final String TEMPLATE_GENERATION_ERROR = "template_generation_error";
+
+	public static final String NOT_ABLE_TO_OPEN_FILE_ERROR = "not_able_to_open_file_error";
 }
