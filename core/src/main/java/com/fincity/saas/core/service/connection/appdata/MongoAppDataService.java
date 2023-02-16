@@ -1,14 +1,21 @@
 package com.fincity.saas.core.service.connection.appdata;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.bson.BsonDateTime;
 import org.bson.BsonInt64;
 import org.bson.BsonObjectId;
@@ -24,9 +31,15 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.HybridRepository;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.SchemaUtil;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.validator.SchemaValidator;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
@@ -39,6 +52,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
@@ -54,6 +68,8 @@ import com.mongodb.client.model.Sorts;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
+import com.opencsv.CSVWriter;
+import com.opencsv.ICSVWriter;
 
 import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -68,13 +84,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	private static final String ID = "_id";
 
 	private static final String CREATED_AT = "createdAt";
-	
+
 	private static final String OBJECTID = "objectId";
-	
+
 	private static final String MESSAGE = "message";
 
-	private static final String OPERATION ="operation";
-	
+	private static final String OPERATION = "operation";
+
 	@Autowired
 	private MongoClient defaultClient;
 
@@ -130,8 +146,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
 			                .getAsJsonObject();
 			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                new HybridRepository<>(
-			                        new CoreSchemaRepository(),
+			                new HybridRepository<>(new CoreSchemaRepository(),
 			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
 			                job);
 		        })
@@ -179,14 +194,15 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
-	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject,Boolean override) {
+	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override) {
 
 		return genericOperation(storage, (ca, hasAccess) -> this.updateWithoutAuth(conn, storage, dataObject, override),
 		        Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE);
 	}
 
 	public Mono<Map<String, Object>> updateWithoutAuth(Connection conn, Storage storage, DataObject dataObject,
-	        Boolean override) { // added boolean override to differentiate between the incoming request in patch/put 
+	        Boolean override) { // added boolean override to differentiate between the incoming request in
+	                            // patch/put
 
 		String key = StringUtil.safeValueOf(dataObject.getData()
 		        .get(ID));
@@ -261,10 +277,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
 				                .getId()
 				                .longValue()));
-			        doc.remove(ID); //removing id from the document
+			        doc.remove(ID); // removing id from the document
 			        if (storage.getIsVersioned()
 			                .booleanValue())
-				        versionDocument.append("object", new Document(doc)); 
+				        versionDocument.append("object", new Document(doc));
 
 			        return Mono.from(this.getVersionCollection(conn, storage)
 			                .insertOne(versionDocument));
@@ -275,7 +291,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	}
 
-	
 	@Override
 	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id) {
 
@@ -442,7 +457,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			return Mono.just(Filters.regex(fc.getField(), StringUtil.safeValueOf(fc.getValue(), "")));
 
 		case STRING_LOOSE_EQUAL:
-			return Mono.just(Filters.regex(fc.getField(), fc.getValue().toString()));
+			return Mono.just(Filters.regex(fc.getField(), fc.getValue()
+			        .toString()));
 
 		default:
 			return Mono.empty();
@@ -504,6 +520,139 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
+	public Mono<byte[]> downloadTemplate(Connection conn, Storage storage, FlatFileType type, ServerHttpRequest request,
+	        ServerHttpResponse response) {
+
+		return this
+		        .genericOperation(storage,
+		                (ca, hasAccess) -> downloadTemplateWithoutAuth(conn, storage, type, request, response),
+		                Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
+		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
+		                CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR)));
+
+	}
+
+	private Mono<byte[]> downloadTemplateWithoutAuth(Connection conn, Storage storage, FlatFileType type,
+	        ServerHttpRequest request, ServerHttpResponse response) {
+
+		try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();) {
+
+			return FlatMapUtil.flatMapMono(() -> storageService.getSchema(storage),
+
+			        storageSchema ->
+					{
+
+				        List<String> headers = this.getHeaders(null, storage, storageSchema);
+
+				        if (type == FlatFileType.XLSX) {
+					        try (XSSFWorkbook excelWorkbook = new XSSFWorkbook();) {
+
+						        XSSFSheet sheet = excelWorkbook.createSheet(storage.getName());
+						        Row headRow = sheet.createRow(0); // writing for header
+						        int headColumn = 0;
+						        for (String header : headers) {
+							        Cell cell = headRow.createCell(headColumn++);
+							        cell.setCellValue(header);
+						        }
+						        excelWorkbook.write(byteStream);
+						        return Mono.just(byteStream.toByteArray());
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+
+				        } else if (type == FlatFileType.CSV) {
+
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter csvWorkBook = new CSVWriter(outputStream);) {
+
+						        csvWorkBook.writeNext(headers.toArray(new String[0]));
+						        outputStream.flush();
+						        return Mono.just(byteStream.toByteArray());
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+
+				        } else if (type == FlatFileType.TSV) {
+
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter tsvWorkBook = new CSVWriter(outputStream, '\t',
+					                        ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
+					                        ICSVWriter.DEFAULT_LINE_END);) {
+
+						        tsvWorkBook.writeNext(headers.toArray(new String[0]));
+						        outputStream.flush();
+						        return Mono.just(byteStream.toByteArray());
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+				        }
+				        return Mono.empty();
+			        });
+
+		} catch (Exception e) {
+			return Mono.empty();
+		}
+
+	}
+
+	private List<String> getHeaders(String prefix, Storage storage, Schema schema) {
+
+		if (schema.getRef() != null) {
+
+			schema = SchemaUtil.getSchemaFromRef(schema,
+			        this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+			        schema.getRef());
+		}
+
+		if (schema.getType()
+		        .contains(SchemaType.OBJECT)) {
+
+			return schema.getProperties()
+			        .entrySet()
+			        .stream()
+			        .flatMap(e -> this
+			                .getHeaders(prefix == null ? e.getKey() : prefix + "." + e.getKey(), storage, e.getValue())
+			                .stream())
+			        .toList();
+		} else if (schema.getType()
+		        .contains(SchemaType.ARRAY)) {
+
+			ArraySchemaType aType = schema.getItems();
+
+			if (aType.getSingleSchema() != null) {
+
+				return IntStream.range(0, 2)
+				        .mapToObj(e -> prefix == null ? "[" + e + "]" : prefix + "[" + e + "]")
+				        .flatMap(e -> this.getHeaders(e, storage, aType.getSingleSchema())
+				                .stream())
+				        .toList();
+			} else {
+
+				List<String> list = new ArrayList<>();
+
+				for (int i = 0; i < aType.getTupleSchema()
+				        .size(); i++) {
+
+					String pre = prefix == null ? "[" + i + "]" : prefix + "[" + i + "]";
+
+					list.addAll(this.getHeaders(pre, storage, aType.getTupleSchema()
+					        .get(i)));
+				}
+
+				return list;
+			}
+		}
+
+		return List.of(prefix);
+	}
+
+	@Override
 	public void message(String channel, String message) {
 
 		if (channel == null || !channel.equals(this.channel))
@@ -551,4 +700,5 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	private String getConnectionString(Connection conn) {
 		return "Connection : " + conn.getId();
 	}
+
 }
