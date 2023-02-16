@@ -280,7 +280,7 @@ public class AuthenticationService implements IAuthenticationService {
 			return this.makeAnonySpringAuthentication(request);
 		}
 
-		return FlatMapUtil.flatMapMonoWithNullLog(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
 		                .map(ContextAuthentication.class::cast),

@@ -348,7 +348,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	private Mono<Page<Map<String, Object>>> readPageWithoutAuth(Connection conn, Storage storage, Pageable page,
 	        Boolean count, AbstractCondition condition) {
 
-		return FlatMapUtil.flatMapMonoLog(
+		return FlatMapUtil.flatMapMono(
 
 		        () -> this.filter(condition),
 
