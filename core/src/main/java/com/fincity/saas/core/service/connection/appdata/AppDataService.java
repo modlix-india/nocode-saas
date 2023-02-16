@@ -8,10 +8,13 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.model.DataObject;
@@ -69,9 +72,8 @@ public class AppDataService {
 
 		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
 
-		        (conn, dataService, storage) -> dataService.update(conn, storage, dataObject,override));
+		        (conn, dataService, storage) -> dataService.update(conn, storage, dataObject, override));
 	}
-	
 
 	public Mono<Map<String, Object>> read(String appCode, String clientCode, String storageName, String id) {
 		return FlatMapUtil.flatMapMonoWithNull(
@@ -111,5 +113,19 @@ public class AppDataService {
 		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
 
 		        (conn, dataService, storage) -> dataService.delete(conn, storage, id));
+	}
+
+	public Mono<byte[]> downloadTemplate(String appCode, String clientCode, String storageName, FlatFileType fileType,
+	        ServerHttpRequest request, ServerHttpResponse response) {
+		return FlatMapUtil.flatMapMonoWithNullLog(
+
+		        () -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
+
+		        conn -> Mono
+		                .just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
+
+		        (conn, dataService, storage) -> dataService.downloadTemplate(conn, storage, fileType, request, response));
 	}
 }

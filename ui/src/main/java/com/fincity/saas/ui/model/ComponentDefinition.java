@@ -8,7 +8,7 @@ import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
-import com.fincity.saas.commons.util.ObjectUtil;
+import com.fincity.saas.commons.util.EqualsUtil;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -106,7 +106,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 			        cd.setProperties((Map<String, Object>) propDiff);
 			        cd.setChildren(childDiff);
 			        cd.setStyleProperties((Map<String, Object>) styleDiff);
-			        if (ObjectUtil.safeEquals(this.displayOrder, incoming.displayOrder))
+			        if (EqualsUtil.safeEquals(this.displayOrder, incoming.displayOrder))
 				        cd.setDisplayOrder(null);
 			        else
 				        cd.setDisplayOrder(this.displayOrder);
