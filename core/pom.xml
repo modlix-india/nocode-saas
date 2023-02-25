@@ -21,6 +21,7 @@
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 		<saas-commons-mongo-version>1.0.0</saas-commons-mongo-version>
 		<feign-reactor.version>3.2.6</feign-reactor.version>
+		<xlsx-streamer.version>2.1.0</xlsx-streamer.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -74,7 +75,7 @@
 			<artifactId>jooq</artifactId>
 			<version>3.17.2</version> <!--$NO-MVN-MAN-VER$-->
 		</dependency>
-<dependency>
+		<dependency>
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons-jooq</artifactId>
 			<version>${saas-commons-jooq-version}</version>
@@ -94,6 +95,16 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.monitorjbl</groupId>
+			<artifactId>xlsx-streamer</artifactId>
+			<version>${xlsx-streamer.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.opencsv</groupId>
+			<artifactId>opencsv</artifactId>
+			<version>5.7.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.playtika.reactivefeign</groupId>
@@ -116,13 +127,11 @@
 			<artifactId>commons-security</artifactId>
 			<version>${saas-commons-security-version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons-mongo</artifactId>
 			<version>${saas-commons-mongo-version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -143,6 +152,10 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+		</dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
@@ -162,7 +175,6 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -228,7 +240,6 @@
 								<artifactId>jaxb-runtime</artifactId>
 								<version>4.0.0</version>
 							</dependency>
-
 						</dependencies>
 						<configuration>
 							<jdbc>
