@@ -96,7 +96,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 	}
 
 	private Mono<Boolean> hasOnlyInternalAccess(String appCode, String clientCode, int accessType) {
-		
+
 		List<Condition> conditions = new ArrayList<>();
 		conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
 		if (accessType == 1) {

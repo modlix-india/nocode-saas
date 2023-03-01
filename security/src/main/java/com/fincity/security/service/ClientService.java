@@ -42,8 +42,7 @@ public class ClientService
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
-
-	private static final String CACHE_CLIENT_URI = "uri";
+	private static final String CACHE_NAME_CLIENT_URI = "uri";
 
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
@@ -100,10 +99,10 @@ public class ClientService
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
-		return cacheService.cacheValueOrGet(CACHE_CLIENT_URI, () -> {
+		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> {
 
 			String finHost = uriHost;
-			
+
 			return clientUrlService.readAllAsClientURLPattern()
 			        .flatMapIterable(e -> e)
 			        .filter(e -> e.isValidClientURLPattern(finHost, uriPort))
@@ -149,10 +148,11 @@ public class ClientService
 
 			        if (!ca.isSystemClient()) {
 
-				        this.addManageRecord(ULongUtil.valueOf(ca.getUser()
-				                .getClientId()), e.getId())
+				        ULong mClientId = ULongUtil.valueOf(ca.getUser()
+				                .getClientId());
+				        this.addManageRecord(mClientId, e.getId())
+				                .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_RELATION, e.getId()))
 				                .subscribe();
-
 			        }
 
 			        return e;

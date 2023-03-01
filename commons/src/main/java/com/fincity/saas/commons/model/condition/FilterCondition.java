@@ -18,18 +18,23 @@ public class FilterCondition extends AbstractCondition {
 
 	private String field;
 	private FilterConditionOperator operator = FilterConditionOperator.EQUALS;
-	private Object value; //NOSONAR
-	private Object toValue; //NOSONAR
-	private List<Object> multiValue; //NOSONAR
+	private Object value; // NOSONAR
+	private Object toValue; // NOSONAR
+	private List<Object> multiValue; // NOSONAR
 	private boolean isValueField = false;
 	private boolean isToValueField = false;
 
 	@Override
-	public Flux<AbstractCondition> findConditionWithField(String fieldName) {
+	public Flux<FilterCondition> findConditionWithField(String fieldName) {
 
 		if (StringUtil.safeEquals(field, fieldName))
 			return Flux.just(this);
-		
+
 		return Flux.empty();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return false;
 	}
 }

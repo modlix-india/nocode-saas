@@ -117,7 +117,7 @@ public class AppDataService {
 
 	public Mono<byte[]> downloadTemplate(String appCode, String clientCode, String storageName, FlatFileType fileType,
 	        ServerHttpRequest request, ServerHttpResponse response) {
-		return FlatMapUtil.flatMapMonoWithNullLog(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
 

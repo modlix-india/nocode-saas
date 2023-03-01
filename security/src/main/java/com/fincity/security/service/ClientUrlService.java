@@ -8,10 +8,11 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
@@ -28,45 +29,62 @@ import reactor.core.publisher.Mono;
 public class ClientUrlService
         extends AbstractJOOQUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO> {
 
+	private static final String CLIENT_URL = "Client URL";
+
 	@Autowired
 	private CacheService cacheService;
-//
-//	@Autowired
-//	private MessageResourceService messageResourceService;
+
+	@Autowired
+	private SecurityMessageResourceService msgService;
+
+	@Autowired
+	private ClientService clientService;
 
 	private static final String CACHE_NAME_CLIENT_URL = "clientUrl";
+	private static final String CACHE_NAME_CLIENT_URI = "uri";
+
 	private static final String CACHE_CLIENT_URL_LIST = "list";
+	
+	//This is used in gateway
+	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
 
 	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> read(ULong id) {
 
-//		return super.read(id).flatMap(clientUrl -> SecurityContextUtil.getUsersContextAuthentication()
-//		        .flatMap(e ->
-//				{
-//			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(e.getClientTypeCode()))
-//				        return Mono.just(clientUrl);
-//
-//			        ContextUser user = e.getUser();
-//			        ULong userClientId = ULong.valueOf(user.getClientId());
-//
-//			        if (clientUrl.getClientId()
-//			                .equals(userClientId))
-//				        return Mono.just(clientUrl);
-//
-//			        return clientService.getPotentialClientList(id)
-//			                .filter(lst -> lst.contains(userClientId))
-//			                .map(x -> clientUrl)
-//			                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.getMessage(MessageResourceService.OBJECT_NOT_FOUND)
-//			                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
-//			                                StringFormatter.format(msg, "Client URL", id))))));
-//		        }));
-		return super.read(id);
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> super.read(id),
+
+		        (ca, cu) ->
+				{
+
+			        if (ca.isSystemClient() || ca.getUser()
+			                .getClientId()
+			                .equals(cu.getClientId()
+			                        .toBigInteger()))
+				        return Mono.just(true);
+
+			        return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                .getClientId()), cu.getClientId());
+		        },
+
+		        (ca, cu, hasAccess) ->
+				{
+			        if (hasAccess.booleanValue())
+				        return Mono.just(cu);
+			        return Mono.empty();
+		        })
+		        .switchIfEmpty(msgService.throwMessage(HttpStatus.NOT_FOUND,
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, CLIENT_URL, id));
 	}
 
 	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Page<ClientUrl>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+
 		return super.readPageFilter(pageable, condition);
 	}
 
@@ -74,38 +92,56 @@ public class ClientUrlService
 	@Override
 	public Mono<ClientUrl> create(ClientUrl entity) {
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca ->
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+				{
+
+			        if (ca.isSystemClient() || entity.getClientId() == null || ca.getUser()
+			                .getClientId()
+			                .equals(entity.getClientId()
+			                        .toBigInteger()))
+				        return Mono.just(true);
+
+			        return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                .getClientId()), entity.getClientId());
+		        },
+
+		        (ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty(),
+
+		        (ca, hasAccess, ent) ->
 				{
 
 			        ULong clientId = ULong.valueOf(ca.getUser()
 			                .getClientId());
 
-			        if (entity.getClientId() == null)
-				        entity.setClientId(clientId);
-			        else {
-				        if (!ca.getClientTypeCode()
-				                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM)) {
-					        return super.create(entity);
-				        }
-			        }
+			        if (ent.getClientId() == null)
+				        ent.setClientId(clientId);
 
-			        return super.create(entity);
-		        });
+			        return super.create(ent);
+		        })
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI));
 	}
 
 	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> update(ClientUrl entity) {
 
-		return super.update(entity);
+		return super.update(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
 	}
 
 	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> update(ULong key, Map<String, Object> updateFields) {
 
-		return super.update(key, updateFields);
+		return super.update(key, updateFields).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
 	}
 
 	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
@@ -113,7 +149,10 @@ public class ClientUrlService
 	public Mono<Integer> delete(ULong id) {
 
 		return this.read(id)
-		        .flatMap(e -> super.delete(id));
+		        .flatMap(e -> super.delete(id))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
 	}
 
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {

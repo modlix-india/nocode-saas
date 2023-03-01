@@ -37,6 +37,7 @@ import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.RequestUpdatePassword;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -64,6 +65,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	@Autowired
 	private SoxLogService soxLogService;
+
+	@Autowired
+	private TokenService tokenService;
 
 	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
@@ -222,7 +226,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        .toString();
 
 		return this.dao.checkAvailability(key, userName, emailId, phoneNumber)
-		        .flatMap(e -> super.update(key, fields));
+		        .flatMap(e -> super.update(key, fields))
+		        .flatMap(e -> this.evictTokens(e.getId())
+		                .map(x -> e));
 	}
 
 	@Override
@@ -231,7 +237,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return this.dao
 		        .checkAvailability(entity.getId(), entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber())
 		        .map(BooleanUtil::safeValueOf)
-		        .flatMap(e -> super.update(entity));
+		        .flatMap(e -> super.update(entity))
+		        .flatMap(e -> this.evictTokens(e.getId())
+		                .map(x -> e));
+	}
+
+	private Mono<Integer> evictTokens(ULong id) {
+
+		return this.tokenService.evictTokensOfUser(id);
 	}
 
 	@Override
@@ -279,7 +292,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        return e;
 		        })
 		        .flatMap(this::update)
-		        .map(e -> 1);
+		        .flatMap(e -> this.evictTokens(e.getId())
+		                .map(x -> 1));
 	}
 
 	public Mono<User> readInternal(ULong id) {
@@ -289,12 +303,18 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> removePermission(ULong userId, ULong permissionId) {
 		return this.dao.removePermissionFromUser(userId, permissionId)
-		        .map(value -> value > 0);
+		        .map(value -> value > 0)
+		        .flatMap(e -> this.evictTokens(userId)
+		                .map(x -> e));
 	}
 
 	public Mono<Boolean> removeFromPermissionList(List<ULong> userList, List<ULong> permissionList) {
 
-		return this.dao.removePermissionListFromUser(userList, permissionList);
+		return this.dao.removePermissionListFromUser(userList, permissionList)
+		        .flatMap(e -> Flux.fromIterable(userList)
+		                .flatMap(this::evictTokens)
+		                .collectList()
+		                .map(x -> e));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
@@ -325,8 +345,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 					        return removed;
 				        })
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
+		)
+
+		        .flatMap(e -> this.evictTokens(userId)
+		                .map(x -> e))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
@@ -356,8 +380,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 					        return removed;
 				        })
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
+		)
+
+		        .flatMap(e -> this.evictTokens(userId)
+		                .map(x -> e))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
@@ -399,8 +427,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								        return e;
 							        })
 
-				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
+				).flatMap(e -> this.evictTokens(userId)
+				        .map(x -> e))
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
 		        });
 
 	}
@@ -444,8 +474,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								        return e;
 							        })
 
-				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				        SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
+				)
+
+			                .flatMap(e -> this.evictTokens(userId)
+			                        .map(x -> e))
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
 
 		        });
 
@@ -489,6 +523,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 			                return e > 0;
 		                }))
+
+		        .flatMap(e -> this.evictTokens(reqUserId)
+		                .map(x -> e))
+
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                "Password cannot be updated"));
 
