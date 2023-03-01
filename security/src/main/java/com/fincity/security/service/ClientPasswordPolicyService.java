@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientPasswordPolicyDAO;
 import com.fincity.security.dto.ClientPasswordPolicy;
@@ -29,11 +30,16 @@ public class ClientPasswordPolicyService extends
 
 	private static final String CLIENT_PASSWORD_POLICY = "client password policy";
 
+	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
+
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
 	@Autowired
 	private ClientService clientService;
+
+	@Autowired
+	private CacheService cacheService;
 
 	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 	        '_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
@@ -55,6 +61,8 @@ public class ClientPasswordPolicyService extends
 			        return this.clientService.isBeingManagedBy(currentUser, entity.getClientId())
 			                .flatMap(managed -> managed.booleanValue() ? super.create(entity) : Mono.empty());
 		        })
+		        .flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
+		                .map(x -> e))
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
@@ -108,6 +116,8 @@ public class ClientPasswordPolicyService extends
 	public Mono<ClientPasswordPolicy> update(ULong key, Map<String, Object> fields) {
 		return this.dao.canBeUpdated(key)
 		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
+		        .flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
+		                .map(x -> e))
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
@@ -118,6 +128,8 @@ public class ClientPasswordPolicyService extends
 
 		return this.dao.canBeUpdated(entity.getId())
 		        .flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
+		        .flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
+		                .map(x -> e))
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
@@ -127,6 +139,7 @@ public class ClientPasswordPolicyService extends
 	public Mono<Integer> delete(ULong id) {
 		return this.dao.canBeUpdated(id)
 		        .flatMap(e -> e.booleanValue() ? super.delete(id) : Mono.empty())
+		        .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_PWD_POLICY, id))
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}

@@ -19,12 +19,18 @@ public class ComplexCondition extends AbstractCondition {
 	private ComplexConditionOperator operator;
 	private List<AbstractCondition> conditions;
 
-	public Flux<AbstractCondition> findConditionWithField(String fieldName) {
+	public Flux<FilterCondition> findConditionWithField(String fieldName) {
 
 		if (StringUtil.safeIsBlank(fieldName))
 			return Flux.empty();
 
 		return Flux.fromIterable(this.conditions)
 		        .flatMap(c -> c.findConditionWithField(fieldName));
+	}
+	
+	@Override
+	public boolean isEmpty() {
+	
+		return conditions.isEmpty();
 	}
 }

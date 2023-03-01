@@ -30,6 +30,12 @@ public class FeignAuthenticationService implements IAuthenticationService {
 	@Override
 	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, ServerHttpRequest request) {
 
+		return cacheService.cacheValueOrGet(CACHE_NAME_TOKEN, () -> this.getAuthenticationFromSecurity(isBasic, bearerToken, request), bearerToken);
+	}
+
+	private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken,
+	        ServerHttpRequest request) {
+		
 		if (feignAuthService == null)
 			return Mono.empty();
 
@@ -84,7 +90,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
 	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_APP_READ_ACCESS,
-		        () -> this.feignAuthService.hasReadAccess(appCode, clientCode), appCode, ":", appCode);
+		        () -> this.feignAuthService.hasReadAccess(appCode, clientCode), appCode, ":", clientCode);
 	}
 
 	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {

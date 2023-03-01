@@ -21,6 +21,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
@@ -38,6 +39,12 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	@Autowired
 	private SecurityMessageResourceService messageResourceService;
+
+	@Autowired
+	private CacheService cacheService;
+
+	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
+	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
 
 	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
@@ -200,9 +207,25 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                .flatMap(
 			                        cid -> cid.equals(clientId) ? this.dao.addClientAccess(appId, clientId, writeAccess)
 			                                : Mono.empty());
-		        })
+		        }, (ca, cliAccess, changed) -> this.evict(appId, clientId)
+		                .map(e -> changed))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)));
+	}
+
+	public Mono<Boolean> evict(ULong appId, ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.read(appId),
+
+		        app -> this.clientService.getClientTypeNCode(clientId),
+
+		        (app, typNCode) -> cacheService.evict(CACHE_NAME_APP_WRITE_ACCESS, app.getAppCode(), ":",
+		                typNCode.getT2()),
+
+		        (app, typNCode, removed) -> cacheService.evict(CACHE_NAME_APP_READ_ACCESS, app.getAppCode(), ":",
+		                typNCode.getT2()));
 	}
 
 	public Mono<Boolean> removeClient(ULong appId, ULong accessId) {
@@ -260,7 +283,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	}
 
 	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
-		
+
 		return this.dao.appInheritance(appCode, clientCode);
 	}
 

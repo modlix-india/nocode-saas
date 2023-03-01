@@ -11,7 +11,6 @@ import com.fincity.nocode.kirun.engine.Repository;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
-import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.util.StringUtil;

@@ -2,6 +2,7 @@ package com.fincity.saas.commons.service;
 
 import java.util.Collection;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -277,4 +278,26 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 			cache.evictIfPresent(cacheKey);
 	}
 
+	public <T> Function<T, Mono<T>> evictAllFunction(String cacheName) {
+
+		return v -> this.evictAll(cacheName)
+		        .map(e -> v);
+	}
+
+	public <T> Function<T, Mono<T>> evictFunction(String cacheName, Object... keys) {
+		return v -> this.evict(cacheName, keys)
+		        .map(e -> v);
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> Function<T, Mono<T>> evictFunctionWithSuppliers(String cacheName, Supplier<Object>... keySuppliers) {
+
+		Object[] keys = new Object[keySuppliers.length];
+
+		for (int i = 0; i < keySuppliers.length; i++)
+			keys[i] = keySuppliers[i].get();
+
+		return v -> this.evict(cacheName, keys)
+		        .map(e -> v);
+	}
 }
