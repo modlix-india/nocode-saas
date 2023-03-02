@@ -944,6 +944,12 @@ SELECT ID from `security_package` WHERE CODE = 'STYLE' LIMIT 1 INTO @v_package_s
 INSERT IGNORE INTO `security_client_package` (CLIENT_ID, PACKAGE_ID) VALUES
 	(@v_client_system, @v_package_style);
 
+-- V1__Initial script.sql
+
+DROP DATABASE IF EXISTS `core`;
+
+CREATE DATABASE IF NOT EXISTS `core` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....
