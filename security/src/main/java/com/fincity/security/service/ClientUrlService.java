@@ -1,7 +1,8 @@
 package com.fincity.security.service;
 
+import static com.fincity.security.service.ClientService.CACHE_NAME_CLIENT_URL;
+
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -17,7 +18,6 @@ import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
@@ -40,10 +40,9 @@ public class ClientUrlService
 	@Autowired
 	private ClientService clientService;
 
-	private static final String CACHE_NAME_CLIENT_URL = "clientUrl";
+
 	private static final String CACHE_NAME_CLIENT_URI = "uri";
 
-	private static final String CACHE_CLIENT_URL_LIST = "list";
 	
 	//This is used in gateway
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
@@ -153,12 +152,6 @@ public class ClientUrlService
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
-	}
-
-	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
-
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_URL, () -> this.dao.readClientPatterns()
-		        .collectList(), CACHE_CLIENT_URL_LIST);
 	}
 
 	@Override

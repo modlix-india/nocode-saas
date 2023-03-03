@@ -8,9 +8,14 @@ import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.lettuce.core.codec.RedisCodec;
 
 public class RedisObjectCodec implements RedisCodec<String, Object> {
+	
+	private static final Logger logger = LoggerFactory.getLogger(RedisObjectCodec.class);
 
 	public String decodeKey(ByteBuffer bytes) {
 		return StandardCharsets.UTF_8.decode(bytes)
@@ -33,13 +38,19 @@ public class RedisObjectCodec implements RedisCodec<String, Object> {
 	}
 
 	public ByteBuffer encodeValue(Object value) {
+
+		if (value == null)
+			return ByteBuffer.wrap(new byte[0]);
+
 		try {
 			ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 			ObjectOutputStream os = new ObjectOutputStream(bytes);
 			os.writeObject(value);
 			return ByteBuffer.wrap(bytes.toByteArray());
 		} catch (IOException e) {
-			return null;
+			
+			logger.debug("Exception while encoding : {}", value, e);
+			return ByteBuffer.wrap(new byte[0]);
 		}
 	}
 

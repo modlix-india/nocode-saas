@@ -125,13 +125,15 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		        .flatMap(key ->
 				{
 
+			        CacheObject co = new CacheObject(value);
+
 			        this.cacheManager.getCache(cacheName)
-			                .put(key, value);
+			                .put(key, co);
 
 			        if (redisAsyncCommand == null)
 				        return Mono.just(true);
 
-			        Mono.fromCompletionStage(redisAsyncCommand.hset(cacheName, key, value))
+			        Mono.fromCompletionStage(redisAsyncCommand.hset(cacheName, key, co))
 			                .subscribe();
 
 			        return Mono.just(true);
@@ -153,18 +155,17 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		        .flatMap(key ->
 				{
 
-			        Mono<T> value = Mono.justOrEmpty(this.cacheManager.getCache(cacheName)
-			                .get(key))
-			                .map(vw -> (T) vw.get());
+			        Mono<CacheObject> value = Mono.justOrEmpty(this.cacheManager.getCache(cacheName)
+			                .get(key, CacheObject.class));
 
 			        if (redisAsyncCommand == null)
 				        return value;
 
 			        return value.switchIfEmpty(
 			                Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
-			                        .map(vw -> (T) vw)));
+			                        .map(CacheObject.class::cast)));
 		        })
-		        .map(e -> e instanceof CacheObject c ? (T) c.getObject() : e);
+		        .flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -174,18 +175,22 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		        .flatMap(key -> this.get(cName, key)
 		                .switchIfEmpty(Mono.defer(() -> supplier.get()
 		                        .flatMap(value -> this.put(cName, value, key)))))
-		        .map(e -> (T) (e instanceof CacheObject co ? co.getObject() : e));
+		        .map(e -> (T) e);
 	}
 
 	@SuppressWarnings("unchecked")
 	public <T> Mono<T> cacheEmptyValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
 
 		return this.makeKey(keys)
-		        .flatMap(key -> this.<CacheObject>get(cName, key)
-		                .switchIfEmpty(Mono.defer(() -> supplier.get()
-		                        .flatMap(value -> this.put(cName, new CacheObject(value), key))
-		                        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), key))))))
-		        .flatMap(e -> e == null || e.getObject() == null ? Mono.empty() : Mono.justOrEmpty((T) e.getObject()))
+		        .flatMap(key ->
+
+				this.<CacheObject>get(cName, key)
+				        .switchIfEmpty(Mono.defer(() ->
+
+						supplier.get()
+						        .flatMap(value -> this.put(cName, new CacheObject(value), key))
+						        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), key))))))
+		        .flatMap(e -> Mono.justOrEmpty((T) e.getObject()))
 		        .subscribeOn(Schedulers.boundedElastic());
 	}
 
