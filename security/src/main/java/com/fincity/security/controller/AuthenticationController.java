@@ -51,7 +51,7 @@ public class AuthenticationController {
 	@GetMapping(value = "verifyToken")
 	public Mono<ResponseEntity<VerificationResponse>> verifyToken(ServerHttpRequest request) {
 
-		return FlatMapUtil.flatMapMonoLog(
+		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
