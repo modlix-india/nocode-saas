@@ -12,5 +12,7 @@ public abstract class AbstractCondition implements Serializable {
 
 	private boolean negate = false;
 	
-	public abstract Flux<AbstractCondition> findConditionWithField(String fieldName);
+	public abstract Flux<FilterCondition> findConditionWithField(String fieldName);
+	
+	public abstract boolean isEmpty();
 }

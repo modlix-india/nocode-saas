@@ -3,6 +3,7 @@ package com.fincity.security.controller;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -12,14 +13,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.VerificationResponse;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.common.security.util.ServerHttpRequestUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.AuthenticationService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 @RestController
 @RequestMapping("api/security/")
@@ -44,17 +49,32 @@ public class AuthenticationController {
 	}
 
 	@GetMapping(value = "verifyToken")
-	public Mono<ResponseEntity<VerificationResponse>> verifyToken() {
+	public Mono<ResponseEntity<VerificationResponse>> verifyToken(ServerHttpRequest request) {
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(new VerificationResponse().setUser(ca.getUser())
+		        ca -> {
+		        	
+		        	if (!ca.isAuthenticated()) {
+		        		
+		        		Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
+		        		
+		        		if (tuple.getT2().isBlank())
+		        			return Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
+		        		else
+		        			return Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+		        	}
+		        	
+		        	return Mono.just(ca);
+		        },
+		        
+		        (ca, ca2) -> Mono.just(new VerificationResponse().setUser(ca.getUser())
 		                .setAccessToken(ca.getAccessToken())
 		                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
 
-		        (ca, vr) -> Mono.just(ResponseEntity.<VerificationResponse>ok(vr)));
+		        (ca, ca2, vr) -> Mono.just(ResponseEntity.<VerificationResponse>ok(vr)));
 
 	}
 

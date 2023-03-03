@@ -64,7 +64,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 	public Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode) {
 
-		return FlatMapUtil.flatMapMonoWithNullLog(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> cacheService.makeKey("Properties : ", name, "-", appCode, "-", clientCode),
 

@@ -944,6 +944,12 @@ SELECT ID from `security_package` WHERE CODE = 'STYLE' LIMIT 1 INTO @v_package_s
 INSERT IGNORE INTO `security_client_package` (CLIENT_ID, PACKAGE_ID) VALUES
 	(@v_client_system, @v_package_style);
 
+-- V1__Initial script.sql
+
+DROP DATABASE IF EXISTS `core`;
+
+CREATE DATABASE IF NOT EXISTS `core` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....
@@ -1039,4 +1045,4 @@ VALUES
 (@v_user_userb001,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjozLCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElCIiwidXNlcklkIjo0LCJpYXQiOjE2NzA1OTg3MTIsImV4cCI6MTcwMjEzNDcxMn0.52d1ecS7bjzItZJLjVWTAQd3lDFgzefg2vwzQChTMZyTKH4ztaCblS2nQbUKP4YCJ0b4gYM409SxrhSC6Bj7Xw','QChTMZyTKH4ztaCblS2nQbUKP4YCJ0b4gYM409SxrhSC6Bj7Xw','2023-12-09 15:11:52','0.0.0.0'),
 (@v_user_userc002,'eyJhbGciOiJIUzUxMiJ9.eyJob3N0TmFtZSI6ImxvY2FsaG9zdDo4MDgwIiwicG9ydCI6IjgwODAiLCJsb2dnZWRJbkNsaWVudElkIjo0LCJsb2dnZWRJbkNsaWVudENvZGUiOiJDTElDIiwidXNlcklkIjo3LCJpYXQiOjE2NzA1OTg3MjQsImV4cCI6MTcwMjEzNDcyNH0.zIaTJDFuPNc4OhoRi87LcbXkx5YAwoWY5w55VvBGNhgxo5E3VrSZR3AqsuSIUaN3M4e57hbCahIL_FXK6vfV7g','VvBGNhgxo5E3VrSZR3AqsuSIUaN3M4e57hbCahIL_FXK6vfV7g','2023-12-09 15:12:04','0.0.0.0');
 
-
+-- Testing 

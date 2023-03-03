@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,12 +39,14 @@ import reactor.util.function.Tuple2;
 public class ClientService
         extends AbstractSecurityUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
 
+	public static final String CACHE_CLIENT_URL_LIST = "list";
+	public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
+	
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
-
-	private static final String CACHE_CLIENT_URI = "uri";
+	private static final String CACHE_NAME_CLIENT_URI = "uri";
 
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
@@ -51,9 +54,6 @@ public class ClientService
 
 	@Autowired
 	private CacheService cacheService;
-
-	@Autowired
-	private ClientUrlService clientUrlService;
 
 	@Autowired
 	@Lazy
@@ -100,16 +100,22 @@ public class ClientService
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
-		return cacheService.cacheValueOrGet(CACHE_CLIENT_URI, () -> {
+		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> {
 
 			String finHost = uriHost;
-			
-			return clientUrlService.readAllAsClientURLPattern()
+
+			return this.readAllAsClientURLPattern()
 			        .flatMapIterable(e -> e)
 			        .filter(e -> e.isValidClientURLPattern(finHost, uriPort))
 			        .next();
 
 		}, uriScheme, uriHost, ":", uriPort);
+	}
+	
+	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
+
+		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_URL, () -> this.dao.readClientPatterns()
+		        .collectList(), CACHE_CLIENT_URL_LIST);
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
@@ -149,10 +155,11 @@ public class ClientService
 
 			        if (!ca.isSystemClient()) {
 
-				        this.addManageRecord(ULongUtil.valueOf(ca.getUser()
-				                .getClientId()), e.getId())
+				        ULong mClientId = ULongUtil.valueOf(ca.getUser()
+				                .getClientId());
+				        this.addManageRecord(mClientId, e.getId())
+				                .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_RELATION, e.getId()))
 				                .subscribe();
-
 			        }
 
 			        return e;
