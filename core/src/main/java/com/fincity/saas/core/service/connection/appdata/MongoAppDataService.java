@@ -1,21 +1,14 @@
 package com.fincity.saas.core.service.connection.appdata;
 
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.stream.IntStream;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.bson.BsonDateTime;
 import org.bson.BsonInt64;
 import org.bson.BsonObjectId;
@@ -31,28 +24,22 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.HybridRepository;
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.SchemaUtil;
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.validator.SchemaValidator;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.nocode.reactor.util.TriFunction;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
-import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
@@ -68,8 +55,6 @@ import com.mongodb.client.model.Sorts;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
-import com.opencsv.CSVWriter;
-import com.opencsv.ICSVWriter;
 
 import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -128,12 +113,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Override
 	public Mono<Map<String, Object>> create(Connection conn, Storage storage, DataObject dataObject) {
 
-		return genericOperation(storage, (ca, hasAccess) -> this.createWithoutAuth(conn, storage, dataObject),
-		        Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE);
-	}
-
-	public Mono<Map<String, Object>> createWithoutAuth(Connection conn, Storage storage, DataObject dataObject) {
-
 		return FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
@@ -191,18 +170,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                .toHexString());
 			        return Mono.just(doc);
 		        });
+
 	}
 
 	@Override
 	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override) {
 
-		return genericOperation(storage, (ca, hasAccess) -> this.updateWithoutAuth(conn, storage, dataObject, override),
-		        Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE);
-	}
-
-	public Mono<Map<String, Object>> updateWithoutAuth(Connection conn, Storage storage, DataObject dataObject,
-	        Boolean override) { // added boolean override to differentiate between the incoming request in
-	                            // patch/put
+		// added boolean override to differentiate between the incoming request in
+		// patch/put
 
 		String key = StringUtil.safeValueOf(dataObject.getData()
 		        .get(ID));
@@ -288,18 +263,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        doc.append(ID, key);
 			        return Mono.just(doc);
 		        });
-
 	}
 
 	@Override
 	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id) {
-
-		return this.genericOperation(storage, (ca, hasAccess) -> this.readWithoutAuth(conn, storage, id),
-		        Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE);
-	}
-
-	public Mono<Map<String, Object>> readWithoutAuth(Connection conn, Storage storage, String id) {
-
 		BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
 
 		return FlatMapUtil.flatMapMono(
@@ -321,12 +288,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Override
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id) {
 
-		return this.genericOperation(storage, (ca, hasAccess) -> this.deleteWithoutAuth(conn, storage, id),
-		        Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE);
-	}
-
-	public Mono<Boolean> deleteWithoutAuth(Connection conn, Storage storage, String id) {
-
 		BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
 
 		return Mono.from(this.getCollection(conn, storage)
@@ -334,19 +295,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        .map(e -> true)
 		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id)));
+
 	}
 
 	@Override
 	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Pageable page, Boolean count,
 	        AbstractCondition condition) {
-
-		return this.genericOperation(storage,
-		        (ca, hasAccess) -> this.readPageWithoutAuth(conn, storage, page, count, condition),
-		        Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE);
-	}
-
-	private Mono<Page<Map<String, Object>>> readPageWithoutAuth(Connection conn, Storage storage, Pageable page,
-	        Boolean count, AbstractCondition condition) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -371,6 +325,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		                .countDocuments(bsonCondition)) : Mono.just(page.getOffset() + list.size()),
 
 		        (bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)));
+
 	}
 
 	private Bson sort(Sort sort) {
@@ -397,8 +352,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		else
 			cond = filterConditionFilter((FilterCondition) condition);
 
-		return cond.map(c -> condition.isNegate() ? Filters.not(c) : c)
-		        .defaultIfEmpty(Filters.empty());
+		return cond.defaultIfEmpty(Filters.empty());
 	}
 
 	private Mono<Bson> complexConditionFilter(ComplexCondition cc) {
@@ -411,54 +365,103 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        .stream()
 		        .map(this::filter)
 		        .toList())
+		        .map(e -> cc.isNegate() ? Filters.not(e) : e)
 		        .collectList()
-		        .map(conds -> cc.getOperator() == ComplexConditionOperator.AND ? Filters.and(conds)
-		                : Filters.or(conds));
+		        .map(conds ->
+				{
+
+			        if (cc.getOperator() == ComplexConditionOperator.AND)
+				        return cc.isNegate() ? Filters.or(conds) : Filters.and(conds);
+
+			        return cc.isNegate() ? Filters.and(conds) : Filters.or(conds);
+		        });
 	}
 
-	private Mono<Bson> filterConditionFilter(FilterCondition fc) {
+	private Mono<Bson> filterConditionFilter(FilterCondition fc) { // NOSONAR
+		// in order to cover all operators this kind of check is essential
 
-		if (fc == null || fc.getField() == null || fc.getValue() == null)
+		if (fc == null || fc.getField() == null)
 			return Mono.empty();
 
-		switch (fc.getOperator()) {
-		case BETWEEN:
-			return Mono.just(Filters.and(Filters.gte(fc.getField(), fc.getValue()),
-			        Filters.lte(fc.getField(), fc.getToValue())));
+		if (fc.getOperator() == IS_FALSE || fc.getOperator() == IS_TRUE)
+			return Mono.just(Filters.eq(fc.getField(),
+			        fc.isNegate() ? fc.getOperator() == IS_FALSE : fc.getOperator() == IS_TRUE));
 
+		if (fc.getOperator() == IS_NULL) {
+			if (fc.isNegate())
+				Mono.just(Filters.ne(fc.getField(), null));
+			else
+				return Mono.just(Filters.or(Filters.eq(fc.getField(), null), Filters.exists(fc.getField(), false)));
+		}
+
+		if (fc.getOperator() == IN) {
+
+			if (fc.getValue() == null && (fc.getMultiValue() == null || fc.getMultiValue()
+			        .isEmpty()))
+				return Mono.empty();
+
+			BiFunction<String, Iterable<Object>, Bson> function = fc.isNegate() ? Filters::nin : Filters::in;
+			return Mono.just(function.apply(fc.getField(), this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
+		}
+
+		if (fc.getValue() == null)
+			return Mono.empty();
+
+		if (fc.getOperator() == BETWEEN) {
+
+			var first = fc.isNegate() ? Filters.lt(fc.getField(), fc.getValue())
+			        : Filters.gte(fc.getField(), fc.getValue());
+			var second = fc.isNegate() ? Filters.gt(fc.getField(), fc.getToValue())
+			        : Filters.lte(fc.getField(), fc.getToValue());
+
+			if (fc.isNegate())
+				return Mono.just(Filters.and(first, second));
+			else
+				return Mono.just(Filters.or(first, second));
+		}
+
+		BiFunction<String, Object, Bson> function;
+
+		switch (fc.getOperator()) {
 		case EQUALS:
-			return Mono.just(Filters.eq(fc.getField(), fc.getValue()));
+			function = fc.isNegate() ? Filters::ne : Filters::eq;
+			break;
 
 		case GREATER_THAN:
-			return Mono.just(Filters.gt(fc.getField(), fc.getValue()));
+			function = fc.isNegate() ? Filters::lte : Filters::gt;
+			break;
 
 		case GREATER_THAN_EQUAL:
-			return Mono.just(Filters.gte(fc.getField(), fc.getValue()));
+			function = fc.isNegate() ? Filters::lt : Filters::gte;
+			break;
 
 		case LESS_THAN:
-			return Mono.just(Filters.lt(fc.getField(), fc.getValue()));
+			function = fc.isNegate() ? Filters::gte : Filters::lt;
+			break;
 
 		case LESS_THAN_EQUAL:
-			return Mono.just(Filters.lte(fc.getField(), fc.getValue()));
+			function = fc.isNegate() ? Filters::gt : Filters::lte;
+			break;
 
-		case IS_FALSE:
-			return Mono.just(Filters.eq(fc.getField(), false));
+		default:
+			function = null;
+		}
 
-		case IS_TRUE:
-			return Mono.just(Filters.eq(fc.getField(), true));
+		if (function != null)
+			return Mono.just(function.apply(fc.getField(), fc.getValue()));
 
-		case IS_NULL:
-			return Mono.just(Filters.eq(fc.getField(), null));
+		Bson filter;
 
-		case IN:
-			return Mono.just(Filters.in(fc.getField(), this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
+		switch (fc.getOperator()) {
 
 		case LIKE:
-			return Mono.just(Filters.regex(fc.getField(), StringUtil.safeValueOf(fc.getValue(), "")));
+			filter = Filters.regex(fc.getField(), StringUtil.safeValueOf(fc.getValue(), ""));
+			return Mono.just(fc.isNegate() ? Filters.not(filter) : filter);
 
 		case STRING_LOOSE_EQUAL:
-			return Mono.just(Filters.regex(fc.getField(), fc.getValue()
-			        .toString()));
+			filter = Filters.regex(fc.getField(), fc.getValue()
+			        .toString());
+			return Mono.just(fc.isNegate() ? Filters.not(filter) : filter);
 
 		default:
 			return Mono.empty();
@@ -498,158 +501,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		return obj;
 
-	}
-
-	private <T> Mono<T> genericOperation(Storage storage, BiFunction<ContextAuthentication, Boolean, Mono<T>> bifun,
-	        Function<Storage, String> authFun, String msgString) {
-
-		if (storage == null)
-			return msgService.throwMessage(HttpStatus.NOT_FOUND, CoreMessageResourceService.STORAGE_NOT_FOUND);
-
-		return FlatMapUtil.flatMapMono(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> Mono.justOrEmpty(SecurityContextUtil.hasAuthority(authFun.apply(storage), ca.getUser()
-		                .getAuthorities()) ? true : null),
-
-		        bifun)
-
-		        .switchIfEmpty(Mono
-		                .defer(() -> this.msgService.throwMessage(HttpStatus.FORBIDDEN, msgString, storage.getName())));
-	}
-
-	@Override
-	public Mono<byte[]> downloadTemplate(Connection conn, Storage storage, FlatFileType type, ServerHttpRequest request,
-	        ServerHttpResponse response) {
-
-		return this
-		        .genericOperation(storage,
-		                (ca, hasAccess) -> downloadTemplateWithoutAuth(conn, storage, type, request, response),
-		                Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
-		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
-		                CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR)));
-
-	}
-
-	private Mono<byte[]> downloadTemplateWithoutAuth(Connection conn, Storage storage, FlatFileType type,
-	        ServerHttpRequest request, ServerHttpResponse response) {
-
-		try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();) {
-
-			return FlatMapUtil.flatMapMono(() -> storageService.getSchema(storage),
-
-			        storageSchema ->
-					{
-
-				        List<String> headers = this.getHeaders(null, storage, storageSchema);
-
-				        if (type == FlatFileType.XLSX) {
-					        try (XSSFWorkbook excelWorkbook = new XSSFWorkbook();) {
-
-						        XSSFSheet sheet = excelWorkbook.createSheet(storage.getName());
-						        Row headRow = sheet.createRow(0); // writing for header
-						        int headColumn = 0;
-						        for (String header : headers) {
-							        Cell cell = headRow.createCell(headColumn++);
-							        cell.setCellValue(header);
-						        }
-						        excelWorkbook.write(byteStream);
-						        return Mono.just(byteStream.toByteArray());
-
-					        } catch (Exception e) {
-						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
-					        }
-
-				        } else if (type == FlatFileType.CSV) {
-
-					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
-					                CSVWriter csvWorkBook = new CSVWriter(outputStream);) {
-
-						        csvWorkBook.writeNext(headers.toArray(new String[0]));
-						        outputStream.flush();
-						        return Mono.just(byteStream.toByteArray());
-
-					        } catch (Exception e) {
-						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
-					        }
-
-				        } else if (type == FlatFileType.TSV) {
-
-					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
-					                CSVWriter tsvWorkBook = new CSVWriter(outputStream, '\t',
-					                        ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
-					                        ICSVWriter.DEFAULT_LINE_END);) {
-
-						        tsvWorkBook.writeNext(headers.toArray(new String[0]));
-						        outputStream.flush();
-						        return Mono.just(byteStream.toByteArray());
-
-					        } catch (Exception e) {
-						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
-					        }
-				        }
-				        return Mono.empty();
-			        });
-
-		} catch (Exception e) {
-			return Mono.empty();
-		}
-
-	}
-
-	private List<String> getHeaders(String prefix, Storage storage, Schema schema) {
-
-		if (schema.getRef() != null) {
-
-			schema = SchemaUtil.getSchemaFromRef(schema,
-			        this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
-			        schema.getRef());
-		}
-
-		if (schema.getType()
-		        .contains(SchemaType.OBJECT)) {
-
-			return schema.getProperties()
-			        .entrySet()
-			        .stream()
-			        .flatMap(e -> this
-			                .getHeaders(prefix == null ? e.getKey() : prefix + "." + e.getKey(), storage, e.getValue())
-			                .stream())
-			        .toList();
-		} else if (schema.getType()
-		        .contains(SchemaType.ARRAY)) {
-
-			ArraySchemaType aType = schema.getItems();
-
-			if (aType.getSingleSchema() != null) {
-
-				return IntStream.range(0, 2)
-				        .mapToObj(e -> prefix == null ? "[" + e + "]" : prefix + "[" + e + "]")
-				        .flatMap(e -> this.getHeaders(e, storage, aType.getSingleSchema())
-				                .stream())
-				        .toList();
-			} else {
-
-				List<String> list = new ArrayList<>();
-
-				for (int i = 0; i < aType.getTupleSchema()
-				        .size(); i++) {
-
-					String pre = prefix == null ? "[" + i + "]" : prefix + "[" + i + "]";
-
-					list.addAll(this.getHeaders(pre, storage, aType.getTupleSchema()
-					        .get(i)));
-				}
-
-				return list;
-			}
-		}
-
-		return List.of(prefix);
 	}
 
 	@Override

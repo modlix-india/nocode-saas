@@ -4,11 +4,8 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.model.DataObject;
@@ -23,11 +20,8 @@ public interface IAppDataService {
 
 	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id);
 
-	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Pageable page,
-	        Boolean count, AbstractCondition condition);
+	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Pageable page, Boolean count,
+	        AbstractCondition condition);
 
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
-
-	public Mono<byte[]> downloadTemplate(Connection conn, Storage storage, FlatFileType fileType, ServerHttpRequest request,
-	        ServerHttpResponse response);
 }
