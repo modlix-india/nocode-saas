@@ -25,7 +25,7 @@ public class IndexHTMLService {
 
 	private static final String[] META_FIELDS = new String[] { "charset", "name", "http-equiv", "content" };
 
-	private static final String CACHE_NAME_INDEX = "indexCache";
+	public static final String CACHE_NAME_INDEX = "indexCache";
 
 	@Autowired
 	private ApplicationService appService;
@@ -35,14 +35,10 @@ public class IndexHTMLService {
 
 	public Mono<ChecksumObject> getIndexHTML(String appCode, String clientCode) {
 
-		return cacheService.<ChecksumObject>get(CACHE_NAME_INDEX, appCode, "-", clientCode)
-		        .switchIfEmpty(Mono.defer(() ->
-
-				FlatMapUtil.flatMapMonoWithNull(
-
-				        () -> appService.read(appCode, appCode, clientCode),
-
-				        app -> this.indexFromApp(app, appCode, clientCode))));
+		return cacheService.cacheValueOrGet(CACHE_NAME_INDEX,
+		        () -> FlatMapUtil.flatMapMonoWithNull(() -> appService.read(appCode, appCode, clientCode),
+		                app -> this.indexFromApp(app, appCode, clientCode)),
+		        appCode, "-", clientCode);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -87,7 +83,6 @@ public class IndexHTMLService {
 		        .map(e -> (Map<String, Object>) e)
 		        .sorted(new MapWithOrderComparator())
 		        .map(e -> this.toTagString(tag, e, attributeList))
-		        .peek(System.err::println)
 		        .collect(Collectors.joining()));
 	}
 
