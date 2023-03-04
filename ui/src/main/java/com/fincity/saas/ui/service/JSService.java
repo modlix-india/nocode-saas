@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 @Service
 public class JSService {
 
-	private static final String CACHE_NAME_JS = "jsCache";
+	public static final String CACHE_NAME_JS = "jsCache";
 
 	private static final String CACHE_OBJECT_JS_KEY = "jsObject";
 
