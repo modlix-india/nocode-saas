@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
+import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.TokenDAO;
 import com.fincity.security.dto.TokenObject;
@@ -20,11 +21,9 @@ public class TokenService extends AbstractJOOQDataService<SecurityUserTokenRecor
 	@Autowired
 	private CacheService cacheService;
 
-	public static final String CACHE_NAME_TOKEN = "tokenCache";
-
 	public Mono<Integer> evictTokensOfUser(ULong id) {
 
-		return this.dao.getTokensOfId(id).flatMap(e -> cacheService.evict(CACHE_NAME_TOKEN, e)).collectList()
+		return this.dao.getTokensOfId(id).flatMap(e -> cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN, e)).collectList()
 				.map(e -> 1);
 	}
 
