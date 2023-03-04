@@ -8,6 +8,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
 
@@ -30,12 +31,33 @@ public class FeignAuthenticationService implements IAuthenticationService {
 	@Override
 	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, ServerHttpRequest request) {
 
-		return cacheService.cacheValueOrGet(CACHE_NAME_TOKEN, () -> this.getAuthenticationFromSecurity(isBasic, bearerToken, request), bearerToken);
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        () -> cacheService.<Authentication>get(CACHE_NAME_TOKEN, bearerToken),
+
+		        cToken ->
+				{
+
+			        if (cToken != null)
+				        return Mono.just(cToken);
+
+			        return this.getAuthenticationFromSecurity(isBasic, bearerToken, request)
+			                .flatMap(e ->
+							{
+
+				                if (!e.isAuthenticated())
+					                return Mono.just(e);
+
+				                return cacheService.put(CACHE_NAME_TOKEN, e, bearerToken);
+			                });
+		        }
+
+		);
 	}
 
 	private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken,
 	        ServerHttpRequest request) {
-		
+
 		if (feignAuthService == null)
 			return Mono.empty();
 
