@@ -15,8 +15,8 @@ files:
       url: jdbc:mysql://localhost:3306/files
   resources:
     location:
-      static: C:/fincity/resources/static
-      secured: C:/fincity/resources/secured
+      static: /Users/kirangrandhi/Downloads/files/static
+      secured: /Users/kirangrandhi/Downloads/files/secured
 
 ui:
   mongo:
@@ -35,12 +35,10 @@ core:
 spring:
   flyway:
     enabled: false
-  cache:
-    type: NONE
 
 redis:
   url: redis://kiran%40123@localhost:6379
-  codec: json
+  codec: object
   cache:
     prefix: cmn
 

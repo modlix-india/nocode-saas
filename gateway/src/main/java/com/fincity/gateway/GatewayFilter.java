@@ -71,6 +71,8 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		if (index != -1) {
 
 			codesPart = requestPath.substring(0, index);
+			int pageIndex = requestPath.indexOf("/page/");
+			if (pageIndex == -1 || pageIndex > index) codesPart = "";
 			modifiedPath = requestPath.substring(index);
 		} else {
 

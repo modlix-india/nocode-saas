@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 @Service
 public class ApplicationService extends AbstractOverridableDataService<Application, ApplicationRepository> {
 
+	private static final String PROPERTIES = "Properties : ";
 	@Autowired
 	private PageService pageService;
 
@@ -34,6 +35,27 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 		// this cyclic reference is need for picking shell page definition & the other
 		// page definitions in the page service from application properties.
 		this.pageService.setApplicationService(this);
+	}
+
+	@Override
+	public Mono<Application> update(Application entity) {
+
+		return super.update(entity).flatMap(
+		        e -> cacheService.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
+		                .flatMap(x -> cacheService.evict(this.getCacheName(), PROPERTIES, e.getName(), "-",
+		                        e.getAppCode(), "-", e.getClientCode()))
+		                .map(x -> e));
+	}
+
+	@Override
+	public Mono<Boolean> delete(String id) {
+
+		return this.read(id)
+		        .flatMap(e -> super.delete(id).flatMap(x -> cacheService
+		                .evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
+		                .flatMap(y -> cacheService.evict(this.getCacheName(), PROPERTIES, e.getName(), "-",
+		                        e.getAppCode(), "-", e.getClientCode()))
+		                .map(y -> x)));
 	}
 
 	@Override
@@ -66,7 +88,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> cacheService.makeKey("Properties : ", name, "-", appCode, "-", clientCode),
+		        () -> cacheService.makeKey(PROPERTIES, name, "-", appCode, "-", clientCode),
 
 		        key -> cacheService.get(this.getCacheName(), key)
 		                .map(this.pojoClass::cast),

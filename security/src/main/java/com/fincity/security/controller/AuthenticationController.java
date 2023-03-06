@@ -55,21 +55,26 @@ public class AuthenticationController {
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> {
-		        	
-		        	if (!ca.isAuthenticated()) {
-		        		
-		        		Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
-		        		
-		        		if (tuple.getT2().isBlank())
-		        			return Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
-		        		else
-		        			return Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
-		        	}
-		        	
-		        	return Mono.just(ca);
+		        ca ->
+				{
+
+			        if (ca.isAuthenticated())
+				        return Mono.just(ca);
+
+			        Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
+
+			        Mono<ContextAuthentication> errorMono;
+			        if (tuple.getT2()
+			                .isBlank())
+				        errorMono = Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
+			        else
+				        errorMono = Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+
+			        return this.service.revoke(request)
+			                .flatMap(e -> Mono.defer(() -> errorMono));
+
 		        },
-		        
+
 		        (ca, ca2) -> Mono.just(new VerificationResponse().setUser(ca.getUser())
 		                .setAccessToken(ca.getAccessToken())
 		                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),

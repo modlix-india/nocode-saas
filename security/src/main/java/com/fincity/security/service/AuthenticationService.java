@@ -16,7 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -79,7 +78,6 @@ public class AuthenticationService implements IAuthenticationService {
 	@Value("${jwt.token.default.expiry}")
 	private Integer defaultExpiryInMinutes;
 
-	@PreAuthorize("hasAuthority('Authorities.Logged_IN')")
 	public Mono<Integer> revoke(ServerHttpRequest request) {
 
 		String bearerToken = request.getHeaders()
@@ -116,10 +114,11 @@ public class AuthenticationService implements IAuthenticationService {
 		        .setValue(toPartToken(finToken)))
 		        .filter(e -> e.getToken()
 		                .equals(finToken))
-		        .take(1)
-		        .single()
 		        .map(TokenObject::getId)
-		        .flatMap(tokenService::delete);
+		        .collectList()
+		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
+		        .flatMap(tokenService::delete)
+		        .defaultIfEmpty(1);
 	}
 
 	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
