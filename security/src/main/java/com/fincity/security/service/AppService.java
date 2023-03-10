@@ -24,6 +24,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppFullInheritance;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import reactor.core.publisher.Mono;
@@ -45,6 +46,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
 	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
+	private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
+	private static final String CACHE_NAME_APP_FULL_INHERITANCE = "appFullInheritance";
 
 	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
@@ -75,7 +78,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		)
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)));
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
@@ -84,7 +89,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		return this.read(entity.getClientId())
 		        .flatMap(e -> super.update(entity))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity.getId())));
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity.getId())))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
@@ -93,7 +100,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		return this.read(key)
 		        .flatMap(e -> super.update(key, fields))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, key)));
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, key)))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_READ')")
@@ -114,7 +123,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		return this.read(id)
 		        .flatMap(e -> super.delete(id))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id)));
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id)))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
 	@Override
@@ -210,7 +221,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        }, (ca, cliAccess, changed) -> this.evict(appId, clientId)
 		                .map(e -> changed))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)));
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
 	public Mono<Boolean> evict(ULong appId, ULong clientId) {
@@ -252,7 +265,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                });
 		        })
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                SecurityMessageResourceService.UNABLE_TO_DELETE, APPLICATION_ACCESS, accessId)));
+		                SecurityMessageResourceService.UNABLE_TO_DELETE, APPLICATION_ACCESS, accessId)))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
 	public Mono<Boolean> updateClientAccess(ULong accessId, boolean writeAccess) {
@@ -279,12 +294,20 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                });
 		        })
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS, accessId)));
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS, accessId)))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
 	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
 
-		return this.dao.appInheritance(appCode, clientCode);
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_INHERITANCE,
+		        () -> this.dao.appInheritance(appCode, clientCode), appCode, ":", clientCode);
 	}
 
+	public Mono<AppFullInheritance> appFullInheritance(String appCode) {
+
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_FULL_INHERITANCE,
+		        () -> this.dao.appFullInheritance(appCode), appCode);
+	}
 }

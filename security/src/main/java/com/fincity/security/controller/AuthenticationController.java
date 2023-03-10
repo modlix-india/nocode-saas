@@ -15,13 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
-import com.fincity.saas.common.security.jwt.VerificationResponse;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.common.security.util.ServerHttpRequestUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.AuthenticationService;
+import com.fincity.security.service.ClientService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -32,6 +32,9 @@ public class AuthenticationController {
 
 	@Autowired
 	private AuthenticationService service;
+
+	@Autowired
+	private ClientService clientService;
 
 	@PostMapping("authenticate")
 	public Mono<ResponseEntity<AuthenticationResponse>> authenticate(@RequestBody AuthenticationRequest authRequest,
@@ -49,9 +52,9 @@ public class AuthenticationController {
 	}
 
 	@GetMapping(value = "verifyToken")
-	public Mono<ResponseEntity<VerificationResponse>> verifyToken(ServerHttpRequest request) {
+	public Mono<ResponseEntity<AuthenticationResponse>> verifyToken(ServerHttpRequest request) {
 
-		return FlatMapUtil.flatMapMonoLog(
+		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -75,11 +78,17 @@ public class AuthenticationController {
 
 		        },
 
-		        (ca, ca2) -> Mono.just(new VerificationResponse().setUser(ca.getUser())
+		        (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser()
+		                .getClientId()),
+
+		        (ca, ca2, client) -> Mono.just(new AuthenticationResponse().setUser(ca.getUser())
+		                .setClient(client)
+		                .setLoggedInClientCode(ca.getLoggedInFromClientCode())
+		                .setLoggedInClientId(ca.getLoggedInFromClientId())
 		                .setAccessToken(ca.getAccessToken())
 		                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
 
-		        (ca, ca2, vr) -> Mono.just(ResponseEntity.<VerificationResponse>ok(vr)));
+		        (ca, ca2, client, vr) -> Mono.just(ResponseEntity.<AuthenticationResponse>ok(vr)));
 
 	}
 
