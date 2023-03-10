@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 public class AbstractCacheController {
 
 	@Autowired
-	private CacheService service;
+	protected CacheService service;
 
 	@DeleteMapping("internal/cache/{cacheName}")
 	public Mono<ResponseEntity<Boolean>> resetCache(@PathVariable("cacheName") String cacheName) {

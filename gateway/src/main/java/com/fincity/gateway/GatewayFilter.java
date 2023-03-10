@@ -71,6 +71,9 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		if (index != -1) {
 
 			codesPart = requestPath.substring(0, index);
+			int pageIndex = requestPath.indexOf("/page/");
+			if (pageIndex == -1 || pageIndex > index)
+				codesPart = "";
 			modifiedPath = requestPath.substring(index);
 		} else {
 
@@ -124,8 +127,15 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		logger.debug("{} : clientCode - {}, appCode - {}", exchange.getRequest()
 		        .getPath(), clientCode, appCode);
 
-		req.header("clientCode", clientCode);
-		req.header("appCode", appCode);
+		HttpHeaders inHeaders = exchange.getRequest()
+		        .getHeaders();
+		if (StringUtil.safeIsBlank(inHeaders.getFirst("appCode"))) {
+			req.header("appCode", appCode);
+		}
+		if (StringUtil.safeIsBlank(inHeaders.getFirst("clientCode"))) {
+			req.header("clientCode", clientCode);
+		}
+
 		ServerHttpRequest modifiedRequest = req.path(modifiedRequestPath)
 		        .build();
 

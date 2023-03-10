@@ -1,5 +1,6 @@
 package com.fincity.saas.ui.model;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 
@@ -8,8 +9,10 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class ChecksumObject {
+public class ChecksumObject implements Serializable {
 
+	private static final long serialVersionUID = -3804873941419862809L;
+	
 	private String checkSum;
 	private String objectString;
 	

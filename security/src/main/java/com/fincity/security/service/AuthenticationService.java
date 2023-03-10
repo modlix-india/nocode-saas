@@ -1,7 +1,5 @@
 package com.fincity.security.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -16,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -79,7 +76,6 @@ public class AuthenticationService implements IAuthenticationService {
 	@Value("${jwt.token.default.expiry}")
 	private Integer defaultExpiryInMinutes;
 
-	@PreAuthorize("hasAuthority('Authorities.Logged_IN')")
 	public Mono<Integer> revoke(ServerHttpRequest request) {
 
 		String bearerToken = request.getHeaders()
@@ -116,21 +112,21 @@ public class AuthenticationService implements IAuthenticationService {
 		        .setValue(toPartToken(finToken)))
 		        .filter(e -> e.getToken()
 		                .equals(finToken))
-		        .take(1)
-		        .single()
 		        .map(TokenObject::getId)
-		        .flatMap(tokenService::delete);
+		        .collectList()
+		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
+		        .flatMap(tokenService::delete)
+		        .defaultIfEmpty(1);
 	}
 
 	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
 	        ServerHttpResponse response) {
 
-		List<String> clientCode = request.getHeaders()
-		        .get("clientCode");
+		String appCode = request.getHeaders()
+		        .getFirst("appCode");
 
-		Mono<Client> loggedInClient = (clientCode != null && !clientCode.isEmpty())
-		        ? this.clientService.getClientBy(clientCode.get(0))
-		        : this.clientService.getClientBy(request);
+		String clientCode = request.getHeaders()
+		        .getFirst("clientCode");
 
 		if (authRequest.getIdentifierType() == null) {
 			authRequest.setIdentifierType(StringUtil.safeIsBlank(authRequest.getUserName()) || authRequest.getUserName()
@@ -138,27 +134,29 @@ public class AuthenticationService implements IAuthenticationService {
 			                : AuthenticationIdentifierType.EMAIL_ID);
 		}
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMonoLog(
 
-		        () -> loggedInClient,
-
-		        linClient -> userService.findByClientIdsUserName(linClient.getId(), authRequest.getUserName(),
+		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), appCode,
 		                authRequest.getIdentifierType()),
+		        tup ->
+				{
+			        String linClientCode = tup.getT1()
+			                .getCode();
+			        return Mono
+			                .justOrEmpty(clientCode.equals("SYSTEM") || clientCode.equals(linClientCode) ? true : null);
+		        },
 
-		        // check user status whether active or inactive
+		        (tup, linCCheck) -> this.checkPassword(authRequest, tup.getT3()),
 
-		        (linClient, user) -> this.clientService.readInternal(user.getClientId()),
-
-		        // check client status whether active or inactive
-
-		        (linClient, user, client) -> this.checkPassword(authRequest, user),
-
-		        (linClient, user, client, passwordChecked) -> clientService.getClientPasswordPolicy(client.getId())
-		                .flatMap(policy -> this.checkFailedAttempts(user, policy))
+		        (tup, linCCheck, passwordChecked) -> this.clientService.getClientPasswordPolicy(tup.getT2()
+		                .getId())
+		                .flatMap(policy -> this.checkFailedAttempts(tup.getT3(), policy))
 		                .defaultIfEmpty(1),
 
-		        (linClient, user, client, passwordChecked, j) ->
+		        (tup, linCCheck, passwordChecked, j) ->
 				{
+
+			        User user = tup.getT3();
 
 			        userService.resetFailedAttempt(user.getId())
 			                .subscribe();
@@ -172,8 +170,9 @@ public class AuthenticationService implements IAuthenticationService {
 			        InetSocketAddress inetAddress = request.getRemoteAddress();
 			        final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
 
-			        return makeToken(authRequest, request, response, hostAddress, user, client, linClient);
-		        }).switchIfEmpty(Mono.defer(this::credentialError));
+			        return makeToken(authRequest, request, response, hostAddress, user, tup.getT2(), tup.getT1());
+		        })
+		        .switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
 	private Mono<AuthenticationResponse> makeToken(AuthenticationRequest authRequest, ServerHttpRequest request,
@@ -224,6 +223,10 @@ public class AuthenticationService implements IAuthenticationService {
 		        .setExpiresAt(token.getT2())
 		        .setIpAddress(setAddress))
 		        .map(t -> new AuthenticationResponse().setUser(u.toContextUser())
+		                .setClient(c)
+		                .setLoggedInClientCode(linClient.getCode())
+		                .setLoggedInClientId(linClient.getId()
+		                        .toBigInteger())
 		                .setAccessToken(token.getT1())
 		                .setAccessTokenExpiryAt(token.getT2()));
 	}
@@ -361,9 +364,11 @@ public class AuthenticationService implements IAuthenticationService {
 		List<String> clientCode = request.getHeaders()
 		        .get("clientCode");
 
-		Mono<Client> loggedInClient = (clientCode != null && !clientCode.isEmpty())
+		Mono<Client> loggedInClient = ((clientCode != null && !clientCode.isEmpty())
 		        ? this.clientService.getClientBy(clientCode.get(0))
-		        : this.clientService.getClientBy(request);
+		        : this.clientService.getClientBy(request))
+		        .switchIfEmpty(this.resourceService.throwMessage(HttpStatus.UNAUTHORIZED,
+		                SecurityMessageResourceService.UNKNOWN_CLIENT));
 
 		return loggedInClient.map(e -> (Authentication) new ContextAuthentication(
 		        new ContextUser().setId(BigInteger.ZERO)

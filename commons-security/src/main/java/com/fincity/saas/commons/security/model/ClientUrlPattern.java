@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.security.model;
 
+import java.io.Serializable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,7 +14,9 @@ import reactor.util.function.Tuples;
 
 @Data
 @RequiredArgsConstructor
-public class ClientUrlPattern {
+public class ClientUrlPattern implements Serializable{
+
+	private static final long serialVersionUID = -4611614942521606765L;
 
 	public static final Pattern URL_PATTERN = Pattern
 	        .compile("(http\\:\\/\\/|https\\:\\/\\/)?([^\\:]+)(\\:(\\d{0,5}))?");
