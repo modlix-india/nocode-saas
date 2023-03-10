@@ -2,6 +2,7 @@ package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.math.BigInteger;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -41,12 +42,14 @@ public class ClientService
 
 	public static final String CACHE_CLIENT_URL_LIST = "list";
 	public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
-	
+
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
 	private static final String CACHE_NAME_CLIENT_URI = "uri";
+	private static final String CACHE_NAME_CLIENT_INFO = "clientInfoById";
+	private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
 
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
@@ -111,7 +114,7 @@ public class ClientService
 
 		}, uriScheme, uriHost, ":", uriPort);
 	}
-	
+
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
 
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_URL, () -> this.dao.readClientPatterns()
@@ -190,13 +193,15 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Client> update(Client entity) {
-		return super.update(entity);
+		return super.update(entity).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, entity.getId())
+		        .map(x -> e));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Client> update(ULong key, Map<String, Object> fields) {
-		return super.update(key, fields);
+		return super.update(key, fields).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, e.getId())
+		        .map(x -> e));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
@@ -209,6 +214,7 @@ public class ClientService
 			        return e;
 		        })
 		        .flatMap(this::update)
+		        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id))
 		        .map(e -> 1);
 	}
 
@@ -252,6 +258,17 @@ public class ClientService
 			        return true;
 		        })
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
+	}
+
+	public Mono<Client> getClientInfoById(BigInteger id) {
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_INFO, () -> this.read(ULong.valueOf(id)), id);
+	}
+
+	public Mono<Client> getManagedClientOfClientById(ULong clientId) {
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_MANAGED_CLIENT_INFO,
+		        () -> this.dao.getManagingClientId(clientId)
+		                .flatMap(e -> this.getClientInfoById(e.toBigInteger())),
+		        clientId);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")

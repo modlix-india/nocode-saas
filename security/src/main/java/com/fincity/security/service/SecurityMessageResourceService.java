@@ -53,6 +53,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String DELETE_PERMISSION_ERROR = "delete_permission_error";
 	public static final String DELETE_PACKAGE_ERROR = "delete_package_error";
 	public static final String DELETE_ROLE_ERROR = "delete_role_error";
+	public static final String UNKNOWN_CLIENT = "unknown_client";
 
 	public SecurityMessageResourceService() {
 

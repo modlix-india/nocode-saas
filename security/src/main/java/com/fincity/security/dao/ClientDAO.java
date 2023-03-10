@@ -386,4 +386,13 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .toString(), e.value2(), e.value3(), e.value4()))
 		        .map(ClientUrlPattern::makeHostnPort);
 	}
+
+	public Mono<ULong> getManagingClientId(ULong clientId) {
+
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
+		        .from(SECURITY_CLIENT_MANAGE)
+		        .where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId))
+		        .limit(1))
+		        .map(Record1::value1);
+	}
 }
