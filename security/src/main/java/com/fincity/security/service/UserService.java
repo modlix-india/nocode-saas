@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -28,6 +29,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
@@ -39,6 +41,8 @@ import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
 @Service
 public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
@@ -69,11 +73,28 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	@Autowired
 	private TokenService tokenService;
 
-	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
+	public Mono<User> findByUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
 
 		return this.dao.getBy(clientId, userName, authenticationIdentifierType)
 		        .flatMap(this.dao::setPermissions);
+	}
+
+	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String appCode,
+	        AuthenticationIdentifierType authenticationIdentifierType) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType)
+		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0))),
+
+		        user -> this.clientService.getClientInfoById(user.getClientId()
+		                .toBigInteger()),
+
+		        (user, client) -> this.clientService.getManagedClientOfClientById(user.getClientId())
+		                .defaultIfEmpty(client),
+
+		        (user, client, mClient) -> Mono.just(Tuples.<Client, Client, User>of(mClient, client, user)));
 	}
 
 	public Mono<User> getUserForContext(ULong id) {
