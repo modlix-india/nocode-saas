@@ -7,6 +7,7 @@ import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import com.fincity.saas.commons.model.Query;
@@ -41,5 +42,12 @@ public class AbstractOverridableDataController<D extends AbstractOverridableDTO<
 		        : pageable);
 		return this.service.readPageFilterLRO(finPageable, request.getQueryParams())
 		        .map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/createForClient/{id}/{clientCode}")
+	public Mono<ResponseEntity<D>> createForClient(@PathVariable String id, @PathVariable String clientCode) {
+
+		return this.service.createForClient(id, clientCode)
+				.map(ResponseEntity::ok);
 	}
 }

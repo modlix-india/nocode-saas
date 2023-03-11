@@ -157,7 +157,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 			        if (!showShellPage.booleanValue() && props.get("forbiddenPage") != null)
 				        pageName = props.get("forbiddenPage");
 
-			        return this.pageService.read(pageName.toString(), object.getAppCode(), object.getClientCode());
+			        return this.pageService.read(pageName.toString(), object.getAppCode(), clientCode);
 
 		        },
 
