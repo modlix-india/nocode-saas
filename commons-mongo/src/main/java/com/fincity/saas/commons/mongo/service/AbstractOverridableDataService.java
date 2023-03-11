@@ -437,7 +437,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 			        String clientCode = tup.getT2()
 			                .isEmpty() ? null
 			                        : tup.getT2()
-			                                .get(tup.getT2().size() - 1);
+			                                .get(tup.getT2()
+			                                        .size() - 1);
 
 			        for (ListResultObject lro : list) {
 
@@ -626,5 +627,19 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 	protected String getCacheName() {
 
 		return this.getObjectName() + CACHE_NAME;
+	}
+
+	@SuppressWarnings("unchecked")
+	public Mono<D> createForClient(String id, String clientCode) {
+
+		return flatMapMono(
+
+		        () -> this.readInternal(id),
+
+		        e -> this.create((D) e.setBaseClientCode(e.getClientCode())
+		                .setClientCode(clientCode)
+		                .setId(null))
+
+		);
 	}
 }
