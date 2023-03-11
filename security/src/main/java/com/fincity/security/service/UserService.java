@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,11 +33,13 @@ import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Flux;
@@ -661,6 +664,23 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        return Mono.just(true);
 		        });
 
+	}
+
+	public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
+
+		String appCode = request.getHeaders()
+		        .getFirst("appCode");
+
+		return this.dao.getAllClientsBy(authRequest.getUserName(), appCode, authRequest.getIdentifierType())
+		        .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
+		        .flatMap(e -> this.clientService.getClientInfoById(e.getValue()
+		                .toBigInteger())
+		                .map(c -> Tuples.of(e.getKey(), c)))
+		        .collectList()
+		        .map(e -> e.stream()
+		                .map(x -> new UserClient(x.getT1(), x.getT2()))
+		                .sorted()
+		                .toList());
 	}
 
 }
