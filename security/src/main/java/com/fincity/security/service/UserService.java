@@ -84,11 +84,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType) {
+	        String clientCode, AuthenticationIdentifierType authenticationIdentifierType) {
 
 		return FlatMapUtil.flatMapMonoLog(
 
-		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType)
+		        () -> this.dao.getBy(userName, userId, appCode, clientCode, authenticationIdentifierType)
 		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0))),
 
 		        user -> this.clientService.getClientInfoById(user.getClientId()
@@ -671,7 +671,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		String appCode = request.getHeaders()
 		        .getFirst("appCode");
 
-		return this.dao.getAllClientsBy(authRequest.getUserName(), appCode, authRequest.getIdentifierType())
+		String clientCode = request.getHeaders()
+		        .getFirst("clientCode");
+
+		return this.dao.getAllClientsBy(authRequest.getUserName(), appCode, clientCode, authRequest.getIdentifierType())
 		        .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
 		        .flatMap(e -> this.clientService.getClientInfoById(e.getValue()
 		                .toBigInteger())
