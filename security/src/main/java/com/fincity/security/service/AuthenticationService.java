@@ -137,7 +137,7 @@ public class AuthenticationService implements IAuthenticationService {
 		return FlatMapUtil.flatMapMonoLog(
 
 		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), appCode,
-		                authRequest.getIdentifierType()),
+		                clientCode, authRequest.getIdentifierType()),
 		        tup ->
 				{
 			        String linClientCode = tup.getT1()

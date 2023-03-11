@@ -16,14 +16,18 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
+import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.Record3;
+import org.jooq.SelectConditionStep;
+import org.jooq.SelectOnConditionStep;
 import org.jooq.SelectOrderByStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
@@ -53,6 +57,7 @@ import reactor.core.publisher.Mono;
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
 
+	private static final String SYSTEM = "SYSTEM";
 	private static final String CLIENT_ID = "CLIENT_ID";
 	private static final String APP_CODE = "APP_CODE";
 	@Autowired
@@ -140,7 +145,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(r -> (r.value3() == null ? ""
 		                : r.value3()
 		                        .toUpperCase() + ".")
-		                + ("SYSTEM".equals(r.value1()) ? r.value2() : r.value1() + "_" + r.value2()))
+		                + (SYSTEM.equals(r.value1()) ? r.value2() : r.value1() + "_" + r.value2()))
 		        .map(r -> "Authorities." + r.replace(' ', '_'))
 		        .collectList()
 		        .map(e ->
@@ -425,8 +430,21 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(Objects::nonNull);
 	}
 
-	public Mono<List<User>> getBy(String userName, ULong userId, String appCode,
+	public Mono<List<User>> getBy(String userName, ULong userId, String appCode, String clientCode,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
+
+		var query = getAllUsersPerAppQuery(userName, userId, appCode, clientCode, authenticationIdentifierType,
+		        SECURITY_USER.fields());
+
+		var limitQuery = query.limit(2);
+
+		return Flux.from(limitQuery)
+		        .map(e -> e.into(User.class))
+		        .collectList();
+	}
+
+	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String appCode,
+	        String clientCode, AuthenticationIdentifierType authenticationIdentifierType, Field<?>... fields) {
 
 		TableField<SecurityUserRecord, String> field = SECURITY_USER.USER_NAME;
 		if (authenticationIdentifierType == AuthenticationIdentifierType.EMAIL_ID) {
@@ -440,9 +458,13 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		var appC = SECURITY_APP.as("c");
 		var appD = SECURITY_APP.as("d");
 
+		var aCli = SECURITY_CLIENT.as("ac");
+		var bCli = SECURITY_CLIENT.as("bc");
+
 		List<Condition> conditions = new ArrayList<>();
 
 		conditions.add(field.eq(userName));
+		conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
 		conditions.add(DSL.or(
 
 		        appA.field(APP_CODE, String.class)
@@ -454,16 +476,21 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        appD.field(APP_CODE, String.class)
 		                .eq(appCode)));
 
+		if (!clientCode.equals(SYSTEM))
+			conditions.add(DSL.or(
+
+			        aCli.field("CODE", String.class)
+			                .eq(clientCode),
+			        bCli.field("CODE", String.class)
+			                .eq(clientCode)));
+
 		if (userId != null)
 			conditions.add(SECURITY_USER.ID.eq(userId));
 
 		var accAA = SECURITY_APP_ACCESS.as("aa");
 		var accBB = SECURITY_APP_ACCESS.as("bb");
-//		
-//		left join security.security_app_access bb on bb.client_id = m.manage_client_id
-//			    left join security.security_app d on d.id = bb.app_id 
 
-		var query = this.dslContext.select(SECURITY_USER.fields())
+		SelectOnConditionStep<Record> query = this.dslContext.select(fields)
 		        .from(SECURITY_USER)
 
 		        .leftJoin(appA)
@@ -491,14 +518,29 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		        .leftJoin(appD)
 		        .on(appD.field("ID", ULong.class)
-		                .eq(accBB.field("APP_ID", ULong.class)))
+		                .eq(accBB.field("APP_ID", ULong.class)));
 
-		        .where(conditions)
-		        .limit(2);
+		if (!clientCode.equals(SYSTEM))
+			query = query
 
-		return Flux.from(query)
-		        .map(e -> e.into(User.class))
-		        .collectList();
+			        .leftJoin(aCli)
+			        .on(aCli.field("ID", ULong.class)
+			                .eq(SECURITY_USER.CLIENT_ID))
+
+			        .leftJoin(bCli)
+			        .on(bCli.field("ID", ULong.class)
+			                .eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID));
+
+		return query.where(conditions);
+	}
+
+	public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String appCode, String clientCode,
+	        AuthenticationIdentifierType identifierType) {
+
+		return Flux
+		        .from(this.getAllUsersPerAppQuery(userName, null, appCode, clientCode, identifierType, SECURITY_USER.ID,
+		                SECURITY_USER.CLIENT_ID))
+		        .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
 
 }
