@@ -443,6 +443,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		List<Condition> conditions = new ArrayList<>();
 
 		conditions.add(field.eq(userName));
+		conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
 		conditions.add(DSL.or(
 
 		        appA.field(APP_CODE, String.class)
@@ -459,9 +460,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		var accAA = SECURITY_APP_ACCESS.as("aa");
 		var accBB = SECURITY_APP_ACCESS.as("bb");
-//		
-//		left join security.security_app_access bb on bb.client_id = m.manage_client_id
-//			    left join security.security_app d on d.id = bb.app_id 
 
 		var query = this.dslContext.select(SECURITY_USER.fields())
 		        .from(SECURITY_USER)
@@ -495,7 +493,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		        .where(conditions)
 		        .limit(2);
-
+		
 		return Flux.from(query)
 		        .map(e -> e.into(User.class))
 		        .collectList();

@@ -83,7 +83,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String appCode,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoLog(
 
 		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType)
 		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0))),
