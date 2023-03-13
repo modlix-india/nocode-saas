@@ -14,11 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -28,17 +30,22 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
 @Service
 public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
@@ -69,11 +76,28 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	@Autowired
 	private TokenService tokenService;
 
-	public Mono<User> findByClientIdsUserName(ULong clientId, String userName,
+	public Mono<User> findByUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
 
 		return this.dao.getBy(clientId, userName, authenticationIdentifierType)
 		        .flatMap(this.dao::setPermissions);
+	}
+
+	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String appCode,
+	        String clientCode, AuthenticationIdentifierType authenticationIdentifierType) {
+
+		return FlatMapUtil.flatMapMonoLog(
+
+		        () -> this.dao.getBy(userName, userId, appCode, clientCode, authenticationIdentifierType)
+		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0))),
+
+		        user -> this.clientService.getClientInfoById(user.getClientId()
+		                .toBigInteger()),
+
+		        (user, client) -> this.clientService.getManagedClientOfClientById(user.getClientId())
+		                .defaultIfEmpty(client),
+
+		        (user, client, mClient) -> Mono.just(Tuples.<Client, Client, User>of(mClient, client, user)));
 	}
 
 	public Mono<User> getUserForContext(ULong id) {
@@ -640,6 +664,26 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        return Mono.just(true);
 		        });
 
+	}
+
+	public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
+
+		String appCode = request.getHeaders()
+		        .getFirst("appCode");
+
+		String clientCode = request.getHeaders()
+		        .getFirst("clientCode");
+
+		return this.dao.getAllClientsBy(authRequest.getUserName(), appCode, clientCode, authRequest.getIdentifierType())
+		        .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
+		        .flatMap(e -> this.clientService.getClientInfoById(e.getValue()
+		                .toBigInteger())
+		                .map(c -> Tuples.of(e.getKey(), c)))
+		        .collectList()
+		        .map(e -> e.stream()
+		                .map(x -> new UserClient(x.getT1(), x.getT2()))
+		                .sorted()
+		                .toList());
 	}
 
 }

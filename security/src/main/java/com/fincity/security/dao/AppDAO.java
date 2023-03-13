@@ -27,6 +27,7 @@ import com.fincity.security.dto.App;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -171,5 +172,29 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .limit(1))
 		        .map(Record1::value1)
 		        .map(code -> clientCode.equals(code) ? List.of(code) : List.of(code, clientCode));
+	}
+
+	public Flux<ULong> getClientIdsWithWriteAccess(String appCode) {
+
+		return Flux.from(this.dslContext.select(SECURITY_APP.CLIENT_ID)
+		        .from(SECURITY_APP)
+		        .where(SECURITY_APP.APP_CODE.eq(appCode))
+		        .union(this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID)
+		                .from(SECURITY_APP_ACCESS)
+		                .leftJoin(SECURITY_APP)
+		                .on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
+		                .where(SECURITY_APP.APP_CODE.eq(appCode)
+		                        .and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1))))))
+		        .map(Record1::value1)
+		        .distinct()
+		        .sort();
+	}
+
+	public Mono<App> getByAppCode(String appCode) {
+
+		return Mono.from(this.dslContext.selectFrom(SECURITY_APP)
+		        .where(SECURITY_APP.APP_CODE.eq(appCode))
+		        .limit(1))
+		        .map(e -> e.into(App.class));
 	}
 }

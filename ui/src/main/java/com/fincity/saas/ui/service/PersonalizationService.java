@@ -90,7 +90,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 		                .map(ContextUser::getId)
 		                .map(Object::toString),
 
-		        id -> id == null ? Mono.empty() : this.repo.findOneByNameAndAppCodeAndCreatedBy(appName, name, id),
+		        id -> id == null ? Mono.empty() : this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id),
 
 		        (id, person) ->
 				{
@@ -124,7 +124,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 		                .map(Object::toString),
 
 		        id -> id == null ? Mono.empty()
-		                : this.repo.findOneByNameAndAppCodeAndCreatedBy(appName, name, id)
+		                : this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id)
 		                        .map(Personalization::getPersonalization)
 
 		).defaultIfEmpty(Map.of());
@@ -139,7 +139,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 		                .map(Object::toString),
 
 		        id -> id == null ? Mono.empty()
-		                : this.repo.deleteByNameAndAppCodeAndCreatedBy(appName, name, id)
+		                : this.repo.deleteByNameAndAppCodeAndCreatedBy(name, appName, id)
 		                        .map(e -> e != 0l)
 
 		).defaultIfEmpty(Boolean.FALSE);

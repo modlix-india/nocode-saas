@@ -41,7 +41,8 @@ public class JWTTokenFilter implements WebFilter {
 		        .flatMap(ca ->
 				{
 
-			        if (cc != null && ca.isAuthenticated() && !cc.equals(((ContextAuthentication) ca).getLoggedInFromClientCode()))
+			        if (cc != null && !"SYSTEM".equals(cc) && ca.isAuthenticated()
+			                && !cc.equals(((ContextAuthentication) ca).getLoggedInFromClientCode()))
 				        return Mono.error(new AuthenticationException("Trying to access with a cross site token."));
 
 			        return chain.filter(exchange)
@@ -50,5 +51,4 @@ public class JWTTokenFilter implements WebFilter {
 		        });
 	}
 
-	
 }
