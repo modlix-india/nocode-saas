@@ -12,9 +12,9 @@ class JsonUnflattenerTest {
 
     @Test
     void test() {
-        Map<String, String> flatList = Map.of("professionalDetails.address.building_name", "sri",
-                "professionalDetails.address.pincode", "533003", "professionalDetails.address.city", "bnglr",
-                "basicDetails.phone", "1234",
+        Map<String, Object> flatList = Map.of("professionalDetails.address.building_name", "sri",
+                "professionalDetails.address.pincode", 533003, "professionalDetails.address.city", "bnglr",
+                "basicDetails.phone", 1234.1,
                 "userType", "ACTIVE", "parentsName[0].firstName", "kiran", "parentsName[1].firstName", "kumar",
                 "parentsName[0].a[0].b", "bvalue", "parentsName[0].a[1].b", "cValue");
 

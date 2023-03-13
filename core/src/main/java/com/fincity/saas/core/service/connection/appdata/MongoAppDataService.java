@@ -1,6 +1,11 @@
 package com.fincity.saas.core.service.connection.appdata;
 
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.*;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.BETWEEN;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IN;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_FALSE;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_NULL;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_TRUE;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,14 +34,12 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.kirun.engine.HybridRepository;
 import com.fincity.nocode.kirun.engine.json.schema.validator.SchemaValidator;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.nocode.reactor.util.TriFunction;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
@@ -325,6 +328,69 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		                .countDocuments(bsonCondition)) : Mono.just(page.getOffset() + list.size()),
 
 		        (bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)));
+
+	}
+
+	@Override
+	public Mono<Map<String, Object>> bulkCreate(Connection conn, Storage storage, JsonObject job) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> storageService.getSchema(storage),
+
+		        (ca, schema) -> Mono.fromCallable(() ->
+				{
+
+			        return (JsonObject) SchemaValidator.validate(null, schema,
+			                new HybridRepository<>(new CoreSchemaRepository(),
+			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+			                job);
+		        })
+		                .subscribeOn(Schedulers.boundedElastic()),
+
+		        (ca, schema, je) -> Mono.from(this.getCollection(conn, storage)
+		                .insertOne(BJsonUtil.from(je))),
+
+		        (ca, schema, je, result) -> Mono.from(this.getCollection(conn, storage)
+		                .find(Filters.eq(ID, result.getInsertedId()))
+		                .first()),
+
+		        (ca, schema, je, result, doc) ->
+				{
+
+			        if (!storage.getIsAudited()
+			                .booleanValue()
+			                && !storage.getIsVersioned()
+			                        .booleanValue())
+				        return Mono.empty();
+
+			        Document versionDocument = new Document();
+			        versionDocument.append(OBJECTID, result.getInsertedId());
+//				        versionDocument.append(MESSAGE, dataObject.getMessage());
+			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
+			        versionDocument.append(OPERATION, "CREATE");
+			        if (ca != null && ca.getUser() != null)
+				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
+				                .getId()
+				                .longValue()));
+//				        if (storage.getIsVersioned()
+//				                .booleanValue())
+//					        versionDocument.append("object", new Document(jsonList.get(0)));
+
+			        return Mono.from(this.getVersionCollection(conn, storage)
+			                .insertOne(versionDocument));
+		        }, (ca, scheme, je, result, doc, versionResult) -> {
+			        doc.remove(ID);
+			        doc.append(ID, result.getInsertedId()
+			                .asObjectId()
+			                .getValue()
+			                .toHexString());
+			        return Mono.just(doc);
+		        })
+
+		;
 
 	}
 

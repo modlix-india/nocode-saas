@@ -1,9 +1,5 @@
 package com.fincity.saas.core.controller.connection.appdata;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,6 +12,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.LinkedMultiValueMap;
@@ -32,16 +29,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
-import com.google.common.io.Files;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -164,28 +158,13 @@ public class AppDataController {
 		                .body(bytes));
 	}
 
-	@PostMapping(value = "template/{storage}")
+	@PostMapping(value = "template/{storage}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<Boolean>> uploadTemplateData(
 	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
 	        @RequestHeader String clientCode, @RequestParam(value = "type") FlatFileType fileType,
-	        @RequestPart(value = "file") MultipartFile file, ServerHttpRequest request, ServerHttpResponse response) {
+	        @RequestPart(value = "file") Mono<FilePart> file) {
 
-//		request.getHeaders()
-//		        .setContentType(fileType.equals(FlatFileType.XLSX) ? MediaType.valueOf(fileType.getMimeType())
-//		                : MediaType.APPLICATION_JSON);
-
-		try {
-			byte[] bytes = file.getBytes();
-			Path path = Paths.get("/Users/surendhar.s/files_test/uploads");
-			Files.write(bytes, path.toFile());
-		} catch (Exception e) {
-
-			System.err.println("error while reading");
-		}
-
-		Flux<MultipartFile> pf = null;
-
-		return this.service.uploadTemplate(appCode, clientCode, storageName, fileType, pf, request, response)
+		return file.flatMap(f -> this.service.uploadTemplate(appCode, clientCode, storageName, fileType, f))
 		        .map(ResponseEntity::ok);
 	}
 }

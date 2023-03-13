@@ -22,11 +22,11 @@ public class JsonUnflattener {
 
     }
 
-    public static JsonObject unflatten(Map<String, String> flatList) {
+    public static JsonObject unflatten(Map<String, Object> flatList) {
 
         JsonObject job = new JsonObject();
 
-        for (Entry<String, String> entry : flatList.entrySet()) {
+        for (Entry<String, Object> entry : flatList.entrySet()) {
 
             String path = entry.getKey();
             String[] parts = path.split("\\.");
@@ -97,14 +97,27 @@ public class JsonUnflattener {
         return job;
     }
 
-    private static void placeValue(String part, JsonElement pointer, String value) {
+    private static void placeValue(String part, JsonElement pointer, Object value) {
 
         if (part.indexOf('[') == -1) {
 
             if (!pointer.isJsonObject())
                 throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, OBJECT_NOT_FOUND);
 
-            pointer.getAsJsonObject().addProperty(part, value);
+            if (value instanceof Integer integer)
+                pointer.getAsJsonObject().addProperty(part, integer);
+
+            else if (value instanceof Long lng)
+                pointer.getAsJsonObject().addProperty(part, lng);
+
+            else if (value instanceof Double dble)
+                pointer.getAsJsonObject().addProperty(part, dble);
+
+            else if (value instanceof Boolean bool)
+                pointer.getAsJsonObject().addProperty(part, bool);
+            else
+                pointer.getAsJsonObject().addProperty(part, value.toString());
+
         } else {
 
             String[] subParts = part.split("\\[");
@@ -143,7 +156,22 @@ public class JsonUnflattener {
                     miniArray.add(JsonNull.INSTANCE);
             }
 
-            miniArray.set(index, new JsonPrimitive(value));
+            if (value instanceof Integer integer)
+                miniArray.set(index, new JsonPrimitive(integer));
+
+            else if (value instanceof Long lng)
+
+                miniArray.set(index, new JsonPrimitive(lng));
+
+            else if (value instanceof Double dble)
+                miniArray.set(index, new JsonPrimitive(dble));
+
+            else if (value instanceof Boolean bool)
+                miniArray.set(index, new JsonPrimitive(bool));
+
+            else
+                miniArray.set(index, new JsonPrimitive(value.toString()));
+
         }
     }
 }
