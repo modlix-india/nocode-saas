@@ -69,9 +69,13 @@ import reactor.core.scheduler.Schedulers;
 @Service
 public class MongoAppDataService extends RedisPubSubAdapter<String, String> implements IAppDataService {
 
+	private static final String OBJECT = "object";
+
 	private static final String ID = "_id";
 
 	private static final String CREATED_AT = "createdAt";
+
+	private static final String CREATED_BY = "createdBy";
 
 	private static final String OBJECTID = "objectId";
 
@@ -156,12 +160,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
 			        versionDocument.append(OPERATION, "CREATE");
 			        if (ca != null && ca.getUser() != null)
-				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
+				        versionDocument.append(CREATED_BY, new BsonInt64(ca.getUser()
 				                .getId()
 				                .longValue()));
 			        if (storage.getIsVersioned()
 			                .booleanValue())
-				        versionDocument.append("object", new Document(dataObject.getData()));
+				        versionDocument.append(OBJECT, new Document(dataObject.getData()));
 
 			        return Mono.from(this.getVersionCollection(conn, storage)
 			                .insertOne(versionDocument));
@@ -252,13 +256,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
 			        versionDocument.append(OPERATION, "UPDATE");
 			        if (ca != null && ca.getUser() != null)
-				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
+				        versionDocument.append(CREATED_BY, new BsonInt64(ca.getUser()
 				                .getId()
 				                .longValue()));
 			        doc.remove(ID); // removing id from the document
 			        if (storage.getIsVersioned()
 			                .booleanValue())
-				        versionDocument.append("object", new Document(doc));
+				        versionDocument.append(OBJECT, new Document(doc));
 
 			        return Mono.from(this.getVersionCollection(conn, storage)
 			                .insertOne(versionDocument));
@@ -331,68 +335,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	}
 
-	@Override
-	public Mono<Map<String, Object>> bulkCreate(Connection conn, Storage storage, JsonObject job) {
-
-		return FlatMapUtil.flatMapMonoWithNull(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> storageService.getSchema(storage),
-
-		        (ca, schema) -> Mono.fromCallable(() ->
-				{
-
-			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                new HybridRepository<>(new CoreSchemaRepository(),
-			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
-			                job);
-		        })
-		                .subscribeOn(Schedulers.boundedElastic()),
-
-		        (ca, schema, je) -> Mono.from(this.getCollection(conn, storage)
-		                .insertOne(BJsonUtil.from(je))),
-
-		        (ca, schema, je, result) -> Mono.from(this.getCollection(conn, storage)
-		                .find(Filters.eq(ID, result.getInsertedId()))
-		                .first()),
-
-		        (ca, schema, je, result, doc) ->
-				{
-
-			        if (!storage.getIsAudited()
-			                .booleanValue()
-			                && !storage.getIsVersioned()
-			                        .booleanValue())
-				        return Mono.empty();
-
-			        Document versionDocument = new Document();
-			        versionDocument.append(OBJECTID, result.getInsertedId());
-//				        versionDocument.append(MESSAGE, dataObject.getMessage());
-			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
-			        versionDocument.append(OPERATION, "CREATE");
-			        if (ca != null && ca.getUser() != null)
-				        versionDocument.append("createdBy", new BsonInt64(ca.getUser()
-				                .getId()
-				                .longValue()));
-//				        if (storage.getIsVersioned()
-//				                .booleanValue())
-//					        versionDocument.append("object", new Document(jsonList.get(0)));
-
-			        return Mono.from(this.getVersionCollection(conn, storage)
-			                .insertOne(versionDocument));
-		        }, (ca, scheme, je, result, doc, versionResult) -> {
-			        doc.remove(ID);
-			        doc.append(ID, result.getInsertedId()
-			                .asObjectId()
-			                .getValue()
-			                .toHexString());
-			        return Mono.just(doc);
-		        })
-
-		;
-
-	}
+	
 
 	private Bson sort(Sort sort) {
 		if (sort == null)

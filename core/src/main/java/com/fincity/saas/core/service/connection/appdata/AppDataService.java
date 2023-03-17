@@ -8,12 +8,13 @@ import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -22,9 +23,10 @@ import java.util.stream.IntStream;
 import javax.annotation.PostConstruct;
 
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Row.MissingCellPolicy;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -36,8 +38,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -60,7 +60,9 @@ import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
-import com.google.gson.JsonObject;
+
+import com.google.gson.Gson;
+import com.ibm.icu.text.SimpleDateFormat;
 import com.monitorjbl.xlsx.StreamingReader;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
@@ -96,11 +98,7 @@ public class AppDataService {
 
 	private static final String FLATTEN_KEY = "flattened ";
 
-	private static final String NUMBER_REGEX = "(\\d)+$|((\\d)+[.]\\d+)+$";
-
-	private static final String TRUE_REGEX = "^([Tt][Rr][Uu][Ee])$";
-
-	private static final String FALSE_REGEX = "^([Ff][Aa][Ll][Ss][Ee])$";
+	private static Map<String, Set<SchemaType>> flattenedSchemaType = new TreeMap<>();
 
 	@PostConstruct
 	public void init() {
@@ -188,8 +186,8 @@ public class AppDataService {
 		                CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
 	}
 
-	public Mono<byte[]> downloadTemplate(String appCode, String clientCode, String storageName, FlatFileType fileType,
-	        ServerHttpRequest request, ServerHttpResponse response) {
+	public Mono<byte[]> downloadTemplate(String appCode, String clientCode, String storageName, FlatFileType fileType) {
+
 		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
@@ -217,30 +215,13 @@ public class AppDataService {
 
 		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
 
-		        (conn, dataService, storage) -> this.uploadTemplate(storage, fileType, file),
+		        (conn, dataService, storage) -> this
+		                .genericOperation(storage,
+		                        (ca, hasAccess) -> uploadTemplate(storage, fileType, file, dataService),
+		                        Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
+		                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
+		                        CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR))));
 
-		        (conn, dataService, storage, jsonObjectList) ->
-				{
-			        if (jsonObjectList.isEmpty())
-				        return Mono.just(false);
-
-			        return Flux.fromIterable(jsonObjectList)
-			                .flatMap(job -> dataService.bulkCreate(conn, storage, job))
-			                .collectList()
-			                .map(e -> e.size())
-			                .map(e -> true)
-			                .defaultIfEmpty(false);
-
-		        }
-
-		);
-
-	}
-
-	// upload template method schema implement here .
-
-	private Mono<List<JsonObject>> uploadTemplate(Storage storage, FlatFileType fileType, FilePart mpFile) {
-		return uploadTemplateWithoutAuth(storage, fileType, mpFile);
 	}
 
 	private <T> Mono<T> genericOperation(Storage storage, BiFunction<ContextAuthentication, Boolean, Mono<T>> bifun,
@@ -262,7 +243,7 @@ public class AppDataService {
 		                .defer(() -> this.msgService.throwMessage(HttpStatus.FORBIDDEN, msgString, storage.getName())));
 	}
 
-	private Mono<byte[]> downloadTemplate(Storage storage, FlatFileType type) {
+	private Mono<byte[]> downloadTemplate(Storage storage, FlatFileType type) { // NOSONAR
 
 		try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();) {
 
@@ -383,41 +364,60 @@ public class AppDataService {
 			}
 		}
 
+		flattenedSchemaType.put(prefix, schema.getType()
+		        .getAllowedSchemaTypes());
+
 		return List.of(prefix);
 	}
 
-	public Mono<List<JsonObject>> uploadTemplateWithoutAuth(Storage storage, FlatFileType fileType, FilePart filePart) {
-
+	private Mono<Boolean> uploadTemplate(Storage storage, FlatFileType fileType, FilePart filePart,
+	        IAppDataService dataService) {
 		return FlatMapUtil.flatMapMonoLog(
 
 		        () -> storageService.getSchema(storage),
 
-		        storageSchema ->
+		        storageSchema -> Mono.fromCallable(() -> this.getHeaders(null, storage, storageSchema))
+		                .subscribeOn(Schedulers.boundedElastic()),
+
+		        (storageSchema, headers) ->
 				{
 
 			        if (fileType.equals(FlatFileType.XLSX)) {
 
-				        return this.readExcel(filePart)
+				        return this.readExcel(filePart, flattenedSchemaType, fileType.toString())
 				                .subscribeOn(Schedulers.boundedElastic());
 			        } else if (fileType.equals(FlatFileType.CSV)) {
 
-				        return this.readCsv(filePart)
+				        return this.readCsvOrTsv(filePart, flattenedSchemaType, fileType.toString())
 				                .subscribeOn(Schedulers.boundedElastic());
 
 			        } else if (fileType.equals(FlatFileType.TSV)) {
 
-				        return this.readTsv(filePart)
+				        return this.readCsvOrTsv(filePart, flattenedSchemaType, fileType.toString())
 				                .subscribeOn(Schedulers.boundedElastic());
 			        }
 			        return Mono.empty();
 
-		        }
+		        },
 
-		);
+		        (storageSchema, headers, dataObjectList) ->
+				{
+			        if (dataObjectList.isEmpty())
+				        return Mono.just(false);
 
+			        return Flux.fromIterable(dataObjectList)
+			                .flatMap(dataObject -> dataService.create(null, storage, dataObject)
+			                        .onErrorResume(err -> Mono.empty()))
+			                .collectList()
+			                .map(e -> !e.isEmpty())
+			                .defaultIfEmpty(false);
+		        })
+		        .switchIfEmpty(Mono.defer(() -> msgService.throwMessage(HttpStatus.BAD_REQUEST,
+		                CoreMessageResourceService.CANNOT_READ_FILE, fileType)));
 	}
 
 	private InputStream getInputStreamFromFluxDataBuffer(Flux<DataBuffer> data) throws IOException {
+
 		PipedOutputStream osPipe = new PipedOutputStream();
 		PipedInputStream isPipe = new PipedInputStream(osPipe);
 
@@ -433,90 +433,105 @@ public class AppDataService {
 			        }
 		        })
 		        .subscribe(DataBufferUtils.releaseConsumer());
-
 		return isPipe;
+
 	}
 
-	private Mono<List<JsonObject>> readExcel(FilePart filePart) {
+	private List<DataObject> convertToJsonObject(Map<String, Map<String, String>> unflattenRecords,
+	        Map<String, Set<SchemaType>> flattenedSchemaType, String fileType) {
+
+		Gson gson = new Gson();
+
+		return unflattenRecords.keySet()
+		        .stream()
+		        .map(recordKey ->
+				{
+			        try {
+				        return Optional
+				                .of(JsonUnflattener.unflatten(unflattenRecords.get(recordKey), flattenedSchemaType));
+			        } catch (Exception internalExpection) {
+				        return Optional.empty();
+			        }
+
+		        })
+		        .filter(Optional::isPresent)
+		        .map(recordObtained ->
+				{
+			        Map<String, Object> obtainedMap = gson.fromJson(gson.toJsonTree(recordObtained.get()), Map.class);
+			        DataObject dataObject = new DataObject();
+			        dataObject.setMessage(CoreMessageResourceService.BULK_UPLOAD_MESSAGE + fileType);
+			        dataObject.setData(obtainedMap);
+			        return dataObject;
+		        })
+		        .toList();
+
+	}
+
+	private Mono<List<DataObject>> readExcel(FilePart filePart, Map<String, Set<SchemaType>> flattenedSchemaType,
+	        String fileType) { 
 
 		try (Workbook excelWorkbook = StreamingReader.builder()
 		        .rowCacheSize(100)
 		        .bufferSize(4096)
 		        .open(getInputStreamFromFluxDataBuffer(filePart.content()));) {
 
-			List<Object> receivedHeaders = new ArrayList<>();
+			List<String> receivedHeaders = new ArrayList<>();
 
-			List<List<Object>> excelRecords = new ArrayList<>();
+			List<List<String>> excelRecords = new ArrayList<>();
 
 			for (Sheet sheet : excelWorkbook) {
 				for (Row r : sheet) {
-					List<Object> excelRecord = new ArrayList<>();
-					for (Cell c : r) {
-						switch (c.getCellType()) {
-						case BOOLEAN:
-							excelRecord.add(c.getBooleanCellValue());
-							break;
+					List<String> excelRecord = new ArrayList<>();
+					for (int c = 0; c < r.getLastCellNum(); c++) {
 
-						case NUMERIC: {
+						Cell cell = r.getCell(c, MissingCellPolicy.RETURN_BLANK_AS_NULL);
 
-							if (DateUtil.isCellDateFormatted(c)) {
+						if (cell != null) {
+							if (cell.getCellType()
+							        .equals(CellType.NUMERIC) && DateUtil.isCellDateFormatted(cell)) {
+
 								SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-
-								excelRecord.add(sdf.format(c.getDateCellValue()));
-							} else {
-								excelRecord.add(c.getNumericCellValue());
-							}
-							break;
-						}
-
-						case STRING:
-							excelRecord.add(c.getStringCellValue());
-							break;
-
-						default:
-
-							DataFormatter dataFormatter = new DataFormatter();
-							excelRecord.add(dataFormatter.formatCellValue(c));
-
-						}
-
+								excelRecord.add(sdf.format(cell.getDateCellValue()));
+							} else
+								excelRecord.add(cell.getStringCellValue());
+						} else
+							excelRecord.add("");
 					}
 					excelRecords.add(excelRecord);
+
 				}
 			}
 
 			receivedHeaders.addAll(excelRecords.get(0));
+			Map<String, Map<String, String>> excelMapRecords = new HashMap<>();
 
-			Map<String, Map<String, Object>> excelMapRecords = new TreeMap<>();
-			for (int i = 1; i < excelRecords.size() - 1; i++) {
-				Map<String, Object> rowMap = new HashMap<>();
-				List<Object> excelRecord = excelRecords.get(i);
+			for (int i = 1; i < excelRecords.size(); i++) {
+				Map<String, String> rowMap = new HashMap<>();
+				List<String> excelRecord = excelRecords.get(i);
 
-				for (int j = 0; j < excelRecord.size() - 1; j++) {
-					rowMap.put((String) receivedHeaders.get(j), excelRecord.get(j));
+				for (int j = 0; j < excelRecord.size(); j++) {
+					String value = excelRecord.get(j);
+					if (!StringUtil.safeIsBlank(value))
+						rowMap.put(receivedHeaders.get(j), value);
 				}
 				excelMapRecords.put(FLATTEN_KEY + i, rowMap);
 			}
 
-			List<JsonObject> unflattenedExcelList = excelMapRecords.keySet()
-			        .stream()
-			        .map(excelKey -> JsonUnflattener.unflatten(excelMapRecords.get(excelKey)))
-			        .toList();
-			return Mono.just(unflattenedExcelList);
+			return Mono.just(convertToJsonObject(excelMapRecords, flattenedSchemaType, fileType));
 		} catch (Exception e) {
-			e.printStackTrace();
+			return Mono.empty();
 		}
-		return Mono.empty();
 
 	}
 
-	private Mono<List<JsonObject>> readCsv(FilePart filePart) {
+	private Mono<List<DataObject>> readCsvOrTsv(FilePart filePart, Map<String, Set<SchemaType>> flattenedSchemaType,
+	        String fileType) {
 
 		try (
 
 		        CSVReader csvWorkbook = new CSVReaderBuilder(new InputStreamReader(
 		                getInputStreamFromFluxDataBuffer(filePart.content()), StandardCharsets.UTF_8))
-		                .withCSVParser(new RFC4180ParserBuilder().withSeparator(',')
+		                .withCSVParser(new RFC4180ParserBuilder().withSeparator(fileType.equals("CSV") ? ',' : '\t')
 		                        .build())
 		                .build();) {
 
@@ -530,106 +545,32 @@ public class AppDataService {
 			if (records.size() > 1) {
 
 				String[] receivedHeaders = records.get(0);
-				Map<String, Map<String, Object>> mappedRecords = new TreeMap<>();
+				Map<String, Map<String, String>> mappedRecords = new HashMap<>();
 
 				for (int i = 1; i < records.size(); i++) {
 					String[] rowValues = records.get(i);
-					Map<String, Object> mappedRecord = new TreeMap<>();
+					Map<String, String> mappedRecord = new HashMap<>();
 					for (int j = 0; j < rowValues.length; j++) {
-						String columnValue = rowValues[j];
-						if (!StringUtil.safeIsBlank(columnValue)) {
-							if (columnValue.matches(NUMBER_REGEX))
-								mappedRecord.put(receivedHeaders[j], Double.parseDouble(columnValue));
-							else if (columnValue.matches(TRUE_REGEX))
-								mappedRecord.put(receivedHeaders[j], true);
-							else if (columnValue.matches(FALSE_REGEX))
-								mappedRecord.put(receivedHeaders[j], false);
-							else
-								mappedRecord.put(receivedHeaders[j], columnValue);
 
-						} else
+						String columnValue = rowValues[j];
+						if (!StringUtil.safeIsBlank(columnValue) && columnValue.length() > 0)
+							mappedRecord.put(receivedHeaders[j], columnValue);
+						else
 							mappedRecord.put(receivedHeaders[j], "");
 					}
 					mappedRecords.put(FLATTEN_KEY + i, mappedRecord);
 				}
 
-				List<JsonObject> unflattenedCSVList = mappedRecords.keySet()
-				        .stream()
-				        .map(csvKey -> JsonUnflattener.unflatten(mappedRecords.get(csvKey)))
-				        .toList();
-
-				return Mono.just(unflattenedCSVList);
+				return Mono.just(convertToJsonObject(mappedRecords, flattenedSchemaType, fileType));
 
 			}
+			return Mono.empty();
 
 		} catch (Exception e) {
 
-			e.printStackTrace();
+			return Mono.empty();
 
 		}
-		return Mono.empty();
-
-	}
-
-	private Mono<List<JsonObject>> readTsv(FilePart filePart) {
-
-		try (
-
-		        CSVReader csvWorkbook = new CSVReaderBuilder(new InputStreamReader(
-		                getInputStreamFromFluxDataBuffer(filePart.content()), StandardCharsets.UTF_8))
-		                .withCSVParser(new RFC4180ParserBuilder().withSeparator('\t')
-		                        .build())
-		                .build();) {
-
-			List<String[]> records = new ArrayList<>();
-			String[] eachRecord;
-			while ((eachRecord = csvWorkbook.readNext()) != null) {
-
-				records.add(eachRecord);
-			}
-
-			if (records.size() > 1) {
-
-				String[] receivedHeaders = records.get(0);
-				Map<String, Map<String, Object>> mappedRecords = new TreeMap<>();
-
-				for (int i = 1; i < records.size(); i++) {
-					String[] rowValues = records.get(i);
-					Map<String, Object> mappedRecord = new TreeMap<>();
-					for (int j = 0; j < rowValues.length; j++) {
-						String columnValue = rowValues[j];
-						if (!StringUtil.safeIsBlank(columnValue)) {
-							if (columnValue.matches(NUMBER_REGEX))
-								mappedRecord.put(receivedHeaders[j], Double.parseDouble(columnValue));
-							else if (columnValue.matches(TRUE_REGEX))
-								mappedRecord.put(receivedHeaders[j], true);
-							else if (columnValue.matches(FALSE_REGEX))
-								mappedRecord.put(receivedHeaders[j], false);
-							else
-								mappedRecord.put(receivedHeaders[j], columnValue);
-
-						} else
-							mappedRecord.put(receivedHeaders[j], "");
-					}
-					mappedRecords.put(FLATTEN_KEY + i, mappedRecord);
-				}
-
-				List<JsonObject> unflattenedCSVList = mappedRecords.keySet()
-				        .stream()
-				        .map(csvKey -> JsonUnflattener.unflatten(mappedRecords.get(csvKey)))
-				        .toList();
-
-				return Mono.just(unflattenedCSVList);
-
-			}
-
-		} catch (Exception e) {
-
-			e.printStackTrace();
-
-		}
-
-		return Mono.empty();
 
 	}
 

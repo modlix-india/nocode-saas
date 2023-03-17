@@ -2,10 +2,13 @@ package com.fincity.saas.commons.flattener;
 
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
@@ -18,15 +21,18 @@ public class JsonUnflattener {
 
     private static final String ARRAY_NOT_FOUND = "Json array is required but not found";
 
+    private static final String NULL_VALUE_EXPECTED = "No value required for selected field but a value was provided";
+
     private JsonUnflattener() {
 
     }
 
-    public static JsonObject unflatten(Map<String, Object> flatList) {
+    public static JsonObject unflatten(Map<String, String> flatList,
+            Map<String, Set<SchemaType>> flattenedSchemaType) {
 
         JsonObject job = new JsonObject();
 
-        for (Entry<String, Object> entry : flatList.entrySet()) {
+        for (Entry<String, String> entry : flatList.entrySet()) {
 
             String path = entry.getKey();
             String[] parts = path.split("\\.");
@@ -91,32 +97,46 @@ public class JsonUnflattener {
                 }
             }
 
-            placeValue(parts[i], pointer, entry.getValue());
+            placeValue(parts[i], pointer, entry.getValue(), flattenedSchemaType.get(entry.getKey()));
         }
 
         return job;
     }
 
-    private static void placeValue(String part, JsonElement pointer, Object value) {
+    private static void placeValue(String part, JsonElement pointer, String value,
+            Set<SchemaType> schemaTypes) {
 
         if (part.indexOf('[') == -1) {
 
             if (!pointer.isJsonObject())
                 throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, OBJECT_NOT_FOUND);
 
-            if (value instanceof Integer integer)
-                pointer.getAsJsonObject().addProperty(part, integer);
+            if (!StringUtil.safeIsBlank(value)) {
+                if (schemaTypes.contains(SchemaType.INTEGER))
+                    pointer.getAsJsonObject().addProperty(part, Integer.valueOf(value));
 
-            else if (value instanceof Long lng)
-                pointer.getAsJsonObject().addProperty(part, lng);
+                else if (schemaTypes.contains(SchemaType.LONG))
+                    pointer.getAsJsonObject().addProperty(part, Long.valueOf(value));
 
-            else if (value instanceof Double dble)
-                pointer.getAsJsonObject().addProperty(part, dble);
+                else if (schemaTypes.contains(SchemaType.FLOAT))
+                    pointer.getAsJsonObject().addProperty(part, Float.valueOf(value));
 
-            else if (value instanceof Boolean bool)
-                pointer.getAsJsonObject().addProperty(part, bool);
-            else
-                pointer.getAsJsonObject().addProperty(part, value.toString());
+                else if (schemaTypes.contains(SchemaType.DOUBLE))
+                    pointer.getAsJsonObject().addProperty(part, Double.valueOf(value));
+
+                else if (schemaTypes.contains(SchemaType.STRING))
+                    pointer.getAsJsonObject().addProperty(part, value);
+
+                else if (schemaTypes.contains(SchemaType.BOOLEAN))
+                    pointer.getAsJsonObject().addProperty(part, Boolean.valueOf(value));
+
+                else if (schemaTypes.contains(SchemaType.NULL))
+                    throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, NULL_VALUE_EXPECTED);
+
+                else
+                    pointer.getAsJsonObject().add(part, JsonNull.INSTANCE);
+
+            }
 
         } else {
 
@@ -156,22 +176,32 @@ public class JsonUnflattener {
                     miniArray.add(JsonNull.INSTANCE);
             }
 
-            if (value instanceof Integer integer)
-                miniArray.set(index, new JsonPrimitive(integer));
+            if (!StringUtil.safeIsBlank(value)) {
+                if (schemaTypes.contains(SchemaType.INTEGER))
+                    miniArray.set(index, new JsonPrimitive(Integer.valueOf(value)));
 
-            else if (value instanceof Long lng)
+                else if (schemaTypes.contains(SchemaType.LONG))
+                    miniArray.set(index, new JsonPrimitive(Long.valueOf(value)));
 
-                miniArray.set(index, new JsonPrimitive(lng));
+                else if (schemaTypes.contains(SchemaType.FLOAT))
+                    miniArray.set(index, new JsonPrimitive(Float.valueOf(value)));
 
-            else if (value instanceof Double dble)
-                miniArray.set(index, new JsonPrimitive(dble));
+                else if (schemaTypes.contains(SchemaType.DOUBLE))
+                    miniArray.set(index, new JsonPrimitive(Double.valueOf(value)));
 
-            else if (value instanceof Boolean bool)
-                miniArray.set(index, new JsonPrimitive(bool));
+                else if (schemaTypes.contains(SchemaType.STRING))
+                    miniArray.set(index, new JsonPrimitive(String.valueOf(value)));
 
-            else
-                miniArray.set(index, new JsonPrimitive(value.toString()));
+                else if (schemaTypes.contains(SchemaType.BOOLEAN))
+                    miniArray.set(index, new JsonPrimitive(Boolean.valueOf(value)));
 
+                else if (schemaTypes.contains(SchemaType.NULL))
+                    throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, NULL_VALUE_EXPECTED);
+
+                else
+                    miniArray.set(index, JsonNull.INSTANCE);
+
+            }
         }
     }
 }

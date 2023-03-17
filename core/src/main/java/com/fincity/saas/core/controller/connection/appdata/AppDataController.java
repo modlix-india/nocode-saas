@@ -14,7 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -144,10 +143,9 @@ public class AppDataController {
 	@GetMapping("template/{storage}")
 	public Mono<ResponseEntity<byte[]>> downloadTemplate(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 	        @RequestHeader String appCode, @RequestHeader String clientCode,
-	        @RequestParam(value = "type", defaultValue = "CSV") FlatFileType fileType, ServerHttpRequest request,
-	        ServerHttpResponse response) {
+	        @RequestParam(value = "type", defaultValue = "CSV") FlatFileType fileType) {
 
-		return this.service.downloadTemplate(appCode, clientCode, storageName, fileType, request, response)
+		return this.service.downloadTemplate(appCode, clientCode, storageName, fileType)
 		        .map(bytes -> ResponseEntity.ok()
 		                .header(HttpHeaders.CONTENT_TYPE, fileType.getMimeType())
 		                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()

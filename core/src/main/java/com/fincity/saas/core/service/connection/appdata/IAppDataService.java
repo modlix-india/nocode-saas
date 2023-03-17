@@ -9,7 +9,6 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.model.DataObject;
-import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Mono;
 
@@ -26,5 +25,4 @@ public interface IAppDataService {
 
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
 
-	public Mono<Map<String, Object>> bulkCreate(Connection conn, Storage storage, JsonObject jsonObjectList);
 }
