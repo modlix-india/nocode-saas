@@ -31,10 +31,22 @@ public class UniversalController {
 	@Value("${ui.jsURL:}")
 	private String jsURL;
 
+	@Value("${ui.resourceCacheAge:604800}")
+	private int cacheAge;
+
 	@GetMapping(value = "js/index.js", produces = "text/javascript")
 	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return jsService.getJSObject()
+		        .map(e -> checkSumObjectToResponseEntity(eTag, e))
+		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
+		                .build())));
+	}
+	
+	@GetMapping(value = "js/index.js.map", produces = "text/javascript")
+	public Mono<ResponseEntity<String>> indexJSMap(@RequestHeader(name = "If-None-Match", required = false) String eTag) {
+
+		return jsService.getJSMapObject()
 		        .map(e -> checkSumObjectToResponseEntity(eTag, e))
 		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
 		                .build())));
@@ -69,9 +81,18 @@ public class UniversalController {
 			return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
 			        .build();
 
-		return ResponseEntity.ok()
+		var rp = ResponseEntity.ok()
 		        .header("eTag", e.getCheckSum())
-		        .header("Cache-Control", "max-age: 0, must-revalidate")
-		        .body(e.getObjectString());
+		        .header("Cache-Control", "max-age: " + cacheAge + ", must-revalidate")
+		        .header("x-frame-options", "SAMEORIGIN")
+		        .header("X-Frame-Options", "SAMEORIGIN");
+
+		if (e.getHeaders() != null)
+			e.getHeaders()
+			        .entrySet()
+			        .stream()
+			        .forEach(x -> rp.header(x.getKey(), x.getValue()));
+
+		return rp.body(e.getObjectString());
 	}
 }

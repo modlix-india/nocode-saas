@@ -17,6 +17,7 @@ public class UICacheController extends AbstractCacheController {
 	@DeleteMapping("/cache/jsCache")
 	public Mono<ResponseEntity<Integer>> deleteJSCache() {
 		return this.service.evictAll(JSService.CACHE_NAME_JS)
+		        .flatMap(e -> this.service.evictAll(JSService.CACHE_NAME_JS_MAP))
 		        .map(e -> 1)
 		        .map(ResponseEntity::ok);
 	}
