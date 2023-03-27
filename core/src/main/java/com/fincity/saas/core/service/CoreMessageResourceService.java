@@ -27,9 +27,9 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 
 	public static final String NOT_ABLE_TO_OPEN_FILE_ERROR = "not_able_to_open_file_error";
 
-	public static final String HEADERS_NOT_CORRECT_ORDER = "headers_not_correct_order";
-
-	public static final String CANNOT_READ_FILE = "cannot_read_file";
+	public static final String NOT_ABLE_TO_READ_FILE_FORMAT = "not_able_to_read_file_format";
 
 	public static final String BULK_UPLOAD_MESSAGE = "bulk_upload_message";
+
+	public static final String NOT_ABLE_TO_READ_FROM_FILE = "not_able_to_read_from_file";
 }

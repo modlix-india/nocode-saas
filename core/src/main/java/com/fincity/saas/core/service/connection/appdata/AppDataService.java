@@ -13,11 +13,13 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import javax.annotation.PostConstruct;
@@ -97,8 +99,6 @@ public class AppDataService {
 	private EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
 
 	private static final String FLATTEN_KEY = "flattened ";
-
-	private static Map<String, Set<SchemaType>> flattenedSchemaType = new TreeMap<>();
 
 	@PostConstruct
 	public void init() {
@@ -280,9 +280,7 @@ public class AppDataService {
 					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
 					                CSVWriter csvWorkBook = new CSVWriter(outputStream);) {
 
-						        csvWorkBook.writeNext(headers.toArray(new String[0]));
-						        outputStream.flush();
-						        return Mono.just(byteStream.toByteArray());
+						        return csvFileWriter(byteStream, headers, outputStream, csvWorkBook);
 
 					        } catch (Exception e) {
 						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -296,9 +294,7 @@ public class AppDataService {
 					                        ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
 					                        ICSVWriter.DEFAULT_LINE_END);) {
 
-						        tsvWorkBook.writeNext(headers.toArray(new String[0]));
-						        outputStream.flush();
-						        return Mono.just(byteStream.toByteArray());
+						        return csvFileWriter(byteStream, headers, outputStream, tsvWorkBook);
 
 					        } catch (Exception e) {
 						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -314,9 +310,14 @@ public class AppDataService {
 
 	}
 
-	// need to go through the nesting layers of schema. Hence it requires recursive
-	// method to obtain headers
-	private List<String> getHeaders(String prefix, Storage storage, Schema schema) { // NOSONAR
+	private Mono<byte[]> csvFileWriter(ByteArrayOutputStream byteStream, List<String> headers,
+	        OutputStreamWriter outputStream, CSVWriter tsvWorkBook) throws IOException {
+		tsvWorkBook.writeNext(headers.toArray(new String[0]));
+		outputStream.flush();
+		return Mono.just(byteStream.toByteArray());
+	}
+
+	private List<String> getHeaders(String prefix, Storage storage, Schema schema) {
 
 		if (schema.getRef() != null) {
 
@@ -331,8 +332,7 @@ public class AppDataService {
 			return schema.getProperties()
 			        .entrySet()
 			        .stream()
-			        .flatMap(e -> this
-			                .getHeaders(prefix == null ? e.getKey() : prefix + "." + e.getKey(), storage, e.getValue())
+			        .flatMap(e -> this.getHeaders(getFlattenedObjectName(prefix, e), storage, e.getValue())
 			                .stream())
 			        .toList();
 		} else if (schema.getType()
@@ -343,7 +343,7 @@ public class AppDataService {
 			if (aType.getSingleSchema() != null) {
 
 				return IntStream.range(0, 2)
-				        .mapToObj(e -> prefix == null ? "[" + e + "]" : prefix + "[" + e + "]")
+				        .mapToObj(e -> getPrefixArrayName(prefix, e))
 				        .flatMap(e -> this.getHeaders(e, storage, aType.getSingleSchema())
 				                .stream())
 				        .toList();
@@ -354,7 +354,7 @@ public class AppDataService {
 				for (int i = 0; i < aType.getTupleSchema()
 				        .size(); i++) {
 
-					String pre = prefix == null ? "[" + i + "]" : prefix + "[" + i + "]";
+					String pre = getPrefixArrayName(prefix, i);
 
 					list.addAll(this.getHeaders(pre, storage, aType.getTupleSchema()
 					        .get(i)));
@@ -364,10 +364,76 @@ public class AppDataService {
 			}
 		}
 
-		flattenedSchemaType.put(prefix, schema.getType()
-		        .getAllowedSchemaTypes());
-
 		return List.of(prefix);
+	}
+
+	private Map<String, Set<SchemaType>> getHeadersSchemaType(String prefix, Storage storage, Schema schema,
+	        Map<String, Set<SchemaType>> flattenedSchemaTypes) { // NOSONAR
+
+		if (schema.getRef() != null) {
+
+			schema = SchemaUtil.getSchemaFromRef(schema,
+			        this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+			        schema.getRef());
+		}
+
+		if (prefix != null)
+			flattenedSchemaTypes.putIfAbsent(prefix, schema.getType()
+			        .getAllowedSchemaTypes());
+
+		if (schema.getType()
+		        .contains(SchemaType.OBJECT)) {
+
+			return schema.getProperties()
+			        .entrySet()
+			        .stream()
+			        .flatMap(e -> this
+			                .getHeadersSchemaType(getFlattenedObjectName(prefix, e), storage, e.getValue(),
+			                        flattenedSchemaTypes)
+			                .entrySet()
+			                .stream())
+			        .collect(Collectors.toMap(Entry<String, Set<SchemaType>>::getKey,
+			                Entry<String, Set<SchemaType>>::getValue, (firstValue, secondValue) -> firstValue));
+
+		} else if (schema.getType()
+		        .contains(SchemaType.ARRAY)) {
+
+			ArraySchemaType aType = schema.getItems();
+
+			if (aType.getSingleSchema() != null) {
+
+				return IntStream.range(0, 2)
+				        .mapToObj(e -> getPrefixArrayName(prefix, e))
+				        .flatMap(e -> this
+				                .getHeadersSchemaType(e, storage, aType.getSingleSchema(), flattenedSchemaTypes)
+				                .entrySet()
+				                .stream())
+				        .collect(Collectors.toMap(Entry<String, Set<SchemaType>>::getKey,
+				                Entry<String, Set<SchemaType>>::getValue, (firstValue, secondValue) -> firstValue));
+
+			} else {
+				for (int i = 0; i < aType.getTupleSchema()
+				        .size(); i++) {
+
+					String pre = getPrefixArrayName(prefix, i);
+
+					this.getHeadersSchemaType(pre, storage, schema, flattenedSchemaTypes);
+				}
+
+				return flattenedSchemaTypes;
+
+			}
+		}
+
+		return flattenedSchemaTypes;
+	}
+
+	private String getPrefixArrayName(String prefix, int e) {
+		return prefix == null ? "[" + e + "]" : prefix + "[" + e + "]";
+	}
+
+	private String getFlattenedObjectName(String prefix, Entry<String, Schema> e) {
+		return prefix == null ? e.getKey() : prefix + "." + e.getKey();
 	}
 
 	private Mono<Boolean> uploadTemplate(Storage storage, FlatFileType fileType, FilePart filePart,
@@ -376,12 +442,12 @@ public class AppDataService {
 
 		        () -> storageService.getSchema(storage),
 
-		        storageSchema -> Mono.fromCallable(() -> this.getHeaders(null, storage, storageSchema))
+		        storageSchema -> Mono
+		                .fromCallable(() -> this.getHeadersSchemaType(null, storage, storageSchema, new TreeMap<>()))
 		                .subscribeOn(Schedulers.boundedElastic()),
 
-		        (storageSchema, headers) ->
+		        (storageSchema, flattenedSchemaType) ->
 				{
-
 			        if (fileType.equals(FlatFileType.XLSX)) {
 
 				        return this.readExcel(filePart, flattenedSchemaType, fileType.toString())
@@ -413,7 +479,7 @@ public class AppDataService {
 			                .defaultIfEmpty(false);
 		        })
 		        .switchIfEmpty(Mono.defer(() -> msgService.throwMessage(HttpStatus.BAD_REQUEST,
-		                CoreMessageResourceService.CANNOT_READ_FILE, fileType)));
+		                CoreMessageResourceService.NOT_ABLE_TO_READ_FILE_FORMAT, fileType)));
 	}
 
 	private InputStream getInputStreamFromFluxDataBuffer(Flux<DataBuffer> data) throws IOException {
@@ -429,7 +495,7 @@ public class AppDataService {
 				        osPipe.close();
 			        } catch (IOException ignored) {
 				        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-				                "Error while reading data from file");
+				                CoreMessageResourceService.NOT_ABLE_TO_READ_FROM_FILE);
 			        }
 		        })
 		        .subscribe(DataBufferUtils.releaseConsumer());
@@ -437,6 +503,7 @@ public class AppDataService {
 
 	}
 
+	@SuppressWarnings("unchecked")
 	private List<DataObject> convertToJsonObject(Map<String, Map<String, String>> unflattenRecords,
 	        Map<String, Set<SchemaType>> flattenedSchemaType, String fileType) {
 
@@ -459,7 +526,8 @@ public class AppDataService {
 				{
 			        Map<String, Object> obtainedMap = gson.fromJson(gson.toJsonTree(recordObtained.get()), Map.class);
 			        DataObject dataObject = new DataObject();
-			        dataObject.setMessage(CoreMessageResourceService.BULK_UPLOAD_MESSAGE + fileType);
+			        dataObject.setMessage(msgService
+			                .getDefaultLocaleMessage(CoreMessageResourceService.BULK_UPLOAD_MESSAGE, fileType));
 			        dataObject.setData(obtainedMap);
 			        return dataObject;
 		        })
@@ -468,7 +536,7 @@ public class AppDataService {
 	}
 
 	private Mono<List<DataObject>> readExcel(FilePart filePart, Map<String, Set<SchemaType>> flattenedSchemaType,
-	        String fileType) { 
+	        String fileType) {
 
 		try (Workbook excelWorkbook = StreamingReader.builder()
 		        .rowCacheSize(100)
@@ -481,47 +549,56 @@ public class AppDataService {
 
 			for (Sheet sheet : excelWorkbook) {
 				for (Row r : sheet) {
-					List<String> excelRecord = new ArrayList<>();
-					for (int c = 0; c < r.getLastCellNum(); c++) {
-
-						Cell cell = r.getCell(c, MissingCellPolicy.RETURN_BLANK_AS_NULL);
-
-						if (cell != null) {
-							if (cell.getCellType()
-							        .equals(CellType.NUMERIC) && DateUtil.isCellDateFormatted(cell)) {
-
-								SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-								excelRecord.add(sdf.format(cell.getDateCellValue()));
-							} else
-								excelRecord.add(cell.getStringCellValue());
-						} else
-							excelRecord.add("");
-					}
-					excelRecords.add(excelRecord);
-
+					excelRecords.add(processEachRecord(r, new ArrayList<>()));
 				}
 			}
 
 			receivedHeaders.addAll(excelRecords.get(0));
-			Map<String, Map<String, String>> excelMapRecords = new HashMap<>();
-
-			for (int i = 1; i < excelRecords.size(); i++) {
-				Map<String, String> rowMap = new HashMap<>();
-				List<String> excelRecord = excelRecords.get(i);
-
-				for (int j = 0; j < excelRecord.size(); j++) {
-					String value = excelRecord.get(j);
-					if (!StringUtil.safeIsBlank(value))
-						rowMap.put(receivedHeaders.get(j), value);
-				}
-				excelMapRecords.put(FLATTEN_KEY + i, rowMap);
-			}
+			Map<String, Map<String, String>> excelMapRecords = createExcelMapRecords(receivedHeaders, excelRecords,
+			        new HashMap<>());
 
 			return Mono.just(convertToJsonObject(excelMapRecords, flattenedSchemaType, fileType));
 		} catch (Exception e) {
 			return Mono.empty();
 		}
 
+	}
+
+	private List<String> processEachRecord(Row row, List<String> excelRecord) {
+
+		for (int c = 0; c < row.getLastCellNum(); c++) {
+
+			Cell cell = row.getCell(c, MissingCellPolicy.RETURN_BLANK_AS_NULL);
+
+			if (cell != null) {
+				if (cell.getCellType()
+				        .equals(CellType.NUMERIC) && DateUtil.isCellDateFormatted(cell)) {
+
+					SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+					excelRecord.add(sdf.format(cell.getDateCellValue()));
+				} else
+					excelRecord.add(cell.getStringCellValue());
+			} else
+				excelRecord.add("");
+		}
+
+		return excelRecord;
+	}
+
+	private Map<String, Map<String, String>> createExcelMapRecords(List<String> receivedHeaders,
+	        List<List<String>> excelRecords, Map<String, Map<String, String>> excelMapRecords) {
+		for (int i = 1; i < excelRecords.size(); i++) {
+			Map<String, String> rowMap = new HashMap<>();
+			List<String> excelRecord = excelRecords.get(i);
+
+			for (int j = 0; j < excelRecord.size(); j++) {
+				String value = excelRecord.get(j);
+				if (!StringUtil.safeIsBlank(value))
+					rowMap.put(receivedHeaders.get(j), value);
+			}
+			excelMapRecords.put(FLATTEN_KEY + i, rowMap);
+		}
+		return excelMapRecords;
 	}
 
 	private Mono<List<DataObject>> readCsvOrTsv(FilePart filePart, Map<String, Set<SchemaType>> flattenedSchemaType,
