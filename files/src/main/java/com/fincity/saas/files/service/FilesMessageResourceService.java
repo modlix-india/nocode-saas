@@ -39,6 +39,7 @@ public class FilesMessageResourceService extends AbstractMessageService {
 	public static final String TIME_UNIT_ERROR = "time_unit_error";
 	public static final String TIME_SPAN_ERROR = "time_span_error";
 	public static final String SECURED_KEY_CREATION_ERROR = "secured_key_creation_error";
+	public static final String FOLDER_CREATION_ERROR = "folder_creation_error";
 
 	public FilesMessageResourceService() {
 

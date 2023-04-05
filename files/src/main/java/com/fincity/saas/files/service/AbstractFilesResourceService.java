@@ -519,10 +519,45 @@ public abstract class AbstractFilesResourceService {
 		);
 	}
 
+	public Mono<Boolean> createFolder(String clientCode, String uri, String folderName) {
+
+		String folder = "/folderCreate";
+		int index = uri.indexOf(folder);
+
+		String removeRequestFromURI = uri.substring(0, index)
+		        + uri.substring(index + folder.length(), uri.indexOf('?'));
+
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(removeRequestFromURI);
+		String resourcePath = tup.getT1();
+
+		return FlatMapUtil.flatMapMono(
+		        () -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode, this.getResourceType()),
+
+		        hasPermission ->
+				{
+			        if (!hasPermission.booleanValue())
+				        return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PATH,
+				                this.getResourceType(), resourcePath);
+
+			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, folderName);
+
+			        if (!Files.exists(path))
+				        try {
+					        Files.createDirectories(path);
+					        return Mono.just(true);
+				        } catch (Exception ex) {
+					        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+					                FilesMessageResourceService.FOLDER_CREATION_ERROR);
+				        }
+
+			        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+			                FilesMessageResourceService.ALREADY_EXISTS, "folder with name ", folderName);
+		        });
+	}
+
 	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
 
 		boolean ovr = override == null || override.booleanValue();
-
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
