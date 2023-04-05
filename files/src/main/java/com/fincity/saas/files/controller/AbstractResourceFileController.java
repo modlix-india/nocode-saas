@@ -9,6 +9,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -55,9 +56,10 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 	}
 
 	@PostMapping("/**")
-	public Mono<ResponseEntity<FileDetail>> create(@RequestPart("file") Mono<FilePart> filePart,
+	public Mono<ResponseEntity<FileDetail>> create(
+	        @RequestPart(name = "file", required = false) Mono<FilePart> filePart,
 	        @RequestPart(required = false, name = "override") String override,
-	        @RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request) {
+	        @RequestPart(required = false, name = "name") String fileName, 3 ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -67,7 +69,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 		        (ca, fp) -> this.service.create(ca.getLoggedInFromClientCode(), request.getURI()
 		                .toString(), fp, fileName, override != null ? BooleanUtil.safeValueOf(override) : null))
-				.map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/file/**")
@@ -87,5 +89,19 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		        .setResizeDirection(resizeDirection)
 		        .setNoCache(noCache)
 		        .setDownload(download), request, response);
+	}
+
+	@PostMapping("/folderCreate/**")
+	public Mono<Boolean> createFolder(@RequestParam(name = "folderName") String folderName, ServerHttpRequest request) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> service.createFolder(ca.getClientCode(), request.getURI()
+		                .toString(), folderName)
+
+		);
+
 	}
 }
