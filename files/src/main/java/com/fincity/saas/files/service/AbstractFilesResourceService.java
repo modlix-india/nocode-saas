@@ -65,6 +65,16 @@ public abstract class AbstractFilesResourceService {
 
 	private static final String GENERIC_URI_PART_FILE = "/file";
 
+	private static final String STATIC_TYPE = "static";
+
+	private static final String SECURED_TYPE = "secured";
+
+	private static final String GENERIC_URI_PART_STATIC = GENERIC_URI_PART + STATIC_TYPE;
+
+	private static final String GENERIC_URI_PART_SECURED = GENERIC_URI_PART + SECURED_TYPE;
+
+	private static final String UNABLE_TO_READ_ATTRIBUTES = "Unable to read attributes of file {} ";
+
 	private static Logger logger = LoggerFactory.getLogger(AbstractFilesResourceService.class);
 
 	@Autowired
@@ -108,7 +118,6 @@ public abstract class AbstractFilesResourceService {
 
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
 		String resourcePath = tup.getT1();
-		String urlResourcePath = tup.getT2();
 
 		return FlatMapUtil.flatMapMono(
 
@@ -155,7 +164,7 @@ public abstract class AbstractFilesResourceService {
 				                        .toUpperCase()
 				                        .contains(stringNameFilter))
 				                .sort(sortComparator)
-				                .map(e -> this.convertToFileDetail(urlResourcePath, clientCode, e))
+				                .map(e -> this.convertToFileDetail(resourcePath, clientCode, e))
 				                .skip(page.getOffset())
 				                .take(page.getPageSize())
 				                .collectList();
@@ -197,11 +206,59 @@ public abstract class AbstractFilesResourceService {
 		}
 	}
 
-	private FileDetail convertToFileDetail(String resourcePath, String clientCode, File file) {
+	private String getResourceFileType() {
+
+		return this.getResourceType()
+		        .equals(FilesAccessPathResourceType.STATIC) ? GENERIC_URI_PART_STATIC : GENERIC_URI_PART_SECURED;
+
+	}
+
+	private FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, File file) {
 
 		FileDetail damFile = new FileDetail().setName(file.getName())
-		        .setFilePath(resourcePath + "/" + file.getName())
-		        .setUrl("api/files/static" + (file.isDirectory() ? "" : "/file/" + clientCode) + resourcePath + "/"
+		        .setSize(file.length());
+
+		String resourceType = this.getResourceFileType();
+
+		if (file.isDirectory()) {
+
+			damFile.setFilePath(resourcePath)
+			        .setUrl(resourceType + resourcePath)
+			        .setDirectory(true);
+
+		} else {
+			damFile.setFilePath(resourcePath + "/" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
+			        .replace("+", "%20"))
+			        .setUrl(resourceType + ("/file/" + clientCode) + resourcePath + "/"
+			                + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
+			                        .replace("+", "%20"));
+		}
+		try {
+			BasicFileAttributes basicAttrributes = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+			if (basicAttrributes != null) {
+				damFile.setCreatedDate(basicAttrributes.creationTime()
+				        .toMillis())
+				        .setLastAccessTime(basicAttrributes.lastAccessTime()
+				                .toMillis())
+				        .setLastModifiedTime(basicAttrributes.lastModifiedTime()
+				                .toMillis());
+			}
+		} catch (IOException e) {
+
+			logger.debug(UNABLE_TO_READ_ATTRIBUTES, file.getAbsolutePath(), e);
+		}
+		return damFile;
+
+	}
+
+	private FileDetail convertToFileDetail(String resourcePath, String clientCode, File file) {
+
+		String resourceType = this.getResourceFileType();
+
+		FileDetail damFile = new FileDetail().setName(file.getName())
+		        .setFilePath(resourcePath + "/" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
+		                .replace("+", "%20"))
+		        .setUrl(resourceType + (file.isDirectory() ? "" : "/file/" + clientCode) + resourcePath + "/"
 		                + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
 		                        .replace("+", "%20"))
 		        .setDirectory(file.isDirectory())
@@ -218,7 +275,7 @@ public abstract class AbstractFilesResourceService {
 			}
 		} catch (IOException e) {
 
-			logger.debug("Unable to read attributes of file {} ", file.getAbsolutePath(), e);
+			logger.debug(UNABLE_TO_READ_ATTRIBUTES, file.getAbsolutePath(), e);
 		}
 		return damFile;
 	}
@@ -255,7 +312,7 @@ public abstract class AbstractFilesResourceService {
 				                .toMillis();
 			        } catch (IOException e) {
 
-				        logger.debug("Unable to read attributes of file {} ", file, e);
+				        logger.debug(UNABLE_TO_READ_ATTRIBUTES, file, e);
 			        }
 
 			        String fileETag = new StringBuilder().append('"')
@@ -519,42 +576,6 @@ public abstract class AbstractFilesResourceService {
 		);
 	}
 
-	public Mono<Boolean> createFolder(String clientCode, String uri, String folderName) {
-
-		String folder = "/folderCreate";
-		int index = uri.indexOf(folder);
-
-		String removeRequestFromURI = uri.substring(0, index)
-		        + uri.substring(index + folder.length(), uri.indexOf('?'));
-
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(removeRequestFromURI);
-		String resourcePath = tup.getT1();
-
-		return FlatMapUtil.flatMapMono(
-		        () -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode, this.getResourceType()),
-
-		        hasPermission ->
-				{
-			        if (!hasPermission.booleanValue())
-				        return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PATH,
-				                this.getResourceType(), resourcePath);
-
-			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, folderName);
-
-			        if (!Files.exists(path))
-				        try {
-					        Files.createDirectories(path);
-					        return Mono.just(true);
-				        } catch (Exception ex) {
-					        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
-					                FilesMessageResourceService.FOLDER_CREATION_ERROR);
-				        }
-
-			        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
-			                FilesMessageResourceService.ALREADY_EXISTS, "folder with name ", folderName);
-		        });
-	}
-
 	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
 
 		boolean ovr = override == null || override.booleanValue();
@@ -575,33 +596,19 @@ public abstract class AbstractFilesResourceService {
 
 			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
-			        if (!Files.exists(path))
-				        try {
-					        Files.createDirectories(path);
-				        } catch (IOException e) {
-					        return this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-					                FilesMessageResourceService.PATH_NOT_FOUND, resourcePath);
-				        }
-
-			        if (!Files.isDirectory(path))
-				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
-				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
-
-			        Path file = path.resolve(fileName == null ? fp.filename()
-			                : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName));
-
-			        if (Files.exists(file) && !ovr)
-				        return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
-				                FilesMessageResourceService.ALREADY_EXISTS, "File", file.getFileName());
-
-			        return Mono.just(file);
-
+			        return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr);
 		        },
 
-		        (hasPermission, file) -> fp.transferTo(file),
+		        (hasPermission, file) ->
+				{
 
-		        (hasPermission, file, fil) -> Mono
-		                .just(this.convertToFileDetail(urlResourcePath, clientCode, file.toFile())));
+			        if (fp == null)
+				        return Mono.just(
+				                this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
+
+			        return FlatMapUtil.flatMapMonoWithNull(() -> fp.transferTo(file), x -> Mono
+			                .just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile())));
+		        });
 	}
 
 	protected Tuple2<String, String> resolvePathWithClientCode(String uri) {
@@ -639,6 +646,33 @@ public abstract class AbstractFilesResourceService {
 			path = path.substring(0, path.length() - 1);
 
 		return Tuples.of(path, origPath);
+	}
+
+	private Mono<Path> createOrGetPath(Path path, String resourcePath, FilePart fp, String fileName, boolean ovr) {
+
+		if (!Files.exists(path))
+			try {
+				Files.createDirectories(path);
+			} catch (IOException e) {
+				return this.msgService.throwMessage(HttpStatus.NOT_FOUND, FilesMessageResourceService.PATH_NOT_FOUND,
+				        resourcePath);
+			}
+
+		if (fp == null)
+			return Mono.just(path);
+
+		if (!Files.isDirectory(path))
+			return msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.NOT_A_DIRECTORY,
+			        resourcePath);
+
+		Path file = path.resolve(
+		        fileName == null ? fp.filename() : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName));
+
+		if (Files.exists(file) && !ovr)
+			return this.msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.ALREADY_EXISTS,
+			        "File", file.getFileName());
+
+		return Mono.just(file);
 	}
 
 	public abstract String getBaseLocation();
