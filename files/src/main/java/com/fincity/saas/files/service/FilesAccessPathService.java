@@ -265,7 +265,7 @@ public class FilesAccessPathService
 				{
 
 			        if (!managed.booleanValue()
-			                || SecurityContextUtil.hasAuthority(this.getAuthority(resourceType), ca.getAuthorities())) {
+			                || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType), ca.getAuthorities())) {
 				        return msgService.throwMessage(HttpStatus.FORBIDDEN,
 				                FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
 			        }
