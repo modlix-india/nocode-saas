@@ -10,9 +10,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.model.Query;
@@ -141,10 +143,9 @@ public class AppDataController {
 	@GetMapping("template/{storage}")
 	public Mono<ResponseEntity<byte[]>> downloadTemplate(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 	        @RequestHeader String appCode, @RequestHeader String clientCode,
-	        @RequestParam(value = "type", defaultValue = "CSV") FlatFileType fileType, ServerHttpRequest request,
-	        ServerHttpResponse response) {
+	        @RequestParam(value = "type", defaultValue = "CSV") FlatFileType fileType) {
 
-		return this.service.downloadTemplate(appCode, clientCode, storageName, fileType, request, response)
+		return this.service.downloadTemplate(appCode, clientCode, storageName, fileType)
 		        .map(bytes -> ResponseEntity.ok()
 		                .header(HttpHeaders.CONTENT_TYPE, fileType.getMimeType())
 		                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
@@ -153,5 +154,15 @@ public class AppDataController {
 		                        .build()
 		                        .toString())
 		                .body(bytes));
+	}
+
+	@PostMapping(value = "template/{storage}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Boolean>> uploadTemplateData(
+	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
+	        @RequestHeader String clientCode, @RequestParam(value = "type") FlatFileType fileType,
+	        @RequestPart(value = "file") Mono<FilePart> file) {
+
+		return file.flatMap(f -> this.service.uploadTemplate(appCode, clientCode, storageName, fileType, f))
+		        .map(ResponseEntity::ok);
 	}
 }
