@@ -55,11 +55,12 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 	}
 
 	@PostMapping("/**")
-	public Mono<ResponseEntity<FileDetail>> create(@RequestPart("file") Mono<FilePart> filePart,
+	public Mono<ResponseEntity<FileDetail>> create(
+	        @RequestPart(name = "file", required = false) Mono<FilePart> filePart,
 	        @RequestPart(required = false, name = "override") String override,
 	        @RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request) {
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -67,7 +68,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 		        (ca, fp) -> this.service.create(ca.getLoggedInFromClientCode(), request.getURI()
 		                .toString(), fp, fileName, override != null ? BooleanUtil.safeValueOf(override) : null))
-				.map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/file/**")
@@ -88,4 +89,5 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		        .setNoCache(noCache)
 		        .setDownload(download), request, response);
 	}
+
 }
