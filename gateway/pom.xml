@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.2</version>
+		<version>3.0.5</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity</groupId>
@@ -14,8 +14,8 @@
 	<description>Fincity SAAS gateway server</description>
 	<properties>
 		<java.version>18</java.version>
-		<spring-cloud.version>2021.0.3</spring-cloud.version>
-		<feign-reactor.version>3.2.6</feign-reactor.version>
+		<spring-cloud.version>2022.0.2</spring-cloud.version>
+		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<nocode-flatmap-util-version>1.2.0</nocode-flatmap-util-version>
 	</properties>
@@ -39,17 +39,6 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-openfeign</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.playtika.reactivefeign</groupId>
-			<artifactId>feign-reactor-spring-cloud-starter</artifactId>
-			<version>${feign-reactor.version}</version>
-			<type>pom</type>
-		</dependency>
-		<dependency>
-			<groupId>com.playtika.reactivefeign</groupId>
-			<artifactId>feign-reactor-spring-configuration</artifactId>
-			<version>${feign-reactor.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fincity.saas</groupId>

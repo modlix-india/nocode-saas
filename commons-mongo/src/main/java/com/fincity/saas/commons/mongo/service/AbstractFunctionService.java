@@ -3,12 +3,18 @@ package com.fincity.saas.commons.mongo.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.kirun.engine.HybridRepository;
 import com.fincity.nocode.kirun.engine.Repository;
+import com.fincity.nocode.kirun.engine.function.Function;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
@@ -97,24 +103,41 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
         return functions.computeIfAbsent(appCode + " - " + clientCode,
 
-                key -> new HybridRepository<>((namespace, name) -> {
-                    String fnName = StringUtil.safeIsBlank(namespace) ? name : namespace + "." + name;
+                key -> {
+                    Repository<Function> repo = new Repository<Function>() {
+                        public Function find(String namespace, String name) {
 
-                    return FlatMapUtil.flatMapMono(
+                            String fnName = StringUtil.safeIsBlank(namespace) ? name : namespace + "." + name;
 
-                            () -> cacheService.cacheValueOrGet(CACHE_NAME_FUNCTION_REPO,
-                                    () -> read(fnName, appCode, clientCode), appCode, clientCode, fnName),
+                            return FlatMapUtil.flatMapMono(
 
-                            s -> {
-                                Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-                                        .create();
-                                FunctionDefinition fd = gson.fromJson(gson.toJsonTree(s.getDefinition()),
-                                        FunctionDefinition.class);
+                                    () -> cacheService.cacheValueOrGet(CACHE_NAME_FUNCTION_REPO,
+                                            () -> read(fnName, appCode, clientCode), appCode, clientCode, fnName),
 
-                                return Mono.just(new DefinitionFunction(fd, s.getExecuteAuth()));
-                            })
-                            .block();
+                                    s -> {
+                                        Gson gson = new GsonBuilder()
+                                                .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+                                                .registerTypeAdapter(AdditionalType.class, new AdditionalTypeAdapter())
+                                                .registerTypeAdapter(ArraySchemaType.class,
+                                                        new ArraySchemaTypeAdapter())
+                                                .create();
 
-                }, new KIRunFunctionRepository()));
+                                        FunctionDefinition fd = gson.fromJson(gson.toJsonTree(s.getDefinition()),
+                                                FunctionDefinition.class);
+
+                                        return Mono.just(new DefinitionFunction(fd, s.getExecuteAuth()));
+                                    })
+                                    .block();
+
+                        }
+
+                        public List<String> filter(String name) {
+
+                            return List.of();
+
+                        }
+                    };
+                    return new HybridRepository<>(repo, new KIRunFunctionRepository());
+                });
     }
 }

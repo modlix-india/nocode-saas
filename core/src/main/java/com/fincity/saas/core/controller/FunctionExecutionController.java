@@ -42,6 +42,7 @@ import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
+import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -50,6 +51,7 @@ import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -74,6 +76,9 @@ public class FunctionExecutionController {
 
 	@Autowired
 	private CoreMessageResourceService msgService;
+
+	@Autowired
+	private AppDataService appDataService;
 
 	@GetMapping(PATH)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
@@ -124,7 +129,7 @@ public class FunctionExecutionController {
 		int index = fullName.lastIndexOf('.');
 		String name = fullName;
 		String namespace = null;
-		if (index == -1) {
+		if (index != -1) {
 
 			namespace = fullName.substring(0, index);
 			name = fullName.substring(index + 1);
@@ -167,15 +172,19 @@ public class FunctionExecutionController {
 			        return Mono.just(tup2.getT1()
 			                .execute(
 			                        new FunctionExecutionParameters(
-			                                new HybridRepository<>(new CoreFunctionRepository(),
+			                                new HybridRepository<>(new CoreFunctionRepository(appDataService),
 			                                        functionService.getFunctionRepository(appCode, clientCode)),
 			                                tup2.getT2())
 			                                .setArguments(job == null ? getRequestParamsToArguments(tup2.getT1()
 			                                        .getSignature()
 			                                        .getParameters(), request, tup2.getT2()) : job)));
+
 		        },
 
-		        (ca, tup2, output) -> this.extractOutpuEvent(output));
+		        (ca, tup2, output) -> this.extractOutpuEvent(output))
+		        .contextWrite(
+		                Context.of("appCode", appCode, "clientCode", clientCode, AppDataService.class, appDataService));
+
 	}
 
 	private Mono<ResponseEntity<String>> extractOutpuEvent(FunctionOutput e) {

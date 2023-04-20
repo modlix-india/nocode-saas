@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.2</version>
+		<version>3.0.5</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
@@ -14,11 +14,11 @@
 	<description>UI Server for the no code Platform</description>
 	<properties>
 		<java.version>18</java.version>
-		<spring-boot-admin.version>2.7.4</spring-boot-admin.version>
-		<spring-cloud.version>2021.0.4</spring-cloud.version>
+		<spring-boot-admin.version>3.0.2</spring-boot-admin.version>
+		<spring-cloud.version>2022.0.2</spring-cloud.version>
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-mongo-version>1.0.0</saas-commons-mongo-version>
-		<feign-reactor.version>3.2.6</feign-reactor.version>
+		<feign-reactor.version>3.3.0</feign-reactor.version>
 	</properties>
 	<dependencies>
 		<dependency>
