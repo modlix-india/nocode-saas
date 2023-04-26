@@ -6,6 +6,8 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -31,6 +33,7 @@ import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.Parameter;
+import com.fincity.nocode.kirun.engine.repository.KIRunFunctionRepository;
 import com.fincity.nocode.kirun.engine.runtime.FunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -79,6 +82,14 @@ public class FunctionExecutionController {
 
 	@Autowired
 	private AppDataService appDataService;
+
+	private HybridRepository<Function> coreFunctionRepository;
+
+	@PostConstruct
+	public void init() {
+		this.coreFunctionRepository = new HybridRepository<>(new KIRunFunctionRepository(),
+		        new CoreFunctionRepository(appDataService));
+	}
 
 	@GetMapping(PATH)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
@@ -160,7 +171,6 @@ public class FunctionExecutionController {
 
 		        (ca, tup2) ->
 				{
-
 			        if (tup2.getT1() instanceof DefinitionFunction df
 			                && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
 			                && !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
@@ -172,7 +182,7 @@ public class FunctionExecutionController {
 			        return Mono.just(tup2.getT1()
 			                .execute(
 			                        new FunctionExecutionParameters(
-			                                new HybridRepository<>(new CoreFunctionRepository(appDataService),
+			                                new HybridRepository<>(this.coreFunctionRepository,
 			                                        functionService.getFunctionRepository(appCode, clientCode)),
 			                                tup2.getT2())
 			                                .setArguments(job == null ? getRequestParamsToArguments(tup2.getT1()
@@ -181,13 +191,11 @@ public class FunctionExecutionController {
 
 		        },
 
-		        (ca, tup2, output) -> this.extractOutpuEvent(output))
-		        .contextWrite(
-		                Context.of("appCode", appCode, "clientCode", clientCode, AppDataService.class, appDataService));
+		        (ca, tup2, output) -> this.extractOutputEvent(output));
 
 	}
 
-	private Mono<ResponseEntity<String>> extractOutpuEvent(FunctionOutput e) {
+	private Mono<ResponseEntity<String>> extractOutputEvent(FunctionOutput e) {
 		EventResult er = null;
 
 		while ((er = e.next()) != null) {

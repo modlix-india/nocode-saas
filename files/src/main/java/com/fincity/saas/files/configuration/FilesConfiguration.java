@@ -22,7 +22,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService, "/api/files/static/file/**");
+		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/files/static/file/**");
 	}
 
 }

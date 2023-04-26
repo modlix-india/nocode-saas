@@ -4,8 +4,10 @@ import java.io.Serializable;
 import java.util.Map;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 @Data
+@Accessors(chain = true)
 public class DataObject implements Serializable {
 
 	private static final long serialVersionUID = 2698669653996010003L;

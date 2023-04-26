@@ -111,15 +111,21 @@ public class AppDataService {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        conn -> Mono
+		        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+		        (ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+		        (ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+
+		        (ca, ac, cc, conn) -> Mono
 		                .just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
+		        (ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
 
-		        (conn, dataService, storage) -> this.genericOperation(storage,
-		                (ca, hasAccess) -> dataService.create(conn, storage, dataObject), Storage::getCreateAuth,
+		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
+		                (cona, hasAccess) -> dataService.create(conn, storage, dataObject), Storage::getCreateAuth,
 		                CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE));
 	}
 
