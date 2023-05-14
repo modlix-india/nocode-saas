@@ -5,6 +5,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLConnection;
 import java.net.URLDecoder;
@@ -13,13 +15,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
@@ -56,6 +63,7 @@ import com.fincity.saas.files.util.FileExtensionUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -64,6 +72,8 @@ public abstract class AbstractFilesResourceService {
 	private static final String GENERIC_URI_PART = "api/files/";
 
 	private static final String GENERIC_URI_PART_FILE = "/file";
+
+	private static final String GENERIC_URI_PART_IMPORT = "/import";
 
 	private static final String STATIC_TYPE = "static";
 
@@ -85,8 +95,7 @@ public abstract class AbstractFilesResourceService {
 
 	private String uriPart;
 	private String uriPartFile;
-	private int uriPartLength;
-	private int uriPartFileLength;
+	private String uriPartImport;
 
 	@PostConstruct
 	private void initialize() {
@@ -96,10 +105,10 @@ public abstract class AbstractFilesResourceService {
 		        .toLowerCase();
 
 		this.uriPart = GENERIC_URI_PART + type;
-		this.uriPartLength = this.uriPart.length();
 
 		this.uriPartFile = GENERIC_URI_PART + type + GENERIC_URI_PART_FILE;
-		this.uriPartFileLength = this.uriPartFile.length();
+
+		this.uriPartImport = GENERIC_URI_PART + type + GENERIC_URI_PART_IMPORT;
 	}
 
 	private static final Map<String, Comparator<File>> COMPARATORS = new HashMap<>(Map.of(
@@ -116,7 +125,7 @@ public abstract class AbstractFilesResourceService {
 
 	public Mono<Page<FileDetail>> list(String clientCode, String uri, String filter, Pageable page) {
 
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 
 		return FlatMapUtil.flatMapMono(
@@ -324,6 +333,29 @@ public abstract class AbstractFilesResourceService {
 			                .append('"')
 			                .toString();
 
+			        if (Files.isDirectory(file)) {
+
+				        int ind = rp.charAt(0) == '/' ? 1 : 0;
+				        int secondInd = rp.indexOf('/', ind);
+
+				        String sp = secondInd == -1 ? rp.substring(ind) : rp.substring(ind, secondInd);
+				        final long finFileMillis = fileMillis;
+
+				        return this.fileAccessService
+				                .hasReadAccess(
+				                        secondInd == -1 && secondInd < rp.length() ? "" : rp.substring(secondInd + 1),
+				                        sp, this.getResourceType())
+				                .flatMap(e ->
+								{
+					                if (!e.booleanValue()) {
+						                return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+						                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
+					                }
+					                return makeMatchesStartDownload(downloadOptions, request, response, file,
+					                        finFileMillis, fileETag);
+				                });
+			        }
+
 			        return makeMatchesStartDownload(downloadOptions, request, response, file, fileMillis, fileETag);
 		        });
 	}
@@ -378,6 +410,22 @@ public abstract class AbstractFilesResourceService {
 
 		HttpHeaders respHeaders = response.getHeaders();
 
+		File actualFile = file.toFile();
+
+		if (Files.isDirectory(file)) {
+			try {
+				downloadOptions.setDownload(true);
+				downloadOptions.setName(file.getFileName()
+				        .toString() + ".zip");
+
+				file = this.makeArchive(file);
+				actualFile = file.toFile();
+			} catch (IOException e) {
+				return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
+				        FilesMessageResourceService.UNABLE_CREATE_DOWNLOAD_FILE);
+			}
+		}
+
 		respHeaders.set("x-cache", "MISS");
 		respHeaders.setLastModified(fileMillis);
 		respHeaders.setETag(eTag);
@@ -386,8 +434,8 @@ public abstract class AbstractFilesResourceService {
 			respHeaders.setCacheControl("public, max-age=3600, must-revalidate");
 		respHeaders.setContentDisposition((downloadOptions.getDownload()
 		        .booleanValue() ? ContentDisposition.attachment() : ContentDisposition.inline())
-		        .filename(file.getFileName()
-		                .toString())
+		        .filename(downloadOptions.getName() == null ? file.getFileName()
+		                .toString() : downloadOptions.getName())
 		        .build());
 		String mimeType = URLConnection.guessContentTypeFromName(file.getFileName()
 		        .toString());
@@ -396,8 +444,6 @@ public abstract class AbstractFilesResourceService {
 			mimeType = "application/octet-stream";
 		}
 		respHeaders.setContentType(MediaType.valueOf(mimeType));
-
-		File actualFile = file.toFile();
 
 		long length = actualFile.length();
 
@@ -411,7 +457,46 @@ public abstract class AbstractFilesResourceService {
 
 			return sendFileWhenRanges(downloadOptions, request, response, actualFile);
 		}
+	}
 
+	private Path makeArchive(Path file) throws IOException {
+
+		Path tmpFile = Files.createTempFile("tmp", "zip");
+		try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(tmpFile.toFile()))) {
+			this.zipFile(file.toFile(), tmpFile.getFileName()
+			        .toString(), zipOut);
+		}
+
+		return tmpFile;
+	}
+
+	private void zipFile(File fileToZip, String fileName, ZipOutputStream zipOut) throws IOException {
+		if (fileToZip.isHidden()) {
+			return;
+		}
+		if (fileToZip.isDirectory()) {
+			if (fileName.endsWith("/")) {
+				zipOut.putNextEntry(new ZipEntry(fileName));
+				zipOut.closeEntry();
+			} else {
+				zipOut.putNextEntry(new ZipEntry(fileName + "/"));
+				zipOut.closeEntry();
+			}
+			File[] children = fileToZip.listFiles();
+			for (File childFile : children) {
+				zipFile(childFile, fileName + "/" + childFile.getName(), zipOut);
+			}
+			return;
+		}
+		try (FileInputStream fis = new FileInputStream(fileToZip)) {
+			ZipEntry zipEntry = new ZipEntry(fileName);
+			zipOut.putNextEntry(zipEntry);
+			byte[] bytes = new byte[1024];
+			int length;
+			while ((length = fis.read(bytes)) >= 0) {
+				zipOut.write(bytes, 0, length);
+			}
+		}
 	}
 
 	private Mono<Void> sendFileWhenRanges(DownloadOptions downloadOptions, ServerHttpRequest request,
@@ -435,7 +520,7 @@ public abstract class AbstractFilesResourceService {
 
 	private Mono<Void> sendFileWhenNoRanges(DownloadOptions downloadOptions, Path file, ServerHttpResponse response,
 	        HttpHeaders respHeaders, File actualFile, long length) {
-		response.setStatusCode(HttpStatus.OK);
+
 		ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
 		if (!downloadOptions.hasModification()) {
 
@@ -536,7 +621,7 @@ public abstract class AbstractFilesResourceService {
 
 	public Mono<Boolean> delete(String clientCode, String uri) {
 
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 
 		return FlatMapUtil.flatMapMono(
@@ -579,7 +664,7 @@ public abstract class AbstractFilesResourceService {
 	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
 
 		boolean ovr = override == null || override.booleanValue();
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
 
@@ -611,9 +696,115 @@ public abstract class AbstractFilesResourceService {
 		        });
 	}
 
+	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
+
+		boolean ovr = override == null || override.booleanValue();
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPartImport, uri);
+		String resourcePath = tup.getT1();
+
+		if (fp == null || (!fp.filename()
+		        .toLowerCase()
+		        .endsWith(".zip"))) {
+			return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
+			        FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
+		}
+
+		return FlatMapUtil.flatMapMono(
+
+		        () ->
+				{
+			        Path tmpFile;
+			        Path tmpFolder;
+			        try {
+				        tmpFile = Files.createTempFile("tmp", "zip");
+				        tmpFolder = Files.createTempDirectory("tmp");
+			        } catch (IOException e) {
+				        return Mono.error(e);
+			        }
+			        return fp.transferTo(tmpFile)
+			                .then(Mono.just(Tuples.of(tmpFile, tmpFolder)));
+		        },
+
+		        tmpTup -> FlatMapUtil.flatMapFlux(
+
+		                () -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
+
+		                eFile ->
+						{
+			                return Flux.from(this.fileAccessService.hasWriteAccess(
+			                        this.parentOf(resourcePath + eFile.getT1()), clientCode, this.getResourceType()));
+		                },
+
+		                (eFile, hasPermission) ->
+						{
+			                if (!hasPermission.booleanValue())
+				                return Flux.empty();
+
+			                Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, eFile.getT1());
+			                try {
+
+				                Files.createDirectories(path.getParent());
+				                if (ovr)
+					                Files.move(eFile.getT2(), path, StandardCopyOption.REPLACE_EXISTING);
+				                else
+					                Files.move(eFile.getT2(), path);
+			                } catch (IOException ex) {
+
+			                }
+
+			                return Flux.just(true);
+		                })
+		                .collectList()
+		                .map(e -> true))
+		        .map(e -> true)
+		        .subscribeOn(Schedulers.boundedElastic());
+	}
+
+	private String parentOf(String name) {
+		int ind = name.lastIndexOf('/');
+		if (ind == -1)
+			return name;
+		return name.substring(0, ind);
+	}
+
+	private Flux<Tuple2<String, Path>> deflate(Path tmpFile, Path tmpFolder) {
+
+		List<Tuple2<String, Path>> files = new ArrayList<>();
+
+		try (ZipInputStream zis = new ZipInputStream(new FileInputStream(tmpFile.toFile()))) {
+
+			ZipEntry ze = null;
+
+			while ((ze = zis.getNextEntry()) != null) {
+
+				if (ze.isDirectory()) {
+					Files.createDirectories(tmpFolder.resolve(ze.getName()));
+				} else {
+					var file = tmpFolder.resolve(ze.getName());
+					files.add(Tuples.of(ze.getName(), file));
+					Files.createDirectories(file.getParent());
+					try (FileOutputStream fos = new FileOutputStream(file.toFile())) {
+						int len;
+						byte[] buffer = new byte[1024];
+						while ((len = zis.read(buffer)) > 0) {
+							fos.write(buffer, 0, len);
+						}
+					}
+				}
+
+			}
+		} catch (IOException e) {
+
+			return this.msgService.throwFluxMessage(HttpStatus.BAD_REQUEST, e,
+			        FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
+		}
+
+		return Flux.fromIterable(files);
+	}
+
 	protected Tuple2<String, String> resolvePathWithClientCode(String uri) {
 
-		String path = uri.substring(uri.indexOf(this.uriPartFile) + this.uriPartFileLength);
+		String path = uri.substring(uri.indexOf(this.uriPartFile) + this.uriPartFile.length());
 		String origPath = path;
 
 		path = URLDecoder.decode(path, StandardCharsets.UTF_8)
@@ -629,10 +820,9 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	private Tuple2<String, String> resolvePathWithoutClientCode(String uri) {
+	private Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
 
-		String path = uri.substring(uri.indexOf(this.uriPart) + this.uriPartLength,
-		        uri.length() - (uri.endsWith("/") ? 1 : 0));
+		String path = uri.substring(uri.indexOf(part) + part.length(), uri.length() - (uri.endsWith("/") ? 1 : 0));
 		String origPath = path;
 
 		path = URLDecoder.decode(path, StandardCharsets.UTF_8)
