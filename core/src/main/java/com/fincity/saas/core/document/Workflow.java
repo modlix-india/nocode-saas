@@ -26,7 +26,7 @@ public class Workflow extends AbstractOverridableDTO<Workflow> {
 
 	private static final long serialVersionUID = -7863306840732076558L;
 
-	private boolean isTemplate;
+	private Boolean isTemplate;
 	private String startAuth;
 	private Map<String, WorkflowStep> steps;
 	private TriggerWorkflowStep trigger;
