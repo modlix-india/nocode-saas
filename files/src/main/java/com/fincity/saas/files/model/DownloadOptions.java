@@ -16,6 +16,7 @@ public class DownloadOptions {
 	private ResizeDirection resizeDirection = ResizeDirection.HORIZONTAL;
 	private Boolean noCache;
 	private Boolean download;
+	private String name;
 
 	public enum ResizeDirection {
 		HORIZONTAL, VERTICAL;
