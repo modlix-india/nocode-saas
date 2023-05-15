@@ -1,9 +1,14 @@
 package com.fincity.saas.core.document;
 
+import java.util.Map;
+
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
+import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,21 +28,55 @@ public class Action extends AbstractOverridableDTO<Action> {
 
 	private String functionNamespace;
 	private String functionName;
+	private Map<String, String> properties;
 
 	public Action(Action action) {
-		
+
 		super(action);
 		this.functionName = action.functionName;
 		this.functionNamespace = action.functionNamespace;
+		this.properties = CloneUtil.cloneMapObject(action.properties);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<Action> applyOverride(Action base) {
+
+		if (base != null)
+			return DifferenceApplicator.apply(this.properties, base.properties)
+			        .map(a ->
+					{
+				        this.properties = (Map<String, String>) a;
+				        if (this.functionNamespace == null)
+					        this.functionNamespace = base.functionNamespace;
+				        if (this.functionName == null)
+					        this.functionName = base.functionName;
+				        return this;
+			        });
+
 		return Mono.just(this);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<Action> makeOverride(Action base) {
-		return Mono.just(this);
+
+		if (base == null)
+			return Mono.just(this);
+
+		return Mono.just(this)
+		        .flatMap(e -> DifferenceExtractor.extract(e.properties, base.properties)
+		                .map(k ->
+						{
+			                e.properties = (Map<String, String>) k;
+
+			                if (this.functionNamespace != null && this.functionNamespace.equals(base.functionNamespace))
+				                this.functionNamespace = null;
+
+			                if (this.functionName != null && this.functionName.equals(base.functionName))
+				                this.functionName = null;
+
+			                return e;
+		                }));
 	}
 }
