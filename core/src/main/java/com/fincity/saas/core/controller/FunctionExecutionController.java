@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.kirun.engine.HybridRepository;
 import com.fincity.nocode.kirun.engine.Repository;
-import com.fincity.nocode.kirun.engine.function.Function;
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.SchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
@@ -33,8 +33,9 @@ import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.Parameter;
-import com.fincity.nocode.kirun.engine.repository.KIRunFunctionRepository;
-import com.fincity.nocode.kirun.engine.runtime.FunctionExecutionParameters;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
+import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunctionRepository;
+import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
@@ -54,7 +55,6 @@ import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -83,11 +83,11 @@ public class FunctionExecutionController {
 	@Autowired
 	private AppDataService appDataService;
 
-	private HybridRepository<Function> coreFunctionRepository;
+	private ReactiveHybridRepository<ReactiveFunction> coreFunctionRepository;
 
 	@PostConstruct
 	public void init() {
-		this.coreFunctionRepository = new HybridRepository<>(new KIRunFunctionRepository(),
+		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
 		        new CoreFunctionRepository(appDataService));
 	}
 
@@ -156,42 +156,35 @@ public class FunctionExecutionController {
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.fromCallable(() ->
-				{
+		        ca -> this.functionService.getFunctionRepository(appCode, clientCode)
+		                .find(namespace, name),
 
-			        Function fun = this.functionService.getFunctionRepository(appCode, clientCode)
-			                .find(namespace, name);
-
-			        Repository<Schema> schemaRepository = new HybridRepository<>(new CoreSchemaRepository(),
-			                schemaService.getSchemaRepository(appCode, clientCode));
-
-			        return Tuples.of(fun, schemaRepository);
-		        })
+		        (ca, fun) -> Mono
+		                .fromCallable(() -> new HybridRepository<>(new CoreSchemaRepository(),
+		                        schemaService.getSchemaRepository(appCode, clientCode)))
 		                .subscribeOn(Schedulers.boundedElastic()),
 
-		        (ca, tup2) ->
+		        (ca, fun, schRepo) ->
 				{
-			        if (tup2.getT1() instanceof DefinitionFunction df
-			                && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
+			        if (fun instanceof DefinitionFunction df && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
 			                && !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
 				        return msgService.throwMessage(HttpStatus.FORBIDDEN,
 				                AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
 
 			        }
 
-			        return Mono.just(tup2.getT1()
+			        return fun
 			                .execute(
-			                        new FunctionExecutionParameters(
-			                                new HybridRepository<>(this.coreFunctionRepository,
+			                        new ReactiveFunctionExecutionParameters(
+			                                new ReactiveHybridRepository<>(this.coreFunctionRepository,
 			                                        functionService.getFunctionRepository(appCode, clientCode)),
-			                                tup2.getT2())
-			                                .setArguments(job == null ? getRequestParamsToArguments(tup2.getT1()
-			                                        .getSignature()
-			                                        .getParameters(), request, tup2.getT2()) : job)));
+			                                schRepo)
+			                                .setArguments(job == null ? getRequestParamsToArguments(fun.getSignature()
+			                                        .getParameters(), request, schRepo) : job));
 
 		        },
 
-		        (ca, tup2, output) -> this.extractOutputEvent(output));
+		        (ca, fun, schRepo, output) -> this.extractOutputEvent(output));
 
 	}
 

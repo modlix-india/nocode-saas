@@ -131,7 +131,7 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
                 }
 
             };
-            return new HybridRepository<>(repo, new KIRunSchemaRepository());
+            return repo;
         });
     }
 }

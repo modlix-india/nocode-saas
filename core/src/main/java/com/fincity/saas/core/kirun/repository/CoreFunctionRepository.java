@@ -4,44 +4,46 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.nocode.kirun.engine.Repository;
-import com.fincity.nocode.kirun.engine.function.Function;
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.core.functions.CreateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 
-public class CoreFunctionRepository implements Repository<Function> {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-	private Map<String, Function> repoMap = new HashMap<>();
+public class CoreFunctionRepository implements ReactiveRepository<ReactiveFunction> {
+
+	private Map<String, ReactiveFunction> repoMap = new HashMap<>();
 
 	private List<String> filterableNames;
 
 	public CoreFunctionRepository(AppDataService appDataService) {
 
-		Function createStorage = new CreateStorageObject(appDataService);
-		
+		ReactiveFunction createStorage = new CreateStorageObject(appDataService);
+
 		repoMap.put(createStorage.getSignature()
 		        .getFullName(), createStorage);
-		
+
 		this.filterableNames = repoMap.values()
 		        .stream()
-		        .map(Function::getSignature)
+		        .map(ReactiveFunction::getSignature)
 		        .map(FunctionSignature::getFullName)
 		        .toList();
 	}
 
 	@Override
-	public List<String> filter(String name) {
-		return filterableNames.stream()
+	public Flux<String> filter(String name) {
+		return Flux.fromStream(filterableNames.stream())
 		        .filter(e -> e.toLowerCase()
-		                .indexOf(name.toLowerCase()) != -1)
-		        .toList();
+		                .indexOf(name.toLowerCase()) != -1);
 	}
 
 	@Override
-	public Function find(String namespace, String name) {
+	public Mono<ReactiveFunction> find(String namespace, String name) {
 
-		return repoMap.get(namespace + "." + name);
+		return Mono.just(repoMap.get(namespace + "." + name));
 	}
 
 }

@@ -3,23 +3,23 @@ package com.fincity.saas.core.functions;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.nocode.kirun.engine.function.AbstractFunction;
+import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
-import com.fincity.nocode.kirun.engine.runtime.FunctionExecutionParameters;
+import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-import reactor.core.scheduler.Schedulers;
+import reactor.core.publisher.Mono;
 
-public class CreateStorageObject extends AbstractFunction {
+public class CreateStorageObject extends AbstractReactiveFunction {
 
 	private static final String DATA_OBJECT = "dataObject";
 
@@ -61,7 +61,7 @@ public class CreateStorageObject extends AbstractFunction {
 	}
 
 	@Override
-	protected FunctionOutput internalExecute(FunctionExecutionParameters context) {
+	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
 
 		String storageName = context.getArguments()
 		        .get(STORAGE_NAME)
@@ -73,19 +73,15 @@ public class CreateStorageObject extends AbstractFunction {
 
 		if (storageName == null || dataObject == null)
 
-			return new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonObject()))));
+			return Mono.just(new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonObject())))));
 
 		Gson gson = new Gson();
 		Map<String, Object> dataObj = gson.fromJson(dataObject, new TypeToken<Map<String, Object>>() {
 		}.getType());
 
-		var retobj = appDataService.create(null, null, storageName, new DataObject().setData(dataObj))
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .block();
-
-		var obj = gson.toJsonTree(retobj);
-
-		return new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, obj))));
+		return appDataService.create(null, null, storageName, new DataObject().setData(dataObj))
+		        .map(obj -> new FunctionOutput(
+		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(obj))))));
 
 	}
 

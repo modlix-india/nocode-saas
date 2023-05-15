@@ -3,14 +3,11 @@ package com.fincity.saas.commons.mongo.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 
-import com.fincity.nocode.kirun.engine.HybridRepository;
-import com.fincity.nocode.kirun.engine.Repository;
-import com.fincity.nocode.kirun.engine.function.Function;
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
@@ -18,7 +15,7 @@ import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.Additio
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
-import com.fincity.nocode.kirun.engine.repository.KIRunFunctionRepository;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.document.AbstractFunction;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
@@ -27,6 +24,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R extends IOverridableDataRepository<D>>
@@ -41,7 +39,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
     private static final String CACHE_NAME_FUNCTION_REPO = "functionRepo";
 
-    private Map<String, Repository<com.fincity.nocode.kirun.engine.function.Function>> functions = new HashMap<>();
+    private Map<String, ReactiveRepository<ReactiveFunction>> functions = new HashMap<>();
 
     @Override
     public Mono<D> create(D entity) {
@@ -98,14 +96,14 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
                 });
     }
 
-    public Repository<com.fincity.nocode.kirun.engine.function.Function> getFunctionRepository(String appCode,
+    public ReactiveRepository<ReactiveFunction> getFunctionRepository(String appCode,
             String clientCode) {
 
         return functions.computeIfAbsent(appCode + " - " + clientCode,
 
                 key -> {
-                    Repository<Function> repo = new Repository<Function>() {
-                        public Function find(String namespace, String name) {
+                    ReactiveRepository<ReactiveFunction> repo = new ReactiveRepository<ReactiveFunction>() {
+                        public Mono<ReactiveFunction> find(String namespace, String name) {
 
                             String fnName = StringUtil.safeIsBlank(namespace) ? name : namespace + "." + name;
 
@@ -126,18 +124,18 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
                                                 FunctionDefinition.class);
 
                                         return Mono.just(new DefinitionFunction(fd, s.getExecuteAuth()));
-                                    })
-                                    .block();
+                                    });
 
                         }
 
-                        public List<String> filter(String name) {
+                        public Flux<String> filter(String name) {
 
-                            return List.of();
+                            return Flux.empty();
 
                         }
                     };
-                    return new HybridRepository<>(repo, new KIRunFunctionRepository());
+                    
+                    return repo;
                 });
     }
 }
