@@ -79,7 +79,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 	        @RequestParam(required = false) String bandColor,
 	        @RequestParam(required = false, defaultValue = "HORIZONTAL") DownloadOptions.ResizeDirection resizeDirection,
 	        @RequestParam(required = false, defaultValue = "false") Boolean noCache, ServerHttpRequest request,
-	        ServerHttpResponse response) {
+	        @RequestParam(required = false) String name, ServerHttpResponse response) {
 
 		return service.downloadFile(new DownloadOptions().setHeight(height)
 		        .setWidth(width)
@@ -87,7 +87,24 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		        .setBandColor(bandColor)
 		        .setResizeDirection(resizeDirection)
 		        .setNoCache(noCache)
-		        .setDownload(download), request, response);
+		        .setDownload(download)
+		        .setName(name), request, response);
+	}
+
+	@PostMapping("/import/**")
+	public Mono<ResponseEntity<Boolean>> createWithZip(
+	        @RequestPart(name = "file", required = true) Mono<FilePart> filePart,
+	        @RequestPart(required = false, name = "override") String override, ServerHttpRequest request) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> filePart,
+
+		        (ca, fp) -> this.service.createFromZipFile(ca.getLoggedInFromClientCode(), request.getURI()
+		                .toString(), fp, override != null ? BooleanUtil.safeValueOf(override) : null))
+		        .map(ResponseEntity::ok);
 	}
 
 }

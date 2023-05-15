@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class AbstractMessageService {
@@ -47,10 +48,23 @@ public class AbstractMessageService {
 
 	public <T> Mono<T> throwMessage(HttpStatus status, String messageId, Object... params) {
 
-		return Mono.defer(() -> this.getMessage(messageId, params)
-		        .map(msg -> new GenericException(status, msg))
-		        .flatMap(Mono::error));
+		return Mono.defer(
 
+		        () -> this.getMessage(messageId, params)
+		                .map(msg -> new GenericException(status, msg))
+		                .flatMap(Mono::error)
+
+		);
+	}
+
+	public <T> Flux<T> throwFluxMessage(HttpStatus status, String messageId, Object... params) {
+
+		return Flux.defer(
+
+		        () -> Flux.from(this.getMessage(messageId, params))
+		                .flatMap(msg -> Flux.error(new GenericException(status, msg)))
+
+		);
 	}
 
 	public <T> Mono<T> throwMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
@@ -59,6 +73,16 @@ public class AbstractMessageService {
 		        .map(msg -> new GenericException(status, msg, cause))
 		        .flatMap(Mono::error));
 
+	}
+
+	public <T> Flux<T> throwFluxMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
+
+		return Flux.defer(
+
+		        () -> Flux.from(this.getMessage(messageId, params))
+		                .flatMap(msg -> Flux.error(new GenericException(status, msg, cause)))
+
+		);
 	}
 
 	public String getDefaultLocaleMessage(String messageId) {
