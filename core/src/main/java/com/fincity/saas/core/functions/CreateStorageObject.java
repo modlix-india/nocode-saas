@@ -25,7 +25,7 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
 	private static final String EVENT_RESULT = "result";
 
-	private static final String NAME = "CreateStorage";
+	private static final String FUNCTION_NAME = "CreateStorage";
 
 	private static final String NAME_SPACE = "CoreServices";
 
@@ -50,7 +50,7 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 		Event errorEvent = new Event().setName(Event.ERROR)
 		        .setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
-		return new FunctionSignature().setName(NAME)
+		return new FunctionSignature().setName(FUNCTION_NAME)
 		        .setNamespace(NAME_SPACE)
 		        .setParameters(Map.of(STORAGE_NAME, new Parameter().setParameterName(STORAGE_NAME)
 		                .setSchema(Schema.ofString(STORAGE_NAME)), DATA_OBJECT,

@@ -8,6 +8,10 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.core.functions.CreateStorageObject;
+import com.fincity.saas.core.functions.DeleteStorageObject;
+import com.fincity.saas.core.functions.ReadPageStorageObject;
+import com.fincity.saas.core.functions.ReadStorageObject;
+import com.fincity.saas.core.functions.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 
 import reactor.core.publisher.Flux;
@@ -23,8 +27,28 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 		ReactiveFunction createStorage = new CreateStorageObject(appDataService);
 
+		ReactiveFunction deleteStorage = new DeleteStorageObject(appDataService);
+
+		ReactiveFunction updateStorage = new UpdateStorageObject(appDataService);
+
+		ReactiveFunction readStorage = new ReadStorageObject(appDataService);
+
+		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService);
+
 		repoMap.put(createStorage.getSignature()
 		        .getFullName(), createStorage);
+
+		repoMap.put(deleteStorage.getSignature()
+		        .getFullName(), deleteStorage);
+
+		repoMap.put(updateStorage.getSignature()
+		        .getFullName(), updateStorage);
+
+		repoMap.put(readStorage.getSignature()
+		        .getFullName(), readStorage);
+
+		repoMap.put(readPageStorage.getSignature()
+		        .getFullName(), readPageStorage);
 
 		this.filterableNames = repoMap.values()
 		        .stream()

@@ -3,6 +3,9 @@ package com.fincity.saas.core.functions;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
@@ -11,35 +14,36 @@ import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
-import com.fincity.saas.core.model.DataObject;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
-
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
 
-public class UpdateStorageObject extends AbstractReactiveFunction {
-
-	private static final String DATA_OBJECT_ID = "dataObjectId";
-
-	private static final String DATA_OBJECT = "dataObject";
+public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 	private static final String EVENT_RESULT = "result";
 
-	private static final String FUNCTION_NAME = "UpdateStorage";
+	private static final String FUNCTION_NAME = "ReadPageStorage";
 
 	private static final String NAME_SPACE = "CoreServices";
 
 	private static final String STORAGE_NAME = "storageName";
 
-	private static final String ID = "_id";
+	private static final String FILTER = "filter";
+
+	private static final String PAGE = "page";
+
+	private static final String SIZE = "size";
 
 	private AppDataService appDataService;
 
-	public UpdateStorageObject(AppDataService appDataService) {
+	private Gson gson;
+
+	public ReadPageStorageObject(AppDataService appDataService) {
+
 		this.appDataService = appDataService;
 	}
 
@@ -58,13 +62,22 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 		return new FunctionSignature().setNamespace(NAME_SPACE)
 		        .setName(FUNCTION_NAME)
-		        .setParameters(Map.of(STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
-		                DATA_OBJECT_ID, Parameter.of(DATA_OBJECT_ID, Schema.ofString(DATA_OBJECT_ID)), DATA_OBJECT,
-		                Parameter.of(DATA_OBJECT, Schema.ofObject(DATA_OBJECT))))
+		        .setParameters(Map.of(
+
+		                STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
+
+		                FILTER, Parameter.of(FILTER, Schema.ofObject(FILTER)
+		                        .setDefaultValue(new JsonObject())),
+
+		                PAGE, Parameter.of(PAGE, Schema.ofInteger(PAGE)
+		                        .setDefaultValue(new JsonPrimitive(10))),
+
+		                SIZE, Parameter.of(SIZE, Schema.ofInteger(SIZE)
+		                        .setDefaultValue(new JsonPrimitive(15)))))
+
 		        .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
 
-	@SuppressWarnings("serial")
 	@Override
 	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
 
@@ -72,34 +85,29 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 		        .get(STORAGE_NAME)
 		        .getAsString();
 
-		String dataObjectId = context.getArguments()
-		        .get(DATA_OBJECT_ID)
-		        .getAsString();
-
-		JsonObject updatableObject = context.getArguments()
-		        .get(DATA_OBJECT)
+		JsonObject filter = context.getArguments()
+		        .get(FILTER)
 		        .getAsJsonObject();
+
+		Integer page = context.getArguments()
+		        .get(PAGE)
+		        .getAsInt();
+
+		Integer size = context.getArguments()
+		        .get(SIZE)
+		        .getAsInt();
 
 		if (storageName == null)
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
 			        Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
 
-		if (dataObjectId == null || updatableObject == null)
-			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR, Map.of(Event.ERROR,
-			        new JsonPrimitive("Please provide the id for which delete needs to be performed."))))));
+		// update the readpage function
 
-		Gson gson = new Gson();
+		Pageable pageable = PageRequest.of(page, size);
 
-		Map<String, Object> updatableDataObject = gson.fromJson(updatableObject, new TypeToken<Map<String, Object>>() {
-		}.getType());
-
-		updatableDataObject.put(ID, dataObjectId);
-
-		DataObject dataObject = new DataObject().setData(updatableDataObject);
-
-		return appDataService.update(null, null, storageName, dataObject, true)
-		        .map(updatedObject -> new FunctionOutput(
-		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatableObject))))));
+		return this.appDataService.readPage(null, null, storageName, pageable, false, new ComplexCondition())
+		        .map(receivedObject -> new FunctionOutput(
+		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
 	}
 
 }
