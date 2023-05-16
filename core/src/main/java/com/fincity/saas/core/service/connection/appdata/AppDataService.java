@@ -154,7 +154,7 @@ public class AppDataService {
 
 	public Mono<Map<String, Object>> read(String appCode, String clientCode, String storageName, String id) {
 
-		return FlatMapUtil.flatMapMonoWithNullLog(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -469,7 +469,7 @@ public class AppDataService {
 
 	private Mono<Boolean> uploadTemplate(Storage storage, FlatFileType fileType, FilePart filePart,
 	        IAppDataService dataService) {
-		return FlatMapUtil.flatMapMonoLog(
+		return FlatMapUtil.flatMapMono(
 
 		        () -> storageService.getSchema(storage),
 

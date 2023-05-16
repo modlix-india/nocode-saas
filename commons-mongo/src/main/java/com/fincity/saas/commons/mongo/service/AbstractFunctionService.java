@@ -101,41 +101,49 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
         return functions.computeIfAbsent(appCode + " - " + clientCode,
 
-                key -> {
-                    ReactiveRepository<ReactiveFunction> repo = new ReactiveRepository<ReactiveFunction>() {
-                        public Mono<ReactiveFunction> find(String namespace, String name) {
+                key ->
 
-                            String fnName = StringUtil.safeIsBlank(namespace) ? name : namespace + "." + name;
+                new ReactiveRepository<ReactiveFunction>() {
 
-                            return FlatMapUtil.flatMapMono(
+                    public Mono<ReactiveFunction> find(String namespace, String name) {
 
-                                    () -> cacheService.cacheValueOrGet(CACHE_NAME_FUNCTION_REPO,
-                                            () -> read(fnName, appCode, clientCode), appCode, clientCode, fnName),
+                        String fnName = StringUtil.safeIsBlank(namespace) ? name : namespace + "." + name;
 
-                                    s -> {
-                                        Gson gson = new GsonBuilder()
-                                                .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-                                                .registerTypeAdapter(AdditionalType.class, new AdditionalTypeAdapter())
-                                                .registerTypeAdapter(ArraySchemaType.class,
-                                                        new ArraySchemaTypeAdapter())
-                                                .create();
+                        return FlatMapUtil.flatMapMono(
 
-                                        FunctionDefinition fd = gson.fromJson(gson.toJsonTree(s.getDefinition()),
-                                                FunctionDefinition.class);
+                                () -> cacheService.cacheValueOrGet(CACHE_NAME_FUNCTION_REPO,
+                                        () -> read(fnName, appCode, clientCode), appCode, clientCode, fnName),
 
-                                        return Mono.just(new DefinitionFunction(fd, s.getExecuteAuth()));
-                                    });
+                                s -> {
 
-                        }
+                                    ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaTypeAdapter();
 
-                        public Flux<String> filter(String name) {
+                                    AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
 
-                            return Flux.empty();
+                                    Gson gson = new GsonBuilder()
+                                            .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+                                            .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+                                            .registerTypeAdapter(ArraySchemaType.class,
+                                                    arraySchemaTypeAdapter)
+                                            .create();
 
-                        }
-                    };
-                    
-                    return repo;
+                                    arraySchemaTypeAdapter.setGson(gson);
+
+                                    additionalTypeAdapter.setGson(gson);
+
+                                    FunctionDefinition fd = gson.fromJson(gson.toJsonTree(s.getDefinition()),
+                                            FunctionDefinition.class);
+
+                                    return Mono.just(new DefinitionFunction(fd, s.getExecuteAuth()));
+                                });
+
+                    }
+
+                    public Flux<String> filter(String name) {
+
+                        return Flux.empty();
+
+                    }
                 });
     }
 }

@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
@@ -17,6 +19,7 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutio
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
@@ -39,8 +42,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 	private static final String SIZE = "size";
 
 	private AppDataService appDataService;
-
-	private Gson gson;
 
 	public ReadPageStorageObject(AppDataService appDataService) {
 
@@ -66,8 +67,8 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 		                STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
 
-		                FILTER, Parameter.of(FILTER, Schema.ofObject(FILTER)
-		                        .setDefaultValue(new JsonObject())),
+		                FILTER, Parameter.of(FILTER, new Schema().setOneOf(List.of(Schema.ofObject(FILTER)
+		                        .setDefaultValue(new JsonObject()), new Schema().setType(Type.of(SchemaType.NULL))))),
 
 		                PAGE, Parameter.of(PAGE, Schema.ofInteger(PAGE)
 		                        .setDefaultValue(new JsonPrimitive(10))),
@@ -86,16 +87,37 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 		        .getAsString();
 
 		JsonObject filter = context.getArguments()
-		        .get(FILTER)
-		        .getAsJsonObject();
+		        .get(FILTER) != null ? context.getArguments()
+		                .get(FILTER)
+		                .getAsJsonObject()
+		                : this.getSignature()
+		                        .getParameters()
+		                        .get(FILTER)
+		                        .getSchema()
+		                        .getDefaultValue()
+		                        .getAsJsonObject();
 
 		Integer page = context.getArguments()
-		        .get(PAGE)
-		        .getAsInt();
+		        .get(PAGE) != null ? context.getArguments()
+		                .get(PAGE)
+		                .getAsInt()
+		                : this.getSignature()
+		                        .getParameters()
+		                        .get(PAGE)
+		                        .getSchema()
+		                        .getDefaultValue()
+		                        .getAsInt();
 
 		Integer size = context.getArguments()
-		        .get(SIZE)
-		        .getAsInt();
+		        .get(SIZE) != null ? context.getArguments()
+		                .get(SIZE)
+		                .getAsInt()
+		                : this.getSignature()
+		                        .getParameters()
+		                        .get(SIZE)
+		                        .getSchema()
+		                        .getDefaultValue()
+		                        .getAsInt();
 
 		if (storageName == null)
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
@@ -105,7 +127,9 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 		Pageable pageable = PageRequest.of(page, size);
 
-		return this.appDataService.readPage(null, null, storageName, pageable, false, new ComplexCondition())
+		Gson gson = new GsonBuilder().create();
+
+		return this.appDataService.readPage(null, null, storageName, pageable, true, new ComplexCondition())
 		        .map(receivedObject -> new FunctionOutput(
 		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
 	}
