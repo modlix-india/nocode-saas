@@ -6,18 +6,18 @@ import java.util.Map;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -41,11 +41,16 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 	private static final String SIZE = "size";
 
+	private static final String COUNT = "count";
+
 	private AppDataService appDataService;
 
-	public ReadPageStorageObject(AppDataService appDataService) {
+	private ObjectMapper mapper;
+
+	public ReadPageStorageObject(AppDataService appDataService, ObjectMapper mapper) {
 
 		this.appDataService = appDataService;
+		this.mapper = mapper;
 	}
 
 	public AppDataService getAppDataService() {
@@ -74,7 +79,10 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 		                        .setDefaultValue(new JsonPrimitive(0))),
 
 		                SIZE, Parameter.of(SIZE, Schema.ofInteger(SIZE)
-		                        .setDefaultValue(new JsonPrimitive(15)))))
+		                        .setDefaultValue(new JsonPrimitive(20))),
+
+		                COUNT, Parameter.of(COUNT, Schema.ofBoolean(COUNT)
+		                        .setDefaultValue(new JsonPrimitive(true)))))
 
 		        .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
@@ -102,13 +110,17 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
 			        Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
 
-		// update the readpage function
-
 		Pageable pageable = PageRequest.of(page, size);
 
 		Gson gson = new GsonBuilder().create();
 
-		return this.appDataService.readPage(null, null, storageName, pageable, true, new ComplexCondition())
+		AbstractCondition absc = null;
+
+		if (filter.size() != 0) {
+			absc = this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
+		}
+
+		return this.appDataService.readPage(null, null, storageName, pageable, true, absc)
 		        .map(receivedObject -> new FunctionOutput(
 		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
 	}

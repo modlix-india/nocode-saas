@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
@@ -23,7 +24,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 	private List<String> filterableNames;
 
-	public CoreFunctionRepository(AppDataService appDataService) {
+	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper) {
 
 		ReactiveFunction createStorage = new CreateStorageObject(appDataService);
 
@@ -33,7 +34,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 		ReactiveFunction readStorage = new ReadStorageObject(appDataService);
 
-		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService);
+		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper);
 
 		repoMap.put(createStorage.getSignature()
 		        .getFullName(), createStorage);

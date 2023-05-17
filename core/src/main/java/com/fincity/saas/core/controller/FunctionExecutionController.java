@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.HybridRepository;
 import com.fincity.nocode.kirun.engine.Repository;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
@@ -83,12 +84,15 @@ public class FunctionExecutionController {
 	@Autowired
 	private AppDataService appDataService;
 
+	@Autowired
+	private ObjectMapper objectMapper;
+
 	private ReactiveHybridRepository<ReactiveFunction> coreFunctionRepository;
 
 	@PostConstruct
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-		        new CoreFunctionRepository(appDataService));
+		        new CoreFunctionRepository(appDataService, objectMapper));
 	}
 
 	@GetMapping(PATH)
@@ -184,7 +188,9 @@ public class FunctionExecutionController {
 
 		        },
 
-		        (ca, fun, schRepo, output) -> this.extractOutputEvent(output));
+		        (ca, fun, schRepo, output) -> this.extractOutputEvent(output))
+		        .switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
+		                CoreMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
 
 	}
 
