@@ -14,7 +14,7 @@ public class UIFunctionService extends AbstractFunctionService<UIFunction, UIFun
 	}
 
 	@Override
-	protected String getObjectName() {
+	public String getObjectName() {
 		return "Function";
 	}
 }
