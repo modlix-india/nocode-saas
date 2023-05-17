@@ -67,11 +67,11 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 		                STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
 
-		                FILTER, Parameter.of(FILTER, new Schema().setOneOf(List.of(Schema.ofObject(FILTER)
-		                        .setDefaultValue(new JsonObject()), new Schema().setType(Type.of(SchemaType.NULL))))),
+		                FILTER, Parameter.of(FILTER, Schema.ofObject(FILTER)
+		                        .setDefaultValue(new JsonObject())),
 
 		                PAGE, Parameter.of(PAGE, Schema.ofInteger(PAGE)
-		                        .setDefaultValue(new JsonPrimitive(10))),
+		                        .setDefaultValue(new JsonPrimitive(0))),
 
 		                SIZE, Parameter.of(SIZE, Schema.ofInteger(SIZE)
 		                        .setDefaultValue(new JsonPrimitive(15)))))
@@ -87,37 +87,16 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 		        .getAsString();
 
 		JsonObject filter = context.getArguments()
-		        .get(FILTER) != null ? context.getArguments()
-		                .get(FILTER)
-		                .getAsJsonObject()
-		                : this.getSignature()
-		                        .getParameters()
-		                        .get(FILTER)
-		                        .getSchema()
-		                        .getDefaultValue()
-		                        .getAsJsonObject();
+		        .get(FILTER)
+		        .getAsJsonObject();
 
 		Integer page = context.getArguments()
-		        .get(PAGE) != null ? context.getArguments()
-		                .get(PAGE)
-		                .getAsInt()
-		                : this.getSignature()
-		                        .getParameters()
-		                        .get(PAGE)
-		                        .getSchema()
-		                        .getDefaultValue()
-		                        .getAsInt();
+		        .get(PAGE)
+		        .getAsInt();
 
 		Integer size = context.getArguments()
-		        .get(SIZE) != null ? context.getArguments()
-		                .get(SIZE)
-		                .getAsInt()
-		                : this.getSignature()
-		                        .getParameters()
-		                        .get(SIZE)
-		                        .getSchema()
-		                        .getDefaultValue()
-		                        .getAsInt();
+		        .get(SIZE)
+		        .getAsInt();
 
 		if (storageName == null)
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,

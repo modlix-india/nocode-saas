@@ -35,6 +35,8 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 	private static final String STORAGE_NAME = "storageName";
 
+	private static final String ISPARTIAL = "isPartial";
+
 	private static final String ID = "_id";
 
 	private AppDataService appDataService;
@@ -58,9 +60,18 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 		return new FunctionSignature().setNamespace(NAME_SPACE)
 		        .setName(FUNCTION_NAME)
-		        .setParameters(Map.of(STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
-		                DATA_OBJECT_ID, Parameter.of(DATA_OBJECT_ID, Schema.ofString(DATA_OBJECT_ID)), DATA_OBJECT,
-		                Parameter.of(DATA_OBJECT, Schema.ofObject(DATA_OBJECT))))
+		        .setParameters(Map.of(
+
+		                STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
+
+		                ISPARTIAL, Parameter.of(ISPARTIAL, Schema.ofBoolean(ISPARTIAL)
+		                        .setDefaultValue(new JsonPrimitive(false))),
+
+		                DATA_OBJECT_ID, Parameter.of(DATA_OBJECT_ID, Schema.ofString(DATA_OBJECT_ID)),
+
+		                DATA_OBJECT, Parameter.of(DATA_OBJECT, Schema.ofObject(DATA_OBJECT))
+
+				))
 		        .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
 
@@ -71,6 +82,10 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 		String storageName = context.getArguments()
 		        .get(STORAGE_NAME)
 		        .getAsString();
+
+		Boolean isPartial = context.getArguments()
+		        .get(ISPARTIAL)
+		        .getAsBoolean();
 
 		String dataObjectId = context.getArguments()
 		        .get(DATA_OBJECT_ID)
@@ -97,7 +112,7 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 		DataObject dataObject = new DataObject().setData(updatableDataObject);
 
-		return appDataService.update(null, null, storageName, dataObject, true)
+		return appDataService.update(null, null, storageName, dataObject, !isPartial)
 		        .map(updatedObject -> new FunctionOutput(
 		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatableObject))))));
 	}
