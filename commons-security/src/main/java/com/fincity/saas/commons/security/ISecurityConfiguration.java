@@ -11,6 +11,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
 import org.springframework.web.server.ServerWebExchange;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.security.filter.JWTTokenFilter;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 
@@ -18,7 +19,7 @@ import reactor.core.publisher.Mono;
 
 public interface ISecurityConfiguration {
 	default SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
-	        IAuthenticationService authService, String... exclusionList) {
+	        IAuthenticationService authService, ObjectMapper om, String... exclusionList) {
 		AuthorizeExchangeSpec permits = http.csrf()
 		        .disable()
 		        .cors()
@@ -38,7 +39,7 @@ public interface ISecurityConfiguration {
 		permits.anyExchange()
 		        .authenticated()
 		        .and()
-		        .addFilterAt(new JWTTokenFilter(authService), SecurityWebFiltersOrder.HTTP_BASIC)
+		        .addFilterAt(new JWTTokenFilter(authService, om), SecurityWebFiltersOrder.HTTP_BASIC)
 		        .httpBasic()
 		        .authenticationEntryPoint(new HttpBasicServerAuthenticationEntryPoint() {
 			        @Override

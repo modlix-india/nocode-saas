@@ -356,7 +356,7 @@ public class AuthenticationService implements IAuthenticationService {
 		        (claims, u,
 		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
 		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
-		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
+		                        tokenObject.getToken(), tokenObject.getExpiresAt(), null, null)));
 	}
 
 	private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {
@@ -393,7 +393,7 @@ public class AuthenticationService implements IAuthenticationService {
 		                .setStringAuthorities(List.of("Authorities._Anonymous")),
 		        false, e.getId()
 		                .toBigInteger(),
-		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX));
+		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX, null, null));
 	}
 
 	private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {

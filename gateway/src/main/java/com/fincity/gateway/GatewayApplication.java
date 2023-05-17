@@ -10,11 +10,11 @@ import org.springframework.context.annotation.ComponentScan;
 import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @SpringBootApplication
-@EnableEurekaClient
 @EnableFeignClients
 @EnableCaching
 @EnableReactiveFeignClients(basePackages =  "com.fincity")
 @ComponentScan(basePackages = "com.fincity")
+@EnableEurekaClient
 public class GatewayApplication {
 
 	public static void main(String[] args) {

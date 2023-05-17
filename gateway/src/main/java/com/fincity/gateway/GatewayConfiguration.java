@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 
+
 @EnableAutoConfiguration
 @Configuration
 public class GatewayConfiguration extends AbstractBaseConfiguration {
