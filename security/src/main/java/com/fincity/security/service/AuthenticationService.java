@@ -134,7 +134,7 @@ public class AuthenticationService implements IAuthenticationService {
 			                : AuthenticationIdentifierType.EMAIL_ID);
 		}
 
-		return FlatMapUtil.flatMapMonoLog(
+		return FlatMapUtil.flatMapMono(
 
 		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), appCode,
 		                clientCode, authRequest.getIdentifierType()),

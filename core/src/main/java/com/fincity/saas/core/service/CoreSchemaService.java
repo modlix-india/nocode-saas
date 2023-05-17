@@ -14,7 +14,7 @@ public class CoreSchemaService extends AbstractSchemaService<CoreSchema, CoreSch
 	}
 
 	@Override
-	protected String getObjectName() {
+	public String getObjectName() {
 		return "Schema";
 	}
 }
