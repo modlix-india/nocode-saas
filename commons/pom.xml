@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.2</version>
+		<version>2.7.11</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
@@ -14,9 +14,9 @@
 	<description>Common to all SAAS related api</description>
 	<properties>
 		<java.version>18</java.version>
-		<spring-cloud.version>2021.0.3</spring-cloud.version>
-		<nocode-kirun-version>1.5.0</nocode-kirun-version>
-		<feign-reactor.version>3.2.6</feign-reactor.version>
+		<feign-reactor.version>3.3.0</feign-reactor.version>
+		<spring-cloud.version>2021.0.6</spring-cloud.version>
+		<nocode-kirun-version>2.0</nocode-kirun-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -69,11 +69,22 @@
 			<version>${nocode-kirun-version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.playtika.reactivefeign</groupId>
-			<artifactId>feign-reactor-spring-cloud-starter</artifactId>
-			<version>${feign-reactor.version}</version>
-			<type>pom</type>
-		</dependency>
+            <groupId>com.playtika.reactivefeign</groupId>
+            <artifactId>feign-reactor-webclient</artifactId>
+            <version>${feign-reactor.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.playtika.reactivefeign</groupId>
+            <artifactId>feign-reactor-cloud</artifactId>
+            <version>${feign-reactor.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.playtika.reactivefeign</groupId>
+            <artifactId>feign-reactor-spring-configuration</artifactId>
+            <version>${feign-reactor.version}</version>
+        </dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>

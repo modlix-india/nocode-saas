@@ -40,7 +40,7 @@ public class StyleService extends AbstractOverridableDataService<Style, StyleRep
 	}
 	
 	@Override
-	protected String getObjectName() {
+	public String getObjectName() {
 		return "Style";
 	}
 }

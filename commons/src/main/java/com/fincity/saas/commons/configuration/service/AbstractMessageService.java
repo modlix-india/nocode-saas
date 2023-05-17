@@ -20,6 +20,7 @@ public class AbstractMessageService {
 	public static final String VALUEOF_METHOD_NOT_FOUND = "valueof_method_not_found";
 	public static final String UNABLE_TO_CONVERT = "unable_to_convert";
 	public static final String UNKNOWN_ERROR_WITH_ID = "unknown_error_with_id";
+	public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
 
 	public static final String OBJECT_NOT_FOUND = "object_not_found";
 

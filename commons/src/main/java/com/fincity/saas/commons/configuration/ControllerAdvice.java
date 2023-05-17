@@ -43,12 +43,12 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 
 	@Autowired
 	private ObjectMapper objectMapper;
-	
+
 	private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
 
 	@Override
 	public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
-		
+
 		logger.debug("Exception Occurred : ", ex);
 
 		Mono<ServerResponse> sr = null;

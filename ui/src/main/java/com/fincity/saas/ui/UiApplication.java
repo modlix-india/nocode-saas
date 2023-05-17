@@ -17,7 +17,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @ComponentScan(basePackages = "com.fincity")
 
-@EnableEurekaClient
+
 @EnableFeignClients
 @EnableReactiveFeignClients(basePackages = "com.fincity")
 @EnableReactiveMongoRepositories(basePackages = "com.fincity")
@@ -26,6 +26,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableReactiveMethodSecurity
 @EnableCaching
 @EnableAspectJAutoProxy(proxyTargetClass = true)
+@EnableEurekaClient
 
 @SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
 public class UiApplication {

@@ -41,7 +41,7 @@ public class StyleThemeService extends AbstractOverridableDataService<StyleTheme
 	}
 	
 	@Override
-	protected String getObjectName() {
+	public String getObjectName() {
 		return "Theme";
 	}
 }
