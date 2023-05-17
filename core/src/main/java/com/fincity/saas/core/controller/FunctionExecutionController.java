@@ -6,6 +6,8 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,9 +22,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.HybridRepository;
 import com.fincity.nocode.kirun.engine.Repository;
-import com.fincity.nocode.kirun.engine.function.Function;
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.SchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
@@ -31,7 +34,9 @@ import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.Parameter;
-import com.fincity.nocode.kirun.engine.runtime.FunctionExecutionParameters;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
+import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunctionRepository;
+import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
@@ -42,6 +47,7 @@ import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
+import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -74,6 +80,20 @@ public class FunctionExecutionController {
 
 	@Autowired
 	private CoreMessageResourceService msgService;
+
+	@Autowired
+	private AppDataService appDataService;
+
+	@Autowired
+	private ObjectMapper objectMapper;
+
+	private ReactiveHybridRepository<ReactiveFunction> coreFunctionRepository;
+
+	@PostConstruct
+	public void init() {
+		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
+		        new CoreFunctionRepository(appDataService, objectMapper));
+	}
 
 	@GetMapping(PATH)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
@@ -124,7 +144,7 @@ public class FunctionExecutionController {
 		int index = fullName.lastIndexOf('.');
 		String name = fullName;
 		String namespace = null;
-		if (index == -1) {
+		if (index != -1) {
 
 			namespace = fullName.substring(0, index);
 			name = fullName.substring(index + 1);
@@ -140,45 +160,41 @@ public class FunctionExecutionController {
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.fromCallable(() ->
-				{
+		        ca -> this.functionService.getFunctionRepository(appCode, clientCode)
+		                .find(namespace, name),
 
-			        Function fun = this.functionService.getFunctionRepository(appCode, clientCode)
-			                .find(namespace, name);
-
-			        Repository<Schema> schemaRepository = new HybridRepository<>(new CoreSchemaRepository(),
-			                schemaService.getSchemaRepository(appCode, clientCode));
-
-			        return Tuples.of(fun, schemaRepository);
-		        })
+		        (ca, fun) -> Mono
+		                .fromCallable(() -> new HybridRepository<>(new CoreSchemaRepository(),
+		                        schemaService.getSchemaRepository(appCode, clientCode)))
 		                .subscribeOn(Schedulers.boundedElastic()),
 
-		        (ca, tup2) ->
+		        (ca, fun, schRepo) ->
 				{
-
-			        if (tup2.getT1() instanceof DefinitionFunction df
-			                && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
+			        if (fun instanceof DefinitionFunction df && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
 			                && !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
 				        return msgService.throwMessage(HttpStatus.FORBIDDEN,
 				                AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
 
 			        }
 
-			        return Mono.just(tup2.getT1()
+			        return fun
 			                .execute(
-			                        new FunctionExecutionParameters(
-			                                new HybridRepository<>(new CoreFunctionRepository(),
+			                        new ReactiveFunctionExecutionParameters(
+			                                new ReactiveHybridRepository<>(this.coreFunctionRepository,
 			                                        functionService.getFunctionRepository(appCode, clientCode)),
-			                                tup2.getT2())
-			                                .setArguments(job == null ? getRequestParamsToArguments(tup2.getT1()
-			                                        .getSignature()
-			                                        .getParameters(), request, tup2.getT2()) : job)));
+			                                schRepo)
+			                                .setArguments(job == null ? getRequestParamsToArguments(fun.getSignature()
+			                                        .getParameters(), request, schRepo) : job));
+
 		        },
 
-		        (ca, tup2, output) -> this.extractOutpuEvent(output));
+		        (ca, fun, schRepo, output) -> this.extractOutputEvent(output))
+		        .switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
+		                CoreMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
+
 	}
 
-	private Mono<ResponseEntity<String>> extractOutpuEvent(FunctionOutput e) {
+	private Mono<ResponseEntity<String>> extractOutputEvent(FunctionOutput e) {
 		EventResult er = null;
 
 		while ((er = e.next()) != null) {

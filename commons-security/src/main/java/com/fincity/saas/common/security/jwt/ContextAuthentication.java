@@ -14,59 +14,69 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
+@Accessors(chain = true)
 public class ContextAuthentication implements Authentication {
 
-	public static final String CLIENT_TYPE_SYSTEM = "SYS";
+    public static final String CLIENT_TYPE_SYSTEM = "SYS";
 
-	private static final long serialVersionUID = 1127850908587759885L;
+    private static final long serialVersionUID = 1127850908587759885L;
 
-	private ContextUser user;
-	private boolean isAuthenticated;
-	private BigInteger loggedInFromClientId;
-	private String loggedInFromClientCode;
-	private String clientTypeCode;
-	private String clientCode;
-	private String accessToken;
-	private LocalDateTime accessTokenExpiryAt;
+    private ContextUser user;
+    private boolean isAuthenticated;
+    private BigInteger loggedInFromClientId;
+    private String loggedInFromClientCode;
+    private String clientTypeCode;
+    private String clientCode;
+    private String accessToken;
+    private LocalDateTime accessTokenExpiryAt;
 
-	@Override
-	public String getName() {
-		if (user == null)
-			return null;
-		return user.getFirstName();
-	}
+    private String urlClientCode;
+    private String urlAppCode;
 
-	@JsonIgnore
-	@Override
-	public Collection<? extends GrantedAuthority> getAuthorities() {
-		if (user == null)
-			return List.of();
-		return user.getAuthorities();
-	}
+    @Override
+    public String getName() {
+        if (user == null)
+            return null;
+        return user.getFirstName();
+    }
 
-	@Override
-	public Object getCredentials() {
-		return null;
-	}
+    @JsonIgnore
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (user == null)
+            return List.of();
+        return user.getAuthorities();
+    }
 
-	@Override
-	public Object getDetails() {
-		return null;
-	}
+    @Override
+    public Object getCredentials() {
+        return null;
+    }
 
-	@JsonIgnore
-	@Override
-	public Object getPrincipal() {
-		return user;
-	}
+    @Override
+    public Object getDetails() {
+        return null;
+    }
 
-	public boolean isSystemClient() {
+    @Override
+    public void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException {
+        this.isAuthenticated = isAuthenticated;
+    }
 
-		return CLIENT_TYPE_SYSTEM.equals(this.clientTypeCode);
-	}
+    @JsonIgnore
+    @Override
+    public Object getPrincipal() {
+        return user;
+    }
+
+    public boolean isSystemClient() {
+
+        return CLIENT_TYPE_SYSTEM.equals(this.clientTypeCode);
+    }
 }

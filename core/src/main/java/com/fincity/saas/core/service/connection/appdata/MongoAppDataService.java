@@ -230,7 +230,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                .getAsJsonObject();
 
 			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()), job);
+			                new HybridRepository<>(new CoreSchemaRepository(),
+			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+			                job);
 		        })
 		                .subscribeOn(Schedulers.boundedElastic()),
 
@@ -334,8 +336,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        (bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)));
 
 	}
-
-	
 
 	private Bson sort(Sort sort) {
 		if (sort == null)
