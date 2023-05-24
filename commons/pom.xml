@@ -16,7 +16,7 @@
 		<java.version>18</java.version>
 		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<spring-cloud.version>2021.0.6</spring-cloud.version>
-		<nocode-kirun-version>2.0</nocode-kirun-version>
+		<nocode-kirun-version>2.0.4</nocode-kirun-version>
 	</properties>
 	<dependencies>
 		<dependency>
