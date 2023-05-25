@@ -7,4 +7,5 @@ import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceServic
 @Service
 public class UIMessageResourceService extends AbstractMongoMessageResourceService {
 
+	public static final String APP_NAME_MISMATCH = "app_name_mismatch";
 }
