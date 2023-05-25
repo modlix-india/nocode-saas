@@ -129,7 +129,6 @@ public abstract class AbstractFilesResourceService {
 
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
-		Set<FileType> fileTypes = Set.of(FileType.ARCHIVE, FileType.DOCUMENTS, FileType.IMAGES, FileType.VIDEOS);
 
 		return FlatMapUtil.flatMapMono(
 
@@ -152,13 +151,6 @@ public abstract class AbstractFilesResourceService {
 				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
 				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
 
-			        if (fileType != null && !fileTypes.contains(fileType))
-				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
-				                FilesMessageResourceService.WRONG_FILE_TYPE);
-
-			        final Set<String> fileTypeFilter = fileType != null ? fileType.getAvailableFileExtensions()
-			                : Set.of();
-
 			        String nameFilter = "";
 
 			        if (filter == null || filter.trim()
@@ -176,6 +168,8 @@ public abstract class AbstractFilesResourceService {
 				                (paths, attr) -> attr.isRegularFile() || attr.isDirectory());
 
 				        String stringNameFilter = nameFilter;
+				        
+				        final Set<String> fileTypeFilter = this.getFileExtensionFilter(fileType);
 
 				        return Flux.fromStream(stream)
 				                .filter(e -> !e.equals(path))
@@ -184,7 +178,7 @@ public abstract class AbstractFilesResourceService {
 				                        .toUpperCase()
 				                        .contains(stringNameFilter))
 				                .filter(obj -> fileTypeFilter.isEmpty()
-				                        || fileTypeFilter.contains(FileExtensionUtil.get(obj.getName())))
+				                        || fileTypeFilter.contains(FileExtensionUtil.get(obj.getName()).toLowerCase()))
 				                .sort(sortComparator)
 				                .map(e -> this.convertToFileDetail(resourcePath, clientCode, e))
 				                .skip(page.getOffset())
@@ -233,6 +227,21 @@ public abstract class AbstractFilesResourceService {
 		return this.getResourceType()
 		        .equals(FilesAccessPathResourceType.STATIC) ? GENERIC_URI_PART_STATIC : GENERIC_URI_PART_SECURED;
 
+	}
+	
+	private Set<String> getFileExtensionFilter(FileType fileType){
+		
+		Set<FileType> fileTypes = Set.of(FileType.ARCHIVE, FileType.DOCUMENTS, FileType.IMAGES, FileType.VIDEOS);
+		
+		if(fileType ==null)
+			return Set.of();
+		
+		else if(!fileTypes.contains(fileType))
+			 msgService.throwMessage(HttpStatus.BAD_REQUEST,
+		                FilesMessageResourceService.WRONG_FILE_TYPE);
+		
+		return fileType.getAvailableFileExtensions();
+		
 	}
 
 	private FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, File file) {
