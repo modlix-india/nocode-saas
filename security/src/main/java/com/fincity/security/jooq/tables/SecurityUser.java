@@ -4,6 +4,12 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Indexes;
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.jooq.tables.records.SecurityUserRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -28,12 +34,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.Indexes;
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 
 
 /**
@@ -163,7 +163,7 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * The column <code>security.security_user.CREATED_AT</code>. Time when this
      * row is created
      */
-    public final TableField<SecurityUserRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityUserRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
      * The column <code>security.security_user.UPDATED_BY</code>. ID of the user
@@ -175,7 +175,7 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * The column <code>security.security_user.UPDATED_AT</code>. Time when this
      * row is updated
      */
-    public final TableField<SecurityUserRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+    public final TableField<SecurityUserRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityUser(Name alias, Table<SecurityUserRecord> aliased) {
         this(alias, aliased, null);

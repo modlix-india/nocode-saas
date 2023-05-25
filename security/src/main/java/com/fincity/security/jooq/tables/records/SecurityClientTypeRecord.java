@@ -4,6 +4,8 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.tables.SecurityClientType;
+
 import java.time.LocalDateTime;
 
 import org.jooq.Field;
@@ -12,8 +14,6 @@ import org.jooq.Record8;
 import org.jooq.Row8;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.tables.SecurityClientType;
 
 
 /**
@@ -383,5 +383,6 @@ public class SecurityClientTypeRecord extends UpdatableRecordImpl<SecurityClient
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        resetChangedOnNotNull();
     }
 }

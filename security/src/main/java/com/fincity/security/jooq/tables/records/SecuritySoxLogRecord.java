@@ -4,6 +4,10 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
+import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
+import com.fincity.security.jooq.tables.SecuritySoxLog;
+
 import java.time.LocalDateTime;
 
 import org.jooq.Field;
@@ -12,10 +16,6 @@ import org.jooq.Record7;
 import org.jooq.Row7;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
-import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
-import com.fincity.security.jooq.tables.SecuritySoxLog;
 
 
 /**
@@ -349,5 +349,6 @@ public class SecuritySoxLogRecord extends UpdatableRecordImpl<SecuritySoxLogReco
         setDescription(description);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
+        resetChangedOnNotNull();
     }
 }

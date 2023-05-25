@@ -4,6 +4,10 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.records.SecurityClientTypeRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -27,10 +31,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.records.SecurityClientTypeRecord;
 
 
 /**
@@ -85,7 +85,7 @@ public class SecurityClientType extends TableImpl<SecurityClientTypeRecord> {
      * The column <code>security.security_client_type.CREATED_AT</code>. Time
      * when this row is created
      */
-    public final TableField<SecurityClientTypeRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityClientTypeRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
      * The column <code>security.security_client_type.UPDATED_BY</code>. ID of
@@ -97,7 +97,7 @@ public class SecurityClientType extends TableImpl<SecurityClientTypeRecord> {
      * The column <code>security.security_client_type.UPDATED_AT</code>. Time
      * when this row is updated
      */
-    public final TableField<SecurityClientTypeRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+    public final TableField<SecurityClientTypeRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityClientType(Name alias, Table<SecurityClientTypeRecord> aliased) {
         this(alias, aliased, null);

@@ -4,6 +4,9 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.jooq.tables.SecurityUser;
+
 import java.time.LocalDateTime;
 
 import org.jooq.Field;
@@ -12,9 +15,6 @@ import org.jooq.Record21;
 import org.jooq.Row21;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jooq.tables.SecurityUser;
 
 
 /**
@@ -898,5 +898,6 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        resetChangedOnNotNull();
     }
 }
