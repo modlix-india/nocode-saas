@@ -16,9 +16,11 @@ import org.springframework.web.bind.annotation.RequestPart;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.service.AbstractFilesResourceService;
+import java.util.Objects;
 
 import reactor.core.publisher.Mono;
 
@@ -29,14 +31,14 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 	@GetMapping("/**")
 	public Mono<ResponseEntity<Page<FileDetail>>> list(Pageable page, @RequestParam(required = false) String filter,
-	        ServerHttpRequest request) {
+	        @RequestParam(required = false) FileType fileType, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca -> this.service.list(ca.getLoggedInFromClientCode(), request.getURI()
-		                .toString(), filter, page),
+		                .toString(), fileType, filter, page),
 
 		        (ca, pg) -> Mono.just(ResponseEntity.<Page<FileDetail>>ok(pg)));
 	}

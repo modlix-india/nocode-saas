@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -55,6 +56,7 @@ import org.springframework.util.FileSystemUtils;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
@@ -123,10 +125,11 @@ public abstract class AbstractFilesResourceService {
 
 	        "LASTMODIFIED", Comparator.comparingLong(File::lastModified)));
 
-	public Mono<Page<FileDetail>> list(String clientCode, String uri, String filter, Pageable page) {
+	public Mono<Page<FileDetail>> list(String clientCode, String uri, FileType fileType, String filter, Pageable page) {
 
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
+		Set<FileType> fileTypes = Set.of(FileType.ARCHIVE, FileType.DOCUMENTS, FileType.IMAGES, FileType.VIDEOS);
 
 		return FlatMapUtil.flatMapMono(
 
@@ -149,7 +152,15 @@ public abstract class AbstractFilesResourceService {
 				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
 				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
 
+			        if (fileType != null && !fileTypes.contains(fileType))
+				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
+				                FilesMessageResourceService.WRONG_FILE_TYPE);
+
+			        final Set<String> fileTypeFilter = fileType != null ? fileType.getAvailableFileExtensions()
+			                : Set.of();
+
 			        String nameFilter = "";
+
 			        if (filter == null || filter.trim()
 			                .isEmpty())
 				        nameFilter = "";
@@ -172,6 +183,8 @@ public abstract class AbstractFilesResourceService {
 				                .filter(obj -> obj.getName()
 				                        .toUpperCase()
 				                        .contains(stringNameFilter))
+				                .filter(obj -> fileTypeFilter.isEmpty()
+				                        || fileTypeFilter.contains(FileExtensionUtil.get(obj.getName())))
 				                .sort(sortComparator)
 				                .map(e -> this.convertToFileDetail(resourcePath, clientCode, e))
 				                .skip(page.getOffset())
