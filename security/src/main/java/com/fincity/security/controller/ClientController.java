@@ -3,8 +3,11 @@ package com.fincity.security.controller;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +16,7 @@ import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataControl
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.service.ClientService;
 
 import reactor.core.publisher.Mono;
@@ -61,6 +65,13 @@ public class ClientController
 	@GetMapping("/{clientId}/removePackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> removePackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
 		return clientService.removePackageFromClient(clientId, packageId)
+		        .map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/register")
+	public Mono<ResponseEntity<Boolean>> register(ServerHttpRequest httpRequest, @RequestBody ClientRegistrationRequest request) {
+
+		return this.clientService.register(httpRequest, request)
 		        .map(ResponseEntity::ok);
 	}
 

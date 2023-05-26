@@ -3,6 +3,8 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
@@ -28,6 +30,7 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
@@ -142,6 +145,19 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .values(manageClientId, id));
 	}
 
+	public Mono<Integer> addManageRecord(String clientCode, ULong id) {
+
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT.ID)
+		        .from(SECURITY_CLIENT)
+		        .where(SECURITY_CLIENT.CODE.eq(clientCode))
+		        .limit(1))
+		        .map(Record1::value1)
+		        .flatMap(manageClientId -> Mono.from(this.dslContext
+		                .insertInto(SECURITY_CLIENT_MANAGE, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID,
+		                        SECURITY_CLIENT_MANAGE.CLIENT_ID)
+		                .values(manageClientId, id)));
+	}
+
 	public Mono<Client> readInternal(ULong id) {
 		return Mono.from(this.dslContext.selectFrom(this.table)
 		        .where(this.idField.eq(id))
@@ -158,6 +174,53 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .values(clientId, packageId))
 		        .map(val -> val > 0);
 
+	}
+
+	public Mono<Boolean> addDefaultPackages(ULong clientId, String clientCode, String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> Mono.from(this.dslContext.select(SECURITY_CLIENT.ID)
+		                .from(SECURITY_CLIENT)
+		                .where(SECURITY_CLIENT.CODE.eq(clientCode))
+		                .limit(1))
+		                .map(Record1::value1),
+
+		        urlClientId -> Mono.from(this.dslContext.select(SECURITY_APP.ID, SECURITY_APP.CLIENT_ID)
+		                .from(SECURITY_APP)
+		                .where(SECURITY_APP.APP_CODE.eq(appCode))
+		                .limit(1))
+		                .map(e -> Tuples.of(e.value1(), e.value2())),
+
+		        (urlClientId,
+		                appIdClientId) -> Mono.from(this.dslContext
+		                        .insertInto(SECURITY_CLIENT_PACKAGE, SECURITY_CLIENT_PACKAGE.CLIENT_ID,
+		                                SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
+		                        .select(this.dslContext.select(DSL.value(clientId)
+		                                .as("CLIENT_ID"), SECURITY_APP_PACKAGE.PACKAGE_ID)
+		                                .from(SECURITY_APP_PACKAGE)
+		                                .where(SECURITY_APP_PACKAGE.APP_ID.eq(appIdClientId.getT1())
+		                                        .and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(urlClientId))))),
+
+		        (urlClientId, appIdClientId, insertCount) ->
+				{
+
+			        if (insertCount > 0)
+				        return Mono.just(true);
+
+			        return Mono
+			                .from(this.dslContext
+			                        .insertInto(SECURITY_CLIENT_PACKAGE, SECURITY_CLIENT_PACKAGE.CLIENT_ID,
+			                                SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
+			                        .select(this.dslContext.select(DSL.value(clientId)
+			                                .as("CLIENT_ID"), SECURITY_APP_PACKAGE.PACKAGE_ID)
+			                                .from(SECURITY_APP_PACKAGE)
+			                                .where(SECURITY_APP_PACKAGE.APP_ID.eq(appIdClientId.getT1())
+			                                        .and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(appIdClientId.getT2())))))
+			                .map(count -> count > 0);
+		        }
+
+		);
 	}
 
 	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
@@ -394,5 +457,29 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId))
 		        .limit(1))
 		        .map(Record1::value1);
+	}
+
+	public Mono<String> getValidClientCode(String name) {
+
+		String clientCode = name.substring(0, name.length() <= 5 ? name.length() : 5)
+		        .toUpperCase();
+
+		return Flux.just(clientCode)
+		        .expand(e -> Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
+		                .from(SECURITY_CLIENT)
+		                .where(SECURITY_CLIENT.CODE.eq(e))
+		                .limit(1))
+		                .map(Record1::value1)
+		                .map(x ->
+						{
+			                if (x.length() == clientCode.length())
+				                return clientCode + "1";
+
+			                int num = Integer.parseInt(x.substring(clientCode.length())) + 1;
+			                return clientCode + num;
+		                }))
+		        .collectList()
+		        .map(e -> e.get(e.size() - 1));
+
 	}
 }

@@ -1030,6 +1030,9 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+ALTER TABLE `security`.`security_client` 
+	DROP INDEX `UK2_CLIENT_NAME` ;
+
 
 -- V1__Initial script.sql
 
@@ -1170,5 +1173,16 @@ SELECT ID FROM security.security_app where APP_CODE = 'appbuilder' limit 1 into 
 INSERT INTO `security`.`security_app_access` (client_id, app_id, EDIT_ACCESS) VALUES 
 			(@v_client_fin1, @v_app_appbuilder, 0),
 			(@v_client_fin2, @v_app_appbuilder, 0);
+
+-- INSERT INTO security.security_app_package (client_id, app_id, package_id)
+--	select 1, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
+
+-- INSERT INTO security.security_app_package (client_id, app_id, package_id)
+--	select 8, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
+
+-- INSERT INTO security.security_app_user_role (client_id, app_id, role_id)
+-- SELECT 1, 6, role_id FROM security.security_package_role pr 
+-- 	 join security.security_app_package ap on ap.PACKAGE_ID = pr.PACKAGE_ID
+--      where ap.client_id = 1;
 
 -- Testing 

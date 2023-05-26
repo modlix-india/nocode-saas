@@ -55,6 +55,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String DELETE_ROLE_ERROR = "delete_role_error";
 	public static final String UNKNOWN_CLIENT = "unknown_client";
 	public static final String APP_CODE_NO_SPL_CHAR = "app_code_no_spl_char";
+	public static final String CLIENT_REGISTRATION_ERROR= "client_registration_error";
 
 	public SecurityMessageResourceService() {
 

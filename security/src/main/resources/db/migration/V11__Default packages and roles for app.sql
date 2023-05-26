@@ -33,3 +33,7 @@ CREATE TABLE IF NOT EXISTS `security_app_user_role` (
 ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `security`.`security_client` 
+	DROP INDEX `UK2_CLIENT_NAME` ;
+

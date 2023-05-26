@@ -3,6 +3,7 @@ package com.fincity.security.dao;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
+import static com.fincity.security.jooq.tables.SecurityAppUserRole.SECURITY_APP_USER_ROLE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
@@ -13,6 +14,7 @@ import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_R
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +40,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.ByteUtil;
@@ -53,6 +56,7 @@ import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
@@ -541,6 +545,67 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .from(this.getAllUsersPerAppQuery(userName, null, appCode, clientCode, identifierType, SECURITY_USER.ID,
 		                SECURITY_USER.CLIENT_ID))
 		        .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
+	}
+
+	public Mono<Boolean> addDefaultRoles(ULong userId, String clientCode, String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> Mono.from(this.dslContext.select(SECURITY_CLIENT.ID)
+		                .from(SECURITY_CLIENT)
+		                .where(SECURITY_CLIENT.CODE.eq(clientCode))
+		                .limit(1))
+		                .map(Record1::value1),
+
+		        urlClientId -> Mono.from(this.dslContext.select(SECURITY_APP.ID, SECURITY_APP.CLIENT_ID)
+		                .from(SECURITY_APP)
+		                .where(SECURITY_APP.APP_CODE.eq(appCode))
+		                .limit(1))
+		                .map(e -> Tuples.of(e.value1(), e.value2())),
+
+		        (urlClientId,
+		                appIdClientId) -> Mono.from(this.dslContext
+		                        .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+		                                SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+		                        .select(this.dslContext.select(DSL.value(userId)
+		                                .as("USER_ID"), SECURITY_APP_USER_ROLE.ROLE_ID)
+		                                .from(SECURITY_APP_USER_ROLE)
+		                                .where(SECURITY_APP_USER_ROLE.APP_ID.eq(appIdClientId.getT1())
+		                                        .and(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(urlClientId))))),
+
+		        (urlClientId, appIdClientId, insertCount) ->
+				{
+
+			        if (insertCount > 0)
+				        return Mono.just(true);
+
+			        var selectQuery = this.dslContext.select(DSL.value(userId)
+			                .as("USER_ID"), SECURITY_APP_USER_ROLE.ROLE_ID)
+			                .from(SECURITY_APP_USER_ROLE)
+			                .where(SECURITY_APP_USER_ROLE.APP_ID.eq(appIdClientId.getT1())
+			                        .and(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(appIdClientId.getT2())));
+
+			        return Mono
+			                .from(this.dslContext
+			                        .insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
+			                                SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+			                        .select(selectQuery))
+			                .map(count -> count > 0);
+
+		        }
+
+		);
+	}
+
+	public Mono<Boolean> makeUserActiveIfInActive(BigInteger id) {
+
+		ULong uid = ULong.valueOf(id);
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+		        .where(SECURITY_USER.ID.eq(uid)
+		                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
+		        .map(e -> e > 0);
 	}
 
 }
