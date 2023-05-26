@@ -129,7 +129,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return SecuritySoxLogObjectName.USER;
 	}
 
-	@PreAuthorize("hasPermission('Authorities.User_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.User_CREATE')")
 	@Override
 	public Mono<User> create(User entity) {
 
