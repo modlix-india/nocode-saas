@@ -49,7 +49,7 @@ public enum SecuritySoxLogActionName implements EnumType {
 
     @Override
     public String getName() {
-        return "security_sox_log_ACTION_NAME";
+        return null;
     }
 
     @Override

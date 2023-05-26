@@ -4,15 +4,10 @@
 package com.fincity.security.jooq;
 
 
-import java.util.Arrays;
-import java.util.List;
-
-import org.jooq.Catalog;
-import org.jooq.Table;
-import org.jooq.impl.SchemaImpl;
-
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
+import com.fincity.security.jooq.tables.SecurityAppPackage;
+import com.fincity.security.jooq.tables.SecurityAppUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
@@ -30,6 +25,13 @@ import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.jooq.Catalog;
+import org.jooq.Table;
+import org.jooq.impl.SchemaImpl;
 
 
 /**
@@ -54,6 +56,16 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_access</code>.
      */
     public final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
+
+    /**
+     * The table <code>security.security_app_package</code>.
+     */
+    public final SecurityAppPackage SECURITY_APP_PACKAGE = SecurityAppPackage.SECURITY_APP_PACKAGE;
+
+    /**
+     * The table <code>security.security_app_user_role</code>.
+     */
+    public final SecurityAppUserRole SECURITY_APP_USER_ROLE = SecurityAppUserRole.SECURITY_APP_USER_ROLE;
 
     /**
      * The table <code>security.security_client</code>.
@@ -158,6 +170,8 @@ public class Security extends SchemaImpl {
         return Arrays.asList(
             SecurityApp.SECURITY_APP,
             SecurityAppAccess.SECURITY_APP_ACCESS,
+            SecurityAppPackage.SECURITY_APP_PACKAGE,
+            SecurityAppUserRole.SECURITY_APP_USER_ROLE,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientManage.SECURITY_CLIENT_MANAGE,
             SecurityClientPackage.SECURITY_CLIENT_PACKAGE,

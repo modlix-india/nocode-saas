@@ -687,4 +687,66 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		                .toList());
 	}
 
+	// Don't call this method other than from the client service register method
+	public Mono<User> createForRegistration(User user) {
+
+		String password = user.getPassword();
+		user.setPassword(null);
+		user.setPasswordHashed(false);
+		user.setAccountNonExpired(true);
+		user.setAccountNonLocked(true);
+		user.setCredentialsNonExpired(true);
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.passwordPolicyCheck(user, password),
+
+		        u -> this.dao
+		                .checkAvailabilityWithClientId(u.getClientId(), u.getUserName(), u.getEmailId(),
+		                        u.getPhoneNumber())
+		                .map(b -> u),
+
+		        (u, cu) -> this.dao.create(cu),
+
+		        (u, cu, createdUser) ->
+				{
+			        this.soxLogService.create(
+
+			                new SoxLog().setActionName(CREATE)
+			                        .setObjectId(createdUser.getId())
+			                        .setObjectName(getSoxObjectName())
+			                        .setDescription("User created"))
+			                .subscribe();
+
+			        return this.setPassword(createdUser, password);
+		        },
+
+		        (u, cu, createdUser, spu) ->
+				{
+			        Mono<Boolean> roledUser = FlatMapUtil.flatMapMono(
+
+			                SecurityContextUtil::getUsersContextAuthentication,
+
+			                ca -> this.dao.addDefaultRoles(createdUser.getId(), ca.getUrlClientCode(),
+			                        ca.getUrlAppCode()));
+
+			        return roledUser.map(x -> createdUser);
+		        }
+
+		)
+		        .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
+		                .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
+		                .flatMap(msg -> Mono.error(
+		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User"))))));
+	}
+
+	public Mono<Boolean> makeUserActive() {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.dao.makeUserActiveIfInActive(ca.getUser()
+		                .getId()));
+	}
 }

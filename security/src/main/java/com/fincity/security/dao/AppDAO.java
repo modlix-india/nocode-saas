@@ -82,7 +82,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			                .getClientId());
 
 			        return condition.map(c -> DSL.and(c, SECURITY_APP.CLIENT_ID.eq(clientId)
-			                .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))));
+			                .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId)
+			                        .and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf((byte) 1))))));
 		        })
 		        .switchIfEmpty(condition);
 	}

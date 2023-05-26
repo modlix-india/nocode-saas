@@ -4,6 +4,8 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
+
 import java.time.LocalDateTime;
 
 import org.jooq.Field;
@@ -13,8 +15,6 @@ import org.jooq.Row19;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
-
-import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 
 
 /**
@@ -864,5 +864,6 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        resetChangedOnNotNull();
     }
 }
