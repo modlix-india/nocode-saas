@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -125,7 +127,8 @@ public abstract class AbstractFilesResourceService {
 
 	        "LASTMODIFIED", Comparator.comparingLong(File::lastModified)));
 
-	public Mono<Page<FileDetail>> list(String clientCode, String uri, FileType fileType, String filter, Pageable page) {
+	public Mono<Page<FileDetail>> list(String clientCode, String uri, FileType[] fileType, String filter,
+	        Pageable page) {
 
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
@@ -167,9 +170,7 @@ public abstract class AbstractFilesResourceService {
 				        Stream<Path> stream = Files.find(path, 1,
 				                (paths, attr) -> attr.isRegularFile() || attr.isDirectory());
 
-				        String stringNameFilter = nameFilter;
-				        
-				        final Set<String> fileTypeFilter = this.getFileExtensionFilter(fileType);
+				        String stringNameFilter = nameFilter.toUpperCase();
 
 				        return Flux.fromStream(stream)
 				                .filter(e -> !e.equals(path))
@@ -177,10 +178,9 @@ public abstract class AbstractFilesResourceService {
 				                .filter(obj -> obj.getName()
 				                        .toUpperCase()
 				                        .contains(stringNameFilter))
-				                .filter(obj -> fileTypeFilter.isEmpty()
-				                        || fileTypeFilter.contains(FileExtensionUtil.get(obj.getName()).toLowerCase()))
 				                .sort(sortComparator)
 				                .map(e -> this.convertToFileDetail(resourcePath, clientCode, e))
+				                .filter(getPredicateForFileTypes(fileType))
 				                .skip(page.getOffset())
 				                .take(page.getPageSize())
 				                .collectList();
@@ -190,6 +190,23 @@ public abstract class AbstractFilesResourceService {
 			        }
 		        })
 		        .map(list -> PageableExecutionUtils.getPage(list, page, () -> -1));
+	}
+
+	private Predicate<FileDetail> getPredicateForFileTypes(FileType[] fileType) {
+		
+		final Set<String> fileTypeFilter = this.getFileExtensionFilter(fileType);
+		final boolean directoryFilter = fileType != null && Stream.of(fileType)
+		        .anyMatch(e -> e == FileType.DIRECTORIES);
+
+		Predicate<FileDetail> filterFunction = e -> true;
+
+		if (fileTypeFilter.isEmpty() && directoryFilter)
+			filterFunction = e -> e.isDirectory();
+		else if (!fileTypeFilter.isEmpty() && !directoryFilter)
+			filterFunction = e -> fileTypeFilter.contains(e.getType());
+		else if (!fileTypeFilter.isEmpty() && directoryFilter)
+			filterFunction = e -> fileTypeFilter.contains(e.getType()) || e.isDirectory();
+		return filterFunction;
 	}
 
 	private Comparator<File> getComparator(Pageable page) {
@@ -228,20 +245,17 @@ public abstract class AbstractFilesResourceService {
 		        .equals(FilesAccessPathResourceType.STATIC) ? GENERIC_URI_PART_STATIC : GENERIC_URI_PART_SECURED;
 
 	}
-	
-	private Set<String> getFileExtensionFilter(FileType fileType){
-		
-		Set<FileType> fileTypes = Set.of(FileType.ARCHIVE, FileType.DOCUMENTS, FileType.IMAGES, FileType.VIDEOS);
-		
-		if(fileType ==null)
+
+	private Set<String> getFileExtensionFilter(FileType[] fileType) {
+
+		if (fileType == null || fileType.length == 0)
 			return Set.of();
-		
-		else if(!fileTypes.contains(fileType))
-			 msgService.throwMessage(HttpStatus.BAD_REQUEST,
-		                FilesMessageResourceService.WRONG_FILE_TYPE);
-		
-		return fileType.getAvailableFileExtensions();
-		
+		else
+			return Stream.of(fileType)
+			        .map(FileType::getAvailableFileExtensions)
+			        .flatMap(Set::stream)
+			        .collect(Collectors.toSet());
+
 	}
 
 	private FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, File file) {

@@ -30,7 +30,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 	@GetMapping("/**")
 	public Mono<ResponseEntity<Page<FileDetail>>> list(Pageable page, @RequestParam(required = false) String filter,
-	        @RequestParam(required = false) FileType fileType, ServerHttpRequest request) {
+	        @RequestParam(required = false) FileType[] fileType, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
