@@ -4,6 +4,11 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
+import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -28,11 +33,6 @@ import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.enums.SecurityClientStatusCode;
-import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 
 
 /**
@@ -105,7 +105,7 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      * The column <code>security.security_client.CREATED_AT</code>. Time when
      * this row is created
      */
-    public final TableField<SecurityClientRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityClientRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
      * The column <code>security.security_client.UPDATED_BY</code>. ID of the
@@ -117,7 +117,7 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      * The column <code>security.security_client.UPDATED_AT</code>. Time when
      * this row is updated
      */
-    public final TableField<SecurityClientRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+    public final TableField<SecurityClientRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityClient(Name alias, Table<SecurityClientRecord> aliased) {
         this(alias, aliased, null);

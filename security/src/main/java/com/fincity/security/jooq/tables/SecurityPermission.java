@@ -4,6 +4,10 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -27,10 +31,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
 
 
 /**
@@ -92,7 +92,7 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
      * The column <code>security.security_permission.CREATED_AT</code>. Time
      * when this row is created
      */
-    public final TableField<SecurityPermissionRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityPermissionRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
      * The column <code>security.security_permission.UPDATED_BY</code>. ID of
@@ -104,7 +104,7 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
      * The column <code>security.security_permission.UPDATED_AT</code>. Time
      * when this row is updated
      */
-    public final TableField<SecurityPermissionRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+    public final TableField<SecurityPermissionRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityPermission(Name alias, Table<SecurityPermissionRecord> aliased) {
         this(alias, aliased, null);

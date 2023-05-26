@@ -4,14 +4,14 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.tables.SecurityPackageRole;
+
 import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.Record3;
 import org.jooq.Row3;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.tables.SecurityPackageRole;
 
 
 /**
@@ -183,5 +183,6 @@ public class SecurityPackageRoleRecord extends UpdatableRecordImpl<SecurityPacka
         setId(id);
         setPackageId(packageId);
         setRoleId(roleId);
+        resetChangedOnNotNull();
     }
 }

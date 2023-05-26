@@ -302,19 +302,28 @@ public class AuthenticationService implements IAuthenticationService {
 
 			final var claims = extractClamis(bearerToken);
 
-			return tokenService.readAllFilter(new FilterCondition().setField("partToken")
-			        .setOperator(FilterConditionOperator.EQUALS)
-			        .setValue(toPartToken(bearerToken)))
-			        .filter(e -> e.getToken()
-			                .equals(bearerToken))
-			        .take(1)
-			        .single()
-			        .flatMap(e -> this.makeSpringAuthentication(request, claims, e))
-			        .map(e ->
+			return FlatMapUtil.flatMapMono(
+
+			        () -> tokenService.readAllFilter(new FilterCondition().setField("partToken")
+			                .setOperator(FilterConditionOperator.EQUALS)
+			                .setValue(toPartToken(bearerToken)))
+			                .filter(e -> e.getToken()
+			                        .equals(bearerToken))
+			                .take(1)
+			                .single(),
+
+			        token -> this.makeSpringAuthentication(request, claims, token),
+
+			        (token, ca) ->
 					{
-				        cacheService.put(CACHE_NAME_TOKEN, e, bearerToken);
-				        return (Authentication) e;
+
+				        if (claims.isOneTime())
+					        return tokenService.delete(token.getId())
+					                .map(e -> ca);
+
+				        return cacheService.put(CACHE_NAME_TOKEN, ca, bearerToken);
 			        })
+			        .map(Authentication.class::cast)
 			        .switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
 			                resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
 

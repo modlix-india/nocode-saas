@@ -4,6 +4,8 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.tables.SecurityPastPasswords;
+
 import java.time.LocalDateTime;
 
 import org.jooq.Field;
@@ -12,8 +14,6 @@ import org.jooq.Record6;
 import org.jooq.Row6;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.tables.SecurityPastPasswords;
 
 
 /**
@@ -305,5 +305,6 @@ public class SecurityPastPasswordsRecord extends UpdatableRecordImpl<SecurityPas
         setPasswordHashed(passwordHashed);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
+        resetChangedOnNotNull();
     }
 }

@@ -39,7 +39,7 @@ public enum SecurityAppAppType implements EnumType {
 
     @Override
     public String getName() {
-        return "security_app_APP_TYPE";
+        return null;
     }
 
     @Override

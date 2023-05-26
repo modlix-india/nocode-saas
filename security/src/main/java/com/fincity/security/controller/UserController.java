@@ -76,4 +76,10 @@ public class UserController
 		return this.service.findUserClients(authRequest, request)
 		        .map(ResponseEntity::ok);
 	}
+
+	@GetMapping("/makeUserActive")
+	public Mono<ResponseEntity<Boolean>> makeUserActive() {
+		return this.service.makeUserActive()
+		        .map(ResponseEntity::ok);
+	}
 }

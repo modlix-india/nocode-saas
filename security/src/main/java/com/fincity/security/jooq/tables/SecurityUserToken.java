@@ -4,6 +4,11 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Indexes;
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -28,11 +33,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.Indexes;
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
 
 
 /**
@@ -99,7 +99,7 @@ public class SecurityUserToken extends TableImpl<SecurityUserTokenRecord> {
      * The column <code>security.security_user_token.CREATED_AT</code>. Time
      * when this row is created
      */
-    public final TableField<SecurityUserTokenRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityUserTokenRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     private SecurityUserToken(Name alias, Table<SecurityUserTokenRecord> aliased) {
         this(alias, aliased, null);

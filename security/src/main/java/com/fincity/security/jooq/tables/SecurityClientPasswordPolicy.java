@@ -4,6 +4,10 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -28,10 +32,6 @@ import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
-
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
 
 
 /**
@@ -171,7 +171,7 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
      * <code>security.security_client_password_policy.CREATED_AT</code>. Time
      * when this row is created
      */
-    public final TableField<SecurityClientPasswordPolicyRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityClientPasswordPolicyRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
      * The column
@@ -185,7 +185,7 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
      * <code>security.security_client_password_policy.UPDATED_AT</code>. Time
      * when this row is updated
      */
-    public final TableField<SecurityClientPasswordPolicyRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+    public final TableField<SecurityClientPasswordPolicyRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityClientPasswordPolicy(Name alias, Table<SecurityClientPasswordPolicyRecord> aliased) {
         this(alias, aliased, null);
