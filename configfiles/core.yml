@@ -17,7 +17,6 @@ spring:
   data:
     mongodb:
       uri: ${core.mongo.uri}
-
   boot:
     admin:
       client:
@@ -30,6 +29,10 @@ spring:
           uri: lb://core
           predicates:
             - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
+  rabbitmq-host: ${mq.host}
+  rabbitmq-port: ${mq.port}
+  rabbitmq-username: ${mq.username}
+  rabbitmq-password: ${mq.password}
 
 redis:
   cache:
