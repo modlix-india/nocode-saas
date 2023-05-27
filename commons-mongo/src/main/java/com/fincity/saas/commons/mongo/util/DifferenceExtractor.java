@@ -31,7 +31,7 @@ public class DifferenceExtractor {
 
 		if (existing == null || existing.isEmpty()) {
 			if (incoming == null || incoming.isEmpty())
-				return Mono.empty();
+				return Mono.just(Map.of());
 			else
 				return Mono.just(incoming);
 		}
@@ -49,14 +49,8 @@ public class DifferenceExtractor {
 		        .distinct()
 		        .subscribeOn(Schedulers.boundedElastic())
 		        .flatMap(e -> extract(incoming.get(e), existing.get(e)).map(d -> Tuples.of(e, d)))
-		        .map(e ->
-				{
-
-			        System.err.println(e);
-			        return e;
-		        })
 		        .collectMap(Tuple2::getT1, tup -> tup.getT2() == JsonNull.INSTANCE ? null : tup.getT2(), HashMap::new)
-		        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e));
+		        .flatMap(e -> e.isEmpty() ? Mono.just(Map.of()) : Mono.just(e));
 	}
 
 	public static Mono<Map<String, Boolean>> extractMapBoolean(Map<String, Boolean> incoming,
@@ -64,7 +58,7 @@ public class DifferenceExtractor {
 
 		if (existing == null || existing.isEmpty()) {
 			if (incoming == null || incoming.isEmpty())
-				return Mono.empty();
+				return Mono.just(Map.of());
 			else
 				return Mono.just(incoming);
 		}
