@@ -31,6 +31,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
+import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -507,18 +508,23 @@ public class ClientService
 
 			        if (!StringUtil.safeIsBlank(request.getPassword())) {
 
-				        return makeToken(httpRequest, ca, userTuple, loggedInClientCode).map(e -> true);
+				        return makeToken(httpRequest, ca, userTuple, loggedInClientCode).map(TokenObject::getToken);
 			        }
 
-			        return Mono.just(true);
+			        return Mono.just("");
 		        },
 
-		        (ca, client, manageId, added, userTuple, loggedInClientCode, created) -> ecService
-		                .createEvent(ca.getUrlAppCode(), ca.getUrlClientCode(), EventNames.CLIENT_REGISTERED, client)
-		                .flatMap(e -> ecService.createEvent(ca.getUrlAppCode(), ca.getUrlClientCode(),
-		                        EventNames.CLIENT_REGISTERED,
-		                        Map.of("client", client, "user", userTuple.getT1(), "passwordUsed", userTuple.getT2())))
-		                .map(e -> created)
+		        (ca, client, manageId, added, userTuple, loggedInClientCode, token) -> ecService
+		                .createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
+		                        .setClientCode(ca.getUrlClientCode())
+		                        .setEventName(EventNames.CLIENT_REGISTERED)
+		                        .setData(Map.of("client", client)))
+		                .flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
+		                        .setClientCode(ca.getUrlClientCode())
+		                        .setEventName(EventNames.USER_REGISTERED)
+		                        .setData(Map.of("client", client, "user", userTuple.getT1(), "token", token,
+		                                "passwordUsed", userTuple.getT2()))))
+		                .map(e -> true)
 
 		);
 	}
