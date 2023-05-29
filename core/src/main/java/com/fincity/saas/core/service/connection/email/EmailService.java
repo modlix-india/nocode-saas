@@ -34,6 +34,9 @@ public class EmailService {
 	private SendGridService sendGridService;
 
 	@Autowired
+	private SMTPService smtpService;
+
+	@Autowired
 	private TemplateService templateService;
 
 	private EnumMap<ConnectionSubType, IAppEmailService> services = new EnumMap<>(ConnectionSubType.class);
@@ -42,15 +45,16 @@ public class EmailService {
 	public void init() {
 
 		this.services.put(ConnectionSubType.SENDGRID, sendGridService);
+		this.services.put(ConnectionSubType.SMTP, smtpService);
 	}
-	
+
 	public Mono<Boolean> sendEmail(String appCode, String clientCode, List<String> addresses, String templateName,
 	        Map<String, Object> templateData) {
 		return this.sendEmail(appCode, clientCode, addresses, templateName, null, templateData);
 	}
 
-	public Mono<Boolean> sendEmail(String appCode, String clientCode, List<String> addresses, String templateName, String connectionName,
-	        Map<String, Object> templateData) {
+	public Mono<Boolean> sendEmail(String appCode, String clientCode, List<String> addresses, String templateName,
+	        String connectionName, Map<String, Object> templateData) {
 
 		return FlatMapUtil.flatMapMonoLog(
 

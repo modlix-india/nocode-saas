@@ -434,12 +434,6 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                                .is(clientCode)))),
 		                this.pojoClass, this.getObjectName()
 		                        .toLowerCase()))
-		        .map(e ->
-				{
-			        System.out.println(this.getPojoClass() + " : " + e.getName());
-
-			        return e;
-		        })
 		        .flatMap(e -> this.readInternal(e.getId()))
 		        .filter(e -> e.getClientCode()
 		                .equals(clientCode));

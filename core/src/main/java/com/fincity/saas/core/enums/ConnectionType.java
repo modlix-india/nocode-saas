@@ -10,7 +10,7 @@ public enum ConnectionType {
 
 	WHATSAPPTEMPLATE,
 
-	MAIL(ConnectionSubType.SENDGRID),
+	MAIL(ConnectionSubType.SENDGRID, ConnectionSubType.SMTP),
 
 	TEXTMESSAGE,
 

@@ -160,15 +160,16 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 			                Connection defaultCon = null;
 			                for (Connection conn : cons) {
 
-			                	if (StringUtil.safeEquals(name, conn.getName())) {
+				                if (StringUtil.safeEquals(name, conn.getName())) {
 					                return Mono.just(conn);
 				                }
-			                	
+
 				                if (defaultCon == null && BooleanUtil.safeValueOf(conn.getDefaultConnection()))
 					                defaultCon = conn;
-				                
-				                if (finCon == null || finCon.getUpdatedAt()
-				                        .isAfter(conn.getUpdatedAt()))
+
+				                if (finCon == null || CommonsUtil
+				                        .nonNullValue(finCon.getUpdatedAt(), finCon.getCreatedAt())
+				                        .isAfter(CommonsUtil.nonNullValue(conn.getUpdatedAt(), conn.getCreatedAt())))
 					                finCon = conn;
 			                }
 
