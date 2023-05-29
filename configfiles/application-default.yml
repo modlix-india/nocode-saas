@@ -51,3 +51,9 @@ logging:
     sun.rmi: INFO
     javax.management.remote.rmi: INFO
     org.springframework.beans.factory.support: INFO
+
+mq:
+  host: localhost
+  port: 5672
+  username: fincity
+  password: fincity

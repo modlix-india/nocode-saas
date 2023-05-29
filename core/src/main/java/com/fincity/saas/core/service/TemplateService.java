@@ -33,6 +33,12 @@ public class TemplateService extends AbstractOverridableDataService<Template, Te
 				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setTemplateParts(entity.getTemplateParts());
+			        existing.setResources(entity.getResources());
+			        existing.setDefaultLanguage(entity.getDefaultLanguage());
+			        existing.setTemplateType(entity.getTemplateType());
+			        existing.setToExpression(entity.getToExpression());
+			        existing.setFromExpression(entity.getFromExpression());
+			        existing.setLanguageExpression(entity.getLanguageExpression());
 
 			        existing.setVersion(existing.getVersion() + 1);
 
