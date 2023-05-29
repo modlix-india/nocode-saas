@@ -399,9 +399,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				{
 			        if (!ca.isAuthenticated())
 				        return Mono.empty();
-			        
+
 			        if (ca.isSystemClient())
-			        	return Mono.just(Tuples.of(true, clientCode));
+				        return Mono.just(Tuples.of(true, clientCode));
 
 			        if (clientCode == null || ca.getClientCode()
 			                .equals(clientCode))
@@ -434,10 +434,11 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                                .is(clientCode)))),
 		                this.pojoClass, this.getObjectName()
 		                        .toLowerCase()))
-		        .map(e -> {
-		        	System.out.println(this.getPojoClass()+" : "+e.getName());
-		        	
-		        	return e;
+		        .map(e ->
+				{
+			        System.out.println(this.getPojoClass() + " : " + e.getName());
+
+			        return e;
 		        })
 		        .flatMap(e -> this.readInternal(e.getId()))
 		        .filter(e -> e.getClientCode()
@@ -675,24 +676,26 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		return this.inheritanceService.order(appCode, clientCode)
 		        .flatMap(clientCodes ->
+				{
 
-				this.repo.findByNameAndAppCodeAndClientCodeIn(name, appCode, clientCodes)
-				        .collectList()
-				        .flatMap(lst ->
-						{
-					        if (lst.isEmpty())
-						        return Mono.empty();
-					        if (lst.size() == 1)
-						        return Mono.just(lst.get(0));
+			        return this.repo.findByNameAndAppCodeAndClientCodeIn(name, appCode, clientCodes)
+			                .collectList()
+			                .flatMap(lst ->
+							{
+				                if (lst.isEmpty())
+					                return Mono.empty();
+				                if (lst.size() == 1)
+					                return Mono.just(lst.get(0));
 
-					        for (D item : lst) {
-						        if (clientCode.equals(item.getClientCode()))
-							        return Mono.just(item);
-					        }
+				                for (D item : lst) {
+					                if (clientCode.equals(item.getClientCode()))
+						                return Mono.just(item);
+				                }
 
-					        return Mono.empty();
-				        })
-				        .map(this.pojoClass::cast));
+				                return Mono.empty();
+			                })
+			                .map(this.pojoClass::cast);
+		        });
 	}
 
 	protected Mono<D> applyChange(String name, String appCode, String clientCode, D object) { // NOSONAR
