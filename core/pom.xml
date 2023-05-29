@@ -20,6 +20,7 @@
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 		<saas-commons-mongo-version>1.0.0</saas-commons-mongo-version>
+		<saas-commons-mq-version>1.0.0</saas-commons-mq-version>
 		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<xlsx-streamer.version>2.1.0</xlsx-streamer.version>
 	</properties>
@@ -31,6 +32,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.amqp</groupId>
+			<artifactId>spring-rabbit</artifactId>
+			<version>3.0.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -79,6 +85,11 @@
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons-jooq</artifactId>
 			<version>${saas-commons-jooq-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons-mq</artifactId>
+			<version>${saas-commons-mq-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -131,6 +142,11 @@
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons-mongo</artifactId>
 			<version>${saas-commons-mongo-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.freemarker</groupId>
+			<artifactId>freemarker-gae</artifactId>
+			<version>2.3.32</version>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
