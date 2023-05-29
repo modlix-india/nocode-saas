@@ -30,10 +30,11 @@ spring:
           uri: lb://security
           predicates:
             - Path=/api/security/**, /*/api/security/**, /*/*/api/security/**, /*/*/*/api/security/**, /*/*/*/*/api/security/**, /*/*/*/*/*/api/security/**, /*/*/*/*/*/*/api/security/**, /*/*/*/*/*/*/api/security/**, /*/*/*/*/*/*/*/api/security/**,
-  rabbitmq-host: ${mq.host}
-  rabbitmq-port: ${mq.port}
-  rabbitmq-username: ${mq.username}
-  rabbitmq-password: ${mq.password}
+  rabbitmq:
+    host: ${mq.host}
+    port: ${mq.port}
+    username: ${mq.username}
+    password: ${mq.password}
 
 management:
   endpoint:

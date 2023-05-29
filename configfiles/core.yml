@@ -29,10 +29,11 @@ spring:
           uri: lb://core
           predicates:
             - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
-  rabbitmq-host: ${mq.host}
-  rabbitmq-port: ${mq.port}
-  rabbitmq-username: ${mq.username}
-  rabbitmq-password: ${mq.password}
+  rabbitmq:
+    host: ${mq.host}
+    port: ${mq.port}
+    username: ${mq.username}
+    password: ${mq.password}
 
 redis:
   cache:
