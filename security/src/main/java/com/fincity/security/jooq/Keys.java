@@ -4,14 +4,10 @@
 package com.fincity.security.jooq;
 
 
-import org.jooq.ForeignKey;
-import org.jooq.TableField;
-import org.jooq.UniqueKey;
-import org.jooq.impl.DSL;
-import org.jooq.impl.Internal;
-
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
+import com.fincity.security.jooq.tables.SecurityAppPackage;
+import com.fincity.security.jooq.tables.SecurityAppUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
@@ -30,7 +26,9 @@ import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
+import com.fincity.security.jooq.tables.records.SecurityAppPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
+import com.fincity.security.jooq.tables.records.SecurityAppUserRoleRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientManageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
@@ -49,6 +47,12 @@ import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
 
+import org.jooq.ForeignKey;
+import org.jooq.TableField;
+import org.jooq.UniqueKey;
+import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
+
 
 /**
  * A class modelling foreign key relationships and constraints of tables in
@@ -65,6 +69,10 @@ public class Keys {
     public static final UniqueKey<SecurityAppRecord> KEY_SECURITY_APP_UK1_APPCODE = Internal.createUniqueKey(SecurityApp.SECURITY_APP, DSL.name("KEY_security_app_UK1_APPCODE"), new TableField[] { SecurityApp.SECURITY_APP.APP_CODE }, true);
     public static final UniqueKey<SecurityAppAccessRecord> KEY_SECURITY_APP_ACCESS_PRIMARY = Internal.createUniqueKey(SecurityAppAccess.SECURITY_APP_ACCESS, DSL.name("KEY_security_app_access_PRIMARY"), new TableField[] { SecurityAppAccess.SECURITY_APP_ACCESS.ID }, true);
     public static final UniqueKey<SecurityAppAccessRecord> KEY_SECURITY_APP_ACCESS_UK1_APPCLIENT = Internal.createUniqueKey(SecurityAppAccess.SECURITY_APP_ACCESS, DSL.name("KEY_security_app_access_UK1_APPCLIENT"), new TableField[] { SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID, SecurityAppAccess.SECURITY_APP_ACCESS.APP_ID }, true);
+    public static final UniqueKey<SecurityAppPackageRecord> KEY_SECURITY_APP_PACKAGE_CLIENT_ID = Internal.createUniqueKey(SecurityAppPackage.SECURITY_APP_PACKAGE, DSL.name("KEY_security_app_package_CLIENT_ID"), new TableField[] { SecurityAppPackage.SECURITY_APP_PACKAGE.CLIENT_ID, SecurityAppPackage.SECURITY_APP_PACKAGE.APP_ID, SecurityAppPackage.SECURITY_APP_PACKAGE.PACKAGE_ID }, true);
+    public static final UniqueKey<SecurityAppPackageRecord> KEY_SECURITY_APP_PACKAGE_PRIMARY = Internal.createUniqueKey(SecurityAppPackage.SECURITY_APP_PACKAGE, DSL.name("KEY_security_app_package_PRIMARY"), new TableField[] { SecurityAppPackage.SECURITY_APP_PACKAGE.ID }, true);
+    public static final UniqueKey<SecurityAppUserRoleRecord> KEY_SECURITY_APP_USER_ROLE_CLIENT_ID = Internal.createUniqueKey(SecurityAppUserRole.SECURITY_APP_USER_ROLE, DSL.name("KEY_security_app_user_role_CLIENT_ID"), new TableField[] { SecurityAppUserRole.SECURITY_APP_USER_ROLE.CLIENT_ID, SecurityAppUserRole.SECURITY_APP_USER_ROLE.APP_ID, SecurityAppUserRole.SECURITY_APP_USER_ROLE.ROLE_ID }, true);
+    public static final UniqueKey<SecurityAppUserRoleRecord> KEY_SECURITY_APP_USER_ROLE_PRIMARY = Internal.createUniqueKey(SecurityAppUserRole.SECURITY_APP_USER_ROLE, DSL.name("KEY_security_app_user_role_PRIMARY"), new TableField[] { SecurityAppUserRole.SECURITY_APP_USER_ROLE.ID }, true);
     public static final UniqueKey<SecurityClientRecord> KEY_SECURITY_CLIENT_PRIMARY = Internal.createUniqueKey(SecurityClient.SECURITY_CLIENT, DSL.name("KEY_security_client_PRIMARY"), new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final UniqueKey<SecurityClientRecord> KEY_SECURITY_CLIENT_UK1_CLIENT_CODE = Internal.createUniqueKey(SecurityClient.SECURITY_CLIENT, DSL.name("KEY_security_client_UK1_CLIENT_CODE"), new TableField[] { SecurityClient.SECURITY_CLIENT.CODE }, true);
     public static final UniqueKey<SecurityClientRecord> KEY_SECURITY_CLIENT_UK2_CLIENT_NAME = Internal.createUniqueKey(SecurityClient.SECURITY_CLIENT, DSL.name("KEY_security_client_UK2_CLIENT_NAME"), new TableField[] { SecurityClient.SECURITY_CLIENT.NAME }, true);
@@ -104,6 +112,12 @@ public class Keys {
     public static final ForeignKey<SecurityAppRecord, SecurityClientRecord> FK1_APP_CLIENT_ID = Internal.createForeignKey(SecurityApp.SECURITY_APP, DSL.name("FK1_APP_CLIENT_ID"), new TableField[] { SecurityApp.SECURITY_APP.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final ForeignKey<SecurityAppAccessRecord, SecurityAppRecord> FK1_APP_ACCESS_APP_ID = Internal.createForeignKey(SecurityAppAccess.SECURITY_APP_ACCESS, DSL.name("FK1_APP_ACCESS_APP_ID"), new TableField[] { SecurityAppAccess.SECURITY_APP_ACCESS.APP_ID }, Keys.KEY_SECURITY_APP_PRIMARY, new TableField[] { SecurityApp.SECURITY_APP.ID }, true);
     public static final ForeignKey<SecurityAppAccessRecord, SecurityClientRecord> FK1_APP_ACCESS_CLIENT_ID = Internal.createForeignKey(SecurityAppAccess.SECURITY_APP_ACCESS, DSL.name("FK1_APP_ACCESS_CLIENT_ID"), new TableField[] { SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
+    public static final ForeignKey<SecurityAppPackageRecord, SecurityClientRecord> FK1_APP_PCK_CLIENT_ID = Internal.createForeignKey(SecurityAppPackage.SECURITY_APP_PACKAGE, DSL.name("FK1_APP_PCK_CLIENT_ID"), new TableField[] { SecurityAppPackage.SECURITY_APP_PACKAGE.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
+    public static final ForeignKey<SecurityAppPackageRecord, SecurityAppRecord> FK2_APP_PCK_APP_ID = Internal.createForeignKey(SecurityAppPackage.SECURITY_APP_PACKAGE, DSL.name("FK2_APP_PCK_APP_ID"), new TableField[] { SecurityAppPackage.SECURITY_APP_PACKAGE.APP_ID }, Keys.KEY_SECURITY_APP_PRIMARY, new TableField[] { SecurityApp.SECURITY_APP.ID }, true);
+    public static final ForeignKey<SecurityAppPackageRecord, SecurityPackageRecord> FK3_APP_PCK_PCK_ID = Internal.createForeignKey(SecurityAppPackage.SECURITY_APP_PACKAGE, DSL.name("FK3_APP_PCK_PCK_ID"), new TableField[] { SecurityAppPackage.SECURITY_APP_PACKAGE.PACKAGE_ID }, Keys.KEY_SECURITY_PACKAGE_PRIMARY, new TableField[] { SecurityPackage.SECURITY_PACKAGE.ID }, true);
+    public static final ForeignKey<SecurityAppUserRoleRecord, SecurityClientRecord> FK1_APP_UR_CLIENT_ID = Internal.createForeignKey(SecurityAppUserRole.SECURITY_APP_USER_ROLE, DSL.name("FK1_APP_UR_CLIENT_ID"), new TableField[] { SecurityAppUserRole.SECURITY_APP_USER_ROLE.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
+    public static final ForeignKey<SecurityAppUserRoleRecord, SecurityAppRecord> FK2_APP_UR_APP_ID = Internal.createForeignKey(SecurityAppUserRole.SECURITY_APP_USER_ROLE, DSL.name("FK2_APP_UR_APP_ID"), new TableField[] { SecurityAppUserRole.SECURITY_APP_USER_ROLE.APP_ID }, Keys.KEY_SECURITY_APP_PRIMARY, new TableField[] { SecurityApp.SECURITY_APP.ID }, true);
+    public static final ForeignKey<SecurityAppUserRoleRecord, SecurityRoleRecord> FK3_APP_UR_ROLE_ID = Internal.createForeignKey(SecurityAppUserRole.SECURITY_APP_USER_ROLE, DSL.name("FK3_APP_UR_ROLE_ID"), new TableField[] { SecurityAppUserRole.SECURITY_APP_USER_ROLE.ROLE_ID }, Keys.KEY_SECURITY_ROLE_PRIMARY, new TableField[] { SecurityRole.SECURITY_ROLE.ID }, true);
     public static final ForeignKey<SecurityClientRecord, SecurityClientTypeRecord> FK1_CLIENT_CLIENT_TYPE_CODE = Internal.createForeignKey(SecurityClient.SECURITY_CLIENT, DSL.name("FK1_CLIENT_CLIENT_TYPE_CODE"), new TableField[] { SecurityClient.SECURITY_CLIENT.TYPE_CODE }, Keys.KEY_SECURITY_CLIENT_TYPE_UK1_CLIENT_TYPE_CODE, new TableField[] { SecurityClientType.SECURITY_CLIENT_TYPE.CODE }, true);
     public static final ForeignKey<SecurityClientManageRecord, SecurityClientRecord> FK1_CLIENT_MANAGE_CLIENT_ID = Internal.createForeignKey(SecurityClientManage.SECURITY_CLIENT_MANAGE, DSL.name("FK1_CLIENT_MANAGE_CLIENT_ID"), new TableField[] { SecurityClientManage.SECURITY_CLIENT_MANAGE.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final ForeignKey<SecurityClientManageRecord, SecurityClientRecord> FK1_CLIENT_MANAGE_MNG_CLIENT_ID = Internal.createForeignKey(SecurityClientManage.SECURITY_CLIENT_MANAGE, DSL.name("FK1_CLIENT_MANAGE_MNG_CLIENT_ID"), new TableField[] { SecurityClientManage.SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);

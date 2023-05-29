@@ -14,6 +14,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 
@@ -35,6 +36,19 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 		// this cyclic reference is need for picking shell page definition & the other
 		// page definitions in the page service from application properties.
 		this.pageService.setApplicationService(this);
+	}
+
+	@Override
+	public Mono<Application> create(Application entity) {
+
+		if (StringUtil.safeIsBlank(entity.getName()) || StringUtil.safeIsBlank(entity.getAppCode())
+		        || !StringUtil.safeEquals(entity.getName(), entity.getAppCode())
+		        || !StringUtil.onlyAlphabetAllowed(entity.getAppCode()))
+
+			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        UIMessageResourceService.APP_NAME_MISMATCH);
+
+		return super.create(entity);
 	}
 
 	@Override

@@ -3,13 +3,16 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.math.BigInteger;
+import java.net.InetSocketAddress;
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,22 +22,35 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
+import com.fincity.saas.common.security.jwt.JWTUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.mq.events.EventCreationService;
+import com.fincity.saas.commons.mq.events.EventNames;
+import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dto.TokenObject;
+import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.model.ClientRegistrationRequest;
+import com.fincity.security.util.PasswordUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class ClientService
@@ -55,6 +71,8 @@ public class ClientService
 
 	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
 
+	private static final int VALIDITY_MINUTES = 30;
+
 	@Autowired
 	private CacheService cacheService;
 
@@ -67,7 +85,23 @@ public class ClientService
 	private UserService userService;
 
 	@Autowired
+	@Lazy
+	private TokenService tokenService;
+
+	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	@Autowired
+	private EventCreationService ecService;
+
+	@Value("${jwt.key}")
+	private String tokenKey;
+
+	@Value("${jwt.token.rememberme.expiry}")
+	private Integer remembermeExpiryInMinutes;
+
+	@Value("${jwt.token.default.expiry}")
+	private Integer defaultExpiryInMinutes;
 
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
@@ -400,6 +434,139 @@ public class ClientService
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
 
+	}
+
+	public Mono<Boolean> register(ServerHttpRequest httpRequest, ClientRegistrationRequest request) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+				{
+			        if (ca.isAuthenticated())
+				        return this.securityMessageResourceService.throwMessage(HttpStatus.ALREADY_REPORTED,
+				                SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
+
+			        Client client = new Client();
+			        client.setName(
+			                StringUtil.safeIsBlank(request.getClientName())
+			                        ? (StringUtil.safeValueOf(request.getFirstName(), "")
+			                                + StringUtil.safeValueOf(request.getLastName(), ""))
+			                        : request.getClientName());
+			        client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
+			        client.setLocaleCode(request.getLocaleCode());
+			        client.setTokenValidityMinutes(VALIDITY_MINUTES);
+
+			        if (StringUtil.safeIsBlank(client.getName()))
+				        return this.securityMessageResourceService.throwMessage(HttpStatus.ALREADY_REPORTED,
+				                SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR,
+				                "Client name cannot be blank");
+
+			        return this.dao.getValidClientCode(client.getName())
+			                .map(client::setCode)
+			                .flatMap(super::create);
+		        },
+
+		        (ca, client) -> this.dao.addManageRecord(ca.getUrlClientCode(), client.getId()),
+
+		        (ca, client, manageId) -> this.dao.addDefaultPackages(client.getId(), ca.getUrlClientCode(),
+		                ca.getUrlAppCode()),
+
+		        (ca, client, manageId, added) ->
+				{
+
+			        User user = new User();
+			        user.setClientId(client.getId());
+			        user.setEmailId(request.getEmailId());
+			        user.setFirstName(request.getFirstName());
+			        user.setLastName(request.getLastName());
+			        user.setLocaleCode(request.getLocaleCode());
+			        user.setUserName(request.getUserName());
+
+			        String password = "";
+			        if (StringUtil.safeIsBlank(request.getPassword())) {
+				        password = PasswordUtil.generatePassword(8);
+				        user.setPassword(password);
+				        user.setStatusCode(SecurityUserStatusCode.ACTIVE);
+			        } else {
+				        user.setPassword(request.getPassword());
+				        user.setStatusCode(SecurityUserStatusCode.INACTIVE);
+			        }
+
+			        final String finPassword = password;
+
+			        return this.userService.createForRegistration(user)
+			                .map(e -> Tuples.of(e, finPassword));
+		        },
+
+		        (ca, client, manageId, added, userTuple) -> this.getClientBy(ca.getUrlClientCode())
+		                .map(Client::getId),
+
+		        (ca, client, manageId, added, userTuple, loggedInClientCode) ->
+				{
+
+			        if (!StringUtil.safeIsBlank(request.getPassword())) {
+
+				        return makeToken(httpRequest, ca, userTuple, loggedInClientCode).map(TokenObject::getToken);
+			        }
+
+			        return Mono.just("");
+		        },
+
+		        (ca, client, manageId, added, userTuple, loggedInClientCode, token) -> ecService
+		                .createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
+		                        .setClientCode(ca.getUrlClientCode())
+		                        .setEventName(EventNames.CLIENT_REGISTERED)
+		                        .setData(Map.of("client", client)))
+		                .flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
+		                        .setClientCode(ca.getUrlClientCode())
+		                        .setEventName(EventNames.USER_REGISTERED)
+		                        .setData(Map.of("client", client, "user", userTuple.getT1(), "token", token,
+		                                "passwordUsed", userTuple.getT2()))))
+		                .map(e -> true)
+
+		);
+	}
+
+	private Mono<TokenObject> makeToken(ServerHttpRequest httpRequest, ContextAuthentication ca,
+	        Tuple2<User, String> userTuple, ULong loggedInClientCode) {
+		String host = httpRequest.getURI()
+		        .getHost();
+		String port = "" + httpRequest.getURI()
+		        .getPort();
+
+		List<String> forwardedHost = httpRequest.getHeaders()
+		        .get("X-Forwarded-Host");
+
+		if (forwardedHost != null && !forwardedHost.isEmpty()) {
+			host = forwardedHost.get(0);
+		}
+
+		List<String> forwardedPort = httpRequest.getHeaders()
+		        .get("X-Forwarded-Port");
+
+		if (forwardedPort != null && !forwardedPort.isEmpty()) {
+			port = forwardedPort.get(0);
+		}
+
+		User u = userTuple.getT1();
+		InetSocketAddress inetAddress = httpRequest.getRemoteAddress();
+		final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
+
+		Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(u.getId()
+		        .toBigInteger(), tokenKey, VALIDITY_MINUTES, host, port, loggedInClientCode.toBigInteger(),
+		        ca.getUrlClientCode(), true);
+
+		return tokenService.create(new TokenObject().setUserId(u.getId())
+		        .setToken(token.getT1())
+		        .setPartToken(token.getT1()
+		                .length() < 50 ? token.getT1()
+		                        : token.getT1()
+		                                .substring(token.getT1()
+		                                        .length() - 50))
+		        .setExpiresAt(token.getT2())
+		        .setIpAddress(hostAddress));
 	}
 
 }

@@ -16,6 +16,8 @@ import lombok.experimental.Accessors;
 @ToString
 public class JWTClaims implements Serializable {
 
+	private static final String ONE_TIME = "oneTime";
+
 	private static final long serialVersionUID = -6951503299014595535L;
 
 	private BigInteger userId;
@@ -23,6 +25,7 @@ public class JWTClaims implements Serializable {
 	private String port;
 	private BigInteger loggedInClientId;
 	private String loggedInClientCode;
+	private boolean oneTime = false;
 
 	public Map<String, Object> getClaimsMap() {
 
@@ -38,6 +41,8 @@ public class JWTClaims implements Serializable {
 		if (this.loggedInClientCode != null)
 			map.put("loggedInClientCode", this.loggedInClientCode);
 
+		map.put(ONE_TIME, this.oneTime);
+
 		return map;
 	}
 
@@ -49,7 +54,8 @@ public class JWTClaims implements Serializable {
 		        .setHostName(claims.get("hostName", String.class))
 		        .setPort(claims.get("port", String.class))
 		        .setLoggedInClientId(BigInteger.valueOf(claims.get("loggedInClientId", Long.class)))
-		        .setLoggedInClientCode(claims.get("loggedInClientCode", String.class));
+		        .setLoggedInClientCode(claims.get("loggedInClientCode", String.class))
+		        .setOneTime(claims.containsKey(ONE_TIME) ? claims.get(ONE_TIME, Boolean.class) : false);
 
 	}
 }

@@ -4,16 +4,16 @@
 package com.fincity.security.jooq;
 
 
-import org.jooq.Index;
-import org.jooq.OrderField;
-import org.jooq.impl.DSL;
-import org.jooq.impl.Internal;
-
 import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
+
+import org.jooq.Index;
+import org.jooq.OrderField;
+import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 
 
 /**

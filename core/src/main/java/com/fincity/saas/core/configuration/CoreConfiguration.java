@@ -4,6 +4,8 @@ import javax.annotation.PostConstruct;
 
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
+import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +15,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 
 import com.fincity.saas.commons.mongo.configuration.AbstractMongoConfiguration;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
+import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
@@ -25,7 +28,8 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
 
 @Configuration
-public class CoreConfiguration extends AbstractMongoConfiguration implements ISecurityConfiguration {
+public class CoreConfiguration extends AbstractMongoConfiguration
+        implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
 
 	@Autowired
 	private CoreMessageResourceService messageService;
@@ -66,5 +70,10 @@ public class CoreConfiguration extends AbstractMongoConfiguration implements ISe
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**");
+	}
+
+	@Override
+	public void configureRabbitListeners(RabbitListenerEndpointRegistrar registrar) {
+
 	}
 }

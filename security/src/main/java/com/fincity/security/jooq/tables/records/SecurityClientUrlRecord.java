@@ -4,6 +4,8 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.tables.SecurityClientUrl;
+
 import java.time.LocalDateTime;
 
 import org.jooq.Field;
@@ -12,8 +14,6 @@ import org.jooq.Record8;
 import org.jooq.Row8;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.tables.SecurityClientUrl;
 
 
 /**
@@ -56,7 +56,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
 
     /**
      * Setter for <code>security.security_client_url.URL_PATTERN</code>. URL
-     * Pattern to identify user's Client ID
+     * Pattern to identify users Client ID
      */
     public SecurityClientUrlRecord setUrlPattern(String value) {
         set(2, value);
@@ -65,7 +65,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
 
     /**
      * Getter for <code>security.security_client_url.URL_PATTERN</code>. URL
-     * Pattern to identify user's Client ID
+     * Pattern to identify users Client ID
      */
     public String getUrlPattern() {
         return (String) get(2);
@@ -383,5 +383,6 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        resetChangedOnNotNull();
     }
 }

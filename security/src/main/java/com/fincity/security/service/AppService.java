@@ -22,6 +22,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
@@ -53,6 +54,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
 	public Mono<App> create(App entity) {
+
+		if (!StringUtil.onlyAlphabetAllowed(entity.getAppCode())) {
+			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
+		}
 
 		return FlatMapUtil.flatMapMono(
 

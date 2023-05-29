@@ -4,6 +4,10 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -27,10 +31,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
 
 /**
@@ -66,9 +66,9 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
 
     /**
      * The column <code>security.security_client_url.URL_PATTERN</code>. URL
-     * Pattern to identify user's Client ID
+     * Pattern to identify users Client ID
      */
-    public final TableField<SecurityClientUrlRecord, String> URL_PATTERN = createField(DSL.name("URL_PATTERN"), SQLDataType.VARCHAR(512).nullable(false), this, "URL Pattern to identify user's Client ID");
+    public final TableField<SecurityClientUrlRecord, String> URL_PATTERN = createField(DSL.name("URL_PATTERN"), SQLDataType.VARCHAR(512).nullable(false), this, "URL Pattern to identify users Client ID");
 
     /**
      * The column <code>security.security_client_url.APP_CODE</code>.
@@ -85,7 +85,7 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
      * The column <code>security.security_client_url.CREATED_AT</code>. Time
      * when this row is created
      */
-    public final TableField<SecurityClientUrlRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityClientUrlRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
      * The column <code>security.security_client_url.UPDATED_BY</code>. ID of
@@ -97,7 +97,7 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
      * The column <code>security.security_client_url.UPDATED_AT</code>. Time
      * when this row is updated
      */
-    public final TableField<SecurityClientUrlRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+    public final TableField<SecurityClientUrlRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityClientUrl(Name alias, Table<SecurityClientUrlRecord> aliased) {
         this(alias, aliased, null);

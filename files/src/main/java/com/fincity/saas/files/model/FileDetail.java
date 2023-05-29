@@ -4,7 +4,6 @@ import java.nio.file.attribute.FileTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.files.util.FileExtensionUtil;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -21,37 +20,36 @@ public class FileDetail {
 	private long createdDate;
 	private long lastModifiedTime;
 	private long lastAccessTime;
+	private String type;
+	private String fileName;
 
 	@JsonIgnore
 	private FileTime modifiedTime;
 
-	@JsonProperty("type")
-	public String getFileType() {
-		
-		return FileExtensionUtil.get(name);
-	}
-	
-	@JsonProperty("fileName")
-	public String getFileName() {
-		
+	public FileDetail setName(String name) {
+
+		this.name = name;
+
 		if (name == null || name.isBlank())
-			return "";
-		
+			return this;
+
 		int ind = name.lastIndexOf('.');
 		if (ind <= 0)
-			return name;
-		
-		return name.substring(0, ind);
+			this.fileName = name;
+		else {
+			this.fileName = name.substring(0, ind);
+			this.type = name.substring(ind + 1)
+			        .toLowerCase();
+		}
+		return this;
 	}
 
 	@JsonProperty("isCompressedFile")
 	public boolean isCompressedFile() {
 
-		if (this.name == null || this.name.isBlank())
+		if (this.type == null)
 			return false;
 
-		String lowerName = this.name.toLowerCase();
-
-		return lowerName.endsWith(".zip") || lowerName.endsWith(".gz");
+		return this.type.endsWith(".zip") || this.type.endsWith(".gz");
 	}
 }

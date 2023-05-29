@@ -816,7 +816,7 @@ INSERT IGNORE INTO `security`.`security_user_role_permission` (USER_ID, ROLE_ID)
 	(@v_user_sysadmin, @v_role_data);
 
 
--- V7__BPM Change script
+-- V7__BPM Change script (SECURITY)
 
 USE security;
 
@@ -904,7 +904,7 @@ INSERT IGNORE INTO `security`.`security_user_role_permission` (USER_ID, ROLE_ID)
 	(@v_user_sysadmin, @v_role_template),
 	(@v_user_sysadmin, @v_role_workflow);
 
--- V8__Style permissions script
+-- V8__Style permissions script (SECURITY)
 
 use security;
 
@@ -944,14 +944,14 @@ SELECT ID from `security_package` WHERE CODE = 'STYLE' LIMIT 1 INTO @v_package_s
 INSERT IGNORE INTO `security_client_package` (CLIENT_ID, PACKAGE_ID) VALUES
 	(@v_client_system, @v_package_style);
 
--- V9__Removed app from roles and permissions.sql
+-- V9__Removed app from roles and permissions.sql (SECURITY)
 UPDATE security.security_permission SET APP_ID = null WHERE 
 	APP_ID = (SELECT id from security.security_app WHERE app_code = 'appbuilder' LIMIT 1);
     
 UPDATE security.security_role SET APP_ID = null WHERE 
 	APP_ID = (SELECT id from security.security_app WHERE app_code = 'appbuilder' LIMIT 1);
 
--- V10__Transport roles and permissions
+-- V10__Transport roles and permissions.sql (SECURITY)
 
 use security;
 
@@ -991,6 +991,129 @@ SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'sysadmin' LIMIT 1 I
 
 INSERT IGNORE INTO `security`.`security_user_role_permission` (USER_ID, ROLE_ID) VALUES
 	(@v_user_sysadmin, @v_role_transport);
+
+-- V11__Default packages and roles for app (SECURITY)
+
+use security;
+
+CREATE TABLE IF NOT EXISTS `security_app_package` (
+	ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+	
+    CLIENT_ID BIGINT UNSIGNED NOT NULL COMMENT 'Client ID for which this APP PACKAGE relation belongs to',
+    APP_ID BIGINT UNSIGNED NOT NULL COMMENT 'App ID for which this APP belongs to',
+	PACKAGE_ID BIGINT UNSIGNED NOT NULL COMMENT 'Package ID',
+	
+	PRIMARY KEY (ID),
+	UNIQUE KEY (CLIENT_ID, APP_ID, PACKAGE_ID),
+    CONSTRAINT FK1_APP_PCK_CLIENT_ID FOREIGN KEY (CLIENT_ID) REFERENCES security_client (ID) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT FK2_APP_PCK_APP_ID FOREIGN KEY (APP_ID) REFERENCES security_app (ID) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT FK3_APP_PCK_PCK_ID FOREIGN KEY (PACKAGE_ID) REFERENCES security_package (ID) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+ENGINE = INNODB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `security_app_user_role` (
+	ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+	
+    CLIENT_ID BIGINT UNSIGNED NOT NULL COMMENT 'Client ID for which this APP PACKAGE relation belongs to',
+    APP_ID BIGINT UNSIGNED NOT NULL COMMENT 'App ID for which this APP belongs to',
+	ROLE_ID BIGINT UNSIGNED NOT NULL COMMENT 'Role ID',
+	
+	PRIMARY KEY (ID),
+	UNIQUE KEY (CLIENT_ID, APP_ID, ROLE_ID),
+    CONSTRAINT FK1_APP_UR_CLIENT_ID FOREIGN KEY (CLIENT_ID) REFERENCES security_client (ID) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT FK2_APP_UR_APP_ID FOREIGN KEY (APP_ID) REFERENCES security_app (ID) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT FK3_APP_UR_ROLE_ID FOREIGN KEY (ROLE_ID) REFERENCES security_role (ID) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+ENGINE = INNODB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `security`.`security_client` 
+	DROP INDEX `UK2_CLIENT_NAME` ;
+
+-- V12__Making new client type (SECURITY)
+use security;
+
+INSERT INTO `security`.`security_client_type` (`CODE`, `TYPE`, `DESCRIPTION`) VALUES ('INDV', 'Individual', 'Individual user who are not business clients');
+
+-- V13__Event def and actions roles and permissions (SECURITY)
+
+use security;
+
+SELECT ID from `security_client` WHERE CODE = 'SYSTEM' LIMIT 1 INTO @v_client_system;
+
+INSERT IGNORE INTO `security_permission` (CLIENT_ID, NAME, DESCRIPTION) VALUES
+    (@v_client_system, 'EventDefinition CREATE', 'EventDefinition create'),
+	(@v_client_system, 'EventDefinition READ', 'EventDefinition read'),
+	(@v_client_system, 'EventDefinition UPDATE', 'EventDefinition update'),
+	(@v_client_system, 'EventDefinition DELETE', 'EventDefinition delete');
+	
+INSERT IGNORE INTO `security_role` (CLIENT_ID, NAME, DESCRIPTION) VALUES
+	(@v_client_system, 'EventDefinition Manager', 'Role to hold Event Definition operations permissions');
+
+SELECT ID from `security_role` WHERE NAME = 'EventDefinition Manager' LIMIT 1 INTO @v_role_evedef;
+
+INSERT IGNORE INTO `security_role_permission` (ROLE_ID, PERMISSION_ID) VALUES
+	(@v_role_evedef, (SELECT ID FROM `security_permission` WHERE NAME = 'EventDefinition CREATE' LIMIT 1)),
+    (@v_role_evedef, (SELECT ID FROM `security_permission` WHERE NAME = 'EventDefinition READ' LIMIT 1)),
+	(@v_role_evedef, (SELECT ID FROM `security_permission` WHERE NAME = 'EventDefinition UPDATE' LIMIT 1)),
+	(@v_role_evedef, (SELECT ID FROM `security_permission` WHERE NAME = 'EventDefinition DELETE' LIMIT 1));
+
+INSERT IGNORE INTO `security_package` (CLIENT_ID, CODE, NAME, DESCRIPTION, BASE) VALUES
+	(@v_client_system, 'EVEDE', 'EventDefinition Management', 'Event Definition management roles and permissions will be part of this package', FALSE);
+
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'sysadmin' LIMIT 1 INTO @v_user_sysadmin;
+
+INSERT IGNORE INTO `security`.`security_user_role_permission` (USER_ID, ROLE_ID) VALUES
+	(@v_user_sysadmin, @v_role_evedef);
+
+SELECT ID from `security_package` WHERE CODE = 'EVEDE' LIMIT 1 INTO @v_package_evedef;
+	
+INSERT IGNORE INTO `security_client_package` (CLIENT_ID, PACKAGE_ID) VALUES
+	(@v_client_system, @v_package_evedef);
+
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'sysadmin' LIMIT 1 INTO @v_user_sysadmin;
+
+INSERT IGNORE INTO `security`.`security_user_role_permission` (USER_ID, ROLE_ID) VALUES
+	(@v_user_sysadmin, @v_role_evedef);
+	
+
+INSERT IGNORE INTO `security_permission` (CLIENT_ID, NAME, DESCRIPTION) VALUES
+    (@v_client_system, 'EventAction CREATE', 'EventAction create'),
+	(@v_client_system, 'EventAction READ', 'EventAction read'),
+	(@v_client_system, 'EventAction UPDATE', 'EventAction update'),
+	(@v_client_system, 'EventAction DELETE', 'EventAction delete');
+	
+INSERT IGNORE INTO `security_role` (CLIENT_ID, NAME, DESCRIPTION) VALUES
+	(@v_client_system, 'EventAction Manager', 'Role to hold Event Action operations permissions');
+
+SELECT ID from `security_role` WHERE NAME = 'EventAction Manager' LIMIT 1 INTO @v_role_eveact;
+
+INSERT IGNORE INTO `security_role_permission` (ROLE_ID, PERMISSION_ID) VALUES
+	(@v_role_eveact, (SELECT ID FROM `security_permission` WHERE NAME = 'EventAction CREATE' LIMIT 1)),
+    (@v_role_eveact, (SELECT ID FROM `security_permission` WHERE NAME = 'EventAction READ' LIMIT 1)),
+	(@v_role_eveact, (SELECT ID FROM `security_permission` WHERE NAME = 'EventAction UPDATE' LIMIT 1)),
+	(@v_role_eveact, (SELECT ID FROM `security_permission` WHERE NAME = 'EventAction DELETE' LIMIT 1));
+
+INSERT IGNORE INTO `security_package` (CLIENT_ID, CODE, NAME, DESCRIPTION, BASE) VALUES
+	(@v_client_system, 'EVEAC', 'EventAction Management', 'Event Action management roles and permissions will be part of this package', FALSE);
+
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'sysadmin' LIMIT 1 INTO @v_user_sysadmin;
+
+INSERT IGNORE INTO `security`.`security_user_role_permission` (USER_ID, ROLE_ID) VALUES
+	(@v_user_sysadmin, @v_role_eveact);
+
+SELECT ID from `security_package` WHERE CODE = 'EVEAC' LIMIT 1 INTO @v_package_eveact;
+	
+INSERT IGNORE INTO `security_client_package` (CLIENT_ID, PACKAGE_ID) VALUES
+	(@v_client_system, @v_package_eveact);
+
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'sysadmin' LIMIT 1 INTO @v_user_sysadmin;
+
+INSERT IGNORE INTO `security`.`security_user_role_permission` (USER_ID, ROLE_ID) VALUES
+	(@v_user_sysadmin, @v_role_eveact);
 
 -- V1__Initial script.sql
 
@@ -1095,5 +1218,52 @@ VALUES
 
 INSERT INTO `security`.`security_client_url` (`CLIENT_ID`, `URL_PATTERN`, `APP_CODE`) VALUES ('1', 'http://apps.localxyz.ai:8080', 'appbuilder');
 
+INSERT INTO `security`.`security_client` (`CODE`, `NAME`, `TYPE_CODE`, `TOKEN_VALIDITY_MINUTES`) VALUES 
+	('fin1', 'Fincity1', 'BUS', '30'),
+	('fin2', 'Fincity2', 'BUS', '30');
+
+INSERT INTO security.security_client_package (package_id, client_id)
+(SELECT id, (SELECT id FROM security.security_client where code = 'fin1')  FROM security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS'));
+
+INSERT INTO security.security_client_package (package_id, client_id)
+(SELECT id, (SELECT id FROM security.security_client where code = 'fin2')  FROM security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS'));
+
+SELECT ID FROM `security`.`security_client` where NAME = 'Fincity1' limit 1 into @v_client_fin1;
+SELECT ID FROM `security`.`security_client` where NAME = 'Fincity2' limit 1 into @v_client_fin2;
+
+INSERT INTO `security`.`security_user` (`CLIENT_ID`, `USER_NAME`, `EMAIL_ID`, `PHONE_NUMBER`, `FIRST_NAME`, `LAST_NAME`, `LOCALE_CODE`, `PASSWORD`, `PASSWORD_HASHED`, `ACCOUNT_NON_EXPIRED`, `ACCOUNT_NON_LOCKED`, `CREDENTIALS_NON_EXPIRED`, `NO_FAILED_ATTEMPT`, `STATUS_CODE`) VALUES 
+(@v_client_fin1, 'user@fincity1.com', 'user@fincity1.com', 'NONE', 'Fincity 1', 'User', 'en-US', 'fincity', '0', '1', '1', '1', '0', 'ACTIVE'),
+(@v_client_fin2, 'user@fincity2.com', 'user@fincity2.com', 'NONE', 'Fincity 2', 'User', 'en-US', 'fincity', '0', '1', '1', '1', '0', 'ACTIVE');
+
+SELECT ID FROM `security`.`security_user` where USER_NAME = 'user@fincity1.com' limit 1 into @v_user_fin1;
+SELECT ID FROM `security`.`security_user` where USER_NAME = 'user@fincity2.com' limit 1 into @v_user_fin2;
+
+
+INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`) 
+	(SELECT @v_user_fin1 as user_id, pr.role_id as role_id FROM security.security_package_role pr
+		LEFT JOIN security.security_client_package cp ON cp.package_id = pr.package_id
+    	where cp.client_id = @v_client_fin1);
+
+INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`) 
+	(SELECT @v_user_fin2 as user_id, pr.role_id as role_id FROM security.security_package_role pr
+		LEFT JOIN security.security_client_package cp ON cp.package_id = pr.package_id
+    	where cp.client_id = @v_client_fin2);
+
+SELECT ID FROM security.security_app where APP_CODE = 'appbuilder' limit 1 into @v_app_appbuilder;
+
+INSERT INTO `security`.`security_app_access` (client_id, app_id, EDIT_ACCESS) VALUES 
+			(@v_client_fin1, @v_app_appbuilder, 0),
+			(@v_client_fin2, @v_app_appbuilder, 0);
+
+-- INSERT INTO security.security_app_package (client_id, app_id, package_id)
+--	select 1, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
+
+-- INSERT INTO security.security_app_package (client_id, app_id, package_id)
+--	select 8, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
+
+-- INSERT INTO security.security_app_user_role (client_id, app_id, role_id)
+-- SELECT 1, 6, role_id FROM security.security_package_role pr 
+-- 	 join security.security_app_package ap on ap.PACKAGE_ID = pr.PACKAGE_ID
+--      where ap.client_id = 1;
 
 -- Testing 

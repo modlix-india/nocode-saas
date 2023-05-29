@@ -41,7 +41,7 @@ public enum SecurityClientStatusCode implements EnumType {
 
     @Override
     public String getName() {
-        return "security_client_STATUS_CODE";
+        return null;
     }
 
     @Override

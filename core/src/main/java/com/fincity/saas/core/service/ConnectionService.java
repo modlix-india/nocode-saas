@@ -20,6 +20,8 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.repository.ConnectionRepository;
@@ -126,6 +128,10 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 	}
 
 	public Mono<Connection> find(String appCode, String clientCode, ConnectionType type) {
+		return this.find(null, appCode, clientCode, type);
+	}
+
+	public Mono<Connection> find(String name, String appCode, String clientCode, ConnectionType type) {
 
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CONNECTION,
 
@@ -151,16 +157,23 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 				                return Mono.empty();
 
 			                Connection finCon = null;
+			                Connection defaultCon = null;
 			                for (Connection conn : cons) {
 
-				                if (BooleanUtil.safeValueOf(conn.getDefaultConnection()))
+				                if (StringUtil.safeEquals(name, conn.getName())) {
 					                return Mono.just(conn);
-				                if (finCon == null || finCon.getUpdatedAt()
-				                        .isAfter(conn.getUpdatedAt()))
+				                }
+
+				                if (defaultCon == null && BooleanUtil.safeValueOf(conn.getDefaultConnection()))
+					                defaultCon = conn;
+
+				                if (finCon == null || CommonsUtil
+				                        .nonNullValue(finCon.getUpdatedAt(), finCon.getCreatedAt())
+				                        .isAfter(CommonsUtil.nonNullValue(conn.getUpdatedAt(), conn.getCreatedAt())))
 					                finCon = conn;
 			                }
 
-			                return Mono.justOrEmpty(finCon);
+			                return Mono.justOrEmpty(CommonsUtil.nonNullValue(defaultCon, finCon));
 		                }),
 		        appCode, ":", clientCode, ":", type);
 	}

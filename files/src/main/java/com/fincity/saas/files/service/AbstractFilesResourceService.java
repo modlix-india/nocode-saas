@@ -23,6 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -55,6 +58,7 @@ import org.springframework.util.FileSystemUtils;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
@@ -123,7 +127,8 @@ public abstract class AbstractFilesResourceService {
 
 	        "LASTMODIFIED", Comparator.comparingLong(File::lastModified)));
 
-	public Mono<Page<FileDetail>> list(String clientCode, String uri, String filter, Pageable page) {
+	public Mono<Page<FileDetail>> list(String clientCode, String uri, FileType[] fileType, String filter,
+	        Pageable page) {
 
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
@@ -150,6 +155,7 @@ public abstract class AbstractFilesResourceService {
 				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
 
 			        String nameFilter = "";
+
 			        if (filter == null || filter.trim()
 			                .isEmpty())
 				        nameFilter = "";
@@ -164,7 +170,7 @@ public abstract class AbstractFilesResourceService {
 				        Stream<Path> stream = Files.find(path, 1,
 				                (paths, attr) -> attr.isRegularFile() || attr.isDirectory());
 
-				        String stringNameFilter = nameFilter;
+				        String stringNameFilter = nameFilter.toUpperCase();
 
 				        return Flux.fromStream(stream)
 				                .filter(e -> !e.equals(path))
@@ -174,6 +180,7 @@ public abstract class AbstractFilesResourceService {
 				                        .contains(stringNameFilter))
 				                .sort(sortComparator)
 				                .map(e -> this.convertToFileDetail(resourcePath, clientCode, e))
+				                .filter(getPredicateForFileTypes(fileType))
 				                .skip(page.getOffset())
 				                .take(page.getPageSize())
 				                .collectList();
@@ -183,6 +190,23 @@ public abstract class AbstractFilesResourceService {
 			        }
 		        })
 		        .map(list -> PageableExecutionUtils.getPage(list, page, () -> -1));
+	}
+
+	private Predicate<FileDetail> getPredicateForFileTypes(FileType[] fileType) {
+		
+		final Set<String> fileTypeFilter = this.getFileExtensionFilter(fileType);
+		final boolean directoryFilter = fileType != null && Stream.of(fileType)
+		        .anyMatch(e -> e == FileType.DIRECTORIES);
+
+		Predicate<FileDetail> filterFunction = e -> true;
+
+		if (fileTypeFilter.isEmpty() && directoryFilter)
+			filterFunction = e -> e.isDirectory();
+		else if (!fileTypeFilter.isEmpty() && !directoryFilter)
+			filterFunction = e -> fileTypeFilter.contains(e.getType());
+		else if (!fileTypeFilter.isEmpty() && directoryFilter)
+			filterFunction = e -> fileTypeFilter.contains(e.getType()) || e.isDirectory();
+		return filterFunction;
 	}
 
 	private Comparator<File> getComparator(Pageable page) {
@@ -219,6 +243,18 @@ public abstract class AbstractFilesResourceService {
 
 		return this.getResourceType()
 		        .equals(FilesAccessPathResourceType.STATIC) ? GENERIC_URI_PART_STATIC : GENERIC_URI_PART_SECURED;
+
+	}
+
+	private Set<String> getFileExtensionFilter(FileType[] fileType) {
+
+		if (fileType == null || fileType.length == 0)
+			return Set.of();
+		else
+			return Stream.of(fileType)
+			        .map(FileType::getAvailableFileExtensions)
+			        .flatMap(Set::stream)
+			        .collect(Collectors.toSet());
 
 	}
 

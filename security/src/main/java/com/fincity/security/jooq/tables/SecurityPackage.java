@@ -4,6 +4,10 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Keys;
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -27,10 +31,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
-
-import com.fincity.security.jooq.Keys;
-import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 
 
 /**
@@ -98,7 +98,7 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
      * The column <code>security.security_package.CREATED_AT</code>. Time when
      * this row is created
      */
-    public final TableField<SecurityPackageRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is created");
+    public final TableField<SecurityPackageRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
      * The column <code>security.security_package.UPDATED_BY</code>. ID of the
@@ -110,7 +110,7 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
      * The column <code>security.security_package.UPDATED_AT</code>. Time when
      * this row is updated
      */
-    public final TableField<SecurityPackageRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when this row is updated");
+    public final TableField<SecurityPackageRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityPackage(Name alias, Table<SecurityPackageRecord> aliased) {
         this(alias, aliased, null);

@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.11</version>
+		<version>2.7.12</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
@@ -20,6 +20,7 @@
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 		<saas-commons-mongo-version>1.0.0</saas-commons-mongo-version>
+		<saas-commons-mq-version>1.0.0</saas-commons-mq-version>
 		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<xlsx-streamer.version>2.1.0</xlsx-streamer.version>
 	</properties>
@@ -31,6 +32,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.amqp</groupId>
+			<artifactId>spring-rabbit</artifactId>
+			<version>3.0.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -64,7 +70,6 @@
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
-			<version>8.0.33</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jooq</groupId>
@@ -80,6 +85,11 @@
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons-jooq</artifactId>
 			<version>${saas-commons-jooq-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons-mq</artifactId>
+			<version>${saas-commons-mq-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -134,9 +144,29 @@
 			<version>${saas-commons-mongo-version}</version>
 		</dependency>
 		<dependency>
+			<groupId>org.freemarker</groupId>
+			<artifactId>freemarker-gae</artifactId>
+			<version>2.3.32</version>
+		</dependency>
+		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.mail</groupId>
+			<artifactId>jakarta.mail</artifactId>
+			<version>2.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.activation</groupId>
+			<artifactId>javax.activation</artifactId>
+			<version>1.2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.activation</groupId>
+			<artifactId>jakarta.activation</artifactId>
+			<version>2.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
