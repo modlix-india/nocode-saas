@@ -33,6 +33,9 @@ jobs:
       - name: Building commons-mongo
         working-directory: ./commons-mongo
         run: mvn clean install
+      - name: Building commons-mq
+        working-directory: ./commons-mq
+        run: mvn clean install
       - name: Building admin
         working-directory: ./admin
         run: mvn clean install
