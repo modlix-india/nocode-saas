@@ -19,6 +19,7 @@
 		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<spring-cloud.version>2021.0.6</spring-cloud.version>
 		<saas-commons-version>1.0.0</saas-commons-version>
+		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -72,6 +73,11 @@
 			<groupId>com.fincity.saas</groupId>
 			<artifactId>commons</artifactId>
 			<version>${saas-commons-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fincity.saas</groupId>
+			<artifactId>commons-security</artifactId>
+			<version>${saas-commons-security-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.projectreactor</groupId>

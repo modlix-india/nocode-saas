@@ -1,32 +1,30 @@
 package com.fincity.saas.commons.mq.configuration;
 
+import org.springframework.amqp.core.AcknowledgeMode;
+import org.springframework.amqp.rabbit.config.DirectRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.converter.xml.MappingJackson2XmlHttpMessageConverter;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 public abstract interface IMQConfiguration {
 
 	@Bean
-	default Jackson2JsonMessageConverter jackson2JsonMessageConverter(ObjectMapper om) {
-		return new Jackson2JsonMessageConverter(om);
+	default DirectRabbitListenerContainerFactory directMesageListener(CachingConnectionFactory connectionFactory) {
+
+		DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+		factory.setAcknowledgeMode(AcknowledgeMode.AUTO);
+		factory.setConsumersPerQueue(1);
+		factory.setMessagesPerAck(1);
+		factory.setPrefetchCount(0);
+		factory.setConnectionFactory(connectionFactory);
+		factory.setMessageConverter(new Jackson2JsonMessageConverter());
+		return factory;
 	}
 
-	default MappingJackson2XmlHttpMessageConverter jackson2XmlHttpMessageConverter(SimpleModule... modules) {
-		MappingJackson2XmlHttpMessageConverter jsonConverter = new MappingJackson2XmlHttpMessageConverter();
-
-		XmlMapper xmlMapper = new XmlMapper();
-		xmlMapper.setConfig(xmlMapper.getSerializationConfig()
-		        .withRootName(""));
-		xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-		xmlMapper.registerModules(modules);
-
-		jsonConverter.setObjectMapper(xmlMapper);
-		return jsonConverter;
+	@Bean
+	default Jackson2JsonMessageConverter jsonMessageConverter(ObjectMapper mapper) {
+		return new Jackson2JsonMessageConverter(mapper);
 	}
-
 }

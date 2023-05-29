@@ -1,8 +1,5 @@
 package com.fincity.saas.commons.mq.events;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import javax.annotation.PostConstruct;
 
 import org.springframework.amqp.core.AmqpTemplate;
@@ -10,8 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.commons.mq.events.exception.EventCreationException;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.data.CircularLinkedList;
 import com.fincity.saas.commons.util.data.DoublePointerNode;
 
@@ -37,38 +32,12 @@ public class EventCreationService {
 		nextRoutingKey = new CircularLinkedList<>(this.routingKey.split(",")).getHead();
 	}
 
-	public Mono<Boolean> createEvent(String appCode, String clientCode, String eventName, Object authentication,
-	        Object data) {
-
-		Map<String, Object> eventMessage = new HashMap<>();
-
-		if (StringUtil.safeIsBlank(appCode))
-			return Mono.error(new EventCreationException("appCode"));
-
-		if (StringUtil.safeIsBlank(clientCode))
-			return Mono.error(new EventCreationException("clientCode"));
-
-		if (StringUtil.safeIsBlank(eventName))
-			return Mono.error(new EventCreationException("eventName"));
-
-		eventMessage.put("appCode", appCode);
-		eventMessage.put("clientCode", clientCode);
-		eventMessage.put("eventName", eventName);
-
-		if (authentication != null)
-			eventMessage.put("authentication", authentication);
-
-		if (data != null)
-			eventMessage.put("data", data);
+	public Mono<Boolean> createEvent(EventQueObject queObj) {
 
 		this.nextRoutingKey = nextRoutingKey.getNext();
 		return Mono.fromCallable(() -> {
-			amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), eventMessage);
+			amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), queObj);
 			return true;
 		});
-	}
-
-	public Mono<Boolean> createEvent(String appCode, String clientCode, String eventName, Object data) {
-		return this.createEvent(appCode, clientCode, eventName, null, data);
 	}
 }
