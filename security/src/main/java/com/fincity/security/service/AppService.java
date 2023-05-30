@@ -323,7 +323,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        appCode);
 	}
 
-	public Mono<List<Client>> getAppClients(String appCode) {
+	public Mono<List<Client>> getAppClients(String appCode, boolean onlyWriteAccess) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -339,12 +339,13 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 								{
 
 			                        if (!ca.isSystemClient()) {
+			                        	//TODO: This code should return all the app urls of all the clients it has reporting.
 				                        return this.clientService.getClientInfoById(ca.getUser()
 				                                .getClientId())
 				                                .map(List::of);
 			                        }
 
-			                        return this.dao.getClientIdsWithWriteAccess(appCode)
+			                        return this.dao.getClientIdsWithAccess(appCode, onlyWriteAccess)
 			                                .map(ULong::toBigInteger)
 			                                .flatMap(this.clientService::getClientInfoById)
 			                                .collectList();
