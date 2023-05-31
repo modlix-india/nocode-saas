@@ -56,8 +56,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		return super.update(entity).flatMap(
 		        e -> cacheService.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-		                .flatMap(x -> cacheService.evict(this.getCacheName(), PROPERTIES, e.getName(), "-",
-		                        e.getAppCode(), "-", e.getClientCode()))
+		                .flatMap(x -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
+		                        e.getClientCode()))
 		                .map(x -> e));
 	}
 
@@ -67,8 +67,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 		return this.read(id)
 		        .flatMap(e -> super.delete(id).flatMap(x -> cacheService
 		                .evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-		                .flatMap(y -> cacheService.evict(this.getCacheName(), PROPERTIES, e.getName(), "-",
-		                        e.getAppCode(), "-", e.getClientCode()))
+		                .flatMap(v -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
+		                        e.getClientCode()))
 		                .map(y -> x)));
 	}
 
@@ -102,9 +102,9 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> cacheService.makeKey(PROPERTIES, name, "-", appCode, "-", clientCode),
+		        () -> cacheService.makeKey(PROPERTIES, clientCode),
 
-		        key -> cacheService.get(this.getCacheName(), key)
+		        key -> cacheService.get(this.getCacheName(appCode, name), key)
 		                .map(this.pojoClass::cast),
 
 		        (key, cApp) -> Mono.justOrEmpty(cApp)
@@ -137,7 +137,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 				        return Mono.empty();
 
 			        if (cApp == null && mergedApp != null) {
-				        cacheService.put(this.getCacheName(), mergedApp, key);
+				        cacheService.put(this.getCacheName(appCode, name), mergedApp, key);
 			        }
 
 			        return Mono.justOrEmpty(clonedApp.getProperties());
