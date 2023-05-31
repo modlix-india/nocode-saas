@@ -39,6 +39,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dto.Package;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
@@ -567,6 +568,10 @@ public class ClientService
 		                                        .length() - 50))
 		        .setExpiresAt(token.getT2())
 		        .setIpAddress(hostAddress));
+	}
+	
+	public Mono<List<Package>> fetchPackages(ULong clientId) {
+		return this.dao.getPackagesAvailableForClient(clientId);
 	}
 
 }

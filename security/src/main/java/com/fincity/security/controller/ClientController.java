@@ -1,5 +1,7 @@
 package com.fincity.security.controller;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.service.ClientService;
@@ -54,6 +57,11 @@ public class ClientController
 		        .map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
 		        .defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))
 		        .map(ResponseEntity::ok);
+	}
+	
+	@GetMapping("/availablePackages/{clientId}")
+	public Mono<List<Package>> fetchPackagesForClient(@PathVariable ULong clientId) {
+		return this.clientService.fetchPackages(clientId);
 	}
 
 	@GetMapping("/{clientId}/assignPackage/{packageId}")
