@@ -73,8 +73,8 @@ public class AppController
 	}
 
 	@GetMapping("/clients/{appCode}")
-	public Mono<ResponseEntity<List<Client>>> getAppClients(@PathVariable final String appCode) {
-		return this.service.getAppClients(appCode)
+	public Mono<ResponseEntity<List<Client>>> getAppClients(@PathVariable final String appCode, @RequestParam(required = false) boolean onlyWriteAccess) {
+		return this.service.getAppClients(appCode, onlyWriteAccess)
 		        .map(ResponseEntity::ok);
 	}
 }

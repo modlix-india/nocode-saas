@@ -137,13 +137,13 @@ public class AuthenticationService implements IAuthenticationService {
 		return FlatMapUtil.flatMapMono(
 
 		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), appCode,
-		                clientCode, authRequest.getIdentifierType()),
+		                authRequest.getIdentifierType()),
 		        tup ->
 				{
 			        String linClientCode = tup.getT1()
 			                .getCode();
 			        return Mono
-			                .justOrEmpty(clientCode.equals("SYSTEM") || clientCode.equals(linClientCode) ? true : null);
+			                .justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode) ? true : null);
 		        },
 
 		        (tup, linCCheck) -> this.checkPassword(authRequest, tup.getT3()),

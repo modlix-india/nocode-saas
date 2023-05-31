@@ -56,7 +56,7 @@ public class EmailService {
 	public Mono<Boolean> sendEmail(String appCode, String clientCode, List<String> addresses, String templateName,
 	        String connectionName, Map<String, Object> templateData) {
 
-		return FlatMapUtil.flatMapMonoLog(
+		return FlatMapUtil.flatMapMono(
 
 		        () ->
 				{
