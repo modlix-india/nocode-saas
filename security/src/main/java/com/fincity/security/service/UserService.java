@@ -40,6 +40,7 @@ import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Flux;
@@ -745,5 +746,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        ca -> this.dao.makeUserActiveIfInActive(ca.getUser()
 		                .getId()));
+	}
+
+	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
+		
+		return this.dao.checkUserExists(urlAppCode, urlClientCode, request);
 	}
 }

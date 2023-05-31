@@ -86,6 +86,10 @@ public class ClientService
 
 	@Autowired
 	@Lazy
+	private AppService appService;
+
+	@Autowired
+	@Lazy
 	private TokenService tokenService;
 
 	@Autowired
@@ -438,67 +442,35 @@ public class ClientService
 
 	public Mono<Boolean> register(ServerHttpRequest httpRequest, ClientRegistrationRequest request) {
 
-		return FlatMapUtil.flatMapMono(
+		Mono<ContextAuthentication> checkEmailExistsInIndividualClients = FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca ->
 				{
-			        if (ca.isAuthenticated())
-				        return this.securityMessageResourceService.throwMessage(HttpStatus.ALREADY_REPORTED,
-				                SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
+			        if (request.isBusinessClient())
+				        return Mono.just(ca);
 
-			        Client client = new Client();
-			        client.setName(
-			                StringUtil.safeIsBlank(request.getClientName())
-			                        ? (StringUtil.safeValueOf(request.getFirstName(), "")
-			                                + StringUtil.safeValueOf(request.getLastName(), ""))
-			                        : request.getClientName());
-			        client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
-			        client.setLocaleCode(request.getLocaleCode());
-			        client.setTokenValidityMinutes(VALIDITY_MINUTES);
+			        return this.userService.checkUserExists(ca.getUrlAppCode(), ca.getUrlClientCode(), request)
+			                .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? null : ca));
+		        }
 
-			        if (StringUtil.safeIsBlank(client.getName()))
-				        return this.securityMessageResourceService.throwMessage(HttpStatus.ALREADY_REPORTED,
-				                SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR,
-				                "Client name cannot be blank");
+		)
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(HttpStatus.CONFLICT,
+		                SecurityMessageResourceService.USER_ALREADY_EXISTS, request.getEmailId()));
 
-			        return this.dao.getValidClientCode(client.getName())
-			                .map(client::setCode)
-			                .flatMap(super::create);
-		        },
+		return FlatMapUtil.flatMapMono(
+
+		        () -> checkEmailExistsInIndividualClients,
+
+		        ca -> this.registerClient(request, ca),
 
 		        (ca, client) -> this.dao.addManageRecord(ca.getUrlClientCode(), client.getId()),
 
 		        (ca, client, manageId) -> this.dao.addDefaultPackages(client.getId(), ca.getUrlClientCode(),
 		                ca.getUrlAppCode()),
 
-		        (ca, client, manageId, added) ->
-				{
-
-			        User user = new User();
-			        user.setClientId(client.getId());
-			        user.setEmailId(request.getEmailId());
-			        user.setFirstName(request.getFirstName());
-			        user.setLastName(request.getLastName());
-			        user.setLocaleCode(request.getLocaleCode());
-			        user.setUserName(request.getUserName());
-
-			        String password = "";
-			        if (StringUtil.safeIsBlank(request.getPassword())) {
-				        password = PasswordUtil.generatePassword(8);
-				        user.setPassword(password);
-				        user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-			        } else {
-				        user.setPassword(request.getPassword());
-				        user.setStatusCode(SecurityUserStatusCode.INACTIVE);
-			        }
-
-			        final String finPassword = password;
-
-			        return this.userService.createForRegistration(user)
-			                .map(e -> Tuples.of(e, finPassword));
-		        },
+		        (ca, client, manageId, added) -> registerUser(request, client),
 
 		        (ca, client, manageId, added, userTuple) -> this.getClientBy(ca.getUrlClientCode())
 		                .map(Client::getId),
@@ -527,6 +499,63 @@ public class ClientService
 		                .map(e -> true)
 
 		);
+	}
+
+	private Mono<Tuple2<User, String>> registerUser(ClientRegistrationRequest request, Client client) {
+		User user = new User();
+		user.setClientId(client.getId());
+		user.setEmailId(request.getEmailId());
+		user.setFirstName(request.getFirstName());
+		user.setLastName(request.getLastName());
+		user.setLocaleCode(request.getLocaleCode());
+		user.setUserName(request.getUserName());
+
+		String password = "";
+		if (StringUtil.safeIsBlank(request.getPassword())) {
+			password = PasswordUtil.generatePassword(8);
+			user.setPassword(password);
+			user.setStatusCode(SecurityUserStatusCode.ACTIVE);
+		} else {
+			user.setPassword(request.getPassword());
+			user.setStatusCode(SecurityUserStatusCode.INACTIVE);
+		}
+
+		final String finPassword = password;
+
+		return this.userService.createForRegistration(user)
+		        .map(e -> Tuples.of(e, finPassword));
+	}
+
+	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca) {
+		if (ca.isAuthenticated())
+			return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
+
+		Client client = new Client();
+		client.setName(
+		        StringUtil.safeIsBlank(request.getClientName())
+		                ? (StringUtil.safeValueOf(request.getFirstName(), "")
+		                        + StringUtil.safeValueOf(request.getLastName(), ""))
+		                : request.getClientName());
+		client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
+		client.setLocaleCode(request.getLocaleCode());
+		client.setTokenValidityMinutes(VALIDITY_MINUTES);
+
+		if (StringUtil.safeIsBlank(client.getName()))
+			return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
+
+		return flatMapMono(
+
+		        () -> this.dao.getValidClientCode(client.getName())
+		                .map(client::setCode),
+
+		        super::create,
+
+		        (c, clnt) -> this.appService.addClientAccessAfterRegistration(ca.getUrlAppCode(), clnt.getId(), false),
+
+		        (c, clnt, created) -> Mono.just(clnt));
+
 	}
 
 	private Mono<TokenObject> makeToken(ServerHttpRequest httpRequest, ContextAuthentication ca,

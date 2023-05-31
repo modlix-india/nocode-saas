@@ -130,14 +130,13 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		return SecurityContextUtil.getUsersContextUser()
 		        .map(ContextUser::getId)
 		        .map(ULong::valueOf)
-		        .flatMap(userId -> Mono.fromCompletionStage(this.dslContext.insertInto(SECURITY_APP_ACCESS)
+		        .flatMap(userId -> Mono.from(this.dslContext.insertInto(SECURITY_APP_ACCESS)
 		                .columns(SECURITY_APP_ACCESS.APP_ID, SECURITY_APP_ACCESS.CLIENT_ID,
 		                        SECURITY_APP_ACCESS.EDIT_ACCESS, SECURITY_APP_ACCESS.CREATED_BY)
 		                .values(appId, clientId, edit, userId)
 		                .onDuplicateKeyUpdate()
 		                .set(SECURITY_APP_ACCESS.EDIT_ACCESS, edit)
-		                .set(SECURITY_APP_ACCESS.UPDATED_BY, userId)
-		                .executeAsync()))
+		                .set(SECURITY_APP_ACCESS.UPDATED_BY, userId)))
 		        .map(e -> e == 1);
 	}
 

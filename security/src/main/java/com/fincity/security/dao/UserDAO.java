@@ -44,6 +44,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.ByteUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.PastPassword;
 import com.fincity.security.dto.User;
@@ -52,6 +53,7 @@ import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
@@ -561,6 +563,59 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
 		        .where(SECURITY_USER.ID.eq(uid)
 		                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
+		        .map(e -> e > 0);
+	}
+
+	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
+
+		List<Condition> userFieldsConditions = new ArrayList<>();
+
+		if (!StringUtil.safeIsBlank(request.getUserName()))
+			userFieldsConditions.add(SECURITY_USER.USER_NAME.eq(request.getUserName()));
+
+		if (!StringUtil.safeIsBlank(request.getEmailId()))
+			userFieldsConditions.add(SECURITY_USER.EMAIL_ID.eq(request.getEmailId()));
+
+		if (!StringUtil.safeIsBlank(request.getPhoneNumber()))
+			userFieldsConditions.add(SECURITY_USER.PHONE_NUMBER.eq(request.getPhoneNumber()));
+
+		var c1 = SECURITY_CLIENT.as("c1");
+		var c2 = SECURITY_CLIENT.as("c2");
+
+		var query = this.dslContext.selectCount()
+		        .from(SECURITY_USER)
+
+		        .leftJoin(c1)
+		        .on(c1.field("ID", ULong.class)
+		                .eq(SECURITY_USER.CLIENT_ID))
+
+		        .leftJoin(SECURITY_APP_ACCESS)
+		        .on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+
+		        .leftJoin(SECURITY_APP)
+		        .on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
+
+		        .leftJoin(SECURITY_CLIENT_MANAGE)
+		        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+
+		        .leftJoin(c2)
+		        .on(c2.field("ID", ULong.class)
+		                .eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID))
+
+		        .where(DSL.and(
+
+		                SECURITY_APP.APP_CODE.eq(urlAppCode),
+
+		                c1.field("TYPE_CODE", String.class)
+		                        .eq("INDV"),
+
+		                c2.field("CODE", String.class)
+		                        .eq(urlClientCode),
+
+		                DSL.or(userFieldsConditions)));
+		
+		return Mono.from(query)
+		        .map(Record1::value1)
 		        .map(e -> e > 0);
 	}
 

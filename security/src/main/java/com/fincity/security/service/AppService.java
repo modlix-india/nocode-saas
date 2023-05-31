@@ -339,7 +339,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 								{
 
 			                        if (!ca.isSystemClient()) {
-			                        	//TODO: This code should return all the app urls of all the clients it has reporting.
+				                        // TODO: This code should return all the app urls of all the clients it has
+				                        // reporting.
 				                        return this.clientService.getClientInfoById(ca.getUser()
 				                                .getClientId())
 				                                .map(List::of);
@@ -352,5 +353,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                        })
 
 		                , ca.getClientCode(), ":", appCode));
+	}
+
+	public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong clientId, boolean isWriteAccess) {
+
+		return this.getAppByCode(urlAppCode)
+		        .flatMap(a -> this.dao.addClientAccess(a.getId(), clientId, isWriteAccess));
 	}
 }
