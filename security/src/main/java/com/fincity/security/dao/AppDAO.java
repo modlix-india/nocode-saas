@@ -130,14 +130,13 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		return SecurityContextUtil.getUsersContextUser()
 		        .map(ContextUser::getId)
 		        .map(ULong::valueOf)
-		        .flatMap(userId -> Mono.fromCompletionStage(this.dslContext.insertInto(SECURITY_APP_ACCESS)
+		        .flatMap(userId -> Mono.from(this.dslContext.insertInto(SECURITY_APP_ACCESS)
 		                .columns(SECURITY_APP_ACCESS.APP_ID, SECURITY_APP_ACCESS.CLIENT_ID,
 		                        SECURITY_APP_ACCESS.EDIT_ACCESS, SECURITY_APP_ACCESS.CREATED_BY)
 		                .values(appId, clientId, edit, userId)
 		                .onDuplicateKeyUpdate()
 		                .set(SECURITY_APP_ACCESS.EDIT_ACCESS, edit)
-		                .set(SECURITY_APP_ACCESS.UPDATED_BY, userId)
-		                .executeAsync()))
+		                .set(SECURITY_APP_ACCESS.UPDATED_BY, userId)))
 		        .map(e -> e == 1);
 	}
 
@@ -175,7 +174,11 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .map(code -> clientCode.equals(code) ? List.of(code) : List.of(code, clientCode));
 	}
 
-	public Flux<ULong> getClientIdsWithWriteAccess(String appCode) {
+	public Flux<ULong> getClientIdsWithAccess(String appCode, boolean onlyWriteAccess) {
+
+		Condition accessCheckCondition = SECURITY_APP.APP_CODE.eq(appCode);
+		if (onlyWriteAccess)
+			accessCheckCondition = accessCheckCondition.and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
 
 		return Flux.from(this.dslContext.select(SECURITY_APP.CLIENT_ID)
 		        .from(SECURITY_APP)
@@ -184,8 +187,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		                .from(SECURITY_APP_ACCESS)
 		                .leftJoin(SECURITY_APP)
 		                .on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
-		                .where(SECURITY_APP.APP_CODE.eq(appCode)
-		                        .and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1))))))
+		                .where(accessCheckCondition)))
 		        .map(Record1::value1)
 		        .distinct()
 		        .sort();

@@ -271,13 +271,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 	protected Mono<D> evictRecursively(D f) {
 
-		Flux.just(f)
-		        .expandDeep(e -> this.repo.findByNameAndAppCodeAndBaseClientCode(e.getName(), e.getAppCode(),
-		                e.getClientCode()))
-		        .subscribe(e -> cacheService
-		                .evict(this.getCacheName(), e.getName(), "-", e.getAppCode(), "-", e.getClientCode())
-		                .subscribe());
-
+		cacheService.evictAll(this.getCacheName(f.getAppCode(), f.getName()))
+		        .subscribe();
 		return Mono.just(f);
 	}
 
@@ -309,9 +304,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				        return messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 				                AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id);
 
-			        cacheService
-			                .evict(this.getCacheName(), entity.getName(), "-", entity.getAppCode(), "-",
-			                        entity.getClientCode())
+			        cacheService.evict(this.getCacheName(entity.getAppCode(), entity.getName()), entity.getClientCode())
 			                .subscribe();
 			        return super.delete(id);
 		        }).switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
@@ -624,9 +617,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> cacheService.makeKey(name, "-", appCode, "-", clientCode),
+		        () -> Mono.just(clientCode),
 
-		        key -> cacheService.get(this.getCacheName(), key)
+		        key -> cacheService.get(this.getCacheName(appCode, name), key)
 		                .map(this.pojoClass::cast),
 
 		        (key, cApp) -> Mono.justOrEmpty(cApp)
@@ -659,7 +652,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				        return Mono.empty();
 
 			        if (cApp == null && mergedApp != null) {
-				        cacheService.put(this.getCacheName(), mergedApp, key);
+				        cacheService.put(this.getCacheName(appCode, name), mergedApp, key);
 			        }
 
 			        return this.applyChange(name, appCode, clientCode, clonedApp);
@@ -697,9 +690,14 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		return Mono.just(object);
 	}
 
-	protected String getCacheName() {
+	protected String getCacheName(String appCode, String name) {
 
-		return this.getObjectName() + CACHE_NAME;
+		return new StringBuilder(this.getObjectName()).append(CACHE_NAME)
+		        .append("_")
+		        .append(appCode)
+		        .append("_")
+		        .append(name)
+		        .toString();
 	}
 
 	@SuppressWarnings("unchecked")
