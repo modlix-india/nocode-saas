@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.User;
@@ -65,7 +66,9 @@ public class UserController
 	public Mono<ResponseEntity<Boolean>> updatePasswordForUser(@PathVariable ULong userId,
 	        @RequestBody RequestUpdatePassword passwordRequest) {
 
-		return this.userService.updateNewPassword(userId, passwordRequest)
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(), userId,
+		                passwordRequest, false))
 		        .map(ResponseEntity::ok);
 	}
 
@@ -80,6 +83,25 @@ public class UserController
 	@GetMapping("/makeUserActive")
 	public Mono<ResponseEntity<Boolean>> makeUserActive() {
 		return this.service.makeUserActive()
+		        .map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/resetPassword")
+	public Mono<ResponseEntity<Boolean>> changePassword(@RequestBody RequestUpdatePassword passwordRequest) {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
+		                ULong.valueOf(ca.getUser()
+		                        .getId()),
+		                passwordRequest, true))
+		        .map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/requestResetPassword")
+	public Mono<ResponseEntity<Boolean>> requestResetPassword(@RequestBody AuthenticationRequest authRequest,
+	        ServerHttpRequest request) {
+
+		return this.userService.resetPasswordRequest(authRequest, request)
 		        .map(ResponseEntity::ok);
 	}
 }
