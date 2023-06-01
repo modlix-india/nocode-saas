@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.document.Transport;
 import com.fincity.saas.commons.mongo.model.TransportRequest;
 import com.fincity.saas.commons.mongo.repository.TransportRepository;
@@ -38,5 +39,17 @@ public class AbstractTransportController
 		        .stream()
 		        .map(e -> e.getObjectName())
 		        .toList()));
+	}
+
+	@PostMapping("/createAndApply")
+	public Mono<ResponseEntity<Transport>> createApply(@RequestBody Transport entity) { 
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.service.create(entity),
+
+		        c -> this.service.applyTransport(c.getId()),
+
+		        (c, applied) -> Mono.just(ResponseEntity.ok(c)));
 	}
 }
