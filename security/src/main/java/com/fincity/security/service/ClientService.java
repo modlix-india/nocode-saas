@@ -3,9 +3,7 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.math.BigInteger;
-import java.net.InetSocketAddress;
 import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,7 +23,6 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
-import com.fincity.saas.common.security.jwt.JWTUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -97,9 +94,6 @@ public class ClientService
 
 	@Autowired
 	private EventCreationService ecService;
-
-	@Value("${jwt.key}")
-	private String tokenKey;
 
 	@Value("${jwt.token.rememberme.expiry}")
 	private Integer remembermeExpiryInMinutes;
@@ -480,7 +474,8 @@ public class ClientService
 
 			        if (!StringUtil.safeIsBlank(request.getPassword())) {
 
-				        return makeToken(httpRequest, ca, userTuple, loggedInClientCode).map(TokenObject::getToken);
+				        return this.userService.makeOneTimeToken(httpRequest, ca, userTuple.getT1(), loggedInClientCode)
+				                .map(TokenObject::getToken);
 			        }
 
 			        return Mono.just("");
@@ -557,45 +552,4 @@ public class ClientService
 		        (c, clnt, created) -> Mono.just(clnt));
 
 	}
-
-	private Mono<TokenObject> makeToken(ServerHttpRequest httpRequest, ContextAuthentication ca,
-	        Tuple2<User, String> userTuple, ULong loggedInClientCode) {
-		String host = httpRequest.getURI()
-		        .getHost();
-		String port = "" + httpRequest.getURI()
-		        .getPort();
-
-		List<String> forwardedHost = httpRequest.getHeaders()
-		        .get("X-Forwarded-Host");
-
-		if (forwardedHost != null && !forwardedHost.isEmpty()) {
-			host = forwardedHost.get(0);
-		}
-
-		List<String> forwardedPort = httpRequest.getHeaders()
-		        .get("X-Forwarded-Port");
-
-		if (forwardedPort != null && !forwardedPort.isEmpty()) {
-			port = forwardedPort.get(0);
-		}
-
-		User u = userTuple.getT1();
-		InetSocketAddress inetAddress = httpRequest.getRemoteAddress();
-		final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
-
-		Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(u.getId()
-		        .toBigInteger(), tokenKey, VALIDITY_MINUTES, host, port, loggedInClientCode.toBigInteger(),
-		        ca.getUrlClientCode(), true);
-
-		return tokenService.create(new TokenObject().setUserId(u.getId())
-		        .setToken(token.getT1())
-		        .setPartToken(token.getT1()
-		                .length() < 50 ? token.getT1()
-		                        : token.getT1()
-		                                .substring(token.getT1()
-		                                        .length() - 50))
-		        .setExpiresAt(token.getT2())
-		        .setIpAddress(hostAddress));
-	}
-
 }
