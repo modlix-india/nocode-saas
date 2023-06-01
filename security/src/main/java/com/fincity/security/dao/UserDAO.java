@@ -502,6 +502,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Flux
 		        .from(this.getAllUsersPerAppQuery(userName, null, appCode, identifierType, SECURITY_USER.ID,
 		                SECURITY_USER.CLIENT_ID))
+
 		        .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
 
