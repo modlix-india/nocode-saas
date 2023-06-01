@@ -613,9 +613,22 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                        .eq(urlClientCode),
 
 		                DSL.or(userFieldsConditions)));
-		
+
 		return Mono.from(query)
 		        .map(Record1::value1)
+		        .map(e -> e > 0);
+	}
+
+	public Mono<Boolean> updateUserStatus(ULong reqUserId) {
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+		        .set(SECURITY_USER.ACCOUNT_NON_EXPIRED, ByteUtil.ONE)
+		        .set(SECURITY_USER.ACCOUNT_NON_LOCKED, ByteUtil.ONE)
+		        .set(SECURITY_USER.CREDENTIALS_NON_EXPIRED, ByteUtil.ONE)
+		        .set(SECURITY_USER.NO_FAILED_ATTEMPT, Short.valueOf((short) 0))
+		        .where(SECURITY_USER.ID.eq(reqUserId)
+		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
 		        .map(e -> e > 0);
 	}
 
