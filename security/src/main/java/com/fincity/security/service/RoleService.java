@@ -24,6 +24,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.RoleDAO;
+import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
@@ -336,5 +337,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	public Mono<List<ULong>> getPermissionsFromRole(ULong roleId) {
 
 		return this.dao.getPermissionsFromRole(roleId);
+	}
+	
+	public Mono<List<Permission>> getPermissionsFromGivenRole(ULong roleId) {
+		return this.dao.getPermissionsFromGivenRole(roleId);
 	}
 }

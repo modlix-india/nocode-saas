@@ -343,6 +343,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return this.dao.readInternal(id)
 		        .flatMap(this.dao::setPermissions);
 	}
+	
+//	public int getPermissionsFromGivenUser(ULong userId) {
+//		
+//	}
 
 	public Mono<Boolean> removePermission(ULong userId, ULong permissionId) {
 		return this.dao.removePermissionFromUser(userId, permissionId)

@@ -59,10 +59,6 @@ public class ClientController
 		        .map(ResponseEntity::ok);
 	}
 	
-	@GetMapping("/availablePackages/{clientId}")
-	public Mono<List<Package>> fetchPackagesForClient(@PathVariable ULong clientId) {
-		return this.clientService.fetchPackages(clientId);
-	}
 
 	@GetMapping("/{clientId}/assignPackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> assignPackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
@@ -73,6 +69,12 @@ public class ClientController
 	@GetMapping("/{clientId}/removePackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> removePackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
 		return clientService.removePackageFromClient(clientId, packageId)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@GetMapping("/availablePackages/{clientId}")
+	public Mono<ResponseEntity<List<Package>>> fetchPackagesForClient(@PathVariable ULong clientId) {
+		return this.clientService.fetchPackages(clientId)
 		        .map(ResponseEntity::ok);
 	}
 

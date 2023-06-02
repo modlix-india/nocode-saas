@@ -25,6 +25,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
+import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 
@@ -220,6 +221,10 @@ public class PackageService extends
 		return this.dao.getRolesFromPackage(packageId);
 	}
 
+	public Mono<List<Role>> getRolesFromGivenPackage(ULong packageId) {
+		return this.dao.getRolesFromGivenPackage(packageId);
+	}
+	
 	public Mono<List<ULong>> getPermissionsFromPackage(ULong packageId, List<ULong> roles) {
 		return this.dao.getPermissionsFromPackage(packageId, roles);
 	}

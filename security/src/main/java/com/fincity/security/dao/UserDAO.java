@@ -435,6 +435,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                .values(userId, roleId))
 		        .map(Objects::nonNull);
 	}
+	
 
 	public Mono<List<User>> getBy(String userName, ULong userId, String appCode,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
