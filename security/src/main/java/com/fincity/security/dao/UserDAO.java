@@ -437,7 +437,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                .values(userId, roleId))
 		        .map(Objects::nonNull);
 	}
-	
 
 	public Mono<List<User>> getBy(String userName, ULong userId, String appCode,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
@@ -640,13 +639,14 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+		        this.dslContext.selectDistinct(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
 		                .from(SECURITY_USER_ROLE_PERMISSION)
 		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
 
 		)
+		        .filter(permissionRecord -> permissionRecord
+		                .getValue(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.getName()) != null)
 		        .map(Record1::value1)
-		        .filter(Objects::nonNull)
 		        .collectList()
 		        .flatMap(
 
@@ -656,6 +656,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                                .where(SECURITY_PERMISSION.ID.in(permissionsList))
 
 						)
+		                        .filter(Objects::nonNull)
 		                        .map(e -> e.into(Permission.class))
 		                        .collectList()
 
@@ -671,8 +672,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
 
 		)
+		        .filter(roleRecord -> roleRecord.getValue(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.getName()) != null)
 		        .map(Record1::value1)
-		        .filter(Objects::nonNull)
 		        .collectList()
 		        .flatMap(
 
@@ -682,6 +683,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		                                .where(SECURITY_ROLE.ID.in(rolesList))
 
 						)
+		                		.filter(Objects::nonNull)
 		                        .map(e -> e.into(Role.class))
 		                        .collectList()
 

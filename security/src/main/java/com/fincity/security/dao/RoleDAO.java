@@ -279,8 +279,10 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		        this.dslContext.select(SECURITY_ROLE_PERMISSION.PERMISSION_ID)
 		                .from(SECURITY_ROLE_PERMISSION)
 		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)))
+
+		        .filter(permissionRecord -> permissionRecord
+		                .getValue(SECURITY_ROLE_PERMISSION.PERMISSION_ID.getName()) != null)
 		        .map(Record1::value1)
-		        .filter(Objects::nonNull)
 		        .collectList()
 		        .flatMap(
 
@@ -289,12 +291,14 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 						Flux.from(
 
 						        this.dslContext.selectFrom(SECURITY_PERMISSION)
+						                .where(SECURITY_PERMISSION.ID.in(permissionsList))
 
-						                .where(SECURITY_PERMISSION.ID.in(permissionsList)))
+						)
+						        .filter(Objects::nonNull)
 						        .map(e -> e.into(Permission.class))
 						        .collectList()
 
 				);
 	}
 
- }
+}

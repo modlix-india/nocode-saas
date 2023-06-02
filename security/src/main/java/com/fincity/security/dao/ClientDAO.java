@@ -486,17 +486,30 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 	public Mono<List<Package>> getPackagesAvailableForClient(ULong clientId) {
 
-		return Flux.from(this.dslContext.select(SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
-		        .from(SECURITY_CLIENT_PACKAGE)
-		        .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)))
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
+		                .from(SECURITY_CLIENT_PACKAGE)
+		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId))
+
+		)
+		        .filter(
+
+		                packageRecord -> packageRecord.getValue(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.getName()) != null)
 		        .map(Record1::value1)
-		        .filter(Objects::nonNull)
 		        .collectList()
-		        .flatMap(packagesList -> Flux.from(this.dslContext.selectFrom(SECURITY_PACKAGE)
-		                .where(SECURITY_PACKAGE.ID.in(packagesList)))
-		                .map(e -> e.into(Package.class))
-		                .collectList());
+		        .flatMap(
+
+		                packagesList ->
+
+						Flux.from(this.dslContext.selectFrom(SECURITY_PACKAGE)
+						        .where(SECURITY_PACKAGE.ID.in(packagesList)))
+						        .filter(Objects::nonNull)
+						        .map(e -> e.into(Package.class))
+						        .collectList()
+
+				);
 
 	}
-	
+
 }
