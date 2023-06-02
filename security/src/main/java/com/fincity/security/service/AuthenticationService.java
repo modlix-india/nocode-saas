@@ -134,7 +134,7 @@ public class AuthenticationService implements IAuthenticationService {
 			                : AuthenticationIdentifierType.EMAIL_ID);
 		}
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoLog(
 
 		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), appCode,
 		                authRequest.getIdentifierType()),
@@ -142,8 +142,11 @@ public class AuthenticationService implements IAuthenticationService {
 				{
 			        String linClientCode = tup.getT1()
 			                .getCode();
-			        return Mono
-			                .justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode) ? true : null);
+			        return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode)
+			                || tup.getT1()
+			                        .getId()
+			                        .equals(tup.getT2()
+			                                .getId()) ? true : null);
 		        },
 
 		        (tup, linCCheck) -> this.checkPassword(authRequest, tup.getT3()),

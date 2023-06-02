@@ -32,6 +32,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 	@Override
 	public Mono<Transport> create(Transport entity) {
+		
+		entity.setName(StringUtil.safeValueOf(entity.getName(), "")+entity.getUniqueTransportCode());
 
 		return this
 		        .readAllFilter(new ComplexCondition()
