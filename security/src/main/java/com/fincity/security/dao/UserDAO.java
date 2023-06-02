@@ -47,6 +47,8 @@ import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.PastPassword;
+import com.fincity.security.dto.Permission;
+import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -632,6 +634,58 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .where(SECURITY_USER.ID.eq(reqUserId)
 		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
 		        .map(e -> e > 0);
+	}
+
+	public Mono<List<Permission>> fetchPermissionsFromGivenUser(ULong userId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+		                .from(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
+
+		)
+		        .map(Record1::value1)
+		        .filter(Objects::nonNull)
+		        .collectList()
+		        .flatMap(
+
+		                permissionsList -> Flux.from(
+
+		                        this.dslContext.selectFrom(SECURITY_PERMISSION)
+		                                .where(SECURITY_PERMISSION.ID.in(permissionsList))
+
+						)
+		                        .map(e -> e.into(Permission.class))
+		                        .collectList()
+
+				);
+	}
+
+	public Mono<List<Role>> fetchRolesFromGivenUser(ULong userId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+		                .from(SECURITY_USER_ROLE_PERMISSION)
+		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
+
+		)
+		        .map(Record1::value1)
+		        .filter(Objects::nonNull)
+		        .collectList()
+		        .flatMap(
+
+		                rolesList -> Flux.from(
+
+		                        this.dslContext.selectFrom(SECURITY_ROLE)
+		                                .where(SECURITY_ROLE.ID.in(rolesList))
+
+						)
+		                        .map(e -> e.into(Role.class))
+		                        .collectList()
+
+				);
 	}
 
 }

@@ -38,6 +38,8 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.Permission;
+import com.fincity.security.dto.Role;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
@@ -344,10 +346,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .flatMap(this.dao::setPermissions);
 	}
 	
-//	public int getPermissionsFromGivenUser(ULong userId) {
-//		
-//	}
+	public Mono<List<Permission>> getPermissionsFromGivenUser(ULong userId) {
 
+		return this.dao.fetchPermissionsFromGivenUser(userId);
+	}
+
+	public Mono<List<Role>> getRolesFromGivenUser(ULong userId) {
+
+		return this.dao.fetchRolesFromGivenUser(userId);
+	}
+	
 	public Mono<Boolean> removePermission(ULong userId, ULong permissionId) {
 		return this.dao.removePermissionFromUser(userId, permissionId)
 		        .map(value -> value > 0)
