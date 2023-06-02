@@ -132,6 +132,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                        : Mono.empty(),
 
 		        (cEntity, merged, overridden, created, version) -> this.read(created.getId()))
+				.flatMap(ce -> this.evictRecursively(ce))
 
 		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
 		                this.getObjectName()));
