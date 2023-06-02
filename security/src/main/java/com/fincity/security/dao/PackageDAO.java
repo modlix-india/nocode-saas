@@ -264,29 +264,24 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		        .collectList();
 
 	}
-	
 
 	public Mono<List<Role>> getRolesFromGivenPackage(ULong packageId) {
-		
-		
+
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_PACKAGE_ROLE.ROLE_ID)
+		        this.dslContext.select(SECURITY_ROLE.fields())
 		                .from(SECURITY_PACKAGE_ROLE)
+		                .leftJoin(SECURITY_ROLE)
+
+		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE.ID))
+
 		                .where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId))
 
 		)
-		        .map(Record1::value1)
-		        .collectList()
-		        .flatMap(
 
-		                rolesList -> Flux.from(this.dslContext.selectFrom(SECURITY_ROLE)
-		                        .where(SECURITY_ROLE.ID.in(rolesList)))
-		                        .filter(Objects::nonNull)
-		                        .map(e -> e.into(Role.class))
-		                        .collectList()
+		        .map(e -> e.into(Role.class))
 
-				);
+		        .collectList();
 
 	}
 

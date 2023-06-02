@@ -639,55 +639,43 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		return Flux.from(
 
-		        this.dslContext.selectDistinct(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
-		                .from(SECURITY_USER_ROLE_PERMISSION)
-		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
+		        this.dslContext.select(SECURITY_PERMISSION.fields())
+		                .from(SECURITY_PERMISSION)
 
-		)
-		        .filter(permissionRecord -> permissionRecord
-		                .getValue(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.getName()) != null)
-		        .map(Record1::value1)
-		        .collectList()
-		        .flatMap(
+		                .where(
 
-		                permissionsList -> Flux.from(
+		                        SECURITY_PERMISSION.ID.in(
 
-		                        this.dslContext.selectFrom(SECURITY_PERMISSION)
-		                                .where(SECURITY_PERMISSION.ID.in(permissionsList))
+		                                this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+		                                        .from(SECURITY_USER_ROLE_PERMISSION)
+		                                        .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
+		                                                .and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID
+		                                                        .isNotNull())))))
 
-						)
-		                        .filter(Objects::nonNull)
-		                        .map(e -> e.into(Permission.class))
-		                        .collectList()
+		        .map(e -> e.into(Permission.class))
+		        .collectList();
 
-				);
 	}
 
 	public Mono<List<Role>> fetchRolesFromGivenUser(ULong userId) {
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
-		                .from(SECURITY_USER_ROLE_PERMISSION)
-		                .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
+		        this.dslContext.select(SECURITY_ROLE.fields())
+		                .from(SECURITY_ROLE)
 
-		)
-		        .filter(roleRecord -> roleRecord.getValue(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.getName()) != null)
-		        .map(Record1::value1)
-		        .collectList()
-		        .flatMap(
+		                .where(
 
-		                rolesList -> Flux.from(
+		                        SECURITY_ROLE.ID.in(
 
-		                        this.dslContext.selectFrom(SECURITY_ROLE)
-		                                .where(SECURITY_ROLE.ID.in(rolesList))
+		                                this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+		                                        .from(SECURITY_USER_ROLE_PERMISSION)
+		                                        .where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
+		                                                .and(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.isNotNull())))))
 
-						)
-		                		.filter(Objects::nonNull)
-		                        .map(e -> e.into(Role.class))
-		                        .collectList()
+		        .map(e -> e.into(Role.class))
+		        .collectList();
 
-				);
 	}
 
 }

@@ -1,10 +1,10 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
-import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
@@ -488,25 +488,15 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
+		        this.dslContext.select(SECURITY_PACKAGE.fields())
 		                .from(SECURITY_CLIENT_PACKAGE)
-		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId))
 
-		)
-		        .map(Record1::value1)
-		        .collectList()
-		        .flatMap(
+		                .leftJoin(SECURITY_PACKAGE)
+		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE.ID))
 
-		                packagesList ->
-
-						Flux.from(this.dslContext.selectFrom(SECURITY_PACKAGE)
-						        .where(SECURITY_PACKAGE.ID.in(packagesList)))
-						        .filter(Objects::nonNull)
-						        .map(e -> e.into(Package.class))
-						        .collectList()
-
-				);
-
+		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)))
+		        .map(e -> e.into(Package.class))
+		        .collectList();
 	}
 
 }
