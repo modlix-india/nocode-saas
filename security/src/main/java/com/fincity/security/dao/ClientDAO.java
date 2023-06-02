@@ -493,9 +493,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId))
 
 		)
-		        .filter(
-
-		                packageRecord -> packageRecord.getValue(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.getName()) != null)
 		        .map(Record1::value1)
 		        .collectList()
 		        .flatMap(

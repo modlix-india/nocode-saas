@@ -280,8 +280,6 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		                .from(SECURITY_ROLE_PERMISSION)
 		                .where(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(roleId)))
 
-		        .filter(permissionRecord -> permissionRecord
-		                .getValue(SECURITY_ROLE_PERMISSION.PERMISSION_ID.getName()) != null)
 		        .map(Record1::value1)
 		        .collectList()
 		        .flatMap(

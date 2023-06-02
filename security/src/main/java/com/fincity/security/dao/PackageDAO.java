@@ -276,11 +276,6 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		                .where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId))
 
 		)
-		        .filter(
-
-		                roleRecord -> roleRecord.getValue(SECURITY_PACKAGE_ROLE.ROLE_ID.getName()) != null
-
-				)
 		        .map(Record1::value1)
 		        .collectList()
 		        .flatMap(
