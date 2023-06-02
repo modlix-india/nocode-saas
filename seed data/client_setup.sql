@@ -1266,4 +1266,14 @@ INSERT INTO `security`.`security_app_access` (client_id, app_id, EDIT_ACCESS) VA
 -- 	 join security.security_app_package ap on ap.PACKAGE_ID = pr.PACKAGE_ID
 --      where ap.client_id = 1;
 
+-- INSERT INTO security.security_app_package (client_id, app_id, package_id)
+-- 	select 1, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
+
+-- insert into security.security_app_user_role(client_id, app_id, role_id)
+-- select 1, 6, role_id from security.security_app_package ap
+-- 	left join security.security_package_role rp on rp.package_id = ap.package_id
+--     where role_id is not null;
+
+
+
 -- Testing 

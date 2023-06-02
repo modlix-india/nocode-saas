@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.mongo.util;
 
+import java.lang.constant.Constable;
 import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ public class CloneUtil {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static <T> T cloneObject(T obj) {
 
-		if (obj == null)
+		if (obj == null || obj instanceof Constable)
 			return obj;
 
 		if (obj instanceof Map map)
