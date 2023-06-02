@@ -573,8 +573,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                        .map(x -> e > 0);
 		                }))
 
-		        .flatMap(e -> this.evictTokens(reqUserId)
-		                .map(x -> e))
+		        .flatMap(e -> this.evictTokens(reqUserId).map(x -> e))
+		        .flatMap(e -> this.dao.updateUserStatus(reqUserId).map(x -> e))
 
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                "Password cannot be updated"));

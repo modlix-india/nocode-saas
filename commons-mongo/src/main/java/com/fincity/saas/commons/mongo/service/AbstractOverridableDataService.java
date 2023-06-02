@@ -132,6 +132,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                        : Mono.empty(),
 
 		        (cEntity, merged, overridden, created, version) -> this.read(created.getId()))
+				.flatMap(ce -> this.evictRecursively(ce))
 
 		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
 		                this.getObjectName()));
@@ -425,11 +426,15 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                        .ne(Boolean.TRUE),
 		                        Criteria.where(CLIENT_CODE)
 		                                .is(clientCode)))),
-		                this.pojoClass, this.getObjectName()
-		                        .toLowerCase()))
+		                this.pojoClass, this.getCollectionName()))
 		        .flatMap(e -> this.readInternal(e.getId()))
 		        .filter(e -> e.getClientCode()
 		                .equals(clientCode));
+	}
+
+	protected String getCollectionName() {
+		String cName = this.getObjectName();
+		return Character.toLowerCase(cName.charAt(0)) + cName.substring(1);
 	}
 
 	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) { // NOSONAR
@@ -463,7 +468,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
 
-		Mono<Page<ListResultObject>> returnList = FlatMapUtil.flatMapMono(
+		Mono<Page<ListResultObject>> returnList = FlatMapUtil.flatMapMonoLog(
 
 		        () -> accessCheck,
 
@@ -477,9 +482,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                                .ne(Boolean.TRUE),
 		                                Criteria.where(CLIENT_CODE)
 		                                        .is(ac.getT2()))))
-		                        .with(pageable.getSort()), ListResultObject.class,
-		                        this.getObjectName()
-		                                .toLowerCase())
+		                        .with(pageable.getSort()), ListResultObject.class, this.getCollectionName())
 		                .collectList(),
 
 		        (ac, tup, crit, list) ->
