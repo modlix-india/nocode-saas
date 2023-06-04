@@ -286,8 +286,7 @@ public class AuthenticationService implements IAuthenticationService {
 			return this.makeAnonySpringAuthentication(request);
 		}
 
-		System.out.println("Getting authentication...");
-		return FlatMapUtil.flatMapMonoWithNullLog(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
 		                .map(ContextAuthentication.class::cast),
@@ -306,8 +305,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 			final var claims = extractClamis(bearerToken);
 
-			System.out.println("Auth not in Cache");
-			return FlatMapUtil.flatMapMonoLog(
+			return FlatMapUtil.flatMapMono(
 
 			        () -> tokenService.readAllFilter(new FilterCondition().setField("partToken")
 			                .setOperator(FilterConditionOperator.EQUALS)
