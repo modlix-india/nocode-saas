@@ -286,7 +286,8 @@ public class AuthenticationService implements IAuthenticationService {
 			return this.makeAnonySpringAuthentication(request);
 		}
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		System.out.println("Getting authentication...");
+		return FlatMapUtil.flatMapMonoWithNullLog(
 
 		        () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken)
 		                .map(ContextAuthentication.class::cast),
@@ -295,7 +296,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
 		                : Mono.just(cachedCA))
-		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request));
+		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request)).log();
 	}
 
 	private Mono<Authentication> getAuthenticationIfNotInCache(boolean basic, String bearerToken,
@@ -305,7 +306,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 			final var claims = extractClamis(bearerToken);
 
-			return FlatMapUtil.flatMapMono(
+			System.out.println("Auth not in Cache");
+			return FlatMapUtil.flatMapMonoLog(
 
 			        () -> tokenService.readAllFilter(new FilterCondition().setField("partToken")
 			                .setOperator(FilterConditionOperator.EQUALS)
