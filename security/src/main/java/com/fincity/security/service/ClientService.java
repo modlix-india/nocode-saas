@@ -64,6 +64,7 @@ public class ClientService
 	private static final String CACHE_NAME_CLIENT_URI = "uri";
 	private static final String CACHE_NAME_CLIENT_INFO = "clientInfoById";
 	private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
+	private static final String CACHE_NAME_CLIENT_ID = "clientId";
 
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
@@ -131,7 +132,7 @@ public class ClientService
 		return getClientPattern(uriScheme, uriHost, uriPort).map(ClientUrlPattern::getIdentifier)
 		        .map(ULong::valueOf)
 		        .defaultIfEmpty(ULong.valueOf(1l))
-		        .flatMap(id -> this.dao.readInternal(id));
+		        .flatMap(id -> this.readInternal(id));
 	}
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
@@ -214,7 +215,7 @@ public class ClientService
 	}
 
 	public Mono<Client> readInternal(ULong id) {
-		return this.dao.readInternal(id);
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_ID, () -> this.dao.readInternal(id), id);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_READ')")
@@ -227,6 +228,7 @@ public class ClientService
 	@Override
 	public Mono<Client> update(Client entity) {
 		return super.update(entity).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, entity.getId())
+		        .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, entity.getId()))
 		        .map(x -> e));
 	}
 
@@ -234,6 +236,7 @@ public class ClientService
 	@Override
 	public Mono<Client> update(ULong key, Map<String, Object> fields) {
 		return super.update(key, fields).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, e.getId())
+		        .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, e.getId()))
 		        .map(x -> e));
 	}
 
@@ -247,7 +250,9 @@ public class ClientService
 			        return e;
 		        })
 		        .flatMap(this::update)
-		        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id))
+		        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id)
+		                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, id)))
+
 		        .map(e -> 1);
 	}
 

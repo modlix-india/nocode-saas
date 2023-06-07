@@ -49,7 +49,19 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 			logger.debug(query.toString());
 		return Mono.from(query)
 		        .map(Record1::value1)
-		        .map(e -> e != 0);
+		        .map(e -> e != 0)
+		        .flatMap(access ->
+				{
+
+			        if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+				        return Mono.just(access);
+
+			        return Mono.from(this.dslContext.selectCount()
+			                .from(FILES_ACCESS_PATH)
+			                .where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode))))
+			                .map(Record1::value1)
+			                .map(e -> e == 0);
+		        });
 	}
 
 	public Mono<Boolean> hasPathWriteAccess(String path, ULong userId, String clientCode,
@@ -74,6 +86,18 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 		        .filter(e -> e.getWriteAccess()
 		                .equals(Byte.valueOf((byte) 1)))
 		        .map(e -> true)
-		        .defaultIfEmpty(false);
+		        .defaultIfEmpty(false)
+		        .flatMap(access ->
+				{
+
+			        if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+				        return Mono.just(access);
+
+			        return Mono.from(this.dslContext.selectCount()
+			                .from(FILES_ACCESS_PATH)
+			                .where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode))))
+			                .map(Record1::value1)
+			                .map(e -> e == 0);
+		        });
 	}
 }

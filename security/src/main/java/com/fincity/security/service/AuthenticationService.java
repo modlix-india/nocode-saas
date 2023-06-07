@@ -295,7 +295,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
 		                : Mono.just(cachedCA))
-		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request));
+		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request)).log();
 	}
 
 	private Mono<Authentication> getAuthenticationIfNotInCache(boolean basic, String bearerToken,
