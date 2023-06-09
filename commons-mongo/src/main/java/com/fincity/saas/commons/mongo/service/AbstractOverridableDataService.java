@@ -245,7 +245,11 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		        merged -> this.extractOverride(e, merged),
 
-		        (merged, overridden) -> super.update(overridden),
+		        (merged, overridden) ->
+				{
+					
+			        return super.update(overridden);
+		        },
 
 		        (merged, overridden,
 		                created) -> isVersionable()
@@ -340,7 +344,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 			        for (int i = list.size() - 3; i >= 0; i--) {
 				        final int fi = i;
 				        current = current.flatMap(b -> list.get(fi)
-				                .applyOverride(b));
+				                .applyActualOverride(b));
 			        }
 
 			        return current;
@@ -358,7 +362,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		if (mergedSources == null)
 			return Mono.just(entity);
 
-		return entity.makeOverride(mergedSources);
+		return entity.makeActualOverride(mergedSources);
 	}
 
 	protected Mono<D> applyOverride(D entity, D mergedSources) {
@@ -368,7 +372,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		if (mergedSources == null)
 			return Mono.just(entity);
 
-		return entity.applyOverride(mergedSources);
+		return entity.applyActualOverride(mergedSources);
 	}
 
 	@Override

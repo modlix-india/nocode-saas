@@ -23,6 +23,8 @@ import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dto.App;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
@@ -171,23 +173,24 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .where(SECURITY_APP.APP_CODE.eq(appCode))
 		        .limit(1))
 		        .map(Record1::value1)
-		        .map(code -> {
-		        	
-		        	if (urlClientCode == null) {
-		        		return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
-		        	}
-		        	
-		        	if (urlClientCode.equals(clientCode)) {
-		        		return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
-		        	}
-		        	
-		        	List<String> clientList = new ArrayList<>();
-		        	
-		        	clientList.add(code);
-		        	clientList.add(urlClientCode);
-		        	clientList.add(clientCode);
-		        	
-		        	return clientList;
+		        .map(code ->
+				{
+
+			        if (urlClientCode == null) {
+				        return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
+			        }
+
+			        if (urlClientCode.equals(clientCode)) {
+				        return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
+			        }
+
+			        List<String> clientList = new ArrayList<>();
+
+			        clientList.add(code);
+			        clientList.add(urlClientCode);
+			        clientList.add(clientCode);
+
+			        return clientList;
 		        });
 	}
 
@@ -216,5 +219,28 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .where(SECURITY_APP.APP_CODE.eq(appCode))
 		        .limit(1))
 		        .map(e -> e.into(App.class));
+	}
+
+	public Mono<String> generateAppCode(App app) {
+
+		String appName = StringUtil.safeValueOf(app.getAppName(), "newapp");
+
+		if (appName.length() > 24)
+			appName = appName.substring(0, 24);
+
+		return Mono.just(UniqueUtil.uniqueNameOnlyLetters(36, appName))
+		        .expandDeep(n -> Mono.from(this.dslContext.selectCount()
+		                .from(SECURITY_APP)
+		                .where(SECURITY_APP.APP_CODE.eq(n)))
+		                .map(Record1::value1)
+		                .flatMap(count ->
+						{
+			                if (count == 0l)
+				                return Mono.empty();
+
+			                return Mono.just(UniqueUtil.uniqueNameOnlyLetters(36, n));
+		                }))
+		        .collectList()
+		        .map(lst -> lst.get(lst.size() - 1));
 	}
 }
