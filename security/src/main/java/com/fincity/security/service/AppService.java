@@ -312,10 +312,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
-	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+	public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
 
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_INHERITANCE,
-		        () -> this.dao.appInheritance(appCode, clientCode), appCode, ":", clientCode);
+		        () -> this.dao.appInheritance(appCode, urlClientCode, clientCode), appCode, ":", urlClientCode, ":", clientCode);
 	}
 
 	public Mono<App> getAppByCode(String appCode) {

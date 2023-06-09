@@ -17,7 +17,6 @@ import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
-
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;

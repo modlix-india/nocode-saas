@@ -15,7 +15,7 @@
 	<properties>
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.6</spring-cloud.version>
-		<nocode-kirun-version>2.0.4</nocode-kirun-version>
+		<nocode-kirun-version>3.0.0</nocode-kirun-version>
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 		<nocode-flatmap-util-version>1.2.0</nocode-flatmap-util-version>
@@ -61,11 +61,7 @@
 			<artifactId>kirun-java</artifactId>
 			<version>${nocode-kirun-version}</version>
 		</dependency>
-		<dependency>
-			<groupId>com.fincity.saas</groupId>
-			<artifactId>commons</artifactId>
-			<version>${saas-commons-version}</version>
-		</dependency>
+
 		<dependency>
 			<groupId>com.fincity.nocode</groupId>
 			<artifactId>reactor-flatmap-util</artifactId>
