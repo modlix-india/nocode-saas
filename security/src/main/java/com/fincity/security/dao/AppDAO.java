@@ -162,7 +162,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .where(SECURITY_APP_ACCESS.ID.eq(accessId)));
 	}
 
-	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+	public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
 
 		return Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
 		        .from(SECURITY_APP)
@@ -171,7 +171,24 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .where(SECURITY_APP.APP_CODE.eq(appCode))
 		        .limit(1))
 		        .map(Record1::value1)
-		        .map(code -> clientCode.equals(code) ? List.of(code) : List.of(code, clientCode));
+		        .map(code -> {
+		        	
+		        	if (urlClientCode == null) {
+		        		return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
+		        	}
+		        	
+		        	if (urlClientCode.equals(clientCode)) {
+		        		return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
+		        	}
+		        	
+		        	List<String> clientList = new ArrayList<>();
+		        	
+		        	clientList.add(code);
+		        	clientList.add(urlClientCode);
+		        	clientList.add(clientCode);
+		        	
+		        	return clientList;
+		        });
 	}
 
 	public Flux<ULong> getClientIdsWithAccess(String appCode, boolean onlyWriteAccess) {

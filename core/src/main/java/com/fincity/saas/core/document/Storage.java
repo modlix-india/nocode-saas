@@ -144,7 +144,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		if (obj.uniqueName != null && obj.uniqueName.equals(base.uniqueName))
 			obj.uniqueName = null;
 
-		if (obj.isAppLevel != null && obj.isAppLevel.equals(base.isAppLevel))
-			obj.isAppLevel = null;
+		obj.isAppLevel = base.isAppLevel;
 	}
 }
