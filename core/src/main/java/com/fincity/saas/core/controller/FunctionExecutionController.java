@@ -23,11 +23,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fincity.nocode.kirun.engine.HybridRepository;
-import com.fincity.nocode.kirun.engine.Repository;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.SchemaUtil;
+import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
@@ -35,7 +33,9 @@ import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunctionRepository;
+import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -54,8 +54,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -163,12 +163,13 @@ public class FunctionExecutionController {
 		        ca -> this.functionService.getFunctionRepository(appCode, clientCode)
 		                .find(namespace, name),
 
-		        (ca, fun) -> Mono
-		                .fromCallable(() -> new HybridRepository<>(new CoreSchemaRepository(),
-		                        schemaService.getSchemaRepository(appCode, clientCode)))
-		                .subscribeOn(Schedulers.boundedElastic()),
+		        (ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+		                new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode, clientCode))),
 
-		        (ca, fun, schRepo) ->
+		        (ca, fun, schRepo) -> job == null ? getRequestParamsToArguments(fun.getSignature()
+		                .getParameters(), request, schRepo) : Mono.just(job),
+
+		        (ca, fun, schRepo, args) ->
 				{
 			        if (fun instanceof DefinitionFunction df && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
 			                && !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
@@ -180,17 +181,16 @@ public class FunctionExecutionController {
 			        return fun
 			                .execute(
 			                        new ReactiveFunctionExecutionParameters(
-			                                new ReactiveHybridRepository<>(this.coreFunctionRepository,
+			                                new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
+			                                        this.coreFunctionRepository,
 			                                        functionService.getFunctionRepository(appCode, clientCode)),
-			                                schRepo)
-			                                .setArguments(job == null ? getRequestParamsToArguments(fun.getSignature()
-			                                        .getParameters(), request, schRepo) : job));
+			                                schRepo).setArguments(args));
 
 		        },
 
-		        (ca, fun, schRepo, output) -> this.extractOutputEvent(output))
+		        (ca, fun, schRepo, args, output) -> this.extractOutputEvent(output))
 		        .switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-		                CoreMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
+		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
 
 	}
 
@@ -223,14 +223,13 @@ public class FunctionExecutionController {
 		return Mono.empty();
 	}
 
-	private Map<String, JsonElement> getRequestParamsToArguments(Map<String, Parameter> parameters,
-	        ServerHttpRequest request, Repository<Schema> schemaRepository) {
+	private Mono<Map<String, JsonElement>> getRequestParamsToArguments(Map<String, Parameter> parameters,
+	        ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
 
 		MultiValueMap<String, String> queryParams = request.getQueryParams();
 
-		return parameters.entrySet()
-		        .stream()
-		        .map(e ->
+		return Flux.fromIterable(parameters.entrySet())
+		        .flatMap(e ->
 				{
 
 			        List<String> value = queryParams.get(e.getKey());
@@ -238,33 +237,42 @@ public class FunctionExecutionController {
 			        if (value == null || value.isEmpty())
 				        return null;
 
-			        Parameter param = e.getValue();
-
-			        Schema schema = param.getSchema();
+			        Schema schema = e.getValue()
+			                .getSchema();
 
 			        if (!StringUtil.safeIsBlank(schema.getRef()))
-				        schema = SchemaUtil.getSchemaFromRef(schema, schemaRepository, schema.getRef());
+				        return ReactiveSchemaUtil.getSchemaFromRef(schema, schemaRepository, schema.getRef())
+				                .map(sch -> Tuples.of(e, sch));
 
+			        return Mono.just(Tuples.of(e, schema));
+		        })
+		        .flatMap(tup ->
+				{
+			        Entry<String, Parameter> e = tup.getT1();
+			        Schema schema = tup.getT2();
 			        Type type = schema.getType();
 
+			        Parameter param = e.getValue();
+			        List<String> value = queryParams.get(e.getKey());
+
 			        if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT))
-				        return null;
+				        return Mono.empty();
 
 			        if (type.contains(SchemaType.STRING)) {
-				        return jsonElementString(e, value, param);
+				        return Mono.just(jsonElementString(e, value, param));
 			        }
 
 			        if (type.contains(SchemaType.DOUBLE)) {
-				        return jsonElement(e, value, param, SchemaType.DOUBLE);
+				        return Mono.just(jsonElement(e, value, param, SchemaType.DOUBLE));
 			        } else if (type.contains(SchemaType.FLOAT)) {
-				        return jsonElement(e, value, param, SchemaType.FLOAT);
+				        return Mono.just(jsonElement(e, value, param, SchemaType.FLOAT));
 			        } else if (type.contains(SchemaType.LONG)) {
-				        return jsonElement(e, value, param, SchemaType.LONG);
+				        return Mono.just(jsonElement(e, value, param, SchemaType.LONG));
 			        } else if (type.contains(SchemaType.INTEGER)) {
-				        return jsonElement(e, value, param, SchemaType.INTEGER);
+				        return Mono.just(jsonElement(e, value, param, SchemaType.INTEGER));
 			        }
 
-			        return null;
+			        return Mono.empty();
 		        })
 		        .filter(Objects::nonNull)
 		        .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));

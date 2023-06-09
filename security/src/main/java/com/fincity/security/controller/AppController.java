@@ -38,9 +38,9 @@ public class AppController
 
 	@GetMapping("/internal/appInheritance")
 	public Mono<ResponseEntity<List<String>>> appInheritance(@RequestParam String appCode,
-	        @RequestParam String clientCode) {
+	        @RequestParam String urlClientCode, @RequestParam String clientCode) {
 
-		return this.service.appInheritance(appCode, clientCode)
+		return this.service.appInheritance(appCode, urlClientCode, clientCode)
 		        .map(ResponseEntity::ok);
 	}
 
@@ -73,7 +73,8 @@ public class AppController
 	}
 
 	@GetMapping("/clients/{appCode}")
-	public Mono<ResponseEntity<List<Client>>> getAppClients(@PathVariable final String appCode, @RequestParam(required = false) boolean onlyWriteAccess) {
+	public Mono<ResponseEntity<List<Client>>> getAppClients(@PathVariable final String appCode,
+	        @RequestParam(required = false) boolean onlyWriteAccess) {
 		return this.service.getAppClients(appCode, onlyWriteAccess)
 		        .map(ResponseEntity::ok);
 	}

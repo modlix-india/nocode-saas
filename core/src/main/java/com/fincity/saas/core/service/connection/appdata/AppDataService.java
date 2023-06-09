@@ -16,11 +16,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import javax.annotation.PostConstruct;
 
@@ -43,9 +40,11 @@ import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.SchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
+import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
@@ -57,12 +56,12 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
+import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
-
 import com.google.gson.Gson;
 import com.ibm.icu.text.SimpleDateFormat;
 import com.monitorjbl.xlsx.StreamingReader;
@@ -75,6 +74,8 @@ import com.opencsv.RFC4180ParserBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class AppDataService {
@@ -280,8 +281,7 @@ public class AppDataService {
 
 			return FlatMapUtil.flatMapMono(() -> storageService.getSchema(storage),
 
-			        storageSchema -> Mono.fromCallable(() -> this.getHeaders(null, storage, storageSchema))
-			                .subscribeOn(Schedulers.boundedElastic()),
+			        storageSchema -> this.getHeaders(null, storage, storageSchema),
 
 			        (storageSchema, acutalHeaders) ->
 					{
@@ -348,115 +348,144 @@ public class AppDataService {
 		return Mono.just(byteStream.toByteArray());
 	}
 
-	private List<String> getHeaders(String prefix, Storage storage, Schema schema) {
+	private Mono<List<String>> getHeaders(String prefix, Storage storage, Schema sch) {
 
-		if (schema.getRef() != null) {
+		return FlatMapUtil.flatMapMono(
 
-			schema = SchemaUtil.getSchemaFromRef(schema,
-			        this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
-			        schema.getRef());
-		}
+		        () ->
+				{
+			        if (sch.getRef() == null)
+				        return Mono.just(sch);
+			        return ReactiveSchemaUtil.getSchemaFromRef(sch,
+			                new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+			                        new CoreSchemaRepository(), this.schemaService
+			                                .getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+			                sch.getRef());
+		        },
 
-		if (schema.getType()
-		        .contains(SchemaType.OBJECT)) {
+		        schema ->
+				{
+			        if (schema.getType()
+			                .contains(SchemaType.OBJECT)) {
 
-			return schema.getProperties()
-			        .entrySet()
-			        .stream()
-			        .flatMap(e -> this.getHeaders(getFlattenedObjectName(prefix, e), storage, e.getValue())
-			                .stream())
-			        .toList();
-		} else if (schema.getType()
-		        .contains(SchemaType.ARRAY)) {
+				        return Flux.fromIterable(schema.getProperties()
+				                .entrySet())
+				                .flatMap(e -> this.getHeaders(getFlattenedObjectName(prefix, e), storage, e.getValue())
+				                        .flatMapMany(Flux::fromIterable))
+				                .collectList();
 
-			ArraySchemaType aType = schema.getItems();
+			        } else if (schema.getType()
+			                .contains(SchemaType.ARRAY)) {
 
-			if (aType.getSingleSchema() != null) {
+				        ArraySchemaType aType = schema.getItems();
 
-				return IntStream.range(0, 2)
-				        .mapToObj(e -> getPrefixArrayName(prefix, e))
-				        .flatMap(e -> this.getHeaders(e, storage, aType.getSingleSchema())
-				                .stream())
-				        .toList();
-			} else {
+				        if (aType.getSingleSchema() != null) {
 
-				List<String> list = new ArrayList<>();
+					        return Flux.range(0, 2)
+					                .map(e -> getPrefixArrayName(prefix, e))
+					                .flatMap(e -> this.getHeaders(e, storage, aType.getSingleSchema())
+					                        .flatMapMany(Flux::fromIterable))
+					                .collectList();
+				        } else {
 
-				for (int i = 0; i < aType.getTupleSchema()
-				        .size(); i++) {
+					        return Flux.<Tuple2<Integer, Schema>>create(sink -> {
+						        for (int i = 0; i < aType.getTupleSchema()
+						                .size(); i++)
+							        sink.next(Tuples.of(Integer.valueOf(i), aType.getTupleSchema()
+							                .get(i)));
 
-					String pre = getPrefixArrayName(prefix, i);
+						        sink.complete();
+					        })
+					                .flatMap(tup -> this
+					                        .getHeaders(getPrefixArrayName(prefix, tup.getT1()), storage, tup.getT2())
+					                        .flatMapMany(Flux::fromIterable))
+					                .collectList();
 
-					list.addAll(this.getHeaders(pre, storage, aType.getTupleSchema()
-					        .get(i)));
-				}
+				        }
+			        }
 
-				return list;
-			}
-		}
+			        return Mono.just(List.of(prefix));
+		        });
 
-		return List.of(prefix);
 	}
 
-	private Map<String, Set<SchemaType>> getHeadersSchemaType(String prefix, Storage storage, Schema schema,
-	        Map<String, Set<SchemaType>> flattenedSchemaTypes) { // NOSONAR
+	private Mono<Map<String, Set<SchemaType>>> getHeadersSchemaType(String prefix, Storage storage, Schema sch) { // NOSONAR
 
-		if (schema.getRef() != null) {
+		return FlatMapUtil.flatMapFlux(
 
-			schema = SchemaUtil.getSchemaFromRef(schema,
-			        this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
-			        schema.getRef());
-		}
+		        () ->
+				{
+			        if (sch.getRef() == null)
+				        return Flux.just(sch);
 
-		if (prefix != null)
-			flattenedSchemaTypes.putIfAbsent(prefix, schema.getType()
-			        .getAllowedSchemaTypes());
+			        return Flux.from(ReactiveSchemaUtil.getSchemaFromRef(sch,
+			                new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+			                        new CoreSchemaRepository(), this.schemaService
+			                                .getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+			                sch.getRef()));
+		        },
 
-		if (schema.getType()
-		        .contains(SchemaType.OBJECT)) {
+		        schema ->
+				{
+			        Flux<Tuple2<String, Set<SchemaType>>> initial = prefix == null ? Flux.empty()
+			                : Flux.just(Tuples.of(prefix, schema.getType()
+			                        .getAllowedSchemaTypes()));
 
-			return schema.getProperties()
-			        .entrySet()
-			        .stream()
-			        .flatMap(e -> this
-			                .getHeadersSchemaType(getFlattenedObjectName(prefix, e), storage, e.getValue(),
-			                        flattenedSchemaTypes)
-			                .entrySet()
-			                .stream())
-			        .collect(Collectors.toMap(Entry<String, Set<SchemaType>>::getKey,
-			                Entry<String, Set<SchemaType>>::getValue, (firstValue, secondValue) -> firstValue));
+			        Flux<Tuple2<String, Set<SchemaType>>> objectKeys;
 
-		} else if (schema.getType()
-		        .contains(SchemaType.ARRAY)) {
+			        if (schema.getType()
+			                .contains(SchemaType.OBJECT)) {
 
-			ArraySchemaType aType = schema.getItems();
+				        objectKeys = Flux.fromIterable(schema.getProperties()
+				                .entrySet())
+				                .flatMap(e -> this
+				                        .getHeadersSchemaType(getFlattenedObjectName(prefix, e), storage, e.getValue())
+				                        .map(Map::entrySet)
+				                        .flatMapMany(Flux::fromIterable))
+				                .map(e -> Tuples.of(e.getKey(), e.getValue()));
 
-			if (aType.getSingleSchema() != null) {
+			        } else if (schema.getType()
+			                .contains(SchemaType.ARRAY)) {
 
-				return IntStream.range(0, 2)
-				        .mapToObj(e -> getPrefixArrayName(prefix, e))
-				        .flatMap(e -> this
-				                .getHeadersSchemaType(e, storage, aType.getSingleSchema(), flattenedSchemaTypes)
-				                .entrySet()
-				                .stream())
-				        .collect(Collectors.toMap(Entry<String, Set<SchemaType>>::getKey,
-				                Entry<String, Set<SchemaType>>::getValue, (firstValue, secondValue) -> firstValue));
+				        ArraySchemaType aType = schema.getItems();
 
-			} else {
-				for (int i = 0; i < aType.getTupleSchema()
-				        .size(); i++) {
+				        if (aType.getSingleSchema() != null) {
 
-					String pre = getPrefixArrayName(prefix, i);
+					        objectKeys = Flux.range(0, 2)
+					                .map(e -> getPrefixArrayName(prefix, e))
+					                .flatMap(e -> this.getHeadersSchemaType(e, storage, aType.getSingleSchema())
+					                        .map(Map::entrySet)
+					                        .flatMapMany(Flux::fromIterable))
+					                .map(e -> Tuples.of(e.getKey(), e.getValue()));
 
-					this.getHeadersSchemaType(pre, storage, schema, flattenedSchemaTypes);
-				}
+				        } else {
+					        objectKeys = Flux.<Tuple2<Integer, Schema>>create(sink -> {
+						        for (int i = 0; i < aType.getTupleSchema()
+						                .size(); i++)
+							        sink.next(Tuples.of(Integer.valueOf(i), aType.getTupleSchema()
+							                .get(i)));
 
-				return flattenedSchemaTypes;
+						        sink.complete();
+					        })
+					                .flatMap(tup -> this
+					                        .getHeadersSchemaType(getPrefixArrayName(prefix, tup.getT1()), storage,
+					                                tup.getT2())
+					                        .map(Map::entrySet)
+					                        .flatMapMany(Flux::fromIterable))
+					                .map(e -> Tuples.of(e.getKey(), e.getValue()));
 
-			}
-		}
+				        }
+			        } else {
+			        	
+				        objectKeys = Flux.empty();
+			        }
 
-		return flattenedSchemaTypes;
+			        return Flux.merge(initial, objectKeys);
+		        }
+
+		)
+		        .collectMap(Tuple2::getT1, Tuple2::getT2);
+
 	}
 
 	private String getPrefixArrayName(String prefix, int e) {
@@ -469,13 +498,12 @@ public class AppDataService {
 
 	private Mono<Boolean> uploadTemplate(Storage storage, FlatFileType fileType, FilePart filePart,
 	        IAppDataService dataService) {
+
 		return FlatMapUtil.flatMapMono(
 
 		        () -> storageService.getSchema(storage),
 
-		        storageSchema -> Mono
-		                .fromCallable(() -> this.getHeadersSchemaType(null, storage, storageSchema, new TreeMap<>()))
-		                .subscribeOn(Schedulers.boundedElastic()),
+		        storageSchema -> this.getHeadersSchemaType(null, storage, storageSchema),
 
 		        (storageSchema, flattenedSchemaType) ->
 				{
@@ -515,7 +543,11 @@ public class AppDataService {
 
 	private InputStream getInputStreamFromFluxDataBuffer(Flux<DataBuffer> data) throws IOException {
 
-		PipedOutputStream osPipe = new PipedOutputStream();
+		PipedOutputStream osPipe = new PipedOutputStream();// NOSONAR
+		// Cannot be used in try-with-resource as this has to be part of Reactor and
+		// don't know when this can be closed.
+		// Since doOnComplete is used we are closing the resource after writing the
+		// data.
 		PipedInputStream isPipe = new PipedInputStream(osPipe);
 
 		DataBufferUtils.write(data, osPipe)

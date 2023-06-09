@@ -21,9 +21,10 @@ public class InheritanceService {
 	@Autowired
 	private CacheService cacheService;
 
-	public Mono<List<String>> order(String appName, String clientCode) {
+	public Mono<List<String>> order(String appCode, String urlClientCode, String clientCode) {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_INHERITANCE_ORDER,
-		        () -> this.securityService.appInheritance(appName, clientCode), appName, "-", clientCode);
+		        () -> this.securityService.appInheritance(appCode, urlClientCode, clientCode), appCode, ":",
+		        urlClientCode, ":", clientCode);
 	}
 }

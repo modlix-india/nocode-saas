@@ -4,31 +4,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.nocode.kirun.engine.HybridRepository;
-import com.fincity.nocode.kirun.engine.Repository;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.repository.KIRunSchemaRepository;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 
-public class CoreSchemaRepository extends HybridRepository<Schema> {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-	public static final String CORE_NAMESPACE = "Core";
+public class CoreSchemaRepository extends ReactiveHybridRepository<Schema> {
 
-	private static Map<String, Schema> map = new HashMap<>();
+	private Map<String, Schema> repoMap = new HashMap<>();
+
+	private List<String> filterableNames;
 
 	public CoreSchemaRepository() {
 
-		super(new KIRunSchemaRepository(), new Repository<Schema>() {
-			@Override
-			public Schema find(String namespace, String name) {
-				return CORE_NAMESPACE.equals(namespace) ? map.get(name) : null;
-			}
+		this.filterableNames = repoMap.values()
+		        .stream()
+		        .map(Schema::getFullName)
+		        .toList();
+	}
 
-			@Override
-			public List<String> filter(String name) {
-				return List.of();
-			}
-		}
+	@Override
+	public Flux<String> filter(String name) {
+		return Flux.fromStream(filterableNames.stream())
+		        .filter(e -> e.toLowerCase()
+		                .indexOf(name.toLowerCase()) != -1);
+	}
 
-		);
+	@Override
+	public Mono<Schema> find(String namespace, String name) {
+
+		return Mono.justOrEmpty(repoMap.get(namespace + "." + name));
 	}
 }
