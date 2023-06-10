@@ -24,7 +24,6 @@ public class Transport extends AbstractOverridableDTO<Transport> {
 	private static final long serialVersionUID = -5436810186809455453L;
 
 	private String uniqueTransportCode;
-	private String description;
 	private List<TransportObject> objects;
 
 	@Override
