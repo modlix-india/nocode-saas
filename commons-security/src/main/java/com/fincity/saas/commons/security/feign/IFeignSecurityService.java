@@ -16,25 +16,24 @@ import reactor.core.publisher.Mono;
 public interface IFeignSecurityService {
 
 	@GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
-	public Mono<ContextAuthentication> contextAuthentication(@RequestHeader(name = "Authorization", required = false) String authorization,
+	public Mono<ContextAuthentication> contextAuthentication(
+	        @RequestHeader(name = "Authorization", required = false) String authorization,
 	        @RequestHeader("X-Forwarded-Host") String forwardedHost,
 	        @RequestHeader("X-Forwarded-Port") String forwardedPort);
 
 	@GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
 	public Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
-	
+
 	@GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
 	public Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
 
 	@GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
-	public Mono<Boolean> hasReadAccess(@RequestParam String appCode,
-	        @RequestParam String clientCode);
-	
+	public Mono<Boolean> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode);
+
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/hasWriteAccess}")
-	public Mono<Boolean> hasWriteAccess(@RequestParam String appCode,
-	        @RequestParam String clientCode);
-	
+	public Mono<Boolean> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode);
+
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
-	public Mono<List<String>> appInheritance(@RequestParam String appCode,
+	public Mono<List<String>> appInheritance(@RequestParam String appCode, @RequestParam String urlClientCode,
 	        @RequestParam String clientCode);
 }

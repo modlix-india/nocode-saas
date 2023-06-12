@@ -55,7 +55,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	public Mono<App> create(App entity) {
 
-		if (!StringUtil.onlyAlphabetAllowed(entity.getAppCode())) {
+		if (entity.getAppCode() != null && !StringUtil.onlyAlphabetAllowed(entity.getAppCode())) {
 			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
 			        SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
 		}
@@ -81,7 +81,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                .flatMap(managed -> managed.booleanValue() ? Mono.just(entity) : Mono.empty());
 		        },
 
-		        (ca, app) -> super.create(app)
+		        (ca, app) -> app.getAppCode() == null ? this.dao.generateAppCode(app)
+		                .map(app::setAppCode) : Mono.just(app),
+
+		        (ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp)
 
 		)
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
@@ -312,10 +315,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
-	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+	public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
 
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_INHERITANCE,
-		        () -> this.dao.appInheritance(appCode, clientCode), appCode, ":", clientCode);
+		        () -> this.dao.appInheritance(appCode, urlClientCode, clientCode), appCode, ":", urlClientCode, ":",
+		        clientCode);
 	}
 
 	public Mono<App> getAppByCode(String appCode) {

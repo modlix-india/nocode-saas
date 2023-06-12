@@ -2,12 +2,16 @@ package com.fincity.saas.core.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.repository.StorageRepository;
@@ -19,6 +23,9 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 	public static final String CACHE_NAME_STORAGE_SCHEMA = "storageSchema";
 
+	@Autowired
+	private CoreMessageResourceService coreMsgService;
+
 	protected StorageService() {
 		super(Storage.class);
 	}
@@ -27,6 +34,37 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 	public Mono<Storage> create(Storage entity) {
 
 		entity.setUniqueName(UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(), entity.getName()));
+
+		if (entity.getBaseClientCode() != null) {
+
+			return FlatMapUtil.flatMapMono(
+
+			        SecurityContextUtil::getUsersContextAuthentication,
+
+			        ca -> this.getMergedSources(entity),
+
+			        (ca, merged) ->
+					{
+
+				        if (BooleanUtil.safeValueOf(merged.getIsAppLevel())) {
+
+					        return this.securityService.hasWriteAccess(entity.getAppCode(), entity.getClientCode())
+					                .flatMap(access ->
+									{
+
+						                if (!access.booleanValue())
+							                return coreMsgService.throwMessage(HttpStatus.FORBIDDEN,
+							                        CoreMessageResourceService.STORAGE_IS_APP_LEVEL);
+
+						                return super.create(entity);
+					                });
+				        }
+
+				        return super.create(entity);
+			        }
+
+			);
+		}
 
 		return super.create(entity);
 	}

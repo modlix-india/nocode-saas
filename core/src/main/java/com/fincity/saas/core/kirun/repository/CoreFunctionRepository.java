@@ -68,7 +68,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 	@Override
 	public Mono<ReactiveFunction> find(String namespace, String name) {
 
-		return Mono.just(repoMap.get(namespace + "." + name));
+		return Mono.justOrEmpty(repoMap.get(namespace + "." + name));
 	}
 
 }

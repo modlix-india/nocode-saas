@@ -31,9 +31,11 @@ import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.kirun.engine.HybridRepository;
-import com.fincity.nocode.kirun.engine.json.schema.validator.SchemaValidator;
+import com.fincity.nocode.kirun.engine.json.schema.validator.reactive.ReactiveSchemaValidator;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
+import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -52,9 +54,11 @@ import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
+import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
@@ -64,7 +68,6 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 @Service
 public class MongoAppDataService extends RedisPubSubAdapter<String, String> implements IAppDataService {
@@ -126,24 +129,31 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		        ca -> storageService.getSchema(storage),
 
-		        (ca, schema) -> Mono.fromCallable(() ->
+		        (ca, schema) ->
 				{
 
 			        JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
 			                .getAsJsonObject();
-			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                new HybridRepository<>(new CoreSchemaRepository(),
-			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
-			                job);
-		        })
-		                .subscribeOn(Schedulers.boundedElastic()),
 
-		        (ca, schema, je) -> Mono.from(this.getCollection(conn, storage)
+			        return ReactiveSchemaValidator
+			                .validate(null, schema,
+			                        new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+			                                new CoreSchemaRepository(),
+			                                schemaService.getSchemaRepository(storage.getAppCode(),
+			                                        storage.getClientCode())),
+			                        job)
+			                .map(JsonElement::getAsJsonObject);
+		        },
+
+		        (ca, schema, je) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 		                .insertOne(BJsonUtil.from(je))),
 
-		        (ca, schema, je, result) -> Mono.from(this.getCollection(conn, storage)
-		                .find(Filters.eq(ID, result.getInsertedId()))
-		                .first()),
+		        (ca, schema, je,
+		                result) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+		                        .find(Filters.eq(ID, result.getInsertedId()))
+		                        .first()),
 
 		        (ca, schema, je, result, doc) ->
 				{
@@ -159,7 +169,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        versionDocument.append(MESSAGE, dataObject.getMessage());
 			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
 			        versionDocument.append(OPERATION, "CREATE");
-			        if (ca != null && ca.getUser() != null)
+			        if (ca.getUser() != null)
 				        versionDocument.append(CREATED_BY, new BsonInt64(ca.getUser()
 				                .getId()
 				                .longValue()));
@@ -167,7 +177,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                .booleanValue())
 				        versionDocument.append(OBJECT, new Document(dataObject.getData()));
 
-			        return Mono.from(this.getVersionCollection(conn, storage)
+			        return Mono.from(this.getVersionCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+			                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 			                .insertOne(versionDocument));
 		        }, (ca, scheme, je, result, doc, versionResult) -> {
 			        doc.remove(ID);
@@ -207,41 +218,55 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        Map<String, Object> overridableObject = dataObject.getData();
 			        overridableObject.remove(ID);
 
-			        return override.booleanValue() ? Mono.justOrEmpty(overridableObject)
-			                : FlatMapUtil.flatMapMono(
+			        String clientCodeOrURLClientCode = storage.getIsAppLevel()
+			                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode();
 
-			                        () -> Mono.from(this.getCollection(conn, storage)
+			        if (override.booleanValue())
+				        return Mono.justOrEmpty(overridableObject);
+
+			        return FlatMapUtil.flatMapMono(
+
+			                () -> Mono
+			                        .from(this
+			                                .getCollection(conn, storage.getAppCode(), clientCodeOrURLClientCode,
+			                                        storage.getUniqueName())
 			                                .find(Filters.eq(ID, objectId))
 			                                .first())
-			                                .map(orgDoc ->
-											{
-				                                orgDoc.remove(ID);
-				                                return orgDoc;
-			                                }),
+			                        .map(orgDoc ->
+									{
+				                        orgDoc.remove(ID);
+				                        return orgDoc;
+			                        }),
 
-			                        originalDocument -> DifferenceApplicator.apply(overridableObject,
-			                                originalDocument));
+			                originalDocument -> DifferenceApplicator.apply(overridableObject, originalDocument));
 		        },
 
-		        (ca, schema, overridableObject) -> Mono.fromCallable(() ->
+		        (ca, schema, overridableObject) ->
 				{
 
 			        JsonObject job = (new Gson()).toJsonTree(overridableObject)
 			                .getAsJsonObject();
 
-			        return (JsonObject) SchemaValidator.validate(null, schema,
-			                new HybridRepository<>(new CoreSchemaRepository(),
-			                        schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
-			                job);
-		        })
-		                .subscribeOn(Schedulers.boundedElastic()),
+			        return ReactiveSchemaValidator
+			                .validate(null, schema,
+			                        new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+			                                new CoreSchemaRepository(),
+			                                schemaService.getSchemaRepository(storage.getAppCode(),
+			                                        storage.getClientCode())),
+			                        job)
+			                .map(JsonElement::getAsJsonObject);
+		        },
 
-		        (ca, schema, overridableObject, je) -> Mono.from(this.getCollection(conn, storage)
-		                .replaceOne(Filters.eq(ID, objectId), BJsonUtil.from(je))),
+		        (ca, schema, overridableObject,
+		                je) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+		                        .replaceOne(Filters.eq(ID, objectId), BJsonUtil.from(je))),
 
-		        (ca, schema, overridableObject, je, result) -> Mono.from(this.getCollection(conn, storage)
-		                .find(Filters.eq(ID, objectId))
-		                .first()),
+		        (ca, schema, overridableObject, je,
+		                result) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+		                        .find(Filters.eq(ID, objectId))
+		                        .first()),
 
 		        (ca, scheme, overridableObject, je, result, doc) ->
 				{
@@ -252,26 +277,36 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                        .booleanValue())
 				        return Mono.empty();
 
-			        Document versionDocument = new Document();
-			        versionDocument.append(OBJECTID, objectId);
-			        versionDocument.append(MESSAGE, dataObject.getMessage());
-			        versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
-			        versionDocument.append(OPERATION, "UPDATE");
-			        if (ca != null && ca.getUser() != null)
-				        versionDocument.append(CREATED_BY, new BsonInt64(ca.getUser()
-				                .getId()
-				                .longValue()));
-			        doc.remove(ID); // removing id from the document
-			        if (storage.getIsVersioned()
-			                .booleanValue())
-				        versionDocument.append(OBJECT, new Document(doc));
-
-			        return Mono.from(this.getVersionCollection(conn, storage)
-			                .insertOne(versionDocument));
+			        return addVersion(conn, storage, dataObject, objectId, ca, doc);
 		        }, (ca, scheme, overridableObject, je, result, doc, versionResult) -> {
 			        doc.append(ID, key);
 			        return Mono.just(doc);
 		        });
+	}
+
+	private Mono<InsertOneResult> addVersion(Connection conn, Storage storage, DataObject dataObject,
+	        BsonObjectId objectId, ContextAuthentication ca, Document doc) {
+
+		Document versionDocument = new Document();
+		versionDocument.append(OBJECTID, objectId);
+		versionDocument.append(MESSAGE, dataObject.getMessage());
+		versionDocument.append(CREATED_AT, new BsonDateTime(System.currentTimeMillis()));
+		versionDocument.append(OPERATION, "UPDATE");
+		if (ca.getUser() != null)
+			versionDocument.append(CREATED_BY, new BsonInt64(ca.getUser()
+			        .getId()
+			        .longValue()));
+		doc.remove(ID); // removing id from the document
+		if (storage.getIsVersioned()
+		        .booleanValue())
+			versionDocument.append(OBJECT, new Document(doc));
+
+		String clientCodeOrURLClientCode = storage.getIsAppLevel()
+		        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode();
+
+		return Mono.from(this
+		        .getVersionCollection(conn, storage.getAppCode(), clientCodeOrURLClientCode, storage.getUniqueName())
+		        .insertOne(versionDocument));
 	}
 
 	@Override
@@ -280,11 +315,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> Mono.from(this.getCollection(conn, storage)
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 		                .find(Filters.eq(ID, objectId))
 		                .first()),
 
-		        doc ->
+		        (ca, doc) ->
 				{
 			        doc.remove(ID);
 			        doc.append(ID, id);
@@ -299,9 +337,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
 
-		return Mono.from(this.getCollection(conn, storage)
-		        .findOneAndDelete(Filters.eq(ID, objectId)))
-		        .map(e -> true)
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+		                .findOneAndDelete(Filters.eq(ID, objectId)))
+		                .map(e -> true))
 		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id)));
 
@@ -313,9 +356,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.filter(condition),
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        bsonCondition -> Flux.from(this.getCollection(conn, storage)
+		        ca -> this.filter(condition),
+
+		        (ca, bsonCondition) -> Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 		                .find(bsonCondition)
 		                .sort(this.sort(page.getSort()))
 		                .skip((int) page.getOffset())
@@ -330,10 +376,19 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		                })
 		                .collectList(),
 
-		        (bsonCondition, list) -> count.booleanValue() ? Mono.from(this.getCollection(conn, storage)
-		                .countDocuments(bsonCondition)) : Mono.just(page.getOffset() + list.size()),
+		        (ca, bsonCondition, list) ->
+				{
 
-		        (bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)));
+			        if (count.booleanValue())
+				        return Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+				                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+				                .countDocuments(bsonCondition));
+
+			        return Mono.just(page.getOffset() + list.size());
+		        },
+
+		        (ca, bsonCondition, list, cnt) -> Mono
+		                .just(PageableExecutionUtils.getPage(list, page, cnt::longValue)));
 
 	}
 
@@ -521,7 +576,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		this.mongoClients.remove(message);
 	}
 
-	private MongoCollection<Document> getCollection(Connection conn, Storage storage) {
+	private MongoCollection<Document> getCollection(Connection conn, String appCode, String clientCode,
+	        String uniqueName) {
 		MongoClient client = conn == null ? defaultClient
 		        : mongoClients.computeIfAbsent(getConnectionString(conn), key -> this.getMongoClient(conn));
 
@@ -529,11 +585,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
 			        CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
-		return client.getDatabase(storage.getClientCode() + "_" + storage.getAppCode())
-		        .getCollection(storage.getUniqueName());
+		return client.getDatabase(clientCode + "_" + appCode)
+		        .getCollection(uniqueName);
 	}
 
-	private MongoCollection<Document> getVersionCollection(Connection conn, Storage storage) {
+	private MongoCollection<Document> getVersionCollection(Connection conn, String appCode, String clientCode,
+	        String uniqueName) {
 		MongoClient client = conn == null ? defaultClient
 		        : mongoClients.computeIfAbsent(getConnectionString(conn), key -> this.getMongoClient(conn));
 
@@ -541,8 +598,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
 			        CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
-		return client.getDatabase(storage.getClientCode() + "_" + storage.getAppCode())
-		        .getCollection(storage.getUniqueName() + "_version");
+		return client.getDatabase(clientCode + "_" + appCode)
+		        .getCollection(uniqueName + "_version");
 	}
 
 	private synchronized MongoClient getMongoClient(Connection conn) {

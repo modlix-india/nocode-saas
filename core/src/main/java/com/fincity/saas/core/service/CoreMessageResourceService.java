@@ -36,4 +36,6 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String TEMPLATE_DETAILS_MISSING = "template_details_missing";
 	
 	public static final String MAIL_SEND_ERROR = "mail_send_error";
+	
+	public static final String STORAGE_IS_APP_LEVEL="storage_is_app_level";
 }

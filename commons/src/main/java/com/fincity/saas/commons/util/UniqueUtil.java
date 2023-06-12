@@ -75,6 +75,42 @@ public class UniqueUtil {
 		        .toString();
 	}
 
+	public static String uniqueNameOnlyLetters(int maxLength, String... name) { // NOSONAR
+
+		StringBuilder sb = new StringBuilder(maxLength);
+
+		int i = 0;
+		maxLength -= 15;
+
+		String[] arr = name.length == 0 ? new String[2] : new String[name.length + 2];
+		System.arraycopy(name, 0, arr, 0, name.length);
+		arr[name.length] = base36UUID();
+		arr[name.length+1] = base36UUID();
+
+		for (String str : arr) { // NOSONAR
+
+			if (i > maxLength)
+				break;
+
+			if (str == null)
+				continue;
+
+			for (Character chr : str.toCharArray()) {
+
+				if (i > maxLength)
+					break;
+
+				Character lChr = Character.toLowerCase(chr);
+				if ((lChr >= 'a' && lChr <= 'z')) {
+					sb.append(lChr);
+					i++;
+				}
+			}
+		}
+
+		return sb.toString();
+	}
+
 	private UniqueUtil() {
 	}
 }
