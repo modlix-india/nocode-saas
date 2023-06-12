@@ -57,6 +57,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String APP_CODE_NO_SPL_CHAR = "app_code_no_spl_char";
 	public static final String CLIENT_REGISTRATION_ERROR= "client_registration_error";
 	public static final String USER_ALREADY_EXISTS = "user_already_exists";
+	public static final String FETCH_PACKAGE_ERROR="fetch_package_error";
 
 	public SecurityMessageResourceService() {
 

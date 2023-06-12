@@ -528,7 +528,36 @@ public class ClientService
 	}
 	
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
-		return this.dao.getPackagesAvailableForClient(clientId);
+		
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(ca.isSystemClient())
+		                .flatMap(val ->
+						{
+			                if (Boolean.FALSE.equals(val))
+				                this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
+				                        .map(e ->
+										{
+					                        if (Boolean.FALSE.equals(e))
+						                        return Mono.empty();
+					                        return e;
+				                        });
+
+			                return Mono.just(val);
+		                }),
+
+		        (ca, sysOrManaged) -> Mono.just(SecurityContextUtil.hasAuthority("CLIENT_READ", ca.getAuthorities()))
+		                .flatMap(e -> Boolean.TRUE.equals(e)
+		                        ? Mono.just(SecurityContextUtil.hasAuthority("PACKAGE_READ", ca.getAuthorities()))
+		                        : Mono.empty()),
+
+		        (ca, sysOrManaged, hasPermissions) -> this.dao.getPackagesAvailableForClient(clientId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
+
 	}
 
 	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca) {
