@@ -228,22 +228,21 @@ public class PackageService extends
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca ->
-				{
-			        if (ca.isSystemClient())
-				        return Mono.just(true);
 
-			        else if (SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities())
-			                && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+				Mono.just(SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities())
+				        && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				        return this.read(packageId)
+		        (ca, hasAuthorities) ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.read(packageId)
 				                .flatMap(packagel -> this.clientService.isBeingManagedBy(
 				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-				                        ULongUtil.valueOf(packagel.getClientId())));
+				                        ULongUtil.valueOf(packagel.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			        return Mono.empty();
-		        },
-
-		        (ca, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
+		        (ca, hasAuthorities, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));

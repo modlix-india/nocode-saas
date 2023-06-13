@@ -534,19 +534,18 @@ public class ClientService
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca ->
-				{
 
-			        if (ca.isSystemClient())
-				        return Mono.just(true);
+				Mono.just(SecurityContextUtil.hasAuthority("Authorities.Client_READ", ca.getAuthorities())
+				        && SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities()))
+				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			        else if (SecurityContextUtil.hasAuthority("Authorities.Client_READ", ca.getAuthorities())
-			                && SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities()))
-				        return this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId);
+		        (ca, hasAuthorities) ->
 
-			        return Mono.empty();
-		        },
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
+		        (ca, hasAuthorities, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));

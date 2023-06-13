@@ -346,22 +346,23 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca ->
-				{
-			        if (ca.isSystemClient())
-				        return Mono.just(true);
 
-			        else if (SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities())
-			                && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+				Mono.just(SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities())
+				        && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				        return this.read(roleId)
+		        (ca, hasAuthorities) ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.read(roleId)
 				                .flatMap(role -> this.clientService.isBeingManagedBy(
 				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-				                        ULongUtil.valueOf(role.getClientId())));
+				                        ULongUtil.valueOf(role.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty)
 
-			        return Mono.empty();
-		        },
+		        ,
 
-		        (ca, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
+		        (ca, hasAuthorities, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));

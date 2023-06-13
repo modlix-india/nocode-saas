@@ -353,23 +353,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca ->
-				{
 
-			        if (ca.isSystemClient())
-				        return Mono.just(true);
+				Mono.just(SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
+				        && SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities()))
+				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			        else if (SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
-			                && SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities()))
+		        (ca, hasAuthorities) ->
 
-				        return this.read(userId)
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.read(userId)
 				                .flatMap(user -> this.clientService.isBeingManagedBy(
 				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-				                        ULongUtil.valueOf(user.getClientId())));
+				                        ULongUtil.valueOf(user.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			        return Mono.empty();
-		        },
-
-		        (ca, sysOrManaged) ->
+		        (ca, hasAuthorities, sysOrManaged) ->
 
 				this.dao.fetchPermissionsFromGivenUser(userId)
 
@@ -384,25 +382,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca ->
-				{
+		        ca -> Mono
+		                .just(SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
+		                        && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			        if (ca.isSystemClient())
-				        return Mono.just(true);
+		        (ca, hasAuthorities) ->
 
-			        else if (SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
-			                && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
-
-				        return this.read(userId)
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.read(userId)
 				                .flatMap(user -> this.clientService.isBeingManagedBy(
 				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-				                        ULongUtil.valueOf(user.getClientId())));
+				                        ULongUtil.valueOf(user.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			        return Mono.empty();
-
-		        },
-
-		        (ca, sysOrManaged) ->
+		        (ca, hasAuthorites, sysOrManaged) ->
 
 				this.dao.fetchRolesFromGivenUser(userId)
 
