@@ -37,4 +37,20 @@ public class StringUtil {
 
 		return str.equals(str2);
 	}
+
+	public static boolean onlyAlphabetAllowed(String appCode) {
+
+		if (appCode == null)
+			return false;
+
+		for (int i = 0; i < appCode.length(); i++) {
+			char c = appCode.charAt(i);
+			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+				continue;
+
+			return false;
+		}
+
+		return true;
+	}
 }

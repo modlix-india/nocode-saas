@@ -65,6 +65,7 @@ public class AbstractBaseConfiguration implements WebFluxConfigurer {
 		        .jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
 		configurer.defaultCodecs()
 		        .jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
+		configurer.defaultCodecs().maxInMemorySize(5242880);
 		WebFluxConfigurer.super.configureHttpMessageCodecs(configurer);
 	}
 

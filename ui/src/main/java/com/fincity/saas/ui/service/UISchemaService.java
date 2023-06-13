@@ -14,7 +14,7 @@ public class UISchemaService extends AbstractSchemaService<UISchema, UISchemaDoc
 	}
 
 	@Override
-	protected String getObjectName() {
+	public String getObjectName() {
 		return "Schema";
 	}
 }

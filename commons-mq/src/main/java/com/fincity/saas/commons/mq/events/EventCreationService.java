@@ -1,0 +1,43 @@
+package com.fincity.saas.commons.mq.events;
+
+import javax.annotation.PostConstruct;
+
+import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.fincity.saas.commons.util.data.CircularLinkedList;
+import com.fincity.saas.commons.util.data.DoublePointerNode;
+
+import reactor.core.publisher.Mono;
+
+@Service
+public class EventCreationService {
+
+	@Value("${events.mq.exchange:events}")
+	private String exchange;
+
+	@Value("${events.mq.routingkeys:events1,events2,events3}")
+	private String routingKey;
+
+	@Autowired
+	private AmqpTemplate amqpTemplate;
+
+	private DoublePointerNode<String> nextRoutingKey;
+
+	@PostConstruct
+	protected void init() {
+
+		nextRoutingKey = new CircularLinkedList<>(this.routingKey.split(",")).getHead();
+	}
+
+	public Mono<Boolean> createEvent(EventQueObject queObj) {
+
+		this.nextRoutingKey = nextRoutingKey.getNext();
+		return Mono.fromCallable(() -> {
+			amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), queObj);
+			return true;
+		});
+	}
+}

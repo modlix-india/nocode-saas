@@ -1,5 +1,11 @@
 package com.fincity.saas.commons.mongo.service;
 
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.BETWEEN;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IN;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_FALSE;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_NULL;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_TRUE;
+
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -99,57 +105,83 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
         else
             cond = filterConditionFilter((FilterCondition) condition);
 
-        return cond.map(c -> condition.isNegate() ? c.not() : c)
-                .defaultIfEmpty(new Criteria());
+        return cond.defaultIfEmpty(new Criteria());
     }
 
-    private Mono<Criteria> filterConditionFilter(FilterCondition fc) {
+    private Mono<Criteria> filterConditionFilter(FilterCondition fc) {// NOSONAR
+        // in order to cover all operators this kind of check is essential
 
-        if (fc == null || fc.getField() == null || fc.getValue() == null)
+        if (fc == null || fc.getField() == null)
             return Mono.empty();
 
         Criteria crit = Criteria.where(fc.getField());
 
+        if (fc.getOperator() == IS_FALSE || fc.getOperator() == IS_TRUE)
+
+            return Mono.just(fc.isNegate() ? crit.is(false) : crit.is(true));
+
+        if (fc.getOperator() == IS_NULL)
+
+            return Mono.just(fc.isNegate() ? crit.ne(null) : crit.orOperator(crit.isNull(), crit.exists(false)));
+
+        if (fc.getOperator() == IN) {
+
+            if (fc.getValue() == null && (fc.getMultiValue() == null || fc.getMultiValue()
+                    .isEmpty()))
+                return Mono.empty();
+
+            return Mono.just(fc.isNegate() ? crit.nin(this.multiFieldValue(fc.getValue(), fc.getMultiValue()))
+                    : crit.in(this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
+
+        }
+
+        if (fc.getValue() == null)
+            return Mono.empty();
+
+        if (fc.getOperator() == BETWEEN) {
+
+            var first = fc.isNegate() ? crit.lt(fc.getValue())
+                    : crit.gte(fc.getValue());
+
+            var second = fc.isNegate() ? crit.gt(fc.getToValue())
+                    : crit.lte(fc.getToValue());
+
+            if (fc.isNegate())
+                return Mono.just(crit.andOperator(first, second));
+            else
+                return Mono.just(crit.orOperator(first, second));
+        }
+
         switch (fc.getOperator()) {
-            case BETWEEN:
-                return Mono.just(new Criteria().andOperator(crit.gte(fc.getValue()), crit.lte(fc.getToValue())));
 
             case EQUALS:
-                return Mono.just(crit.is(fc.getValue()));
+                return Mono.just(fc.isNegate() ? crit.ne(fc.getValue()) : crit.is(fc.getValue()));
 
             case GREATER_THAN:
-                return Mono.just(crit.gt(fc.getValue()));
+                return Mono.just(fc.isNegate() ? crit.lte(fc.getValue()) : crit.gt(fc.getValue()));
 
             case GREATER_THAN_EQUAL:
-                return Mono.just(crit.gte(fc.getValue()));
+                return Mono.just(fc.isNegate() ? crit.lt(fc.getValue()) : crit.gte(fc.getValue()));
 
             case LESS_THAN:
-                return Mono.just(crit.lt(fc.getValue()));
+                return Mono.just(fc.isNegate() ? crit.gte(fc.getValue()) : crit.lt(fc.getValue()));
 
             case LESS_THAN_EQUAL:
-                return Mono.just(crit.lte(fc.getValue()));
-
-            case IS_FALSE:
-                return Mono.just(crit.is(false));
-
-            case IS_TRUE:
-                return Mono.just(crit.is(true));
-
-            case IS_NULL:
-                return Mono.just(crit.isNull());
-
-            case IN:
-                return Mono.just(crit.in(this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
+                return Mono.just(fc.isNegate() ? crit.gt(fc.getValue()) : crit.lte(fc.getValue()));
 
             case LIKE:
-                return Mono.just(crit.is(fc.getValue()));
+                return Mono.just(fc.isNegate() ? crit.not().regex(fc.getValue().toString())
+                        : crit.regex(fc.getValue().toString(), ""));
 
             case STRING_LOOSE_EQUAL:
-                return Mono.just(crit.regex(fc.getValue().toString()));
+
+                return Mono.just(fc.isNegate() ? crit.not().regex(fc.getValue().toString())
+                        : crit.regex(fc.getValue().toString()));
 
             default:
                 return Mono.empty();
         }
+
     }
 
     private List<Object> multiFieldValue(Object objValue, List<Object> values) {
@@ -184,7 +216,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
         }
         String str = iValue.substring(from);
         if (!StringUtil.isNullOrBlank(str))
-        	obj.add(str);
+            obj.add(str);
 
         return obj;
 
@@ -201,8 +233,12 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
                 .map(this::filter)
                 .toList())
                 .collectList()
-                .map(conds -> cc.getOperator() == ComplexConditionOperator.AND ? new Criteria().andOperator(conds)
-                        : new Criteria().orOperator(conds));
+                .map(conds -> {
+                    if (cc.getOperator() == ComplexConditionOperator.AND)
+                        return cc.isNegate() ? new Criteria().orOperator(conds) : new Criteria().andOperator(conds);
+
+                    return cc.isNegate() ? new Criteria().andOperator(conds) : new Criteria().orOperator(conds);
+                });
     }
 
     public Mono<Boolean> delete(I id) {

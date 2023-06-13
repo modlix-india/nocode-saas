@@ -31,6 +31,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private String uniqueName;
 	private Boolean isAudited = false;
 	private Boolean isVersioned = false;
+	private Boolean isAppLevel = false;
 	private String createAuth;
 	private String readAuth;
 	private String updateAuth;
@@ -42,11 +43,13 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.schema = CloneUtil.cloneMapObject(store.schema);
 		this.isAudited = store.isAudited;
 		this.isVersioned = store.isVersioned;
+
 		this.createAuth = store.createAuth;
 		this.readAuth = store.readAuth;
 		this.updateAuth = store.updateAuth;
 		this.deleteAuth = store.deleteAuth;
 		this.uniqueName = store.uniqueName;
+		this.isAppLevel = store.isAppLevel;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -61,16 +64,39 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 					{
 				        this.schema = (Map<String, Object>) s;
 
-				        if (this.isAudited == null)
-					        this.isAudited = base.isAudited;
-
-				        if (this.isVersioned == null)
-					        this.isVersioned = base.isVersioned;
+				        this.subApplyOverride(base);
 
 				        return Mono.just(this);
 			        });
 		}
 		return Mono.just(this);
+	}
+
+	private void subApplyOverride(Storage base) {
+
+		if (this.isAudited == null)
+			this.isAudited = base.isAudited;
+
+		if (this.isVersioned == null)
+			this.isVersioned = base.isVersioned;
+
+		if (this.createAuth == null)
+			this.createAuth = base.createAuth;
+
+		if (this.readAuth == null)
+			this.readAuth = base.readAuth;
+
+		if (this.updateAuth == null)
+			this.updateAuth = base.updateAuth;
+
+		if (this.deleteAuth == null)
+			this.deleteAuth = base.deleteAuth;
+
+		if (this.uniqueName == null)
+			this.uniqueName = base.uniqueName;
+
+		if (this.isAppLevel == null)
+			this.isAppLevel = base.isAppLevel;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -87,15 +113,37 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 				{
 			        obj.setSchema((Map<String, Object>) sch);
 
-			        if (obj.isAudited != null && obj.isAudited.equals(base.isAudited))
-				        obj.isAudited = null;
-
-			        if (obj.isVersioned != null && obj.isVersioned.equals(base.isVersioned))
-				        obj.isVersioned = null;
+			        this.subMakeOverride(base, obj);
 
 			        return Mono.just(obj);
 		        }
 
 		);
+	}
+
+	private void subMakeOverride(Storage base, Storage obj) {
+
+		if (obj.isAudited != null && obj.isAudited.equals(base.isAudited))
+			obj.isAudited = null;
+
+		if (obj.isVersioned != null && obj.isVersioned.equals(base.isVersioned))
+			obj.isVersioned = null;
+
+		if (obj.createAuth != null && obj.createAuth.equals(base.createAuth))
+			obj.createAuth = null;
+
+		if (obj.readAuth != null && obj.readAuth.equals(base.readAuth))
+			obj.readAuth = null;
+
+		if (obj.updateAuth != null && obj.updateAuth.equals(base.updateAuth))
+			obj.updateAuth = null;
+
+		if (obj.deleteAuth != null && obj.deleteAuth.equals(base.deleteAuth))
+			obj.deleteAuth = null;
+
+		if (obj.uniqueName != null && obj.uniqueName.equals(base.uniqueName))
+			obj.uniqueName = null;
+
+		obj.isAppLevel = base.isAppLevel;
 	}
 }

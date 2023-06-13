@@ -19,6 +19,10 @@ public class JSService {
 
 	private static final String CACHE_OBJECT_JS_KEY = "jsObject";
 
+	public static final String CACHE_NAME_JS_MAP = "jsMapCache";
+
+	private static final String CACHE_OBJECT_JS_MAP_KEY = "jsMapObject";
+
 	@Autowired
 	private CacheService cacheService;
 
@@ -50,6 +54,22 @@ public class JSService {
 		        .defaultIfEmpty(new ChecksumObject("")));
 
 		return cacheService.<ChecksumObject>get(CACHE_NAME_JS, CACHE_OBJECT_JS_KEY)
+		        .switchIfEmpty(cacheEmptyDefer);
+	}
+
+	public Mono<ChecksumObject> getJSMapObject() {
+		if (jsURL == null || jsURL.isBlank())
+			return Mono.just(new ChecksumObject(""));
+
+		Mono<ChecksumObject> cacheEmptyDefer = Mono.defer(() -> webClient.get()
+		        .uri("/index.js.map")
+		        .retrieve()
+		        .bodyToMono(String.class)
+		        .flatMap(jsString -> cacheService.put(CACHE_NAME_JS_MAP, new ChecksumObject(jsString),
+		                CACHE_OBJECT_JS_MAP_KEY))
+		        .defaultIfEmpty(new ChecksumObject("")));
+
+		return cacheService.<ChecksumObject>get(CACHE_NAME_JS_MAP, CACHE_OBJECT_JS_MAP_KEY)
 		        .switchIfEmpty(cacheEmptyDefer);
 	}
 }

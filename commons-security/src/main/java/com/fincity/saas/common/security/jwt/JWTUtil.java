@@ -21,6 +21,13 @@ public class JWTUtil {
 	public static final Tuple2<String, LocalDateTime> generateToken(BigInteger userId, String secretKey,
 	        Integer expiryInMin, String host, String port, BigInteger loggedInClientId, String loggedInClientCode) {
 
+		return generateToken(userId, secretKey, expiryInMin, host, port, loggedInClientId, loggedInClientCode, false);
+	}
+
+	public static final Tuple2<String, LocalDateTime> generateToken(BigInteger userId, String secretKey,
+	        Integer expiryInMin, String host, String port, BigInteger loggedInClientId, String loggedInClientCode,
+	        boolean oneTime) {
+
 		LocalDateTime expirationTime = LocalDateTime.now(ZoneId.of("UTC"))
 		        .plus(expiryInMin, ChronoUnit.MINUTES);
 
@@ -32,6 +39,7 @@ public class JWTUtil {
 		                .setPort(port)
 		                .setLoggedInClientId(loggedInClientId)
 		                .setLoggedInClientCode(loggedInClientCode)
+		                .setOneTime(oneTime)
 		                .getClaimsMap())
 		        .setIssuedAt(Date.from(Instant.now()))
 		        .setExpiration(Date.from(Instant.now()

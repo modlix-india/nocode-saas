@@ -142,8 +142,11 @@ public class AuthenticationService implements IAuthenticationService {
 				{
 			        String linClientCode = tup.getT1()
 			                .getCode();
-			        return Mono
-			                .justOrEmpty(clientCode.equals("SYSTEM") || clientCode.equals(linClientCode) ? true : null);
+			        return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode)
+			                || tup.getT1()
+			                        .getId()
+			                        .equals(tup.getT2()
+			                                .getId()) ? true : null);
 		        },
 
 		        (tup, linCCheck) -> this.checkPassword(authRequest, tup.getT3()),
@@ -292,7 +295,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
 		                : Mono.just(cachedCA))
-		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request));
+		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request)).log();
 	}
 
 	private Mono<Authentication> getAuthenticationIfNotInCache(boolean basic, String bearerToken,
@@ -302,19 +305,28 @@ public class AuthenticationService implements IAuthenticationService {
 
 			final var claims = extractClamis(bearerToken);
 
-			return tokenService.readAllFilter(new FilterCondition().setField("partToken")
-			        .setOperator(FilterConditionOperator.EQUALS)
-			        .setValue(toPartToken(bearerToken)))
-			        .filter(e -> e.getToken()
-			                .equals(bearerToken))
-			        .take(1)
-			        .single()
-			        .flatMap(e -> this.makeSpringAuthentication(request, claims, e))
-			        .map(e ->
+			return FlatMapUtil.flatMapMono(
+
+			        () -> tokenService.readAllFilter(new FilterCondition().setField("partToken")
+			                .setOperator(FilterConditionOperator.EQUALS)
+			                .setValue(toPartToken(bearerToken)))
+			                .filter(e -> e.getToken()
+			                        .equals(bearerToken))
+			                .take(1)
+			                .single(),
+
+			        token -> this.makeSpringAuthentication(request, claims, token),
+
+			        (token, ca) ->
 					{
-				        cacheService.put(CACHE_NAME_TOKEN, e, bearerToken);
-				        return (Authentication) e;
+
+				        if (claims.isOneTime())
+					        return tokenService.delete(token.getId())
+					                .map(e -> ca);
+
+				        return cacheService.put(CACHE_NAME_TOKEN, ca, bearerToken);
 			        })
+			        .map(Authentication.class::cast)
 			        .switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
 			                resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
 
@@ -356,7 +368,7 @@ public class AuthenticationService implements IAuthenticationService {
 		        (claims, u,
 		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
 		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
-		                        tokenObject.getToken(), tokenObject.getExpiresAt())));
+		                        tokenObject.getToken(), tokenObject.getExpiresAt(), null, null)));
 	}
 
 	private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {
@@ -393,7 +405,7 @@ public class AuthenticationService implements IAuthenticationService {
 		                .setStringAuthorities(List.of("Authorities._Anonymous")),
 		        false, e.getId()
 		                .toBigInteger(),
-		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX));
+		        e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX, null, null));
 	}
 
 	private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {

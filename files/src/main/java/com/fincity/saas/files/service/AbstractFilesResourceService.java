@@ -5,6 +5,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLConnection;
 import java.net.URLDecoder;
@@ -13,13 +15,21 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
@@ -48,6 +58,7 @@ import org.springframework.util.FileSystemUtils;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
@@ -56,6 +67,7 @@ import com.fincity.saas.files.util.FileExtensionUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -64,6 +76,18 @@ public abstract class AbstractFilesResourceService {
 	private static final String GENERIC_URI_PART = "api/files/";
 
 	private static final String GENERIC_URI_PART_FILE = "/file";
+
+	private static final String GENERIC_URI_PART_IMPORT = "/import";
+
+	private static final String STATIC_TYPE = "static";
+
+	private static final String SECURED_TYPE = "secured";
+
+	private static final String GENERIC_URI_PART_STATIC = GENERIC_URI_PART + STATIC_TYPE;
+
+	private static final String GENERIC_URI_PART_SECURED = GENERIC_URI_PART + SECURED_TYPE;
+
+	private static final String UNABLE_TO_READ_ATTRIBUTES = "Unable to read attributes of file {} ";
 
 	private static Logger logger = LoggerFactory.getLogger(AbstractFilesResourceService.class);
 
@@ -75,8 +99,7 @@ public abstract class AbstractFilesResourceService {
 
 	private String uriPart;
 	private String uriPartFile;
-	private int uriPartLength;
-	private int uriPartFileLength;
+	private String uriPartImport;
 
 	@PostConstruct
 	private void initialize() {
@@ -86,10 +109,10 @@ public abstract class AbstractFilesResourceService {
 		        .toLowerCase();
 
 		this.uriPart = GENERIC_URI_PART + type;
-		this.uriPartLength = this.uriPart.length();
 
 		this.uriPartFile = GENERIC_URI_PART + type + GENERIC_URI_PART_FILE;
-		this.uriPartFileLength = this.uriPartFile.length();
+
+		this.uriPartImport = GENERIC_URI_PART + type + GENERIC_URI_PART_IMPORT;
 	}
 
 	private static final Map<String, Comparator<File>> COMPARATORS = new HashMap<>(Map.of(
@@ -104,11 +127,11 @@ public abstract class AbstractFilesResourceService {
 
 	        "LASTMODIFIED", Comparator.comparingLong(File::lastModified)));
 
-	public Mono<Page<FileDetail>> list(String clientCode, String uri, String filter, Pageable page) {
+	public Mono<Page<FileDetail>> list(String clientCode, String uri, FileType[] fileType, String filter,
+	        Pageable page) {
 
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
-		String urlResourcePath = tup.getT2();
 
 		return FlatMapUtil.flatMapMono(
 
@@ -132,6 +155,7 @@ public abstract class AbstractFilesResourceService {
 				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
 
 			        String nameFilter = "";
+
 			        if (filter == null || filter.trim()
 			                .isEmpty())
 				        nameFilter = "";
@@ -146,7 +170,7 @@ public abstract class AbstractFilesResourceService {
 				        Stream<Path> stream = Files.find(path, 1,
 				                (paths, attr) -> attr.isRegularFile() || attr.isDirectory());
 
-				        String stringNameFilter = nameFilter;
+				        String stringNameFilter = nameFilter.toUpperCase();
 
 				        return Flux.fromStream(stream)
 				                .filter(e -> !e.equals(path))
@@ -155,7 +179,8 @@ public abstract class AbstractFilesResourceService {
 				                        .toUpperCase()
 				                        .contains(stringNameFilter))
 				                .sort(sortComparator)
-				                .map(e -> this.convertToFileDetail(urlResourcePath, clientCode, e))
+				                .map(e -> this.convertToFileDetail(resourcePath, clientCode, e))
+				                .filter(getPredicateForFileTypes(fileType))
 				                .skip(page.getOffset())
 				                .take(page.getPageSize())
 				                .collectList();
@@ -165,6 +190,23 @@ public abstract class AbstractFilesResourceService {
 			        }
 		        })
 		        .map(list -> PageableExecutionUtils.getPage(list, page, () -> -1));
+	}
+
+	private Predicate<FileDetail> getPredicateForFileTypes(FileType[] fileType) {
+		
+		final Set<String> fileTypeFilter = this.getFileExtensionFilter(fileType);
+		final boolean directoryFilter = fileType != null && Stream.of(fileType)
+		        .anyMatch(e -> e == FileType.DIRECTORIES);
+
+		Predicate<FileDetail> filterFunction = e -> true;
+
+		if (fileTypeFilter.isEmpty() && directoryFilter)
+			filterFunction = e -> e.isDirectory();
+		else if (!fileTypeFilter.isEmpty() && !directoryFilter)
+			filterFunction = e -> fileTypeFilter.contains(e.getType());
+		else if (!fileTypeFilter.isEmpty() && directoryFilter)
+			filterFunction = e -> fileTypeFilter.contains(e.getType()) || e.isDirectory();
+		return filterFunction;
 	}
 
 	private Comparator<File> getComparator(Pageable page) {
@@ -197,11 +239,71 @@ public abstract class AbstractFilesResourceService {
 		}
 	}
 
-	private FileDetail convertToFileDetail(String resourcePath, String clientCode, File file) {
+	private String getResourceFileType() {
+
+		return this.getResourceType()
+		        .equals(FilesAccessPathResourceType.STATIC) ? GENERIC_URI_PART_STATIC : GENERIC_URI_PART_SECURED;
+
+	}
+
+	private Set<String> getFileExtensionFilter(FileType[] fileType) {
+
+		if (fileType == null || fileType.length == 0)
+			return Set.of();
+		else
+			return Stream.of(fileType)
+			        .map(FileType::getAvailableFileExtensions)
+			        .flatMap(Set::stream)
+			        .collect(Collectors.toSet());
+
+	}
+
+	private FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, File file) {
 
 		FileDetail damFile = new FileDetail().setName(file.getName())
-		        .setFilePath(resourcePath + "/" + file.getName())
-		        .setUrl("api/files/static" + (file.isDirectory() ? "" : "/file/" + clientCode) + resourcePath + "/"
+		        .setSize(file.length());
+
+		String resourceType = this.getResourceFileType();
+
+		if (file.isDirectory()) {
+
+			damFile.setFilePath(resourcePath)
+			        .setUrl(resourceType + resourcePath)
+			        .setDirectory(true);
+
+		} else {
+			damFile.setFilePath(resourcePath + "/" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
+			        .replace("+", "%20"))
+			        .setUrl(resourceType + ("/file/" + clientCode) + resourcePath + "/"
+			                + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
+			                        .replace("+", "%20"));
+		}
+		try {
+			BasicFileAttributes basicAttrributes = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+			if (basicAttrributes != null) {
+				damFile.setCreatedDate(basicAttrributes.creationTime()
+				        .toMillis())
+				        .setLastAccessTime(basicAttrributes.lastAccessTime()
+				                .toMillis())
+				        .setLastModifiedTime(basicAttrributes.lastModifiedTime()
+				                .toMillis());
+			}
+		} catch (IOException e) {
+
+			logger.debug(UNABLE_TO_READ_ATTRIBUTES, file.getAbsolutePath(), e);
+		}
+		return damFile;
+
+	}
+
+	private FileDetail convertToFileDetail(String resourcePath, String clientCode, File file) {
+
+		String resourceType = this.getResourceFileType();
+
+		FileDetail damFile = new FileDetail().setName(file.getName())
+		        .setFilePath(resourcePath + "/" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
+		                .replace("+", "%20"))
+		        .setUrl(resourceType + (file.isDirectory() ? "" : "/file/" + clientCode) + resourcePath + "/"
 		                + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
 		                        .replace("+", "%20"))
 		        .setDirectory(file.isDirectory())
@@ -218,7 +320,7 @@ public abstract class AbstractFilesResourceService {
 			}
 		} catch (IOException e) {
 
-			logger.debug("Unable to read attributes of file {} ", file.getAbsolutePath(), e);
+			logger.debug(UNABLE_TO_READ_ATTRIBUTES, file.getAbsolutePath(), e);
 		}
 		return damFile;
 	}
@@ -255,7 +357,7 @@ public abstract class AbstractFilesResourceService {
 				                .toMillis();
 			        } catch (IOException e) {
 
-				        logger.debug("Unable to read attributes of file {} ", file, e);
+				        logger.debug(UNABLE_TO_READ_ATTRIBUTES, file, e);
 			        }
 
 			        String fileETag = new StringBuilder().append('"')
@@ -266,6 +368,29 @@ public abstract class AbstractFilesResourceService {
 			                .append(downloadOptions.eTagCode())
 			                .append('"')
 			                .toString();
+
+			        if (Files.isDirectory(file)) {
+
+				        int ind = rp.charAt(0) == '/' ? 1 : 0;
+				        int secondInd = rp.indexOf('/', ind);
+
+				        String sp = secondInd == -1 ? rp.substring(ind) : rp.substring(ind, secondInd);
+				        final long finFileMillis = fileMillis;
+
+				        return this.fileAccessService
+				                .hasReadAccess(
+				                        secondInd == -1 && secondInd < rp.length() ? "" : rp.substring(secondInd + 1),
+				                        sp, this.getResourceType())
+				                .flatMap(e ->
+								{
+					                if (!e.booleanValue()) {
+						                return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+						                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
+					                }
+					                return makeMatchesStartDownload(downloadOptions, request, response, file,
+					                        finFileMillis, fileETag);
+				                });
+			        }
 
 			        return makeMatchesStartDownload(downloadOptions, request, response, file, fileMillis, fileETag);
 		        });
@@ -321,6 +446,22 @@ public abstract class AbstractFilesResourceService {
 
 		HttpHeaders respHeaders = response.getHeaders();
 
+		File actualFile = file.toFile();
+
+		if (Files.isDirectory(file)) {
+			try {
+				downloadOptions.setDownload(true);
+				downloadOptions.setName(file.getFileName()
+				        .toString() + ".zip");
+
+				file = this.makeArchive(file);
+				actualFile = file.toFile();
+			} catch (IOException e) {
+				return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
+				        FilesMessageResourceService.UNABLE_CREATE_DOWNLOAD_FILE);
+			}
+		}
+
 		respHeaders.set("x-cache", "MISS");
 		respHeaders.setLastModified(fileMillis);
 		respHeaders.setETag(eTag);
@@ -329,8 +470,8 @@ public abstract class AbstractFilesResourceService {
 			respHeaders.setCacheControl("public, max-age=3600, must-revalidate");
 		respHeaders.setContentDisposition((downloadOptions.getDownload()
 		        .booleanValue() ? ContentDisposition.attachment() : ContentDisposition.inline())
-		        .filename(file.getFileName()
-		                .toString())
+		        .filename(downloadOptions.getName() == null ? file.getFileName()
+		                .toString() : downloadOptions.getName())
 		        .build());
 		String mimeType = URLConnection.guessContentTypeFromName(file.getFileName()
 		        .toString());
@@ -339,8 +480,6 @@ public abstract class AbstractFilesResourceService {
 			mimeType = "application/octet-stream";
 		}
 		respHeaders.setContentType(MediaType.valueOf(mimeType));
-
-		File actualFile = file.toFile();
 
 		long length = actualFile.length();
 
@@ -354,7 +493,46 @@ public abstract class AbstractFilesResourceService {
 
 			return sendFileWhenRanges(downloadOptions, request, response, actualFile);
 		}
+	}
 
+	private Path makeArchive(Path file) throws IOException {
+
+		Path tmpFile = Files.createTempFile("tmp", "zip");
+		try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(tmpFile.toFile()))) {
+			this.zipFile(file.toFile(), tmpFile.getFileName()
+			        .toString(), zipOut);
+		}
+
+		return tmpFile;
+	}
+
+	private void zipFile(File fileToZip, String fileName, ZipOutputStream zipOut) throws IOException {
+		if (fileToZip.isHidden()) {
+			return;
+		}
+		if (fileToZip.isDirectory()) {
+			if (fileName.endsWith("/")) {
+				zipOut.putNextEntry(new ZipEntry(fileName));
+				zipOut.closeEntry();
+			} else {
+				zipOut.putNextEntry(new ZipEntry(fileName + "/"));
+				zipOut.closeEntry();
+			}
+			File[] children = fileToZip.listFiles();
+			for (File childFile : children) {
+				zipFile(childFile, fileName + "/" + childFile.getName(), zipOut);
+			}
+			return;
+		}
+		try (FileInputStream fis = new FileInputStream(fileToZip)) {
+			ZipEntry zipEntry = new ZipEntry(fileName);
+			zipOut.putNextEntry(zipEntry);
+			byte[] bytes = new byte[1024];
+			int length;
+			while ((length = fis.read(bytes)) >= 0) {
+				zipOut.write(bytes, 0, length);
+			}
+		}
 	}
 
 	private Mono<Void> sendFileWhenRanges(DownloadOptions downloadOptions, ServerHttpRequest request,
@@ -378,7 +556,7 @@ public abstract class AbstractFilesResourceService {
 
 	private Mono<Void> sendFileWhenNoRanges(DownloadOptions downloadOptions, Path file, ServerHttpResponse response,
 	        HttpHeaders respHeaders, File actualFile, long length) {
-		response.setStatusCode(HttpStatus.OK);
+
 		ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
 		if (!downloadOptions.hasModification()) {
 
@@ -479,7 +657,7 @@ public abstract class AbstractFilesResourceService {
 
 	public Mono<Boolean> delete(String clientCode, String uri) {
 
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 
 		return FlatMapUtil.flatMapMono(
@@ -522,8 +700,7 @@ public abstract class AbstractFilesResourceService {
 	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
 
 		boolean ovr = override == null || override.booleanValue();
-
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(uri);
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
 
@@ -540,38 +717,130 @@ public abstract class AbstractFilesResourceService {
 
 			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
-			        if (!Files.exists(path))
-				        try {
-					        Files.createDirectories(path);
-				        } catch (IOException e) {
-					        return this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-					                FilesMessageResourceService.PATH_NOT_FOUND, resourcePath);
-				        }
-
-			        if (!Files.isDirectory(path))
-				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
-				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
-
-			        Path file = path.resolve(fileName == null ? fp.filename()
-			                : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName));
-
-			        if (Files.exists(file) && !ovr)
-				        return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
-				                FilesMessageResourceService.ALREADY_EXISTS, "File", file.getFileName());
-
-			        return Mono.just(file);
-
+			        return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr);
 		        },
 
-		        (hasPermission, file) -> fp.transferTo(file),
+		        (hasPermission, file) ->
+				{
 
-		        (hasPermission, file, fil) -> Mono
-		                .just(this.convertToFileDetail(urlResourcePath, clientCode, file.toFile())));
+			        if (fp == null)
+				        return Mono.just(
+				                this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
+
+			        return FlatMapUtil.flatMapMonoWithNull(() -> fp.transferTo(file), x -> Mono
+			                .just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile())));
+		        });
+	}
+
+	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
+
+		boolean ovr = override == null || override.booleanValue();
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPartImport, uri);
+		String resourcePath = tup.getT1();
+
+		if (fp == null || (!fp.filename()
+		        .toLowerCase()
+		        .endsWith(".zip"))) {
+			return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
+			        FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
+		}
+
+		return FlatMapUtil.flatMapMono(
+
+		        () ->
+				{
+			        Path tmpFile;
+			        Path tmpFolder;
+			        try {
+				        tmpFile = Files.createTempFile("tmp", "zip");
+				        tmpFolder = Files.createTempDirectory("tmp");
+			        } catch (IOException e) {
+				        return Mono.error(e);
+			        }
+			        return fp.transferTo(tmpFile)
+			                .then(Mono.just(Tuples.of(tmpFile, tmpFolder)));
+		        },
+
+		        tmpTup -> FlatMapUtil.flatMapFlux(
+
+		                () -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
+
+		                eFile ->
+						{
+			                return Flux.from(this.fileAccessService.hasWriteAccess(
+			                        this.parentOf(resourcePath + eFile.getT1()), clientCode, this.getResourceType()));
+		                },
+
+		                (eFile, hasPermission) ->
+						{
+			                if (!hasPermission.booleanValue())
+				                return Flux.empty();
+
+			                Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, eFile.getT1());
+			                try {
+
+				                Files.createDirectories(path.getParent());
+				                if (ovr)
+					                Files.move(eFile.getT2(), path, StandardCopyOption.REPLACE_EXISTING);
+				                else
+					                Files.move(eFile.getT2(), path);
+			                } catch (IOException ex) {
+
+			                }
+
+			                return Flux.just(true);
+		                })
+		                .collectList()
+		                .map(e -> true))
+		        .map(e -> true)
+		        .subscribeOn(Schedulers.boundedElastic());
+	}
+
+	private String parentOf(String name) {
+		int ind = name.lastIndexOf('/');
+		if (ind == -1)
+			return name;
+		return name.substring(0, ind);
+	}
+
+	private Flux<Tuple2<String, Path>> deflate(Path tmpFile, Path tmpFolder) {
+
+		List<Tuple2<String, Path>> files = new ArrayList<>();
+
+		try (ZipInputStream zis = new ZipInputStream(new FileInputStream(tmpFile.toFile()))) {
+
+			ZipEntry ze = null;
+
+			while ((ze = zis.getNextEntry()) != null) {
+
+				if (ze.isDirectory()) {
+					Files.createDirectories(tmpFolder.resolve(ze.getName()));
+				} else {
+					var file = tmpFolder.resolve(ze.getName());
+					files.add(Tuples.of(ze.getName(), file));
+					Files.createDirectories(file.getParent());
+					try (FileOutputStream fos = new FileOutputStream(file.toFile())) {
+						int len;
+						byte[] buffer = new byte[1024];
+						while ((len = zis.read(buffer)) > 0) {
+							fos.write(buffer, 0, len);
+						}
+					}
+				}
+
+			}
+		} catch (IOException e) {
+
+			return this.msgService.throwFluxMessage(HttpStatus.BAD_REQUEST, e,
+			        FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
+		}
+
+		return Flux.fromIterable(files);
 	}
 
 	protected Tuple2<String, String> resolvePathWithClientCode(String uri) {
 
-		String path = uri.substring(uri.indexOf(this.uriPartFile) + this.uriPartFileLength);
+		String path = uri.substring(uri.indexOf(this.uriPartFile) + this.uriPartFile.length());
 		String origPath = path;
 
 		path = URLDecoder.decode(path, StandardCharsets.UTF_8)
@@ -587,10 +856,9 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	private Tuple2<String, String> resolvePathWithoutClientCode(String uri) {
+	private Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
 
-		String path = uri.substring(uri.indexOf(this.uriPart) + this.uriPartLength,
-		        uri.length() - (uri.endsWith("/") ? 1 : 0));
+		String path = uri.substring(uri.indexOf(part) + part.length(), uri.length() - (uri.endsWith("/") ? 1 : 0));
 		String origPath = path;
 
 		path = URLDecoder.decode(path, StandardCharsets.UTF_8)
@@ -604,6 +872,33 @@ public abstract class AbstractFilesResourceService {
 			path = path.substring(0, path.length() - 1);
 
 		return Tuples.of(path, origPath);
+	}
+
+	private Mono<Path> createOrGetPath(Path path, String resourcePath, FilePart fp, String fileName, boolean ovr) {
+
+		if (!Files.exists(path))
+			try {
+				Files.createDirectories(path);
+			} catch (IOException e) {
+				return this.msgService.throwMessage(HttpStatus.NOT_FOUND, FilesMessageResourceService.PATH_NOT_FOUND,
+				        resourcePath);
+			}
+
+		if (fp == null)
+			return Mono.just(path);
+
+		if (!Files.isDirectory(path))
+			return msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.NOT_A_DIRECTORY,
+			        resourcePath);
+
+		Path file = path.resolve(
+		        fileName == null ? fp.filename() : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName));
+
+		if (Files.exists(file) && !ovr)
+			return this.msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.ALREADY_EXISTS,
+			        "File", file.getFileName());
+
+		return Mono.just(file);
 	}
 
 	public abstract String getBaseLocation();

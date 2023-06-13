@@ -7,16 +7,21 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 
-import com.fincity.nocode.kirun.engine.Repository;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R extends IOverridableDataRepository<D>>
@@ -31,7 +36,7 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 	private static final String NAMESPACE = "namespace";
 	private static final String NAME = "name";
 
-	private Map<String, Repository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
+	private Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
 
 	@Override
 	public Mono<D> create(D entity) {
@@ -85,26 +90,41 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 			        existing.setDefinition(entity.getDefinition());
 
 			        existing.setVersion(existing.getVersion() + 1)
-			        .setPermission(entity.getPermission());
+			                .setPermission(entity.getPermission());
 
 			        return Mono.just(existing);
 		        });
 	}
 
-	public Repository<com.fincity.nocode.kirun.engine.json.schema.Schema> getSchemaRepository(String appCode,
+	public ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema> getSchemaRepository(String appCode,
 	        String clientCode) {
 
-		return schemas.computeIfAbsent(appCode + " - " + clientCode, key -> (namespace, name) ->
+		return schemas.computeIfAbsent(appCode + " - " + clientCode, key -> new ReactiveRepository<Schema>() {
 
-		cacheService
-		        .cacheValueOrGet(CACHE_NAME_SCHEMA_REPO, () -> read(namespace + "." + name, appCode, clientCode),
-		                appCode, clientCode, namespace + "." + name)
-		        .map(s -> {
-		            Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-                            .create();
-                    return gson.fromJson(gson.toJsonTree(s.getDefinition()),
-                            Schema.class);
-		        })
-		        .block());
+			@Override
+			public Mono<Schema> find(String namespace, String name) {
+
+				return cacheService
+				        .cacheValueOrGet(CACHE_NAME_SCHEMA_REPO,
+				                () -> read(namespace + "." + name, appCode, clientCode), appCode, clientCode,
+				                namespace + "." + name)
+				        .map(s ->
+						{
+					        Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+					                .registerTypeAdapter(AdditionalType.class, new AdditionalTypeAdapter())
+					                .registerTypeAdapter(ArraySchemaType.class, new ArraySchemaTypeAdapter())
+					                .create();
+
+					        return gson.fromJson(gson.toJsonTree(s.getDefinition()), Schema.class);
+				        });
+			}
+
+			@Override
+			public Flux<String> filter(String name) {
+
+				return Flux.empty();
+			}
+
+		});
 	}
 }

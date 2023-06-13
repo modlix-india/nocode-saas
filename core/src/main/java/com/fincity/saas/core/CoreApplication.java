@@ -1,5 +1,6 @@
 package com.fincity.saas.core;
 
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -18,7 +19,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @ComponentScan(basePackages = "com.fincity")
 
-@EnableEurekaClient
+
 @EnableFeignClients
 @EnableReactiveFeignClients(basePackages =  "com.fincity")
 @EnableReactiveMongoRepositories(basePackages =  "com.fincity")
@@ -28,6 +29,8 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableCaching
 @EnableScheduling
 @EnableAspectJAutoProxy(proxyTargetClass = true)
+@EnableEurekaClient
+@EnableRabbit
 
 @SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
 public class CoreApplication {

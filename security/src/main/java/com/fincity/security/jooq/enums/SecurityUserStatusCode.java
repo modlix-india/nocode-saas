@@ -43,7 +43,7 @@ public enum SecurityUserStatusCode implements EnumType {
 
     @Override
     public String getName() {
-        return "security_user_STATUS_CODE";
+        return null;
     }
 
     @Override

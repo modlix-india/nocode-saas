@@ -14,6 +14,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 
@@ -38,12 +39,25 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 	}
 
 	@Override
+	public Mono<Application> create(Application entity) {
+
+		if (StringUtil.safeIsBlank(entity.getName()) || StringUtil.safeIsBlank(entity.getAppCode())
+		        || !StringUtil.safeEquals(entity.getName(), entity.getAppCode())
+		        || !StringUtil.onlyAlphabetAllowed(entity.getAppCode()))
+
+			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        UIMessageResourceService.APP_NAME_MISMATCH);
+
+		return super.create(entity);
+	}
+
+	@Override
 	public Mono<Application> update(Application entity) {
 
 		return super.update(entity).flatMap(
 		        e -> cacheService.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-		                .flatMap(x -> cacheService.evict(this.getCacheName(), PROPERTIES, e.getName(), "-",
-		                        e.getAppCode(), "-", e.getClientCode()))
+		                .flatMap(x -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
+		                        e.getClientCode()))
 		                .map(x -> e));
 	}
 
@@ -53,8 +67,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 		return this.read(id)
 		        .flatMap(e -> super.delete(id).flatMap(x -> cacheService
 		                .evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-		                .flatMap(y -> cacheService.evict(this.getCacheName(), PROPERTIES, e.getName(), "-",
-		                        e.getAppCode(), "-", e.getClientCode()))
+		                .flatMap(v -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
+		                        e.getClientCode()))
 		                .map(y -> x)));
 	}
 
@@ -88,13 +102,14 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> cacheService.makeKey(PROPERTIES, name, "-", appCode, "-", clientCode),
+		        () -> cacheService.makeKey(PROPERTIES, clientCode),
 
-		        key -> cacheService.get(this.getCacheName(), key)
+		        key -> cacheService.get(this.getCacheName(appCode, name), key)
 		                .map(this.pojoClass::cast),
 
 		        (key, cApp) -> Mono.justOrEmpty(cApp)
-		                .switchIfEmpty(Mono.defer(() -> readIfExistsInBase(name, appCode, clientCode))),
+		                .switchIfEmpty(Mono.defer(() -> SecurityContextUtil.getUsersContextAuthentication()
+		                        .flatMap(ca -> readIfExistsInBase(name, appCode, ca.getUrlClientCode(), clientCode)))),
 
 		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
 		                .flatMap(da -> this.readInternal(da.getId())
@@ -123,7 +138,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 				        return Mono.empty();
 
 			        if (cApp == null && mergedApp != null) {
-				        cacheService.put(this.getCacheName(), mergedApp, key);
+				        cacheService.put(this.getCacheName(appCode, name), mergedApp, key);
 			        }
 
 			        return Mono.justOrEmpty(clonedApp.getProperties());
@@ -157,7 +172,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 			        if (!showShellPage.booleanValue() && props.get("forbiddenPage") != null)
 				        pageName = props.get("forbiddenPage");
 
-			        return this.pageService.read(pageName.toString(), object.getAppCode(), object.getClientCode());
+			        return this.pageService.read(pageName.toString(), object.getAppCode(), clientCode);
 
 		        },
 

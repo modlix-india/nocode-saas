@@ -4,6 +4,8 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
+import java.net.InetSocketAddress;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,9 +13,11 @@ import java.util.Optional;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,25 +26,34 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
+import com.fincity.saas.common.security.jwt.JWTUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.mq.events.EventCreationService;
+import com.fincity.saas.commons.mq.events.EventNames;
+import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.SoxLog;
+import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
@@ -54,6 +67,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	private static final String UNASSIGNED_PERMISSION = " Permission is removed from the selected user";
 
 	private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
+
+	private static final int VALIDITY_MINUTES = 30;
 
 	@Autowired
 	private ClientService clientService;
@@ -73,6 +88,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	@Autowired
 	private TokenService tokenService;
 
+	@Autowired
+	private EventCreationService ecService;
+
+	@Value("${jwt.key}")
+	private String tokenKey;
+
 	public Mono<User> findByUserName(ULong clientId, String userName,
 	        AuthenticationIdentifierType authenticationIdentifierType) {
 
@@ -86,7 +107,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return FlatMapUtil.flatMapMono(
 
 		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType)
-		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0))),
+		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0)))
+		                .flatMap(this.dao::setPermissions),
 
 		        user -> this.clientService.getClientInfoById(user.getClientId()
 		                .toBigInteger()),
@@ -125,7 +147,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return SecuritySoxLogObjectName.USER;
 	}
 
-	@PreAuthorize("hasPermission('Authorities.User_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.User_CREATE')")
 	@Override
 	public Mono<User> create(User entity) {
 
@@ -514,7 +536,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
 	}
 
-	public Mono<Boolean> updateNewPassword(ULong reqUserId, RequestUpdatePassword requestPassword) {
+	public Mono<Boolean> updateNewPassword(String urlAppCode, String urlClientCode, ULong reqUserId,
+	        RequestUpdatePassword requestPassword, boolean isResetPassword) {
 
 		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
 			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
@@ -529,12 +552,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        (user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(user.getClientId(),
 		                requestPassword.getNewPassword()),
 
-		        (user, isUpdatable, isValid) -> this.checkPasswordInPastPasswords(user,
-		                requestPassword.getNewPassword()),
+		        (user, isUpdatable, isValid) -> isResetPassword ? Mono.just(true)
+		                : this.checkPasswordInPastPasswords(user, requestPassword.getNewPassword()),
 
 		        (user, isUpdatable, isValid, isPastPassword) -> this.dao
 		                .setPassword(reqUserId, requestPassword.getNewPassword(), user.getId())
-		                .map(e ->
+		                .flatMap(e ->
 						{
 			                this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
 			                        .setActionName(SecuritySoxLogActionName.OTHER)
@@ -542,11 +565,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                        .setDescription("Password updated"))
 			                        .subscribe();
 
-			                return e > 0;
+			                return ecService.createEvent(new EventQueObject().setAppCode(urlAppCode)
+			                        .setClientCode(urlClientCode)
+			                        .setEventName(isResetPassword ? EventNames.USER_PASSWORD_RESET_DONE
+			                                : EventNames.USER_PASSWORD_CHANGED)
+			                        .setData(Map.of("user", user)))
+			                        .map(x -> e > 0);
 		                }))
 
-		        .flatMap(e -> this.evictTokens(reqUserId)
-		                .map(x -> e))
+		        .flatMap(e -> this.evictTokens(reqUserId).map(x -> e))
+		        .flatMap(e -> this.dao.updateUserStatus(reqUserId).map(x -> e))
 
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                "Password cannot be updated"));
@@ -663,4 +691,151 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	}
 
+	public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
+
+		String appCode = request.getHeaders()
+		        .getFirst("appCode");
+
+		return this.dao.getAllClientsBy(authRequest.getUserName(), appCode, authRequest.getIdentifierType())
+		        .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
+		        .flatMap(e -> this.clientService.getClientInfoById(e.getValue()
+		                .toBigInteger())
+		                .map(c -> Tuples.of(e.getKey(), c)))
+		        .collectList()
+		        .map(e -> e.stream()
+		                .map(x -> new UserClient(x.getT1(), x.getT2()))
+		                .sorted()
+		                .toList());
+	}
+
+	// Don't call this method other than from the client service register method
+	public Mono<User> createForRegistration(User user) {
+
+		String password = user.getPassword();
+		user.setPassword(null);
+		user.setPasswordHashed(false);
+		user.setAccountNonExpired(true);
+		user.setAccountNonLocked(true);
+		user.setCredentialsNonExpired(true);
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.passwordPolicyCheck(user, password),
+
+		        u -> this.dao
+		                .checkAvailabilityWithClientId(u.getClientId(), u.getUserName(), u.getEmailId(),
+		                        u.getPhoneNumber())
+		                .map(b -> u),
+
+		        (u, cu) -> this.dao.create(cu),
+
+		        (u, cu, createdUser) ->
+				{
+			        this.soxLogService.create(
+
+			                new SoxLog().setActionName(CREATE)
+			                        .setObjectId(createdUser.getId())
+			                        .setObjectName(getSoxObjectName())
+			                        .setDescription("User created"))
+			                .subscribe();
+
+			        return this.setPassword(createdUser, password);
+		        },
+
+		        (u, cu, createdUser, spu) ->
+				{
+			        Mono<Boolean> roledUser = FlatMapUtil.flatMapMono(
+
+			                SecurityContextUtil::getUsersContextAuthentication,
+
+			                ca -> this.dao.addDefaultRoles(createdUser.getId(), ca.getUrlClientCode(),
+			                        ca.getUrlAppCode()));
+
+			        return roledUser.map(x -> createdUser);
+		        }
+
+		)
+		        .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
+		                .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
+		                .flatMap(msg -> Mono.error(
+		                        new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User"))))));
+	}
+
+	public Mono<Boolean> makeUserActive() {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.dao.makeUserActiveIfInActive(ca.getUser()
+		                .getId()));
+	}
+
+	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
+
+		return this.dao.checkUserExists(urlAppCode, urlClientCode, request);
+	}
+
+	public Mono<Boolean> resetPasswordRequest(AuthenticationRequest authRequest, ServerHttpRequest request) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlAppCode(),
+		                authRequest.getIdentifierType()),
+
+		        (ca, cuTup) -> this.clientService.getClientBy(ca.getUrlClientCode())
+		                .map(Client::getId),
+
+		        (ca, cu, loggedInClientId) -> this.makeOneTimeToken(request, ca, cu.getT3(), loggedInClientId),
+
+		        (ca, cu, loggedInClientId,
+		                token) -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
+		                        .setClientCode(ca.getClientCode())
+		                        .setEventName(EventNames.USER_RESET_PASSWORD_REQUEST)
+		                        .setData(Map.of("user", cu.getT3(), "token", token.getToken())))
+
+		)
+		        .map(e -> true);
+	}
+
+	public Mono<TokenObject> makeOneTimeToken(ServerHttpRequest httpRequest, ContextAuthentication ca, User u,
+	        ULong loggedInClientCode) {
+		String host = httpRequest.getURI()
+		        .getHost();
+		String port = "" + httpRequest.getURI()
+		        .getPort();
+
+		List<String> forwardedHost = httpRequest.getHeaders()
+		        .get("X-Forwarded-Host");
+
+		if (forwardedHost != null && !forwardedHost.isEmpty()) {
+			host = forwardedHost.get(0);
+		}
+
+		List<String> forwardedPort = httpRequest.getHeaders()
+		        .get("X-Forwarded-Port");
+
+		if (forwardedPort != null && !forwardedPort.isEmpty()) {
+			port = forwardedPort.get(0);
+		}
+
+		InetSocketAddress inetAddress = httpRequest.getRemoteAddress();
+		final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
+
+		Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(u.getId()
+		        .toBigInteger(), tokenKey, VALIDITY_MINUTES, host, port, loggedInClientCode.toBigInteger(),
+		        ca.getUrlClientCode(), true);
+
+		return tokenService.create(new TokenObject().setUserId(u.getId())
+		        .setToken(token.getT1())
+		        .setPartToken(token.getT1()
+		                .length() < 50 ? token.getT1()
+		                        : token.getT1()
+		                                .substring(token.getT1()
+		                                        .length() - 50))
+		        .setExpiresAt(token.getT2())
+		        .setIpAddress(hostAddress));
+	}
 }

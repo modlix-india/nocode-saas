@@ -5,6 +5,7 @@ import static com.fincity.saas.files.jooq.tables.FilesAccessPath.FILES_ACCESS_PA
 import java.util.List;
 
 import org.jooq.Record1;
+import org.jooq.SelectConditionStep;
 import org.jooq.SelectLimitPercentStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
@@ -17,7 +18,7 @@ import com.fincity.saas.files.dto.FilesAccessPath;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
 
-
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -31,7 +32,7 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 
 	public Mono<Boolean> hasPathReadAccess(String path, ULong userId, String clientCode,
 	        FilesAccessPathResourceType resourceType, List<String> accessList) {
-		
+
 		SelectLimitPercentStep<Record1<Integer>> query = this.dslContext.select(DSL.count())
 		        .from(FILES_ACCESS_PATH)
 		        .where(DSL.and(
@@ -43,34 +44,60 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 		                                DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))))
 
 		        .limit(1);
-		
+
 		if (logger.isDebugEnabled())
 			logger.debug(query.toString());
 		return Mono.from(query)
 		        .map(Record1::value1)
-		        .map(e -> e != 0);
+		        .map(e -> e != 0)
+		        .flatMap(access ->
+				{
+
+			        if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+				        return Mono.just(access);
+
+			        return Mono.from(this.dslContext.selectCount()
+			                .from(FILES_ACCESS_PATH)
+			                .where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode))))
+			                .map(Record1::value1)
+			                .map(e -> e == 0);
+		        });
 	}
 
 	public Mono<Boolean> hasPathWriteAccess(String path, ULong userId, String clientCode,
 	        FilesAccessPathResourceType resourceType, List<String> accessList) {
 
-		SelectLimitPercentStep<Record1<Integer>> query = this.dslContext.select(DSL.count())
-		        .from(FILES_ACCESS_PATH)
+		SelectConditionStep<FilesAccessPathRecord> query = this.dslContext.selectFrom(FILES_ACCESS_PATH)
 		        .where(DSL.and(
 
 		                FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
 		                DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
-		                FILES_ACCESS_PATH.WRITE_ACCESS.ne(Byte.valueOf((byte) 0)),
 
 		                DSL.concat(path)
 		                        .like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
-		                                DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))))
-
-		        .limit(1);
+		                                DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))));
 		if (logger.isDebugEnabled())
 			logger.debug(query.toString());
-		return Mono.from(query)
-		        .map(Record1::value1)
-		        .map(e -> e != 0);
+
+		return Flux.from(query)
+		        .sort((a, b) -> b.getPath()
+		                .compareTo(a.getPath()))
+		        .next()
+		        .filter(e -> e.getWriteAccess()
+		                .equals(Byte.valueOf((byte) 1)))
+		        .map(e -> true)
+		        .defaultIfEmpty(false)
+		        .flatMap(access ->
+				{
+
+			        if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+				        return Mono.just(access);
+
+			        return Mono.from(this.dslContext.selectCount()
+			                .from(FILES_ACCESS_PATH)
+			                .where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode))))
+			                .map(Record1::value1)
+			                .map(e -> e == 0);
+		        });
 	}
 }

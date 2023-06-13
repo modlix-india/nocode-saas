@@ -14,7 +14,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	@Override
-	protected String getObjectName() {
+	public String getObjectName() {
 		return "Function";
 	}
 }

@@ -18,14 +18,14 @@ import org.jooq.types.UByte;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dto.App;
-import com.fincity.security.dto.AppFullInheritance;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
@@ -84,7 +84,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			                .getClientId());
 
 			        return condition.map(c -> DSL.and(c, SECURITY_APP.CLIENT_ID.eq(clientId)
-			                .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))));
+			                .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId)
+			                        .and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf((byte) 1))))));
 		        })
 		        .switchIfEmpty(condition);
 	}
@@ -131,14 +132,13 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		return SecurityContextUtil.getUsersContextUser()
 		        .map(ContextUser::getId)
 		        .map(ULong::valueOf)
-		        .flatMap(userId -> Mono.fromCompletionStage(this.dslContext.insertInto(SECURITY_APP_ACCESS)
+		        .flatMap(userId -> Mono.from(this.dslContext.insertInto(SECURITY_APP_ACCESS)
 		                .columns(SECURITY_APP_ACCESS.APP_ID, SECURITY_APP_ACCESS.CLIENT_ID,
 		                        SECURITY_APP_ACCESS.EDIT_ACCESS, SECURITY_APP_ACCESS.CREATED_BY)
 		                .values(appId, clientId, edit, userId)
 		                .onDuplicateKeyUpdate()
 		                .set(SECURITY_APP_ACCESS.EDIT_ACCESS, edit)
-		                .set(SECURITY_APP_ACCESS.UPDATED_BY, userId)
-		                .executeAsync()))
+		                .set(SECURITY_APP_ACCESS.UPDATED_BY, userId)))
 		        .map(e -> e == 1);
 	}
 
@@ -164,7 +164,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .where(SECURITY_APP_ACCESS.ID.eq(accessId)));
 	}
 
-	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+	public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
 
 		return Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
 		        .from(SECURITY_APP)
@@ -173,40 +173,74 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .where(SECURITY_APP.APP_CODE.eq(appCode))
 		        .limit(1))
 		        .map(Record1::value1)
-		        .map(code -> clientCode.equals(code) ? List.of(code) : List.of(code, clientCode));
+		        .map(code ->
+				{
+
+			        if (urlClientCode == null) {
+				        return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
+			        }
+
+			        if (urlClientCode.equals(clientCode)) {
+				        return clientCode.equals(code) ? List.of(code) : List.of(code, clientCode);
+			        }
+
+			        List<String> clientList = new ArrayList<>();
+
+			        clientList.add(code);
+			        clientList.add(urlClientCode);
+			        clientList.add(clientCode);
+
+			        return clientList;
+		        });
 	}
 
-	public Mono<AppFullInheritance> appFullInheritance(String appCode) {
+	public Flux<ULong> getClientIdsWithAccess(String appCode, boolean onlyWriteAccess) {
 
-		return FlatMapUtil.flatMapMono(
+		Condition accessCheckCondition = SECURITY_APP.APP_CODE.eq(appCode);
+		if (onlyWriteAccess)
+			accessCheckCondition = accessCheckCondition.and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
 
-		        () -> Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
+		return Flux.from(this.dslContext.select(SECURITY_APP.CLIENT_ID)
+		        .from(SECURITY_APP)
+		        .where(SECURITY_APP.APP_CODE.eq(appCode))
+		        .union(this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID)
+		                .from(SECURITY_APP_ACCESS)
+		                .leftJoin(SECURITY_APP)
+		                .on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
+		                .where(accessCheckCondition)))
+		        .map(Record1::value1)
+		        .distinct()
+		        .sort();
+	}
+
+	public Mono<App> getByAppCode(String appCode) {
+
+		return Mono.from(this.dslContext.selectFrom(SECURITY_APP)
+		        .where(SECURITY_APP.APP_CODE.eq(appCode))
+		        .limit(1))
+		        .map(e -> e.into(App.class));
+	}
+
+	public Mono<String> generateAppCode(App app) {
+
+		String appName = StringUtil.safeValueOf(app.getAppName(), "newapp");
+
+		if (appName.length() > 24)
+			appName = appName.substring(0, 24);
+
+		return Mono.just(UniqueUtil.uniqueNameOnlyLetters(36, appName))
+		        .expandDeep(n -> Mono.from(this.dslContext.selectCount()
 		                .from(SECURITY_APP)
-		                .leftJoin(SECURITY_CLIENT)
-		                .on(SECURITY_APP.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-		                .where(SECURITY_APP.APP_CODE.eq(appCode))
-		                .limit(1))
-		                .map(Record1::value1),
+		                .where(SECURITY_APP.APP_CODE.eq(n)))
+		                .map(Record1::value1)
+		                .flatMap(count ->
+						{
+			                if (count == 0l)
+				                return Mono.empty();
 
-		        baseClientCode -> SecurityContextUtil.getUsersContextAuthentication(),
-
-		        (baseClientCode, ca) -> ca.isSystemClient() ?
-
-		                Flux.from(this.dslContext.select(SECURITY_CLIENT.CODE)
-		                        .from(SECURITY_APP_ACCESS)
-		                        .leftJoin(SECURITY_APP)
-		                        .on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
-		                        .leftJoin(SECURITY_CLIENT)
-		                        .on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-		                        .where(SECURITY_APP.APP_CODE.eq(appCode)))
-		                        .map(Record1::value1)
-		                        .collectList()
-		                : Mono.just(List.of(ca.getClientCode())),
-
-		        (baseClientCode, ca, clients) -> Mono.just(new AppFullInheritance().setBaseClientCode(baseClientCode)
-		                .setClients(clients))
-
-		);
-
+			                return Mono.just(UniqueUtil.uniqueNameOnlyLetters(36, n));
+		                }))
+		        .collectList()
+		        .map(lst -> lst.get(lst.size() - 1));
 	}
 }

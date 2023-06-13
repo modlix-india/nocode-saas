@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.service.AbstractFilesResourceService;
@@ -29,45 +31,54 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 	@GetMapping("/**")
 	public Mono<ResponseEntity<Page<FileDetail>>> list(Pageable page, @RequestParam(required = false) String filter,
+	        @RequestParam(required = false) String clientCode, @RequestParam(required = false) FileType[] fileType,
 	        ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.service.list(ca.getLoggedInFromClientCode(), request.getURI()
-		                .toString(), filter, page),
+		        ca -> this.service.list(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+		                request.getURI()
+		                        .toString(),
+		                fileType, filter, page),
 
 		        (ca, pg) -> Mono.just(ResponseEntity.<Page<FileDetail>>ok(pg)));
 	}
 
 	@DeleteMapping("/**")
-	public Mono<ResponseEntity<Boolean>> delete(ServerHttpRequest request) {
+	public Mono<ResponseEntity<Boolean>> delete(@RequestParam(required = false) String clientCode,
+	        ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.service.delete(ca.getLoggedInFromClientCode(), request.getURI()
-		                .toString()),
+		        ca -> this.service.delete(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+		                request.getURI()
+		                        .toString()),
 
 		        (ca, deleted) -> Mono.just(ResponseEntity.<Boolean>ok(deleted)));
 	}
 
 	@PostMapping("/**")
-	public Mono<ResponseEntity<FileDetail>> create(@RequestPart("file") Mono<FilePart> filePart,
+	public Mono<ResponseEntity<FileDetail>> create(
+	        @RequestPart(name = "file", required = false) Mono<FilePart> filePart,
+	        @RequestParam(required = false) String clientCode,
 	        @RequestPart(required = false, name = "override") String override,
 	        @RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request) {
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca -> filePart,
 
-		        (ca, fp) -> this.service.create(ca.getLoggedInFromClientCode(), request.getURI()
-		                .toString(), fp, fileName, override != null ? BooleanUtil.safeValueOf(override) : null))
-				.map(ResponseEntity::ok);
+		        (ca, fp) -> this.service.create(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+		                request.getURI()
+		                        .toString(),
+		                fp, fileName, override != null ? BooleanUtil.safeValueOf(override) : null))
+		        .map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/file/**")
@@ -78,7 +89,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 	        @RequestParam(required = false) String bandColor,
 	        @RequestParam(required = false, defaultValue = "HORIZONTAL") DownloadOptions.ResizeDirection resizeDirection,
 	        @RequestParam(required = false, defaultValue = "false") Boolean noCache, ServerHttpRequest request,
-	        ServerHttpResponse response) {
+	        @RequestParam(required = false) String name, ServerHttpResponse response) {
 
 		return service.downloadFile(new DownloadOptions().setHeight(height)
 		        .setWidth(width)
@@ -86,6 +97,28 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		        .setBandColor(bandColor)
 		        .setResizeDirection(resizeDirection)
 		        .setNoCache(noCache)
-		        .setDownload(download), request, response);
+		        .setDownload(download)
+		        .setName(name), request, response);
 	}
+
+	@PostMapping("/import/**")
+	public Mono<ResponseEntity<Boolean>> createWithZip(
+	        @RequestPart(name = "file", required = true) Mono<FilePart> filePart,
+	        @RequestParam(required = false) String clientCode,
+	        @RequestPart(required = false, name = "override") String override, ServerHttpRequest request) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> filePart,
+
+		        (ca, fp) -> this.service
+		                .createFromZipFile(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+		                        request.getURI()
+		                                .toString(),
+		                        fp, override != null ? BooleanUtil.safeValueOf(override) : null))
+		        .map(ResponseEntity::ok);
+	}
+
 }

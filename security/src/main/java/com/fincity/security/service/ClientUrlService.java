@@ -40,14 +40,12 @@ public class ClientUrlService
 	@Autowired
 	private ClientService clientService;
 
-
 	private static final String CACHE_NAME_CLIENT_URI = "uri";
 
-	
-	//This is used in gateway
+	// This is used in gateway
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> read(ULong id) {
 
@@ -80,14 +78,14 @@ public class ClientUrlService
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND, CLIENT_URL, id));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Page<ClientUrl>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 
 		return super.readPageFilter(pageable, condition);
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> create(ClientUrl entity) {
 
@@ -125,7 +123,7 @@ public class ClientUrlService
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> update(ClientUrl entity) {
 
@@ -134,7 +132,7 @@ public class ClientUrlService
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> update(ULong key, Map<String, Object> updateFields) {
 
@@ -143,7 +141,7 @@ public class ClientUrlService
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
 	}
 
-	@PreAuthorize("hasPermission('Authorities.Client_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
 

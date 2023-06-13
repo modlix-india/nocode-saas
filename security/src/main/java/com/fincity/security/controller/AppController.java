@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
-import com.fincity.security.dto.AppFullInheritance;
+import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.service.AppService;
@@ -38,9 +38,9 @@ public class AppController
 
 	@GetMapping("/internal/appInheritance")
 	public Mono<ResponseEntity<List<String>>> appInheritance(@RequestParam String appCode,
-	        @RequestParam String clientCode) {
+	        @RequestParam String urlClientCode, @RequestParam String clientCode) {
 
-		return this.service.appInheritance(appCode, clientCode)
+		return this.service.appInheritance(appCode, urlClientCode, clientCode)
 		        .map(ResponseEntity::ok);
 	}
 
@@ -72,9 +72,10 @@ public class AppController
 		        .map(ResponseEntity::ok);
 	}
 
-	@GetMapping("/appFullInheritance/{appCode}")
-	public Mono<ResponseEntity<AppFullInheritance>> getAppFullInheritance(@PathVariable final String appCode) {
-		return this.service.appFullInheritance(appCode)
+	@GetMapping("/clients/{appCode}")
+	public Mono<ResponseEntity<List<Client>>> getAppClients(@PathVariable final String appCode,
+	        @RequestParam(required = false) boolean onlyWriteAccess) {
+		return this.service.getAppClients(appCode, onlyWriteAccess)
 		        .map(ResponseEntity::ok);
 	}
 }

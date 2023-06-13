@@ -15,7 +15,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @ComponentScan(basePackages = "com.fincity")
 
-@EnableEurekaClient
+
 @EnableFeignClients
 @EnableReactiveFeignClients(basePackages =  "com.fincity")
 @EnableWebFlux
@@ -23,6 +23,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableReactiveMethodSecurity
 @EnableCaching
 @EnableAspectJAutoProxy(proxyTargetClass = true)
+@EnableEurekaClient
 
 @SpringBootApplication
 public class FilesApplication {

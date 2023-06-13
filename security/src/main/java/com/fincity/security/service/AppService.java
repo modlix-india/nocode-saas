@@ -22,9 +22,10 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
-import com.fincity.security.dto.AppFullInheritance;
+import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import reactor.core.publisher.Mono;
@@ -47,11 +48,17 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
 	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
 	private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
-	private static final String CACHE_NAME_APP_FULL_INHERITANCE = "appFullInheritance";
+	private static final String CACHE_NAME_APP_FULL_INH_BY_APPCODE = "fullInhAppByCode";
+	private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
 
 	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
 	public Mono<App> create(App entity) {
+
+		if (entity.getAppCode() != null && !StringUtil.onlyAlphabetAllowed(entity.getAppCode())) {
+			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			        SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
+		}
 
 		return FlatMapUtil.flatMapMono(
 
@@ -74,12 +81,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                .flatMap(managed -> managed.booleanValue() ? Mono.just(entity) : Mono.empty());
 		        },
 
-		        (ca, app) -> super.create(app)
+		        (ca, app) -> app.getAppCode() == null ? this.dao.generateAppCode(app)
+		                .map(app::setAppCode) : Mono.just(app),
+
+		        (ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp)
 
 		)
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
@@ -90,8 +100,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        .flatMap(e -> super.update(entity))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity.getId())))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+		        .flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
+		                .map(x -> e));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
@@ -101,8 +113,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        .flatMap(e -> super.update(key, fields))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, key)))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+		        .flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
+		                .map(x -> e));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_READ')")
@@ -121,11 +135,13 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	public Mono<Integer> delete(ULong id) {
 		return this.read(id)
-		        .flatMap(e -> super.delete(id))
+		        .flatMap(e -> super.delete(id)
+		                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
+		                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+		                .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
+		                        .map(y -> x)))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id)))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id)));
 	}
 
 	@Override
@@ -222,7 +238,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                .map(e -> changed))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
@@ -266,7 +282,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        })
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.UNABLE_TO_DELETE, APPLICATION_ACCESS, accessId)))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
@@ -295,19 +311,57 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        })
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS, accessId)))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
 
-	public Mono<List<String>> appInheritance(String appCode, String clientCode) {
+	public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
 
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_INHERITANCE,
-		        () -> this.dao.appInheritance(appCode, clientCode), appCode, ":", clientCode);
+		        () -> this.dao.appInheritance(appCode, urlClientCode, clientCode), appCode, ":", urlClientCode, ":",
+		        clientCode);
 	}
 
-	public Mono<AppFullInheritance> appFullInheritance(String appCode) {
+	public Mono<App> getAppByCode(String appCode) {
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE, () -> this.dao.getByAppCode(appCode),
+		        appCode);
+	}
 
-		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_FULL_INHERITANCE,
-		        () -> this.dao.appFullInheritance(appCode), appCode);
+	public Mono<List<Client>> getAppClients(String appCode, boolean onlyWriteAccess) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.cacheService.cacheValueOrGet(CACHE_NAME_APP_FULL_INH_BY_APPCODE,
+
+		                () -> FlatMapUtil.flatMapMono(
+
+		                        () -> this.getAppByCode(appCode),
+
+		                        app ->
+								{
+
+			                        if (!ca.isSystemClient()) {
+				                        // TODO: This code should return all the app urls of all the clients it has
+				                        // reporting.
+				                        return this.clientService.getClientInfoById(ca.getUser()
+				                                .getClientId())
+				                                .map(List::of);
+			                        }
+
+			                        return this.dao.getClientIdsWithAccess(appCode, onlyWriteAccess)
+			                                .map(ULong::toBigInteger)
+			                                .flatMap(this.clientService::getClientInfoById)
+			                                .collectList();
+		                        })
+
+		                , ca.getClientCode(), ":", appCode));
+	}
+
+	public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong clientId, boolean isWriteAccess) {
+
+		return this.getAppByCode(urlAppCode)
+		        .flatMap(a -> this.dao.addClientAccess(a.getId(), clientId, isWriteAccess));
 	}
 }

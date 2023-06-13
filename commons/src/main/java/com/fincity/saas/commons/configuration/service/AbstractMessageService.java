@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class AbstractMessageService {
@@ -19,6 +20,7 @@ public class AbstractMessageService {
 	public static final String VALUEOF_METHOD_NOT_FOUND = "valueof_method_not_found";
 	public static final String UNABLE_TO_CONVERT = "unable_to_convert";
 	public static final String UNKNOWN_ERROR_WITH_ID = "unknown_error_with_id";
+	public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
 
 	public static final String OBJECT_NOT_FOUND = "object_not_found";
 
@@ -47,10 +49,23 @@ public class AbstractMessageService {
 
 	public <T> Mono<T> throwMessage(HttpStatus status, String messageId, Object... params) {
 
-		return Mono.defer(() -> this.getMessage(messageId, params)
-		        .map(msg -> new GenericException(status, msg))
-		        .flatMap(Mono::error));
+		return Mono.defer(
 
+		        () -> this.getMessage(messageId, params)
+		                .map(msg -> new GenericException(status, msg))
+		                .flatMap(Mono::error)
+
+		);
+	}
+
+	public <T> Flux<T> throwFluxMessage(HttpStatus status, String messageId, Object... params) {
+
+		return Flux.defer(
+
+		        () -> Flux.from(this.getMessage(messageId, params))
+		                .flatMap(msg -> Flux.error(new GenericException(status, msg)))
+
+		);
 	}
 
 	public <T> Mono<T> throwMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
@@ -59,6 +74,16 @@ public class AbstractMessageService {
 		        .map(msg -> new GenericException(status, msg, cause))
 		        .flatMap(Mono::error));
 
+	}
+
+	public <T> Flux<T> throwFluxMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
+
+		return Flux.defer(
+
+		        () -> Flux.from(this.getMessage(messageId, params))
+		                .flatMap(msg -> Flux.error(new GenericException(status, msg, cause)))
+
+		);
 	}
 
 	public String getDefaultLocaleMessage(String messageId) {
