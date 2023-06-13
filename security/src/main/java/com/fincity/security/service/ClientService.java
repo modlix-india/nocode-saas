@@ -527,6 +527,7 @@ public class ClientService
 		        .map(e -> Tuples.of(e, finPassword));
 	}
 	
+	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
 
 		return flatMapMono(
@@ -535,17 +536,11 @@ public class ClientService
 
 		        ca ->
 
-				Mono.just(SecurityContextUtil.hasAuthority("Authorities.Client_READ", ca.getAuthorities())
-				        && SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities()))
-				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-		        (ca, hasAuthorities) ->
-
 				ca.isSystemClient() ? Mono.just(true)
 				        : this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
 				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (ca, hasAuthorities, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
+		        (ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));

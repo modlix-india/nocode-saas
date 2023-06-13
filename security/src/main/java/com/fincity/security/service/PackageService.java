@@ -221,6 +221,7 @@ public class PackageService extends
 		return this.dao.getRolesFromPackage(packageId);
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.Package_READ') and hasAuthority('Authorities.Role_READ')")
 	public Mono<List<Role>> getRolesFromGivenPackage(ULong packageId) {
 
 		return flatMapMono(
@@ -229,20 +230,15 @@ public class PackageService extends
 
 		        ca ->
 
-				Mono.just(SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities())
-				        && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
-				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-		        (ca, hasAuthorities) ->
-
 				ca.isSystemClient() ? Mono.just(true)
+						
 				        : this.read(packageId)
 				                .flatMap(packagel -> this.clientService.isBeingManagedBy(
 				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
 				                        ULongUtil.valueOf(packagel.getClientId())))
 				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (ca, hasAuthorities, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
+		        (ca, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));

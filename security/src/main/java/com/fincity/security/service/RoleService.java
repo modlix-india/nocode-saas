@@ -339,6 +339,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		return this.dao.getPermissionsFromRole(roleId);
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.Permission_READ') and hasAuthority('Authorities.Role_READ')")
 	public Mono<List<Permission>> getPermissionsFromGivenRole(ULong roleId) {
 
 		return flatMapMono(
@@ -347,25 +348,18 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 		        ca ->
 
-				Mono.just(SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities())
-				        && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
-				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-		        (ca, hasAuthorities) ->
-
 				ca.isSystemClient() ? Mono.just(true)
 				        : this.read(roleId)
 				                .flatMap(role -> this.clientService.isBeingManagedBy(
 				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
 				                        ULongUtil.valueOf(role.getClientId())))
-				                .flatMap(BooleanUtil::safeValueOfWithEmpty)
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        ,
-
-		        (ca, hasAuthorities, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
+		        (ca, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
 
 	}
+	
 }

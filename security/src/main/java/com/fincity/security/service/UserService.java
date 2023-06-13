@@ -346,6 +346,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .flatMap(this.dao::setPermissions);
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.User_READ') and hasAuthority('Authorities.Permission_READ')")
 	public Mono<List<Permission>> getPermissionsFromGivenUser(ULong userId) {
 
 		return flatMapMono(
@@ -354,12 +355,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        ca ->
 
-				Mono.just(SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
-				        && SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities()))
-				        .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-		        (ca, hasAuthorities) ->
-
 				ca.isSystemClient() ? Mono.just(true)
 				        : this.read(userId)
 				                .flatMap(user -> this.clientService.isBeingManagedBy(
@@ -367,7 +362,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				                        ULongUtil.valueOf(user.getClientId())))
 				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (ca, hasAuthorities, sysOrManaged) ->
+		        (ca, sysOrManaged) ->
 
 				this.dao.fetchPermissionsFromGivenUser(userId)
 
@@ -376,18 +371,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	}
 
+	
+	@PreAuthorize("hasAuthority('Authorities.Role_READ') and hasAuthority('Authorities.User_READ')")
 	public Mono<List<Role>> getRolesFromGivenUser(ULong userId) {
 
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono
-		                .just(SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
-		                        && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
-		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-		        (ca, hasAuthorities) ->
+		        ca ->
 
 				ca.isSystemClient() ? Mono.just(true)
 				        : this.read(userId)
@@ -396,7 +388,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				                        ULongUtil.valueOf(user.getClientId())))
 				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (ca, hasAuthorites, sysOrManaged) ->
+		        (ca, sysOrManaged) ->
 
 				this.dao.fetchRolesFromGivenUser(userId)
 
