@@ -338,8 +338,33 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 		return this.dao.getPermissionsFromRole(roleId);
 	}
-	
+
 	public Mono<List<Permission>> getPermissionsFromGivenRole(ULong roleId) {
-		return this.dao.getPermissionsFromGivenRole(roleId);
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+				{
+			        if (ca.isSystemClient())
+				        return Mono.just(true);
+
+			        else if (SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities())
+			                && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+
+				        return this.read(roleId)
+				                .flatMap(role -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(role.getClientId())));
+
+			        return Mono.empty();
+		        },
+
+		        (ca, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
+
 	}
 }

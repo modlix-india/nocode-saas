@@ -345,17 +345,72 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return this.dao.readInternal(id)
 		        .flatMap(this.dao::setPermissions);
 	}
-	
+
 	public Mono<List<Permission>> getPermissionsFromGivenUser(ULong userId) {
 
-		return this.dao.fetchPermissionsFromGivenUser(userId);
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+				{
+
+			        if (ca.isSystemClient())
+				        return Mono.just(true);
+
+			        else if (SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
+			                && SecurityContextUtil.hasAuthority("Authorities.Permission_READ", ca.getAuthorities()))
+
+				        return this.read(userId)
+				                .flatMap(user -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(user.getClientId())));
+
+			        return Mono.empty();
+		        },
+
+		        (ca, sysOrManaged) ->
+
+				this.dao.fetchPermissionsFromGivenUser(userId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR_FOR_USER, userId));
+
 	}
 
 	public Mono<List<Role>> getRolesFromGivenUser(ULong userId) {
 
-		return this.dao.fetchRolesFromGivenUser(userId);
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+				{
+
+			        if (ca.isSystemClient())
+				        return Mono.just(true);
+
+			        else if (SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities())
+			                && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+
+				        return this.read(userId)
+				                .flatMap(user -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(user.getClientId())));
+
+			        return Mono.empty();
+
+		        },
+
+		        (ca, sysOrManaged) ->
+
+				this.dao.fetchRolesFromGivenUser(userId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_ROLE_ERROR_FOR_USER, userId));
+
 	}
-	
+
 	public Mono<Boolean> removePermission(ULong userId, ULong permissionId) {
 		return this.dao.removePermissionFromUser(userId, permissionId)
 		        .map(value -> value > 0)
@@ -585,8 +640,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                        .map(x -> e > 0);
 		                }))
 
-		        .flatMap(e -> this.evictTokens(reqUserId).map(x -> e))
-		        .flatMap(e -> this.dao.updateUserStatus(reqUserId).map(x -> e))
+		        .flatMap(e -> this.evictTokens(reqUserId)
+		                .map(x -> e))
+		        .flatMap(e -> this.dao.updateUserStatus(reqUserId)
+		                .map(x -> e))
 
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                "Password cannot be updated"));

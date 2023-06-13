@@ -58,6 +58,10 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String CLIENT_REGISTRATION_ERROR= "client_registration_error";
 	public static final String USER_ALREADY_EXISTS = "user_already_exists";
 	public static final String FETCH_PACKAGE_ERROR="fetch_package_error";
+	public static final String FETCH_ROLE_ERROR="fetch_role_error";
+	public static final String FETCH_PERMISSION_ERROR="fetch_permission_error";
+	public static final String FETCH_PERMISSION_ERROR_FOR_USER="fetch_permission_error_for_user";
+	public static final String FETCH_ROLE_ERROR_FOR_USER="fetch_role_error_for_user";
 
 	public SecurityMessageResourceService() {
 

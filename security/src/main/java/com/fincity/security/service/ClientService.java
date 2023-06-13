@@ -528,32 +528,25 @@ public class ClientService
 	}
 	
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
-		
+
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(ca.isSystemClient())
-		                .flatMap(val ->
-						{
-			                if (Boolean.FALSE.equals(val))
-				                this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
-				                        .map(e ->
-										{
-					                        if (Boolean.FALSE.equals(e))
-						                        return Mono.empty();
-					                        return e;
-				                        });
+		        ca ->
+				{
 
-			                return Mono.just(val);
-		                }),
+			        if (ca.isSystemClient())
+				        return Mono.just(true);
 
-		        (ca, sysOrManaged) -> Mono.just(SecurityContextUtil.hasAuthority("CLIENT_READ", ca.getAuthorities()))
-		                .flatMap(e -> Boolean.TRUE.equals(e)
-		                        ? Mono.just(SecurityContextUtil.hasAuthority("PACKAGE_READ", ca.getAuthorities()))
-		                        : Mono.empty()),
+			        else if (SecurityContextUtil.hasAuthority("Authorities.Client_READ", ca.getAuthorities())
+			                && SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities()))
+				        return this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId);
 
-		        (ca, sysOrManaged, hasPermissions) -> this.dao.getPackagesAvailableForClient(clientId)
+			        return Mono.empty();
+		        },
+
+		        (ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
 
 		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		        SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));

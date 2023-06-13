@@ -222,9 +222,34 @@ public class PackageService extends
 	}
 
 	public Mono<List<Role>> getRolesFromGivenPackage(ULong packageId) {
-		return this.dao.getRolesFromGivenPackage(packageId);
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+				{
+			        if (ca.isSystemClient())
+				        return Mono.just(true);
+
+			        else if (SecurityContextUtil.hasAuthority("Authorities.Package_READ", ca.getAuthorities())
+			                && SecurityContextUtil.hasAuthority("Authorities.Role_READ", ca.getAuthorities()))
+
+				        return this.read(packageId)
+				                .flatMap(packagel -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(packagel.getClientId())));
+
+			        return Mono.empty();
+		        },
+
+		        (ca, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
+
 	}
-	
+
 	public Mono<List<ULong>> getPermissionsFromPackage(ULong packageId, List<ULong> roles) {
 		return this.dao.getPermissionsFromPackage(packageId, roles);
 	}
