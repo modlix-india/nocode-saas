@@ -36,6 +36,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dto.Package;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
@@ -524,6 +525,26 @@ public class ClientService
 
 		return this.userService.createForRegistration(user)
 		        .map(e -> Tuples.of(e, finPassword));
+	}
+	
+	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
+	public Mono<List<Package>> fetchPackages(ULong clientId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
+
 	}
 
 	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca) {

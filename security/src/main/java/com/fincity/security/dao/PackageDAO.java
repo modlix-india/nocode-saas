@@ -20,6 +20,7 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
 import com.fincity.security.dto.Package;
+import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityPackageRoleRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -260,6 +261,26 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		                .from(SECURITY_PACKAGE_ROLE)
 		                .where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId)))
 		        .map(Record1::value1)
+		        .collectList();
+
+	}
+
+	public Mono<List<Role>> getRolesFromGivenPackage(ULong packageId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_ROLE.fields())
+		                .from(SECURITY_PACKAGE_ROLE)
+		                .leftJoin(SECURITY_ROLE)
+
+		                .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE.ID))
+
+		                .where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(packageId))
+
+		)
+
+		        .map(e -> e.into(Role.class))
+
 		        .collectList();
 
 	}

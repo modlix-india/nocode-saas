@@ -24,6 +24,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.RoleDAO;
+import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
@@ -337,4 +338,28 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 		return this.dao.getPermissionsFromRole(roleId);
 	}
+
+	@PreAuthorize("hasAuthority('Authorities.Permission_READ') and hasAuthority('Authorities.Role_READ')")
+	public Mono<List<Permission>> getPermissionsFromGivenRole(ULong roleId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.read(roleId)
+				                .flatMap(role -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(role.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
+
+	}
+	
 }
