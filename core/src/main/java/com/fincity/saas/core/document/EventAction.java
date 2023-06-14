@@ -41,6 +41,7 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
 
 		if (base != null)
 			return DifferenceApplicator.apply(this.tasks, base.tasks)
+					.defaultIfEmpty(Map.of())
 			        .map(a ->
 					{
 				        this.tasks = (Map<String, EventActionTask>) a;

@@ -40,6 +40,7 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 
 		if (base != null)
 			return DifferenceApplicator.apply(this.schema, base.schema)
+					.defaultIfEmpty(Map.of())
 			        .map(a ->
 					{
 				        this.schema = (Map<String, Object>) a;

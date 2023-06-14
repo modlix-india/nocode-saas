@@ -55,7 +55,7 @@ public class Template extends AbstractOverridableDTO<Template> {
 		if (base == null)
 			return Mono.just(this);
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 
 		        () -> DifferenceApplicator.apply(this.templateParts, base.templateParts),
 
