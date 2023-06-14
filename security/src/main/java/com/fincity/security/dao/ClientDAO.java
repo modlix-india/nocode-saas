@@ -1,10 +1,10 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
-import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
@@ -38,6 +38,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -347,14 +348,14 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(val -> val == 1);
 	}
 
-	public Mono<com.fincity.security.dto.Package> getPackage(ULong packageId) {
+	public Mono<Package> getPackage(ULong packageId) {
 
 		return Mono.from(this.dslContext.select(SECURITY_PACKAGE.fields())
 		        .from(SECURITY_PACKAGE)
 		        .where(SECURITY_PACKAGE.ID.eq(packageId))
 		        .limit(1))
 		        .filter(Objects::nonNull)
-		        .map(e -> e.into(com.fincity.security.dto.Package.class));
+		        .map(e -> e.into(Package.class));
 	}
 
 	public Mono<Boolean> checkPackageAssignedForClient(ULong clientId, ULong packageId) {
@@ -482,4 +483,20 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		        .map(e -> e.get(e.size() - 1));
 
 	}
+
+	public Mono<List<Package>> getPackagesAvailableForClient(ULong clientId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_PACKAGE.fields())
+		                .from(SECURITY_CLIENT_PACKAGE)
+
+		                .leftJoin(SECURITY_PACKAGE)
+		                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE.ID))
+
+		                .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)))
+		        .map(e -> e.into(Package.class))
+		        .collectList();
+	}
+
 }
