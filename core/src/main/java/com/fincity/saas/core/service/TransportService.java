@@ -23,9 +23,15 @@ public class TransportService extends AbstractTransportService {
 	@Autowired
 	private CoreSchemaService schemaService;
 
+	@Autowired
+	private EventActionService evaService;
+
+	@Autowired
+	private EventDefinitionService edService;
+
 	@SuppressWarnings("rawtypes")
 	@Override
 	public List<AbstractOverridableDataService> getServieMap() {
-		return List.of(funService, schemaService, storageService, templateService);
+		return List.of(funService, schemaService, storageService, templateService, evaService, edService);
 	}
 }
