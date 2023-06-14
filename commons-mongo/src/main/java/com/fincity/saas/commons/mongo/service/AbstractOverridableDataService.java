@@ -633,7 +633,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		        (key, cApp) -> Mono.justOrEmpty(cApp)
 		                .switchIfEmpty(Mono.defer(() -> SecurityContextUtil.getUsersContextAuthentication()
-		                        .flatMap(ca -> readIfExistsInBase(name, appCode, ca.getUrlClientCode(), clientCode)))),
+		                		.map(ContextAuthentication::getUrlClientCode)
+		                		.defaultIfEmpty(clientCode)
+		                        .flatMap(cc -> readIfExistsInBase(name, appCode, cc, clientCode)))),
 
 		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
 		                .flatMap(da -> this.readInternal(da.getId())
