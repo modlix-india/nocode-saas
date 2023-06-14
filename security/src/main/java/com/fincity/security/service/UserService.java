@@ -847,7 +847,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        (ca, cu, loggedInClientId,
 		                token) -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
-		                        .setClientCode(ca.getClientCode())
+		                        .setClientCode(ca.getUrlClientCode())
 		                        .setEventName(EventNames.USER_RESET_PASSWORD_REQUEST)
 		                        .setData(Map.of("user", cu.getT3(), "token", token.getToken())))
 
