@@ -200,7 +200,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 	@Override
 	public Mono<D> read(String id) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMonoWithNullLog(
 
 		        () -> super.read(id),
 

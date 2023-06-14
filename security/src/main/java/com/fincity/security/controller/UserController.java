@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.Permission;
+import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -83,6 +85,18 @@ public class UserController
 	@GetMapping("/makeUserActive")
 	public Mono<ResponseEntity<Boolean>> makeUserActive() {
 		return this.service.makeUserActive()
+		        .map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/availablePermissions/{userId}")
+	public Mono<ResponseEntity<List<Permission>>> getPermissionsFromUser(@PathVariable ULong userId) {
+		return this.userService.getPermissionsFromGivenUser(userId)
+		        .map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/availableRoles/{userId}")
+	public Mono<ResponseEntity<List<Role>>> getRolesFromUser(@PathVariable ULong userId) {
+		return this.userService.getRolesFromGivenUser(userId)
 		        .map(ResponseEntity::ok);
 	}
 
