@@ -1,5 +1,7 @@
 package com.fincity.security.controller;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
+import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 import com.fincity.security.service.PackageService;
 
@@ -24,6 +27,7 @@ public class PackageController
 	@Autowired
 	private PackageService packageService;
 
+	
 	@GetMapping("/{packageId}/assignRole/{roleId}")
 	public Mono<ResponseEntity<Boolean>> assignRole(@PathVariable ULong packageId, @PathVariable ULong roleId) {
 
@@ -38,5 +42,11 @@ public class PackageController
 		return packageService.removeRoleFromPackage(packageId, roleId)
 		        .map(ResponseEntity::ok);
 
+	}
+	
+	@GetMapping("/availableRoles/{packageId}")
+	public Mono<ResponseEntity<List<Role>>> getRolesFromPackage(@PathVariable ULong packageId) {
+		return this.packageService.getRolesFromGivenPackage(packageId)
+				.map(ResponseEntity::ok);
 	}
 }

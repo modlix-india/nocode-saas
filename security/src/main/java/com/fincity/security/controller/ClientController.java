@@ -1,5 +1,7 @@
 package com.fincity.security.controller;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.service.ClientService;
@@ -55,6 +58,7 @@ public class ClientController
 		        .defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))
 		        .map(ResponseEntity::ok);
 	}
+	
 
 	@GetMapping("/{clientId}/assignPackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> assignPackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
@@ -65,6 +69,12 @@ public class ClientController
 	@GetMapping("/{clientId}/removePackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> removePackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
 		return clientService.removePackageFromClient(clientId, packageId)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@GetMapping("/availablePackages/{clientId}")
+	public Mono<ResponseEntity<List<Package>>> fetchPackagesForClient(@PathVariable ULong clientId) {
+		return this.clientService.fetchPackages(clientId)
 		        .map(ResponseEntity::ok);
 	}
 

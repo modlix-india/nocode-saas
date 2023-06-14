@@ -38,6 +38,8 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.Permission;
+import com.fincity.security.dto.Role;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
@@ -344,6 +346,57 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .flatMap(this.dao::setPermissions);
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.User_READ') and hasAuthority('Authorities.Permission_READ')")
+	public Mono<List<Permission>> getPermissionsFromGivenUser(ULong userId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.read(userId)
+				                .flatMap(user -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(user.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged) ->
+
+				this.dao.fetchPermissionsFromGivenUser(userId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR_FOR_USER, userId));
+
+	}
+
+	
+	@PreAuthorize("hasAuthority('Authorities.Role_READ') and hasAuthority('Authorities.User_READ')")
+	public Mono<List<Role>> getRolesFromGivenUser(ULong userId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+
+				ca.isSystemClient() ? Mono.just(true)
+				        : this.read(userId)
+				                .flatMap(user -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(user.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged) ->
+
+				this.dao.fetchRolesFromGivenUser(userId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_ROLE_ERROR_FOR_USER, userId));
+
+	}
+
 	public Mono<Boolean> removePermission(ULong userId, ULong permissionId) {
 		return this.dao.removePermissionFromUser(userId, permissionId)
 		        .map(value -> value > 0)
@@ -573,8 +626,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                        .map(x -> e > 0);
 		                }))
 
-		        .flatMap(e -> this.evictTokens(reqUserId).map(x -> e))
-		        .flatMap(e -> this.dao.updateUserStatus(reqUserId).map(x -> e))
+		        .flatMap(e -> this.evictTokens(reqUserId)
+		                .map(x -> e))
+		        .flatMap(e -> this.dao.updateUserStatus(reqUserId)
+		                .map(x -> e))
 
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                "Password cannot be updated"));
