@@ -25,6 +25,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
+import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 
@@ -218,6 +219,30 @@ public class PackageService extends
 
 	public Mono<List<ULong>> getRolesFromPackage(ULong packageId) {
 		return this.dao.getRolesFromPackage(packageId);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Package_READ') and hasAuthority('Authorities.Role_READ')")
+	public Mono<List<Role>> getRolesFromGivenPackage(ULong packageId) {
+
+		return flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca ->
+
+				ca.isSystemClient() ? Mono.just(true)
+						
+				        : this.read(packageId)
+				                .flatMap(packagel -> this.clientService.isBeingManagedBy(
+				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                        ULongUtil.valueOf(packagel.getClientId())))
+				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
+
+		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
+
 	}
 
 	public Mono<List<ULong>> getPermissionsFromPackage(ULong packageId, List<ULong> roles) {

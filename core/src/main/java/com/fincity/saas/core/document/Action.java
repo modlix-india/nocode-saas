@@ -44,6 +44,7 @@ public class Action extends AbstractOverridableDTO<Action> {
 
 		if (base != null)
 			return DifferenceApplicator.apply(this.properties, base.properties)
+					.defaultIfEmpty(Map.of())
 			        .map(a ->
 					{
 				        this.properties = (Map<String, String>) a;
