@@ -437,9 +437,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	}
 
 	public Mono<List<User>> getBy(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType) {
+	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
-		var query = getAllUsersPerAppQuery(userName, userId, appCode, authenticationIdentifierType,
+		var query = getAllUsersPerAppQuery(userName, userId, appCode, authenticationIdentifierType, onlyActiveUsers,
 		        SECURITY_USER.fields());
 
 		var limitQuery = query.limit(2);
@@ -450,7 +450,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	}
 
 	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType, Field<?>... fields) {
+	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers, Field<?>... fields) {
 
 		TableField<SecurityUserRecord, String> field = SECURITY_USER.USER_NAME;
 		if (authenticationIdentifierType == AuthenticationIdentifierType.EMAIL_ID) {
@@ -465,7 +465,10 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		List<Condition> conditions = new ArrayList<>();
 
 		conditions.add(field.eq(userName));
-		conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
+		if (onlyActiveUsers)
+			conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
+		else
+			conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
 		conditions.add(DSL.or(
 
 		        appA.field(APP_CODE, String.class)
@@ -500,7 +503,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	        AuthenticationIdentifierType identifierType) {
 
 		return Flux
-		        .from(this.getAllUsersPerAppQuery(userName, null, appCode, identifierType, SECURITY_USER.ID,
+		        .from(this.getAllUsersPerAppQuery(userName, null, appCode, identifierType, true, SECURITY_USER.ID,
 		                SECURITY_USER.CLIENT_ID))
 
 		        .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
