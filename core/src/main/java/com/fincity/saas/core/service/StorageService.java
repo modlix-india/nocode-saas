@@ -98,6 +98,7 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 			        existing.setSchema(entity.getSchema())
 			                .setIsAudited(entity.getIsAudited())
 			                .setIsVersioned(entity.getIsVersioned())
+			                .setIsAppLevel(entity.getIsAppLevel())
 			                .setCreateAuth(entity.getCreateAuth())
 			                .setReadAuth(entity.getReadAuth())
 			                .setUpdateAuth(entity.getUpdateAuth())
