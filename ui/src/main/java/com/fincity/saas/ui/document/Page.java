@@ -10,6 +10,7 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.model.ComponentDefinition;
 
 import lombok.Data;
@@ -17,6 +18,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -31,12 +33,12 @@ public class Page extends AbstractOverridableDTO<Page> {
 	private String device;
 	private Map<String, Map<String, String>> translations;
 	private Map<String, Object> properties; // NOSONAR
-	private Map<String, Object> eventFunctions; //NOSONAR
+	private Map<String, Object> eventFunctions; // NOSONAR
 	private String rootComponent;
 	private Map<String, ComponentDefinition> componentDefinition;
-	
+
 	public Page(Page page) {
-		
+
 		super(page);
 		this.device = page.device;
 		this.translations = CloneUtil.cloneMapStringMap(page.translations);
@@ -52,28 +54,29 @@ public class Page extends AbstractOverridableDTO<Page> {
 
 		if (base != null) {
 
-			return FlatMapUtil.flatMapMonoWithNull(
-			        () -> DifferenceApplicator.apply(this.translations, base.translations),
+			return FlatMapUtil
+			        .flatMapMonoWithNull(() -> DifferenceApplicator.apply(this.translations, base.translations),
 
-			        t -> DifferenceApplicator.apply(this.properties, base.properties),
+			                t -> DifferenceApplicator.apply(this.properties, base.properties),
 
-			        (t, p) -> DifferenceApplicator.apply(this.eventFunctions, base.eventFunctions),
+			                (t, p) -> DifferenceApplicator.apply(this.eventFunctions, base.eventFunctions),
 
-			        (t, p, e) -> DifferenceApplicator.apply(this.componentDefinition, base.componentDefinition),
+			                (t, p, e) -> DifferenceApplicator.apply(this.componentDefinition, base.componentDefinition),
 
-			        (t, p, e, c) ->
-					{
-				        this.translations = (Map<String, Map<String, String>>) t;
-				        this.properties = (Map<String, Object>) p;
-				        this.eventFunctions = (Map<String, Object>) e;
-				        this.componentDefinition = (Map<String, ComponentDefinition>) c;
+			                (t, p, e, c) ->
+							{
+				                this.translations = (Map<String, Map<String, String>>) t;
+				                this.properties = (Map<String, Object>) p;
+				                this.eventFunctions = (Map<String, Object>) e;
+				                this.componentDefinition = (Map<String, ComponentDefinition>) c;
 
-				        this.device = base.device;
-				        if (this.rootComponent == null)
-					        this.rootComponent = base.rootComponent;
+				                this.device = base.device;
+				                if (this.rootComponent == null)
+					                this.rootComponent = base.rootComponent;
 
-				        return Mono.just(this);
-			        });
+				                return Mono.just(this);
+			                })
+			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Page.applyOverride"));
 		}
 		return Mono.just(this);
 	}
@@ -107,6 +110,7 @@ public class Page extends AbstractOverridableDTO<Page> {
 			        return Mono.just(obj);
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Page.makeOverride"));
 	}
 }

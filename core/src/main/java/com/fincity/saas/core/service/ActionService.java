@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.Action;
 import com.fincity.saas.core.repository.ActionRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ActionService extends AbstractOverridableDataService<Action, ActionRepository> {
@@ -38,6 +40,6 @@ public class ActionService extends AbstractOverridableDataService<Action, Action
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ActionService.updatableEntity"));
 	}
 }

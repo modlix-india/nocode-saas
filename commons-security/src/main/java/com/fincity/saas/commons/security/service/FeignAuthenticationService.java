@@ -11,8 +11,10 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class FeignAuthenticationService implements IAuthenticationService {
@@ -52,7 +54,8 @@ public class FeignAuthenticationService implements IAuthenticationService {
 			                });
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FeignAuthenticationService.getAuthentication"));
 	}
 
 	private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken,

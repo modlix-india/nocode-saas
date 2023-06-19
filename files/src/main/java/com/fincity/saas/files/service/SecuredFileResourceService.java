@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.files.dto.FilesSecuredAccessKey;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
@@ -32,6 +33,7 @@ import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
 @Service
@@ -119,6 +121,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 		        (hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
 
 		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
 		        .switchIfEmpty(this.filesMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                FilesMessageResourceService.SECURED_KEY_CREATION_ERROR));
 	}

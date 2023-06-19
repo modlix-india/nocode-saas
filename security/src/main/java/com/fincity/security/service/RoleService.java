@@ -23,6 +23,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.RoleDAO;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
@@ -31,6 +32,7 @@ import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRoleRecord, ULong, Role, RoleDAO> {
@@ -235,8 +237,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 								        return e;
 							        })
 
-				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId, roleId));
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.assignPermissionToRole"))
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId,
+			                        roleId));
 
 		        });
 
@@ -253,7 +257,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		        roleManaged -> clientService.isBeingManagedBy(loggedInClientId, permissionClientId)
 		                .flatMap(BooleanUtil::safeValueOfWithEmpty)
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.checkPermissionAndRoleClientsAreManaged"));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")
@@ -297,8 +301,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 								        return e;
 							        })
 
-				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.removePermissionFromRole"))
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId,
+			                        roleId));
 
 		        });
 
@@ -330,8 +336,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		        (roleUsers, roleClientUsers, finalRoleUsers) -> finalRoleUsers.isEmpty() ? Mono.just(true)
 		                : this.dao.removePemissionFromUsers(permissionId, finalRoleUsers)
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.removePermissionsFromUsers"))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
 	}
 
 	public Mono<List<ULong>> getPermissionsFromRole(ULong roleId) {
@@ -357,9 +364,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 		        (ca, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.getPermissionsFromGivenRole"))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
 
 	}
-	
+
 }

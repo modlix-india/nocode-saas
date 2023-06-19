@@ -17,12 +17,14 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientPasswordPolicyDAO;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ClientPasswordPolicyService extends
@@ -183,6 +185,7 @@ public class ClientPasswordPolicyService extends
 
 		        (ca, passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex) -> this
 		                .checkStrengthOfPassword(passwordPolicy, password))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
 		        .defaultIfEmpty(true);
 	}
 

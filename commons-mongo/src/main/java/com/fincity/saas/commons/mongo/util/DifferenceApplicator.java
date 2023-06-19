@@ -10,12 +10,14 @@ import com.fincity.nocode.kirun.engine.model.Statement;
 import com.fincity.nocode.kirun.engine.model.StatementGroup;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.util.LogUtil;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -171,8 +173,9 @@ public class DifferenceApplicator {
 				        override.setDescription(base.getDescription());
 
 			        override.setOverride(true);
-			        return Mono.justOrEmpty(override);
-		        });
+			        return Mono.justOrEmpty((Object) override);
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -208,8 +211,9 @@ public class DifferenceApplicator {
 				        override.setNamespace(base.getNamespace());
 
 			        override.setOverride(true);
-			        return Mono.justOrEmpty(override);
-		        });
+			        return Mono.justOrEmpty((Object) override);
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply"));
 	}
 
 	private static Position apply(Position override, Position base) {
@@ -248,10 +252,11 @@ public class DifferenceApplicator {
 			        override.setSteps((Map<String, Statement>) stepMap);
 			        override.setStepGroups((Map<String, StatementGroup>) stepGroupMap);
 
-			        return Mono.justOrEmpty(override);
+			        return Mono.justOrEmpty((Object) override);
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply"));
 	}
 
 	private DifferenceApplicator() {

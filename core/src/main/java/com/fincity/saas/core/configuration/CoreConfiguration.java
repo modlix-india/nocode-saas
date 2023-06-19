@@ -4,6 +4,8 @@ import javax.annotation.PostConstruct;
 
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,11 +15,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.configuration.AbstractMongoConfiguration;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 
 import io.r2dbc.pool.ConnectionPool;
@@ -51,6 +55,14 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 		this.objectMapper.registerModule(new KIRuntimeSerializationModule());
 		this.objectMapper.registerModule(
 		        new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageService));
+		Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
+		FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
+
+			if (name != null)
+				log.debug("{} - {}", name, v);
+			else
+				log.debug(v.toString());
+		}));
 	}
 
 	@Bean

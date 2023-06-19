@@ -21,6 +21,7 @@ import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FilesAccessPathDao;
 import com.fincity.saas.files.dto.FilesAccessPath;
@@ -28,6 +29,7 @@ import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class FilesAccessPathService
@@ -82,7 +84,8 @@ public class FilesAccessPathService
 		        e -> this.checkAccessNGetClientCode(e.getResourceType()
 		                .toString(), e.getClientCode()),
 
-		        (e, clientCode) -> Mono.just(e));
+		        (e, clientCode) -> Mono.just(e))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.read"));
 	}
 
 	@Override
@@ -115,7 +118,8 @@ public class FilesAccessPathService
 			        e.setWriteAccess(entity.isWriteAccess());
 
 			        return Mono.just(e);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.updatableEntity"));
 	}
 
 	@Override
@@ -153,7 +157,8 @@ public class FilesAccessPathService
 				        map.put(PATH, fields.get(PATH));
 
 			        return Mono.just(map);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.updatableFields"));
 	}
 
 	@Override
@@ -232,7 +237,8 @@ public class FilesAccessPathService
 		                new ComplexCondition()
 		                        .setConditions(List.of(newCondition, new FilterCondition().setField("clientCode")
 		                                .setValue(ca.getLoggedInFromClientCode())))
-		                        .setOperator(ComplexConditionOperator.AND)));
+		                        .setOperator(ComplexConditionOperator.AND)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.readPageFilter"));
 	}
 
 	public Mono<String> checkAccessNGetClientCode(String resourceType) {
@@ -241,7 +247,8 @@ public class FilesAccessPathService
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.checkAccessNGetClientCode(resourceType, ca.getLoggedInFromClientCode()));
+		        ca -> this.checkAccessNGetClientCode(resourceType, ca.getLoggedInFromClientCode()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));
 	}
 
 	public Mono<String> checkAccessNGetClientCode(String resourceType, String clientCode) {
@@ -264,8 +271,8 @@ public class FilesAccessPathService
 		        (ca, managed) ->
 				{
 
-			        if (!managed.booleanValue()
-			                || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType), ca.getAuthorities())) {
+			        if (!managed.booleanValue() || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
+			                ca.getAuthorities())) {
 				        return msgService.throwMessage(HttpStatus.FORBIDDEN,
 				                FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
 			        }
@@ -273,7 +280,8 @@ public class FilesAccessPathService
 			        return Mono.just(ca.getLoggedInFromClientCode());
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));
 
 	}
 
@@ -291,7 +299,8 @@ public class FilesAccessPathService
 		        e -> this.checkAccessNGetClientCode(e.getResourceType()
 		                .toString(), e.getClientCode()),
 
-		        (e, clientCode) -> super.delete(id));
+		        (e, clientCode) -> super.delete(id))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.delete"));
 	}
 
 	public Mono<Boolean> hasReadAccess(String actualPath, String clientCode, FilesAccessPathResourceType resourceType) {
@@ -316,6 +325,7 @@ public class FilesAccessPathService
 			                        .map(GrantedAuthority::getAuthority)
 			                        .toList());
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasReadAccess"))
 		        .defaultIfEmpty(false);
 
 	}
@@ -343,6 +353,7 @@ public class FilesAccessPathService
 			                        .map(GrantedAuthority::getAuthority)
 			                        .toList());
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasWriteAccess"))
 		        .defaultIfEmpty(false);
 	}
 }

@@ -11,10 +11,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.model.ChecksumObject;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ManifestService {
@@ -40,7 +42,9 @@ public class ManifestService {
 				        () -> appService.read(appCode, appCode, clientCode),
 
 				        app -> cacheService.put(CACHE_NAME_MANIFEST, new ChecksumObject(this.manifestFromApp(app)),
-				                appCode, "-", clientCode))));
+				                appCode, "-", clientCode))))
+
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ManifestService.getManifest"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -52,10 +56,10 @@ public class ManifestService {
 		Map<String, Object> props = app.getProperties();
 
 		Map<String, Object> manifest = (Map<String, Object>) props.get("manifest");
-		
+
 		if (manifest == null)
 			return "";
-		
+
 		try {
 			return this.mapper.writeValueAsString(manifest);
 		} catch (JsonProcessingException e) {

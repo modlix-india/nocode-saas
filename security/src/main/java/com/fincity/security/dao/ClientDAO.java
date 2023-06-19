@@ -36,6 +36,7 @@ import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
@@ -45,6 +46,7 @@ import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -221,7 +223,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 			                .map(count -> count > 0);
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientDAO.addDefaultPackages"));
 	}
 
 	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
