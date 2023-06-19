@@ -41,6 +41,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
@@ -56,6 +57,7 @@ import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -189,6 +191,7 @@ public class FunctionExecutionController {
 		        },
 
 		        (ca, fun, schRepo, args, output) -> this.extractOutputEvent(output))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
 		        .switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
 

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Template;
@@ -20,6 +21,7 @@ import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class SMTPService extends AbstractEmailService implements IAppEmailService {
@@ -96,7 +98,8 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
 				                CoreMessageResourceService.MAIL_SEND_ERROR, mex.getMessage(), mex);
 			        }
 		        })
-		        .map(e -> true);
+		        .map(e -> true)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
 
 	}
 

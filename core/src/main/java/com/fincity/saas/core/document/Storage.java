@@ -10,12 +10,14 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.LogUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -67,7 +69,8 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 				        this.subApplyOverride(base);
 
 				        return Mono.just(this);
-			        });
+			        })
+			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.applyOverride"));
 		}
 		return Mono.just(this);
 	}
@@ -118,7 +121,8 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 			        return Mono.just(obj);
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.makeOverride"));
 	}
 
 	private void subMakeOverride(Storage base, Storage obj) {

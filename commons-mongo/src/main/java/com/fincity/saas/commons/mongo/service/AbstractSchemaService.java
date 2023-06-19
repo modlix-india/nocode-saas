@@ -17,12 +17,14 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R extends IOverridableDataRepository<D>>
         extends AbstractOverridableDataService<D, R> {
@@ -93,7 +95,7 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 			                .setPermission(entity.getPermission());
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractSchemaService.updatableEntity"));
 	}
 
 	public ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema> getSchemaRepository(String appCode,

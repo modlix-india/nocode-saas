@@ -22,6 +22,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
@@ -29,6 +30,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppRecord, ULong, App, AppDAO> {
@@ -87,6 +89,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        (ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp)
 
 		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.create"))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
@@ -236,6 +239,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                                : Mono.empty());
 		        }, (ca, cliAccess, changed) -> this.evict(appId, clientId)
 		                .map(e -> changed))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccess"))
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
@@ -254,7 +258,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                typNCode.getT2()),
 
 		        (app, typNCode, removed) -> cacheService.evict(CACHE_NAME_APP_READ_ACCESS, app.getAppCode(), ":",
-		                typNCode.getT2()));
+		                typNCode.getT2()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.evict"));
 	}
 
 	public Mono<Boolean> removeClient(ULong appId, ULong accessId) {
@@ -355,8 +360,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                                .flatMap(this.clientService::getClientInfoById)
 			                                .collectList();
 		                        })
+		                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppClients"))
 
-		                , ca.getClientCode(), ":", appCode));
+		                , ca.getClientCode(), ":", appCode))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppClients"));
 	}
 
 	public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong clientId, boolean isWriteAccess) {

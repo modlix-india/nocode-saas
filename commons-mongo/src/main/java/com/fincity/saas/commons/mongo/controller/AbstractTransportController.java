@@ -13,8 +13,10 @@ import com.fincity.saas.commons.mongo.document.Transport;
 import com.fincity.saas.commons.mongo.model.TransportRequest;
 import com.fincity.saas.commons.mongo.repository.TransportRepository;
 import com.fincity.saas.commons.mongo.service.AbstractTransportService;
+import com.fincity.saas.commons.util.LogUtil;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public class AbstractTransportController
         extends AbstractOverridableDataController<Transport, TransportRepository, AbstractTransportService> {
@@ -42,7 +44,7 @@ public class AbstractTransportController
 	}
 
 	@PostMapping("/createAndApply")
-	public Mono<ResponseEntity<Transport>> createApply(@RequestBody Transport entity) { 
+	public Mono<ResponseEntity<Transport>> createApply(@RequestBody Transport entity) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -50,6 +52,8 @@ public class AbstractTransportController
 
 		        c -> this.service.applyTransport(c.getId()),
 
-		        (c, applied) -> Mono.just(ResponseEntity.ok(c)));
+		        (c, applied) -> Mono.just(ResponseEntity.ok(c)))
+
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportController.createApply"));
 	}
 }

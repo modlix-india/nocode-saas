@@ -11,11 +11,13 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.repository.PageRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class PageService extends AbstractOverridableDataService<Page, PageRepository> {
@@ -54,7 +56,7 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.updatableEntity"));
 	}
 
 	@Override
@@ -99,8 +101,8 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 					                        return this.read(props.get("loginPage")
 					                                .toString(), appCode, clientCode);
-				                        });
-			                });
+				                        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
+			                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
 		        });
 	}
 
@@ -142,7 +144,8 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 			                .collect(Collectors.toMap(Entry::getKey, Entry::getValue)));
 
 			        return Mono.just(object);
-		        }).defaultIfEmpty(page);
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.applyChange"))
+		        .defaultIfEmpty(page);
 
 	}
 }

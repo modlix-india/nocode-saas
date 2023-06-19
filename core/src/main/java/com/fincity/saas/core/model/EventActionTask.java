@@ -8,12 +8,14 @@ import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.EventActionTaskType;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Data
 @Accessors(chain = true)
@@ -21,11 +23,11 @@ import reactor.core.publisher.Mono;
 public class EventActionTask implements IDifferentiable<EventActionTask>, Comparable<EventActionTask>, Serializable {
 
 	private static final long serialVersionUID = 667994849634307890L;
-	
+
 	private String key;
 	private Integer order;
 	private EventActionTaskType type;
-	private Map<String, Object> parameters; //NOSONAR
+	private Map<String, Object> parameters; // NOSONAR
 
 	public EventActionTask(EventActionTask eat) {
 		this.key = eat.key;
@@ -56,7 +58,8 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
 			        eat.parameters = (Map<String, Object>) params;
 
 			        return Mono.just(eat);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventActionTask.extractDifference"));
 
 	}
 
@@ -86,7 +89,8 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
 			                return Mono.just(this);
 		                }
 
-				);
+				)
+		                .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventActionTask.applyOverride"));
 	}
 
 	@Override

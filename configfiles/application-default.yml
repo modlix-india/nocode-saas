@@ -51,6 +51,7 @@ logging:
     sun.rmi: INFO
     javax.management.remote.rmi: INFO
     org.springframework.beans.factory.support: INFO
+    org.springframework.web.client.RestTemplate: INFO
 
 mq:
   host: localhost

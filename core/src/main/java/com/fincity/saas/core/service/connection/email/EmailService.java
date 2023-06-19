@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.service.ConnectionService;
@@ -19,6 +20,7 @@ import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.TemplateService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 
 @Service
@@ -81,6 +83,7 @@ public class EmailService {
 
 		        (actup, conn, mailService, template) -> mailService.sendMail(addresses, template, templateData, conn)
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "EmailService.sendEmail"));
 	}
 }
