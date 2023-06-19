@@ -6,10 +6,12 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.EventDefinition;
 import com.fincity.saas.core.repository.EventDefinitionRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class EventDefinitionService extends AbstractOverridableDataService<EventDefinition, EventDefinitionRepository> {
@@ -20,7 +22,7 @@ public class EventDefinitionService extends AbstractOverridableDataService<Event
 
 	@Override
 	protected Mono<EventDefinition> updatableEntity(EventDefinition entity) {
-		
+
 		return FlatMapUtil.flatMapMono(
 
 		        () -> this.read(entity.getId()),
@@ -36,7 +38,8 @@ public class EventDefinitionService extends AbstractOverridableDataService<Event
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventDefinitionService.updatableEntity"));
 	}
 
 }

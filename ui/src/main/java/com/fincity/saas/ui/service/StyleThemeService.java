@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.document.StyleTheme;
 import com.fincity.saas.ui.repository.StyleThemeRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class StyleThemeService extends AbstractOverridableDataService<StyleTheme, StyleThemeRepository> {
@@ -37,9 +39,9 @@ public class StyleThemeService extends AbstractOverridableDataService<StyleTheme
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleThemeService.updatableEntity"));
 	}
-	
+
 	@Override
 	public String getObjectName() {
 		return "Theme";

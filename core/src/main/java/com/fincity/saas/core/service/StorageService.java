@@ -12,11 +12,13 @@ import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.repository.StorageRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class StorageService extends AbstractOverridableDataService<Storage, StorageRepository> {
@@ -63,7 +65,8 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 				        return super.create(entity);
 			        }
 
-			);
+			)
+			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.create"));
 		}
 
 		return super.create(entity);
@@ -107,7 +110,7 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.updatableEntity"));
 	}
 
 	public Mono<Schema> getSchema(Storage storage) {

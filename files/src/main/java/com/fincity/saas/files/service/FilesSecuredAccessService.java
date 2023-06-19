@@ -9,12 +9,14 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FilesSecuredAccessKeyDao;
 import com.fincity.saas.files.dto.FilesSecuredAccessKey;
 import com.fincity.saas.files.jooq.tables.records.FilesSecuredAccessKeyRecord;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class FilesSecuredAccessService extends
@@ -47,8 +49,11 @@ public class FilesSecuredAccessService extends
 				                                return Mono.just(accessKeyObject.getPath());
 			                                return Mono.empty();
 		                                })
+		                                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+		                                        "FilesSecuredAccessService.getAccessPathByKey"))
 
-						));
+						))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesSecuredAccessService.getAccessPathByKey"));
 	}
 
 	private Mono<Boolean> checkAccountCount(FilesSecuredAccessKey accessObject) { // edit here

@@ -32,6 +32,7 @@ import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
@@ -47,6 +48,7 @@ import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.util.PasswordUtil;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -343,8 +345,9 @@ public class ClientService
 								        return e;
 							        })
 
-				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.assignPackageToClient"))
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
 
 		        }
 
@@ -360,7 +363,8 @@ public class ClientService
 		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 		        clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
-		                .flatMap(BooleanUtil::safeValueOfWithEmpty));
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.checkClientAndPackageManaged"));
 	}
 
 	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
@@ -433,7 +437,7 @@ public class ClientService
 								        return e;
 							        })
 
-				);
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.removePackageFromClient"));
 		        })
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
@@ -456,10 +460,11 @@ public class ClientService
 		        }
 
 		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"))
 		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(HttpStatus.CONFLICT,
 		                SecurityMessageResourceService.USER_ALREADY_EXISTS, request.getEmailId()));
 
-		return FlatMapUtil.flatMapMono(
+		Mono<Boolean> mono = FlatMapUtil.flatMapMono(
 
 		        () -> checkEmailExistsInIndividualClients,
 
@@ -500,6 +505,7 @@ public class ClientService
 		                .map(e -> true)
 
 		);
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
 	}
 
 	private Mono<Tuple2<User, String>> registerUser(ClientRegistrationRequest request, Client client) {
@@ -526,7 +532,7 @@ public class ClientService
 		return this.userService.createForRegistration(user)
 		        .map(e -> Tuples.of(e, finPassword));
 	}
-	
+
 	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
 
@@ -542,8 +548,9 @@ public class ClientService
 
 		        (ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchPackages"))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
 
 	}
 
@@ -575,7 +582,8 @@ public class ClientService
 
 		        (c, clnt) -> this.appService.addClientAccessAfterRegistration(ca.getUrlAppCode(), clnt.getId(), false),
 
-		        (c, clnt, created) -> Mono.just(clnt));
+		        (c, clnt, created) -> Mono.just(clnt))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.registerClient"));
 
 	}
 }

@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.Workflow;
 import com.fincity.saas.core.repository.WorkflowRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class WorkflowService extends AbstractOverridableDataService<Workflow, WorkflowRepository> {
@@ -60,7 +62,7 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 			        }
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "WorkflowService.updatableEntity"));
 	}
 
 	private Mono<Workflow> addSchedularForTriggers(Workflow entity) {
@@ -86,7 +88,8 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 
 		        this::removeSchedularForTriggers,
 
-		        (entity, removed) -> super.delete(id));
+		        (entity, removed) -> super.delete(id))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "WorkflowService.delete"));
 	}
 
 }

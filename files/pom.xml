@@ -20,7 +20,7 @@
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
-		<nocode-flatmap-util-version>1.2.0</nocode-flatmap-util-version>
+		<nocode-flatmap-util-version>1.3.0</nocode-flatmap-util-version>
 		<img-scalr.version>4.2</img-scalr.version>
 	</properties>
 	<dependencies>
