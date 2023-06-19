@@ -321,10 +321,15 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 			        else if (roleClientUsers.isEmpty())
 				        return this.dao.omitUsersListFromDifferentRole(roleId, permissionId, roleUsers);
 
-			        roleClientUsers.stream()
-			                .forEach(roleUsers::remove);
-
-			        return this.dao.omitUsersListFromDifferentRole(roleId, permissionId, roleUsers);
+			        List<ULong> filteredRoleUsers = new ArrayList<>(); 
+			        
+			         roleClientUsers.stream()
+			                .forEach(clientUser -> {
+			                	if(roleUsers.contains(clientUser))
+			                		filteredRoleUsers.add(clientUser);
+			                });
+			         
+			        return this.dao.omitUsersListFromDifferentRole(roleId, permissionId, filteredRoleUsers);
 		        },
 
 		        (roleUsers, roleClientUsers, finalRoleUsers) -> finalRoleUsers.isEmpty() ? Mono.just(true)
