@@ -203,12 +203,8 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		return Flux.from(this.dslContext.select(SECURITY_USER.ID)
 		        .from(SECURITY_USER)
 		        .where(SECURITY_USER.CLIENT_ID.eq(clientId)))
-		        .collectList()
-		        .flatMap(records -> records == null || records.isEmpty() ? Mono.just(new ArrayList<>())
-		                : Mono.just(records.stream()
-		                        .map(Record1::value1)
-		                        .filter(Objects::nonNull)
-		                        .toList()));
+		        .map(Record1::value1)
+		        .collectList();
 	}
 
 	public Mono<List<ULong>> omitUsersListFromDifferentRole(ULong roleId, ULong permissionId,
@@ -288,7 +284,7 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		)
 		        .map(e -> e.into(Permission.class))
 		        .collectList();
-		
+
 	}
 
 }
