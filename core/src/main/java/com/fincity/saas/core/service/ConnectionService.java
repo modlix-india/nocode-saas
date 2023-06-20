@@ -21,6 +21,7 @@ import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceServic
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.enums.ConnectionType;
@@ -28,6 +29,7 @@ import com.fincity.saas.core.repository.ConnectionRepository;
 
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
@@ -124,7 +126,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        })
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.updatableEntity"));
 	}
 
 	public Mono<Connection> find(String appCode, String clientCode, ConnectionType type) {

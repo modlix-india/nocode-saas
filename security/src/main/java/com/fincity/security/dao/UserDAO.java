@@ -44,6 +44,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.ByteUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.PastPassword;
@@ -60,6 +61,7 @@ import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 
 @Component
@@ -380,7 +382,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			                .execute() > 0);
 		        }
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.isBeingManagedBy"));
 	}
 
 	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {
@@ -558,7 +560,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.addDefaultRoles"));
 	}
 
 	public Mono<Boolean> makeUserActiveIfInActive(BigInteger id) {

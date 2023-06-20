@@ -9,10 +9,12 @@ import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.EqualsUtil;
+import com.fincity.saas.commons.util.LogUtil;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Data
 @NoArgsConstructor
@@ -56,7 +58,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<ComponentDefinition> extractDifference(ComponentDefinition incoming) { //NOSONAR
+	public Mono<ComponentDefinition> extractDifference(ComponentDefinition incoming) { // NOSONAR
 		// Cannot split the logic
 
 		return FlatMapUtil.flatMapMono(
@@ -73,7 +75,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 
 		        (propDiff, childDiff, styleDiff) ->
 
-				FlatMapUtil.flatMapConsolidate(
+				FlatMapUtil.flatMapMonoConsolidate(
 				        () -> DifferenceExtractor.extract(incoming.getBindingPath(), this.getBindingPath())
 				                .defaultIfEmpty(Map.of()),
 
@@ -92,7 +94,8 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 
 				        (b1, b2, b3, b4, b5) -> DifferenceExtractor
 				                .extract(incoming.getBindingPath6(), this.getBindingPath6())
-				                .defaultIfEmpty(Map.of())),
+				                .defaultIfEmpty(Map.of()))
+				        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComponentDefinition.extractDifference")),
 
 		        (propDiff, childDiff, styleDiff, bPaths) ->
 				{
@@ -136,11 +139,12 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 				        cd.setBindingPath((Map<String, String>) bPaths.getT6());
 
 			        return Mono.just(cd);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComponentDefinition.extractDifference"));
 	}
 
 	@SuppressWarnings("unchecked")
-	public Mono<ComponentDefinition> applyOverride(ComponentDefinition base) { //NOSONAR
+	public Mono<ComponentDefinition> applyOverride(ComponentDefinition base) { // NOSONAR
 		// Cannot split the logic
 		if (base == null)
 			return this.isOverride() ? Mono.empty() : Mono.justOrEmpty(this);
@@ -205,6 +209,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 				        this.setBindingPath6((Map<String, String>) bPath6);
 
 			        return Mono.justOrEmpty(this);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComponentDefinition.applyOverride"));
 	}
 }

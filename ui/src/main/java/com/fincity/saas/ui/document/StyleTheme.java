@@ -10,12 +10,14 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.LogUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -49,7 +51,7 @@ public class StyleTheme extends AbstractOverridableDTO<StyleTheme> {
 					{
 				        this.variables = (Map<String, Map<String, String>>) v;
 				        return Mono.just(this);
-			        });
+			        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleTheme.applyOverride"));
 		}
 		return Mono.just(this);
 	}

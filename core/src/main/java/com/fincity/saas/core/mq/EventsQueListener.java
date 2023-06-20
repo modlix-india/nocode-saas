@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mq.events.EventQueObject;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.EventActionTaskType;
 import com.fincity.saas.core.mq.action.services.EventCallFunctionService;
 import com.fincity.saas.core.mq.action.services.EventEmailService;
@@ -24,6 +25,7 @@ import com.rabbitmq.client.Channel;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Component
 public class EventsQueListener {
@@ -52,7 +54,7 @@ public class EventsQueListener {
 	public Mono<Void> receive(@Payload EventQueObject message, Channel channel,
 	        @Header(AmqpHeaders.DELIVERY_TAG) long tag) {
 
-		return FlatMapUtil.flatMapMono(
+		Mono<Boolean> receivedMono = FlatMapUtil.flatMapMono(
 
 		        () -> eventActionService.read(message.getEventName(), message.getAppCode(), message.getClientCode()),
 
@@ -76,7 +78,12 @@ public class EventsQueListener {
 			                .reduce((a, b) -> a.booleanValue() && b.booleanValue());
 		        }
 
-		)
+		);
+
+		if (message.getXDebug() != null) {
+			receivedMono = receivedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, message.getXDebug()));
+		}
+		return receivedMono.contextWrite(Context.of(LogUtil.METHOD_NAME, "EventsQueListener.receive"))
 		        .then();
 
 	}

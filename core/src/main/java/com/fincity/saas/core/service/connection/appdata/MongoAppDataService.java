@@ -45,6 +45,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
@@ -68,6 +69,7 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class MongoAppDataService extends RedisPubSubAdapter<String, String> implements IAppDataService {
@@ -186,8 +188,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                .asObjectId()
 			                .getValue()
 			                .toHexString());
-			        return Mono.just(doc);
-		        });
+			        return Mono.just((Map<String, Object>) doc);
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MonogAppDataService.create"));
 
 	}
 
@@ -238,7 +241,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				                        return orgDoc;
 			                        }),
 
-			                originalDocument -> DifferenceApplicator.apply(overridableObject, originalDocument));
+			                originalDocument -> DifferenceApplicator.apply(overridableObject, originalDocument))
+			                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
 		        },
 
 		        (ca, schema, overridableObject) ->
@@ -278,10 +282,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				        return Mono.empty();
 
 			        return addVersion(conn, storage, dataObject, objectId, ca, doc);
-		        }, (ca, scheme, overridableObject, je, result, doc, versionResult) -> {
+		        },
+
+		        (ca, scheme, overridableObject, je, result, doc, versionResult) ->
+				{
 			        doc.append(ID, key);
-			        return Mono.just(doc);
-		        });
+			        return Mono.just((Map<String, Object>) doc);
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
 	}
 
 	private Mono<InsertOneResult> addVersion(Connection conn, Storage storage, DataObject dataObject,
@@ -328,6 +336,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        doc.append(ID, id);
 			        return Mono.just((Map<String, Object>) doc);
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.read"))
 		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id)));
 	}
@@ -345,6 +354,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 		                .findOneAndDelete(Filters.eq(ID, objectId)))
 		                .map(e -> true))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.delete"))
 		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id)));
 
@@ -387,8 +397,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        return Mono.just(page.getOffset() + list.size());
 		        },
 
-		        (ca, bsonCondition, list, cnt) -> Mono
-		                .just(PageableExecutionUtils.getPage(list, page, cnt::longValue)));
+		        (ca, bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readPage"));
 
 	}
 

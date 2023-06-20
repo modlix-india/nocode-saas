@@ -19,11 +19,13 @@ import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ClientUrlService
@@ -74,6 +76,7 @@ public class ClientUrlService
 				        return Mono.just(cu);
 			        return Mono.empty();
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
 		        .switchIfEmpty(msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND, CLIENT_URL, id));
 	}
@@ -119,6 +122,7 @@ public class ClientUrlService
 
 			        return super.create(ent);
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 		        .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI));
 	}

@@ -23,6 +23,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.PackageDAO;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
@@ -31,6 +32,7 @@ import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class PackageService extends
@@ -231,7 +233,7 @@ public class PackageService extends
 		        ca ->
 
 				ca.isSystemClient() ? Mono.just(true)
-						
+
 				        : this.read(packageId)
 				                .flatMap(packagel -> this.clientService.isBeingManagedBy(
 				                        ULongUtil.valueOf(ca.getLoggedInFromClientId()),
@@ -240,8 +242,9 @@ public class PackageService extends
 
 		        (ca, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.getRolesFromGivenPackage"))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
 
 	}
 
@@ -303,8 +306,9 @@ public class PackageService extends
 								        return e;
 							        })
 
-				).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				        SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.assignRoleToPackage"))
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                        SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
 		        });
 
 	}
@@ -320,7 +324,7 @@ public class PackageService extends
 		        roleManaged -> this.clientService.isBeingManagedBy(loggedInClientId, roleClientId)
 		                .flatMap(BooleanUtil::safeValueOfWithEmpty)
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.checkRoleAndPackageClientsAreManaged"));
 
 	}
 
@@ -351,7 +355,8 @@ public class PackageService extends
 			                                                .getClientId()),
 			                                        packageRecord.getClientId(), roleRecord.getClientId())
 
-									),
+									).contextWrite(
+									        Context.of(LogUtil.METHOD_NAME, "PackageService.removeRoleFromPackage")),
 
 			                (ca, sysOrManaged) -> this.dao.checkRoleFromBasePackage(roleId)
 			                        .flatMap(isBase ->
@@ -378,6 +383,7 @@ public class PackageService extends
 
 				);
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.removeRoleFromPackage"))
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
 
@@ -393,7 +399,7 @@ public class PackageService extends
 
 		        usersList -> this.dao.removeRoleFromUsers(roleId, usersList)
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.removeRoleFromUsers"));
 	}
 
 	private Mono<Boolean> removePermissionsFromUsers(ULong packageId, ULong roleId) {
@@ -413,7 +419,7 @@ public class PackageService extends
 		                ? userService.removeFromPermissionList(usersList, permissionsList)
 		                : Mono.just(true)
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.removePermissionsFromUsers"));
 	}
 
 }

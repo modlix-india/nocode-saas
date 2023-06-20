@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Template;
 import com.fincity.saas.core.model.ProcessedEmailDetails;
@@ -25,6 +26,7 @@ import freemarker.template.TemplateExceptionHandler;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -44,11 +46,11 @@ public abstract class AbstractEmailService {
 
 	@Autowired
 	protected CoreMessageResourceService msgService;
-	
+
 	protected Logger logger;
-	
+
 	public AbstractEmailService() {
-		
+
 		logger = LoggerFactory.getLogger(this.getClass());
 	}
 
@@ -70,7 +72,8 @@ public abstract class AbstractEmailService {
 		                .setSubject(temp.getOrDefault("subject", ""))
 		                .setBody(temp.getOrDefault("body", "")))
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractEmailService.getProcessedEmailDetails"));
 	}
 
 	protected Mono<Map<String, String>> getProcessedTemplate(String language, Template template,
@@ -161,7 +164,8 @@ public abstract class AbstractEmailService {
 			        }
 
 			        return Mono.just(finList);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractEmailService.getToAddress"));
 
 	}
 

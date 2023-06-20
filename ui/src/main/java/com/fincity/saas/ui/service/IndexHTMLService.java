@@ -9,10 +9,12 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.model.ChecksumObject;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class IndexHTMLService {
@@ -37,7 +39,9 @@ public class IndexHTMLService {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_INDEX,
 		        () -> FlatMapUtil.flatMapMonoWithNull(() -> appService.read(appCode, appCode, clientCode),
-		                app -> this.indexFromApp(app, appCode, clientCode)),
+		                app -> this.indexFromApp(app, appCode, clientCode))
+		                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+		                        "IndexHTMLService.getIndexHTML")),
 		        appCode, "-", clientCode);
 	}
 

@@ -13,6 +13,7 @@ import com.fincity.nocode.kirun.engine.model.Statement;
 import com.fincity.nocode.kirun.engine.model.StatementGroup;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.util.LogUtil;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
@@ -20,10 +21,13 @@ import com.google.gson.JsonObject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public class DifferenceExtractor {
+
+	private static final String DIFFERENCE_EXTRACTOR_EXTRACT = "DifferenceExtractor.extract";
 
 	public static Mono<Map<String, ?>> extract(Map<String, ?> incoming, Map<String, ?> existing) { // NOSONAR
 
@@ -218,8 +222,9 @@ public class DifferenceExtractor {
 			        }
 
 			        st.setOverride(true);
-			        return changed ? Mono.just(st) : Mono.empty();
-		        });
+			        return changed ? Mono.just((Object) st) : Mono.empty();
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
 	}
 
 	private static Mono<Object> extract(Statement incoming, Statement existing) {
@@ -259,8 +264,9 @@ public class DifferenceExtractor {
 
 			        st.setOverride(true);
 
-			        return changed ? Mono.just(st) : Mono.empty();
-		        });
+			        return changed ? Mono.just((Object) st) : Mono.empty();
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
 	}
 
 	private static Position extract(Position incoming, Position existing) {
@@ -304,10 +310,11 @@ public class DifferenceExtractor {
 			        fd.setSteps((Map<String, Statement>) stepDiff);
 			        fd.setStepGroups((Map<String, StatementGroup>) stepGroupDiff);
 
-			        return Mono.just(fd);
+			        return Mono.just((Object) fd);
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
 	}
 
 	private DifferenceExtractor() {

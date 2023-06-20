@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.data.CircularLinkedList;
 import com.fincity.saas.commons.util.data.DoublePointerNode;
 
@@ -35,9 +36,19 @@ public class EventCreationService {
 	public Mono<Boolean> createEvent(EventQueObject queObj) {
 
 		this.nextRoutingKey = nextRoutingKey.getNext();
-		return Mono.fromCallable(() -> {
-			amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), queObj);
-			return true;
-		});
+		return Mono.just(queObj)
+		        .flatMap(q -> Mono.deferContextual(cv ->
+				{
+			        if (!cv.hasKey(LogUtil.DEBUG_KEY))
+				        return Mono.just(q);
+			        q.setXDebug(cv.get(LogUtil.DEBUG_KEY)
+			                .toString());
+			        return Mono.just(q);
+		        }))
+		        .flatMap(q -> Mono.fromCallable(() ->
+				{
+			        amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), q);
+			        return true;
+		        }));
 	}
 }

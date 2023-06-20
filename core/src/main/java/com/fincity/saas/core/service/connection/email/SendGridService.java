@@ -9,6 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Template;
@@ -16,6 +17,7 @@ import com.fincity.saas.core.model.ProcessedEmailDetails;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class SendGridService extends AbstractEmailService implements IAppEmailService {
@@ -53,7 +55,8 @@ public class SendGridService extends AbstractEmailService implements IAppEmailSe
 			                        CoreMessageResourceService.MAIL_SEND_ERROR,
 			                        "Error with body : " + e.getResponseBodyAsString(), e);
 		                })
-		                .map(e -> true));
+		                .map(e -> true))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
 
 	}
 
