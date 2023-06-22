@@ -106,11 +106,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType) {
+	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType, false)
+		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType, onlyActiveUsers)
 		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0)))
 		                .flatMap(this.dao::setPermissions),
 
@@ -842,6 +842,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> resetPasswordRequest(AuthenticationRequest authRequest, ServerHttpRequest request) {
 
+		LogUtil.logIfDebugKey(logger, "Requesting reset password.");
+
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
@@ -855,7 +857,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        }
 
 			        return this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlAppCode(),
-			                authRequest.getIdentifierType());
+			                authRequest.getIdentifierType(), false);
 		        },
 
 		        (ca, cuTup) -> this.clientService.getClientBy(ca.getUrlClientCode())
