@@ -448,7 +448,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		var limitQuery = query.limit(2);
 
-		return Flux.from(limitQuery)
+		return Mono.just(limitQuery)
+		        .flatMap(LogUtil.logIfDebugKey(logger, "User Query : {}", limitQuery.toString()))
+		        .flatMapMany(Flux::from)
 		        .map(e -> e.into(User.class))
 		        .collectList();
 	}
