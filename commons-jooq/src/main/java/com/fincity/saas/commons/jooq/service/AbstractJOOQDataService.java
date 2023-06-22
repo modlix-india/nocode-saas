@@ -3,6 +3,8 @@ package com.fincity.saas.commons.jooq.service;
 import java.io.Serializable;
 
 import org.jooq.UpdatableRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,12 @@ public abstract class AbstractJOOQDataService<R extends UpdatableRecord<R>, I ex
 
 	@Autowired
 	protected O dao;
+
+	protected final Logger logger;
+
+	protected AbstractJOOQDataService() {
+		this.logger = LoggerFactory.getLogger(this.getClass());
+	}
 
 	public Mono<D> create(D entity) {
 
