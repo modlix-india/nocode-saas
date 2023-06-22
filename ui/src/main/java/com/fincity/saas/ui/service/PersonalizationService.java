@@ -114,7 +114,9 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 			                .map(Personalization::getPersonalization);
 		        }
 
-		);
+		)
+		.contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.addPersonalization"))
+		        .defaultIfEmpty(Map.of());
 	}
 
 	public Mono<Map<String, Object>> getPersonalization(String appName, String name) {

@@ -62,6 +62,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String FETCH_PERMISSION_ERROR="fetch_permission_error";
 	public static final String FETCH_PERMISSION_ERROR_FOR_USER="fetch_permission_error_for_user";
 	public static final String FETCH_ROLE_ERROR_FOR_USER="fetch_role_error_for_user";
+	public static final String PASS_RESET_REQ_ERROR="pass_reset_req_error";
 
 	public SecurityMessageResourceService() {
 

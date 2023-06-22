@@ -22,10 +22,11 @@ public class LogUtil {
 		        .getOrEmpty(DEBUG_KEY);
 
 		String mName = signal.getContextView()
-		        .get(METHOD_NAME);
+		        .getOrDefault(METHOD_NAME, "");
 
 		toPutInMdc.ifPresent(tpim -> {
 			try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, tpim)) {
+				
 				logStatement.accept(mName, signal.get());
 			}
 		});

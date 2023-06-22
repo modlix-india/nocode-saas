@@ -1,5 +1,7 @@
 package com.fincity.saas.core.configuration;
 
+import java.util.List;
+
 import javax.annotation.PostConstruct;
 
 import org.jooq.DSLContext;
@@ -30,6 +32,8 @@ import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
+import reactivefeign.client.ReactiveHttpRequestInterceptor;
+import reactor.core.publisher.Mono;
 
 @Configuration
 public class CoreConfiguration extends AbstractMongoConfiguration
@@ -82,6 +86,21 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**");
+	}
+
+	@Bean
+	ReactiveHttpRequestInterceptor feignInterceptor() {
+		return request -> Mono.deferContextual(ctxView -> {
+
+			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
+				String key = ctxView.get(LogUtil.DEBUG_KEY);
+
+				request.headers()
+				        .put(LogUtil.DEBUG_KEY, List.of(key));
+			}
+
+			return Mono.just(request);
+		});
 	}
 
 	@Override

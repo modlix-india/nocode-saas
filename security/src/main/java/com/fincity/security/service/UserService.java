@@ -846,8 +846,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlAppCode(),
-		                authRequest.getIdentifierType()),
+		        ca ->
+				{
+
+			        if (ca.isAuthenticated()) {
+				        return this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				                SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
+			        }
+
+			        return this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlAppCode(),
+			                authRequest.getIdentifierType());
+		        },
 
 		        (ca, cuTup) -> this.clientService.getClientBy(ca.getUrlClientCode())
 		                .map(Client::getId),
