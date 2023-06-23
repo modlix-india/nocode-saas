@@ -488,7 +488,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		var accAA = SECURITY_APP_ACCESS.as("aa");
 
-		SelectOnConditionStep<Record> query = this.dslContext.select(fields)
+		SelectOnConditionStep<Record1<ULong>> query = this.dslContext.select(SECURITY_USER.ID)
 		        .from(SECURITY_USER)
 
 		        .leftJoin(accAA)
@@ -516,7 +516,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
 		}
 
-		return query.where(conditions);
+		return this.dslContext.select(fields)
+		        .from(SECURITY_USER)
+		        .where(SECURITY_USER.ID.in(query.where(conditions)));
 	}
 
 	public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String clientCode, String appCode,
