@@ -27,6 +27,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import reactor.core.publisher.Mono;
@@ -46,6 +47,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	@Autowired
 	private CacheService cacheService;
+
+	@Autowired
+	private PackageService packageService;
 
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
 	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -245,6 +249,58 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
+
+	public Mono<Boolean> addPackageAccess(ULong appId, ULong clientId, ULong packageId) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> ca.isSystemClient() ? Mono.just(true)
+		                : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), clientId),
+
+		        (ca, hasClientAccess) ->
+				{
+
+			        if (!hasClientAccess.booleanValue())
+				        return Mono.empty();
+
+			        return this.dao.hasAppEditAccess(appId, clientId)
+			                .flatMap(canEdit ->
+							{
+
+				                if (!canEdit.booleanValue())
+					                return Mono.empty();
+
+				                return Mono.just(canEdit);
+			                });
+		        },
+
+		        (ca, hasClientAccess, editAccess) -> this.clientService.checkClientHasPackage(clientId, packageId)
+		                .flatMap(hasAccess ->
+						{
+
+			                if (!hasAccess.booleanValue())
+				                return this.packageService.read(packageId)
+				                        .map(Package::getClientId)
+				                        .flatMap(packageClientId -> Mono.just(packageClientId.equals(clientId)))
+				                        .flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(e) : Mono.empty())
+				                        .log();
+
+			                return Mono.just(hasAccess);
+		                }),
+
+		        (ca, hasClientAccess, editAccess, hasPackageAccess) -> this.dao.addPackageAccess(appId, clientId,
+		                packageId)
+
+		).log()
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addPackageAccess"))
+		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.ASSIGN_PACKAGE_TO_CLIENT_AND_APP, packageId)));
+	}
+	
+	
 
 	public Mono<Boolean> evict(ULong appId, ULong clientId) {
 

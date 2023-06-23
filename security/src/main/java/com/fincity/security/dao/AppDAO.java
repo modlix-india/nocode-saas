@@ -3,6 +3,7 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -123,6 +124,33 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .limit(1))
 		        .map(Record1::value1)
 		        .map(e -> e != 0);
+	}
+	
+	public Mono<Boolean> hasAppEditAccess(ULong appId, ULong clientId) {
+
+		return Mono.from(
+
+		        this.dslContext.select(SECURITY_APP_ACCESS.EDIT_ACCESS)
+		                .from(SECURITY_APP_ACCESS)
+		                .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
+		                        .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))))
+		        .map(Record1::value1)
+		        .map(e -> e.equals(UByte.valueOf(1))).log();
+		
+		}
+	
+	public Mono<Boolean> addPackageAccess(ULong appId, ULong clientId, ULong packageId) {
+
+		return Mono.from(
+
+		        this.dslContext.insertInto(SECURITY_APP_PACKAGE)
+		                .columns(SECURITY_APP_PACKAGE.CLIENT_ID, SECURITY_APP_PACKAGE.APP_ID,
+		                        SECURITY_APP_PACKAGE.PACKAGE_ID)
+		                .values(clientId, appId, packageId)
+
+		)
+		        .map(e -> e == 1).log();
+
 	}
 
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
