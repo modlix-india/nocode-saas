@@ -440,11 +440,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(Objects::nonNull);
 	}
 
-	public Mono<List<User>> getBy(String userName, ULong userId, String appCode,
+	public Mono<List<User>> getBy(String userName, ULong userId, String clientCode, String appCode,
 	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
-		var query = getAllUsersPerAppQuery(userName, userId, appCode, authenticationIdentifierType, onlyActiveUsers,
-		        SECURITY_USER.fields());
+		var query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
+		        onlyActiveUsers, SECURITY_USER.fields());
 
 		var limitQuery = query.limit(2);
 
@@ -455,8 +455,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .collectList();
 	}
 
-	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers, Field<?>... fields) {
+	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
+	        String appCode, AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers,
+	        Field<?>... fields) {
 
 		TableField<SecurityUserRecord, String> field = SECURITY_USER.USER_NAME;
 		if (authenticationIdentifierType == AuthenticationIdentifierType.EMAIL_ID) {
@@ -502,15 +503,28 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .on(appB.field("ID", ULong.class)
 		                .eq(accAA.field("APP_ID", ULong.class)));
 
+		if (!SYSTEM.equals(clientCode)) {
+
+			query = query
+
+			        .leftJoin(SECURITY_CLIENT_MANAGE)
+			        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+
+			        .leftJoin(SECURITY_CLIENT)
+			        .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID));
+
+			conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
+		}
+
 		return query.where(conditions);
 	}
 
-	public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String appCode,
+	public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String clientCode, String appCode,
 	        AuthenticationIdentifierType identifierType) {
 
 		return Flux
-		        .from(this.getAllUsersPerAppQuery(userName, null, appCode, identifierType, true, SECURITY_USER.ID,
-		                SECURITY_USER.CLIENT_ID))
+		        .from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType, true,
+		                SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
 
 		        .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
