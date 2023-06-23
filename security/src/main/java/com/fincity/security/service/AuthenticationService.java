@@ -138,8 +138,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), appCode,
-		                authRequest.getIdentifierType()),
+		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
+		                appCode, authRequest.getIdentifierType(), true),
 		        tup ->
 				{
 			        String linClientCode = tup.getT1()
@@ -299,8 +299,7 @@ public class AuthenticationService implements IAuthenticationService {
 		        (cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
 		                : Mono.just(cachedCA))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"))
-		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request))
-		        .log();
+		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request));
 	}
 
 	private Mono<Authentication> getAuthenticationIfNotInCache(boolean basic, String bearerToken,

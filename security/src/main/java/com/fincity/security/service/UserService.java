@@ -105,12 +105,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .flatMap(this.dao::setPermissions);
 	}
 
-	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType) {
+	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String clientCode, String appCode,
+	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType, false)
+		        () -> this.dao.getBy(userName, userId, clientCode, appCode, authenticationIdentifierType, onlyActiveUsers)
 		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0)))
 		                .flatMap(this.dao::setPermissions),
 
@@ -755,8 +755,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		String appCode = request.getHeaders()
 		        .getFirst("appCode");
+		
+		String clientCode = request.getHeaders()
+		        .getFirst("clientCode");
 
-		return this.dao.getAllClientsBy(authRequest.getUserName(), appCode, authRequest.getIdentifierType())
+		return this.dao.getAllClientsBy(authRequest.getUserName(), clientCode, appCode, authRequest.getIdentifierType())
 		        .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
 		        .flatMap(e -> this.clientService.getClientInfoById(e.getValue()
 		                .toBigInteger())
@@ -842,12 +845,23 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> resetPasswordRequest(AuthenticationRequest authRequest, ServerHttpRequest request) {
 
+		LogUtil.logIfDebugKey(logger, "Requesting reset password.");
+		
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlAppCode(),
-		                authRequest.getIdentifierType()),
+		        ca ->
+				{
+
+			        if (ca.isAuthenticated()) {
+				        return this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				                SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
+			        }
+
+			        return this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlClientCode(), ca.getUrlAppCode(),
+			                authRequest.getIdentifierType(), false);
+		        },
 
 		        (ca, cuTup) -> this.clientService.getClientBy(ca.getUrlClientCode())
 		                .map(Client::getId),
