@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fincity.saas.commons.codec.RedisJSONCodec;
 import com.fincity.saas.commons.codec.RedisObjectCodec;
 import com.fincity.saas.commons.jackson.CommonsSerializationModule;
+import com.fincity.saas.commons.jackson.SortSerializationModule;
 import com.fincity.saas.commons.jackson.TupleSerializationModule;
 
 import io.lettuce.core.RedisClient;
@@ -54,6 +55,7 @@ public class AbstractBaseConfiguration implements WebFluxConfigurer {
 		this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_EMPTY, Include.ALWAYS));
 		this.objectMapper.registerModule(new CommonsSerializationModule());
 		this.objectMapper.registerModule(new TupleSerializationModule());
+		this.objectMapper.registerModule(new SortSerializationModule());
 
 		this.objectCodec = "object".equals(codecType) ? new RedisObjectCodec() : new RedisJSONCodec(this.objectMapper);
 	}
@@ -65,7 +67,8 @@ public class AbstractBaseConfiguration implements WebFluxConfigurer {
 		        .jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
 		configurer.defaultCodecs()
 		        .jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
-		configurer.defaultCodecs().maxInMemorySize(5242880);
+		configurer.defaultCodecs()
+		        .maxInMemorySize(5242880);
 		WebFluxConfigurer.super.configureHttpMessageCodecs(configurer);
 	}
 
@@ -76,7 +79,7 @@ public class AbstractBaseConfiguration implements WebFluxConfigurer {
 
 	@Bean
 	PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
-        return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
+		return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
 	}
 
 	@Bean
