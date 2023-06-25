@@ -25,6 +25,7 @@ public class Transport extends AbstractOverridableDTO<Transport> {
 
 	private String uniqueTransportCode;
 	private List<TransportObject> objects;
+	private String type;
 
 	@Override
 	public Mono<Transport> applyOverride(Transport base) {

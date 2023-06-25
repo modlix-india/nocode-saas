@@ -137,6 +137,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 		to.setClientCode(request.getClientCode());
 		to.setName(request.getName());
 		to.setUniqueTransportCode(UniqueUtil.shortUUID());
+		to.setType(this.getTransportType());
 
 		return FlatMapUtil.flatMapMono(
 
@@ -178,4 +179,6 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 	@SuppressWarnings("rawtypes")
 	public abstract List<AbstractOverridableDataService> getServieMap();
+
+	protected abstract String getTransportType();
 }

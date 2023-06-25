@@ -34,7 +34,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
@@ -50,7 +49,6 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.flattener.JsonUnflattener;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -59,6 +57,7 @@ import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
+import com.fincity.saas.core.model.DataServiceQuery;
 import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
@@ -184,7 +183,7 @@ public class AppDataService {
 	}
 
 	public Mono<Page<Map<String, Object>>> readPage(String appCode, String clientCode, String storageName,
-	        Pageable page, Boolean count, AbstractCondition condition) {
+	        DataServiceQuery query) {
 		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
@@ -201,8 +200,8 @@ public class AppDataService {
 		        (ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
 
 		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-		                (cona, hasAccess) -> dataService.readPage(conn, storage, page, count, condition),
-		                Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+		                (cona, hasAccess) -> dataService.readPage(conn, storage, query), Storage::getReadAuth,
+		                CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
 	}
@@ -730,5 +729,4 @@ public class AppDataService {
 		}
 
 	}
-
 }
