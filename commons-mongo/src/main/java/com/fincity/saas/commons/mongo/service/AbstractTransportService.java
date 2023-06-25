@@ -18,11 +18,13 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import com.fincity.saas.commons.mongo.model.TransportRequest;
 import com.fincity.saas.commons.mongo.repository.TransportRepository;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public abstract class AbstractTransportService extends AbstractOverridableDataService<Transport, TransportRepository> {
 
@@ -32,8 +34,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 	@Override
 	public Mono<Transport> create(Transport entity) {
-		
-		entity.setName(StringUtil.safeValueOf(entity.getName(), "")+entity.getUniqueTransportCode());
+
+		entity.setName(StringUtil.safeValueOf(entity.getName(), "") + entity.getUniqueTransportCode());
 
 		return this
 		        .readAllFilter(new ComplexCondition()
@@ -94,10 +96,13 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 				                        return service.create(tentity);
 			                        },
 
-			                        (service, tentity, sentity, savedEntity) -> Mono.just(true)))
+			                        (service, tentity, sentity, savedEntity) -> Mono.just(true))
+			                        .contextWrite(
+			                                Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.applyTransport")))
 			                .collectList()
 			                .map(e -> true);
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.applyTransport"))
 		        .defaultIfEmpty(false);
 	}
 
@@ -132,6 +137,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 		to.setClientCode(request.getClientCode());
 		to.setName(request.getName());
 		to.setUniqueTransportCode(UniqueUtil.shortUUID());
+		to.setType(this.getTransportType());
 
 		return FlatMapUtil.flatMapMono(
 
@@ -167,9 +173,12 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 			                })
 			                .collectList()
 			                .map(to::setObjects);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.makeTransport"));
 	}
 
 	@SuppressWarnings("rawtypes")
 	public abstract List<AbstractOverridableDataService> getServieMap();
+
+	protected abstract String getTransportType();
 }

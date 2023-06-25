@@ -28,6 +28,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
@@ -41,6 +42,7 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
 @Service
@@ -136,8 +138,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), appCode,
-		                authRequest.getIdentifierType()),
+		        () -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
+		                appCode, authRequest.getIdentifierType(), true),
 		        tup ->
 				{
 			        String linClientCode = tup.getT1()
@@ -175,6 +177,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 			        return makeToken(authRequest, request, response, hostAddress, user, tup.getT2(), tup.getT1());
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate"))
 		        .switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
@@ -295,7 +298,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 		        (cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
 		                : Mono.just(cachedCA))
-		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request)).log();
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"))
+		        .onErrorResume(e -> this.makeAnonySpringAuthentication(request));
 	}
 
 	private Mono<Authentication> getAuthenticationIfNotInCache(boolean basic, String bearerToken,
@@ -326,6 +330,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 				        return cacheService.put(CACHE_NAME_TOKEN, ca, bearerToken);
 			        })
+			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"))
 			        .map(Authentication.class::cast)
 			        .switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
 			                resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
@@ -368,7 +373,8 @@ public class AuthenticationService implements IAuthenticationService {
 		        (claims, u,
 		                typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
 		                        claims.getLoggedInClientId(), claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(),
-		                        tokenObject.getToken(), tokenObject.getExpiresAt(), null, null)));
+		                        tokenObject.getToken(), tokenObject.getExpiresAt(), null, null)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeSpringAuthentication"));
 	}
 
 	private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {

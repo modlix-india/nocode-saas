@@ -15,12 +15,12 @@
 	<properties>
 		<java.version>18</java.version>
 		<spring-cloud.version>2021.0.6</spring-cloud.version>
-		<nocode-kirun-version>3.0.0</nocode-kirun-version>
+		<nocode-kirun-version>3.1.1</nocode-kirun-version>
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
 		<saas-commons-security-version>1.0.0</saas-commons-security-version>
 		<saas-commons-mq-version>1.0.0</saas-commons-mq-version>
-		<nocode-flatmap-util-version>1.2.0</nocode-flatmap-util-version>
+		<nocode-flatmap-util-version>1.3.0</nocode-flatmap-util-version>
 	</properties>
 	<dependencies>
 		<dependency>

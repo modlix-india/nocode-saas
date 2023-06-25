@@ -34,4 +34,9 @@ public class TransportService extends AbstractTransportService {
 	public List<AbstractOverridableDataService> getServieMap() {
 		return List.of(appService, pageService, styleService, themeService, funService, schemaService);
 	}
+	
+	@Override
+	protected String getTransportType() {
+		return "ui";
+	}
 }

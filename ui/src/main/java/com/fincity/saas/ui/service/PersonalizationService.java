@@ -12,11 +12,13 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Personalization;
 import com.fincity.saas.ui.repository.PersonalizationRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class PersonalizationService extends AbstractOverridableDataService<Personalization, PersonalizationRepository> {
@@ -60,7 +62,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.updatableEntity"));
 	}
 
 	@Override
@@ -112,7 +114,9 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 			                .map(Personalization::getPersonalization);
 		        }
 
-		);
+		)
+		.contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.addPersonalization"))
+		        .defaultIfEmpty(Map.of());
 	}
 
 	public Mono<Map<String, Object>> getPersonalization(String appName, String name) {
@@ -127,7 +131,8 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 		                : this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id)
 		                        .map(Personalization::getPersonalization)
 
-		).defaultIfEmpty(Map.of());
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.getPersonalization"))
+		        .defaultIfEmpty(Map.of());
 
 	}
 
@@ -142,6 +147,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 		                : this.repo.deleteByNameAndAppCodeAndCreatedBy(name, appName, id)
 		                        .map(e -> e != 0l)
 
-		).defaultIfEmpty(Boolean.FALSE);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.deletePersonalization"))
+		        .defaultIfEmpty(Boolean.FALSE);
 	}
 }

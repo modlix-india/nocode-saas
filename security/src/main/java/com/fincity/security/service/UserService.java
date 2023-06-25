@@ -35,6 +35,7 @@ import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Client;
@@ -55,6 +56,7 @@ import com.fincity.security.model.RequestUpdatePassword;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
@@ -103,12 +105,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .flatMap(this.dao::setPermissions);
 	}
 
-	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType) {
+	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String clientCode, String appCode,
+	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.dao.getBy(userName, userId, appCode, authenticationIdentifierType, false)
+		        () -> this.dao.getBy(userName, userId, clientCode, appCode, authenticationIdentifierType, onlyActiveUsers)
 		                .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0)))
 		                .flatMap(this.dao::setPermissions),
 
@@ -118,7 +120,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        (user, client) -> this.clientService.getManagedClientOfClientById(user.getClientId())
 		                .defaultIfEmpty(client),
 
-		        (user, client, mClient) -> Mono.just(Tuples.<Client, Client, User>of(mClient, client, user)));
+		        (user, client, mClient) -> Mono.just(Tuples.<Client, Client, User>of(mClient, client, user)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.findUserNClient"));
 	}
 
 	public Mono<User> getUserForContext(ULong id) {
@@ -217,7 +220,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        (loggedInUserId, passwordSet) -> Mono.just(u)
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setPassword"));
 
 	}
 
@@ -366,12 +369,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				this.dao.fetchPermissionsFromGivenUser(userId)
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.FETCH_PERMISSION_ERROR_FOR_USER, userId));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getPermissionsFromGivenUser"))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FETCH_PERMISSION_ERROR_FOR_USER, userId));
 
 	}
 
-	
 	@PreAuthorize("hasAuthority('Authorities.Role_READ') and hasAuthority('Authorities.User_READ')")
 	public Mono<List<Role>> getRolesFromGivenUser(ULong userId) {
 
@@ -392,8 +395,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				this.dao.fetchRolesFromGivenUser(userId)
 
-		).switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		        SecurityMessageResourceService.FETCH_ROLE_ERROR_FOR_USER, userId));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getRolesFromGivenUser"))
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.FETCH_ROLE_ERROR_FOR_USER, userId));
 
 	}
 
@@ -441,7 +445,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 					        return removed;
 				        })
 
-		)
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removePermissionFromUser"))
 
 		        .flatMap(e -> this.evictTokens(userId)
 		                .map(x -> e))
@@ -476,7 +480,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 					        return removed;
 				        })
 
-		)
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removeRoleFromUser"))
 
 		        .flatMap(e -> this.evictTokens(userId)
 		                .map(x -> e))
@@ -523,8 +527,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								        return e;
 							        })
 
-				).flatMap(e -> this.evictTokens(userId)
-				        .map(x -> e))
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignPermissionToUser"))
+			                .flatMap(e -> this.evictTokens(userId)
+			                        .map(x -> e))
 			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
 		        });
@@ -570,7 +575,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								        return e;
 							        })
 
-				)
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
 
 			                .flatMap(e -> this.evictTokens(userId)
 			                        .map(x -> e))
@@ -630,7 +635,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		                .map(x -> e))
 		        .flatMap(e -> this.dao.updateUserStatus(reqUserId)
 		                .map(x -> e))
-
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateNewPassword"))
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                "Password cannot be updated"));
 
@@ -666,7 +671,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
 			                : Mono.just(true)
 
-			);
+			).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"));
 		}
 
 		return flatMapMonoWithNull(
@@ -708,7 +713,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        return SecurityContextUtil.hasAuthority("Authorities.User_UPDATE");
 		        }
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"));
 	}
 
 	public Mono<Boolean> checkPasswordEquality(User u, String newPassword) {
@@ -742,7 +747,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			        }
 
 			        return Mono.just(true);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkPasswordInPastPasswords"));
 
 	}
 
@@ -750,8 +755,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		String appCode = request.getHeaders()
 		        .getFirst("appCode");
+		
+		String clientCode = request.getHeaders()
+		        .getFirst("clientCode");
 
-		return this.dao.getAllClientsBy(authRequest.getUserName(), appCode, authRequest.getIdentifierType())
+		return this.dao.getAllClientsBy(authRequest.getUserName(), clientCode, appCode, authRequest.getIdentifierType())
 		        .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
 		        .flatMap(e -> this.clientService.getClientInfoById(e.getValue()
 		                .toBigInteger())
@@ -804,12 +812,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			                SecurityContextUtil::getUsersContextAuthentication,
 
 			                ca -> this.dao.addDefaultRoles(createdUser.getId(), ca.getUrlClientCode(),
-			                        ca.getUrlAppCode()));
+			                        ca.getUrlAppCode()))
+			                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createForRegistration"));
 
 			        return roledUser.map(x -> createdUser);
 		        }
 
 		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createForRegistration"))
 		        .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
 		                .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 		                .flatMap(msg -> Mono.error(
@@ -823,7 +833,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        SecurityContextUtil::getUsersContextAuthentication,
 
 		        ca -> this.dao.makeUserActiveIfInActive(ca.getUser()
-		                .getId()));
+		                .getId()))
+
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"));
 	}
 
 	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
@@ -833,12 +845,23 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> resetPasswordRequest(AuthenticationRequest authRequest, ServerHttpRequest request) {
 
+		LogUtil.logIfDebugKey(logger, "Requesting reset password.");
+		
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlAppCode(),
-		                authRequest.getIdentifierType()),
+		        ca ->
+				{
+
+			        if (ca.isAuthenticated()) {
+				        return this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				                SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
+			        }
+
+			        return this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), ca.getUrlClientCode(), ca.getUrlAppCode(),
+			                authRequest.getIdentifierType(), false);
+		        },
 
 		        (ca, cuTup) -> this.clientService.getClientBy(ca.getUrlClientCode())
 		                .map(Client::getId),
@@ -852,6 +875,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		                        .setData(Map.of("user", cu.getT3(), "token", token.getToken())))
 
 		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.resetPasswordRequest"))
 		        .map(e -> true);
 	}
 

@@ -14,11 +14,13 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ApplicationService extends AbstractOverridableDataService<Application, ApplicationRepository> {
@@ -95,7 +97,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        });
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.updatableEntity"));
 	}
 
 	public Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode) {
@@ -143,6 +145,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 			        return Mono.justOrEmpty(clonedApp.getProperties());
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.readProperties"))
 		        .defaultIfEmpty(Map.of());
 	}
 
@@ -182,6 +185,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 			                .put("shellPageDefinition", shellPage);
 
 			        return Mono.just(object);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.applyChange"));
 	}
 }

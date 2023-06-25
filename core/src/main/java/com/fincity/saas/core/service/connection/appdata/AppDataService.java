@@ -34,7 +34,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
@@ -50,14 +49,15 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.flattener.JsonUnflattener;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.FlatFileType;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
+import com.fincity.saas.core.model.DataServiceQuery;
 import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
@@ -74,6 +74,7 @@ import com.opencsv.RFC4180ParserBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -110,7 +111,7 @@ public class AppDataService {
 	public Mono<Map<String, Object>> create(String appCode, String clientCode, String storageName,
 	        DataObject dataObject) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -128,12 +129,14 @@ public class AppDataService {
 		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 		                (cona, hasAccess) -> dataService.create(conn, storage, dataObject), Storage::getCreateAuth,
 		                CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE));
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
 	}
 
 	public Mono<Map<String, Object>> update(String appCode, String clientCode, String storageName,
 	        DataObject dataObject, Boolean override) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -151,11 +154,13 @@ public class AppDataService {
 		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 		                (cona, hasAccess) -> dataService.update(conn, storage, dataObject, override),
 		                Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE));
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.update"));
 	}
 
 	public Mono<Map<String, Object>> read(String appCode, String clientCode, String storageName, String id) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -173,11 +178,13 @@ public class AppDataService {
 		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 		                (cona, hasAccess) -> dataService.read(conn, storage, id), Storage::getReadAuth,
 		                CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.read"));
 	}
 
 	public Mono<Page<Map<String, Object>>> readPage(String appCode, String clientCode, String storageName,
-	        Pageable page, Boolean count, AbstractCondition condition) {
-		return FlatMapUtil.flatMapMonoWithNull(
+	        DataServiceQuery query) {
+		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -193,12 +200,14 @@ public class AppDataService {
 		        (ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
 
 		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-		                (cona, hasAccess) -> dataService.readPage(conn, storage, page, count, condition),
-		                Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+		                (cona, hasAccess) -> dataService.readPage(conn, storage, query), Storage::getReadAuth,
+		                CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
 	}
 
 	public Mono<Boolean> delete(String appCode, String clientCode, String storageName, String id) {
-		return FlatMapUtil.flatMapMonoWithNull(
+		Mono<Boolean> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -216,6 +225,8 @@ public class AppDataService {
 		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 		                (cona, hasAccess) -> dataService.delete(conn, storage, id), Storage::getDeleteAuth,
 		                CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.delete"));
 	}
 
 	public Mono<byte[]> downloadTemplate(String appCode, String clientCode, String storageName, FlatFileType fileType) {
@@ -233,26 +244,28 @@ public class AppDataService {
 		                .genericOperation(storage, (ca, hasAccess) -> downloadTemplate(storage, fileType),
 		                        Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
 		                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
-		                        CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR))));
+		                        CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR))))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
 	}
 
 	public Mono<Boolean> uploadTemplate(String appCode, String clientCode, String storageName, FlatFileType fileType,
 	        FilePart file) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
-		        () -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
+		return FlatMapUtil
+		        .flatMapMonoWithNull(() -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
 
-		        conn -> Mono
-		                .just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+		                conn -> Mono.just(this.services
+		                        .get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
+		                (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
 
-		        (conn, dataService, storage) -> this
-		                .genericOperation(storage,
-		                        (ca, hasAccess) -> uploadTemplate(storage, fileType, file, dataService),
-		                        Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
-		                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
-		                        CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR))));
+		                (conn, dataService, storage) -> this
+		                        .genericOperation(storage,
+		                                (ca, hasAccess) -> uploadTemplate(storage, fileType, file, dataService),
+		                                Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
+		                        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
+		                                CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR))))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.uploadTemplate"));
 
 	}
 
@@ -270,7 +283,7 @@ public class AppDataService {
 		                .getAuthorities()) ? true : null),
 
 		        bifun)
-
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericOperation"))
 		        .switchIfEmpty(Mono
 		                .defer(() -> this.msgService.throwMessage(HttpStatus.FORBIDDEN, msgString, storage.getName())));
 	}
@@ -333,7 +346,8 @@ public class AppDataService {
 					        }
 				        }
 				        return Mono.empty();
-			        });
+			        })
+			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
 
 		} catch (Exception e) {
 			return Mono.empty();
@@ -405,7 +419,8 @@ public class AppDataService {
 			        }
 
 			        return Mono.just(List.of(prefix));
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.getHeaders"));
 
 	}
 
@@ -476,7 +491,7 @@ public class AppDataService {
 
 				        }
 			        } else {
-			        	
+
 				        objectKeys = Flux.empty();
 			        }
 
@@ -537,6 +552,7 @@ public class AppDataService {
 			                .map(e -> !e.isEmpty())
 			                .defaultIfEmpty(false);
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.uploadTemplate"))
 		        .switchIfEmpty(Mono.defer(() -> msgService.throwMessage(HttpStatus.BAD_REQUEST,
 		                CoreMessageResourceService.NOT_ABLE_TO_READ_FILE_FORMAT, fileType)));
 	}
@@ -713,5 +729,4 @@ public class AppDataService {
 		}
 
 	}
-
 }

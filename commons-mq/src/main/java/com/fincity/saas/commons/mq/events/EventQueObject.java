@@ -17,6 +17,7 @@ public class EventQueObject implements Serializable {
 	private String eventName;
 	private String clientCode;
 	private String appCode;
+	private String xDebug;
 	private Map<String, Object> data; // NOSONAR
 	private ContextAuthentication authentication;
 }

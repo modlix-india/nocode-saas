@@ -44,6 +44,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.ByteUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.PastPassword;
@@ -60,6 +61,7 @@ import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 
 @Component
@@ -380,7 +382,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			                .execute() > 0);
 		        }
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.isBeingManagedBy"));
 	}
 
 	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {
@@ -438,21 +440,24 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .map(Objects::nonNull);
 	}
 
-	public Mono<List<User>> getBy(String userName, ULong userId, String appCode,
+	public Mono<List<User>> getBy(String userName, ULong userId, String clientCode, String appCode,
 	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
-		var query = getAllUsersPerAppQuery(userName, userId, appCode, authenticationIdentifierType, onlyActiveUsers,
-		        SECURITY_USER.fields());
+		var query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
+		        onlyActiveUsers, SECURITY_USER.fields());
 
 		var limitQuery = query.limit(2);
 
-		return Flux.from(limitQuery)
+		return Mono.just(limitQuery)
+		        .flatMap(LogUtil.logIfDebugKey(logger, "User Query : {}", limitQuery.toString()))
+		        .flatMapMany(Flux::from)
 		        .map(e -> e.into(User.class))
 		        .collectList();
 	}
 
-	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String appCode,
-	        AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers, Field<?>... fields) {
+	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
+	        String appCode, AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers,
+	        Field<?>... fields) {
 
 		TableField<SecurityUserRecord, String> field = SECURITY_USER.USER_NAME;
 		if (authenticationIdentifierType == AuthenticationIdentifierType.EMAIL_ID) {
@@ -483,7 +488,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		var accAA = SECURITY_APP_ACCESS.as("aa");
 
-		SelectOnConditionStep<Record> query = this.dslContext.select(fields)
+		SelectOnConditionStep<Record1<ULong>> query = this.dslContext.select(SECURITY_USER.ID)
 		        .from(SECURITY_USER)
 
 		        .leftJoin(accAA)
@@ -498,15 +503,30 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .on(appB.field("ID", ULong.class)
 		                .eq(accAA.field("APP_ID", ULong.class)));
 
-		return query.where(conditions);
+		if (!SYSTEM.equals(clientCode)) {
+
+			query = query
+
+			        .leftJoin(SECURITY_CLIENT_MANAGE)
+			        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+
+			        .leftJoin(SECURITY_CLIENT)
+			        .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID));
+
+			conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
+		}
+
+		return this.dslContext.select(fields)
+		        .from(SECURITY_USER)
+		        .where(SECURITY_USER.ID.in(query.where(conditions)));
 	}
 
-	public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String appCode,
+	public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String clientCode, String appCode,
 	        AuthenticationIdentifierType identifierType) {
 
 		return Flux
-		        .from(this.getAllUsersPerAppQuery(userName, null, appCode, identifierType, true, SECURITY_USER.ID,
-		                SECURITY_USER.CLIENT_ID))
+		        .from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType, true,
+		                SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
 
 		        .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
@@ -558,7 +578,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.addDefaultRoles"));
 	}
 
 	public Mono<Boolean> makeUserActiveIfInActive(BigInteger id) {

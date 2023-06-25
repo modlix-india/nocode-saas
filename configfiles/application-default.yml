@@ -35,6 +35,8 @@ core:
 spring:
   flyway:
     enabled: false
+  cache:
+    type: NONE
 
 redis:
   url: redis://kiran%40123@localhost:6379
@@ -51,6 +53,7 @@ logging:
     sun.rmi: INFO
     javax.management.remote.rmi: INFO
     org.springframework.beans.factory.support: INFO
+    org.springframework.web.client.RestTemplate: INFO
 
 mq:
   host: localhost

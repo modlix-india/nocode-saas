@@ -33,6 +33,8 @@ import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UNumber;
 import org.jooq.types.UShort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,6 +72,8 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 	        x -> Tuples.of(x == null ? x : x.intValue(), Integer.class));
 
 	protected final Class<D> pojoClass;
+	
+	protected final Logger logger;
 
 	@Autowired
 	protected DSLContext dslContext;
@@ -88,6 +92,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		this.pojoClass = pojoClass;
 		this.table = table;
 		this.idField = idField;
+		this.logger = LoggerFactory.getLogger(this.getClass());
 	}
 
 	public Mono<Page<D>> readPage(Pageable pageable) {

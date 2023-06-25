@@ -59,6 +59,7 @@ import org.springframework.util.FileSystemUtils;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.FileType;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
@@ -68,6 +69,7 @@ import com.fincity.saas.files.util.FileExtensionUtil;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -189,11 +191,12 @@ public abstract class AbstractFilesResourceService {
 				                FilesMessageResourceService.UNKNOWN_ERROR);
 			        }
 		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.list"))
 		        .map(list -> PageableExecutionUtils.getPage(list, page, () -> -1));
 	}
 
 	private Predicate<FileDetail> getPredicateForFileTypes(FileType[] fileType) {
-		
+
 		final Set<String> fileTypeFilter = this.getFileExtensionFilter(fileType);
 		final boolean directoryFilter = fileType != null && Stream.of(fileType)
 		        .anyMatch(e -> e == FileType.DIRECTORIES);
@@ -393,7 +396,8 @@ public abstract class AbstractFilesResourceService {
 			        }
 
 			        return makeMatchesStartDownload(downloadOptions, request, response, file, fileMillis, fileETag);
-		        });
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"));
 	}
 
 	/**
@@ -694,7 +698,8 @@ public abstract class AbstractFilesResourceService {
 			        return Mono.just(true);
 		        }
 
-		);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.delete"));
 	}
 
 	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
@@ -727,9 +732,13 @@ public abstract class AbstractFilesResourceService {
 				        return Mono.just(
 				                this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
 
-			        return FlatMapUtil.flatMapMonoWithNull(() -> fp.transferTo(file), x -> Mono
-			                .just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile())));
-		        });
+			        return FlatMapUtil
+			                .flatMapMonoWithNull(() -> fp.transferTo(file),
+			                        x -> Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
+			                                file.toFile())))
+			                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
 
 	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
@@ -792,6 +801,7 @@ public abstract class AbstractFilesResourceService {
 		                })
 		                .collectList()
 		                .map(e -> true))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
 		        .map(e -> true)
 		        .subscribeOn(Schedulers.boundedElastic());
 	}

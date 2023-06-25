@@ -18,11 +18,13 @@ import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.FileType;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.service.AbstractFilesResourceService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public abstract class AbstractResourceFileController<T extends AbstractFilesResourceService> {
 
@@ -43,7 +45,8 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		                        .toString(),
 		                fileType, filter, page),
 
-		        (ca, pg) -> Mono.just(ResponseEntity.<Page<FileDetail>>ok(pg)));
+		        (ca, pg) -> Mono.just(ResponseEntity.<Page<FileDetail>>ok(pg)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.list"));
 	}
 
 	@DeleteMapping("/**")
@@ -58,7 +61,8 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		                request.getURI()
 		                        .toString()),
 
-		        (ca, deleted) -> Mono.just(ResponseEntity.<Boolean>ok(deleted)));
+		        (ca, deleted) -> Mono.just(ResponseEntity.<Boolean>ok(deleted)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.delete"));
 	}
 
 	@PostMapping("/**")
@@ -78,7 +82,8 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		                request.getURI()
 		                        .toString(),
 		                fp, fileName, override != null ? BooleanUtil.safeValueOf(override) : null))
-		        .map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.create"));
 	}
 
 	@GetMapping("/file/**")
@@ -118,7 +123,8 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 		                        request.getURI()
 		                                .toString(),
 		                        fp, override != null ? BooleanUtil.safeValueOf(override) : null))
-		        .map(ResponseEntity::ok);
+		        .map(ResponseEntity::ok)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.createWithZip"));
 	}
 
 }

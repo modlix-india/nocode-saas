@@ -18,12 +18,14 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.common.security.util.ServerHttpRequestUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
 @RestController
@@ -88,7 +90,8 @@ public class AuthenticationController {
 		                .setAccessToken(ca.getAccessToken())
 		                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
 
-		        (ca, ca2, client, vr) -> Mono.just(ResponseEntity.<AuthenticationResponse>ok(vr)));
+		        (ca, ca2, client, vr) -> Mono.just(ResponseEntity.<AuthenticationResponse>ok(vr)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
 
 	}
 
@@ -99,7 +102,8 @@ public class AuthenticationController {
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        contextAuthentication -> Mono.just(ResponseEntity.<ContextAuthentication>ok(contextAuthentication)));
+		        contextAuthentication -> Mono.just(ResponseEntity.<ContextAuthentication>ok(contextAuthentication)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.contextAuthentication"));
 	}
 
 }
