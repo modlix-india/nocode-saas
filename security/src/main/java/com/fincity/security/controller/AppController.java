@@ -21,6 +21,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.ApplicationAccessPackageRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
+import com.fincity.security.model.ApplicationAccessRoleRequest;
 import com.fincity.security.service.AppService;
 
 import reactor.core.publisher.Mono;
@@ -73,7 +74,7 @@ public class AppController
 		        .map(ResponseEntity::ok);
 	}
 	
-	@PostMapping("/{id}/addPackageAccess")
+	@PostMapping("/{id}/packageAccess")
 	public Mono<ResponseEntity<Boolean>> addPackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
 	        @RequestBody final ApplicationAccessPackageRequest appRequest) {
 
@@ -81,13 +82,29 @@ public class AppController
 		        .map(ResponseEntity::ok);
 	}
 	
-	@GetMapping("/{id}/removePackageAccess")
-	public Mono<ResponseEntity<Boolean>> removePackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong accessId,
-	        ULong packageId) {
+	@DeleteMapping("/{id}/packageAccess")
+	public Mono<ResponseEntity<Boolean>> removePackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestParam final ULong clientId, @RequestParam final ULong packageId) {
 
-		return this.service.removePackageAccess(accessId, packageId)
+		return this.service.removePackageAccess(appId, clientId, packageId)
 		        .map(ResponseEntity::ok);
 
+	}
+	
+	@PostMapping("/{id}/roleAccess")
+	public Mono<ResponseEntity<Boolean>> addRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestBody final ApplicationAccessRoleRequest roleRequest) {
+
+		return this.service.addRoleAccess(appId, roleRequest.getClientId(), roleRequest.getRoleId())
+		        .map(ResponseEntity::ok);
+	}
+	
+	@DeleteMapping("/{id}/roleAccess")
+	public Mono<ResponseEntity<Boolean>> removeRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestParam final ULong clientId, @RequestParam final ULong roleId) {
+
+		return this.service.removeRoleAccess(appId, clientId, roleId)
+		        .map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/clients/{appCode}")

@@ -22,6 +22,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
@@ -258,24 +259,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		        ca -> ca.isSystemClient() ? Mono.just(true)
 		                : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), clientId),
+		                        .getClientId()), clientId)
+		                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (ca, hasClientAccess) ->
-				{
-
-			        if (!hasClientAccess.booleanValue())
-				        return Mono.empty();
-
-			        return this.dao.hasAppEditAccess(appId, clientId)
-			                .flatMap(canEdit ->
-							{
-
-				                if (!canEdit.booleanValue())
-					                return Mono.empty();
-
-				                return Mono.just(canEdit);
-			                });
-		        },
+		        (ca, hasClientAccess) -> this.dao.hasAppEditAccess(appId, clientId)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 		        (ca, hasClientAccess, editAccess) -> this.clientService.checkClientHasPackage(clientId, packageId)
 		                .flatMap(hasAccess ->
@@ -299,12 +287,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                SecurityMessageResourceService.ASSIGN_PACKAGE_TO_CLIENT_AND_APP, packageId)));
 	}
 
-	public Mono<Boolean> removePackageAccess(ULong id, ULong packageId) {
+	public Mono<Boolean> removePackageAccess(ULong appId, ULong clientId, ULong packageId) {
 
-		return this.dao.hasPackageAssignedWithApp(id, packageId)
+		return this.dao.hasPackageAssignedWithApp(appId, clientId, packageId)
 		        .flatMap(hasPackage ->
 				{
-
 			        if (!hasPackage.booleanValue())
 				        return Mono.empty();
 
@@ -313,25 +300,12 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                SecurityContextUtil::getUsersContextAuthentication,
 
 			                ca -> ca.isSystemClient() ? Mono.just(true)
-			                        : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-			                                .getClientId()), clientId),
+			                        : this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+			                                .getClientId()), clientId)
+			                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			                (ca, hasClientAccess) ->
-							{
-
-				                if (!hasClientAccess.booleanValue())
-					                return Mono.empty();
-
-				                return this.dao.hasAppEditAccess(appId, clientId)
-				                        .flatMap(canEdit ->
-										{
-
-					                        if (!canEdit.booleanValue())
-						                        return Mono.empty();
-
-					                        return Mono.just(canEdit);
-				                        });
-			                },
+			                (ca, hasClientAccess) -> this.dao.hasAppEditAccess(packageId, clientId)
+			                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, hasClientAccess, editAccess) -> this.clientService
 			                        .checkClientHasPackage(clientId, packageId)
@@ -343,17 +317,82 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 					                                .map(Package::getClientId)
 					                                .flatMap(packageClientId -> Mono
 					                                        .just(packageClientId.equals(clientId)))
-					                                .flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(e) : Mono.empty());
+					                                .flatMap(BooleanUtil::safeValueOfWithEmpty);
 
 				                        return Mono.just(hasAccess);
 			                        }),
-			                (ca, hasClientAccess, editAccess, hasPackageAccess) -> this.dao.removePackageAccess(id,
-			                        packageId)
+
+			                (ca, hasClientAccess, editAccess, hasPackageAccess) -> this.dao.removePackageAccess(appId,
+			                        clientId, packageId)
+
+				)
+			                .switchIfEmpty(
+			                        Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+			                                SecurityMessageResourceService.REMOVE_PACKAGE_FROM_APP_ERROR)));
 
 		        })
-		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removePackageAccess"))
+		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.NO_PACKAGE_ASSIGNED_TO_APP)));
 
+		// add eviction here
+
+	}
+
+	public Mono<Boolean> addRoleAccess(ULong appId, ULong clientId, ULong roleId) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> ca.isSystemClient() ? Mono.just(true)
+		                : this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+		                        .getClientId()), clientId)
+		                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged) -> this.dao.hasAppEditAccess(appId, clientId)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged, appAccess) -> this.clientService.checkRoleExistsOrCreatedForClient(clientId, roleId)
+		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, sysOrManaged, appAccess, roleAccess) -> this.dao.addRoleAccess(appId, clientId, roleId)
+
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addRoleAccess"))
+		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.ASSIGN_ROLE_TO_APP_ERROR)));
+	}
+
+	public Mono<Boolean> removeRoleAccess(ULong appId, ULong clientId, ULong roleId) {
+
+		return this.dao.hasRoleAssignedWithApp(appId, clientId, roleId)
+		        .flatMap(BooleanUtil::safeValueOfWithEmpty)
+		        .flatMap(hasRole -> FlatMapUtil.flatMapMono(
+
+		                SecurityContextUtil::getUsersContextAuthentication,
+
+		                ca -> ca.isSystemClient() ? Mono.just(true)
+		                        : this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+		                                .getClientId()), clientId)
+		                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+		                (ca, sysOrManaged) -> this.dao.hasAppEditAccess(appId, clientId)
+		                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		                (ca, sysOrManaged, appAccess) -> this.clientService
+		                        .checkRoleExistsOrCreatedForClient(clientId, roleId)
+		                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		                (ca, sysOrManaged, appAccess, roleAccess) -> this.dao.removeRoleAccess(appId, clientId, roleId)
+
+				)
+		                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                        SecurityMessageResourceService.REMOVE_ROLE_FROM_APP_ERROR)))
+
+				)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removeRoleAccess"))
+		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		                SecurityMessageResourceService.NO_ROLE_ASSIGNED_TO_APP)));
 	}
 
 	public Mono<Boolean> evict(ULong appId, ULong clientId) {
@@ -481,4 +520,5 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		return this.getAppByCode(urlAppCode)
 		        .flatMap(a -> this.dao.addClientAccess(a.getId(), clientId, isWriteAccess));
 	}
+
 }
