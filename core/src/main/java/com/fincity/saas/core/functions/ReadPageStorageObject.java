@@ -3,9 +3,6 @@ package com.fincity.saas.core.functions;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -16,6 +13,7 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.core.model.DataServiceQuery;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -105,12 +103,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 		        .get(SIZE)
 		        .getAsInt();
 
-		if (storageName == null)
-			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
-			        Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
-
-		Pageable pageable = PageRequest.of(page, size);
-
 		Gson gson = new GsonBuilder().create();
 
 		AbstractCondition absc = null;
@@ -119,7 +111,14 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 			absc = this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
 		}
 
-		return this.appDataService.readPage(null, null, storageName, pageable, true, absc)
+		DataServiceQuery dsq = (DataServiceQuery) new DataServiceQuery().setExcludeFields(false)
+		        .setFields(List.of())
+		        .setCondition(absc)
+		        .setPage(page)
+		        .setSize(size)
+		        .setCount(true);
+
+		return this.appDataService.readPage(null, null, storageName, dsq)
 		        .map(receivedObject -> new FunctionOutput(
 		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
 	}
