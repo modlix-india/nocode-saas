@@ -285,8 +285,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				                return this.packageService.read(packageId)
 				                        .map(Package::getClientId)
 				                        .flatMap(packageClientId -> Mono.just(packageClientId.equals(clientId)))
-				                        .flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(e) : Mono.empty())
-				                        .log();
+				                        .flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(e) : Mono.empty());
 
 			                return Mono.just(hasAccess);
 		                }),
@@ -294,13 +293,68 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        (ca, hasClientAccess, editAccess, hasPackageAccess) -> this.dao.addPackageAccess(appId, clientId,
 		                packageId)
 
-		).log()
+		)
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addPackageAccess"))
 		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.ASSIGN_PACKAGE_TO_CLIENT_AND_APP, packageId)));
 	}
-	
-	
+
+	public Mono<Boolean> removePackageAccess(ULong id, ULong packageId) {
+
+		return this.dao.hasPackageAssignedWithApp(id, packageId)
+		        .flatMap(hasPackage ->
+				{
+
+			        if (!hasPackage.booleanValue())
+				        return Mono.empty();
+
+			        return FlatMapUtil.flatMapMono(
+
+			                SecurityContextUtil::getUsersContextAuthentication,
+
+			                ca -> ca.isSystemClient() ? Mono.just(true)
+			                        : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
+			                                .getClientId()), clientId),
+
+			                (ca, hasClientAccess) ->
+							{
+
+				                if (!hasClientAccess.booleanValue())
+					                return Mono.empty();
+
+				                return this.dao.hasAppEditAccess(appId, clientId)
+				                        .flatMap(canEdit ->
+										{
+
+					                        if (!canEdit.booleanValue())
+						                        return Mono.empty();
+
+					                        return Mono.just(canEdit);
+				                        });
+			                },
+
+			                (ca, hasClientAccess, editAccess) -> this.clientService
+			                        .checkClientHasPackage(clientId, packageId)
+			                        .flatMap(hasAccess ->
+									{
+
+				                        if (!hasAccess.booleanValue())
+					                        return this.packageService.read(packageId)
+					                                .map(Package::getClientId)
+					                                .flatMap(packageClientId -> Mono
+					                                        .just(packageClientId.equals(clientId)))
+					                                .flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(e) : Mono.empty());
+
+				                        return Mono.just(hasAccess);
+			                        }),
+			                (ca, hasClientAccess, editAccess, hasPackageAccess) -> this.dao.removePackageAccess(id,
+			                        packageId)
+
+		        })
+		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+		                SecurityMessageResourceService.NO_PACKAGE_ASSIGNED_TO_APP)));
+
+	}
 
 	public Mono<Boolean> evict(ULong appId, ULong clientId) {
 

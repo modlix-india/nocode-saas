@@ -135,10 +135,20 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		                .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
 		                        .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))))
 		        .map(Record1::value1)
-		        .map(e -> e.equals(UByte.valueOf(1))).log();
-		
-		}
-	
+		        .map(e -> e.equals(UByte.valueOf(1)));
+
+	}
+
+	public Mono<Boolean> hasPackageAssignedWithApp(ULong accessId, ULong packageId) {
+
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(SECURITY_APP_PACKAGE)
+		        .where(SECURITY_APP_PACKAGE.ID.eq(accessId)
+		                .and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
+		        .map(Record1::value1)
+		        .map(e -> e > 0);
+	}	
+
 	public Mono<Boolean> addPackageAccess(ULong appId, ULong clientId, ULong packageId) {
 
 		return Mono.from(
@@ -149,10 +159,19 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		                .values(clientId, appId, packageId)
 
 		)
-		        .map(e -> e == 1).log();
+		        .map(e -> e == 1);
 
 	}
 
+	public Mono<Boolean> removePackageAccess(ULong id, ULong packageId) {
+
+		return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_PACKAGE)
+		        .where(SECURITY_APP_PACKAGE.ID.eq(id)
+		                .and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
+		        .map(e -> e == 1);
+		
+	}
+	
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
 
 		UByte edit = UByte.valueOf(writeAccess ? 1 : 0);

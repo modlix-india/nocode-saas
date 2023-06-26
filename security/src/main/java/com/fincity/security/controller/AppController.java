@@ -80,6 +80,15 @@ public class AppController
 		return this.service.addPackageAccess(appId, appRequest.getClientId(), appRequest.getPackageId())
 		        .map(ResponseEntity::ok);
 	}
+	
+	@GetMapping("/{id}/removePackageAccess")
+	public Mono<ResponseEntity<Boolean>> removePackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong accessId,
+	        ULong packageId) {
+
+		return this.service.removePackageAccess(accessId, packageId)
+		        .map(ResponseEntity::ok);
+
+	}
 
 	@GetMapping("/clients/{appCode}")
 	public Mono<ResponseEntity<List<Client>>> getAppClients(@PathVariable final String appCode,
