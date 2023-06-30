@@ -60,9 +60,10 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 	@Override
 	public Flux<String> filter(String name) {
+		final String filterName = name == null ? "" : name;
 		return Flux.fromStream(filterableNames.stream())
 		        .filter(e -> e.toLowerCase()
-		                .indexOf(name.toLowerCase()) != -1);
+		                .indexOf(filterName.toLowerCase()) != -1);
 	}
 
 	@Override
