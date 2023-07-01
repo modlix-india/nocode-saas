@@ -3,6 +3,7 @@ package com.fincity.saas.commons.mongo.function;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
@@ -20,24 +21,32 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = false)
 public class DefinitionFunction extends AbstractReactiveFunction {
 
-    private final FunctionDefinition definition;
-    private final String executionAuthorization;
+	private final FunctionDefinition definition;
+	private final String executionAuthorization;
 
-    @Override
-    public FunctionSignature getSignature() {
+	@Override
+	public FunctionSignature getSignature() {
+		return definition;
+	}
 
-        return definition;
-    }
+	@Override
+	public Map<String, Event> getProbableEventSignature(Map<String, List<Schema>> probableParameters) {
+		return this.getSignature()
+		        .getEvents();
+	}
 
-    @Override
-    public Map<String, Event> getProbableEventSignature(Map<String, List<Schema>> probableParameters) {
-        return this.getSignature()
-                .getEvents();
-    }
+	@Override
+	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
+		return new ReactiveKIRuntime(definition).execute(context);
+	}
 
-    @Override
-    protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-        return new ReactiveKIRuntime(definition).execute(context);
-    }
+	@JsonIgnore
+	public DefinitionFunction getOnlySignatureFromDefinitionAsFunction() {
+		FunctionDefinition fd = new FunctionDefinition(this.definition);
+		fd.setStepGroups(Map.of());
+		fd.setSteps(Map.of());
+
+		return new DefinitionFunction(fd, null);
+	}
 
 }
