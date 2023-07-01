@@ -2,6 +2,7 @@ package com.fincity.saas.ui.controller;
 
 import java.util.List;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,12 +16,12 @@ import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunction
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
-import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.document.UIFunction;
 import com.fincity.saas.ui.repository.UIFunctionDocumentRepository;
 import com.fincity.saas.ui.service.UIFunctionService;
+import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -32,7 +33,7 @@ public class FunctionController
         extends AbstractOverridableDataController<UIFunction, UIFunctionDocumentRepository, UIFunctionService> {
 	@GetMapping("/repositoryFind")
 
-	public Mono<ResponseEntity<ReactiveFunction>> find(@RequestParam(required = false) String appCode,
+	public Mono<ResponseEntity<String>> find(@RequestParam(required = false) String appCode,
 	        @RequestParam(required = false) String clientCode,
 	        @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos, String namespace,
 	        String name) {
@@ -52,18 +53,14 @@ public class FunctionController
 			                        this.service.getFunctionRepository(tup.getT1(), tup.getT2()))
 			                : this.service.getFunctionRepository(tup.getT1(), tup.getT2()));
 
-			        return fRepo.find(namespace, name)
-			                .map(e ->
-							{
+			        return fRepo.find(namespace, name);
+		        },
 
-				                if (!(e instanceof DefinitionFunction))
-					                return e;
-
-				                return ((DefinitionFunction) e).getOnlySignatureFromDefinitionAsFunction();
-			                });
-		        })
+		        (ca, tup, fun) -> Mono.just((new Gson()).toJson(fun)))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
-		        .map(ResponseEntity::ok);
+		        .map(str -> ResponseEntity.ok()
+		                .contentType(MediaType.APPLICATION_JSON)
+		                .body(str));
 	}
 
 	@GetMapping("/repositoryFilter")

@@ -5,6 +5,7 @@ import java.util.List;
 import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +28,7 @@ import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -52,7 +54,7 @@ public class FunctionController
 	}
 
 	@GetMapping("/repositoryFind")
-	public Mono<ResponseEntity<ReactiveFunction>> find(@RequestParam(required = false) String appCode,
+	public Mono<ResponseEntity<String>> find(@RequestParam(required = false) String appCode,
 	        @RequestParam(required = false) String clientCode,
 	        @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos, String namespace,
 	        String name) {
@@ -82,9 +84,13 @@ public class FunctionController
 
 				                return ((DefinitionFunction) e).getOnlySignatureFromDefinitionAsFunction();
 			                });
-		        })
+		        },
+
+		        (ca, tup, fun) -> Mono.just((new Gson()).toJson(fun)))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
-		        .map(ResponseEntity::ok);
+		        .map(str -> ResponseEntity.ok()
+		                .contentType(MediaType.APPLICATION_JSON)
+		                .body(str));
 	}
 
 	@GetMapping("/repositoryFilter")
