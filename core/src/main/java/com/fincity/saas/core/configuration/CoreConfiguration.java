@@ -65,7 +65,7 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 			if (name != null)
 				log.debug("{} - {}", name, v);
 			else
-				log.debug(v.toString());
+				log.debug(v);
 		}));
 	}
 
@@ -85,7 +85,8 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**");
+		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**",
+		        "/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind");
 	}
 
 	@Bean
