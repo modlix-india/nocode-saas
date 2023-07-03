@@ -19,9 +19,8 @@ import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
-import com.fincity.security.model.ApplicationAccessPackageRequest;
+import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
-import com.fincity.security.model.ApplicationAccessRoleRequest;
 import com.fincity.security.service.AppService;
 
 import reactor.core.publisher.Mono;
@@ -76,9 +75,21 @@ public class AppController
 	
 	@PostMapping("/{id}/packageAccess")
 	public Mono<ResponseEntity<Boolean>> addPackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-	        @RequestBody final ApplicationAccessPackageRequest appRequest) {
+	        @RequestBody final ApplicationAccessPackageOrRoleRequest appRequest) {
 
 		return this.service.addPackageAccess(appId, appRequest.getClientId(), appRequest.getPackageId())
+		        .map(ResponseEntity::ok);
+	}
+	
+	//fetch list of packages w.r.t appCode or client id
+	
+	@GetMapping("/getPackages/{id}")
+	public Mono<Object> fetchPackagesList(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestParam ULong clientId) {
+
+		 Mono<ResponseEntity<List<Package>>> as;
+		
+		return Mono.just(List.of())
 		        .map(ResponseEntity::ok);
 	}
 	
@@ -93,11 +104,13 @@ public class AppController
 	
 	@PostMapping("/{id}/roleAccess")
 	public Mono<ResponseEntity<Boolean>> addRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-	        @RequestBody final ApplicationAccessRoleRequest roleRequest) {
+	        @RequestBody final ApplicationAccessPackageOrRoleRequest roleRequest) {
 
 		return this.service.addRoleAccess(appId, roleRequest.getClientId(), roleRequest.getRoleId())
 		        .map(ResponseEntity::ok);
 	}
+	
+	//fetch list of roles w.r.t appCode
 	
 	@DeleteMapping("/{id}/roleAccess")
 	public Mono<ResponseEntity<Boolean>> removeRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,

@@ -177,6 +177,30 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .map(e -> e == 1);
 	}
 
+	public Mono<List<ULong>> fetchPackagesBasedOnClient(ULong clientId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_APP_PACKAGE.PACKAGE_ID)
+		                .from(SECURITY_APP_PACKAGE)
+		                .where(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId)))
+		        .map(Record1::value1)
+		        .collectList();
+
+	}
+
+	public Mono<List<ULong>> fetchPackagesBasedOnApp(ULong appId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_APP_PACKAGE.PACKAGE_ID)
+		                .from(SECURITY_APP_PACKAGE)
+		                .where(SECURITY_APP_PACKAGE.APP_ID.eq(appId)))
+		        .map(Record1::value1)
+		        .collectList();
+
+	}
+
 	public Mono<Boolean> addPackageAccess(ULong appId, ULong clientId, ULong packageId) {
 
 		return Mono.from(
@@ -194,15 +218,15 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 	public Mono<Boolean> removePackageAccess(ULong id, ULong clientId, ULong packageId) {
 
 		return Mono.from(
-				
-				this.dslContext.deleteFrom(SECURITY_APP_PACKAGE)
-		        .where(SECURITY_APP_PACKAGE.APP_ID.eq(id)
-		                .and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId))
-		                .and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
+
+		        this.dslContext.deleteFrom(SECURITY_APP_PACKAGE)
+		                .where(SECURITY_APP_PACKAGE.APP_ID.eq(id)
+		                        .and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId))
+		                        .and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
 		        .map(e -> e == 1);
 
 	}
-	
+
 	public Mono<Boolean> removeRoleAccess(ULong appId, ULong clientId, ULong roleId) {
 
 		return Mono.from(
@@ -215,7 +239,6 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		)
 		        .map(e -> e == 1);
 	}
-	
 
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
 
