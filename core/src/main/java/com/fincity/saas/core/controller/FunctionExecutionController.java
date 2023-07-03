@@ -1,5 +1,6 @@
 package com.fincity.saas.core.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -98,16 +99,17 @@ public class FunctionExecutionController {
 	}
 
 	@GetMapping(PATH)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
-	        ServerHttpRequest request) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
+	        @PathVariable(PATH_VARIABLE_NAME) String name, ServerHttpRequest request) {
 
 		return this.execute(namespace, name, appCode, clientCode, null, request);
 	}
 
 	@GetMapping(PATH_FULL_NAME)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAME) String fullName, ServerHttpRequest request) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAME) String fullName,
+	        ServerHttpRequest request) {
 
 		Tuple2<String, String> tup = this.splitName(fullName);
 
@@ -115,9 +117,9 @@ public class FunctionExecutionController {
 	}
 
 	@PostMapping(PATH)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
-	        @RequestBody String jsonString) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
+	        @PathVariable(PATH_VARIABLE_NAME) String name, @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 		        : new Gson().fromJson(jsonString, JsonObject.class);
@@ -128,8 +130,9 @@ public class FunctionExecutionController {
 	}
 
 	@PostMapping(PATH_FULL_NAME)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAME) String fullName, @RequestBody String jsonString) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAME) String fullName,
+	        @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 		        : new Gson().fromJson(jsonString, JsonObject.class);
@@ -155,8 +158,8 @@ public class FunctionExecutionController {
 		return Tuples.of(namespace, name);
 	}
 
-	private Mono<ResponseEntity<String>> execute(String namespace, String name, String appCode, String clientCode,
-	        Map<String, JsonElement> job, ServerHttpRequest request) {
+	private Mono<ResponseEntity<String>> execute(String namespace, String name, String appCode,
+	        String clientCode, Map<String, JsonElement> job, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -191,39 +194,29 @@ public class FunctionExecutionController {
 		        },
 
 		        (ca, fun, schRepo, args, output) -> this.extractOutputEvent(output))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
 		        .switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
 
 	}
 
 	private Mono<ResponseEntity<String>> extractOutputEvent(FunctionOutput e) {
+
+		List<EventResult> list = new ArrayList<>();
 		EventResult er = null;
 
 		while ((er = e.next()) != null) {
 
-			if (!Event.OUTPUT.equals(er.getName()))
-				continue;
+			list.add(er);
 
-			Map<String, JsonElement> result = er.getResult();
-
-			if (result == null || result.isEmpty())
-				return Mono.just(ResponseEntity.ok()
-				        .contentLength(0l)
-				        .contentType(MediaType.APPLICATION_JSON)
-				        .body(""));
-
-			JsonObject resultObj = new JsonObject();
-			for (var eachEntry : result.entrySet())
-				resultObj.add(eachEntry.getKey(), eachEntry.getValue());
-
-			return Mono.just((new Gson()).toJson(resultObj))
-			        .map(objString -> ResponseEntity.ok()
-			                .contentType(MediaType.APPLICATION_JSON)
-			                .body(objString));
+			if (Event.OUTPUT.equals(er.getName()))
+				break;
 		}
-
-		return Mono.empty();
+		
+		return Mono.just((new Gson()).toJson(list))
+		        .map(objString -> ResponseEntity.ok()
+		                .contentType(MediaType.APPLICATION_JSON)
+		                .body(objString));
 	}
 
 	private Mono<Map<String, JsonElement>> getRequestParamsToArguments(Map<String, Parameter> parameters,

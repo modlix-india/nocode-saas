@@ -2,9 +2,14 @@ package com.fincity.saas.commons.mongo.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
@@ -100,6 +105,33 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFunctionService.updatableEntity"));
 	}
 
+	static class NameOnly {
+		String name;
+	}
+
+	public Flux<String> filterInRepo(String appCode, String clientCode, String filter) {
+
+		Flux<NameOnly> names = this.inheritanceService.order(appCode, clientCode, clientCode)
+		        .flatMapMany(ccs ->
+				{
+			        List<Criteria> criteria = new ArrayList<>();
+
+			        criteria.add(Criteria.where("appCode")
+			                .is(appCode));
+			        criteria.add(Criteria.where("clientCode")
+			                .in(ccs));
+
+			        if (!StringUtil.safeIsBlank(filter))
+				        criteria.add(Criteria.where("name")
+				                .regex(Pattern.compile(filter, Pattern.CASE_INSENSITIVE)));
+
+			        return this.mongoTemplate.find(new Query(new Criteria().andOperator(criteria)), NameOnly.class,
+			                this.getCollectionName());
+		        });
+
+		return names.map(e -> e.name);
+	}
+
 	public ReactiveRepository<ReactiveFunction> getFunctionRepository(String appCode, String clientCode) {
 
 		return functions.computeIfAbsent(appCode + " - " + clientCode,
@@ -136,7 +168,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
 							        FunctionDefinition fd = gson.fromJson(gson.toJsonTree(s.getDefinition()),
 							                FunctionDefinition.class);
-
+							        
 							        return Mono.just((ReactiveFunction) new DefinitionFunction(fd, s.getExecuteAuth()));
 						        })
 						        .contextWrite(Context.of(LogUtil.METHOD_NAME,
@@ -146,8 +178,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
 					public Flux<String> filter(String name) {
 
-						return Flux.empty();
-
+						return filterInRepo(appCode, clientCode, name);
 					}
 				});
 	}
