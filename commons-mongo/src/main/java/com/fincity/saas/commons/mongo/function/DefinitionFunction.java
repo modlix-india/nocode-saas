@@ -49,4 +49,12 @@ public class DefinitionFunction extends AbstractReactiveFunction {
 		return new DefinitionFunction(fd, null);
 	}
 
+	@JsonIgnore
+	public FunctionSignature getOnlySignatureFromDefinition() {
+		FunctionDefinition fd = new FunctionDefinition(this.definition);
+		fd.setStepGroups(Map.of());
+		fd.setSteps(Map.of());
+		
+		return fd;
+	}
 }
