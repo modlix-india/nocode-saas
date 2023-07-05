@@ -25,9 +25,9 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
 	private static final String EVENT_RESULT = "result";
 
-	private static final String FUNCTION_NAME = "CreateStorage";
+	private static final String FUNCTION_NAME = "Create";
 
-	private static final String NAME_SPACE = "CoreServices";
+	private static final String NAME_SPACE = "CoreServices.Storage";
 
 	private static final String STORAGE_NAME = "storageName";
 

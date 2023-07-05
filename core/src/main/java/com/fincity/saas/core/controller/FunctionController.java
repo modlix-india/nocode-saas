@@ -1,6 +1,7 @@
 package com.fincity.saas.core.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.PostConstruct;
 
@@ -79,14 +80,16 @@ public class FunctionController
 			                .map(e ->
 							{
 
-				                if (!(e instanceof DefinitionFunction))
-					                return e;
+				                if (!(e instanceof DefinitionFunction)) {
+				                	return e.getSignature();
+				                }
+					                
 
-				                return ((DefinitionFunction) e).getOnlySignatureFromDefinitionAsFunction();
+				                return ((DefinitionFunction) e).getOnlySignatureFromDefinition();
 			                });
 		        },
 
-		        (ca, tup, fun) -> Mono.just((new Gson()).toJson(fun)))
+		        (ca, tup, signature) -> Mono.just((new Gson()).toJson(Map.of("definition", signature))))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
 		        .map(str -> ResponseEntity.ok()
 		                .contentType(MediaType.APPLICATION_JSON)

@@ -26,9 +26,9 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 	private static final String EVENT_RESULT = "result";
 
-	private static final String FUNCTION_NAME = "ReadPageStorage";
+	private static final String FUNCTION_NAME = "ReadPage";
 
-	private static final String NAME_SPACE = "CoreServices";
+	private static final String NAME_SPACE = "CoreServices.Storage";
 
 	private static final String STORAGE_NAME = "storageName";
 
