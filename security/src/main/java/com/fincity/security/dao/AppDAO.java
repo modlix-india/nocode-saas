@@ -24,6 +24,7 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
@@ -176,28 +177,30 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		)
 		        .map(e -> e == 1);
 	}
-
-	public Mono<List<ULong>> fetchPackagesBasedOnClient(ULong clientId) {
+	
+	public Flux<ULong> fetchRolesBasedOnClient(ULong clientId, ULong appId) {
 
 		return Flux.from(
 
-		        this.dslContext.select(SECURITY_APP_PACKAGE.PACKAGE_ID)
-		                .from(SECURITY_APP_PACKAGE)
-		                .where(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId)))
-		        .map(Record1::value1)
-		        .collectList();
+		        this.dslContext.select(SECURITY_APP_USER_ROLE.ROLE_ID)
+		                .from(SECURITY_APP_USER_ROLE)
+		                .where(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(clientId)
+		                        .and(SECURITY_APP_USER_ROLE.APP_ID.eq(appId)))
 
+		)
+		        .map(Record1::value1)
+		        .map(ULongUtil::valueOf);
 	}
 
-	public Mono<List<ULong>> fetchPackagesBasedOnApp(ULong appId) {
+	public Flux<ULong> fetchPackagesBasedOnClient(ULong clientId, ULong appId) {
 
 		return Flux.from(
 
 		        this.dslContext.select(SECURITY_APP_PACKAGE.PACKAGE_ID)
 		                .from(SECURITY_APP_PACKAGE)
-		                .where(SECURITY_APP_PACKAGE.APP_ID.eq(appId)))
-		        .map(Record1::value1)
-		        .collectList();
+		                .where(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId)
+		                        .and(SECURITY_APP_PACKAGE.APP_ID.eq(appId))))
+		        .map(Record1::value1);
 
 	}
 

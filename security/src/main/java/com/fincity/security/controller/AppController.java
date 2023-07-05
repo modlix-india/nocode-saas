@@ -81,15 +81,12 @@ public class AppController
 		        .map(ResponseEntity::ok);
 	}
 	
-	//fetch list of packages w.r.t appCode or client id
 	
-	@GetMapping("/getPackages/{id}")
-	public Mono<Object> fetchPackagesList(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-	        @RequestParam ULong clientId) {
+	@GetMapping("/getPackages/{appCode}")
+	public Mono<Object> fetchPackagesList(@PathVariable String appCode,
+	        @RequestParam(required = false) ULong clientId) {
 
-		 Mono<ResponseEntity<List<Package>>> as;
-		
-		return Mono.just(List.of())
+		return this.service.getPackagesAssignedToApp(appCode, clientId)
 		        .map(ResponseEntity::ok);
 	}
 	
@@ -110,7 +107,14 @@ public class AppController
 		        .map(ResponseEntity::ok);
 	}
 	
-	//fetch list of roles w.r.t appCode
+	
+	@GetMapping("/getRoles/{appCode}")
+	public Mono<Object> fetchRolesList(@PathVariable final String appCode,
+	        @RequestParam(required = false) ULong clientId) {
+
+		return this.service.getRolesAssignedToApp(appCode, clientId)
+		        .map(ResponseEntity::ok);
+	}
 	
 	@DeleteMapping("/{id}/roleAccess")
 	public Mono<ResponseEntity<Boolean>> removeRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,

@@ -3,7 +3,6 @@ package com.fincity.security.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.StreamSupport;
 
 import org.jooq.types.ULong;
 import org.springframework.aop.framework.AopContext;
@@ -14,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.kirun.engine.util.stream.StreamUtil;
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.jwt.ContextAuthentication;
@@ -33,6 +31,7 @@ import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Package;
+import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import reactor.core.publisher.Mono;
@@ -56,12 +55,14 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Autowired
 	private PackageService packageService;
 
+	@Autowired
+	private RoleService roleService;
+
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
 	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
 	private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
 	private static final String CACHE_NAME_APP_FULL_INH_BY_APPCODE = "fullInhAppByCode";
 	private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
-	private static final String CACHE_NAME_APP_BY_PACKAGES = "appPackageAccess";
 
 	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
@@ -318,12 +319,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, hasClientAccess) -> this.dao.hasAppEditAccess(packageId, clientId)
-			                        .log()
 			                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 			                (ca, hasClientAccess, editAccess) -> this.clientService
 			                        .checkClientHasPackage(clientId, packageId)
-			                        .log()
 			                        .flatMap(hasAccess ->
 									{
 
@@ -342,13 +341,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			                        clientId, packageId)
 
 				)
-			                .log()
 			                .switchIfEmpty(
 			                        Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 			                                SecurityMessageResourceService.REMOVE_PACKAGE_FROM_APP_ERROR)));
 
 		        })
-		        .log()
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removePackageAccess"))
 		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.NO_PACKAGE_ASSIGNED_TO_APP)))
@@ -358,6 +355,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	}
 
 	public Mono<Boolean> addRoleAccess(ULong appId, ULong clientId, ULong roleId) {
+
+		// check for duplicate entry before calling the add method
 
 		return FlatMapUtil.flatMapMono(
 
@@ -508,52 +507,62 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        appCode);
 	}
 
-	public Mono<List<ULong>> getPackagesAssignedToClient(String appCode, ULong clientId) {
+	public Mono<List<Package>> getPackagesAssignedToApp(String appCode, ULong clientId) {
 
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_PACKAGES,
+		        ca -> this.getAppByCode(appCode),
 
-		                () -> FlatMapUtil.flatMapMono(
+		        (ca, app) -> this.dao
+		                .fetchPackagesBasedOnClient(clientId == null ? app.getClientId() : clientId, app.getId())
+		                .map(Object.class::cast)
+		                .collectList(),
 
-		                        () -> this.getAppByCode(appCode),
+		        (ca, app, packages) ->
+				{
 
-		                        app ->
-								{
+			        FilterCondition cond = new FilterCondition();
+			        cond.setField("id")
+			                .setMultiValue(packages)
+			                .setOperator(FilterConditionOperator.IN);
 
-			                        if (!ca.isSystemClient()) {
+			        return this.packageService.readAllFilter(cond)
+			                .collectList();
+		        }
 
-				                        if (clientId != null)
-					                        return this.dao.fetchPackagesBasedOnClient(clientId);
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getPackagesAssignedToClient"));
 
-				                        return this.dao.fetchPackagesBasedOnClient(app.getClientId());
-			                        }
+	}
 
-			                        return this.dao.fetchPackagesBasedOnApp(app.getId());
-		                        },
+	public Mono<List<Role>> getRolesAssignedToApp(String appCode, ULong clientId) {
 
-		                        (app, packageIds) -> Mono.just(packageIds)
-		                                .map(ids ->
-										{
-										
-			                                List<Object> values = ids.stream()
-			                                        .map(e -> e.into(Object.class))
-			                                        .collectList();
-											
-			                                AbstractCondition filterCond = new FilterCondition().setField("id")
-			                                        .setOperator(FilterConditionOperator.IN)
-			                                        .setMultiValue(v);
+		return FlatMapUtil.flatMapMono(
 
-			                                return this.packageService.readAllFilter(filterCond);
-											
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-		                                })
+		        ca -> this.getAppByCode(appCode),
 
-						), ca.getClientCode(), ":", appCode, ":", "packages")
+		        (ca, app) -> this.dao.fetchRolesBasedOnClient(clientId, app.getClientId())
+		                .map(Object.class::cast)
+		                .collectList(),
 
-		);
+		        (ca, app, roles) ->
+				{
+
+			        FilterCondition cond = new FilterCondition();
+			        cond.setField("id")
+			                .setMultiValue(roles)
+			                .setOperator(FilterConditionOperator.IN);
+
+			        return this.roleService.readAllFilterWithReadPermissions(cond)
+			                .collectList();
+		        }
+
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getRolesAssignedToApp"));
 
 	}
 
