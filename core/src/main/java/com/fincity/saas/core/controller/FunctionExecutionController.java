@@ -99,17 +99,16 @@ public class FunctionExecutionController {
 	}
 
 	@GetMapping(PATH)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
-	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
-	        @PathVariable(PATH_VARIABLE_NAME) String name, ServerHttpRequest request) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
+	        ServerHttpRequest request) {
 
 		return this.execute(namespace, name, appCode, clientCode, null, request);
 	}
 
 	@GetMapping(PATH_FULL_NAME)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
-	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAME) String fullName,
-	        ServerHttpRequest request) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	        @PathVariable(PATH_VARIABLE_NAME) String fullName, ServerHttpRequest request) {
 
 		Tuple2<String, String> tup = this.splitName(fullName);
 
@@ -117,9 +116,9 @@ public class FunctionExecutionController {
 	}
 
 	@PostMapping(PATH)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
-	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
-	        @PathVariable(PATH_VARIABLE_NAME) String name, @RequestBody String jsonString) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
+	        @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 		        : new Gson().fromJson(jsonString, JsonObject.class);
@@ -130,9 +129,8 @@ public class FunctionExecutionController {
 	}
 
 	@PostMapping(PATH_FULL_NAME)
-	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode,
-	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_NAME) String fullName,
-	        @RequestBody String jsonString) {
+	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
+	        @PathVariable(PATH_VARIABLE_NAME) String fullName, @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 		        : new Gson().fromJson(jsonString, JsonObject.class);
@@ -158,15 +156,15 @@ public class FunctionExecutionController {
 		return Tuples.of(namespace, name);
 	}
 
-	private Mono<ResponseEntity<String>> execute(String namespace, String name, String appCode,
-	        String clientCode, Map<String, JsonElement> job, ServerHttpRequest request) {
+	private Mono<ResponseEntity<String>> execute(String namespace, String name, String appCode, String clientCode,
+	        Map<String, JsonElement> job, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.functionService.getFunctionRepository(appCode, clientCode)
-		                .find(namespace, name),
+		        ca -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
+		                this.functionService.getFunctionRepository(appCode, clientCode)).find(namespace, name),
 
 		        (ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
 		                new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode, clientCode))),
@@ -212,7 +210,7 @@ public class FunctionExecutionController {
 			if (Event.OUTPUT.equals(er.getName()))
 				break;
 		}
-		
+
 		return Mono.just((new Gson()).toJson(list))
 		        .map(objString -> ResponseEntity.ok()
 		                .contentType(MediaType.APPLICATION_JSON)
