@@ -35,16 +35,14 @@ import reactor.util.context.Context;
 public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R extends IOverridableDataRepository<D>>
         extends AbstractOverridableDataService<D, R> {
 
-	protected AbstractSchemaService(Class<D> pojoClass) {
-		super(pojoClass);
-	}
-
-	private static final String CACHE_NAME_SCHEMA_REPO = "cacheSchemaRepo";
-
 	private static final String NAMESPACE = "namespace";
 	private static final String NAME = "name";
 
 	private Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
+
+	protected AbstractSchemaService(Class<D> pojoClass) {
+		super(pojoClass);
+	}
 
 	@Override
 	public Mono<D> create(D entity) {
@@ -111,10 +109,8 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 			@Override
 			public Mono<Schema> find(String namespace, String name) {
 
-				return cacheService
-				        .cacheValueOrGet(CACHE_NAME_SCHEMA_REPO,
-				                () -> read(namespace + "." + name, appCode, clientCode), appCode, clientCode,
-				                namespace + "." + name)
+				return read(namespace + "." + name, appCode, clientCode)
+
 				        .map(s ->
 						{
 					        Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
