@@ -44,8 +44,6 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 	private static final String NAMESPACE = "namespace";
 	private static final String NAME = "name";
 
-	private static final String CACHE_NAME_FUNCTION_REPO = "functionRepo";
-
 	private Map<String, ReactiveRepository<ReactiveFunction>> functions = new HashMap<>();
 
 	@Override
@@ -146,8 +144,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
 						return FlatMapUtil.flatMapMono(
 
-						        () -> cacheService.cacheValueOrGet(CACHE_NAME_FUNCTION_REPO,
-						                () -> read(fnName, appCode, clientCode), appCode, clientCode, fnName),
+								() -> read(fnName, appCode, clientCode),
 
 						        s ->
 								{
@@ -168,7 +165,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
 							        FunctionDefinition fd = gson.fromJson(gson.toJsonTree(s.getDefinition()),
 							                FunctionDefinition.class);
-							        
+
 							        return Mono.just((ReactiveFunction) new DefinitionFunction(fd, s.getExecuteAuth()));
 						        })
 						        .contextWrite(Context.of(LogUtil.METHOD_NAME,

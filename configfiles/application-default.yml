@@ -35,8 +35,6 @@ core:
 spring:
   flyway:
     enabled: false
-  cache:
-    type: NONE
 
 redis:
   url: redis://kiran%40123@localhost:6379
