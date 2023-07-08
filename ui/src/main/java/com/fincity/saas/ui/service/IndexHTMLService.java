@@ -46,12 +46,6 @@ public class IndexHTMLService {
 	        Map.entry("FREE_FONT_AWESOME_ALL",
 	                "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("FREE_FONT_AWESOME_SOLID_ONLY",
-	                "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css\" rel=\"stylesheet\" />"),
-
-	        Map.entry("FREE_FONT_AWESOME_REGULAR_ONLY",
-	                "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/regular.min.css\" rel=\"stylesheet\" />"),
-
 	        Map.entry("MATERIAL_SYMBOLS_OUTLINED",
 	                "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" />"),
 
@@ -70,7 +64,7 @@ public class IndexHTMLService {
 	        Map.entry("MATERIAL_ICONS_ROUNDED",
 	                "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Round\" rel=\"stylesheet\">"),
 
-	        Map.entry("MATERIAL_ICONS_FILLED_SHARP",
+	        Map.entry("MATERIAL_ICONS_SHARP",
 	                "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Sharp\" rel=\"stylesheet\">"),
 
 	        Map.entry("MATERIAL_ICONS_TWO_TONE",
