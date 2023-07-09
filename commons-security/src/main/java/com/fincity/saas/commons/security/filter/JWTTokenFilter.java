@@ -48,7 +48,7 @@ public class JWTTokenFilter implements WebFilter {
 		        .get(LogUtil.DEBUG_KEY);
 		final String dc = debugCode == null || debugCode.isEmpty() ? null : debugCode.get(0);
 
-		return this.authService.getAuthentication(isBasic, bearerToken, request)
+		return this.authService.getAuthentication(isBasic, bearerToken, cc, ac, request)
 		        .flatMap(ca ->
 				{
 
