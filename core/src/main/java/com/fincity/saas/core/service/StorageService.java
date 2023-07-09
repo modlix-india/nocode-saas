@@ -7,6 +7,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -16,6 +22,8 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.repository.StorageRepository;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -115,7 +123,13 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 	public Mono<Schema> getSchema(Storage storage) {
 
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_STORAGE_SCHEMA,
-		        () -> Mono.just(this.objectMapper.convertValue(storage.getSchema(), Schema.class)), storage.getId());
+		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_STORAGE_SCHEMA, () -> {
+			Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+			        .registerTypeAdapter(AdditionalType.class, new AdditionalTypeAdapter())
+			        .registerTypeAdapter(ArraySchemaType.class, new ArraySchemaTypeAdapter())
+			        .create();
+
+			return Mono.just(gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class));
+		}, storage.getId());
 	}
 }
