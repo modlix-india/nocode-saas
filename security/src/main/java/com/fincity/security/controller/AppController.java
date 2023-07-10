@@ -19,6 +19,7 @@ import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
+import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.service.AppService;
 
@@ -69,6 +70,57 @@ public class AppController
 	public Mono<ResponseEntity<Boolean>> removeClientAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
 	        @RequestParam final ULong accessId) {
 		return this.service.removeClient(appId, accessId)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@PostMapping("/{id}/packageAccess")
+	public Mono<ResponseEntity<Boolean>> addPackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestBody final ApplicationAccessPackageOrRoleRequest appRequest) {
+
+		return this.service.addPackageAccess(appId, appRequest.getClientId(), appRequest.getPackageId())
+		        .map(ResponseEntity::ok);
+	}
+	
+	
+	@GetMapping("/getPackages/{appCode}")
+	public Mono<Object> fetchPackagesList(@PathVariable String appCode,
+	        @RequestParam(required = false) ULong clientId) {
+
+		return this.service.getPackagesAssignedToApp(appCode, clientId)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@DeleteMapping("/{id}/packageAccess")
+	public Mono<ResponseEntity<Boolean>> removePackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestParam final ULong clientId, @RequestParam final ULong packageId) {
+
+		return this.service.removePackageAccess(appId, clientId, packageId)
+		        .map(ResponseEntity::ok);
+
+	}
+	
+	@PostMapping("/{id}/roleAccess")
+	public Mono<ResponseEntity<Boolean>> addRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestBody final ApplicationAccessPackageOrRoleRequest roleRequest) {
+
+		return this.service.addRoleAccess(appId, roleRequest.getClientId(), roleRequest.getRoleId())
+		        .map(ResponseEntity::ok);
+	}
+	
+	
+	@GetMapping("/getRoles/{appCode}")
+	public Mono<Object> fetchRolesList(@PathVariable final String appCode,
+	        @RequestParam(required = false) ULong clientId) {
+
+		return this.service.getRolesAssignedToApp(appCode, clientId)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@DeleteMapping("/{id}/roleAccess")
+	public Mono<ResponseEntity<Boolean>> removeRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
+	        @RequestParam final ULong clientId, @RequestParam final ULong roleId) {
+
+		return this.service.removeRoleAccess(appId, clientId, roleId)
 		        .map(ResponseEntity::ok);
 	}
 

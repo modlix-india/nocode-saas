@@ -31,6 +31,7 @@ import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -113,6 +114,11 @@ public class PackageService extends
 		return super.read(id);
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.Package_READ')")	
+	public Flux<Package> readFilterWithReadPermission(AbstractCondition cond) {
+		return super.readAllFilter(cond);
+	}
+	
 	@PreAuthorize("hasAuthority('Authorities.Package_READ')")
 	@Override
 	public Mono<Page<Package>> readPageFilter(Pageable pageable, AbstractCondition condition) {
