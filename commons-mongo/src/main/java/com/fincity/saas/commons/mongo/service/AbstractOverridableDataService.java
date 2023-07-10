@@ -60,7 +60,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 	protected static final String READ = "READ";
 	protected static final String DELETE = "DELETE";
 
-	private static final String CACHE_NAME = "Cache";
+	protected static final String CACHE_NAME = "Cache";
 
 	@Autowired
 	protected CacheService cacheService;

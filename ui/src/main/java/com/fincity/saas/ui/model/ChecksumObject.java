@@ -7,9 +7,11 @@ import java.util.Map;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Data
 @NoArgsConstructor
+@Accessors(chain = true)
 public class ChecksumObject implements Serializable {
 
 	private static final long serialVersionUID = -3804873941419862809L;
