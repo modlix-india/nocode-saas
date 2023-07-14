@@ -310,6 +310,12 @@ public class ClientService
 		                .flatMap(e -> this.getClientInfoById(e.toBigInteger())),
 		        clientId);
 	}
+	
+	public Mono<Boolean> checkClientHasPackage(ULong clientId, ULong packageId) {
+
+		return this.dao.checkPackageAssignedForClient(clientId, packageId);
+
+	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
 	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
