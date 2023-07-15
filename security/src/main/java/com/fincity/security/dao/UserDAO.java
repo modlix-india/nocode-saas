@@ -459,32 +459,73 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	        String appCode, AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers,
 	        Field<?>... fields) {
 
-		TableField<SecurityUserRecord, String> field = SECURITY_USER.USER_NAME;
+		TableField<SecurityUserRecord, String> userIdentificationField = SECURITY_USER.USER_NAME;
 		if (authenticationIdentifierType == AuthenticationIdentifierType.EMAIL_ID) {
-			field = SECURITY_USER.EMAIL_ID;
+			userIdentificationField = SECURITY_USER.EMAIL_ID;
 		} else if (authenticationIdentifierType == AuthenticationIdentifierType.PHONE_NUMBER) {
-			field = SECURITY_USER.PHONE_NUMBER;
+			userIdentificationField = SECURITY_USER.PHONE_NUMBER;
 		}
-
-		var appA = SECURITY_APP.as("a");
-		var appB = SECURITY_APP.as("b");
 
 		List<Condition> conditions = new ArrayList<>();
 
-		conditions.add(field.eq(userName));
+		conditions.add(userIdentificationField.eq(userName));
 		if (onlyActiveUsers)
 			conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
 		else
 			conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+
+		if (userId != null)
+			conditions.add(SECURITY_USER.ID.eq(userId));
+
+		if (!SYSTEM.equals(clientCode)) {
+
+			return queryIfClientCodeIsNotSystem(clientCode, appCode, conditions, fields);
+		}
+
+		return queryIfClientCodeIsSystem(appCode, conditions, fields);
+	}
+
+	private SelectConditionStep<Record> queryIfClientCodeIsNotSystem(String clientCode, String appCode,
+	        List<Condition> conditions, Field<?>... fields) {
+
+		var inQuery = this.dslContext.select(SECURITY_CLIENT.ID)
+		        .from(SECURITY_CLIENT)
+		        .where(SECURITY_CLIENT.CODE.eq(clientCode))
+		        .union(this.dslContext.select(SECURITY_CLIENT_MANAGE.CLIENT_ID)
+		                .from(SECURITY_CLIENT_MANAGE)
+		                .where(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(this.dslContext.select(SECURITY_CLIENT.ID)
+		                        .from(SECURITY_CLIENT)
+		                        .where(SECURITY_CLIENT.CODE.eq(clientCode))
+		                        .limit(1))));
+
+		conditions.add(SECURITY_USER.CLIENT_ID.in(inQuery));
+		conditions.add(SECURITY_APP.APP_CODE.eq(appCode));
+
+		var outQuery = this.dslContext.selectDistinct(SECURITY_USER.ID)
+		        .from(SECURITY_USER)
+		        .leftJoin(SECURITY_APP_ACCESS)
+		        .on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+		        .leftJoin(SECURITY_APP)
+		        .on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
+		        .where(DSL.and(conditions));
+
+		return this.dslContext.select(fields)
+		        .from(SECURITY_USER)
+		        .where(SECURITY_USER.ID.in(outQuery));
+	}
+
+	private SelectConditionStep<Record> queryIfClientCodeIsSystem(String appCode, List<Condition> conditions,
+	        Field<?>... fields) {
+
+		var appA = SECURITY_APP.as("a");
+		var appB = SECURITY_APP.as("b");
+
 		conditions.add(DSL.or(
 
 		        appA.field(APP_CODE, String.class)
 		                .eq(appCode),
 		        appB.field(APP_CODE, String.class)
 		                .eq(appCode)));
-
-		if (userId != null)
-			conditions.add(SECURITY_USER.ID.eq(userId));
 
 		var accAA = SECURITY_APP_ACCESS.as("aa");
 
@@ -502,19 +543,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		        .leftJoin(appB)
 		        .on(appB.field("ID", ULong.class)
 		                .eq(accAA.field("APP_ID", ULong.class)));
-
-		if (!SYSTEM.equals(clientCode)) {
-
-			query = query
-
-			        .leftJoin(SECURITY_CLIENT_MANAGE)
-			        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
-
-			        .leftJoin(SECURITY_CLIENT)
-			        .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID));
-
-			conditions.add(SECURITY_CLIENT.CODE.eq(clientCode));
-		}
 
 		return this.dslContext.select(fields)
 		        .from(SECURITY_USER)
