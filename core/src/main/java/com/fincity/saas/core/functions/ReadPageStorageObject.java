@@ -12,8 +12,8 @@ import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.core.model.DataServiceQuery;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -111,7 +111,7 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 			absc = this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
 		}
 
-		DataServiceQuery dsq = (DataServiceQuery) new DataServiceQuery().setExcludeFields(false)
+		Query dsq = new Query().setExcludeFields(false)
 		        .setFields(List.of())
 		        .setCondition(absc)
 		        .setPage(page)
