@@ -72,7 +72,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 	protected AbstractMongoMessageResourceService messageResourceService;
 
 	@Autowired
-	protected VersionService versionService;
+	protected AbstractVersionService versionService;
 
 	@Autowired
 	protected FeignAuthenticationService securityService;
@@ -91,8 +91,6 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 	@Override
 	public Mono<D> create(D entity) {
-
-		// TODO: CHECK FOR APPCODE
 
 		@SuppressWarnings("unchecked")
 		Mono<D> crtEnt = FlatMapUtil.flatMapMono(
@@ -128,15 +126,14 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                                .setObjectAppCode(entity.getAppCode())
 		                                .setObjectType(this.getObjectName()
 		                                        .toUpperCase())
-		                                .setVersionNumber(1)
+		                                .setVersionNumber(created.getVersion())
 		                                .setMessage(entity.getMessage())
 		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
 		                        : Mono.empty(),
 
 		        (cEntity, merged, overridden, created, version) -> this.read(created.getId()))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.create"))
-		        .flatMap(ce -> this.evictRecursively(ce))
-
+		        .flatMap(this::evictRecursively)
 		        .switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
 		                this.getObjectName()));
 	}
@@ -251,11 +248,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		        merged -> this.extractOverride(e, merged),
 
-		        (merged, overridden) ->
-				{
-
-			        return super.update(overridden);
-		        },
+		        (merged, overridden) -> super.update(overridden),
 
 		        (merged, overridden,
 		                created) -> isVersionable()
@@ -264,7 +257,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		                                .setObjectAppCode(entity.getAppCode())
 		                                .setObjectType(this.getObjectName()
 		                                        .toUpperCase())
-		                                .setVersionNumber(1)
+		                                .setVersionNumber(created.getVersion())
 		                                .setMessage(entity.getMessage())
 		                                .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
 		                        : Mono.empty(),
@@ -397,7 +390,29 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 			return this.messageResourceService.throwFluxMessage(HttpStatus.FORBIDDEN,
 			        AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode);
 
-		Mono<Tuple2<Boolean, String>> accessCheck = FlatMapUtil.flatMapMono(
+		Mono<Tuple2<Boolean, String>> accessCheck = accessCheckForTransport(appCode, clientCode);
+
+		LinkedMultiValueMap<String, String> mMap = new LinkedMultiValueMap<>();
+		mMap.put(CLIENT_CODE, List.of(clientCode));
+		mMap.put(APP_CODE, List.of(appCode));
+		if (names != null && !names.isEmpty())
+			mMap.put("name", names);
+
+		return accessCheck.flatMap(e -> this.paramToConditionLRO(mMap, appCode))
+		        .flatMap(e -> this.filter(e.getT1()))
+		        .flatMapMany(e -> this.mongoTemplate.find(new Query(new Criteria().andOperator(e,
+		                new Criteria().orOperator(Criteria.where("notOverridable")
+		                        .ne(Boolean.TRUE),
+		                        Criteria.where(CLIENT_CODE)
+		                                .is(clientCode)))),
+		                this.pojoClass, this.getCollectionName()))
+		        .flatMap(e -> this.readInternal(e.getId()))
+		        .filter(e -> e.getClientCode()
+		                .equals(clientCode));
+	}
+
+	private Mono<Tuple2<Boolean, String>> accessCheckForTransport(String appCode, String clientCode) {
+		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
@@ -422,27 +437,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		        (ca, access) -> access.getT1()
 		                .booleanValue() ? Mono.just(access) : Mono.empty())
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readForTransport"))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.accessCheckForTransport"))
 		        .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
-
-		LinkedMultiValueMap<String, String> mMap = new LinkedMultiValueMap<>();
-		mMap.put(CLIENT_CODE, List.of(clientCode));
-		mMap.put(APP_CODE, List.of(appCode));
-		if (names != null && !names.isEmpty())
-			mMap.put("name", names);
-
-		return accessCheck.flatMap(e -> this.paramToConditionLRO(mMap, appCode))
-		        .flatMap(e -> this.filter(e.getT1()))
-		        .flatMapMany(e -> this.mongoTemplate.find(new Query(new Criteria().andOperator(e,
-		                new Criteria().orOperator(Criteria.where("notOverridable")
-		                        .ne(Boolean.TRUE),
-		                        Criteria.where(CLIENT_CODE)
-		                                .is(clientCode)))),
-		                this.pojoClass, this.getCollectionName()))
-		        .flatMap(e -> this.readInternal(e.getId()))
-		        .filter(e -> e.getClientCode()
-		                .equals(clientCode));
 	}
 
 	protected String getCollectionName() {
@@ -685,28 +682,28 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 	protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
 
-		return this.inheritanceService.order(appCode, urlClientCode, clientCode)
-		        .flatMap(clientCodes ->
+		return FlatMapUtil.flatMapMono(() -> this.inheritanceService.order(appCode, urlClientCode, clientCode),
+
+		        clientCodes -> this.repo.findByNameAndAppCodeAndClientCodeIn(name, appCode, clientCodes)
+		                .collectList(),
+
+		        (clientCodes, lst) ->
 				{
+			        if (lst.isEmpty())
+				        return Mono.empty();
+			        if (lst.size() == 1)
+				        return Mono.just(lst.get(0));
 
-			        return this.repo.findByNameAndAppCodeAndClientCodeIn(name, appCode, clientCodes)
-			                .collectList()
-			                .flatMap(lst ->
-							{
-				                if (lst.isEmpty())
-					                return Mono.empty();
-				                if (lst.size() == 1)
-					                return Mono.just(lst.get(0));
+			        for (D item : lst) {
+				        if (clientCode.equals(item.getClientCode()))
+					        return Mono.just(item);
+			        }
 
-				                for (D item : lst) {
-					                if (clientCode.equals(item.getClientCode()))
-						                return Mono.just(item);
-				                }
+			        return Mono.empty();
+		        },
 
-				                return Mono.empty();
-			                })
-			                .map(this.pojoClass::cast);
-		        });
+		        (clientCodes, lst, found) -> Mono.just(this.pojoClass.cast(found)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readIfExistsInBase"));
 	}
 
 	protected Mono<D> applyChange(String name, String appCode, String clientCode, D object) { // NOSONAR

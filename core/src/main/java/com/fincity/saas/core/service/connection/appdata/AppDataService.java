@@ -49,6 +49,7 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.flattener.JsonUnflattener;
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.FlatFileType;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -57,7 +58,6 @@ import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
-import com.fincity.saas.core.model.DataServiceQuery;
 import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
@@ -183,7 +183,7 @@ public class AppDataService {
 	}
 
 	public Mono<Page<Map<String, Object>>> readPage(String appCode, String clientCode, String storageName,
-	        DataServiceQuery query) {
+			Query query) {
 		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
