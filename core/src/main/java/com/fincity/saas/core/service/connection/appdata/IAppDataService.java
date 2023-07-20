@@ -1,5 +1,6 @@
 package com.fincity.saas.core.service.connection.appdata;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
@@ -22,5 +23,7 @@ public interface IAppDataService {
 	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, DataServiceQuery query);
 
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
+	
+	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, DataServiceQuery query);
 
 }

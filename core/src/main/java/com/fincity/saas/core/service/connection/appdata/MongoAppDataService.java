@@ -194,6 +194,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                .toHexString());
 			        return Mono.just((Map<String, Object>) doc);
 		        })
+				.log()
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MonogAppDataService.create"));
 
 	}
@@ -380,36 +381,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        (ca, bsonCondition) ->
 				{
 
-			        Flux<Document> findFlux;
-
-			        if (query.getFields() == null || query.getFields()
-			                .isEmpty()) {
-				        FindPublisher<Document> publisher = this
-				                .getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-				                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
-				                        storage.getUniqueName())
-				                .find(bsonCondition);
-
-				        if (!Query.DEFAULT_SORT.equals(page.getSort()))
-					        publisher.sort(this.sort(page.getSort()));
-
-				        findFlux = Flux.from(publisher.skip((int) page.getOffset())
-				                .limit(page.getPageSize()));
-			        } else {
-
-				        List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition),
-				                Aggregates.skip((int) page.getOffset()), Aggregates.limit(page.getPageSize()),
-				                Aggregates.project(Projections.fields(query.getExcludeFields()
-				                        .booleanValue() ? Projections.exclude(query.getFields())
-				                                : Projections.include(query.getFields())))));
-
-				        if (!Query.DEFAULT_SORT.equals(page.getSort()))
-					        pipeLines.add(Aggregates.sort(this.sort(page.getSort())));
-
-				        findFlux = Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-				                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-				                .aggregate(pipeLines));
-			        }
+			        Flux<Document> findFlux = applyQueryOnElements(query, conn, storage, bsonCondition, ca, page);
 
 			        return findFlux.map(doc -> {
 				        String id = doc.getObjectId(ID)
@@ -434,6 +406,101 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		        (ca, bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readPage"));
+
+	}
+	
+	@Override
+	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, DataServiceQuery query) {
+
+		AbstractCondition condition = query.getCondition();
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.filter(condition),
+
+		        (ca, bsonCondition) ->
+				{
+
+			        Flux<Document> findFlux = applyQueryOnElements(query, conn, storage, bsonCondition, ca);
+
+			        return findFlux.map(doc -> {
+				        String id = doc.getObjectId(ID)
+				                .toHexString();
+				        doc.remove(ID);
+				        doc.append(ID, id);
+				        return (Map<String, Object>) doc;
+			        })
+			                .collectList();
+
+		        }, (ca, bsonCondition, list) -> Mono.just(list)
+
+		)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readCompleteData"));
+	}
+	
+	private Flux<Document> applyQueryOnElements(DataServiceQuery query, Connection conn, Storage storage,
+	        Bson bsonCondition, ContextAuthentication ca){
+		
+		Flux<Document> findFlux;
+		
+		if (query.getFields() == null || query.getFields()
+		        .isEmpty()) {
+			
+			FindPublisher<Document> publisher = this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+			        .find(bsonCondition);
+
+			findFlux = Flux.from(publisher);
+			
+		} else {
+			
+			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition), Aggregates.project(Projections.fields(query.getExcludeFields()
+			                .booleanValue() ? Projections.exclude(query.getFields())
+			                        : Projections.include(query.getFields())))));
+			
+			findFlux = Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+			        .aggregate(pipeLines));
+		}
+		
+		return findFlux;
+	}
+
+	private Flux<Document> applyQueryOnElements(DataServiceQuery query, Connection conn, Storage storage,
+	        Bson bsonCondition, ContextAuthentication ca, Pageable page) {
+
+		Flux<Document> findFlux;
+
+		if (query.getFields() == null || query.getFields()
+		        .isEmpty()) {
+			FindPublisher<Document> publisher = this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+			        .find(bsonCondition);
+
+			if (!Query.DEFAULT_SORT.equals(page.getSort()))
+				publisher.sort(this.sort(page.getSort()));
+
+			findFlux = Flux.from(publisher.skip((int) page.getOffset())
+			        .limit(page.getPageSize()));
+		} else {
+
+			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition),
+			        Aggregates.skip((int) page.getOffset()), Aggregates.limit(page.getPageSize()),
+			        Aggregates.project(Projections.fields(query.getExcludeFields()
+			                .booleanValue() ? Projections.exclude(query.getFields())
+			                        : Projections.include(query.getFields())))));
+
+			if (!Query.DEFAULT_SORT.equals(page.getSort()))
+				pipeLines.add(Aggregates.sort(this.sort(page.getSort())));
+
+			findFlux = Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+			        .aggregate(pipeLines));
+		}
+
+		return findFlux;
 
 	}
 

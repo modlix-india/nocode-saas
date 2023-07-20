@@ -145,6 +145,30 @@ public class AppDataController {
 		return this.service.delete(appCode, clientCode, storageName, id)
 				.map(ResponseEntity::ok);
 	}
+	
+	@GetMapping("downloadData/{storage}")
+	public Mono<ResponseEntity<Boolean>> downloadContent(
+			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
+			@RequestHeader String clientCode,
+			@RequestParam(required = false, defaultValue = "CSV") FlatFileType fileType,
+	        ServerHttpRequest request) {
+
+
+		MultiValueMap<String, String> params = request.getQueryParams();
+		MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+		for (var param : params.entrySet()) {
+			if (IGNORE_PARAMS.contains(param.getKey()))
+				continue;
+			map.addAll(param.getKey(), param.getValue());
+		}
+
+		DataServiceQuery query = (DataServiceQuery) new DataServiceQuery().setExcludeFields(false)
+		        .setFields(List.of())
+		        .setCondition(ConditionUtil.parameterMapToMap(map));
+
+		return this.service.downloadData(appCode, clientCode, storageName, query, fileType)
+				.map(ResponseEntity::ok);
+	}
 
 	@GetMapping("template/{storage}")
 	public Mono<ResponseEntity<byte[]>> downloadTemplate(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
@@ -171,4 +195,6 @@ public class AppDataController {
 		return file.flatMap(f -> this.service.uploadTemplate(appCode, clientCode, storageName, fileType, f))
 				.map(ResponseEntity::ok);
 	}
+	 
+	
 }

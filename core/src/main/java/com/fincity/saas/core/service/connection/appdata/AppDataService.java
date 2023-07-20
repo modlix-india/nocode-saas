@@ -21,6 +21,7 @@ import java.util.function.Function;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
@@ -184,6 +185,7 @@ public class AppDataService {
 
 	public Mono<Page<Map<String, Object>>> readPage(String appCode, String clientCode, String storageName,
 	        DataServiceQuery query) {
+
 		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
@@ -229,6 +231,62 @@ public class AppDataService {
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.delete"));
 	}
 
+	public Mono<Boolean> downloadData(String appCode, String clientCode, String storageName, DataServiceQuery query,
+	        FlatFileType fileType) {
+
+		Mono<List<Map<String, Object>>> dataList = FlatMapUtil.flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+		        (ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+		        (ca, ac, cc) -> storageService.read(storageName, ac, cc),
+
+		        (ca, ac, cc, storage) -> storageService.getSchema(storage)
+		                .map(Schema.class::cast),
+
+		        (ca, ac, cc, storage, storageSchema) ->
+				{
+
+			        // need to handle if type is empty and have reference
+
+			        return Mono.justOrEmpty(storageSchema.getType() != null && storageSchema.getType()
+			                .getAllowedSchemaTypes()
+			                .size() == 1 && storageSchema.getType()
+			                        .getAllowedSchemaTypes()
+			                        .contains(SchemaType.OBJECT));
+		        }, // need to adjust if not working
+
+		        (ca, ac, cc, storage, storageSchema, validSchema) -> connectionService.find(ac, cc,
+		                ConnectionType.APP_DATA),
+
+		        (ca, ac, cc, storage, storageSchema, validSchema, conn) -> Mono
+		                .just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+		        (ca, ac, cc, storage, storageSchema, validSchema, conn, dataService) -> this.genericOperation(storage,
+		                (cona, hasAccess) -> dataService.readCompleteData(conn, storage, query), Storage::getReadAuth,
+		                CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+		        (ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+		        (ca, ac, cc) -> storageService.read(storageName, ac, cc),
+
+		        (ca, ac, cc, storage) -> dataList,
+
+		        (ca, ac, cc, storage, receivedData) -> this.writeDataIntoFile(storage, fileType, receivedData),
+
+		        (ca, ac, cc, storage, receivedData, output) -> Mono.just(true));
+
+	}
+
 	public Mono<byte[]> downloadTemplate(String appCode, String clientCode, String storageName, FlatFileType fileType) {
 
 		return FlatMapUtil.flatMapMonoWithNull(
@@ -238,13 +296,16 @@ public class AppDataService {
 		        conn -> Mono
 		                .just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode),
+		        (conn, dataService) -> storageService.read(storageName, appCode, clientCode)
+		                .log(),
 
 		        (conn, dataService, storage) -> this
-		                .genericOperation(storage, (ca, hasAccess) -> downloadTemplate(storage, fileType),
+		                .genericOperation(storage, (ca, hasAccess) -> downloadTemplate(storage, fileType, "notghjin"),
 		                        Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
+		                .log()
 		                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
 		                        CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR))))
+		        .log()
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
 	}
 
@@ -288,13 +349,186 @@ public class AppDataService {
 		                .defer(() -> this.msgService.throwMessage(HttpStatus.FORBIDDEN, msgString, storage.getName())));
 	}
 
+	private Mono<byte[]> writeDataIntoFile(Storage storage, FlatFileType type, List<Map<String, Object>> receivedData) {
+
+		try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();) {
+
+			return FlatMapUtil.flatMapMono(() -> storageService.getSchema(storage),
+
+			        storageSchema -> storageSchema.getType() != null && storageSchema.getType()
+			                .getAllowedSchemaTypes()
+			                .size() == 1 && storageSchema.getType()
+			                        .getAllowedSchemaTypes()
+			                        .contains(SchemaType.OBJECT)
+			                                ? this.getHeadersSchemaType(null, storage, storageSchema, 0)
+			                                : Mono.empty(),
+
+			        (storageSchema, acutalHeaders) ->
+					{
+
+
+				        List<String> headers = new ArrayList<>();
+
+				        if (type == FlatFileType.XLSX) {
+					        try (XSSFWorkbook excelWorkbook = new XSSFWorkbook();) {
+
+						        int rowCount = 0;
+						        XSSFSheet sheet = excelWorkbook.createSheet(storage.getName());
+						        Row headRow = sheet.createRow(rowCount++); // writing for header
+						        int headColumn = 0;
+						        for (String header : headers) {
+							        Cell cell = headRow.createCell(headColumn++);
+							        cell.setCellValue(header);
+						        }
+
+						        for (Map<String, Object> rowData : receivedData) {
+
+							        Row interRow = sheet.createRow(rowCount++);
+							        headColumn = 0;
+
+							        // data will be json format and flatten it to use in other records
+
+						        }
+
+						        excelWorkbook.write(byteStream);
+						        return Mono.just(byteStream.toByteArray());
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+
+				        } else if (type == FlatFileType.CSV) {
+
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter csvWorkBook = new CSVWriter(outputStream);) {
+
+						        return csvFileWriter(byteStream, headers, outputStream, csvWorkBook);
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+
+				        } else if (type == FlatFileType.TSV) {
+
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter tsvWorkBook = new CSVWriter(outputStream, '\t',
+					                        ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
+					                        ICSVWriter.DEFAULT_LINE_END);) {
+
+						        return csvFileWriter(byteStream, headers, outputStream, tsvWorkBook);
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+				        }
+				        return Mono.empty();
+			        })
+			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
+
+		} catch (Exception e) {
+			return Mono.empty();
+		}
+
+	}
+
+	private Mono<byte[]> downloadTemplate(Storage storage, FlatFileType type, String temp) { // NOSONAR
+
+		try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();) {
+
+			return FlatMapUtil.flatMapMonoWithNull(() -> storageService.getSchema(storage),
+
+			        storageSchema ->
+					{
+
+				        return (storageSchema.getRef() != null)
+				                || (storageSchema.getType() != null && storageSchema.getType()
+				                        .getAllowedSchemaTypes()
+				                        .size() == 1 && storageSchema.getType()
+				                                .getAllowedSchemaTypes()
+				                                .contains(SchemaType.OBJECT))
+				                                        ? this.getHeaders(null, storage, storageSchema)
+				                                                .log()
+				                                        : Mono.empty();
+
+			        },
+
+			        (storageSchema, acutalHeaders) ->
+					{   
+
+				        List<String> headers =  acutalHeaders;
+
+				        if (type == FlatFileType.XLSX) {
+					        try (XSSFWorkbook excelWorkbook = new XSSFWorkbook();) {
+
+						        XSSFSheet sheet = excelWorkbook.createSheet(storage.getName());
+						        Row headRow = sheet.createRow(0); // writing for header
+						        int headColumn = 0;
+						        for (String header : headers) {
+							        Cell cell = headRow.createCell(headColumn++);
+							        cell.setCellValue(header);
+						        }
+						        excelWorkbook.write(byteStream);
+						        return Mono.just(byteStream.toByteArray());
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+
+				        } else if (type == FlatFileType.CSV) {
+
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter csvWorkBook = new CSVWriter(outputStream);) {
+
+						        return csvFileWriter(byteStream, headers, outputStream, csvWorkBook);
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+
+				        } else if (type == FlatFileType.TSV) {
+
+					        try (OutputStreamWriter outputStream = new OutputStreamWriter(byteStream);
+					                CSVWriter tsvWorkBook = new CSVWriter(outputStream, '\t',
+					                        ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
+					                        ICSVWriter.DEFAULT_LINE_END);) {
+
+						        return csvFileWriter(byteStream, headers, outputStream, tsvWorkBook);
+
+					        } catch (Exception e) {
+						        return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+						                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
+					        }
+				        }
+
+				        return Mono.empty();
+
+			        })
+			        .log()
+			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
+
+		} catch (Exception e) {
+			return Mono.empty();
+		}
+
+	}
+
 	private Mono<byte[]> downloadTemplate(Storage storage, FlatFileType type) { // NOSONAR
 
 		try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();) {
 
 			return FlatMapUtil.flatMapMono(() -> storageService.getSchema(storage),
 
-			        storageSchema -> this.getHeaders(null, storage, storageSchema),
+			        storageSchema -> storageSchema.getType() != null && storageSchema.getType()
+			                .getAllowedSchemaTypes()
+			                .size() == 1 && storageSchema.getType()
+			                        .getAllowedSchemaTypes()
+			                        .contains(SchemaType.OBJECT) ? this.getHeaders(null, storage, storageSchema)
+			                                : Mono.empty(),
 
 			        (storageSchema, acutalHeaders) ->
 					{
@@ -362,145 +596,111 @@ public class AppDataService {
 		return Mono.just(byteStream.toByteArray());
 	}
 
-	private Mono<List<String>> getHeaders(String prefix, Storage storage, Schema sch) {
+	private Mono<Map<String, Set<SchemaType>>> getHeadersSchemaType(String prefix, Storage storage, Schema schema,
+	        int level) {
 
 		return FlatMapUtil.flatMapMono(
 
 		        () ->
 				{
-			        if (sch.getRef() == null)
-				        return Mono.just(sch);
-			        return ReactiveSchemaUtil.getSchemaFromRef(sch,
+
+			        if (schema.getRef() == null)
+				        return Mono.just(schema);
+
+			        return ReactiveSchemaUtil.getSchemaFromRef(schema,
 			                new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
 			                        new CoreSchemaRepository(), this.schemaService
 			                                .getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
-			                sch.getRef());
+			                schema.getRef());
+
 		        },
 
-		        schema ->
+		        rSchema ->
 				{
-			        if (schema.getType()
+
+			        if (rSchema.getType()
 			                .contains(SchemaType.OBJECT)) {
 
-				        return Flux.fromIterable(schema.getProperties()
-				                .entrySet())
-				                .flatMap(e -> this.getHeaders(getFlattenedObjectName(prefix, e), storage, e.getValue())
-				                        .flatMapMany(Flux::fromIterable))
-				                .collectList();
+				        return getSchemaHeadersIfObject(prefix, storage, level, rSchema);
 
-			        } else if (schema.getType()
+			        } else if (rSchema.getType()
 			                .contains(SchemaType.ARRAY)) {
 
-				        ArraySchemaType aType = schema.getItems();
-
-				        if (aType.getSingleSchema() != null) {
-
-					        return Flux.range(0, 2)
-					                .map(e -> getPrefixArrayName(prefix, e))
-					                .flatMap(e -> this.getHeaders(e, storage, aType.getSingleSchema())
-					                        .flatMapMany(Flux::fromIterable))
-					                .collectList();
-				        } else {
-
-					        return Flux.<Tuple2<Integer, Schema>>create(sink -> {
-						        for (int i = 0; i < aType.getTupleSchema()
-						                .size(); i++)
-							        sink.next(Tuples.of(Integer.valueOf(i), aType.getTupleSchema()
-							                .get(i)));
-
-						        sink.complete();
-					        })
-					                .flatMap(tup -> this
-					                        .getHeaders(getPrefixArrayName(prefix, tup.getT1()), storage, tup.getT2())
-					                        .flatMapMany(Flux::fromIterable))
-					                .collectList();
-
-				        }
+				        return getSchemaHeadersIfArray(prefix, storage, level, rSchema);
 			        }
 
-			        return Mono.just(List.of(prefix));
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.getHeaders"));
-
+			        return Mono.just(Map.of(prefix, rSchema.getType()
+			                .getAllowedSchemaTypes()));
+		        });
 	}
 
-	private Mono<Map<String, Set<SchemaType>>> getHeadersSchemaType(String prefix, Storage storage, Schema sch) { // NOSONAR
+	private Mono<Map<String, Set<SchemaType>>> getSchemaHeadersIfArray(String prefix, Storage storage, int level,
+	        Schema rSchema) {
 
-		return FlatMapUtil.flatMapFlux(
+		if (level > 2 || rSchema.getItems() == null)
+			return Mono.just(Map.of());
 
-		        () ->
+		ArraySchemaType aType = rSchema.getItems();
+
+		if (aType.getSingleSchema() != null) {
+
+			return Flux.range(0, 2)
+			        .map(e -> getPrefixArrayName(prefix, e))
+			        .flatMap(e -> this.getHeadersSchemaType(e, storage, aType.getSingleSchema(), level + 1)
+			                .map(Map::entrySet)
+			                .flatMapMany(Flux::fromIterable))
+			        .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+
+		} else if (aType.getTupleSchema() != null) {
+
+			return Flux.<Tuple2<Integer, Schema>>create(sink -> {
+				for (int i = 0; i < aType.getTupleSchema()
+				        .size(); i++)
+					sink.next(Tuples.of(Integer.valueOf(i), aType.getTupleSchema()
+					        .get(i)));
+
+				sink.complete();
+			})
+			        .flatMap(tup -> this
+			                .getHeadersSchemaType(getPrefixArrayName(prefix, tup.getT1()), storage, tup.getT2(),
+			                        level + 1)
+			                .map(Map::entrySet)
+			                .flatMapMany(Flux::fromIterable))
+			        .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+		}
+
+		return Mono.just(Map.of());
+	}
+
+	private Mono<Map<String, Set<SchemaType>>> getSchemaHeadersIfObject(String prefix, Storage storage, int level,
+	        Schema rSchema) {
+
+		if (level >= 2 || rSchema.getProperties() == null)
+			return Mono.just(Map.of());
+
+		return Flux.fromIterable(rSchema.getProperties()
+		        .entrySet())
+		        .flatMap(e -> this
+		                .getHeadersSchemaType(getFlattenedObjectName(prefix, e), storage, e.getValue(), level + 1)
+		                .map(Map<String, Set<SchemaType>>::entrySet)
+		                .flatMapMany(Flux::fromIterable))
+		        .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+	}
+
+	private Mono<List<String>> getHeaders(String prefix, Storage storage, Schema sch) { // NOSONAR
+
+		return this.getHeadersSchemaType(prefix, storage, sch, 0)
+		        .flatMapMany(e -> Flux.fromIterable(e.keySet()))
+		        .sort((a, b) ->
 				{
-			        if (sch.getRef() == null)
-				        return Flux.just(sch);
+			        int aCount = StringUtils.countMatches(a, '.');
+			        int bCount = StringUtils.countMatches(b, '.');
+			        if (aCount == bCount)
+				        return a.compareToIgnoreCase(b);
 
-			        return Flux.from(ReactiveSchemaUtil.getSchemaFromRef(sch,
-			                new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-			                        new CoreSchemaRepository(), this.schemaService
-			                                .getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
-			                sch.getRef()));
-		        },
-
-		        schema ->
-				{
-			        Flux<Tuple2<String, Set<SchemaType>>> initial = prefix == null ? Flux.empty()
-			                : Flux.just(Tuples.of(prefix, schema.getType()
-			                        .getAllowedSchemaTypes()));
-
-			        Flux<Tuple2<String, Set<SchemaType>>> objectKeys;
-
-			        if (schema.getType()
-			                .contains(SchemaType.OBJECT)) {
-
-				        objectKeys = Flux.fromIterable(schema.getProperties()
-				                .entrySet())
-				                .flatMap(e -> this
-				                        .getHeadersSchemaType(getFlattenedObjectName(prefix, e), storage, e.getValue())
-				                        .map(Map::entrySet)
-				                        .flatMapMany(Flux::fromIterable))
-				                .map(e -> Tuples.of(e.getKey(), e.getValue()));
-
-			        } else if (schema.getType()
-			                .contains(SchemaType.ARRAY)) {
-
-				        ArraySchemaType aType = schema.getItems();
-
-				        if (aType.getSingleSchema() != null) {
-
-					        objectKeys = Flux.range(0, 2)
-					                .map(e -> getPrefixArrayName(prefix, e))
-					                .flatMap(e -> this.getHeadersSchemaType(e, storage, aType.getSingleSchema())
-					                        .map(Map::entrySet)
-					                        .flatMapMany(Flux::fromIterable))
-					                .map(e -> Tuples.of(e.getKey(), e.getValue()));
-
-				        } else {
-					        objectKeys = Flux.<Tuple2<Integer, Schema>>create(sink -> {
-						        for (int i = 0; i < aType.getTupleSchema()
-						                .size(); i++)
-							        sink.next(Tuples.of(Integer.valueOf(i), aType.getTupleSchema()
-							                .get(i)));
-
-						        sink.complete();
-					        })
-					                .flatMap(tup -> this
-					                        .getHeadersSchemaType(getPrefixArrayName(prefix, tup.getT1()), storage,
-					                                tup.getT2())
-					                        .map(Map::entrySet)
-					                        .flatMapMany(Flux::fromIterable))
-					                .map(e -> Tuples.of(e.getKey(), e.getValue()));
-
-				        }
-			        } else {
-
-				        objectKeys = Flux.empty();
-			        }
-
-			        return Flux.merge(initial, objectKeys);
-		        }
-
-		)
-		        .collectMap(Tuple2::getT1, Tuple2::getT2);
-
+			        return aCount - bCount;
+		        })
+		        .collectList();
 	}
 
 	private String getPrefixArrayName(String prefix, int e) {
@@ -511,6 +711,7 @@ public class AppDataService {
 		return prefix == null ? e.getKey() : prefix + "." + e.getKey();
 	}
 
+	// add a check for storage schema is only object
 	private Mono<Boolean> uploadTemplate(Storage storage, FlatFileType fileType, FilePart filePart,
 	        IAppDataService dataService) {
 
@@ -518,7 +719,14 @@ public class AppDataService {
 
 		        () -> storageService.getSchema(storage),
 
-		        storageSchema -> this.getHeadersSchemaType(null, storage, storageSchema),
+		        storageSchema -> storageSchema.getType() != null && storageSchema.getType()
+		                .getAllowedSchemaTypes()
+		                .size() == 1 && storageSchema.getType()
+		                        .getAllowedSchemaTypes()
+		                        .contains(SchemaType.OBJECT)
+		                                ? this.getHeadersSchemaType(null, storage, storageSchema, 0)
+		                                : Mono.error(new GenericException(HttpStatus.FORBIDDEN,
+		                                        CoreMessageResourceService.ONLY_SCHEMA_OBJECT_TYPE)),
 
 		        (storageSchema, flattenedSchemaType) ->
 				{
@@ -582,6 +790,8 @@ public class AppDataService {
 
 	}
 
+// create a method to convert from object to jsonObject
+
 	@SuppressWarnings("unchecked")
 	private List<DataObject> convertToJsonObject(Map<String, Map<String, String>> unflattenRecords,
 	        Map<String, Set<SchemaType>> flattenedSchemaType, String fileType) {
@@ -628,13 +838,12 @@ public class AppDataService {
 
 			for (Sheet sheet : excelWorkbook) {
 				for (Row r : sheet) {
-					excelRecords.add(processEachRecord(r, new ArrayList<>()));
+					excelRecords.add(processEachRecord(r));
 				}
 			}
 
 			receivedHeaders.addAll(excelRecords.get(0));
-			Map<String, Map<String, String>> excelMapRecords = createExcelMapRecords(receivedHeaders, excelRecords,
-			        new HashMap<>());
+			Map<String, Map<String, String>> excelMapRecords = createExcelMapRecords(receivedHeaders, excelRecords);
 
 			return Mono.just(convertToJsonObject(excelMapRecords, flattenedSchemaType, fileType));
 		} catch (Exception e) {
@@ -643,7 +852,9 @@ public class AppDataService {
 
 	}
 
-	private List<String> processEachRecord(Row row, List<String> excelRecord) {
+	private List<String> processEachRecord(Row row) {
+
+		List<String> excelRecord = new ArrayList<>();
 
 		for (int c = 0; c < row.getLastCellNum(); c++) {
 
@@ -665,7 +876,9 @@ public class AppDataService {
 	}
 
 	private Map<String, Map<String, String>> createExcelMapRecords(List<String> receivedHeaders,
-	        List<List<String>> excelRecords, Map<String, Map<String, String>> excelMapRecords) {
+	        List<List<String>> excelRecords) {
+
+		Map<String, Map<String, String>> excelMapRecords = new HashMap<>();
 		for (int i = 1; i < excelRecords.size(); i++) {
 			Map<String, String> rowMap = new HashMap<>();
 			List<String> excelRecord = excelRecords.get(i);
