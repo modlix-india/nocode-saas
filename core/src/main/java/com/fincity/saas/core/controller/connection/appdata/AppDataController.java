@@ -162,7 +162,7 @@ public class AppDataController {
 			map.addAll(param.getKey(), param.getValue());
 		}
 
-		DataServiceQuery query = (DataServiceQuery) new DataServiceQuery().setExcludeFields(false)
+		Query query = new Query().setExcludeFields(false)
 		        .setFields(List.of())
 		        .setCondition(ConditionUtil.parameterMapToMap(map));
 

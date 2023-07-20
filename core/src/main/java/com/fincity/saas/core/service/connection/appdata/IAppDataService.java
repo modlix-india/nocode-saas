@@ -24,6 +24,6 @@ public interface IAppDataService {
 
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
 	
-	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, DataServiceQuery query);
+	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, Query query);
 
 }

@@ -409,7 +409,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 	
 	@Override
-	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, DataServiceQuery query) {
+	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, Query query) {
 
 		AbstractCondition condition = query.getCondition();
 
@@ -439,7 +439,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readCompleteData"));
 	}
 	
-	private Flux<Document> applyQueryOnElements(DataServiceQuery query, Connection conn, Storage storage,
+	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage,
 	        Bson bsonCondition, ContextAuthentication ca){
 		
 		Flux<Document> findFlux;
@@ -467,7 +467,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		return findFlux;
 	}
 
-	private Flux<Document> applyQueryOnElements(DataServiceQuery query, Connection conn, Storage storage,
+	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage,
 	        Bson bsonCondition, ContextAuthentication ca, Pageable page) {
 
 		Flux<Document> findFlux;
