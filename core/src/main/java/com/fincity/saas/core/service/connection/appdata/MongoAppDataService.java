@@ -51,7 +51,6 @@ import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
-import com.fincity.saas.core.model.DataServiceQuery;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
@@ -366,7 +365,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
-	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, DataServiceQuery query) {
+	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Query query) {
 
 		Pageable page = query.getPageable();
 		AbstractCondition condition = query.getCondition();

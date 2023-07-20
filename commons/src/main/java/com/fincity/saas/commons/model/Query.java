@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.model;
 
 import java.io.Serializable;
+import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +17,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class Query implements Serializable {
 
-	private static final long serialVersionUID = -3002837412473164388L;
+	private static final long serialVersionUID = 5943601567323412823L;
 
 	public static final Sort DEFAULT_SORT = Sort.by(Order.desc("updatedAt"));
 
@@ -25,6 +26,8 @@ public class Query implements Serializable {
 	private int page = 0;
 	private Sort sort = DEFAULT_SORT;
 	private Boolean count = Boolean.TRUE;
+	private List<String> fields;
+	private Boolean excludeFields = Boolean.FALSE;
 
 	public Pageable getPageable() {
 		return PageRequest.of(this.page, this.size, this.sort);
