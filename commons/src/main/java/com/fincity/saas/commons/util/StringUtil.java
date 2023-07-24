@@ -53,4 +53,15 @@ public class StringUtil {
 
 		return true;
 	}
+
+	public static String removeLineFeedOrNewLineChars(String str) {
+		
+		if (str == null) return str;
+		
+		int len = str.length() - 1;
+		
+		while (len >= 0 && (str.charAt(len) == '\r' || str.charAt(len) == '\n')) len--;
+		
+		return str.substring(0, len + 1);
+	}
 }

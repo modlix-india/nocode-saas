@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.7.12</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<relativePath />
+		<!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
 	<artifactId>core</artifactId>
@@ -22,7 +24,6 @@
 		<saas-commons-mongo-version>1.0.0</saas-commons-mongo-version>
 		<saas-commons-mq-version>1.0.0</saas-commons-mq-version>
 		<feign-reactor.version>3.3.0</feign-reactor.version>
-		<xlsx-streamer.version>2.1.0</xlsx-streamer.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -79,7 +80,7 @@
 		<dependency>
 			<groupId>org.jooq</groupId>
 			<artifactId>jooq</artifactId>
-			<version>3.17.2</version> <!--$NO-MVN-MAN-VER$-->
+			<version>3.17.2</version>			<!--$NO-MVN-MAN-VER$-->
 		</dependency>
 		<dependency>
 			<groupId>com.fincity.saas</groupId>
@@ -106,16 +107,6 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.monitorjbl</groupId>
-			<artifactId>xlsx-streamer</artifactId>
-			<version>${xlsx-streamer.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.opencsv</groupId>
-			<artifactId>opencsv</artifactId>
-			<version>5.7.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.playtika.reactivefeign</groupId>

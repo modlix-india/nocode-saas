@@ -193,7 +193,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                .toHexString());
 			        return Mono.just((Map<String, Object>) doc);
 		        })
-				.log()
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MonogAppDataService.create"));
 
 	}
@@ -407,7 +406,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readPage"));
 
 	}
-	
+
 	@Override
 	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, Query query) {
 
@@ -438,37 +437,38 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		)
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readCompleteData"));
 	}
-	
-	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage,
-	        Bson bsonCondition, ContextAuthentication ca){
-		
+
+	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage, Bson bsonCondition,
+	        ContextAuthentication ca) {
+
 		Flux<Document> findFlux;
-		
+
 		if (query.getFields() == null || query.getFields()
 		        .isEmpty()) {
-			
+
 			FindPublisher<Document> publisher = this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
 			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 			        .find(bsonCondition);
 
 			findFlux = Flux.from(publisher);
-			
+
 		} else {
-			
-			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition), Aggregates.project(Projections.fields(query.getExcludeFields()
+
+			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition),
+			        Aggregates.project(Projections.fields(query.getExcludeFields()
 			                .booleanValue() ? Projections.exclude(query.getFields())
 			                        : Projections.include(query.getFields())))));
-			
+
 			findFlux = Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
 			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 			        .aggregate(pipeLines));
 		}
-		
+
 		return findFlux;
 	}
 
-	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage,
-	        Bson bsonCondition, ContextAuthentication ca, Pageable page) {
+	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage, Bson bsonCondition,
+	        ContextAuthentication ca, Pageable page) {
 
 		Flux<Document> findFlux;
 
