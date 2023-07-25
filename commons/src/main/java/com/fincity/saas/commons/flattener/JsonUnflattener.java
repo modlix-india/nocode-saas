@@ -4,10 +4,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.springframework.expression.ParseException;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.util.primitive.PrimitiveUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -15,13 +18,13 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import reactor.util.function.Tuple2;
+
 public class JsonUnflattener {
 
     private static final String OBJECT_NOT_FOUND = "Json object is required but not found";
 
     private static final String ARRAY_NOT_FOUND = "Json array is required but not found";
-
-    private static final String NULL_VALUE_EXPECTED = "No value required for selected field but a value was provided";
 
     private JsonUnflattener() {
 
@@ -133,7 +136,7 @@ public class JsonUnflattener {
 
     private static void processArrayOperatorForPlaceValue(String part, JsonElement pointer, String value,
             Set<SchemaType> schemaTypes) {
-        
+
         String[] subParts = part.split("\\[");
 
         int j = 0;
@@ -177,28 +180,24 @@ public class JsonUnflattener {
 
     private static JsonElement getJSONElementBySchemaType(Set<SchemaType> schemaTypes, String value) {
 
-        if (schemaTypes.contains(SchemaType.INTEGER))
-            return new JsonPrimitive(Integer.valueOf(value));
+        if (StringUtil.safeIsBlank(value) || "null".equalsIgnoreCase(value))
+            return JsonNull.INSTANCE;
 
-        else if (schemaTypes.contains(SchemaType.LONG))
-            return new JsonPrimitive(Long.valueOf(value));
-
-        else if (schemaTypes.contains(SchemaType.FLOAT))
-            return new JsonPrimitive(Float.valueOf(value));
-
-        else if (schemaTypes.contains(SchemaType.DOUBLE))
-            return new JsonPrimitive(Double.valueOf(value));
-
-        else if (schemaTypes.contains(SchemaType.STRING))
+        if (schemaTypes.contains(SchemaType.STRING))
             return new JsonPrimitive(value);
 
-        else if (schemaTypes.contains(SchemaType.BOOLEAN))
-            return new JsonPrimitive(Boolean.valueOf(value));
+        if (schemaTypes.contains(SchemaType.BOOLEAN)) {
 
-        else if (schemaTypes.contains(SchemaType.NULL))
-            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, NULL_VALUE_EXPECTED);
+            try {
+                Boolean b = BooleanUtil.parse(value);
+                return new JsonPrimitive(b);
+            } catch (ParseException pe) {
+            }
 
-        else
-            return JsonNull.INSTANCE;
+        }
+
+        Tuple2<SchemaType, Number> typeTup = PrimitiveUtil.findPrimitiveNumberType(new JsonPrimitive(value));
+
+        return new JsonPrimitive(typeTup.getT2());
     }
 }
