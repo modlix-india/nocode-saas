@@ -3,8 +3,12 @@ package com.fincity.saas.commons.mongo.service;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -183,11 +187,7 @@ public abstract class AbstractVersionService extends AbstractMongoDataService<St
 			        .limit(page.getPageSize()));
 		} else {
 
-			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition),
-			        Aggregates.skip((int) page.getOffset()), Aggregates.limit(page.getPageSize()),
-			        Aggregates.project(Projections.fields(query.getExcludeFields()
-			                .booleanValue() ? Projections.exclude(query.getFields())
-			                        : Projections.include(query.getFields())))));
+			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition)));
 
 			Bson sort = null;
 			if (!Query.DEFAULT_SORT.equals(page.getSort()))
@@ -196,7 +196,15 @@ public abstract class AbstractVersionService extends AbstractMongoDataService<St
 			if (sort != null)
 				pipeLines.add(Aggregates.sort(sort));
 
-			findFlux = Flux.from(collection.aggregate(pipeLines));
+			pipeLines.add(Aggregates.project(Projections.fields(query.getExcludeFields()
+			        .booleanValue() ? Projections.exclude(query.getFields())
+			                : Projections.include(query.getFields()))));
+			pipeLines.add(Aggregates.skip((int) page.getOffset()));
+			pipeLines.add(Aggregates.limit(page.getPageSize()));
+
+			var agg = collection.aggregate(pipeLines);
+
+			findFlux = Flux.from(agg);
 		}
 		return findFlux;
 	}
@@ -208,9 +216,10 @@ public abstract class AbstractVersionService extends AbstractMongoDataService<St
 		if (sort.equals(Query.DEFAULT_SORT))
 			return null;
 
-		return Sorts.orderBy(sort.stream()
-		        .map(e -> e.getDirection() == Direction.ASC ? Sorts.ascending(e.getProperty())
-		                : Sorts.descending(e.getProperty()))
-		        .toList());
+		BsonDocument document = new BsonDocument();
+		for (Order e : sort.toList()) {
+			document.append(e.getProperty(), new BsonInt32(e.getDirection() == Direction.DESC ? -1 : 1));
+		}
+		return document;
 	}
 }
