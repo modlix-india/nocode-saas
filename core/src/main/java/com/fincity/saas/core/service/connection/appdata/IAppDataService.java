@@ -21,9 +21,14 @@ public interface IAppDataService {
 	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id);
 
 	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Query query);
-	
+
 	public Flux<Map<String, Object>> readPageAsFlux(Connection conn, Storage storage, Query query);
 
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
+
+	public Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId);
+
+	public Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String versionId,
+	        Query query);
 
 }

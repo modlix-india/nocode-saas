@@ -48,7 +48,6 @@ import com.fincity.saas.commons.file.DataFileReader;
 import com.fincity.saas.commons.file.DataFileWriter;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.DataFileType;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.MapUtil;
@@ -179,7 +178,6 @@ public class AppDataService {
 	}
 
 	public Mono<Page<Map<String, Object>>> readPage(String appCode, String clientCode, String storageName,
-
 	        Query query) {
 
 		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
@@ -274,56 +272,63 @@ public class AppDataService {
 				        ObjectValueSetterExtractor ovs = new ObjectValueSetterExtractor(new JsonObject(), "Data.");
 				        Gson gson = new Gson();
 
-				        return dataFlux.reduce(Boolean.TRUE, (db, e) -> {
-
-					        Map<String, Object> newMap = e;
-					        if (!fileType.isNestedStructure()) {
-
-						        JsonElement job = gson.toJsonTree(e);
-						        ovs.setStore(job);
-						        newMap = dataHeaders.stream()
-						                .map(head -> {
-						                	JsonElement ele = ovs.getValue("Data." + head);
-						                	return Tuples.of(head, ele == null ? "" : ele.getAsString());
-						                })
-						                .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));
-					        }
-
-					        try {
-						        dfw.write(newMap);
-					        } catch (IOException e1) {
-						        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create file",
-						                e1);
-					        }
-					        return true;
-				        })
-				                .flatMap(e ->
-								{
-					                try {
-						                dfw.flush();
-						                dfw.close();
-						                ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
-						                long length = Files.size(fPath);
-						                HttpHeaders headers = response.getHeaders();
-						                headers.setContentLength(length);
-						                headers.add("content-type", fileType.getMimeType());
-						                headers.setContentDisposition(ContentDisposition.attachment()
-						                        .filename(file)
-						                        .build());
-
-						                return zeroCopyResponse.writeWith(fPath, 0, length);
-					                } catch (Exception ex) {
-						                return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
-						                        CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
-					                }
-
-				                });
-
+				        return fluxToFile(dataFlux, fileType, dataHeaders, dfw, ovs, gson)
+				                .flatMap(e -> flieToResponse(fileType, response, file, fPath, dfw));
 			        } catch (Exception ex) {
 				        return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
 				                CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
 			        }
 		        });
+	}
+
+	private Mono<Void> flieToResponse(DataFileType fileType, ServerHttpResponse response, String file, Path fPath,
+	        DataFileWriter dfw) {
+
+		try {
+
+			dfw.flush();
+			dfw.close();
+			ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
+			long length = Files.size(fPath);
+			HttpHeaders headers = response.getHeaders();
+			headers.setContentLength(length);
+			headers.add("content-type", fileType.getMimeType());
+			headers.setContentDisposition(ContentDisposition.attachment()
+			        .filename(file)
+			        .build());
+
+			return zeroCopyResponse.writeWith(fPath, 0, length);
+		} catch (Exception ex) {
+			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
+			        CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
+		}
+	}
+
+	private Mono<Boolean> fluxToFile(Flux<Map<String, Object>> dataFlux, DataFileType fileType,
+	        List<String> dataHeaders, DataFileWriter dfw, ObjectValueSetterExtractor ovs, Gson gson) {
+		return dataFlux.reduce(Boolean.TRUE, (db, e) -> {
+
+			Map<String, Object> newMap = e;
+			if (!fileType.isNestedStructure()) {
+
+				JsonElement job = gson.toJsonTree(e);
+				ovs.setStore(job);
+				newMap = dataHeaders.stream()
+				        .map(head ->
+						{
+					        JsonElement ele = ovs.getValue("Data." + head);
+					        return Tuples.of(head, ele == null ? "" : ele.getAsString());
+				        })
+				        .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));
+			}
+
+			try {
+				dfw.write(newMap);
+			} catch (IOException e1) {
+				throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create file", e1);
+			}
+			return true;
+		});
 	}
 
 	public Mono<byte[]> downloadTemplate(String appCode, String clientCode, String storageName, DataFileType fileType) {
@@ -559,43 +564,9 @@ public class AppDataService {
 		        (storageSchema, headers) ->
 				{
 
-			        List<Mono<Boolean>> monoList = new ArrayList<>();
-
-			        if (fileType == DataFileType.JSON || fileType == DataFileType.JSONL) {
-
-				        Map<String, Object> job;
-				        try (DataFileReader reader = new DataFileReader(filePart, fileType)) {
-					        while ((job = reader.readObject()) != null)
-						        monoList.add(dataService.create(conn, storage, new DataObject().setData(job))
-						                .map(v -> true));
-				        } catch (Exception ex) {
-					        logger.debug("Error while reading upload file. ", ex);
-				        }
-			        } else {
-				        try (DataFileReader reader = new DataFileReader(filePart, fileType)) {
-					        List<String> row;
-
-					        do {
-						        row = reader.readRow();
-						        if (row != null && !row.isEmpty()) {
-							        Map<String, Object> rowMap = new HashMap<>();
-							        for (int i = 0; i < reader.getHeaders()
-							                .size() && i < row.size(); i++) {
-								        if (StringUtil.safeIsBlank(row.get(i)))
-									        continue;
-								        MapUtil.setValueInMap(rowMap, reader.getHeaders()
-								                .get(i),
-								                getElementBySchemaType(headers.get(reader.getHeaders()
-								                        .get(i)), row.get(i)));
-							        }
-							        monoList.add(dataService.create(conn, storage, new DataObject().setData(rowMap))
-							                .map(v -> true));
-						        }
-					        } while (row != null && !row.isEmpty());
-				        } catch (Exception ex) {
-					        logger.debug("Error while reading upload file. ", ex);
-				        }
-			        }
+			        List<Mono<Boolean>> monoList = (fileType == DataFileType.JSON || fileType == DataFileType.JSONL)
+			                ? nestedFileToDB(conn, storage, fileType, filePart, dataService)
+			                : flatFileToDB(conn, storage, fileType, filePart, dataService, headers);
 
 			        return Flux.concat(monoList)
 			                .collectList()
@@ -604,6 +575,55 @@ public class AppDataService {
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.uploadDataInternal"))
 		        .switchIfEmpty(Mono.defer(() -> msgService.throwMessage(HttpStatus.BAD_REQUEST,
 		                CoreMessageResourceService.NOT_ABLE_TO_READ_FILE_FORMAT, fileType)));
+	}
+
+	private List<Mono<Boolean>> nestedFileToDB(Connection conn, Storage storage, DataFileType fileType,
+	        FilePart filePart, IAppDataService dataService) {
+
+		List<Mono<Boolean>> monoList = new ArrayList<>();
+
+		Map<String, Object> job;
+		try (DataFileReader reader = new DataFileReader(filePart, fileType)) {
+			while ((job = reader.readObject()) != null)
+				monoList.add(dataService.create(conn, storage, new DataObject().setData(job))
+				        .map(v -> true));
+		} catch (Exception ex) {
+			logger.debug("Error while reading upload file. ", ex);
+		}
+
+		return monoList;
+	}
+
+	private List<Mono<Boolean>> flatFileToDB(Connection conn, Storage storage, DataFileType fileType, FilePart filePart,
+	        IAppDataService dataService, Map<String, Set<SchemaType>> headers) {
+
+		List<Mono<Boolean>> monoList = new ArrayList<>();
+
+		try (DataFileReader reader = new DataFileReader(filePart, fileType)) {
+			List<String> row;
+
+			do {
+				row = reader.readRow();
+				if (row != null && !row.isEmpty()) {
+					Map<String, Object> rowMap = new HashMap<>();
+					for (int i = 0; i < reader.getHeaders()
+					        .size() && i < row.size(); i++) {
+						if (StringUtil.safeIsBlank(row.get(i)))
+							continue;
+						MapUtil.setValueInMap(rowMap, reader.getHeaders()
+						        .get(i),
+						        getElementBySchemaType(headers.get(reader.getHeaders()
+						                .get(i)), row.get(i)));
+					}
+					monoList.add(dataService.create(conn, storage, new DataObject().setData(rowMap))
+					        .map(v -> true));
+				}
+			} while (row != null && !row.isEmpty());
+		} catch (Exception ex) {
+			logger.debug("Error while reading upload file. ", ex);
+		}
+
+		return monoList;
 	}
 
 	private static Object getElementBySchemaType(Set<SchemaType> schemaTypes, String value) {
@@ -632,4 +652,53 @@ public class AppDataService {
 		        .getT2();
 	}
 
+	public Mono<Map<String, Object>> readVersion(String appCode, String clientCode, String storageName,
+	        String versionId) {
+
+		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+		        (ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+		        (ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+
+		        (ca, ac, cc, conn) -> Mono
+		                .just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+		        (ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+
+		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
+		                (cona, hasAccess) -> dataService.readVersion(conn, storage, versionId), Storage::getReadAuth,
+		                CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readVersion"));
+	}
+
+	public Mono<Page<Map<String, Object>>> readPageVersion(String appCode, String clientCode, String storageName,
+	        String versionId, Query query) {
+
+		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+		        (ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+		        (ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+
+		        (ca, ac, cc, conn) -> Mono
+		                .just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+		        (ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+
+		        (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
+		                (cona, hasAccess) -> dataService.readPageVersion(conn, storage, versionId, query),
+		                Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPageVersion"));
+	}
 }
