@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.util;
 
+import org.springframework.expression.ParseException;
+
 import reactor.core.publisher.Mono;
 
 public class BooleanUtil {
@@ -36,6 +38,28 @@ public class BooleanUtil {
             }
         }
         return returnValue;
+    }
+
+    public static Boolean parse(Object object) {
+
+        if (object == null)
+            return null;
+
+        if (object instanceof Boolean b)
+            return b;
+
+        if (object instanceof Byte)
+            return BYTE_1.equals(object);
+
+        String value = object.toString();
+
+        if ("true".equalsIgnoreCase(value))
+            return true;
+
+        if ("false".equalsIgnoreCase(value))
+            return false;
+
+        throw new ParseException(0, object + " - Not a boolean value to parse");
     }
 
     public static Mono<Boolean> safeValueOfWithEmpty(Object b) {

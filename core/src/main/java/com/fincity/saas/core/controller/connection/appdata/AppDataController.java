@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,13 +31,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
-import com.fincity.saas.commons.util.FlatFileType;
+import com.fincity.saas.commons.util.DataFileType;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @RestController
 @RequestMapping("api/core/data/")
@@ -46,6 +50,12 @@ public class AppDataController {
 	public static final String PATH_VARIABLE_STORAGE = "storage";
 	public static final String PATH_ID = "{storage}/{" + PATH_VARIABLE_ID + "}";
 	public static final String PATH_QUERY = "{storage}/query";
+
+	// Here id is version's ID
+	public static final String PATH_VERSION_ID = "{storage}/version/{" + PATH_VARIABLE_ID + "}";
+
+	// Here id is the object's ID for which versions are queried
+	public static final String PATH_VERSION_ID_QUERY = "{storage}/version/{" + PATH_VARIABLE_ID + "}/query";
 
 	private static final Set<String> IGNORE_PARAMS = Set.of("page", "size", "sort");
 
@@ -146,29 +156,88 @@ public class AppDataController {
 		        .map(ResponseEntity::ok);
 	}
 
+	@GetMapping("download/{fileType}/{storage}")
+	public Mono<Void> downloadContent(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+	        @RequestHeader String appCode, @RequestHeader String clientCode,
+	        @PathVariable(name = "fileType") DataFileType fileType, ServerHttpRequest request,
+	        ServerHttpResponse response) {
+
+		MultiValueMap<String, String> params = request.getQueryParams();
+		MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+		for (var param : params.entrySet()) {
+			if (IGNORE_PARAMS.contains(param.getKey()))
+				continue;
+			map.addAll(param.getKey(), param.getValue());
+		}
+
+		Query query = new Query().setExcludeFields(false)
+		        .setFields(List.of())
+		        .setCondition(ConditionUtil.parameterMapToMap(map))
+		        .setSize(1000);
+
+		return this.service.downloadData(appCode, clientCode, storageName, query, fileType, response);
+	}
+
+	@PostMapping("download/{fileType}/{storage}")
+	public Mono<Void> downloadContent(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+	        @RequestHeader String appCode, @RequestHeader String clientCode,
+	        @PathVariable(name = "fileType", required = false) DataFileType fileType, @RequestBody Query query,
+	        ServerHttpResponse response) {
+
+		return this.service.downloadData(appCode, clientCode, storageName, query, fileType, response);
+	}
+
 	@GetMapping("template/{storage}")
 	public Mono<ResponseEntity<byte[]>> downloadTemplate(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 	        @RequestHeader String appCode, @RequestHeader String clientCode,
-	        @RequestParam(value = "type", defaultValue = "CSV") FlatFileType fileType) {
+	        @RequestParam(value = "type", defaultValue = "CSV") DataFileType fileType) {
 
 		return this.service.downloadTemplate(appCode, clientCode, storageName, fileType)
 		        .map(bytes -> ResponseEntity.ok()
 		                .header(HttpHeaders.CONTENT_TYPE, fileType.getMimeType())
 		                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-		                        .filename(storageName + "." + fileType.toString()
+		                        .filename(storageName + "_template." + fileType.toString()
 		                                .toLowerCase())
 		                        .build()
 		                        .toString())
 		                .body(bytes));
 	}
 
-	@PostMapping(value = "template/{storage}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Boolean>> uploadTemplateData(
-	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
-	        @RequestHeader String clientCode, @RequestParam(value = "type") FlatFileType fileType,
-	        @RequestPart(value = "file") Mono<FilePart> file) {
+	@PostMapping(value = "upload/{storage}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Boolean>> uploadData(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+	        @RequestHeader String appCode, @RequestHeader String clientCode,
+	        @RequestParam(value = "type", required = false) DataFileType fileType,
+	        @RequestPart(value = "file") Mono<FilePart> filePartMono) {
 
-		return file.flatMap(f -> this.service.uploadTemplate(appCode, clientCode, storageName, fileType, f))
+		return FlatMapUtil.flatMapMono(
+
+		        () -> filePartMono,
+
+		        filePart -> Mono
+		                .just(fileType == null ? DataFileType.getFileTypeFromExtension(filePart.filename()) : fileType),
+
+		        (filePart, type) -> this.service.uploadData(appCode, clientCode, storageName, type, filePart)
+		                .map(ResponseEntity::ok))
+
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataController.uploadData"));
+	}
+
+	@GetMapping(PATH_VERSION_ID)
+	public Mono<ResponseEntity<Map<String, Object>>> getVersion(
+	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_ID) final String versionId) {
+
+		return this.service.readVersion(appCode, clientCode, storageName, versionId)
+		        .map(ResponseEntity::ok);
+	}
+
+	@PostMapping(PATH_VERSION_ID_QUERY)
+	public Mono<ResponseEntity<Page<Map<String, Object>>>> findVersions(
+	        @PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
+	        @RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_ID) final String versionId,
+	        @RequestBody Query query) {
+
+		return this.service.readPageVersion(appCode, clientCode, storageName, versionId, query)
 		        .map(ResponseEntity::ok);
 	}
 }
