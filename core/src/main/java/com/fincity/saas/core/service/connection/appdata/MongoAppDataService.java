@@ -364,6 +364,31 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
+	public Flux<Map<String, Object>> readPageAsFlux(Connection conn, Storage storage, Query query) {
+
+		Pageable page = query.getPageable();
+		AbstractCondition condition = query.getCondition();
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMapMany(ca -> this.filter(condition)
+		                .flatMapMany(bsonCondition ->
+						{
+
+			                Flux<Document> findFlux = applyQueryOnElements(query, conn, storage, bsonCondition, ca,
+			                        page);
+
+			                return findFlux.map(doc -> {
+				                String id = doc.getObjectId(ID)
+				                        .toHexString();
+				                doc.remove(ID);
+				                doc.append(ID, id);
+				                return (Map<String, Object>) doc;
+			                });
+
+		                }));
+	}
+
+	@Override
 	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Query query) {
 
 		Pageable page = query.getPageable();
@@ -407,66 +432,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	}
 
-	@Override
-	public Mono<List<Map<String, Object>>> readCompleteData(Connection conn, Storage storage, Query query) {
-
-		AbstractCondition condition = query.getCondition();
-
-		return FlatMapUtil.flatMapMono(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> this.filter(condition),
-
-		        (ca, bsonCondition) ->
-				{
-
-			        Flux<Document> findFlux = applyQueryOnElements(query, conn, storage, bsonCondition, ca);
-
-			        return findFlux.map(doc -> {
-				        String id = doc.getObjectId(ID)
-				                .toHexString();
-				        doc.remove(ID);
-				        doc.append(ID, id);
-				        return (Map<String, Object>) doc;
-			        })
-			                .collectList();
-
-		        }, (ca, bsonCondition, list) -> Mono.just(list)
-
-		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readCompleteData"));
-	}
-
-	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage, Bson bsonCondition,
-	        ContextAuthentication ca) {
-
-		Flux<Document> findFlux;
-
-		if (query.getFields() == null || query.getFields()
-		        .isEmpty()) {
-
-			FindPublisher<Document> publisher = this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-			        .find(bsonCondition);
-
-			findFlux = Flux.from(publisher);
-
-		} else {
-
-			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition),
-			        Aggregates.project(Projections.fields(query.getExcludeFields()
-			                .booleanValue() ? Projections.exclude(query.getFields())
-			                        : Projections.include(query.getFields())))));
-
-			findFlux = Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-			        .aggregate(pipeLines));
-		}
-
-		return findFlux;
-	}
-
 	private Flux<Document> applyQueryOnElements(Query query, Connection conn, Storage storage, Bson bsonCondition,
 	        ContextAuthentication ca, Pageable page) {
 
@@ -485,18 +450,26 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        .limit(page.getPageSize()));
 		} else {
 
-			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition),
-			        Aggregates.skip((int) page.getOffset()), Aggregates.limit(page.getPageSize()),
-			        Aggregates.project(Projections.fields(query.getExcludeFields()
-			                .booleanValue() ? Projections.exclude(query.getFields())
-			                        : Projections.include(query.getFields())))));
+			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition)));
 
+			Bson sort = null;
 			if (!Query.DEFAULT_SORT.equals(page.getSort()))
-				pipeLines.add(Aggregates.sort(this.sort(page.getSort())));
+				sort = this.sort(page.getSort());
 
-			findFlux = Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+			if (sort != null)
+				pipeLines.add(Aggregates.sort(sort));
+
+			pipeLines.add(Aggregates.project(Projections.fields(query.getExcludeFields()
+			        .booleanValue() ? Projections.exclude(query.getFields())
+			                : Projections.include(query.getFields()))));
+			pipeLines.add(Aggregates.skip((int) page.getOffset()));
+			pipeLines.add(Aggregates.limit(page.getPageSize()));
+
+			var agg = this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
 			        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-			        .aggregate(pipeLines));
+			        .aggregate(pipeLines);
+
+			findFlux = Flux.from(agg);
 		}
 
 		return findFlux;

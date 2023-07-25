@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -150,11 +151,10 @@ public class AppDataController {
 	}
 
 	@GetMapping("download/{fileType}/{storage}")
-	public Mono<ResponseEntity<Boolean>> downloadContent(
-			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
-			@RequestHeader String clientCode,
-			@PathVariable(name = "fileType", required = false, value = "CSV") DataFileType fileType,
-			ServerHttpRequest request) {
+	public Mono<Void> downloadContent(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode, @RequestHeader String clientCode,
+			@PathVariable(name = "fileType") DataFileType fileType,
+			ServerHttpRequest request, ServerHttpResponse response) {
 
 		MultiValueMap<String, String> params = request.getQueryParams();
 		MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
@@ -166,21 +166,19 @@ public class AppDataController {
 
 		Query query = new Query().setExcludeFields(false)
 				.setFields(List.of())
-				.setCondition(ConditionUtil.parameterMapToMap(map));
+				.setCondition(ConditionUtil.parameterMapToMap(map))
+				.setSize(1000);
 
-		return this.service.downloadData(appCode, clientCode, storageName, query, fileType)
-				.map(ResponseEntity::ok);
+		return this.service.downloadData(appCode, clientCode, storageName, query, fileType, response);
 	}
 
 	@PostMapping("download/{fileType}/{storage}")
-	public Mono<ResponseEntity<Boolean>> downloadContent(
-			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
-			@RequestHeader String clientCode,
-			@PathVariable(name = "fileType", required = false, value = "CSV") DataFileType fileType,
-			@RequestBody Query query) {
+	public Mono<Void> downloadContent(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode, @RequestHeader String clientCode,
+			@PathVariable(name = "fileType", required = false) DataFileType fileType,
+			@RequestBody Query query, ServerHttpResponse response) {
 
-		return this.service.downloadData(appCode, clientCode, storageName, query, fileType)
-				.map(ResponseEntity::ok);
+		return this.service.downloadData(appCode, clientCode, storageName, query, fileType, response);
 	}
 
 	@GetMapping("template/{storage}")
@@ -200,9 +198,9 @@ public class AppDataController {
 	}
 
 	@PostMapping(value = "upload/{storage}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Boolean>> uploadData(
-			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
-			@RequestHeader String clientCode, @RequestParam(value = "type", required = false) DataFileType fileType,
+	public Mono<ResponseEntity<Boolean>> uploadData(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode, @RequestHeader String clientCode,
+			@RequestParam(value = "type", required = false) DataFileType fileType,
 			@RequestPart(value = "file") Mono<FilePart> filePartMono) {
 
 		return FlatMapUtil.flatMapMono(
