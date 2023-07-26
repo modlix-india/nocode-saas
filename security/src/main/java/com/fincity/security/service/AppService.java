@@ -104,7 +104,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		        .switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
-		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
@@ -116,6 +117,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		                SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity.getId())))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+		        .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI))
 		        .flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
 		                .map(x -> e));
 	}
