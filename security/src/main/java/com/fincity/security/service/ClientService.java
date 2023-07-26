@@ -166,7 +166,7 @@ public class ClientService
 		for (String eachEnding : this.subDomainURLEndings) {
 			if (uriHost.toLowerCase()
 			        .endsWith(eachEnding)) {
-				code = uriHost.substring(0, uriHost.length() - eachEnding.length() - 1);
+				code = uriHost.substring(0, uriHost.length() - eachEnding.length());
 				break;
 			}
 		}

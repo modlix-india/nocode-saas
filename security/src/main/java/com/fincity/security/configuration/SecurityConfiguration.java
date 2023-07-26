@@ -59,7 +59,9 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 		        "/api/security/clients/register",
 
-		        "/api/security/users/requestResetPassword");
+		        "/api/security/users/requestResetPassword",
+		        
+				"/api/security/applications/applyAppCodeSuffix");
 	}
 
 }
