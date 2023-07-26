@@ -6,7 +6,8 @@ security:
     flyway:
       url: jdbc:mysql://localhost:3306/security
   subdomain:
-    endings: fincity.ai,local.com
+    endings: .fincity.ai, .ldev.local.com
+  appCodeSuffix: .ldev
 
 files:
   db:
