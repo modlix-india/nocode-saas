@@ -13,7 +13,7 @@
 	<name>Gateway</name>
 	<description>Fincity SAAS gateway server</description>
 	<properties>
-		<java.version>18</java.version>
+		<java.version>20</java.version>
 		<spring-cloud.version>2021.0.6</spring-cloud.version>
 		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<saas-commons-version>1.0.0</saas-commons-version>

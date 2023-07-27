@@ -13,7 +13,7 @@
 	<name>Admin Server</name>
 	<description>Fincity SAAS admin server</description>
 	<properties>
-		<java.version>18</java.version>
+		<java.version>20</java.version>
 		<spring-boot-admin.version>2.7.3</spring-boot-admin.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
 	</properties>

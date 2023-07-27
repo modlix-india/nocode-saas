@@ -15,7 +15,7 @@
 	<name>Commons</name>
 	<description>Common to all SAAS related api</description>
 	<properties>
-		<java.version>18</java.version>
+		<java.version>20</java.version>
 		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<spring-cloud.version>2021.0.6</spring-cloud.version>
 		<nocode-kirun-version>3.1.1</nocode-kirun-version>
