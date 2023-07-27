@@ -4,6 +4,9 @@ spring:
       server:
         native:
           search-locations: file:///Users/kirangrandhi/fincity/saas/configfiles
+server:
+  port: 8888
+  
 eureka:
   client:
     serviceUrl:
