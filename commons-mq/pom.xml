@@ -15,7 +15,7 @@
 	<name>Commons-MQ</name>
 	<description>Common to all SAAS modules which uses MQ</description>
 	<properties>
-		<java.version>18</java.version>
+		<java.version>20</java.version>
 		<feign-reactor.version>3.3.0</feign-reactor.version>
 		<spring-cloud.version>2021.0.6</spring-cloud.version>
 		<saas-commons-version>1.0.0</saas-commons-version>
