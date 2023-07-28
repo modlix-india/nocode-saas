@@ -19,7 +19,9 @@ public interface IFeignSecurityService {
 	public Mono<ContextAuthentication> contextAuthentication(
 	        @RequestHeader(name = "Authorization", required = false) String authorization,
 	        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-	        @RequestHeader("X-Forwarded-Port") String forwardedPort);
+	        @RequestHeader("X-Forwarded-Port") String forwardedPort,
+	        @RequestHeader("clientCode") String clientCode,
+	        @RequestHeader("appCode") String appCode);
 
 	@GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
 	public Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);

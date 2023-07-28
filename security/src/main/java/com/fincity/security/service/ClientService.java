@@ -58,12 +58,12 @@ public class ClientService
 
 	public static final String CACHE_CLIENT_URL_LIST = "list";
 	public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
+	public static final String CACHE_NAME_CLIENT_URI = "uri";
 
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
-	private static final String CACHE_NAME_CLIENT_URI = "uri";
 	private static final String CACHE_NAME_CLIENT_INFO = "clientInfoById";
 	private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
 	private static final String CACHE_NAME_CLIENT_ID = "clientId";
@@ -105,6 +105,9 @@ public class ClientService
 	@Value("${jwt.token.default.expiry}")
 	private Integer defaultExpiryInMinutes;
 
+	@Value("${security.subdomain.endings}")
+	private String[] subDomainURLEndings;
+
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
 		return SecuritySoxLogObjectName.CLIENT;
@@ -134,7 +137,7 @@ public class ClientService
 		return getClientPattern(uriScheme, uriHost, uriPort).map(ClientUrlPattern::getIdentifier)
 		        .map(ULong::valueOf)
 		        .defaultIfEmpty(ULong.valueOf(1l))
-		        .flatMap(id -> this.readInternal(id));
+		        .flatMap(this::readInternal);
 	}
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
@@ -146,9 +149,35 @@ public class ClientService
 			return this.readAllAsClientURLPattern()
 			        .flatMapIterable(e -> e)
 			        .filter(e -> e.isValidClientURLPattern(finHost, uriPort))
-			        .next();
+			        .take(1)
+			        .collectList()
+			        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
+			        .switchIfEmpty(Mono.defer(() -> getClientPatternBySubdomain(uriHost)));
 
 		}, uriScheme, uriHost, ":", uriPort);
+	}
+
+	private Mono<? extends ClientUrlPattern> getClientPatternBySubdomain(String uriHost) {
+
+		if (this.subDomainURLEndings == null || this.subDomainURLEndings.length == 0)
+			return Mono.empty();
+
+		String code = null;
+		for (String eachEnding : this.subDomainURLEndings) {
+			if (uriHost.toLowerCase()
+			        .endsWith(eachEnding)) {
+				code = uriHost.substring(0, uriHost.length() - eachEnding.length());
+				break;
+			}
+		}
+
+		if (code == null)
+			return Mono.empty();
+
+		return this.appService.getAppByCode(code)
+		        .flatMap(app -> this.getClientInfoById(app.getClientId()
+		                .toBigInteger())
+		                .map(client -> new ClientUrlPattern("", client.getCode(), uriHost, app.getAppCode())));
 	}
 
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
@@ -277,24 +306,24 @@ public class ClientService
 	}
 
 	// For creating user.
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) {
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) { // NOSONAR
 
 		return this.dao.getClientPasswordPolicy(clientId)
 		        .map(e ->
-				{
-			        // Need to check the password policy
+				{// NOSONAR
+				 // Need to check the password policy
 			        return true;
 		        })
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
 	// For existing user.
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong userId, String password) {
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong userId, String password) { // NOSONAR
 
 		return this.dao.getClientPasswordPolicy(clientId)
 		        .map(e ->
-				{
-			        // Need to check the password policy
+				{ // NOSONAR
+				  // Need to check the password policy
 			        return true;
 		        })
 		        .switchIfEmpty(Mono.just(Boolean.TRUE));
@@ -309,6 +338,12 @@ public class ClientService
 		        () -> this.dao.getManagingClientId(clientId)
 		                .flatMap(e -> this.getClientInfoById(e.toBigInteger())),
 		        clientId);
+	}
+
+	public Mono<Boolean> checkClientHasPackage(ULong clientId, ULong packageId) {
+
+		return this.dao.checkPackageAssignedForClient(clientId, packageId);
+
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")

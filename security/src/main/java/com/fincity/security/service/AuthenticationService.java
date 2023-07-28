@@ -283,7 +283,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 	}
 
-	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, ServerHttpRequest request) {
+	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, String clientcode, String appCode,
+	        ServerHttpRequest request) {
 
 		if (StringUtil.safeIsBlank(bearerToken)) {
 			return this.makeAnonySpringAuthentication(request);

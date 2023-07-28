@@ -31,7 +31,8 @@ public class FeignAuthenticationService implements IAuthenticationService {
 	private CacheService cacheService;
 
 	@Override
-	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, ServerHttpRequest request) {
+	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, String clientCode,
+	        String appCode, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
@@ -43,7 +44,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
 			        if (cToken != null)
 				        return Mono.just(cToken);
 
-			        return this.getAuthenticationFromSecurity(isBasic, bearerToken, request)
+			        return this.getAuthenticationFromSecurity(isBasic, bearerToken, clientCode, appCode, request)
 			                .flatMap(e ->
 							{
 
@@ -58,8 +59,8 @@ public class FeignAuthenticationService implements IAuthenticationService {
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FeignAuthenticationService.getAuthentication"));
 	}
 
-	private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken,
-	        ServerHttpRequest request) {
+	private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken, String clientCode,
+	        String appCode, ServerHttpRequest request) {
 
 		if (feignAuthService == null)
 			return Mono.empty();
@@ -91,7 +92,8 @@ public class FeignAuthenticationService implements IAuthenticationService {
 			}
 		}
 
-		return this.feignAuthService.contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port)
+		return this.feignAuthService
+		        .contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port, clientCode, appCode)
 		        .map(Authentication.class::cast);
 	}
 

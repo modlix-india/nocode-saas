@@ -31,6 +31,7 @@ import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -95,6 +96,13 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	@Override
 	public Mono<Role> read(ULong id) {
 		return super.read(id);
+	}
+	
+	
+	@PreAuthorize("hasAuthority('Authorities.Role_READ')")
+	public Flux<Role> readAllFilterWithReadPermissions(AbstractCondition condition) {
+
+		return this.readAllFilter(condition);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Role_READ')")

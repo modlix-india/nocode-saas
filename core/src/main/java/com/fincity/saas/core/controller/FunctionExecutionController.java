@@ -1,5 +1,6 @@
 package com.fincity.saas.core.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -162,8 +163,8 @@ public class FunctionExecutionController {
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.functionService.getFunctionRepository(appCode, clientCode)
-		                .find(namespace, name),
+		        ca -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
+		                this.functionService.getFunctionRepository(appCode, clientCode)).find(namespace, name),
 
 		        (ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
 		                new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode, clientCode))),
@@ -191,39 +192,29 @@ public class FunctionExecutionController {
 		        },
 
 		        (ca, fun, schRepo, args, output) -> this.extractOutputEvent(output))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
 		        .switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
 		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
 
 	}
 
 	private Mono<ResponseEntity<String>> extractOutputEvent(FunctionOutput e) {
+
+		List<EventResult> list = new ArrayList<>();
 		EventResult er = null;
 
 		while ((er = e.next()) != null) {
 
-			if (!Event.OUTPUT.equals(er.getName()))
-				continue;
+			list.add(er);
 
-			Map<String, JsonElement> result = er.getResult();
-
-			if (result == null || result.isEmpty())
-				return Mono.just(ResponseEntity.ok()
-				        .contentLength(0l)
-				        .contentType(MediaType.APPLICATION_JSON)
-				        .body(""));
-
-			JsonObject resultObj = new JsonObject();
-			for (var eachEntry : result.entrySet())
-				resultObj.add(eachEntry.getKey(), eachEntry.getValue());
-
-			return Mono.just((new Gson()).toJson(resultObj))
-			        .map(objString -> ResponseEntity.ok()
-			                .contentType(MediaType.APPLICATION_JSON)
-			                .body(objString));
+			if (Event.OUTPUT.equals(er.getName()))
+				break;
 		}
 
-		return Mono.empty();
+		return Mono.just((new Gson()).toJson(list))
+		        .map(objString -> ResponseEntity.ok()
+		                .contentType(MediaType.APPLICATION_JSON)
+		                .body(objString));
 	}
 
 	private Mono<Map<String, JsonElement>> getRequestParamsToArguments(Map<String, Parameter> parameters,

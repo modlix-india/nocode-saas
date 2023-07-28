@@ -2,6 +2,8 @@ package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
+import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityAppUserRole.SECURITY_APP_USER_ROLE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 
 import java.util.ArrayList;
@@ -22,6 +24,7 @@ import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
@@ -123,6 +126,121 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .limit(1))
 		        .map(Record1::value1)
 		        .map(e -> e != 0);
+	}
+
+	public Mono<Boolean> hasAppEditAccess(ULong appId, ULong clientId) {
+
+		return Mono.from(
+
+		        this.dslContext.select(SECURITY_APP_ACCESS.EDIT_ACCESS)
+		                .from(SECURITY_APP_ACCESS)
+		                .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
+		                        .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))))
+		        .map(Record1::value1)
+		        .map(e -> e.equals(UByte.valueOf(1)));
+
+	}
+
+	public Mono<Boolean> hasPackageAssignedWithApp(ULong appId, ULong clientId, ULong packageId) {
+
+		return Mono.from(this.dslContext.select(DSL.count())
+		        .from(SECURITY_APP_PACKAGE)
+		        .where(SECURITY_APP_PACKAGE.APP_ID.eq(appId)
+		                .and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId))
+		                .and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
+		        .map(Record1::value1)
+		        .map(e -> e > 0);
+	}
+
+	public Mono<Boolean> hasRoleAssignedWithApp(ULong appId, ULong clientId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext.selectCount()
+		                .from(SECURITY_APP_USER_ROLE)
+		                .where(SECURITY_APP_USER_ROLE.APP_ID.eq(appId)
+		                        .and(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(clientId))
+		                        .and(SECURITY_APP_USER_ROLE.ROLE_ID.eq(roleId))))
+		        .map(Record1::value1)
+		        .map(e -> e > 0);
+	}
+
+	public Mono<Boolean> addRoleAccess(ULong appId, ULong clientId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext.insertInto(SECURITY_APP_USER_ROLE)
+		                .columns(SECURITY_APP_USER_ROLE.APP_ID, SECURITY_APP_USER_ROLE.CLIENT_ID,
+		                        SECURITY_APP_USER_ROLE.ROLE_ID)
+		                .values(appId, clientId, roleId)
+
+		)
+		        .map(e -> e == 1);
+	}
+	
+	public Flux<ULong> fetchRolesBasedOnClient(ULong clientId, ULong appId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_APP_USER_ROLE.ROLE_ID)
+		                .from(SECURITY_APP_USER_ROLE)
+		                .where(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(clientId)
+		                        .and(SECURITY_APP_USER_ROLE.APP_ID.eq(appId)))
+
+		)
+		        .map(Record1::value1)
+		        .map(ULongUtil::valueOf);
+	}
+
+	public Flux<ULong> fetchPackagesBasedOnClient(ULong clientId, ULong appId) {
+
+		return Flux.from(
+
+		        this.dslContext.select(SECURITY_APP_PACKAGE.PACKAGE_ID)
+		                .from(SECURITY_APP_PACKAGE)
+		                .where(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId)
+		                        .and(SECURITY_APP_PACKAGE.APP_ID.eq(appId))))
+		        .map(Record1::value1);
+
+	}
+
+	public Mono<Boolean> addPackageAccess(ULong appId, ULong clientId, ULong packageId) {
+
+		return Mono.from(
+
+		        this.dslContext.insertInto(SECURITY_APP_PACKAGE)
+		                .columns(SECURITY_APP_PACKAGE.CLIENT_ID, SECURITY_APP_PACKAGE.APP_ID,
+		                        SECURITY_APP_PACKAGE.PACKAGE_ID)
+		                .values(clientId, appId, packageId)
+
+		)
+		        .map(e -> e == 1);
+
+	}
+
+	public Mono<Boolean> removePackageAccess(ULong id, ULong clientId, ULong packageId) {
+
+		return Mono.from(
+
+		        this.dslContext.deleteFrom(SECURITY_APP_PACKAGE)
+		                .where(SECURITY_APP_PACKAGE.APP_ID.eq(id)
+		                        .and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId))
+		                        .and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
+		        .map(e -> e == 1);
+
+	}
+
+	public Mono<Boolean> removeRoleAccess(ULong appId, ULong clientId, ULong roleId) {
+
+		return Mono.from(
+
+		        this.dslContext.deleteFrom(SECURITY_APP_USER_ROLE)
+		                .where(SECURITY_APP_USER_ROLE.APP_ID.eq(appId)
+		                        .and(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(clientId))
+		                        .and(SECURITY_APP_USER_ROLE.ROLE_ID.eq(roleId)))
+
+		)
+		        .map(e -> e == 1);
 	}
 
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {

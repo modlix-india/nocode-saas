@@ -42,6 +42,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
@@ -51,7 +52,6 @@ import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
-import com.fincity.saas.core.model.DataServiceQuery;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
@@ -346,6 +346,38 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
+	public Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId) {
+
+		BsonObjectId objectId = new BsonObjectId(new ObjectId(versionId));
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.from(this.getVersionCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+		                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+		                .find(Filters.eq(ID, objectId))
+		                .first()),
+
+		        (ca, doc) ->
+				{
+			        doc.remove(ID);
+			        doc.append(ID, versionId);
+
+			        String id = doc.getObjectId(OBJECTID)
+			                .toHexString();
+			        doc.remove(OBJECTID);
+			        doc.append(OBJECTID, id);
+
+			        return Mono.just((Map<String, Object>) doc);
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.read"))
+		        .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
+		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), versionId)));
+
+	}
+
+	@Override
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id) {
 
 		BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
@@ -365,7 +397,34 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
-	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, DataServiceQuery query) {
+	public Flux<Map<String, Object>> readPageAsFlux(Connection conn, Storage storage, Query query) {
+
+		Pageable page = query.getPageable();
+		AbstractCondition condition = query.getCondition();
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+		        .flatMapMany(ca -> this.filter(condition)
+		                .flatMapMany(bsonCondition ->
+						{
+
+			                Flux<Document> findFlux = applyQueryOnElements(this.getCollection(conn,
+			                        storage.getAppCode(), storage.getIsAppLevel()
+			                                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
+			                        storage.getUniqueName()), query, storage, bsonCondition, ca, page);
+
+			                return findFlux.map(doc -> {
+				                String id = doc.getObjectId(ID)
+				                        .toHexString();
+				                doc.remove(ID);
+				                doc.append(ID, id);
+				                return (Map<String, Object>) doc;
+			                });
+
+		                }));
+	}
+
+	@Override
+	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Query query) {
 
 		Pageable page = query.getPageable();
 		AbstractCondition condition = query.getCondition();
@@ -380,36 +439,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		        (ca, bsonCondition) ->
 				{
 
-			        Flux<Document> findFlux;
-
-			        if (query.getFields() == null || query.getFields()
-			                .isEmpty()) {
-				        FindPublisher<Document> publisher = this
-				                .getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-				                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
-				                        storage.getUniqueName())
-				                .find(bsonCondition);
-
-				        if (!Query.DEFAULT_SORT.equals(page.getSort()))
-					        publisher.sort(this.sort(page.getSort()));
-
-				        findFlux = Flux.from(publisher.skip((int) page.getOffset())
-				                .limit(page.getPageSize()));
-			        } else {
-
-				        List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition),
-				                Aggregates.skip((int) page.getOffset()), Aggregates.limit(page.getPageSize()),
-				                Aggregates.project(Projections.fields(query.getExcludeFields()
-				                        .booleanValue() ? Projections.exclude(query.getFields())
-				                                : Projections.include(query.getFields())))));
-
-				        if (!Query.DEFAULT_SORT.equals(page.getSort()))
-					        pipeLines.add(Aggregates.sort(this.sort(page.getSort())));
-
-				        findFlux = Flux.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-				                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-				                .aggregate(pipeLines));
-			        }
+			        Flux<Document> findFlux = applyQueryOnElements(this.getCollection(conn, storage.getAppCode(),
+			                storage.getIsAppLevel()
+			                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
+			                storage.getUniqueName()), query, storage, bsonCondition, ca, page);
 
 			        return findFlux.map(doc -> {
 				        String id = doc.getObjectId(ID)
@@ -434,6 +467,107 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		        (ca, bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readPage"));
+
+	}
+
+	@Override
+	public Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String objectId,
+	        Query query) {
+
+		Pageable page = query.getPageable();
+
+		FilterCondition objectIdFilterCondition = new FilterCondition().setField(OBJECTID)
+		        .setValue(new ObjectId(objectId))
+		        .setOperator(FilterConditionOperator.EQUALS);
+
+		AbstractCondition condition = query.getCondition() == null ? objectIdFilterCondition
+		        : new ComplexCondition().setConditions(List.of(objectIdFilterCondition, query.getCondition()))
+		                .setOperator(ComplexConditionOperator.AND);
+		Boolean count = query.getCount();
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> this.filter(condition),
+
+		        (ca, bsonCondition) ->
+				{
+
+			        Flux<Document> findFlux = applyQueryOnElements(this.getVersionCollection(conn, storage.getAppCode(),
+			                storage.getIsAppLevel()
+			                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
+			                storage.getUniqueName()), query, storage, bsonCondition, ca, page);
+
+			        return findFlux.map(doc -> {
+				        String id = doc.getObjectId(ID)
+				                .toHexString();
+				        doc.remove(ID);
+				        doc.append(ID, id);
+
+				        id = doc.getObjectId(OBJECTID)
+				                .toHexString();
+				        doc.remove(OBJECTID);
+				        doc.append(OBJECTID, id);
+
+				        return (Map<String, Object>) doc;
+			        })
+			                .collectList();
+		        },
+
+		        (ca, bsonCondition, list) ->
+				{
+
+			        if (count.booleanValue())
+				        return Mono.from(this.getVersionCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+				                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+				                .countDocuments(bsonCondition));
+
+			        return Mono.just(page.getOffset() + list.size());
+		        },
+
+		        (ca, bsonCondition, list, cnt) -> Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readPageVersion"));
+
+	}
+
+	private Flux<Document> applyQueryOnElements(MongoCollection<Document> collection, Query query, Storage storage,
+	        Bson bsonCondition, ContextAuthentication ca, Pageable page) {
+
+		Flux<Document> findFlux;
+
+		if (query.getFields() == null || query.getFields()
+		        .isEmpty()) {
+			FindPublisher<Document> publisher = collection.find(bsonCondition);
+
+			if (!Query.DEFAULT_SORT.equals(page.getSort()))
+				publisher.sort(this.sort(page.getSort()));
+
+			findFlux = Flux.from(publisher.skip((int) page.getOffset())
+			        .limit(page.getPageSize()));
+		} else {
+
+			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition)));
+
+			Bson sort = null;
+			if (!Query.DEFAULT_SORT.equals(page.getSort()))
+				sort = this.sort(page.getSort());
+
+			if (sort != null)
+				pipeLines.add(Aggregates.sort(sort));
+
+			pipeLines.add(Aggregates.project(Projections.fields(query.getExcludeFields()
+			        .booleanValue() ? Projections.exclude(query.getFields())
+			                : Projections.include(query.getFields()))));
+			pipeLines.add(Aggregates.skip((int) page.getOffset()));
+			pipeLines.add(Aggregates.limit(page.getPageSize()));
+
+			var agg = collection.aggregate(pipeLines);
+
+			findFlux = Flux.from(agg);
+		}
+
+		return findFlux;
 
 	}
 

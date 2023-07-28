@@ -7,6 +7,7 @@ import java.time.ZoneId;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 
 import reactor.core.publisher.Mono;
 
@@ -25,6 +26,12 @@ public abstract class AbstractMongoUpdatableDataService<I extends Serializable, 
 						{
 			                updateableEntity.setUpdatedBy(e);
 			                updateableEntity.setUpdatedAt(LocalDateTime.now(ZoneId.of("UTC")));
+			                if (entity instanceof AbstractOverridableDTO<?>
+			                        && updateableEntity instanceof AbstractOverridableDTO<?>) {
+				                ((AbstractOverridableDTO<?>) updateableEntity)
+				                        .setMessage(((AbstractOverridableDTO<?>) entity).getMessage());
+
+			                }
 			                return updateableEntity;
 		                })
 		                .defaultIfEmpty(updateableEntity)

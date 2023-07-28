@@ -2,9 +2,14 @@ package com.fincity.saas.commons.mongo.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -17,6 +22,7 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
+import com.fincity.saas.commons.mongo.service.AbstractFunctionService.NameOnly;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
@@ -29,16 +35,14 @@ import reactor.util.context.Context;
 public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R extends IOverridableDataRepository<D>>
         extends AbstractOverridableDataService<D, R> {
 
-	protected AbstractSchemaService(Class<D> pojoClass) {
-		super(pojoClass);
-	}
-
-	private static final String CACHE_NAME_SCHEMA_REPO = "cacheSchemaRepo";
-
 	private static final String NAMESPACE = "namespace";
 	private static final String NAME = "name";
 
 	private Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
+
+	protected AbstractSchemaService(Class<D> pojoClass) {
+		super(pojoClass);
+	}
 
 	@Override
 	public Mono<D> create(D entity) {
@@ -98,18 +102,15 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractSchemaService.updatableEntity"));
 	}
 
-	public ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema> getSchemaRepository(String appCode,
-	        String clientCode) {
+	public ReactiveRepository<Schema> getSchemaRepository(String appCode, String clientCode) {
 
 		return schemas.computeIfAbsent(appCode + " - " + clientCode, key -> new ReactiveRepository<Schema>() {
 
 			@Override
 			public Mono<Schema> find(String namespace, String name) {
 
-				return cacheService
-				        .cacheValueOrGet(CACHE_NAME_SCHEMA_REPO,
-				                () -> read(namespace + "." + name, appCode, clientCode), appCode, clientCode,
-				                namespace + "." + name)
+				return read(namespace + "." + name, appCode, clientCode)
+
 				        .map(s ->
 						{
 					        Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
@@ -124,9 +125,32 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 			@Override
 			public Flux<String> filter(String name) {
 
-				return Flux.empty();
+				return filterInRepo(appCode, clientCode, name);
 			}
 
 		});
+	}
+
+	public Flux<String> filterInRepo(String appCode, String clientCode, String filter) {
+
+		Flux<NameOnly> names = this.inheritanceService.order(appCode, clientCode, clientCode)
+		        .flatMapMany(ccs ->
+				{
+			        List<Criteria> criteria = new ArrayList<>();
+
+			        criteria.add(Criteria.where("appCode")
+			                .is(appCode));
+			        criteria.add(Criteria.where("clientCode")
+			                .in(ccs));
+
+			        if (!StringUtil.safeIsBlank(filter))
+				        criteria.add(Criteria.where("name")
+				                .regex(Pattern.compile(filter, Pattern.CASE_INSENSITIVE)));
+
+			        return this.mongoTemplate.find(new Query(new Criteria().andOperator(criteria)), NameOnly.class,
+			                this.getCollectionName());
+		        });
+
+		return names.map(e -> e.name);
 	}
 }
