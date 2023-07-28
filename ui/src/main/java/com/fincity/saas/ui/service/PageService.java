@@ -62,48 +62,52 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 	@Override
 	public Mono<Page> read(String name, String appCode, String clientCode) {
 
-		return super.read(name, appCode, clientCode)
-		        .switchIfEmpty(Mono.defer(() -> this.appServiceForProps.readProperties(appCode, appCode, clientCode)
-		                .flatMap(props ->
-						{
-			                if (StringUtil.safeIsBlank(props.get("notFoundPage")))
-				                return Mono.empty();
+		return super.read(name, appCode, clientCode).flatMap(pg -> {
 
-			                return this.read(props.get("notFoundPage")
-			                        .toString(), appCode, clientCode);
-		                })))
-		        .flatMap(pg ->
+			if (StringUtil.safeIsBlank(pg.getPermission()))
+				return Mono.just(pg);
+
+			return flatMapMono(
+
+			        SecurityContextUtil::getUsersContextAuthentication,
+
+			        ca -> Mono.just(ca.isAuthenticated()),
+
+			        (ca, isAuthenticated) ->
+					{
+
+				        if (isAuthenticated.booleanValue())
+					        return Mono.just(pg);
+
+				        return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
+
+				                props ->
+								{
+
+					                if (StringUtil.safeIsBlank(props.get("loginPage")))
+						                return Mono.just(pg);
+
+					                return super.read(props.get("loginPage")
+					                        .toString(), appCode, clientCode);
+				                }).contextWrite(
+				                        Context.of(LogUtil.METHOD_NAME, "PageService.read [Looking for Login page]"));
+			        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
+		})
+		        .switchIfEmpty(Mono.defer(() ->
 				{
+			        return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
 
-			        if (StringUtil.safeIsBlank(pg.getPermission()))
-				        return Mono.just(pg);
-
-			        return flatMapMono(
-
-			                SecurityContextUtil::getUsersContextAuthentication,
-
-			                ca -> Mono.just(ca.isAuthenticated()),
-
-			                (ca, isAuthenticated) ->
+			                props ->
 							{
 
-				                if (isAuthenticated.booleanValue())
-					                return Mono.just(pg);
+				                if (StringUtil.safeIsBlank(props.get("notFoundPage")))
+					                return Mono.empty();
 
-				                return flatMapMono(
-				                        () -> appServiceForProps.readProperties(appCode, appCode, clientCode),
-
-				                        props ->
-										{
-
-					                        if (StringUtil.safeIsBlank(props.get("loginPage")))
-						                        return Mono.just(pg);
-
-					                        return this.read(props.get("loginPage")
-					                                .toString(), appCode, clientCode);
-				                        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
-			                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
-		        });
+				                return super.read(props.get("notFoundPage")
+				                        .toString(), appCode, clientCode);
+			                }).contextWrite(
+			                        Context.of(LogUtil.METHOD_NAME, "PageService.read [Looking for Not found page]"));
+		        }));
 	}
 
 	@Override
@@ -124,7 +128,7 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 					        return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
 					                AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, page.getPermission());
 
-				        return this.read(props.get("forbiddenPage")
+				        return super.read(props.get("forbiddenPage")
 				                .toString(), appCode, clientCode);
 			        }
 
