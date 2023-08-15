@@ -15,7 +15,7 @@ import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
 
-public class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
+public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
 
 	@Value("${spring.r2dbc.url}")
 	private String url;
