@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.12</version>
+		<version>2.7.14</version>
 		<relativePath />
 		<!-- lookup parent from repository -->
 	</parent>
@@ -15,7 +15,7 @@
 	<description>Fincity SAAS File server</description>
 	<properties>
 		<java.version>20</java.version>
-		<spring-cloud.version>2021.0.3</spring-cloud.version>
+		<spring-cloud.version>2022.0.3</spring-cloud.version>
 		<nocode-kirun-version>3.1.1</nocode-kirun-version>
 		<saas-commons-version>1.0.0</saas-commons-version>
 		<saas-commons-jooq-version>1.0.0</saas-commons-jooq-version>
