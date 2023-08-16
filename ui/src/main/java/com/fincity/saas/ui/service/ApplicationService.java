@@ -44,11 +44,11 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 	public Mono<Application> create(Application entity) {
 
 		if (StringUtil.safeIsBlank(entity.getName()) || StringUtil.safeIsBlank(entity.getAppCode())
-		        || !StringUtil.safeEquals(entity.getName(), entity.getAppCode())
-		        || !StringUtil.onlyAlphabetAllowed(entity.getAppCode()))
+				|| !StringUtil.safeEquals(entity.getName(), entity.getAppCode())
+				|| !StringUtil.onlyAlphabetAllowed(entity.getAppCode()))
 
 			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-			        UIMessageResourceService.APP_NAME_MISMATCH);
+					UIMessageResourceService.APP_NAME_MISMATCH);
 
 		return super.create(entity);
 	}
@@ -57,21 +57,21 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 	public Mono<Application> update(Application entity) {
 
 		return super.update(entity).flatMap(
-		        e -> cacheService.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-		                .flatMap(x -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
-		                        e.getClientCode()))
-		                .map(x -> e));
+				e -> cacheService.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
+						.flatMap(x -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
+								e.getClientCode()))
+						.map(x -> e));
 	}
 
 	@Override
 	public Mono<Boolean> delete(String id) {
 
 		return this.read(id)
-		        .flatMap(e -> super.delete(id).flatMap(x -> cacheService
-		                .evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-		                .flatMap(v -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
-		                        e.getClientCode()))
-		                .map(y -> x)));
+				.flatMap(e -> super.delete(id).flatMap(x -> cacheService
+						.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
+						.flatMap(v -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
+								e.getClientCode()))
+						.map(y -> x)));
 	}
 
 	@Override
@@ -79,74 +79,75 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		return flatMapMono(
 
-		        () -> this.read(entity.getId()),
+				() -> this.read(entity.getId()),
 
-		        existing ->
-				{
-			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+				existing -> {
+					if (existing.getVersion() != entity.getVersion())
+						return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-			        existing.setProperties(entity.getProperties())
-			                .setTranslations(entity.getTranslations())
-			                .setLanguages(entity.getLanguages())
-			                .setPermission(entity.getPermission());
+					existing.setProperties(entity.getProperties())
+							.setTranslations(entity.getTranslations())
+							.setLanguages(entity.getLanguages())
+							.setPermission(entity.getPermission());
 
-			        existing.setMessage(entity.getMessage());
-			        existing.setDefaultLanguage(entity.getDefaultLanguage());
-			        existing.setVersion(existing.getVersion() + 1);
+					existing.setMessage(entity.getMessage());
+					existing.setDefaultLanguage(entity.getDefaultLanguage());
+					existing.setVersion(existing.getVersion() + 1);
 
-			        return Mono.just(existing);
-		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.updatableEntity"));
+					return Mono.just(existing);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.updatableEntity"));
 	}
 
-	public Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode) {
+	public Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode) { // NOSONAR
+		// This method is not complex, it is just long.
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> cacheService.makeKey(PROPERTIES, clientCode),
+				() -> cacheService.makeKey(PROPERTIES, clientCode),
 
-		        key -> cacheService.get(this.getCacheName(appCode, name), key)
-		                .map(this.pojoClass::cast),
+				key -> cacheService.get(this.getCacheName(appCode, name), key)
+						.map(this.pojoClass::cast),
 
-		        (key, cApp) -> Mono.justOrEmpty(cApp)
-		                .switchIfEmpty(Mono.defer(() -> SecurityContextUtil.getUsersContextAuthentication()
-		                        .flatMap(ca -> readIfExistsInBase(name, appCode, ca.getUrlClientCode(), clientCode)))),
+				(key, cApp) -> {
+					if (cApp != null)
+						return Mono.just(cApp);
 
-		        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
-		                .flatMap(da -> this.readInternal(da.getId())
-		                        .map(this.pojoClass::cast)),
+					return SecurityContextUtil.getUsersContextAuthentication()
+							.flatMap(ca -> this.readIfExistsInBase(name, appCode, ca.getUrlClientCode(),
+									clientCode));
+				},
 
-		        (key, cApp, dbApp, mergedApp) ->
-				{
+				(key, cApp, dbApp) -> dbApp == null ? Mono.empty() : this.readInternal(dbApp.getId()),
 
-			        if (cApp == null && mergedApp == null)
-				        return Mono.empty();
+				(key, cApp, dbApp, mergedApp) -> {
 
-			        try {
-				        return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
-				                .newInstance(cApp != null ? cApp : mergedApp));
-			        } catch (Exception e) {
+					if (cApp == null && mergedApp == null)
+						return Mono.empty();
 
-				        return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-				                AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.getObjectName());
-			        }
-		        },
+					try {
+						return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
+								.newInstance(cApp != null ? cApp : mergedApp));
+					} catch (Exception e) {
 
-		        (key, cApp, dbApp, mergedApp, clonedApp) ->
-				{
+						return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
+								AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.getObjectName());
+					}
+				},
 
-			        if (clonedApp == null)
-				        return Mono.empty();
+				(key, cApp, dbApp, mergedApp, clonedApp) -> {
 
-			        if (cApp == null && mergedApp != null) {
-				        cacheService.put(this.getCacheName(appCode, name), mergedApp, key);
-			        }
+					if (clonedApp == null)
+						return Mono.empty();
 
-			        return Mono.justOrEmpty(clonedApp.getProperties());
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.readProperties"))
-		        .defaultIfEmpty(Map.of());
+					if (cApp == null && mergedApp != null) {
+						cacheService.put(this.getCacheName(appCode, name), mergedApp, key);
+					}
+
+					return Mono.justOrEmpty(clonedApp.getProperties());
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.readProperties"))
+				.defaultIfEmpty(Map.of());
 	}
 
 	@Override
@@ -157,35 +158,33 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(ca == null || object.getPermission() == null
-		                || SecurityContextUtil.hasAuthority(object.getPermission(), ca.getAuthorities())),
+				ca -> Mono.just(ca == null || object.getPermission() == null
+						|| SecurityContextUtil.hasAuthority(object.getPermission(), ca.getAuthorities())),
 
-		        (ca, showShellPage) ->
-				{
+				(ca, showShellPage) -> {
 
-			        Map<String, Object> props = object.getProperties();
+					Map<String, Object> props = object.getProperties();
 
-			        if (props == null || props.get("shellPage") == null)
-				        return Mono.empty();
+					if (props == null || props.get("shellPage") == null)
+						return Mono.empty();
 
-			        Object pageName = props.get("shellPage");
+					Object pageName = props.get("shellPage");
 
-			        if (!showShellPage.booleanValue() && props.get("forbiddenPage") != null)
-				        pageName = props.get("forbiddenPage");
+					if (!showShellPage.booleanValue() && props.get("forbiddenPage") != null)
+						pageName = props.get("forbiddenPage");
 
-			        return this.pageService.read(pageName.toString(), object.getAppCode(), clientCode);
+					return this.pageService.read(pageName.toString(), object.getAppCode(), clientCode);
 
-		        },
+				},
 
-		        (ca, ssp, shellPage) ->
-				{
-			        object.getProperties()
-			                .put("shellPageDefinition", shellPage);
+				(ca, ssp, shellPage) -> {
+					object.getProperties()
+							.put("shellPageDefinition", shellPage);
 
-			        return Mono.just(object);
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.applyChange"));
+					return Mono.just(object);
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.applyChange"));
 	}
 }
