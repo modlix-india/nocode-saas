@@ -159,8 +159,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(ca == null || object.getPermission() == null)
-		                .map(e -> e || SecurityContextUtil.hasAuthority(object.getPermission(), ca.getAuthorities())),
+		        ca -> Mono.just(ca == null || object.getPermission() == null
+		                || SecurityContextUtil.hasAuthority(object.getPermission(), ca.getAuthorities())),
 
 		        (ca, showShellPage) ->
 				{

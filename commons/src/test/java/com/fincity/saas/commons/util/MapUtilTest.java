@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 class MapUtilTest {
 
     @Test
+    @SuppressWarnings("unchecked")
     void testSetValueInMap() {
         Map<String, Object> myMap = new HashMap<>();
         MapUtil.setValueInMap(myMap, "a", "kiran");
@@ -24,6 +25,7 @@ class MapUtilTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testNestedValue() {
         Map<String, Object> myMap = new HashMap<>();
         MapUtil.setValueInMap(myMap, "a.b.c", "kiran");
@@ -41,6 +43,7 @@ class MapUtilTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testNestedArray() {
         Map<String, Object> mymap = new HashMap<>();
         MapUtil.setValueInMap(mymap, "a.b[0][2].c[1]", "kiran");
