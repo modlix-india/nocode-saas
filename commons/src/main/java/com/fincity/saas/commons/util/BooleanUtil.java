@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.util;
 
+import javax.annotation.Nullable;
+
 import org.springframework.expression.ParseException;
 
 import reactor.core.publisher.Mono;
@@ -40,6 +42,7 @@ public class BooleanUtil {
         return returnValue;
     }
 
+    @Nullable
     public static Boolean parse(Object object) {
 
         if (object == null)

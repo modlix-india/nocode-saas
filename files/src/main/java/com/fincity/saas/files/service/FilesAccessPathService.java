@@ -13,6 +13,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.common.security.jwt.ContextAuthentication;
 import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -170,68 +171,7 @@ public class FilesAccessPathService
 
 		        cs -> SecurityContextUtil.getUsersContextAuthentication(),
 
-		        (cs, ca) ->
-				{
-			        if (!ca.isSystemClient() && !ca.getLoggedInFromClientId()
-			                .equals(ca.getUser()
-			                        .getClientId())) {
-
-				        return msgService.throwMessage(HttpStatus.FORBIDDEN,
-				                FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
-			        }
-
-			        boolean hasStatic = SecurityContextUtil.hasAuthority(
-			                this.getAuthority(FilesAccessPathResourceType.STATIC.toString()), ca.getAuthorities());
-			        boolean hasSecured = SecurityContextUtil.hasAuthority(
-			                this.getAuthority(FilesAccessPathResourceType.SECURED.toString()), ca.getAuthorities());
-
-			        if (cs.isEmpty()) {
-
-				        if (!hasSecured && !hasStatic)
-					        return msgService.throwMessage(HttpStatus.FORBIDDEN,
-					                FilesMessageResourceService.FORBIDDEN_PERMISSION,
-					                "STATIC Files PATH / SECURED Files PATH");
-
-				        if (hasSecured && hasStatic)
-					        return Mono.just(condition);
-
-				        if (hasSecured)
-					        return Mono
-					                .just(new ComplexCondition()
-					                        .setConditions(List.of(condition,
-					                                new FilterCondition().setField(RESOURCE_TYPE)
-					                                        .setValue(FilesAccessPathResourceType.SECURED.toString())))
-					                        .setOperator(ComplexConditionOperator.AND));
-
-				        return Mono.just(new ComplexCondition()
-				                .setConditions(List.of(condition, new FilterCondition().setField(RESOURCE_TYPE)
-				                        .setValue(FilesAccessPathResourceType.STATIC.toString())))
-				                .setOperator(ComplexConditionOperator.AND));
-			        } else {
-
-				        List<String> list = cs.stream()
-				                .filter(FilterCondition.class::isInstance)
-				                .map(e -> ((FilterCondition) e).getValue())
-				                .map(Object::toString)
-				                .distinct()
-				                .toList();
-
-				        for (String rtype : list) {
-
-					        if (rtype.contains(FilesAccessPathResourceType.STATIC.toString()) && !hasStatic) {
-						        return msgService.throwMessage(HttpStatus.FORBIDDEN,
-						                FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH");
-					        }
-
-					        if (rtype.contains(FilesAccessPathResourceType.SECURED.toString()) && !hasSecured) {
-						        return msgService.throwMessage(HttpStatus.FORBIDDEN,
-						                FilesMessageResourceService.FORBIDDEN_PERMISSION, "SECURED Files PATH");
-					        }
-				        }
-			        }
-
-			        return Mono.just(condition);
-		        },
+		        (cs, ca) -> prepareConditionForRead(condition, cs, ca),
 
 		        (cs, ca, newCondition) -> super.readPageFilter(pageable,
 		                new ComplexCondition()
@@ -239,6 +179,70 @@ public class FilesAccessPathService
 		                                .setValue(ca.getLoggedInFromClientCode())))
 		                        .setOperator(ComplexConditionOperator.AND)))
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.readPageFilter"));
+	}
+
+	private Mono<AbstractCondition> prepareConditionForRead(AbstractCondition condition, List<FilterCondition> cs,
+	        ContextAuthentication ca) {
+
+		if (!ca.isSystemClient() && !ca.getLoggedInFromClientId()
+		        .equals(ca.getUser()
+		                .getClientId())) {
+
+			return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
+		}
+
+		boolean hasStatic = SecurityContextUtil
+		        .hasAuthority(this.getAuthority(FilesAccessPathResourceType.STATIC.toString()), ca.getAuthorities());
+		boolean hasSecured = SecurityContextUtil
+		        .hasAuthority(this.getAuthority(FilesAccessPathResourceType.SECURED.toString()), ca.getAuthorities());
+
+		if (cs.isEmpty()) {
+
+			return processConditionWhenNoConditionsInRequest(condition, hasStatic, hasSecured);
+		}
+
+		List<String> list = cs.stream()
+		        .filter(FilterCondition.class::isInstance)
+		        .map(e -> e.getValue())
+		        .map(Object::toString)
+		        .distinct()
+		        .toList();
+
+		for (String rtype : list) {
+
+			if (rtype.contains(FilesAccessPathResourceType.STATIC.toString()) && !hasStatic) {
+				return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION,
+				        "STATIC Files PATH");
+			}
+
+			if (rtype.contains(FilesAccessPathResourceType.SECURED.toString()) && !hasSecured) {
+				return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION,
+				        "SECURED Files PATH");
+			}
+		}
+
+		return Mono.just(condition);
+	}
+
+	private Mono<AbstractCondition> processConditionWhenNoConditionsInRequest(AbstractCondition condition,
+	        boolean hasStatic, boolean hasSecured) {
+		if (!hasSecured && !hasStatic)
+			return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION,
+			        "STATIC Files PATH / SECURED Files PATH");
+
+		if (hasSecured && hasStatic)
+			return Mono.just(condition);
+
+		if (hasSecured)
+			return Mono.just(new ComplexCondition()
+			        .setConditions(List.of(condition, new FilterCondition().setField(RESOURCE_TYPE)
+			                .setValue(FilesAccessPathResourceType.SECURED.toString())))
+			        .setOperator(ComplexConditionOperator.AND));
+
+		return Mono.just(new ComplexCondition()
+		        .setConditions(List.of(condition, new FilterCondition().setField(RESOURCE_TYPE)
+		                .setValue(FilesAccessPathResourceType.STATIC.toString())))
+		        .setOperator(ComplexConditionOperator.AND));
 	}
 
 	public Mono<String> checkAccessNGetClientCode(String resourceType) {

@@ -35,7 +35,7 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
 			if (name != null)
 				log.debug("{} - {}", name, v);
 			else
-				log.debug(v.toString());
+				log.debug(v);
 		}));
 	}
 

@@ -175,7 +175,7 @@ public class DifferenceApplicator {
 			        override.setOverride(true);
 			        return Mono.justOrEmpty((Object) override);
 		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply"));
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(StatementGroup, StatementGroup)"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -213,7 +213,7 @@ public class DifferenceApplicator {
 			        override.setOverride(true);
 			        return Mono.justOrEmpty((Object) override);
 		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply"));
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(Statement, Statement)"));
 	}
 
 	private static Position apply(Position override, Position base) {
@@ -256,7 +256,7 @@ public class DifferenceApplicator {
 		        }
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply"));
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(FunctionDefinition, FunctionDefinition)"));
 	}
 
 	private DifferenceApplicator() {

@@ -410,7 +410,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			                Flux<Document> findFlux = applyQueryOnElements(this.getCollection(conn,
 			                        storage.getAppCode(), storage.getIsAppLevel()
 			                                .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
-			                        storage.getUniqueName()), query, storage, bsonCondition, ca, page);
+			                        storage.getUniqueName()), query, bsonCondition, page);
 
 			                return findFlux.map(doc -> {
 				                String id = doc.getObjectId(ID)
@@ -442,7 +442,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        Flux<Document> findFlux = applyQueryOnElements(this.getCollection(conn, storage.getAppCode(),
 			                storage.getIsAppLevel()
 			                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
-			                storage.getUniqueName()), query, storage, bsonCondition, ca, page);
+			                storage.getUniqueName()), query, bsonCondition, page);
 
 			        return findFlux.map(doc -> {
 				        String id = doc.getObjectId(ID)
@@ -497,7 +497,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			        Flux<Document> findFlux = applyQueryOnElements(this.getVersionCollection(conn, storage.getAppCode(),
 			                storage.getIsAppLevel()
 			                        .booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
-			                storage.getUniqueName()), query, storage, bsonCondition, ca, page);
+			                storage.getUniqueName()), query, bsonCondition, page);
 
 			        return findFlux.map(doc -> {
 				        String id = doc.getObjectId(ID)
@@ -531,8 +531,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	}
 
-	private Flux<Document> applyQueryOnElements(MongoCollection<Document> collection, Query query, Storage storage,
-	        Bson bsonCondition, ContextAuthentication ca, Pageable page) {
+	private Flux<Document> applyQueryOnElements(MongoCollection<Document> collection, Query query, Bson bsonCondition,
+	        Pageable page) {
 
 		Flux<Document> findFlux;
 

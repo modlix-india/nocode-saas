@@ -55,7 +55,7 @@ public class JWTClaims implements Serializable {
 		        .setPort(claims.get("port", String.class))
 		        .setLoggedInClientId(BigInteger.valueOf(claims.get("loggedInClientId", Long.class)))
 		        .setLoggedInClientCode(claims.get("loggedInClientCode", String.class))
-		        .setOneTime(claims.containsKey(ONE_TIME) ? claims.get(ONE_TIME, Boolean.class) : false);
+		        .setOneTime(claims.containsKey(ONE_TIME) ? claims.get(ONE_TIME, Boolean.class) : Boolean.FALSE);
 
 	}
 }

@@ -126,8 +126,7 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 			        existing.setVersion(existing.getVersion() + 1);
 
 			        return Mono.just(existing);
-		        })
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.updatableEntity"));
+		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.updatableEntity"));
 	}
 
 	public Mono<Connection> find(String appCode, String clientCode, ConnectionType type) {
@@ -153,31 +152,31 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
 						)))
 		                .collectList()
-		                .flatMap(cons ->
-						{
-
-			                if (cons.isEmpty())
-				                return Mono.empty();
-
-			                Connection finCon = null;
-			                Connection defaultCon = null;
-			                for (Connection conn : cons) {
-
-				                if (StringUtil.safeEquals(name, conn.getName())) {
-					                return Mono.just(conn);
-				                }
-
-				                if (defaultCon == null && BooleanUtil.safeValueOf(conn.getDefaultConnection()))
-					                defaultCon = conn;
-
-				                if (finCon == null || CommonsUtil
-				                        .nonNullValue(finCon.getUpdatedAt(), finCon.getCreatedAt())
-				                        .isAfter(CommonsUtil.nonNullValue(conn.getUpdatedAt(), conn.getCreatedAt())))
-					                finCon = conn;
-			                }
-
-			                return Mono.justOrEmpty(CommonsUtil.nonNullValue(defaultCon, finCon));
-		                }),
+		                .flatMap(cons -> findRightConnection(name, cons)),
 		        appCode, ":", clientCode, ":", type);
+	}
+
+	private Mono<? extends Connection> findRightConnection(String name, List<Connection> cons) {
+
+		if (cons.isEmpty())
+			return Mono.empty();
+
+		Connection finCon = null;
+		Connection defaultCon = null;
+		for (Connection conn : cons) {
+
+			if (StringUtil.safeEquals(name, conn.getName())) {
+				return Mono.just(conn);
+			}
+
+			if (defaultCon == null && BooleanUtil.safeValueOf(conn.getDefaultConnection()))
+				defaultCon = conn;
+
+			if (finCon == null || CommonsUtil.nonNullValue(finCon.getUpdatedAt(), finCon.getCreatedAt())
+			        .isAfter(CommonsUtil.nonNullValue(conn.getUpdatedAt(), conn.getCreatedAt())))
+				finCon = conn;
+		}
+
+		return Mono.justOrEmpty(CommonsUtil.nonNullValue(defaultCon, finCon));
 	}
 }

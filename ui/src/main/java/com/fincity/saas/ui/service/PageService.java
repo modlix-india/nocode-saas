@@ -93,21 +93,19 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 				                        Context.of(LogUtil.METHOD_NAME, "PageService.read [Looking for Login page]"));
 			        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
 		})
-		        .switchIfEmpty(Mono.defer(() ->
-				{
-			        return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
+		        .switchIfEmpty(Mono
+		                .defer(() -> flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
 
-			                props ->
-							{
+		                        props ->
+								{
 
-				                if (StringUtil.safeIsBlank(props.get("notFoundPage")))
-					                return Mono.empty();
+			                        if (StringUtil.safeIsBlank(props.get("notFoundPage")))
+				                        return Mono.empty();
 
-				                return super.read(props.get("notFoundPage")
-				                        .toString(), appCode, clientCode);
-			                }).contextWrite(
-			                        Context.of(LogUtil.METHOD_NAME, "PageService.read [Looking for Not found page]"));
-		        }));
+			                        return super.read(props.get("notFoundPage")
+			                                .toString(), appCode, clientCode);
+		                        }).contextWrite(Context.of(LogUtil.METHOD_NAME,
+		                                "PageService.read [Looking for Not found page]"))));
 	}
 
 	@Override

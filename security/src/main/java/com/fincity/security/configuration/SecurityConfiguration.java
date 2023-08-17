@@ -35,7 +35,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 			if (name != null)
 				log.debug("{} - {}", name, v);
 			else
-				log.debug(v.toString());
+				log.debug(v);
 		}));
 	}
 

@@ -49,7 +49,7 @@ public abstract class AbstractEmailService {
 
 	protected Logger logger;
 
-	public AbstractEmailService() {
+	protected AbstractEmailService() {
 
 		logger = LoggerFactory.getLogger(this.getClass());
 	}

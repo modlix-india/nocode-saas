@@ -106,6 +106,7 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 
 	@Override
 	public void configureRabbitListeners(RabbitListenerEndpointRegistrar registrar) {
-
+		//	This is a method in interface which requires an implementation in a concrete class
+		//that is why it is left empty.
 	}
 }
