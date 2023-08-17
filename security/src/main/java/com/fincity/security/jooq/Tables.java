@@ -22,6 +22,9 @@ import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityRole;
 import com.fincity.security.jooq.tables.SecurityRolePermission;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
+import com.fincity.security.jooq.tables.SecuritySslCertificate;
+import com.fincity.security.jooq.tables.SecuritySslChallenge;
+import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
@@ -122,6 +125,21 @@ public class Tables {
      * The table <code>security.security_sox_log</code>.
      */
     public static final SecuritySoxLog SECURITY_SOX_LOG = SecuritySoxLog.SECURITY_SOX_LOG;
+
+    /**
+     * The table <code>security.security_ssl_certificate</code>.
+     */
+    public static final SecuritySslCertificate SECURITY_SSL_CERTIFICATE = SecuritySslCertificate.SECURITY_SSL_CERTIFICATE;
+
+    /**
+     * The table <code>security.security_ssl_challenge</code>.
+     */
+    public static final SecuritySslChallenge SECURITY_SSL_CHALLENGE = SecuritySslChallenge.SECURITY_SSL_CHALLENGE;
+
+    /**
+     * The table <code>security.security_ssl_request</code>.
+     */
+    public static final SecuritySslRequest SECURITY_SSL_REQUEST = SecuritySslRequest.SECURITY_SSL_REQUEST;
 
     /**
      * The table <code>security.security_user</code>.

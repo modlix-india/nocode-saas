@@ -169,7 +169,7 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
 
     @Override
     public List<UniqueKey<SecurityClientRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_UK1_CLIENT_CODE, Keys.KEY_SECURITY_CLIENT_UK2_CLIENT_NAME);
+        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_UK1_CLIENT_CODE);
     }
 
     @Override
