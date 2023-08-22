@@ -1,4 +1,4 @@
-package com.fincity.saas.common.security.util;
+package com.fincity.saas.commons.security.util;
 
 import java.math.BigInteger;
 import java.util.Collection;
@@ -14,8 +14,8 @@ import org.springframework.security.core.context.SecurityContext;
 
 import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenValueExtractor;
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
-import com.fincity.saas.common.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
@@ -31,8 +31,8 @@ public class SecurityContextUtil {
 	public static Mono<Locale> getUsersLocale() {
 
 		return getUsersContextUser().map(ContextUser::getLocaleCode)
-		        .map(Locale::forLanguageTag)
-		        .defaultIfEmpty(Locale.ENGLISH);
+				.map(Locale::forLanguageTag)
+				.defaultIfEmpty(Locale.ENGLISH);
 	}
 
 	public static Mono<ContextUser> getUsersContextUser() {
@@ -42,8 +42,8 @@ public class SecurityContextUtil {
 
 	public static Mono<ContextAuthentication> getUsersContextAuthentication() {
 		return ReactiveSecurityContextHolder.getContext()
-		        .map(SecurityContext::getAuthentication)
-		        .map(ContextAuthentication.class::cast);
+				.map(SecurityContext::getAuthentication)
+				.map(ContextAuthentication.class::cast);
 	}
 
 	public static Mono<Boolean> hasAuthority(String authority) {
@@ -65,7 +65,7 @@ public class SecurityContextUtil {
 		ExpressionEvaluator ev = new ExpressionEvaluator(authority);
 		AuthoritiesTokenExtractor extractor = new AuthoritiesTokenExtractor(collection);
 		JsonPrimitive jp = ev.evaluate(Map.of(extractor.getPrefix(), extractor))
-		        .getAsJsonPrimitive();
+				.getAsJsonPrimitive();
 		return jp.isBoolean() && jp.getAsBoolean();
 	}
 

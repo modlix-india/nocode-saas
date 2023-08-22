@@ -1,4 +1,4 @@
-package com.fincity.saas.common.security.util;
+package com.fincity.saas.commons.security.util;
 
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
@@ -8,15 +8,15 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public class ServerHttpRequestUtil {
-	
+
 	public static Tuple2<Boolean, String> extractBasicNBearerToken(ServerHttpRequest request) {
 
 		String bearerToken = request.getHeaders()
-		        .getFirst(HttpHeaders.AUTHORIZATION);
+				.getFirst(HttpHeaders.AUTHORIZATION);
 
 		if (bearerToken == null || bearerToken.isBlank()) {
 			HttpCookie cookie = request.getCookies()
-			        .getFirst(HttpHeaders.AUTHORIZATION);
+					.getFirst(HttpHeaders.AUTHORIZATION);
 			if (cookie != null)
 				bearerToken = cookie.getValue();
 		}
@@ -38,6 +38,6 @@ public class ServerHttpRequestUtil {
 	}
 
 	private ServerHttpRequestUtil() {
-		
+
 	}
 }

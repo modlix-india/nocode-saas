@@ -14,10 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
-import com.fincity.saas.common.security.util.ServerHttpRequestUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.security.util.ServerHttpRequestUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
@@ -40,17 +40,17 @@ public class AuthenticationController {
 
 	@PostMapping("authenticate")
 	public Mono<ResponseEntity<AuthenticationResponse>> authenticate(@RequestBody AuthenticationRequest authRequest,
-	        ServerHttpRequest request, ServerHttpResponse response) {
+			ServerHttpRequest request, ServerHttpResponse response) {
 
 		return this.service.authenticate(authRequest, request, response)
-		        .map(ResponseEntity::ok);
+				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping(value = "revoke")
 	public Mono<ResponseEntity<Void>> revoke(ServerHttpRequest request) {
 		return this.service.revoke(request)
-		        .map(e -> ResponseEntity.ok()
-		                .build());
+				.map(e -> ResponseEntity.ok()
+						.build());
 	}
 
 	@GetMapping(value = "verifyToken")
@@ -58,40 +58,39 @@ public class AuthenticationController {
 
 		return FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca ->
-				{
+				ca -> {
 
-			        if (ca.isAuthenticated())
-				        return Mono.just(ca);
+					if (ca.isAuthenticated())
+						return Mono.just(ca);
 
-			        Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
+					Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
 
-			        Mono<ContextAuthentication> errorMono;
-			        if (tuple.getT2()
-			                .isBlank())
-				        errorMono = Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
-			        else
-				        errorMono = Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+					Mono<ContextAuthentication> errorMono;
+					if (tuple.getT2()
+							.isBlank())
+						errorMono = Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
+					else
+						errorMono = Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-			        return this.service.revoke(request)
-			                .flatMap(e -> Mono.defer(() -> errorMono));
+					return this.service.revoke(request)
+							.flatMap(e -> Mono.defer(() -> errorMono));
 
-		        },
+				},
 
-		        (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser()
-		                .getClientId()),
+				(ca, ca2) -> this.clientService.getClientInfoById(ca.getUser()
+						.getClientId()),
 
-		        (ca, ca2, client) -> Mono.just(new AuthenticationResponse().setUser(ca.getUser())
-		                .setClient(client)
-		                .setLoggedInClientCode(ca.getLoggedInFromClientCode())
-		                .setLoggedInClientId(ca.getLoggedInFromClientId())
-		                .setAccessToken(ca.getAccessToken())
-		                .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
+				(ca, ca2, client) -> Mono.just(new AuthenticationResponse().setUser(ca.getUser())
+						.setClient(client)
+						.setLoggedInClientCode(ca.getLoggedInFromClientCode())
+						.setLoggedInClientId(ca.getLoggedInFromClientId())
+						.setAccessToken(ca.getAccessToken())
+						.setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
 
-		        (ca, ca2, client, vr) -> Mono.just(ResponseEntity.<AuthenticationResponse>ok(vr)))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
+				(ca, ca2, client, vr) -> Mono.just(ResponseEntity.<AuthenticationResponse>ok(vr)))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
 
 	}
 
@@ -100,10 +99,10 @@ public class AuthenticationController {
 
 		return flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        contextAuthentication -> Mono.just(ResponseEntity.<ContextAuthentication>ok(contextAuthentication)))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.contextAuthentication"));
+				contextAuthentication -> Mono.just(ResponseEntity.<ContextAuthentication>ok(contextAuthentication)))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.contextAuthentication"));
 	}
 
 }

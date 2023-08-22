@@ -48,38 +48,38 @@ public class SortSerializationModule extends Module {
 		@Override
 		public Sort deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
 		        throws IOException {
+
 			TreeNode treeNode = jsonParser.getCodec()
 			        .readTree(jsonParser);
-			if (treeNode.isArray()) {
-				ArrayNode arrayNode = (ArrayNode) treeNode;
-				List<Sort.Order> orders = new ArrayList<>();
-				for (JsonNode jsonNode : arrayNode) {
 
-					Sort.Direction direction = jsonNode.has("direction")
-					        ? Sort.Direction.valueOf(jsonNode.get("direction")
-					                .textValue())
-					        : Sort.DEFAULT_DIRECTION;
+			if (!treeNode.isArray())
+				return null;
 
-					NullHandling nullHandling = jsonNode.has("nullHandling")
-					        ? NullHandling.valueOf(jsonNode.get("nullHandling")
-					                .textValue())
-					        : null;
+			ArrayNode arrayNode = (ArrayNode) treeNode;
+			List<Sort.Order> orders = new ArrayList<>();
+			for (JsonNode jsonNode : arrayNode) {
 
-					String property = jsonNode.get("property")
-					        .textValue();
+				Sort.Direction direction = jsonNode.has("direction") ? Sort.Direction.valueOf(jsonNode.get("direction")
+				        .textValue()) : Sort.DEFAULT_DIRECTION;
 
-					Sort.Order order = nullHandling == null ? new Sort.Order(direction, property)
-					        : new Sort.Order(direction, property, nullHandling);
+				NullHandling nullHandling = jsonNode.has("nullHandling")
+				        ? NullHandling.valueOf(jsonNode.get("nullHandling")
+				                .textValue())
+				        : null;
 
-					if (jsonNode.has("ignoreCase") && BooleanUtil.safeValueOf(jsonNode.get("ignoreCase")
-					        .textValue()))
-						order = order.ignoreCase();
+				String property = jsonNode.get("property")
+				        .textValue();
 
-					orders.add(order);
-				}
-				return Sort.by(orders);
+				Sort.Order order = nullHandling == null ? new Sort.Order(direction, property)
+				        : new Sort.Order(direction, property, nullHandling);
+
+				if (jsonNode.has("ignoreCase") && BooleanUtil.safeValueOf(jsonNode.get("ignoreCase")
+				        .textValue()))
+					order = order.ignoreCase();
+
+				orders.add(order);
 			}
-			return null;
+			return Sort.by(orders);
 		}
 
 		@Override

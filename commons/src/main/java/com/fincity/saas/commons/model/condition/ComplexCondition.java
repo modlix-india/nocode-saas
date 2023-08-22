@@ -27,10 +27,20 @@ public class ComplexCondition extends AbstractCondition {
 		return Flux.fromIterable(this.conditions)
 		        .flatMap(c -> c.findConditionWithField(fieldName));
 	}
-	
+
 	@Override
 	public boolean isEmpty() {
-	
+
 		return conditions.isEmpty();
+	}
+
+	public static ComplexCondition and(AbstractCondition... conditions) {
+		return new ComplexCondition().setConditions(List.of(conditions))
+		        .setOperator(ComplexConditionOperator.AND);
+	}
+
+	public static ComplexCondition or(AbstractCondition... conditions) {
+		return new ComplexCondition().setConditions(List.of(conditions))
+		        .setOperator(ComplexConditionOperator.OR);
 	}
 }

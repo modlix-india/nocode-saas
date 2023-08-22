@@ -14,11 +14,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dao.PermissionDAO;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -29,7 +29,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class PermissionService
-        extends AbstractSecurityUpdatableDataService<SecurityPermissionRecord, ULong, Permission, PermissionDAO> {
+		extends AbstractSecurityUpdatableDataService<SecurityPermissionRecord, ULong, Permission, PermissionDAO> {
 
 	private static final String PERMISSION = "Permission";
 
@@ -49,16 +49,15 @@ public class PermissionService
 	public Mono<Permission> create(Permission entity) {
 
 		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca ->
-				{
+				.flatMap(ca -> {
 
-			        if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
-				        return messageResourceService.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
-				                .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.FORBIDDEN,
-				                        StringFormatter.format(msg, PERMISSION))));
-			        }
-			        return super.create(entity);
-		        });
+					if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
+						return messageResourceService.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
+								.flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.FORBIDDEN,
+										StringFormatter.format(msg, PERMISSION))));
+					}
+					return super.create(entity);
+				});
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Permission_READ')")
@@ -66,26 +65,24 @@ public class PermissionService
 	public Mono<Permission> read(ULong id) {
 
 		return super.read(id).flatMap(p -> SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca ->
-				{
+				.flatMap(ca -> {
 
-			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				        return Mono.just(p);
+					if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+						return Mono.just(p);
 
-			        return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-			                .getClientId()), p.getClientId())
-			                .flatMap(managed ->
-							{
-				                if (managed.booleanValue())
-					                return Mono.just(p);
+					return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+							.getClientId()), p.getClientId())
+							.flatMap(managed -> {
+								if (managed.booleanValue())
+									return Mono.just(p);
 
-				                return messageResourceService
-				                        .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-				                        .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
-				                                StringFormatter.format(msg, PERMISSION, id))));
-			                });
+								return messageResourceService
+										.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+										.flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+												StringFormatter.format(msg, PERMISSION, id))));
+							});
 
-		        }));
+				}));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Permission_READ')")
@@ -99,63 +96,59 @@ public class PermissionService
 	protected Mono<Permission> updatableEntity(Permission entity) {
 
 		return ((PermissionService) AopContext.currentProxy()).read(entity.getId())
-		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-		                .flatMap(ca ->
-						{
+				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+						.flatMap(ca -> {
 
-			                existing.setDescription(entity.getDescription());
-			                existing.setName(entity.getName());
+							existing.setDescription(entity.getDescription());
+							existing.setName(entity.getName());
 
-			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				                return Mono.just(existing);
+							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+								return Mono.just(existing);
 
-			                return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-			                        .getClientId()), existing.getClientId())
-			                        .flatMap(managed ->
-									{
-				                        if (managed.booleanValue())
-					                        return Mono.just(existing);
+							return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+									.getClientId()), existing.getClientId())
+									.flatMap(managed -> {
+										if (managed.booleanValue())
+											return Mono.just(existing);
 
-				                        return messageResourceService
-				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-				                                .flatMap(msg -> Mono.error(() -> new GenericException(
-				                                        HttpStatus.NOT_FOUND,
-				                                        StringFormatter.format(msg, PERMISSION, entity.getId()))));
-			                        });
+										return messageResourceService
+												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+												.flatMap(msg -> Mono.error(() -> new GenericException(
+														HttpStatus.NOT_FOUND,
+														StringFormatter.format(msg, PERMISSION, entity.getId()))));
+									});
 
-		                }));
+						}));
 	}
 
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
 		return ((PermissionService) AopContext.currentProxy()).read(key)
-		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-		                .flatMap(ca ->
-						{
+				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+						.flatMap(ca -> {
 
-			                Map<String, Object> newMap = new HashMap<>();
-			                newMap.put("description", fields.get("description"));
-			                newMap.put("name", fields.get("name"));
+							Map<String, Object> newMap = new HashMap<>();
+							newMap.put("description", fields.get("description"));
+							newMap.put("name", fields.get("name"));
 
-			                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				                return Mono.just(newMap);
+							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+								return Mono.just(newMap);
 
-			                return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-			                        .getClientId()), existing.getClientId())
-			                        .flatMap(managed ->
-									{
-				                        if (managed.booleanValue())
-					                        return Mono.just(newMap);
+							return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+									.getClientId()), existing.getClientId())
+									.flatMap(managed -> {
+										if (managed.booleanValue())
+											return Mono.just(newMap);
 
-				                        return messageResourceService
-				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-				                                .flatMap(msg -> Mono
-				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
-				                                                StringFormatter.format(msg, PERMISSION, key))));
-			                        });
+										return messageResourceService
+												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+												.flatMap(msg -> Mono
+														.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+																StringFormatter.format(msg, PERMISSION, key))));
+									});
 
-		                }));
+						}));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Permission_UPDATE')")
@@ -175,33 +168,31 @@ public class PermissionService
 	public Mono<Integer> delete(ULong id) {
 
 		return this.read(id)
-		        .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-		                .flatMap(ca ->
-						{
+				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+						.flatMap(ca -> {
 
-			                if (ca.isSystemClient())
-				                return super.delete(id);
+							if (ca.isSystemClient())
+								return super.delete(id);
 
-			                return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-			                        .getClientId()), existing.getClientId())
-			                        .flatMap(managed ->
-									{
-				                        if (managed.booleanValue())
-					                        return super.delete(id);
+							return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+									.getClientId()), existing.getClientId())
+									.flatMap(managed -> {
+										if (managed.booleanValue())
+											return super.delete(id);
 
-				                        return this.messageResourceService
-				                                .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-				                                .flatMap(msg -> Mono
-				                                        .error(() -> new GenericException(HttpStatus.NOT_FOUND,
-				                                                StringFormatter.format(msg, PERMISSION, id))));
-			                        });
+										return this.messageResourceService
+												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+												.flatMap(msg -> Mono
+														.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+																StringFormatter.format(msg, PERMISSION, id))));
+									});
 
-		                }))
-		        .onErrorResume(
-		                ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
-		                        ? this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
-		                                SecurityMessageResourceService.DELETE_PERMISSION_ERROR)
-		                        : Mono.error(ex));
+						}))
+				.onErrorResume(
+						ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
+								? this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
+										SecurityMessageResourceService.DELETE_PERMISSION_ERROR)
+								: Mono.error(ex));
 
 	}
 
