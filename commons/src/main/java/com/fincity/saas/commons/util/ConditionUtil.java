@@ -1,9 +1,8 @@
 package com.fincity.saas.commons.util;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-
-import org.springframework.util.MultiValueMap;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -13,7 +12,7 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 
 public class ConditionUtil {
 
-	public static AbstractCondition parameterMapToMap(MultiValueMap<String, String> multiValueMap) {
+	public static AbstractCondition parameterMapToMap(Map<String, List<String>> multiValueMap) {
 
 		List<AbstractCondition> conditions = multiValueMap.entrySet()
 		        .stream()

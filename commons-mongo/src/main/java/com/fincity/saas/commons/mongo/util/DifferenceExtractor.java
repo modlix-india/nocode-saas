@@ -50,15 +50,15 @@ public class DifferenceExtractor {
 		}
 
 		return Flux.concat(Flux.fromIterable(existing.keySet()), Flux.fromIterable(incoming.keySet()))
-		        .distinct()
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .flatMap(e -> extract(incoming.get(e), existing.get(e)).map(d -> Tuples.of(e, d)))
-		        .collectMap(Tuple2::getT1, tup -> tup.getT2() == JsonNull.INSTANCE ? null : tup.getT2(), HashMap::new)
-		        .flatMap(e -> e.isEmpty() ? Mono.just(Map.of()) : Mono.just(e));
+				.distinct()
+				.subscribeOn(Schedulers.boundedElastic())
+				.flatMap(e -> extract(incoming.get(e), existing.get(e)).map(d -> Tuples.of(e, d)))
+				.collectMap(Tuple2::getT1, tup -> tup.getT2() == JsonNull.INSTANCE ? null : tup.getT2(), HashMap::new)
+				.flatMap(e -> e.isEmpty() ? Mono.just(Map.of()) : Mono.just(e));
 	}
 
 	public static Mono<Map<String, Boolean>> extractMapBoolean(Map<String, Boolean> incoming,
-	        Map<String, Boolean> existing) {
+			Map<String, Boolean> existing) {
 
 		if (existing == null || existing.isEmpty()) {
 			if (incoming == null || incoming.isEmpty())
@@ -77,16 +77,16 @@ public class DifferenceExtractor {
 		}
 
 		return Flux.concat(Flux.fromIterable(existing.keySet()), Flux.fromIterable(incoming.keySet()))
-		        .distinct()
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .filter(e -> !incoming.get(e)
-		                .equals(existing.get(e)))
-		        .map(e -> Tuples.of(e, incoming.get(e)))
-		        .collectMap(Tuple2::getT1, Tuple2::getT2)
-		        .flatMap(e -> Mono.just(e.isEmpty() ? Map.of() : e));
+				.distinct()
+				.subscribeOn(Schedulers.boundedElastic())
+				.filter(e -> !incoming.get(e)
+						.equals(existing.get(e)))
+				.map(e -> Tuples.of(e, incoming.get(e)))
+				.collectMap(Tuple2::getT1, Tuple2::getT2)
+				.flatMap(e -> Mono.just(e.isEmpty() ? Map.of() : e));
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked" })
 	public static Mono<Object> extract(Object incoming, Object existing) { // NOSONAR
 
 		// Splitting the below logic makes no sense.
@@ -107,7 +107,7 @@ public class DifferenceExtractor {
 		if (existing instanceof Map && incoming instanceof Map)
 			return extract((Map<String, Object>) incoming, (Map<String, Object>) existing).map(e -> e);
 
-		if (existing instanceof IDifferentiable exc && incoming instanceof IDifferentiable inc)
+		if (existing instanceof IDifferentiable exc && incoming instanceof IDifferentiable inc) // NOSONAR
 			return exc.extractDifference(inc);
 
 		if (existing instanceof FunctionDefinition efd && incoming instanceof FunctionDefinition ifd)
@@ -164,15 +164,14 @@ public class DifferenceExtractor {
 		}
 
 		return Flux.concat(Flux.fromIterable(existing.keySet()), Flux.fromIterable(incoming.keySet()))
-		        .distinct()
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .flatMap(e -> extract(incoming.get(e), existing.get(e)).map(d -> Tuples.of(e, d)))
-		        .reduce(new JsonObject(), (jo, tup) ->
-				{
-			        jo.add(tup.getT1(), tup.getT2());
-			        return jo;
-		        })
-		        .flatMap(e -> e.size() == 0 ? Mono.just(new JsonObject()) : Mono.just(e));
+				.distinct()
+				.subscribeOn(Schedulers.boundedElastic())
+				.flatMap(e -> extract(incoming.get(e), existing.get(e)).map(d -> Tuples.of(e, d)))
+				.reduce(new JsonObject(), (jo, tup) -> {
+					jo.add(tup.getT1(), tup.getT2());
+					return jo;
+				})
+				.flatMap(e -> e.size() == 0 ? Mono.just(new JsonObject()) : Mono.just(e));
 	}
 
 	private static Mono<Object> extract(ParameterReference incoming, ParameterReference existing) {
@@ -202,71 +201,69 @@ public class DifferenceExtractor {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> extract(incoming.getStatements(), existing.getStatements()),
+				() -> extract(incoming.getStatements(), existing.getStatements()),
 
-		        statDiff ->
-				{
+				statDiff -> {
 
-			        boolean changed = !statDiff.isEmpty();
+					boolean changed = !statDiff.isEmpty();
 
-			        StatementGroup st = new StatementGroup();
+					StatementGroup st = new StatementGroup();
 
-			        if (!safeEquals(incoming.getComment(), existing.getComment())) {
-				        st.setComment(incoming.getComment());
-				        changed = true;
-			        }
+					if (!safeEquals(incoming.getComment(), existing.getComment())) {
+						st.setComment(incoming.getComment());
+						changed = true;
+					}
 
-			        if (!safeEquals(incoming.getDescription(), existing.getDescription())) {
-				        st.setDescription(incoming.getDescription());
-				        changed = true;
-			        }
+					if (!safeEquals(incoming.getDescription(), existing.getDescription())) {
+						st.setDescription(incoming.getDescription());
+						changed = true;
+					}
 
-			        st.setOverride(true);
-			        return changed ? Mono.just((Object) st) : Mono.empty();
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
+					st.setOverride(true);
+					return changed ? Mono.just((Object) st) : Mono.empty();
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
 	}
 
 	private static Mono<Object> extract(Statement incoming, Statement existing) {
 
 		return FlatMapUtil.flatMapMono(() -> extract(incoming.getParameterMap(), existing.getParameterMap()),
 
-		        paramMapDiff -> extract(incoming.getDependentStatements(), existing.getDependentStatements()),
+				paramMapDiff -> extract(incoming.getDependentStatements(), existing.getDependentStatements()),
 
-		        (paramMapDiff, depDiff) ->
-				{
+				(paramMapDiff, depDiff) -> {
 
-			        Position p = extract(incoming.getPosition(), existing.getPosition());
+					Position p = extract(incoming.getPosition(), existing.getPosition());
 
-			        boolean changed = !paramMapDiff.isEmpty() || !depDiff.isEmpty() || p != null;
+					boolean changed = !paramMapDiff.isEmpty() || !depDiff.isEmpty() || p != null;
 
-			        Statement st = new Statement();
+					Statement st = new Statement();
 
-			        if (!safeEquals(incoming.getComment(), existing.getComment())) {
-				        st.setComment(incoming.getComment());
-				        changed = true;
-			        }
+					if (!safeEquals(incoming.getComment(), existing.getComment())) {
+						st.setComment(incoming.getComment());
+						changed = true;
+					}
 
-			        if (!safeEquals(incoming.getDescription(), existing.getDescription())) {
-				        st.setDescription(incoming.getDescription());
-				        changed = true;
-			        }
+					if (!safeEquals(incoming.getDescription(), existing.getDescription())) {
+						st.setDescription(incoming.getDescription());
+						changed = true;
+					}
 
-			        if (!safeEquals(incoming.getNamespace(), existing.getNamespace())) {
-				        st.setNamespace(incoming.getNamespace());
-				        changed = true;
-			        }
+					if (!safeEquals(incoming.getNamespace(), existing.getNamespace())) {
+						st.setNamespace(incoming.getNamespace());
+						changed = true;
+					}
 
-			        if (!safeEquals(incoming.getName(), existing.getName())) {
-				        st.setName(incoming.getName());
-				        changed = true;
-			        }
+					if (!safeEquals(incoming.getName(), existing.getName())) {
+						st.setName(incoming.getName());
+						changed = true;
+					}
 
-			        st.setOverride(true);
+					st.setOverride(true);
 
-			        return changed ? Mono.just((Object) st) : Mono.empty();
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
+					return changed ? Mono.just((Object) st) : Mono.empty();
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
 	}
 
 	private static Position extract(Position incoming, Position existing) {
@@ -295,26 +292,25 @@ public class DifferenceExtractor {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> extract(incoming.getSteps(), existing.getSteps()),
+				() -> extract(incoming.getSteps(), existing.getSteps()),
 
-		        stepDiff -> extract(incoming.getStepGroups(), existing.getStepGroups()),
+				stepDiff -> extract(incoming.getStepGroups(), existing.getStepGroups()),
 
-		        (stepDiff, stepGroupDiff) ->
-				{
+				(stepDiff, stepGroupDiff) -> {
 
-			        if (stepDiff.isEmpty() && stepGroupDiff.isEmpty())
-				        return Mono.empty();
+					if (stepDiff.isEmpty() && stepGroupDiff.isEmpty())
+						return Mono.empty();
 
-			        FunctionDefinition fd = new FunctionDefinition();
+					FunctionDefinition fd = new FunctionDefinition();
 
-			        fd.setSteps((Map<String, Statement>) stepDiff);
-			        fd.setStepGroups((Map<String, StatementGroup>) stepGroupDiff);
+					fd.setSteps((Map<String, Statement>) stepDiff);
+					fd.setStepGroups((Map<String, StatementGroup>) stepGroupDiff);
 
-			        return Mono.just((Object) fd);
-		        }
+					return Mono.just((Object) fd);
+				}
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, DIFFERENCE_EXTRACTOR_EXTRACT));
 	}
 
 	private DifferenceExtractor() {

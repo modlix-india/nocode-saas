@@ -18,7 +18,6 @@ import reactor.core.publisher.Mono;
 @Document
 @CompoundIndex(def = "{'appCode': 1, 'clientCode': 1}", name = "transportFilteringIndex")
 @Accessors(chain = true)
-
 public class Transport extends AbstractOverridableDTO<Transport> {
 
 	private static final long serialVersionUID = -5436810186809455453L;

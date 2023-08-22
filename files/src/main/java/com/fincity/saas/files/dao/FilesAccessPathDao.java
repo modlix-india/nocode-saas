@@ -9,8 +9,6 @@ import org.jooq.SelectConditionStep;
 import org.jooq.SelectLimitPercentStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
@@ -23,8 +21,6 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathRecord, ULong, FilesAccessPath> {
-
-	private static final Logger logger = LoggerFactory.getLogger(FilesAccessPathDao.class);
 
 	protected FilesAccessPathDao() {
 		super(FilesAccessPath.class, FILES_ACCESS_PATH, FILES_ACCESS_PATH.ID);

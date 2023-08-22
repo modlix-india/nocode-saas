@@ -17,6 +17,6 @@ public class TransportObject implements Serializable {
 	private static final long serialVersionUID = 8576537166958502323L;
 
 	private String objectType;
-	private Map<String, Object> data;
+	private Map<String, Object> data; // NOSONAR
 
 }

@@ -5,7 +5,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
@@ -19,17 +18,15 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @ComponentScan(basePackages = "com.fincity")
 
-
 @EnableFeignClients
-@EnableReactiveFeignClients(basePackages =  "com.fincity")
-@EnableReactiveMongoRepositories(basePackages =  "com.fincity")
+@EnableReactiveFeignClients(basePackages = "com.fincity")
+@EnableReactiveMongoRepositories(basePackages = "com.fincity")
 @EnableWebFlux
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
 @EnableCaching
 @EnableScheduling
 @EnableAspectJAutoProxy(proxyTargetClass = true)
-@EnableEurekaClient
 @EnableRabbit
 
 @SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })

@@ -1,4 +1,4 @@
-package com.fincity.saas.common.security.jwt;
+package com.fincity.saas.commons.security.jwt;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -55,8 +55,8 @@ public class ContextUser implements Serializable {
 
 		if (this.grantedAuthorities == null) {
 			this.grantedAuthorities = this.stringAuthorities.parallelStream()
-			        .map(SimpleGrantedAuthority::new)
-			        .collect(Collectors.toSet());
+					.map(SimpleGrantedAuthority::new)
+					.collect(Collectors.toSet());
 		}
 		return this.grantedAuthorities;
 	}

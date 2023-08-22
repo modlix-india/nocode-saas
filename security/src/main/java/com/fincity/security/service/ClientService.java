@@ -21,15 +21,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
-import com.fincity.saas.common.security.jwt.ContextUser;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -54,7 +54,7 @@ import reactor.util.function.Tuples;
 
 @Service
 public class ClientService
-        extends AbstractSecurityUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
+		extends AbstractSecurityUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
 
 	public static final String CACHE_CLIENT_URL_LIST = "list";
 	public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
@@ -135,9 +135,9 @@ public class ClientService
 			uriHost = uriHost.substring(0, ind);
 
 		return getClientPattern(uriScheme, uriHost, uriPort).map(ClientUrlPattern::getIdentifier)
-		        .map(ULong::valueOf)
-		        .defaultIfEmpty(ULong.valueOf(1l))
-		        .flatMap(this::readInternal);
+				.map(ULong::valueOf)
+				.defaultIfEmpty(ULong.valueOf(1l))
+				.flatMap(this::readInternal);
 	}
 
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
@@ -147,12 +147,12 @@ public class ClientService
 			String finHost = uriHost;
 
 			return this.readAllAsClientURLPattern()
-			        .flatMapIterable(e -> e)
-			        .filter(e -> e.isValidClientURLPattern(finHost, uriPort))
-			        .take(1)
-			        .collectList()
-			        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
-			        .switchIfEmpty(Mono.defer(() -> getClientPatternBySubdomain(uriHost)));
+					.flatMapIterable(e -> e)
+					.filter(e -> e.isValidClientURLPattern(finHost, uriPort))
+					.take(1)
+					.collectList()
+					.flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.get(0)))
+					.switchIfEmpty(Mono.defer(() -> getClientPatternBySubdomain(uriHost)));
 
 		}, uriScheme, uriHost, ":", uriPort);
 	}
@@ -165,7 +165,7 @@ public class ClientService
 		String code = null;
 		for (String eachEnding : this.subDomainURLEndings) {
 			if (uriHost.toLowerCase()
-			        .endsWith(eachEnding)) {
+					.endsWith(eachEnding)) {
 				code = uriHost.substring(0, uriHost.length() - eachEnding.length());
 				break;
 			}
@@ -175,22 +175,22 @@ public class ClientService
 			return Mono.empty();
 
 		return this.appService.getAppByCode(code)
-		        .flatMap(app -> this.getClientInfoById(app.getClientId()
-		                .toBigInteger())
-		                .map(client -> new ClientUrlPattern("", client.getCode(), uriHost, app.getAppCode())));
+				.flatMap(app -> this.getClientInfoById(app.getClientId()
+						.toBigInteger())
+						.map(client -> new ClientUrlPattern("", client.getCode(), uriHost, app.getAppCode())));
 	}
 
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
 
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_URL, () -> this.dao.readClientPatterns()
-		        .collectList(), CACHE_CLIENT_URL_LIST);
+				.collectList(), CACHE_CLIENT_URL_LIST);
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ServerHttpRequest request) {
 
 		return this.getClientBy(request)
-		        .map(Client::getId)
-		        .flatMap(this::getPotentialClientList);
+				.map(Client::getId)
+				.flatMap(this::getPotentialClientList);
 	}
 
 	public Mono<Set<ULong>> getPotentialClientList(ULong id) {
@@ -205,7 +205,7 @@ public class ClientService
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong id) {
 
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-		        () -> this.dao.getClientPasswordPolicy(id), id);
+				() -> this.dao.getClientPasswordPolicy(id), id);
 	}
 
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
@@ -218,20 +218,19 @@ public class ClientService
 	public Mono<Client> create(Client entity) {
 
 		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca -> super.create(entity).map(e ->
-				{
+				.flatMap(ca -> super.create(entity).map(e -> {
 
-			        if (!ca.isSystemClient()) {
+					if (!ca.isSystemClient()) {
 
-				        ULong mClientId = ULongUtil.valueOf(ca.getUser()
-				                .getClientId());
-				        this.addManageRecord(mClientId, e.getId())
-				                .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_RELATION, e.getId()))
-				                .subscribe();
-			        }
+						ULong mClientId = ULongUtil.valueOf(ca.getUser()
+								.getClientId());
+						this.addManageRecord(mClientId, e.getId())
+								.flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_RELATION, e.getId()))
+								.subscribe();
+					}
 
-			        return e;
-		        }));
+					return e;
+				}));
 	}
 
 	private Mono<Integer> addManageRecord(ULong manageClientId, ULong id) {
@@ -259,32 +258,31 @@ public class ClientService
 	@Override
 	public Mono<Client> update(Client entity) {
 		return super.update(entity).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, entity.getId())
-		        .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, entity.getId()))
-		        .map(x -> e));
+				.flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, entity.getId()))
+				.map(x -> e));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<Client> update(ULong key, Map<String, Object> fields) {
 		return super.update(key, fields).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, e.getId())
-		        .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, e.getId()))
-		        .map(x -> e));
+				.flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, e.getId()))
+				.map(x -> e));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
 		return this.read(id)
-		        .map(e ->
-				{
-			        e.setStatusCode(SecurityClientStatusCode.DELETED);
-			        return e;
-		        })
-		        .flatMap(this::update)
-		        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id)
-		                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, id)))
+				.map(e -> {
+					e.setStatusCode(SecurityClientStatusCode.DELETED);
+					return e;
+				})
+				.flatMap(this::update)
+				.flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id)
+						.flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, id)))
 
-		        .map(e -> 1);
+				.map(e -> 1);
 	}
 
 	@Override
@@ -301,32 +299,30 @@ public class ClientService
 	protected Mono<ULong> getLoggedInUserId() {
 
 		return SecurityContextUtil.getUsersContextUser()
-		        .map(ContextUser::getId)
-		        .map(ULong::valueOf);
+				.map(ContextUser::getId)
+				.map(ULong::valueOf);
 	}
 
 	// For creating user.
 	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) { // NOSONAR
 
 		return this.dao.getClientPasswordPolicy(clientId)
-		        .map(e ->
-				{// NOSONAR
-				 // Need to check the password policy
-			        return true;
-		        })
-		        .switchIfEmpty(Mono.just(Boolean.TRUE));
+				.map(e -> {// NOSONAR
+							// Need to check the password policy
+					return true;
+				})
+				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
 	// For existing user.
 	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong userId, String password) { // NOSONAR
 
 		return this.dao.getClientPasswordPolicy(clientId)
-		        .map(e ->
-				{ // NOSONAR
-				  // Need to check the password policy
-			        return true;
-		        })
-		        .switchIfEmpty(Mono.just(Boolean.TRUE));
+				.map(e -> { // NOSONAR
+							// Need to check the password policy
+					return true;
+				})
+				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
 	public Mono<Client> getClientInfoById(BigInteger id) {
@@ -335,9 +331,9 @@ public class ClientService
 
 	public Mono<Client> getManagedClientOfClientById(ULong clientId) {
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_MANAGED_CLIENT_INFO,
-		        () -> this.dao.getManagingClientId(clientId)
-		                .flatMap(e -> this.getClientInfoById(e.toBigInteger())),
-		        clientId);
+				() -> this.dao.getManagingClientId(clientId)
+						.flatMap(e -> this.getClientInfoById(e.toBigInteger())),
+				clientId);
 	}
 
 	public Mono<Boolean> checkClientHasPackage(ULong clientId, ULong packageId) {
@@ -350,41 +346,39 @@ public class ClientService
 	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
 
 		return this.dao.checkPackageAssignedForClient(clientId, packageId)
-		        .flatMap(result ->
-				{
-			        if (result.booleanValue())
-				        return Mono.just(true);
+				.flatMap(result -> {
+					if (result.booleanValue())
+						return Mono.just(true);
 
-			        return flatMapMono(
+					return flatMapMono(
 
-			                SecurityContextUtil::getUsersContextAuthentication,
+							SecurityContextUtil::getUsersContextAuthentication,
 
-			                ca -> this.dao.getPackage(packageId),
+							ca -> this.dao.getPackage(packageId),
 
-			                (ca, packageRecord) -> BooleanUtil.safeValueOfWithEmpty(packageRecord.isBase()),
+							(ca, packageRecord) -> BooleanUtil.safeValueOfWithEmpty(packageRecord.isBase()),
 
-			                (ca, packageRecord, basePackage) ->
+							(ca, packageRecord, basePackage) ->
 
 							ca.isSystemClient() ? Mono.just(true)
-							        : checkClientAndPackageManaged(ULong.valueOf(ca.getUser()
-							                .getClientId()), clientId, packageRecord.getClientId()),
+									: checkClientAndPackageManaged(ULong.valueOf(ca.getUser()
+											.getClientId()), clientId, packageRecord.getClientId()),
 
-			                (ca, packageRecord, basePackage, isManaged) ->
+							(ca, packageRecord, basePackage, isManaged) ->
 
 							this.dao.addPackageToClient(clientId, packageId)
-							        .map(e ->
-									{
-								        if (e.booleanValue())
-									        super.assignLog(clientId, ASSIGNED_PACKAGE + packageId);
+									.map(e -> {
+										if (e.booleanValue())
+											super.assignLog(clientId, ASSIGNED_PACKAGE + packageId);
 
-								        return e;
-							        })
+										return e;
+									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.assignPackageToClient"))
-			                .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-			                        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+							.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+									SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
 
-		        }
+				}
 
 				);
 
@@ -394,12 +388,12 @@ public class ClientService
 
 		return flatMapMono(
 
-		        () -> this.isBeingManagedBy(loggedInClientId, clientId)
-		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+				() -> this.isBeingManagedBy(loggedInClientId, clientId)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
-		                .flatMap(BooleanUtil::safeValueOfWithEmpty))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.checkClientAndPackageManaged"));
+				clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.checkClientAndPackageManaged"));
 	}
 
 	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
@@ -428,54 +422,52 @@ public class ClientService
 	public Mono<Boolean> removePackageFromClient(ULong clientId, ULong packageId) {
 
 		return this.dao.checkPackageAssignedForClient(clientId, packageId)
-		        .flatMap(result ->
-				{
-			        if (!result.booleanValue())
-				        return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-				                SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
+				.flatMap(result -> {
+					if (!result.booleanValue())
+						return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+								SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
 
-			        return flatMapMono(
+					return flatMapMono(
 
-			                SecurityContextUtil::getUsersContextAuthentication,
+							SecurityContextUtil::getUsersContextAuthentication,
 
-			                ca -> ca.isSystemClient() ? Mono.just(true)
-			                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-			                                .getClientId()), clientId)
-			                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+							ca -> ca.isSystemClient() ? Mono.just(true)
+									: this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+											.getClientId()), clientId)
+											.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-			                (ca, sysOrManaged) -> this.packageService.getRolesFromPackage(packageId),
+							(ca, sysOrManaged) -> this.packageService.getRolesFromPackage(packageId),
 
-			                (ca, sysOrManaged, roles) -> this.packageService.omitRolesFromBasePackage(roles),
+							(ca, sysOrManaged, roles) -> this.packageService.omitRolesFromBasePackage(roles),
 
-			                (ca, sysOrManaged, roles, finalRoles) -> this.dao.findAndRemoveRolesFromUsers(finalRoles,
-			                        packageId),
+							(ca, sysOrManaged, roles, finalRoles) -> this.dao.findAndRemoveRolesFromUsers(finalRoles,
+									packageId),
 
-			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved) -> this.packageService
-			                        .getPermissionsFromPackage(packageId, finalRoles),
+							(ca, sysOrManaged, roles, finalRoles, rolesRemoved) -> this.packageService
+									.getPermissionsFromPackage(packageId, finalRoles),
 
-			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions) -> this.packageService
-			                        .omitPermissionsFromBasePackage(permissions),
+							(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions) -> this.packageService
+									.omitPermissionsFromBasePackage(permissions),
 
-			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions,
-			                        finalPermissions) -> this.dao.findAndRemovePermissionsFromUsers(finalPermissions,
-			                                packageId),
+							(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions,
+									finalPermissions) -> this.dao.findAndRemovePermissionsFromUsers(finalPermissions,
+											packageId),
 
-			                (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions, finalPermissions,
-			                        rolesPermissionsRemoved) ->
+							(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions, finalPermissions,
+									rolesPermissionsRemoved) ->
 
 							this.dao.removePackage(clientId, packageId)
-							        .map(e ->
-									{
-								        if (e.booleanValue())
-									        super.unAssignLog(packageId, UNASSIGNED_PACKAGE + clientId);
+									.map(e -> {
+										if (e.booleanValue())
+											super.unAssignLog(packageId, UNASSIGNED_PACKAGE + clientId);
 
-								        return e;
-							        })
+										return e;
+									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.removePackageFromClient"));
-		        })
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
+				})
+				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+						SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
 
 	}
 
@@ -483,61 +475,59 @@ public class ClientService
 
 		Mono<ContextAuthentication> checkEmailExistsInIndividualClients = FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca ->
-				{
-			        if (request.isBusinessClient())
-				        return Mono.just(ca);
+				ca -> {
+					if (request.isBusinessClient())
+						return Mono.just(ca);
 
-			        return this.userService.checkUserExists(ca.getUrlAppCode(), ca.getUrlClientCode(), request)
-			                .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? null : ca));
-		        }
+					return this.userService.checkUserExists(ca.getUrlAppCode(), ca.getUrlClientCode(), request)
+							.flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? null : ca));
+				}
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"))
-		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(HttpStatus.CONFLICT,
-		                SecurityMessageResourceService.USER_ALREADY_EXISTS, request.getEmailId()));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"))
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(HttpStatus.CONFLICT,
+						SecurityMessageResourceService.USER_ALREADY_EXISTS, request.getEmailId()));
 
 		Mono<Boolean> mono = FlatMapUtil.flatMapMono(
 
-		        () -> checkEmailExistsInIndividualClients,
+				() -> checkEmailExistsInIndividualClients,
 
-		        ca -> this.registerClient(request, ca),
+				ca -> this.registerClient(request, ca),
 
-		        (ca, client) -> this.dao.addManageRecord(ca.getUrlClientCode(), client.getId()),
+				(ca, client) -> this.dao.addManageRecord(ca.getUrlClientCode(), client.getId()),
 
-		        (ca, client, manageId) -> this.dao.addDefaultPackages(client.getId(), ca.getUrlClientCode(),
-		                ca.getUrlAppCode()),
+				(ca, client, manageId) -> this.dao.addDefaultPackages(client.getId(), ca.getUrlClientCode(),
+						ca.getUrlAppCode()),
 
-		        (ca, client, manageId, added) -> registerUser(request, client),
+				(ca, client, manageId, added) -> registerUser(request, client),
 
-		        (ca, client, manageId, added, userTuple) -> this.getClientBy(ca.getUrlClientCode())
-		                .map(Client::getId),
+				(ca, client, manageId, added, userTuple) -> this.getClientBy(ca.getUrlClientCode())
+						.map(Client::getId),
 
-		        (ca, client, manageId, added, userTuple, loggedInClientCode) ->
-				{
+				(ca, client, manageId, added, userTuple, loggedInClientCode) -> {
 
-			        if (!StringUtil.safeIsBlank(request.getPassword())) {
+					if (!StringUtil.safeIsBlank(request.getPassword())) {
 
-				        return this.userService.makeOneTimeToken(httpRequest, ca, userTuple.getT1(), loggedInClientCode)
-				                .map(TokenObject::getToken);
-			        }
+						return this.userService.makeOneTimeToken(httpRequest, ca, userTuple.getT1(), loggedInClientCode)
+								.map(TokenObject::getToken);
+					}
 
-			        return Mono.just("");
-		        },
+					return Mono.just("");
+				},
 
-		        (ca, client, manageId, added, userTuple, loggedInClientCode, token) -> ecService
-		                .createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
-		                        .setClientCode(ca.getUrlClientCode())
-		                        .setEventName(EventNames.CLIENT_REGISTERED)
-		                        .setData(Map.of("client", client)))
-		                .flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
-		                        .setClientCode(ca.getUrlClientCode())
-		                        .setEventName(EventNames.USER_REGISTERED)
-		                        .setData(Map.of("client", client, "user", userTuple.getT1(), "token", token,
-		                                "passwordUsed", userTuple.getT2()))))
-		                .map(e -> true)
+				(ca, client, manageId, added, userTuple, loggedInClientCode, token) -> ecService
+						.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
+								.setClientCode(ca.getUrlClientCode())
+								.setEventName(EventNames.CLIENT_REGISTERED)
+								.setData(Map.of("client", client)))
+						.flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
+								.setClientCode(ca.getUrlClientCode())
+								.setEventName(EventNames.USER_REGISTERED)
+								.setData(Map.of("client", client, "user", userTuple.getT1(), "token", token,
+										"passwordUsed", userTuple.getT2()))))
+						.map(e -> true)
 
 		);
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
@@ -565,7 +555,7 @@ public class ClientService
 		final String finPassword = password;
 
 		return this.userService.createForRegistration(user)
-		        .map(e -> Tuples.of(e, finPassword));
+				.map(e -> Tuples.of(e, finPassword));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
@@ -573,52 +563,52 @@ public class ClientService
 
 		return flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca ->
+				ca ->
 
 				ca.isSystemClient() ? Mono.just(true)
-				        : this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
-				                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+						: this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
+								.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        (ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
+				(ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchPackages"))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-		                SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
+				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+						SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
 
 	}
 
 	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca) {
 		if (ca.isAuthenticated())
 			return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
+					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
 
 		Client client = new Client();
 		client.setName(
-		        StringUtil.safeIsBlank(request.getClientName())
-		                ? (StringUtil.safeValueOf(request.getFirstName(), "")
-		                        + StringUtil.safeValueOf(request.getLastName(), ""))
-		                : request.getClientName());
+				StringUtil.safeIsBlank(request.getClientName())
+						? (StringUtil.safeValueOf(request.getFirstName(), "")
+								+ StringUtil.safeValueOf(request.getLastName(), ""))
+						: request.getClientName());
 		client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
 		client.setLocaleCode(request.getLocaleCode());
 		client.setTokenValidityMinutes(VALIDITY_MINUTES);
 
 		if (StringUtil.safeIsBlank(client.getName()))
 			return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
+					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
 
 		return flatMapMono(
 
-		        () -> this.dao.getValidClientCode(client.getName())
-		                .map(client::setCode),
+				() -> this.dao.getValidClientCode(client.getName())
+						.map(client::setCode),
 
-		        super::create,
+				super::create,
 
-		        (c, clnt) -> this.appService.addClientAccessAfterRegistration(ca.getUrlAppCode(), clnt.getId(), false),
+				(c, clnt) -> this.appService.addClientAccessAfterRegistration(ca.getUrlAppCode(), clnt.getId(), false),
 
-		        (c, clnt, created) -> Mono.just(clnt))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.registerClient"));
+				(c, clnt, created) -> Mono.just(clnt))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.registerClient"));
 
 	}
 }
