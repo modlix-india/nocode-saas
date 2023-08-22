@@ -1,4 +1,4 @@
-package com.fincity.saas.common.security.jwt;
+package com.fincity.saas.commons.security.jwt;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -22,30 +22,30 @@ public class JWTUtil {
 	public static final Tuple2<String, LocalDateTime> generateToken(JWTGenerateTokenParameters params) {
 
 		LocalDateTime expirationTime = LocalDateTime.now(ZoneId.of("UTC"))
-		        .plus(params.expiryInMin, ChronoUnit.MINUTES);
+				.plus(params.expiryInMin, ChronoUnit.MINUTES);
 
 		return Tuples.of(Jwts.builder()
-		        .setIssuer("fincity")
-		        .setSubject(params.userId.toString())
-		        .setClaims(new JWTClaims().setUserId(params.userId)
-		                .setHostName(params.host)
-		                .setPort(params.port)
-		                .setLoggedInClientId(params.loggedInClientId)
-		                .setLoggedInClientCode(params.loggedInClientCode)
-		                .setOneTime(params.oneTime)
-		                .getClaimsMap())
-		        .setIssuedAt(Date.from(Instant.now()))
-		        .setExpiration(Date.from(Instant.now()
-		                .plus(params.expiryInMin, ChronoUnit.MINUTES)))
-		        .signWith(Keys.hmacShaKeyFor(params.secretKey.getBytes()), SignatureAlgorithm.HS512)
-		        .compact(), expirationTime);
+				.setIssuer("fincity")
+				.setSubject(params.userId.toString())
+				.setClaims(new JWTClaims().setUserId(params.userId)
+						.setHostName(params.host)
+						.setPort(params.port)
+						.setLoggedInClientId(params.loggedInClientId)
+						.setLoggedInClientCode(params.loggedInClientCode)
+						.setOneTime(params.oneTime)
+						.getClaimsMap())
+				.setIssuedAt(Date.from(Instant.now()))
+				.setExpiration(Date.from(Instant.now()
+						.plus(params.expiryInMin, ChronoUnit.MINUTES)))
+				.signWith(Keys.hmacShaKeyFor(params.secretKey.getBytes()), SignatureAlgorithm.HS512)
+				.compact(), expirationTime);
 	}
 
 	public static final JWTClaims getClaimsFromToken(String secretKey, String token) {
 
 		JwtParser parser = Jwts.parserBuilder()
-		        .setSigningKey(Keys.hmacShaKeyFor(secretKey.getBytes()))
-		        .build();
+				.setSigningKey(Keys.hmacShaKeyFor(secretKey.getBytes()))
+				.build();
 
 		Jws<Claims> parsed = parser.parseClaimsJws(token);
 

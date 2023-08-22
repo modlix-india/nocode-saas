@@ -8,9 +8,9 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Page;
@@ -37,26 +37,25 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 		return flatMapMono(
 
-		        () -> this.read(entity.getId()),
+				() -> this.read(entity.getId()),
 
-		        existing ->
-				{
-			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+				existing -> {
+					if (existing.getVersion() != entity.getVersion())
+						return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-			        existing.setDevice(entity.getDevice())
-			                .setTranslations(entity.getTranslations())
-			                .setProperties(entity.getProperties())
-			                .setEventFunctions(entity.getEventFunctions())
-			                .setRootComponent(entity.getRootComponent())
-			                .setComponentDefinition(entity.getComponentDefinition())
-			                .setPermission(entity.getPermission());
+					existing.setDevice(entity.getDevice())
+							.setTranslations(entity.getTranslations())
+							.setProperties(entity.getProperties())
+							.setEventFunctions(entity.getEventFunctions())
+							.setRootComponent(entity.getRootComponent())
+							.setComponentDefinition(entity.getComponentDefinition())
+							.setPermission(entity.getPermission());
 
-			        existing.setVersion(existing.getVersion() + 1);
+					existing.setVersion(existing.getVersion() + 1);
 
-			        return Mono.just(existing);
-		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.updatableEntity"));
+					return Mono.just(existing);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.updatableEntity"));
 	}
 
 	@Override
@@ -69,43 +68,40 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 			return flatMapMono(
 
-			        SecurityContextUtil::getUsersContextAuthentication,
+					SecurityContextUtil::getUsersContextAuthentication,
 
-			        ca -> Mono.just(ca.isAuthenticated()),
+					ca -> Mono.just(ca.isAuthenticated()),
 
-			        (ca, isAuthenticated) ->
-					{
+					(ca, isAuthenticated) -> {
 
-				        if (isAuthenticated.booleanValue())
-					        return Mono.just(pg);
+						if (isAuthenticated.booleanValue())
+							return Mono.just(pg);
 
-				        return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
+						return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
 
-				                props ->
-								{
+								props -> {
 
-					                if (StringUtil.safeIsBlank(props.get("loginPage")))
-						                return Mono.just(pg);
+									if (StringUtil.safeIsBlank(props.get("loginPage")))
+										return Mono.just(pg);
 
-					                return super.read(props.get("loginPage")
-					                        .toString(), appCode, clientCode);
-				                }).contextWrite(
-				                        Context.of(LogUtil.METHOD_NAME, "PageService.read [Looking for Login page]"));
-			        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
+									return super.read(props.get("loginPage")
+											.toString(), appCode, clientCode);
+								}).contextWrite(
+										Context.of(LogUtil.METHOD_NAME, "PageService.read [Looking for Login page]"));
+					}).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
 		})
-		        .switchIfEmpty(Mono
-		                .defer(() -> flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
+				.switchIfEmpty(Mono
+						.defer(() -> flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
 
-		                        props ->
-								{
+								props -> {
 
-			                        if (StringUtil.safeIsBlank(props.get("notFoundPage")))
-				                        return Mono.empty();
+									if (StringUtil.safeIsBlank(props.get("notFoundPage")))
+										return Mono.empty();
 
-			                        return super.read(props.get("notFoundPage")
-			                                .toString(), appCode, clientCode);
-		                        }).contextWrite(Context.of(LogUtil.METHOD_NAME,
-		                                "PageService.read [Looking for Not found page]"))));
+									return super.read(props.get("notFoundPage")
+											.toString(), appCode, clientCode);
+								}).contextWrite(Context.of(LogUtil.METHOD_NAME,
+										"PageService.read [Looking for Not found page]"))));
 	}
 
 	@Override
@@ -113,41 +109,39 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 		return flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.appServiceForProps.readProperties(appCode, appCode, clientCode),
+				ca -> this.appServiceForProps.readProperties(appCode, appCode, clientCode),
 
-		        (ca, props) ->
-				{
+				(ca, props) -> {
 
-			        if (!SecurityContextUtil.hasAuthority(page.getPermission(), ca.getAuthorities())) {
+					if (!SecurityContextUtil.hasAuthority(page.getPermission(), ca.getAuthorities())) {
 
-				        if (StringUtil.safeIsBlank(props.get("forbiddenPage")))
-					        return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-					                AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, page.getPermission());
+						if (StringUtil.safeIsBlank(props.get("forbiddenPage")))
+							return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+									AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, page.getPermission());
 
-				        return super.read(props.get("forbiddenPage")
-				                .toString(), appCode, clientCode);
-			        }
+						return super.read(props.get("forbiddenPage")
+								.toString(), appCode, clientCode);
+					}
 
-			        return Mono.just(page);
-		        },
+					return Mono.just(page);
+				},
 
-		        (ca, app, object) ->
-				{
-			        object.setComponentDefinition(object.getComponentDefinition()
-			                .entrySet()
-			                .stream()
-			                .filter(c -> c.getValue()
-			                        .getPermission() == null || SecurityContextUtil.hasAuthority(
-			                                c.getValue()
-			                                        .getPermission(),
-			                                ca.getAuthorities()))
-			                .collect(Collectors.toMap(Entry::getKey, Entry::getValue)));
+				(ca, app, object) -> {
+					object.setComponentDefinition(object.getComponentDefinition()
+							.entrySet()
+							.stream()
+							.filter(c -> c.getValue()
+									.getPermission() == null || SecurityContextUtil.hasAuthority(
+											c.getValue()
+													.getPermission(),
+											ca.getAuthorities()))
+							.collect(Collectors.toMap(Entry::getKey, Entry::getValue)));
 
-			        return Mono.just(object);
-		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.applyChange"))
-		        .defaultIfEmpty(page);
+					return Mono.just(object);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.applyChange"))
+				.defaultIfEmpty(page);
 
 	}
 }

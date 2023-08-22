@@ -1,4 +1,4 @@
-package com.fincity.saas.common.security.jwt;
+package com.fincity.saas.commons.security.jwt;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -51,11 +51,11 @@ public class JWTClaims implements Serializable {
 		Claims claims = parsed.getBody();
 
 		return new JWTClaims().setUserId(BigInteger.valueOf(claims.get("userId", Long.class)))
-		        .setHostName(claims.get("hostName", String.class))
-		        .setPort(claims.get("port", String.class))
-		        .setLoggedInClientId(BigInteger.valueOf(claims.get("loggedInClientId", Long.class)))
-		        .setLoggedInClientCode(claims.get("loggedInClientCode", String.class))
-		        .setOneTime(claims.containsKey(ONE_TIME) ? claims.get(ONE_TIME, Boolean.class) : Boolean.FALSE);
+				.setHostName(claims.get("hostName", String.class))
+				.setPort(claims.get("port", String.class))
+				.setLoggedInClientId(BigInteger.valueOf(claims.get("loggedInClientId", Long.class)))
+				.setLoggedInClientCode(claims.get("loggedInClientCode", String.class))
+				.setOneTime(claims.containsKey(ONE_TIME) ? claims.get(ONE_TIME, Boolean.class) : Boolean.FALSE);
 
 	}
 }
