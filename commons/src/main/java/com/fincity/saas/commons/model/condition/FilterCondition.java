@@ -35,6 +35,13 @@ public class FilterCondition extends AbstractCondition {
 
 	@Override
 	public boolean isEmpty() {
+
 		return false;
+	}
+
+	public static FilterCondition make(String field, Object value) {
+
+		return new FilterCondition().setField(field)
+		        .setValue(value);
 	}
 }
