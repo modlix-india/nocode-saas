@@ -61,3 +61,41 @@ mq:
   port: 5672
   username: fincity
   password: fincity
+
+letsencrypt:
+  login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594
+  session: acme://letsencrypt.org/staging
+  key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpQIBAAKCAQEA5zujPCz5iIGPqAifxm5UvqTtnhwUbJXvc9SfNbmNsybWYxv/
+    5z82F5+n3uHqu6DQiy6EWPZ4wm/4mhfmbrwQ9H4Ec3CyFYfW65Uh9IU9QrtblXto
+    Z6k++gcv3wdfK6osT95rQdCh6gN9CKqfFerVX53RcdD6NZPckAOnT31Fe93IYFuY
+    W58BDHZEVP4A2nRTfwfbyhEi+owM6Ui3XGeQGDj/6gW/oeWT0aQAdksj8tlyZtMx
+    ZO/q+jS5bggNjsDlIQR54if+zf3l3NLqRJYuNIDHP+a74jkLIcvx3kPjzUwjdDjG
+    tB+oJNJsiQak6C+54fI9G8ytWC6vC0KZsoNIyQIDAQABAoIBAAPy7cKbAFKms/yV
+    bVIa/TV2YfL5oIn3fqWCiVef6okEPHRomUets0EqLWu5MLquOd8fBuy+HjmW2Zhn
+    5YjsWAwVRClX1wi9JaxA1mzwPHrrMdquwJP6bO+IIVbvthFYzuuSkGmCzdl64GvX
+    yxv5fNYGhYawgC3Otfbbj+pjyN5SXUTOJ0+q9GutPyFY6Ko4HyVhWuWE5zUGmJND
+    gCkgFw/x8HdDZD9nKME604OhWs6rpCTN6hMAHJxV38WDVnd5puuxYdK9p0SPi6rr
+    2+/nhX/rLW1c2sB8ynalCW3Iu76s0JApX9UEWexAiLoU02fm/EQ70AK4TiZahuMC
+    3LkNskECgYEA7a9v8PmnCGmuSb7Ge/sXEfcKqpQz/7EHBoGXg+aD9fArQtjgD7TZ
+    aAuv1Id+JK1OXbynuuWAhsLwiQd7jMZvtKrEkMKCSG8h992RaHMsvCmOOD9D8Fgu
+    DyJ7OlehiYv1OeSB9FnJAg1XysCvu5i+p0dtx4c9N7bvkF5LIUDq10ECgYEA+Qzs
+    BBrV9MBumeMRG1d2PcBBnE67hpVk7xtRs2fsydsQGQEZoXLY3XnTUONpU0c/Zvlg
+    hBNCt8+/LOjgfF1zScK1J1908frg10Nh81JxK35LnwWDFYYQjcC/CJgoZhEzfwqq
+    OdCloajIoL0C09lbM6l/j2EaoCSZlDMfYzDvV4kCgYEA7TA9jUQVI5gSjRUMDX0s
+    MIlO45qxqV+Hmz6HbOEEntDk2viB4CqhKes/s97iSseHhJNW7nNIJzMxxgzphjog
+    DzK6pZr1WENOqoM5L/p/keYGPqsjqRzWGdRXFImOcixwsy0NYkKXDK00BujydUqg
+    N15YdtzGgmrT9kWiw7R8pgECgYEA7zgwQ8kbFlr4YawvtFmQY8QVwXQGwEEjkGBn
+    W7JJSaK3lazu15sfH61zAtFNTAa1qc2DnZl6jmBoO1T8u7hvkrwJkWYpSH04FszM
+    exIHTkWjkX2T6cq6f85SMIkm1NNU6YRu+dWmIt+ixnKHEsJGzhrTQf99ubEuK6Hn
+    VjmczDECgYEA6vuOEwK4aosP5fR5cT1bjoI0O/fFSHQ+k/HhrC+nkqQluBHTgNzC
+    aYaH064kp0BHjv49Li4jlBoB0t0WzFQIHAgX7AfSFnAdHPe3b92ng0FuocW6f5Wn
+    25OeRF0uGmSyF52MhIGxqkUYY2aNzhxWe2aw5D7tiM+X27GvhTQK+3I=
+    -----END RSA PRIVATE KEY-----
+
+# Contact used is "kiran.grandhi@fincity.com"
+
+# https://letsencrypt.org/documents/LE-SA-v1.3-September-21-2022.pdf
+# https://letsencrypt.org/docs/staging-environment/
+# https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594

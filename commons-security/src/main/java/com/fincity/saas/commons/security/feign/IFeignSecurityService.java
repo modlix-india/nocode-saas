@@ -4,10 +4,11 @@ import java.math.BigInteger;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
@@ -17,11 +18,11 @@ public interface IFeignSecurityService {
 
 	@GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
 	public Mono<ContextAuthentication> contextAuthentication(
-	        @RequestHeader(name = "Authorization", required = false) String authorization,
-	        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-	        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-	        @RequestHeader("clientCode") String clientCode,
-	        @RequestHeader("appCode") String appCode);
+			@RequestHeader(name = "Authorization", required = false) String authorization,
+			@RequestHeader("X-Forwarded-Host") String forwardedHost,
+			@RequestHeader("X-Forwarded-Port") String forwardedPort,
+			@RequestHeader("clientCode") String clientCode,
+			@RequestHeader("appCode") String appCode);
 
 	@GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
 	public Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
@@ -37,5 +38,8 @@ public interface IFeignSecurityService {
 
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
 	public Mono<List<String>> appInheritance(@RequestParam String appCode, @RequestParam String urlClientCode,
-	        @RequestParam String clientCode);
+			@RequestParam String clientCode);
+
+	@GetMapping("${security.feign.token:/api/security/ssl/token/{token}}")
+	public Mono<String> token(@PathVariable("token") String token);
 }

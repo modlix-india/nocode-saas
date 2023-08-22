@@ -372,32 +372,33 @@ public abstract class AbstractFilesResourceService {
 			                .append('"')
 			                .toString();
 
-			        if (Files.isDirectory(file)) {
-
-				        int ind = rp.charAt(0) == '/' ? 1 : 0;
-				        int secondInd = rp.indexOf('/', ind);
-
-				        String sp = secondInd == -1 ? rp.substring(ind) : rp.substring(ind, secondInd);
-				        final long finFileMillis = fileMillis;
-
-				        return this.fileAccessService
-				                .hasReadAccess(
-				                        secondInd == -1 && secondInd < rp.length() ? "" : rp.substring(secondInd + 1),
-				                        sp, this.getResourceType())
-				                .flatMap(e ->
-								{
-					                if (!e.booleanValue()) {
-						                return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
-						                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
-					                }
-					                return makeMatchesStartDownload(downloadOptions, request, response, file,
-					                        finFileMillis, fileETag);
-				                });
-			        }
+			        if (Files.isDirectory(file))
+				        return downloadDirectory(downloadOptions, request, response, rp, file, fileMillis, fileETag);
 
 			        return makeMatchesStartDownload(downloadOptions, request, response, file, fileMillis, fileETag);
 		        })
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"));
+	}
+
+	private Mono<Void> downloadDirectory(DownloadOptions downloadOptions, ServerHttpRequest request,
+	        ServerHttpResponse response, String rp, Path file, long fileMillis, String fileETag) {
+		int ind = rp.charAt(0) == '/' ? 1 : 0;
+		int secondInd = rp.indexOf('/', ind);
+
+		String sp = secondInd == -1 ? rp.substring(ind) : rp.substring(ind, secondInd);
+		final long finFileMillis = fileMillis;
+
+		return this.fileAccessService
+		        .hasReadAccess(secondInd == -1 && secondInd < rp.length() ? "" : rp.substring(secondInd + 1), sp,
+		                this.getResourceType())
+		        .flatMap(e ->
+				{
+			        if (!e.booleanValue()) {
+				        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+				                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
+			        }
+			        return makeMatchesStartDownload(downloadOptions, request, response, file, finFileMillis, fileETag);
+		        });
 	}
 
 	/**
@@ -774,11 +775,8 @@ public abstract class AbstractFilesResourceService {
 
 		                () -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
 
-		                eFile ->
-						{
-			                return Flux.from(this.fileAccessService.hasWriteAccess(
-			                        this.parentOf(resourcePath + eFile.getT1()), clientCode, this.getResourceType()));
-		                },
+		                eFile -> Flux.from(this.fileAccessService.hasWriteAccess(
+		                        this.parentOf(resourcePath + eFile.getT1()), clientCode, this.getResourceType())),
 
 		                (eFile, hasPermission) ->
 						{
@@ -794,7 +792,7 @@ public abstract class AbstractFilesResourceService {
 				                else
 					                Files.move(eFile.getT2(), path);
 			                } catch (IOException ex) {
-
+				                logger.debug("Ignoring exception while moving files after extracting.", ex);
 			                }
 
 			                return Flux.just(true);

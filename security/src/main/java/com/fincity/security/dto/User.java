@@ -6,8 +6,8 @@ import java.util.List;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.common.security.jwt.ContextUser;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 
 import lombok.Data;
@@ -66,24 +66,24 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	@JsonIgnore
 	public ContextUser toContextUser() {
 		return new ContextUser().setId(safeFrom(this.getId()))
-		        .setCreatedBy(safeFrom(this.getCreatedBy()))
-		        .setUpdatedBy(safeFrom(this.getUpdatedBy()))
-		        .setCreatedAt(this.getCreatedAt())
-		        .setUpdatedAt(this.getUpdatedAt())
-		        .setAccountNonExpired(this.accountNonExpired)
-		        .setAccountNonLocked(this.accountNonLocked)
-		        .setStringAuthorities(authorities)
-		        .setClientId(safeFrom(this.clientId))
-		        .setCredentialsNonExpired(credentialsNonExpired)
-		        .setEmailId(this.getEmailId())
-		        .setFirstName(firstName)
-		        .setLastName(lastName)
-		        .setLocaleCode(localeCode)
-		        .setMiddleName(middleName)
-		        .setNoFailedAttempt(noFailedAttempt)
-		        .setPhoneNumber(this.getPhoneNumber())
-		        .setStatusCode(this.statusCode.toString())
-		        .setUserName(this.getUserName());
+				.setCreatedBy(safeFrom(this.getCreatedBy()))
+				.setUpdatedBy(safeFrom(this.getUpdatedBy()))
+				.setCreatedAt(this.getCreatedAt())
+				.setUpdatedAt(this.getUpdatedAt())
+				.setAccountNonExpired(this.accountNonExpired)
+				.setAccountNonLocked(this.accountNonLocked)
+				.setStringAuthorities(authorities)
+				.setClientId(safeFrom(this.clientId))
+				.setCredentialsNonExpired(credentialsNonExpired)
+				.setEmailId(this.getEmailId())
+				.setFirstName(firstName)
+				.setLastName(lastName)
+				.setLocaleCode(localeCode)
+				.setMiddleName(middleName)
+				.setNoFailedAttempt(noFailedAttempt)
+				.setPhoneNumber(this.getPhoneNumber())
+				.setStatusCode(this.statusCode.toString())
+				.setUserName(this.getUserName());
 	}
 
 	public static final BigInteger safeFrom(ULong v) {
