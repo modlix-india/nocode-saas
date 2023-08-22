@@ -8,18 +8,19 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.records.SecuritySslRequestRecord;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function7;
+import org.jooq.Function10;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row7;
+import org.jooq.Row10;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -29,6 +30,7 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -89,10 +91,28 @@ public class SecuritySslRequest extends TableImpl<SecuritySslRequestRecord> {
     public final TableField<SecuritySslRequestRecord, String> CSR = createField(DSL.name("CSR"), SQLDataType.CLOB.nullable(false), this, "SSL certificate signing request");
 
     /**
+     * The column <code>security.security_ssl_request.VALIDITY</code>. Validity
+     * of the SSL certificate in months
+     */
+    public final TableField<SecuritySslRequestRecord, UInteger> VALIDITY = createField(DSL.name("VALIDITY"), SQLDataType.INTEGERUNSIGNED.nullable(false), this, "Validity of the SSL certificate in months");
+
+    /**
      * The column <code>security.security_ssl_request.FAILED_REASON</code>.
      * Reason for challenge failure
      */
     public final TableField<SecuritySslRequestRecord, String> FAILED_REASON = createField(DSL.name("FAILED_REASON"), SQLDataType.CLOB, this, "Reason for challenge failure");
+
+    /**
+     * The column <code>security.security_ssl_request.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public final TableField<SecuritySslRequestRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+
+    /**
+     * The column <code>security.security_ssl_request.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public final TableField<SecuritySslRequestRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecuritySslRequest(Name alias, Table<SecuritySslRequestRecord> aliased) {
         this(alias, aliased, null);
@@ -207,18 +227,18 @@ public class SecuritySslRequest extends TableImpl<SecuritySslRequestRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row7 type methods
+    // Row10 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row7<ULong, ULong, String, String, String, String, String> fieldsRow() {
-        return (Row7) super.fieldsRow();
+    public Row10<ULong, ULong, String, String, String, String, UInteger, String, ULong, LocalDateTime> fieldsRow() {
+        return (Row10) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function7<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super UInteger, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -226,7 +246,7 @@ public class SecuritySslRequest extends TableImpl<SecuritySslRequestRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function7<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super UInteger, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

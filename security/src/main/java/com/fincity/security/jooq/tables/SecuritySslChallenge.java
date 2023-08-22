@@ -6,8 +6,6 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.enums.SecuritySslChallengeChallengeType;
-import com.fincity.security.jooq.enums.SecuritySslChallengeStatus;
 import com.fincity.security.jooq.tables.records.SecuritySslChallengeRecord;
 
 import java.time.LocalDateTime;
@@ -17,12 +15,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function12;
+import org.jooq.Function14;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row12;
+import org.jooq.Row14;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -72,7 +70,7 @@ public class SecuritySslChallenge extends TableImpl<SecuritySslChallengeRecord> 
      * The column <code>security.security_ssl_challenge.CHALLENGE_TYPE</code>.
      * Challenge type
      */
-    public final TableField<SecuritySslChallengeRecord, SecuritySslChallengeChallengeType> CHALLENGE_TYPE = createField(DSL.name("CHALLENGE_TYPE"), SQLDataType.VARCHAR(7).nullable(false).asEnumDataType(com.fincity.security.jooq.enums.SecuritySslChallengeChallengeType.class), this, "Challenge type");
+    public final TableField<SecuritySslChallengeRecord, String> CHALLENGE_TYPE = createField(DSL.name("CHALLENGE_TYPE"), SQLDataType.VARCHAR(32).nullable(false), this, "Challenge type");
 
     /**
      * The column <code>security.security_ssl_challenge.DOMAIN</code>. Domain
@@ -98,7 +96,7 @@ public class SecuritySslChallenge extends TableImpl<SecuritySslChallengeRecord> 
      * The column <code>security.security_ssl_challenge.STATUS</code>. Challenge
      * status
      */
-    public final TableField<SecuritySslChallengeRecord, SecuritySslChallengeStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.security.jooq.enums.SecuritySslChallengeStatus.class), this, "Challenge status");
+    public final TableField<SecuritySslChallengeRecord, String> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(128).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)), this, "Challenge status");
 
     /**
      * The column <code>security.security_ssl_challenge.FAILED_REASON</code>.
@@ -130,6 +128,18 @@ public class SecuritySslChallenge extends TableImpl<SecuritySslChallengeRecord> 
      * when this row is created
      */
     public final TableField<SecuritySslChallengeRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+
+    /**
+     * The column <code>security.security_ssl_challenge.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public final TableField<SecuritySslChallengeRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+
+    /**
+     * The column <code>security.security_ssl_challenge.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public final TableField<SecuritySslChallengeRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecuritySslChallenge(Name alias, Table<SecuritySslChallengeRecord> aliased) {
         this(alias, aliased, null);
@@ -239,18 +249,18 @@ public class SecuritySslChallenge extends TableImpl<SecuritySslChallengeRecord> 
     }
 
     // -------------------------------------------------------------------------
-    // Row12 type methods
+    // Row14 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row12<ULong, ULong, SecuritySslChallengeChallengeType, String, String, String, SecuritySslChallengeStatus, String, LocalDateTime, UInteger, ULong, LocalDateTime> fieldsRow() {
-        return (Row12) super.fieldsRow();
+    public Row14<ULong, ULong, String, String, String, String, String, String, LocalDateTime, UInteger, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row14) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function12<? super ULong, ? super ULong, ? super SecuritySslChallengeChallengeType, ? super String, ? super String, ? super String, ? super SecuritySslChallengeStatus, ? super String, ? super LocalDateTime, ? super UInteger, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function14<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super UInteger, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -258,7 +268,7 @@ public class SecuritySslChallenge extends TableImpl<SecuritySslChallengeRecord> 
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super ULong, ? super ULong, ? super SecuritySslChallengeChallengeType, ? super String, ? super String, ? super String, ? super SecuritySslChallengeStatus, ? super String, ? super LocalDateTime, ? super UInteger, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function14<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super UInteger, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

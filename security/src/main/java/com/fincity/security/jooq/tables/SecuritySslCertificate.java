@@ -15,12 +15,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function13;
+import org.jooq.Function16;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row13;
+import org.jooq.Row16;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -120,6 +120,13 @@ public class SecuritySslCertificate extends TableImpl<SecuritySslCertificateReco
     public final TableField<SecuritySslCertificateRecord, Byte> CURRENT = createField(DSL.name("CURRENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Is this the current SSL certificate for the URL");
 
     /**
+     * The column
+     * <code>security.security_ssl_certificate.AUTO_RENEW_TILL</code>. Time till
+     * which this SSL certificate is auto renewed
+     */
+    public final TableField<SecuritySslCertificateRecord, LocalDateTime> AUTO_RENEW_TILL = createField(DSL.name("AUTO_RENEW_TILL"), SQLDataType.LOCALDATETIME(0), this, "Time till which this SSL certificate is auto renewed");
+
+    /**
      * The column <code>security.security_ssl_certificate.CREATED_BY</code>. ID
      * of the user who created this row
      */
@@ -130,6 +137,18 @@ public class SecuritySslCertificate extends TableImpl<SecuritySslCertificateReco
      * Time when this row is created
      */
     public final TableField<SecuritySslCertificateRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+
+    /**
+     * The column <code>security.security_ssl_certificate.UPDATED_BY</code>. ID
+     * of the user who updated this row
+     */
+    public final TableField<SecuritySslCertificateRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+
+    /**
+     * The column <code>security.security_ssl_certificate.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public final TableField<SecuritySslCertificateRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecuritySslCertificate(Name alias, Table<SecuritySslCertificateRecord> aliased) {
         this(alias, aliased, null);
@@ -239,18 +258,18 @@ public class SecuritySslCertificate extends TableImpl<SecuritySslCertificateReco
     }
 
     // -------------------------------------------------------------------------
-    // Row13 type methods
+    // Row16 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row13<ULong, ULong, String, String, String, String, String, String, LocalDateTime, String, Byte, ULong, LocalDateTime> fieldsRow() {
-        return (Row13) super.fieldsRow();
+    public Row16<ULong, ULong, String, String, String, String, String, String, LocalDateTime, String, Byte, LocalDateTime, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row16) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function13<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function16<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super String, ? super Byte, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -258,7 +277,7 @@ public class SecuritySslCertificate extends TableImpl<SecuritySslCertificateReco
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function13<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function16<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super String, ? super Byte, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
