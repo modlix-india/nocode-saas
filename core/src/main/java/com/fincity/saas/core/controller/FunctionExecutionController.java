@@ -39,9 +39,9 @@ import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunction
 import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
@@ -72,8 +72,8 @@ public class FunctionExecutionController {
 	private static final String PATH_VARIABLE_NAME = "name";
 
 	private static final Map<SchemaType, java.util.function.Function<String, Number>> CONVERTOR = Map.of(
-	        SchemaType.DOUBLE, Double::valueOf, SchemaType.FLOAT, Float::valueOf, SchemaType.LONG, Long::valueOf,
-	        SchemaType.INTEGER, Integer::valueOf);
+			SchemaType.DOUBLE, Double::valueOf, SchemaType.FLOAT, Float::valueOf, SchemaType.LONG, Long::valueOf,
+			SchemaType.INTEGER, Integer::valueOf);
 
 	@Autowired
 	private CoreFunctionService functionService;
@@ -95,20 +95,20 @@ public class FunctionExecutionController {
 	@PostConstruct
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-		        new CoreFunctionRepository(appDataService, objectMapper));
+				new CoreFunctionRepository(appDataService, objectMapper));
 	}
 
 	@GetMapping(PATH)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
-	        ServerHttpRequest request) {
+			@PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
+			ServerHttpRequest request) {
 
 		return this.execute(namespace, name, appCode, clientCode, null, request);
 	}
 
 	@GetMapping(PATH_FULL_NAME)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAME) String fullName, ServerHttpRequest request) {
+			@PathVariable(PATH_VARIABLE_NAME) String fullName, ServerHttpRequest request) {
 
 		Tuple2<String, String> tup = this.splitName(fullName);
 
@@ -117,29 +117,29 @@ public class FunctionExecutionController {
 
 	@PostMapping(PATH)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
-	        @RequestBody String jsonString) {
+			@PathVariable(PATH_VARIABLE_NAMESPACE) String namespace, @PathVariable(PATH_VARIABLE_NAME) String name,
+			@RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
-		        : new Gson().fromJson(jsonString, JsonObject.class);
+				: new Gson().fromJson(jsonString, JsonObject.class);
 
 		return this.execute(namespace, name, appCode, clientCode, job.entrySet()
-		        .stream()
-		        .collect(Collectors.toMap(Entry::getKey, Entry::getValue)), null);
+				.stream()
+				.collect(Collectors.toMap(Entry::getKey, Entry::getValue)), null);
 	}
 
 	@PostMapping(PATH_FULL_NAME)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
-	        @PathVariable(PATH_VARIABLE_NAME) String fullName, @RequestBody String jsonString) {
+			@PathVariable(PATH_VARIABLE_NAME) String fullName, @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
-		        : new Gson().fromJson(jsonString, JsonObject.class);
+				: new Gson().fromJson(jsonString, JsonObject.class);
 
 		Tuple2<String, String> tup = this.splitName(fullName);
 
 		return this.execute(tup.getT1(), tup.getT2(), appCode, clientCode, job.entrySet()
-		        .stream()
-		        .collect(Collectors.toMap(Entry::getKey, Entry::getValue)), null);
+				.stream()
+				.collect(Collectors.toMap(Entry::getKey, Entry::getValue)), null);
 	}
 
 	private Tuple2<String, String> splitName(String fullName) {
@@ -157,44 +157,43 @@ public class FunctionExecutionController {
 	}
 
 	private Mono<ResponseEntity<String>> execute(String namespace, String name, String appCode, String clientCode,
-	        Map<String, JsonElement> job, ServerHttpRequest request) {
+			Map<String, JsonElement> job, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
-		                this.functionService.getFunctionRepository(appCode, clientCode)).find(namespace, name),
+				ca -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
+						this.functionService.getFunctionRepository(appCode, clientCode)).find(namespace, name),
 
-		        (ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-		                new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode, clientCode))),
+				(ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+						new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode, clientCode))),
 
-		        (ca, fun, schRepo) -> job == null ? getRequestParamsToArguments(fun.getSignature()
-		                .getParameters(), request, schRepo) : Mono.just(job),
+				(ca, fun, schRepo) -> job == null ? getRequestParamsToArguments(fun.getSignature()
+						.getParameters(), request, schRepo) : Mono.just(job),
 
-		        (ca, fun, schRepo, args) ->
-				{
-			        if (fun instanceof DefinitionFunction df && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
-			                && !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
-				        return msgService.throwMessage(HttpStatus.FORBIDDEN,
-				                AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
+				(ca, fun, schRepo, args) -> {
+					if (fun instanceof DefinitionFunction df && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
+							&& !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
+						return msgService.throwMessage(HttpStatus.FORBIDDEN,
+								AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
 
-			        }
+					}
 
-			        return fun
-			                .execute(
-			                        new ReactiveFunctionExecutionParameters(
-			                                new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-			                                        this.coreFunctionRepository,
-			                                        functionService.getFunctionRepository(appCode, clientCode)),
-			                                schRepo).setArguments(args));
+					return fun
+							.execute(
+									new ReactiveFunctionExecutionParameters(
+											new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
+													this.coreFunctionRepository,
+													functionService.getFunctionRepository(appCode, clientCode)),
+											schRepo).setArguments(args));
 
-		        },
+				},
 
-		        (ca, fun, schRepo, args, output) -> this.extractOutputEvent(output))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
-		        .switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
+				(ca, fun, schRepo, args, output) -> this.extractOutputEvent(output))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
+				.switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
+						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
 
 	}
 
@@ -212,83 +211,81 @@ public class FunctionExecutionController {
 		}
 
 		return Mono.just((new Gson()).toJson(list))
-		        .map(objString -> ResponseEntity.ok()
-		                .contentType(MediaType.APPLICATION_JSON)
-		                .body(objString));
+				.map(objString -> ResponseEntity.ok()
+						.contentType(MediaType.APPLICATION_JSON)
+						.body(objString));
 	}
 
 	private Mono<Map<String, JsonElement>> getRequestParamsToArguments(Map<String, Parameter> parameters,
-	        ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
+			ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
 
 		MultiValueMap<String, String> queryParams = request.getQueryParams();
 
 		return Flux.fromIterable(parameters.entrySet())
-		        .flatMap(e ->
-				{
+				.flatMap(e -> {
 
-			        List<String> value = queryParams.get(e.getKey());
+					List<String> value = queryParams.get(e.getKey());
 
-			        if (value == null || value.isEmpty())
-				        return null;
+					if (value == null || value.isEmpty())
+						return null;
 
-			        Schema schema = e.getValue()
-			                .getSchema();
+					Schema schema = e.getValue()
+							.getSchema();
 
-			        if (!StringUtil.safeIsBlank(schema.getRef()))
-				        return ReactiveSchemaUtil.getSchemaFromRef(schema, schemaRepository, schema.getRef())
-				                .map(sch -> Tuples.of(e, sch));
+					if (!StringUtil.safeIsBlank(schema.getRef()))
+						return ReactiveSchemaUtil.getSchemaFromRef(schema, schemaRepository, schema.getRef())
+								.map(sch -> Tuples.of(e, sch));
 
-			        return Mono.just(Tuples.of(e, schema));
-		        })
-		        .flatMap(tup ->
-				{
-			        Entry<String, Parameter> e = tup.getT1();
-			        Schema schema = tup.getT2();
-			        Type type = schema.getType();
+					return Mono.just(Tuples.of(e, schema));
+				})
+				.flatMap(tup -> {
+					Entry<String, Parameter> e = tup.getT1();
+					Schema schema = tup.getT2();
+					Type type = schema.getType();
 
-			        Parameter param = e.getValue();
-			        List<String> value = queryParams.get(e.getKey());
+					Parameter param = e.getValue();
+					List<String> value = queryParams.get(e.getKey());
 
-			        if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT))
-				        return Mono.empty();
+					if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT))
+						return Mono.empty();
 
-			        if (type.contains(SchemaType.STRING)) {
-				        return Mono.just(jsonElementString(e, value, param));
-			        }
+					if (type.contains(SchemaType.STRING)) {
+						return Mono.just(jsonElementString(e, value, param));
+					}
 
-			        if (type.contains(SchemaType.DOUBLE)) {
-				        return Mono.just(jsonElement(e, value, param, SchemaType.DOUBLE));
-			        } else if (type.contains(SchemaType.FLOAT)) {
-				        return Mono.just(jsonElement(e, value, param, SchemaType.FLOAT));
-			        } else if (type.contains(SchemaType.LONG)) {
-				        return Mono.just(jsonElement(e, value, param, SchemaType.LONG));
-			        } else if (type.contains(SchemaType.INTEGER)) {
-				        return Mono.just(jsonElement(e, value, param, SchemaType.INTEGER));
-			        }
+					if (type.contains(SchemaType.DOUBLE)) {
+						return Mono.just(jsonElement(e, value, param, SchemaType.DOUBLE));
+					} else if (type.contains(SchemaType.FLOAT)) {
+						return Mono.just(jsonElement(e, value, param, SchemaType.FLOAT));
+					} else if (type.contains(SchemaType.LONG)) {
+						return Mono.just(jsonElement(e, value, param, SchemaType.LONG));
+					} else if (type.contains(SchemaType.INTEGER)) {
+						return Mono.just(jsonElement(e, value, param, SchemaType.INTEGER));
+					}
 
-			        return Mono.empty();
-		        })
-		        .filter(Objects::nonNull)
-		        .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));
+					return Mono.empty();
+				})
+				.filter(Objects::nonNull)
+				.collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));
 	}
 
 	private Tuple2<String, JsonElement> jsonElement(Entry<String, Parameter> e, List<String> value, Parameter param,
-	        SchemaType type) {
+			SchemaType type) {
 
 		if (!param.isVariableArgument())
 			return Tuples.of(e.getKey(), new JsonPrimitive(CONVERTOR.get(type)
-			        .apply(value.get(0))));
+					.apply(value.get(0))));
 
 		JsonArray arr = new JsonArray();
 		for (String each : value)
 			arr.add(new JsonPrimitive(CONVERTOR.get(type)
-			        .apply(each)));
+					.apply(each)));
 
 		return Tuples.of(e.getKey(), arr);
 	}
 
 	private Tuple2<String, JsonElement> jsonElementString(Entry<String, Parameter> e, List<String> value,
-	        Parameter param) {
+			Parameter param) {
 
 		if (!param.isVariableArgument())
 			return Tuples.of(e.getKey(), new JsonPrimitive(value.get(0)));

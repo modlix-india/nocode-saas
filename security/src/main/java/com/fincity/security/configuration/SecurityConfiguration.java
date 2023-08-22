@@ -20,7 +20,7 @@ import com.fincity.security.service.SecurityMessageResourceService;
 
 @Configuration
 public class SecurityConfiguration extends AbstractJooqBaseConfiguration
-        implements ISecurityConfiguration, IMQConfiguration {
+		implements ISecurityConfiguration, IMQConfiguration {
 
 	@Autowired
 	protected SecurityMessageResourceService messageResourceService;
@@ -43,25 +43,27 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, AuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper,
 
-		        "/actuator/**",
+				"/actuator/**",
 
-		        "/api/security/authenticate",
+				"/api/security/authenticate",
 
-		        "/api/security/verifyToken",
+				"/api/security/verifyToken",
 
-		        "/api/security/clients/internal/**",
+				"/api/security/clients/internal/**",
 
-		        "/api/security/applications/internal/**",
+				"/api/security/applications/internal/**",
 
-		        "/api/security/internal/securityContextAuthentication",
+				"/api/security/internal/securityContextAuthentication",
 
-		        "/api/security/users/findUserClients",
+				"/api/security/users/findUserClients",
 
-		        "/api/security/clients/register",
+				"/api/security/clients/register",
 
-		        "/api/security/users/requestResetPassword",
-		        
-				"/api/security/applications/applyAppCodeSuffix");
+				"/api/security/users/requestResetPassword",
+
+				"/api/security/applications/applyAppCodeSuffix",
+
+				"/api/security/ssl/token/**");
 	}
 
 }
