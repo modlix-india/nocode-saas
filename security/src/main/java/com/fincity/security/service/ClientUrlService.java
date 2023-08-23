@@ -120,7 +120,10 @@ public class ClientUrlService
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI));
+				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -129,7 +132,9 @@ public class ClientUrlService
 
 		return super.update(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
+				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -138,7 +143,9 @@ public class ClientUrlService
 
 		return super.update(key, updateFields).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
+				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -149,7 +156,9 @@ public class ClientUrlService
 				.flatMap(e -> super.delete(id))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE));
+				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
 	@Override
