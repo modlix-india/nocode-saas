@@ -33,7 +33,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 			if (name != null)
 				log.debug("{} - {}", name, v);
 			else
-				log.debug(v.toString());
+				log.debug(v);
 		}));
 	}
 

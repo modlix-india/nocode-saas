@@ -21,13 +21,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
 
@@ -47,78 +47,77 @@ public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionReco
 	public Mono<Page<Permission>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 
 		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca ->
-				{
+				.flatMap(ca -> {
 
-			        Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> joinStep;
+					Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> joinStep;
 
-			        boolean isSystemClient = ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode());
+					boolean isSystemClient = ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode());
 
-			        if (isSystemClient) {
+					if (isSystemClient) {
 
-				        joinStep = this.getSelectJointStep();
-			        } else {
+						joinStep = this.getSelectJointStep();
+					} else {
 
-				        SelectJoinStep<Record> queryJoinStep = this.dslContext.select(SECURITY_PERMISSION.fields())
-				                .from(SECURITY_PERMISSION)
-				                .leftJoin(SECURITY_ROLE_PERMISSION)
-				                .on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
-				                .leftJoin(SECURITY_PACKAGE_ROLE)
-				                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
-				                .leftJoin(SECURITY_PACKAGE)
-				                .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-				                .leftJoin(SECURITY_CLIENT_PACKAGE)
-				                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID));
+						SelectJoinStep<Record> queryJoinStep = this.dslContext.select(SECURITY_PERMISSION.fields())
+								.from(SECURITY_PERMISSION)
+								.leftJoin(SECURITY_ROLE_PERMISSION)
+								.on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
+								.leftJoin(SECURITY_PACKAGE_ROLE)
+								.on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
+								.leftJoin(SECURITY_PACKAGE)
+								.on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+								.leftJoin(SECURITY_CLIENT_PACKAGE)
+								.on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID));
 
-				        SelectJoinStep<Record1<Integer>> countJoinStep = this.dslContext.select(DSL.count())
-				                .from(SECURITY_PERMISSION)
-				                .leftJoin(SECURITY_ROLE_PERMISSION)
-				                .on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
-				                .leftJoin(SECURITY_PACKAGE_ROLE)
-				                .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
-				                .leftJoin(SECURITY_PACKAGE)
-				                .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-				                .leftJoin(SECURITY_CLIENT_PACKAGE)
-				                .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID));
+						SelectJoinStep<Record1<Integer>> countJoinStep = this.dslContext.select(DSL.count())
+								.from(SECURITY_PERMISSION)
+								.leftJoin(SECURITY_ROLE_PERMISSION)
+								.on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
+								.leftJoin(SECURITY_PACKAGE_ROLE)
+								.on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
+								.leftJoin(SECURITY_PACKAGE)
+								.on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+								.leftJoin(SECURITY_CLIENT_PACKAGE)
+								.on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID));
 
-				        joinStep = Mono.just(Tuples.of(queryJoinStep, countJoinStep));
-			        }
+						joinStep = Mono.just(Tuples.of(queryJoinStep, countJoinStep));
+					}
 
-			        return joinStep.flatMap(selectJoinStepTuple -> {
+					return joinStep.flatMap(selectJoinStepTuple -> {
 
-				        AbstractCondition finalCondition = condition;
+						AbstractCondition finalCondition = condition;
 
-				        if (!isSystemClient) {
+						if (!isSystemClient) {
 
-					        ComplexCondition joinCondition = new ComplexCondition()
-					                .setOperator(ComplexConditionOperator.OR)
-					                .setConditions(List.of(
-					                        new FilterCondition().setOperator(FilterConditionOperator.EQUALS)
-					                                .setField("ClientPackage.clientId")
-					                                .setValue(ca.getUser()
-					                                        .getClientId()
-					                                        .toString()),
-					                        new FilterCondition().setOperator(FilterConditionOperator.EQUALS)
-					                                .setField("Package.base")
-					                                .setValue("1")));
+							ComplexCondition joinCondition = new ComplexCondition()
+									.setOperator(ComplexConditionOperator.OR)
+									.setConditions(List.of(
+											new FilterCondition().setOperator(FilterConditionOperator.EQUALS)
+													.setField("ClientPackage.clientId")
+													.setValue(ca.getUser()
+															.getClientId()
+															.toString()),
+											new FilterCondition().setOperator(FilterConditionOperator.EQUALS)
+													.setField("Package.base")
+													.setValue("1")));
 
-					        if (finalCondition == null)
-						        finalCondition = joinCondition;
-					        else
-						        finalCondition = new ComplexCondition().setOperator(ComplexConditionOperator.AND)
-						                .setConditions(List.of(finalCondition, joinCondition));
+							if (finalCondition == null)
+								finalCondition = joinCondition;
+							else
+								finalCondition = new ComplexCondition().setOperator(ComplexConditionOperator.AND)
+										.setConditions(List.of(finalCondition, joinCondition));
 
-				        }
+						}
 
-				        if (finalCondition != null) {
-					        return filter(finalCondition).flatMap(filterCondition -> list(pageable,
-					                selectJoinStepTuple.mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
-					                        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition))));
-				        }
-				        return list(pageable, selectJoinStepTuple);
-			        });
+						if (finalCondition != null) {
+							return filter(finalCondition).flatMap(filterCondition -> list(pageable,
+									selectJoinStepTuple.mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
+											.mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition))));
+						}
+						return list(pageable, selectJoinStepTuple);
+					});
 
-		        });
+				});
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -137,37 +136,36 @@ public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionReco
 	protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
 
 		return SecurityContextUtil.getUsersContextAuthentication()
-		        .map(ca ->
-				{
+				.map(ca -> {
 
-			        var cAlias = SECURITY_CLIENT.as("codeClient");
+					var cAlias = SECURITY_CLIENT.as("codeClient");
 
-			        SelectJoinStep<Record> mainQuery = dslContext.select(Arrays.asList(table.fields()))
-			                .select(DSL
-			                        .replace(DSL.concat("Authorities.",
-			                                DSL.concat(
-			                                        DSL.if_(SECURITY_APP.APP_CODE.isNull(), "",
-			                                                DSL.concat(DSL.upper(SECURITY_APP.APP_CODE), ".")),
-			                                        DSL.if_(cAlias.CODE.eq("SYSTEM"), SECURITY_PERMISSION.NAME,
-			                                                DSL.concat(DSL.concat(cAlias.CODE, "_"),
-			                                                        SECURITY_PERMISSION.NAME)))),
-			                                " ", "_")
-			                        .as("AUTHORITY"))
-			                .from(table)
-			                .leftJoin(cAlias)
-			                .on(cAlias.ID.eq(SECURITY_PERMISSION.CLIENT_ID))
-			                .leftJoin(SECURITY_APP)
-			                .on(SECURITY_APP.ID.eq(SECURITY_PERMISSION.APP_ID));
+					SelectJoinStep<Record> mainQuery = dslContext.select(Arrays.asList(table.fields()))
+							.select(DSL
+									.replace(DSL.concat("Authorities.",
+											DSL.concat(
+													DSL.if_(SECURITY_APP.APP_CODE.isNull(), "",
+															DSL.concat(DSL.upper(SECURITY_APP.APP_CODE), ".")),
+													DSL.if_(cAlias.CODE.eq("SYSTEM"), SECURITY_PERMISSION.NAME,
+															DSL.concat(DSL.concat(cAlias.CODE, "_"),
+																	SECURITY_PERMISSION.NAME)))),
+											" ", "_")
+									.as("AUTHORITY"))
+							.from(table)
+							.leftJoin(cAlias)
+							.on(cAlias.ID.eq(SECURITY_PERMISSION.CLIENT_ID))
+							.leftJoin(SECURITY_APP)
+							.on(SECURITY_APP.ID.eq(SECURITY_PERMISSION.APP_ID));
 
-			        SelectJoinStep<Record1<Integer>> countQuery = dslContext.select(DSL.count())
-			                .from(table);
+					SelectJoinStep<Record1<Integer>> countQuery = dslContext.select(DSL.count())
+							.from(table);
 
-			        if (ca.getClientTypeCode()
-			                .equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
-				        return Tuples.of(mainQuery, countQuery);
+					if (ca.getClientTypeCode()
+							.equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
+						return Tuples.of(mainQuery, countQuery);
 
-			        return this.addJoinCondition(mainQuery, countQuery, this.getClientIDField());
-		        });
+					return this.addJoinCondition(mainQuery, countQuery, this.getClientIDField());
+				});
 	}
 
 	@Override

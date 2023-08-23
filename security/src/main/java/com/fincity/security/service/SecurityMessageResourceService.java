@@ -6,8 +6,8 @@ import java.util.ResourceBundle;
 
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 
 import reactor.core.publisher.Mono;
 
@@ -55,21 +55,30 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String DELETE_ROLE_ERROR = "delete_role_error";
 	public static final String UNKNOWN_CLIENT = "unknown_client";
 	public static final String APP_CODE_NO_SPL_CHAR = "app_code_no_spl_char";
-	public static final String CLIENT_REGISTRATION_ERROR= "client_registration_error";
+	public static final String CLIENT_REGISTRATION_ERROR = "client_registration_error";
 	public static final String USER_ALREADY_EXISTS = "user_already_exists";
-	public static final String FETCH_PACKAGE_ERROR="fetch_package_error";
-	public static final String FETCH_ROLE_ERROR="fetch_role_error";
-	public static final String FETCH_PERMISSION_ERROR="fetch_permission_error";
-	public static final String FETCH_PERMISSION_ERROR_FOR_USER="fetch_permission_error_for_user";
-	public static final String FETCH_ROLE_ERROR_FOR_USER="fetch_role_error_for_user";
-	public static final String PASS_RESET_REQ_ERROR="pass_reset_req_error";
+	public static final String FETCH_PACKAGE_ERROR = "fetch_package_error";
+	public static final String FETCH_ROLE_ERROR = "fetch_role_error";
+	public static final String FETCH_PERMISSION_ERROR = "fetch_permission_error";
+	public static final String FETCH_PERMISSION_ERROR_FOR_USER = "fetch_permission_error_for_user";
+	public static final String FETCH_ROLE_ERROR_FOR_USER = "fetch_role_error_for_user";
+	public static final String PASS_RESET_REQ_ERROR = "pass_reset_req_error";
 	public static final String ASSIGN_PACKAGE_TO_CLIENT_AND_APP = "assign_package_to_client_and_app";
-	public static final String APPLICATION_ACCESS_ERROR ="application_access_error";
-	public static final String NO_PACKAGE_ASSIGNED_TO_APP="no_package_assigned_to_app";
-	public static final String REMOVE_PACKAGE_FROM_APP_ERROR="remove_package_from_app_error";
-	public static final String ASSIGN_ROLE_TO_APP_ERROR="assign_role_to_app_error";
-	public static final String REMOVE_ROLE_FROM_APP_ERROR="remove_role_from_app_error";
-	public static final String NO_ROLE_ASSIGNED_TO_APP="no_role_assigned_to_app";
+	public static final String APPLICATION_ACCESS_ERROR = "application_access_error";
+	public static final String NO_PACKAGE_ASSIGNED_TO_APP = "no_package_assigned_to_app";
+	public static final String REMOVE_PACKAGE_FROM_APP_ERROR = "remove_package_from_app_error";
+	public static final String ASSIGN_ROLE_TO_APP_ERROR = "assign_role_to_app_error";
+	public static final String REMOVE_ROLE_FROM_APP_ERROR = "remove_role_from_app_error";
+	public static final String NO_ROLE_ASSIGNED_TO_APP = "no_role_assigned_to_app";
+	public static final String REQUEST_EXISTING = "request_exisiting";
+	public static final String BAD_CERT_REQUEST = "bad_cert_request";
+	public static final String MISMATCH_DOMAINS = "mismatch_domains";
+	public static final String ERROR_KEY_CSR = "error_key_csr";
+	public static final String LETS_ENCRYPT_CREDENTIALS = "lets_encrypt_credentials";
+	public static final String LETS_ENCRYPT_ISSUE = "lets_encrypt_issue";
+	public static final String TRIGGER_FAILED = "trigger_failed";
+	public static final String CERTIFICATE_PROBLEM = "certificate_problem";
+	public static final String ONLY_SYS_USER_CERTS = "only_sys_user_certs";
 
 	public SecurityMessageResourceService() {
 
@@ -89,8 +98,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 
 			return x == null ? Mono.empty() : Mono.just(x);
 		})
-		        .defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
-		        .map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
+				.defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
+				.map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
 
 	}
 }

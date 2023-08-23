@@ -3,7 +3,6 @@ package com.fincity.saas.commons.mongo.jackson;
 import java.io.IOException;
 import java.util.HashSet;
 
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -28,7 +27,7 @@ public class KIRuntimeSerializationModule extends SimpleModule {
 		this.addDeserializer(Type.class, new JsonDeserializer<Type>() {
 
 			@Override
-			public Type deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException, JacksonException {
+			public Type deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
 
 				ObjectMapper mapper = (ObjectMapper) jp.getCodec();
 				JsonNode node = mapper.readTree(jp);

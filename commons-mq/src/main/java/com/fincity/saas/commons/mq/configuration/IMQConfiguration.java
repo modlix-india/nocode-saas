@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public abstract interface IMQConfiguration {
+public interface IMQConfiguration {
 
 	@Bean
 	default DirectRabbitListenerContainerFactory directMesageListener(CachingConnectionFactory connectionFactory) {

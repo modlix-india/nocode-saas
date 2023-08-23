@@ -52,55 +52,54 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 	public FunctionSignature getSignature() {
 
 		Event event = new Event().setName(Event.OUTPUT)
-		        .setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
+				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
 		Event errorEvent = new Event().setName(Event.ERROR)
-		        .setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
+				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
 		return new FunctionSignature().setNamespace(NAME_SPACE)
-		        .setName(FUNCTION_NAME)
-		        .setParameters(Map.of(
+				.setName(FUNCTION_NAME)
+				.setParameters(Map.of(
 
-		                STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
+						STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
 
-		                ISPARTIAL, Parameter.of(ISPARTIAL, Schema.ofBoolean(ISPARTIAL)
-		                        .setDefaultValue(new JsonPrimitive(false))),
+						ISPARTIAL, Parameter.of(ISPARTIAL, Schema.ofBoolean(ISPARTIAL)
+								.setDefaultValue(new JsonPrimitive(false))),
 
-		                DATA_OBJECT_ID, Parameter.of(DATA_OBJECT_ID, Schema.ofString(DATA_OBJECT_ID)),
+						DATA_OBJECT_ID, Parameter.of(DATA_OBJECT_ID, Schema.ofString(DATA_OBJECT_ID)),
 
-		                DATA_OBJECT, Parameter.of(DATA_OBJECT, Schema.ofObject(DATA_OBJECT))
+						DATA_OBJECT, Parameter.of(DATA_OBJECT, Schema.ofObject(DATA_OBJECT))
 
 				))
-		        .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
+				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
 
-	@SuppressWarnings("serial")
 	@Override
 	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
 
 		String storageName = context.getArguments()
-		        .get(STORAGE_NAME)
-		        .getAsString();
+				.get(STORAGE_NAME)
+				.getAsString();
 
 		Boolean isPartial = context.getArguments()
-		        .get(ISPARTIAL)
-		        .getAsBoolean();
+				.get(ISPARTIAL)
+				.getAsBoolean();
 
 		String dataObjectId = context.getArguments()
-		        .get(DATA_OBJECT_ID)
-		        .getAsString();
+				.get(DATA_OBJECT_ID)
+				.getAsString();
 
 		JsonObject updatableObject = context.getArguments()
-		        .get(DATA_OBJECT)
-		        .getAsJsonObject();
+				.get(DATA_OBJECT)
+				.getAsJsonObject();
 
 		if (storageName == null)
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
-			        Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
+					Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
 
 		if (dataObjectId == null || updatableObject == null)
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR, Map.of(Event.ERROR,
-			        new JsonPrimitive("Please provide the id for which delete needs to be performed."))))));
+					new JsonPrimitive("Please provide the id for which delete needs to be performed."))))));
 
 		Gson gson = new Gson();
 
@@ -112,8 +111,8 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 		DataObject dataObject = new DataObject().setData(updatableDataObject);
 
 		return appDataService.update(null, null, storageName, dataObject, !isPartial)
-		        .map(updatedObject -> new FunctionOutput(
-		                List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatableObject))))));
+				.map(updatedObject -> new FunctionOutput(
+						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatableObject))))));
 	}
 
 }

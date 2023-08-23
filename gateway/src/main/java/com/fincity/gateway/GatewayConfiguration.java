@@ -28,7 +28,7 @@ public class GatewayConfiguration extends AbstractBaseConfiguration {
 			if (name != null)
 				log.debug("{} - {}", name, v);
 			else
-				log.debug(v.toString());
+				log.debug(v);
 		}));
 	}
 

@@ -13,7 +13,7 @@ import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 
-public class AbstractMongoConfiguration extends AbstractBaseConfiguration {
+public abstract class AbstractMongoConfiguration extends AbstractBaseConfiguration {
 
 	@Bean
 	MappingMongoConverter mappingConverter(ReactiveMongoDatabaseFactory factory, MongoMappingContext context,

@@ -3,9 +3,9 @@ package com.fincity.security.service;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.common.security.jwt.ContextUser;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
+import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dao.SoxLogDAO;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
@@ -21,17 +21,17 @@ public class SoxLogService extends AbstractJOOQDataService<SecuritySoxLogRecord,
 	protected Mono<ULong> getLoggedInUserId() {
 
 		return SecurityContextUtil.getUsersContextUser()
-		        .map(ContextUser::getId)
-		        .map(ULong::valueOf);
+				.map(ContextUser::getId)
+				.map(ULong::valueOf);
 	}
 
 	public void createLog(ULong objectId, SecuritySoxLogActionName actionName, SecuritySoxLogObjectName objectName,
-	        String description) {
-		
+			String description) {
+
 		this.create(new SoxLog().setObjectId(objectId)
-		        .setActionName(actionName)
-		        .setObjectName(objectName)
-		        .setDescription(description))
-		        .subscribe();
+				.setActionName(actionName)
+				.setObjectName(objectName)
+				.setDescription(description))
+				.subscribe();
 	}
 }

@@ -8,10 +8,10 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.common.security.jwt.ContextAuthentication;
-import com.fincity.saas.common.security.jwt.ContextUser;
-import com.fincity.saas.common.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Personalization;
@@ -39,30 +39,29 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 		return flatMapMono(
 
-		        () -> this.read(entity.getId()),
+				() -> this.read(entity.getId()),
 
-		        existing -> SecurityContextUtil.getUsersContextAuthentication(),
+				existing -> SecurityContextUtil.getUsersContextAuthentication(),
 
-		        (existing, ca) ->
-				{
+				(existing, ca) -> {
 
-			        if (!existing.getCreatedBy()
-			                .equals(ca.getUser()
-			                        .getId()
-			                        .toString()))
-				        return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-				                AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
+					if (!existing.getCreatedBy()
+							.equals(ca.getUser()
+									.getId()
+									.toString()))
+						return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+								AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
 
-			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+					if (existing.getVersion() != entity.getVersion())
+						return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-			        existing.setPersonalization(entity.getPersonalization());
+					existing.setPersonalization(entity.getPersonalization());
 
-			        existing.setVersion(existing.getVersion() + 1);
+					existing.setVersion(existing.getVersion() + 1);
 
-			        return Mono.just(existing);
-		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.updatableEntity"));
+					return Mono.just(existing);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.updatableEntity"));
 	}
 
 	@Override
@@ -72,82 +71,81 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 	@Override
 	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, Personalization entity,
-	        boolean checkAppWriteAccess) {
+			boolean checkAppWriteAccess) {
 
 		if (CREATE.equals(method) || UPDATE.equals(method))
 			return Mono.just(true);
 
 		return Mono.just(ca.getUser()
-		        .getId()
-		        .toString()
-		        .equals(entity.getCreatedBy()));
+				.getId()
+				.toString()
+				.equals(entity.getCreatedBy()));
 	}
 
 	public Mono<Map<String, Object>> addPersonalization(String appName, String name,
-	        Map<String, Object> personalization) {
+			Map<String, Object> personalization) {
 
 		return flatMapMonoWithNull(
 
-		        () -> SecurityContextUtil.getUsersContextUser()
-		                .map(ContextUser::getId)
-		                .map(Object::toString),
+				() -> SecurityContextUtil.getUsersContextUser()
+						.map(ContextUser::getId)
+						.map(Object::toString),
 
-		        id -> id == null ? Mono.empty() : this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id),
+				id -> id == null ? Mono.empty() : this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id),
 
-		        (id, person) ->
-				{
+				(id, person) -> {
 
-			        if (id == null)
-				        return Mono.just(personalization);
+					if (id == null)
+						return Mono.just(personalization);
 
-			        if (person == null) {
-				        person = ((Personalization) new Personalization().setName(name)
-				                .setAppCode(appName));
+					if (person == null) {
+						person = ((Personalization) new Personalization().setName(name)
+								.setAppCode(appName));
 
-				        person.setPersonalization(personalization);
-				        return this.create(person)
-				                .map(Personalization::getPersonalization);
-			        }
+						person.setPersonalization(personalization);
+						return this.create(person)
+								.map(Personalization::getPersonalization);
+					}
 
-			        person.setPersonalization(personalization);
-			        return this.update(person)
-			                .map(Personalization::getPersonalization);
-		        }
+					person.setPersonalization(personalization);
+					return this.update(person)
+							.map(Personalization::getPersonalization);
+				}
 
 		)
-		.contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.addPersonalization"))
-		        .defaultIfEmpty(Map.of());
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.addPersonalization"))
+				.defaultIfEmpty(Map.of());
 	}
 
 	public Mono<Map<String, Object>> getPersonalization(String appName, String name) {
 
 		return flatMapMonoWithNull(
 
-		        () -> SecurityContextUtil.getUsersContextUser()
-		                .map(ContextUser::getId)
-		                .map(Object::toString),
+				() -> SecurityContextUtil.getUsersContextUser()
+						.map(ContextUser::getId)
+						.map(Object::toString),
 
-		        id -> id == null ? Mono.empty()
-		                : this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id)
-		                        .map(Personalization::getPersonalization)
+				id -> id == null ? Mono.empty()
+						: this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id)
+								.map(Personalization::getPersonalization)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.getPersonalization"))
-		        .defaultIfEmpty(Map.of());
+				.defaultIfEmpty(Map.of());
 
 	}
 
 	public Mono<Boolean> deletePersonalization(String appName, String name) {
 		return flatMapMonoWithNull(
 
-		        () -> SecurityContextUtil.getUsersContextUser()
-		                .map(ContextUser::getId)
-		                .map(Object::toString),
+				() -> SecurityContextUtil.getUsersContextUser()
+						.map(ContextUser::getId)
+						.map(Object::toString),
 
-		        id -> id == null ? Mono.empty()
-		                : this.repo.deleteByNameAndAppCodeAndCreatedBy(name, appName, id)
-		                        .map(e -> e != 0l)
+				id -> id == null ? Mono.empty()
+						: this.repo.deleteByNameAndAppCodeAndCreatedBy(name, appName, id)
+								.map(e -> e != 0l)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.deletePersonalization"))
-		        .defaultIfEmpty(Boolean.FALSE);
+				.defaultIfEmpty(Boolean.FALSE);
 	}
 }
