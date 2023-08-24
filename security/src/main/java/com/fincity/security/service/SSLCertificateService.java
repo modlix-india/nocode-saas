@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
-import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
-import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.jooq.types.ULong;
 import org.shredzone.acme4j.Account;
@@ -37,7 +35,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.util.Streamable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -73,11 +70,11 @@ public class SSLCertificateService {
 
 	private static final Logger logger = LoggerFactory.getLogger(SSLCertificateService.class);
 
-	private static final String CACHE_NAME_CERTIFICATE = "certificateCache";
+	public static final String CACHE_NAME_CERTIFICATE = "certificateCache";
 
 	private static final String CACHE_CERTIFICATE_VALUE = "certificates";
 
-	private static final String CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT = "certificatesLastUpdatedCache";
+	public static final String CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT = "certificatesLastUpdatedCache";
 
 	private static final String CACHE_CERTIFICATE_LAST_UPDATED_VALUE = "certificatesLastUpdated";
 
