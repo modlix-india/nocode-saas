@@ -21,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.mq.events.EventCreationService;
@@ -375,8 +376,9 @@ public class ClientService
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.assignPackageToClient"))
-							.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
 
 				}
 
@@ -424,8 +426,9 @@ public class ClientService
 		return this.dao.checkPackageAssignedForClient(clientId, packageId)
 				.flatMap(result -> {
 					if (!result.booleanValue())
-						return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
+				        return securityMessageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+				                SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
 
 					return flatMapMono(
 
@@ -466,8 +469,9 @@ public class ClientService
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.removePackageFromClient"));
 				})
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
 
 	}
 
@@ -487,8 +491,9 @@ public class ClientService
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"))
-				.switchIfEmpty(this.securityMessageResourceService.throwMessage(HttpStatus.CONFLICT,
-						SecurityMessageResourceService.USER_ALREADY_EXISTS, request.getEmailId()));
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+		                SecurityMessageResourceService.USER_ALREADY_EXISTS, request.getEmailId()));
 
 		Mono<Boolean> mono = FlatMapUtil.flatMapMono(
 
@@ -574,15 +579,17 @@ public class ClientService
 				(ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchPackages"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
 
 	}
 
 	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca) {
 		if (ca.isAuthenticated())
-			return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
+			return this.securityMessageResourceService.throwMessage(
+			        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
 
 		Client client = new Client();
 		client.setName(
@@ -595,8 +602,9 @@ public class ClientService
 		client.setTokenValidityMinutes(VALIDITY_MINUTES);
 
 		if (StringUtil.safeIsBlank(client.getName()))
-			return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
+			return this.securityMessageResourceService.throwMessage(
+			        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
 
 		return flatMapMono(
 

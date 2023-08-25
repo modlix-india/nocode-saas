@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
@@ -64,8 +65,9 @@ public class ClientPasswordPolicyService extends
 				})
 				.flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
 						.map(x -> e))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
@@ -118,8 +120,9 @@ public class ClientPasswordPolicyService extends
 				.flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
 				.flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
 						.map(x -> e))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
@@ -130,8 +133,9 @@ public class ClientPasswordPolicyService extends
 				.flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
 				.flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
 						.map(x -> e))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
@@ -140,8 +144,9 @@ public class ClientPasswordPolicyService extends
 		return this.dao.canBeUpdated(id)
 				.flatMap(e -> e.booleanValue() ? super.delete(id) : Mono.empty())
 				.flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_PWD_POLICY, id))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
 
 	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
@@ -162,8 +167,9 @@ public class ClientPasswordPolicyService extends
 						return Mono.just(true);
 
 					if (password.indexOf(' ') != -1)
-						return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-								SecurityMessageResourceService.SPACES_MISSING);
+				        return securityMessageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+				                SecurityMessageResourceService.SPACES_MISSING);
 
 					return Mono.just(true);
 				},
@@ -188,17 +194,17 @@ public class ClientPasswordPolicyService extends
 	private Mono<Boolean> checkAlphanumericExists(ClientPasswordPolicy passwordPolicy, String password) {
 
 		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'A', 'Z')) {
-			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.CAPTIAL_LETTERS_MISSING);
+			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.CAPTIAL_LETTERS_MISSING);
 		}
 
 		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'a', 'z')) {
-			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.SMALL_LETTERS_MISSING);
+			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.SMALL_LETTERS_MISSING);
 		}
 
 		if (passwordPolicy.isAtleastOneDigit() && !checkExistsInBetween(password, '0', '9')) {
-			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.NUMBERS_MISSING);
 		}
 
@@ -222,14 +228,14 @@ public class ClientPasswordPolicyService extends
 	private Mono<Boolean> checkStrengthOfPassword(ClientPasswordPolicy passwordPolicy, String password) {
 
 		if (passwordPolicy.getPassMaxLength() != null && password.length() > passwordPolicy.getPassMaxLength()
-				.intValue())
-			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.MAX_LENGTH_ERROR, passwordPolicy.getPassMaxLength());
+		        .intValue())
+			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.MAX_LENGTH_ERROR, passwordPolicy.getPassMaxLength());
 
 		if (passwordPolicy.getPassMinLength() != null && password.length() < passwordPolicy.getPassMinLength()
-				.intValue())
-			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.MIN_LENGTH_ERROR, passwordPolicy.getPassMinLength());
+		        .intValue())
+			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.MIN_LENGTH_ERROR, passwordPolicy.getPassMinLength());
 
 		return Mono.just(true);
 
@@ -243,8 +249,8 @@ public class ClientPasswordPolicyService extends
 				return Mono.just(true);
 		}
 
-		return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				SecurityMessageResourceService.SPECIAL_CHARACTERS_MISSING);
+		return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+		        SecurityMessageResourceService.SPECIAL_CHARACTERS_MISSING);
 	}
 
 	private Mono<Boolean> checkRegexPattern(String password, String regex) {
@@ -252,8 +258,8 @@ public class ClientPasswordPolicyService extends
 		Pattern pattern = Pattern.compile(regex);
 		Matcher matches = pattern.matcher(password);
 		if (!matches.find())
-			return securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.REGEX_MISMATCH);
+			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.REGEX_MISMATCH);
 
 		return Mono.just(true);
 	}

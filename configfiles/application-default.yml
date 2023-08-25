@@ -2,7 +2,7 @@ security:
   db:
     url: r2dbc:mysql://localhost:3306/security?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Surendhar@Mysql
     flyway:
       url: jdbc:mysql://localhost:3306/security
   subdomain:
@@ -13,7 +13,7 @@ files:
   db:
     url: r2dbc:mysql://localhost:3306/files?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Surendhar@Mysql
     flyway:
       url: jdbc:mysql://localhost:3306/files
   resources:
@@ -23,15 +23,15 @@ files:
 
 ui:
   mongo:
-    uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
+    uri: mongodb://root:surendar123@localhost:27017/ui?authSource=admin
 
 core:
   mongo:
-    uri: mongodb://root:Kiran%40123@localhost:27017/core?authSource=admin
+    uri: mongodb://root:surendar123localhost:27017/core?authSource=admin
   db:
     url: r2dbc:mysql://localhost:3306/core?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Surendhar@Mysql
     flyway:
       url: jdbc:mysql://localhost:3306/core
 
@@ -40,7 +40,7 @@ spring:
     enabled: false
 
 redis:
-  url: redis://kiran%40123@localhost:6379
+  url: redis://surendhar.s@localhost:6379
   codec: object
   cache:
     prefix: cmn

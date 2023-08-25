@@ -13,6 +13,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Personalization;
 import com.fincity.saas.ui.repository.PersonalizationRepository;
@@ -49,12 +50,15 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 							.equals(ca.getUser()
 									.getId()
 									.toString()))
-						return this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-								AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
 
 					if (existing.getVersion() != entity.getVersion())
-						return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-								AbstractMongoMessageResourceService.VERSION_MISMATCH);
+					    
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setPersonalization(entity.getPersonalization());
 

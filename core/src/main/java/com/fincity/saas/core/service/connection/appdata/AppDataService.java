@@ -274,8 +274,9 @@ public class AppDataService {
 						return fluxToFile(dataFlux, fileType, dataHeaders, dfw, ovs, gson)
 								.flatMap(e -> flieToResponse(fileType, response, file, fPath, dfw));
 					} catch (Exception ex) {
-						return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
-								CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
+				                CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
 					}
 				});
 	}
@@ -298,8 +299,8 @@ public class AppDataService {
 
 			return zeroCopyResponse.writeWith(fPath, 0, length);
 		} catch (Exception ex) {
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
-					CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
+			        CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
 		}
 	}
 
@@ -344,8 +345,9 @@ public class AppDataService {
 						.genericOperation(storage, (ca, hasAccess) -> downloadTemplate(storage, fileType, "notghjin"),
 								Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
 
-						.switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
-								CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR))))
+		                .switchIfEmpty(
+		                        this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+		                                CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR)))
 
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
 	}
@@ -379,7 +381,8 @@ public class AppDataService {
 			Function<Storage, String> authFun, String msgString) {
 
 		if (storage == null)
-			return msgService.throwMessage(HttpStatus.NOT_FOUND, CoreMessageResourceService.STORAGE_NOT_FOUND);
+			return msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+			        CoreMessageResourceService.STORAGE_NOT_FOUND);
 
 		return FlatMapUtil.flatMapMono(
 
@@ -390,8 +393,8 @@ public class AppDataService {
 
 				bifun)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericOperation"))
-				.switchIfEmpty(Mono
-						.defer(() -> this.msgService.throwMessage(HttpStatus.FORBIDDEN, msgString, storage.getName())));
+		        .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                msgString, storage.getName()));
 	}
 
 	private Mono<byte[]> downloadTemplate(Storage storage, DataFileType type, String temp) { // NOSONAR
@@ -423,9 +426,10 @@ public class AppDataService {
 						byte[] bytes = byteStream.toByteArray();
 						return Mono.just(bytes);
 					} catch (Exception e) {
-						return Mono.defer(() -> this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-								CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString()));
-					}
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+				                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString());
+			    	}
 
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
@@ -566,8 +570,8 @@ public class AppDataService {
 							.map(e -> true);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.uploadDataInternal"))
-				.switchIfEmpty(Mono.defer(() -> msgService.throwMessage(HttpStatus.BAD_REQUEST,
-						CoreMessageResourceService.NOT_ABLE_TO_READ_FILE_FORMAT, fileType)));
+		        .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+		                CoreMessageResourceService.NOT_ABLE_TO_READ_FILE_FORMAT, fileType));
 	}
 
 	private List<Mono<Boolean>> nestedFileToDB(Connection conn, Storage storage, DataFileType fileType,

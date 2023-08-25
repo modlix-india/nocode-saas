@@ -25,6 +25,7 @@ import org.springframework.util.MultiValueMap;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
@@ -106,8 +107,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 				(ca, ent, cent, hasSecurity) -> hasSecurity.booleanValue() ? Mono.just(cent) : Mono.empty())
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.create"))
-				.switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
-						this.getObjectName()));
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
+                        this.getObjectName()));
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
@@ -134,8 +136,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				(cEntity, merged, overridden, created, version) -> this.read(created.getId()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.create"))
 				.flatMap(this::evictRecursively)
-				.switchIfEmpty(messageResourceService.throwMessage(HttpStatus.FORBIDDEN, FORBIDDEN_CREATE,
-						this.getObjectName()));
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
+                        this.getObjectName()));
 	}
 
 	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, D entity,
@@ -190,10 +193,11 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 						.is(cca.getClientCode())
 
 		)), this.pojoClass)
-				.flatMap(c -> c > 0
-						? messageResourceService.throwMessage(HttpStatus.CONFLICT,
-								AbstractMongoMessageResourceService.ALREADY_EXISTS, this.getObjectName(), cca.getName())
-						: Mono.just(cca));
+                .flatMap(c -> c > 0
+                        ? messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT,
+                                msg), AbstractMongoMessageResourceService.ALREADY_EXISTS, this.getObjectName(),
+                                cca.getName())
+                        : Mono.just(cca));
 	}
 
 	@Override
@@ -212,8 +216,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				(entity, ca, hasAccess, merged) -> hasAccess.booleanValue() ? this.applyOverride(entity, merged)
 						: Mono.empty())
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.read"))
-				.switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
+                .switchIfEmpty(
+                        this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
+                                msg ), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
 	}
 
 	public Mono<D> readInternal(String id) {
@@ -282,8 +287,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 	public Mono<Boolean> delete(String id) {
 
 		Mono<D> exists = this.repo.findById(id)
-				.switchIfEmpty(messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
+                .switchIfEmpty(messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
+                        msg), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
 
 		return flatMapMono(
 
@@ -302,15 +307,16 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 						return Mono.empty();
 
 					if (count > 0l)
-						return messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-								AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id);
+                        return messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN,
+                                msg),AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id);
 
 					cacheService.evict(this.getCacheName(entity.getAppCode(), entity.getName()), entity.getClientCode())
 							.subscribe();
 					return super.delete(id);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.delete"))
-				.switchIfEmpty(this.messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-						AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
+                .switchIfEmpty(
+                        this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
+                                msg),AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
 	}
 
 	protected Mono<D> getMergedSources(D entity) {
@@ -382,8 +388,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 	public Flux<D> readForTransport(String appCode, String clientCode, List<String> names) {
 
 		if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank((clientCode)))
-			return this.messageResourceService.throwFluxMessage(HttpStatus.FORBIDDEN,
-					AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode);
+            return this.messageResourceService.throwFluxMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode);
 
 		Mono<Tuple2<Boolean, String>> accessCheck = accessCheckForTransport(appCode, clientCode);
 
@@ -432,8 +438,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				(ca, access) -> access.getT1()
 						.booleanValue() ? Mono.just(access) : Mono.empty())
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.accessCheckForTransport"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
 	}
 
 	protected String getCollectionName() {
@@ -469,8 +476,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				(ca, access) -> access.getT1()
 						.booleanValue() ? Mono.just(access) : Mono.empty())
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readPageFilterLRO"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
 
 		Mono<Page<ListResultObject>> returnList = FlatMapUtil.flatMapMono(
 
@@ -645,11 +653,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 					try {
 						return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
 								.newInstance(cApp != null ? cApp : mergedApp));
-					} catch (Exception e) {
+                    } catch (Exception e) {
 
-						return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-								AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.getObjectName());
-					}
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+                                AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT, this.getObjectName());
+                    }
 				},
 
 				(key, cApp, dbApp, mergedApp, clonedApp) -> {

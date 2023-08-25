@@ -4,6 +4,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.springframework.http.HttpStatus;
 
@@ -15,92 +16,77 @@ import reactor.core.publisher.Mono;
 
 public class AbstractMessageService {
 
-	protected static final String UKNOWN_ERROR = "unknown_error";
+    protected static final String UKNOWN_ERROR = "unknown_error";
 
-	public static final String VALUEOF_METHOD_NOT_FOUND = "valueof_method_not_found";
-	public static final String UNABLE_TO_CONVERT = "unable_to_convert";
-	public static final String UNKNOWN_ERROR_WITH_ID = "unknown_error_with_id";
-	public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
+    public static final String VALUEOF_METHOD_NOT_FOUND = "valueof_method_not_found";
+    public static final String UNABLE_TO_CONVERT = "unable_to_convert";
+    public static final String UNKNOWN_ERROR_WITH_ID = "unknown_error_with_id";
+    public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
 
-	public static final String OBJECT_NOT_FOUND = "object_not_found";
+    public static final String OBJECT_NOT_FOUND = "object_not_found";
 
-	protected Map<Locale, ResourceBundle> bundleMap;
+    protected Map<Locale, ResourceBundle> bundleMap;
 
-	protected AbstractMessageService(Map<Locale, ResourceBundle> bundle) {
-		this.bundleMap = new ConcurrentHashMap<>(bundle);
-	}
+    protected AbstractMessageService(Map<Locale, ResourceBundle> bundle) {
+        this.bundleMap = new ConcurrentHashMap<>(bundle);
+    }
 
-	public Mono<String> getMessage(final String messageId) {
+    public Mono<String> getMessage(final String messageId) {
 
-		ResourceBundle defaultBundle = this.bundleMap.get(Locale.ENGLISH);
-		return Mono.just(defaultBundle.getString(defaultBundle.containsKey(messageId) ? messageId : UKNOWN_ERROR));
-	}
+        ResourceBundle defaultBundle = this.bundleMap.get(Locale.ENGLISH);
+        return Mono.just(defaultBundle.getString(defaultBundle.containsKey(messageId) ? messageId : UKNOWN_ERROR));
+    }
 
-	public Mono<String> getMessage(String messageId, Object... params) {
+    public Mono<String> getMessage(String messageId, Object... params) {
 
-		return this.getMessage(messageId)
-		        .map(e -> StringFormatter.format(e, params));
-	}
+        return this.getMessage(messageId)
+                .map(e -> StringFormatter.format(e, params));
+    }
 
-	public GenericException nonReactiveMessage(HttpStatus status, String messageId, Object... params) {
+    public GenericException nonReactiveMessage(HttpStatus status, String messageId, Object... params) {
 
-		return new GenericException(status, this.getDefaultLocaleMessage(messageId, params));
-	}
+        return new GenericException(status, this.getDefaultLocaleMessage(messageId, params));
+    }
 
-	public <T> Mono<T> throwMessage(HttpStatus status, String messageId, Object... params) {
+    public <T> Mono<T> throwMessage(Function<String, GenericException> genericExceptionFunction, String messageId,
+            Object... params) {
 
-		return Mono.defer(
+        return Mono.defer(
 
-		        () -> this.getMessage(messageId, params)
-		                .map(msg -> new GenericException(status, msg))
-		                .flatMap(Mono::error)
+                () -> this.getMessage(messageId, params)
+                        .map(genericExceptionFunction)
+                        .flatMap(Mono::error)
 
-		);
-	}
+        );
+    }
 
-	public <T> Flux<T> throwFluxMessage(HttpStatus status, String messageId, Object... params) {
+    public <T> Flux<T> throwFluxMessage(Function<String, GenericException> genericExceptionFunction, String messageId,
+            Object... params) {
 
-		return Flux.defer(
+        return Flux.defer(
+                () -> Flux.from(this.getMessage(messageId, params))
+                        .map(genericExceptionFunction)
+                        .flatMap(Flux::error)
 
-		        () -> Flux.from(this.getMessage(messageId, params))
-		                .flatMap(msg -> Flux.error(new GenericException(status, msg)))
+        );
+    }
+    
 
-		);
-	}
+    public String getDefaultLocaleMessage(String messageId) {
+        return this.getLocaleLocaleMessage(Locale.ENGLISH, messageId);
+    }
 
-	public <T> Mono<T> throwMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
+    public String getDefaultLocaleMessage(String messageId, Object... params) {
+        return this.getLocaleLocaleMessage(Locale.ENGLISH, messageId, params);
+    }
 
-		return Mono.defer(() -> this.getMessage(messageId, params)
-		        .map(msg -> new GenericException(status, msg, cause))
-		        .flatMap(Mono::error));
+    public String getLocaleLocaleMessage(Locale locale, String messageId) {
+        return this.bundleMap.get(locale)
+                .getString(messageId);
+    }
 
-	}
-
-	public <T> Flux<T> throwFluxMessage(HttpStatus status, Throwable cause, String messageId, Object... params) {
-
-		return Flux.defer(
-
-		        () -> Flux.from(this.getMessage(messageId, params))
-		                .flatMap(msg -> Flux.error(new GenericException(status, msg, cause)))
-
-		);
-	}
-
-	public String getDefaultLocaleMessage(String messageId) {
-		return this.getLocaleLocaleMessage(Locale.ENGLISH, messageId);
-	}
-
-	public String getDefaultLocaleMessage(String messageId, Object... params) {
-		return this.getLocaleLocaleMessage(Locale.ENGLISH, messageId, params);
-	}
-
-	public String getLocaleLocaleMessage(Locale locale, String messageId) {
-		return this.bundleMap.get(locale)
-		        .getString(messageId);
-	}
-
-	public String getLocaleLocaleMessage(Locale locale, String messageId, Object... params) {
-		return StringFormatter.format(this.bundleMap.get(locale)
-		        .getString(messageId), params);
-	}
+    public String getLocaleLocaleMessage(Locale locale, String messageId, Object... params) {
+        return StringFormatter.format(this.bundleMap.get(locale)
+                .getString(messageId), params);
+    }
 }

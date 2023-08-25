@@ -143,17 +143,17 @@ public abstract class AbstractFilesResourceService {
 				{
 
 			        if (!hasPermission.booleanValue())
-				        return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PATH,
-				                this.getResourceType(), resourcePath);
+				        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 
 			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
 			        if (!Files.exists(path))
-				        this.msgService.throwMessage(HttpStatus.NOT_FOUND, FilesMessageResourceService.PATH_NOT_FOUND,
-				                resourcePath);
+				        this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+				                FilesMessageResourceService.PATH_NOT_FOUND, resourcePath);
 
 			        if (!Files.isDirectory(path))
-				        return msgService.throwMessage(HttpStatus.BAD_REQUEST,
+				        return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 				                FilesMessageResourceService.NOT_A_DIRECTORY, resourcePath);
 
 			        String nameFilter = "";
@@ -187,7 +187,8 @@ public abstract class AbstractFilesResourceService {
 				                .take(page.getPageSize())
 				                .collectList();
 			        } catch (IOException ex) {
-				        return msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
+				        return msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
 				                FilesMessageResourceService.UNKNOWN_ERROR);
 			        }
 		        })
@@ -343,13 +344,13 @@ public abstract class AbstractFilesResourceService {
 				{
 
 			        if (!hasAccess.booleanValue())
-				        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+				        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 				                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
 
 			        Path file = Paths.get(this.getBaseLocation(), rp);
 
 			        if (!Files.exists(file))
-				        return this.msgService.throwMessage(HttpStatus.NOT_FOUND,
+				        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 				                FilesMessageResourceService.PATH_NOT_FOUND, rp);
 
 			        long fileMillis = -1;
@@ -394,7 +395,7 @@ public abstract class AbstractFilesResourceService {
 		        .flatMap(e ->
 				{
 			        if (!e.booleanValue()) {
-				        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+				        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 				                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
 			        }
 			        return makeMatchesStartDownload(downloadOptions, request, response, file, finFileMillis, fileETag);
@@ -462,7 +463,8 @@ public abstract class AbstractFilesResourceService {
 				file = this.makeArchive(file);
 				actualFile = file.toFile();
 			} catch (IOException e) {
-				return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
+				return this.msgService.throwMessage(
+				        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
 				        FilesMessageResourceService.UNABLE_CREATE_DOWNLOAD_FILE);
 			}
 		}
@@ -673,7 +675,7 @@ public abstract class AbstractFilesResourceService {
 				{
 
 			        if (!hasPermission.booleanValue()) {
-				        return this.msgService.throwMessage(HttpStatus.FORBIDDEN,
+				        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 				                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 			        }
 
@@ -684,14 +686,16 @@ public abstract class AbstractFilesResourceService {
 				        try {
 					        return Mono.just(FileSystemUtils.deleteRecursively(path));
 				        } catch (IOException e) {
-					        this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+					        this.msgService.throwMessage(
+					                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 					                FilesMessageResourceService.UNABLE_TO_DEL_FILE, path.toString());
 				        }
 			        } else {
 				        try {
 					        return Mono.just(Files.deleteIfExists(path));
 				        } catch (IOException e) {
-					        this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+					        this.msgService.throwMessage(
+					                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 					                FilesMessageResourceService.UNABLE_TO_DEL_FILE, path.toString());
 				        }
 			        }
@@ -718,8 +722,8 @@ public abstract class AbstractFilesResourceService {
 				{
 
 			        if (!hasPermission.booleanValue())
-				        return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PATH,
-				                this.getResourceType(), resourcePath);
+				        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 
 			        Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
@@ -751,7 +755,7 @@ public abstract class AbstractFilesResourceService {
 		if (fp == null || (!fp.filename()
 		        .toLowerCase()
 		        .endsWith(".zip"))) {
-			return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 			        FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
 		}
 
@@ -839,7 +843,7 @@ public abstract class AbstractFilesResourceService {
 			}
 		} catch (IOException e) {
 
-			return this.msgService.throwFluxMessage(HttpStatus.BAD_REQUEST, e,
+			return this.msgService.throwFluxMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg, e),
 			        FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
 		}
 
@@ -888,7 +892,7 @@ public abstract class AbstractFilesResourceService {
 			try {
 				Files.createDirectories(path);
 			} catch (IOException e) {
-				return this.msgService.throwMessage(HttpStatus.NOT_FOUND, FilesMessageResourceService.PATH_NOT_FOUND,
+				return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg), FilesMessageResourceService.PATH_NOT_FOUND,
 				        resourcePath);
 			}
 
@@ -896,15 +900,15 @@ public abstract class AbstractFilesResourceService {
 			return Mono.just(path);
 
 		if (!Files.isDirectory(path))
-			return msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.NOT_A_DIRECTORY,
+			return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), FilesMessageResourceService.NOT_A_DIRECTORY,
 			        resourcePath);
 
 		Path file = path.resolve(
 		        fileName == null ? fp.filename() : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName));
 
 		if (Files.exists(file) && !ovr)
-			return this.msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.ALREADY_EXISTS,
-			        "File", file.getFileName());
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        FilesMessageResourceService.ALREADY_EXISTS, "File", file.getFileName());
 
 		return Mono.just(file);
 	}

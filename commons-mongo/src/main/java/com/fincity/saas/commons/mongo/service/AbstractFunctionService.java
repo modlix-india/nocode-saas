@@ -22,6 +22,7 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.document.AbstractFunction;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
@@ -47,60 +48,66 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 	private Map<String, ReactiveRepository<ReactiveFunction>> functions = new HashMap<>();
 
 	@Override
-	public Mono<D> create(D entity) {
+    public Mono<D> create(D entity) {
 
-		String name = StringUtil.safeValueOf(entity.getDefinition()
-		        .get(NAME));
-		String namespace = StringUtil.safeValueOf(entity.getDefinition()
-		        .get(NAMESPACE));
+        String name = StringUtil.safeValueOf(entity.getDefinition()
+                .get(NAME));
+        String namespace = StringUtil.safeValueOf(entity.getDefinition()
+                .get(NAMESPACE));
 
-		if (name == null || namespace == null) {
-			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-			        AbstractMongoMessageResourceService.NAME_MISSING);
-		}
+        if (name == null || namespace == null) {
 
-		entity.setName(namespace + "." + name);
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST,
+                    msg),
+                    AbstractMongoMessageResourceService.NAME_MISSING);
 
-		return super.create(entity);
-	}
+        }
+
+        entity.setName(namespace + "." + name);
+
+        return super.create(entity);
+    }
 
 	@Override
 	protected Mono<D> updatableEntity(D entity) {
 
-		return flatMapMono(
+        return flatMapMono(
 
-		        () -> this.read(entity.getId()),
+                () -> this.read(entity.getId()),
 
-		        existing ->
-				{
-			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+                existing -> {
+                    if (existing.getVersion() != entity.getVersion())
 
-			        String name = StringUtil.safeValueOf(entity.getDefinition()
-			                .get(NAME));
-			        String namespace = StringUtil.safeValueOf(entity.getDefinition()
-			                .get(NAMESPACE));
+                        return this.messageResourceService
+                                .throwMessage(msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                        AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-			        if (name == null || namespace == null) {
-				        return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                AbstractMongoMessageResourceService.NAME_MISSING);
-			        }
+                    String name = StringUtil.safeValueOf(entity.getDefinition()
+                            .get(NAME));
+                    String namespace = StringUtil.safeValueOf(entity.getDefinition()
+                            .get(NAMESPACE));
 
-			        String funName = namespace + "." + name;
+                    if (name == null || namespace == null) {
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                AbstractMongoMessageResourceService.NAME_MISSING);
+                    }
 
-			        if (!funName.equals(existing.getName())) {
+                    String funName = namespace + "." + name;
 
-				        return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                AbstractMongoMessageResourceService.NAME_CHANGE);
-			        }
+                    if (!funName.equals(existing.getName())) {
 
-			        existing.setDefinition(entity.getDefinition());
-			        existing.setVersion(existing.getVersion() + 1)
-			                .setPermission(entity.getPermission());
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                AbstractMongoMessageResourceService.NAME_CHANGE);
+                    }
 
-			        return Mono.just(existing);
-		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFunctionService.updatableEntity"));
+                    existing.setDefinition(entity.getDefinition());
+                    existing.setVersion(existing.getVersion() + 1)
+                            .setPermission(entity.getPermission());
+
+                    return Mono.just(existing);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFunctionService.updatableEntity"));
 	}
 
 	static class NameOnly {

@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
@@ -74,7 +75,8 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 		try {
 			certificate.writeCertificate(sw);
 		} catch (IOException e) {
-			return this.msgResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
+			return this.msgResourceService.throwMessage(
+			        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
 			        SecurityMessageResourceService.CERTIFICATE_PROBLEM);
 		}
 

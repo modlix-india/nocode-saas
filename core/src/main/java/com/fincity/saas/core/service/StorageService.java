@@ -14,6 +14,7 @@ import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.Additio
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -61,8 +62,9 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 									.flatMap(access -> {
 
 										if (!access.booleanValue())
-											return coreMsgService.throwMessage(HttpStatus.FORBIDDEN,
-													CoreMessageResourceService.STORAGE_IS_APP_LEVEL);
+							                return coreMsgService.throwMessage(
+							                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+							                        CoreMessageResourceService.STORAGE_IS_APP_LEVEL);
 
 										return super.create(entity);
 									});
@@ -100,8 +102,9 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 				existing -> {
 					if (existing.getVersion() != entity.getVersion())
-						return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-								AbstractMongoMessageResourceService.VERSION_MISMATCH);
+				        return this.messageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setSchema(entity.getSchema())
 							.setIsAudited(entity.getIsAudited())
