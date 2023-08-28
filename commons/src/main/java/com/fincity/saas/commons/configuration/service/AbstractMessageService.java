@@ -43,9 +43,10 @@ public class AbstractMessageService {
                 .map(e -> StringFormatter.format(e, params));
     }
 
-    public GenericException nonReactiveMessage(HttpStatus status, String messageId, Object... params) {
+    public GenericException nonReactiveMessage(Function<String, GenericException> genericExceptionFunction,
+            String messageId, Object... params) {
 
-        return new GenericException(status, this.getDefaultLocaleMessage(messageId, params));
+        return genericExceptionFunction.apply(this.getDefaultLocaleMessage(messageId, params));
     }
 
     public <T> Mono<T> throwMessage(Function<String, GenericException> genericExceptionFunction, String messageId,
@@ -70,7 +71,6 @@ public class AbstractMessageService {
 
         );
     }
-    
 
     public String getDefaultLocaleMessage(String messageId) {
         return this.getLocaleLocaleMessage(Locale.ENGLISH, messageId);
