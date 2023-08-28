@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -47,8 +48,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 				|| !StringUtil.safeEquals(entity.getName(), entity.getAppCode())
 				|| !StringUtil.onlyAlphabetAllowed(entity.getAppCode()))
 
-			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					UIMessageResourceService.APP_NAME_MISMATCH);
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    UIMessageResourceService.APP_NAME_MISMATCH);
 
 		return super.create(entity);
 	}
@@ -83,8 +84,9 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 				existing -> {
 					if (existing.getVersion() != entity.getVersion())
-						return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-								AbstractMongoMessageResourceService.VERSION_MISMATCH);
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setProperties(entity.getProperties())
 							.setTranslations(entity.getTranslations())
@@ -128,11 +130,12 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 					try {
 						return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
 								.newInstance(cApp != null ? cApp : mergedApp));
-					} catch (Exception e) {
+                    } catch (Exception e) {
 
-						return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-								AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.getObjectName());
-					}
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+                                AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT, this.getObjectName());
+                    }
 				},
 
 				(key, cApp, dbApp, mergedApp, clonedApp) -> {

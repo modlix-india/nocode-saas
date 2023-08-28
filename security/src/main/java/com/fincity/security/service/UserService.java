@@ -368,8 +368,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				this.dao.fetchPermissionsFromGivenUser(userId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getPermissionsFromGivenUser"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FETCH_PERMISSION_ERROR_FOR_USER, userId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FETCH_PERMISSION_ERROR_FOR_USER, userId));
 
 	}
 
@@ -394,8 +395,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				this.dao.fetchRolesFromGivenUser(userId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getRolesFromGivenUser"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FETCH_ROLE_ERROR_FOR_USER, userId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FETCH_ROLE_ERROR_FOR_USER, userId));
 
 	}
 
@@ -446,7 +448,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				.flatMap(e -> this.evictTokens(userId)
 						.map(x -> e))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				.switchIfEmpty(securityMessageResourceService.throwMessage(msg -> new GenericException( HttpStatus.FORBIDDEN, msg), 
 						SecurityMessageResourceService.REMOVE_PERMISSION_ERROR, permissionId, userId));
 	}
 
@@ -480,8 +482,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				.flatMap(e -> this.evictTokens(userId)
 						.map(x -> e))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
@@ -524,8 +527,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignPermissionToUser"))
 							.flatMap(e -> this.evictTokens(userId)
 									.map(x -> e))
-							.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR, permissionId, userId));
 				});
 
 	}
@@ -571,8 +575,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 							.flatMap(e -> this.evictTokens(userId)
 									.map(x -> e))
-							.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
 
 				});
 
@@ -590,8 +595,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			RequestUpdatePassword requestPassword, boolean isResetPassword) {
 
 		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
-			return securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-					SecurityMessageResourceService.NEW_PASSWORD_MISSING);
+			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			        SecurityMessageResourceService.NEW_PASSWORD_MISSING);
 
 		return flatMapMono(
 
@@ -627,8 +632,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.flatMap(e -> this.dao.updateUserStatus(reqUserId)
 						.map(x -> e))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateNewPassword"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						"Password cannot be updated"));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg), "Password cannot be updated"));
 
 	}
 
@@ -648,19 +653,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 			return flatMapMono(
 
-					() -> this.dao.readById(reqUserId),
+			        () -> this.dao.readById(reqUserId),
 
-					requestedUser -> Mono.just(SecurityUserStatusCode.ACTIVE.equals(requestedUser.getStatusCode())),
+			        requestedUser -> Mono.just(SecurityUserStatusCode.ACTIVE.equals(requestedUser.getStatusCode())),
 
-					(requestedUser, isActive) -> isActive.booleanValue()
-							? this.checkPasswordEquality(requestedUser, newPassword)
-							: securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.USER_NOT_ACTIVE),
+			        (requestedUser, isActive) -> isActive.booleanValue()
+			                ? this.checkPasswordEquality(requestedUser, newPassword)
+			                : securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.USER_NOT_ACTIVE),
 
-					(requestedUser, isActive, passwordEqual) -> passwordEqual.booleanValue()
-							? securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
-							: Mono.just(true)
+			        (requestedUser, isActive, passwordEqual) -> passwordEqual.booleanValue()
+			                ? securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)
+			                : Mono.just(true)
 
 			).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"));
 		}
@@ -728,8 +735,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								&& passwordEncoder.matches(pastPassword.getPassword(), user.getId() + newPassword))
 								|| (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
 										.equals(newPassword)))
-							return this.securityMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-									SecurityMessageResourceService.PASSWORD_USER_ERROR);
+					        return this.securityMessageResourceService.throwMessage(
+					                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					                SecurityMessageResourceService.PASSWORD_USER_ERROR);
 
 					}
 
@@ -839,8 +847,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				ca -> {
 
 					if (ca.isAuthenticated()) {
-						return this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-								SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
+				        return this.securityMessageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				                SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
 					}
 
 					return this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(),

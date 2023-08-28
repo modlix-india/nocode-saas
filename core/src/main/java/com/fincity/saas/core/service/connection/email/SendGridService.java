@@ -9,6 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
@@ -28,7 +29,7 @@ public class SendGridService extends AbstractEmailService implements IAppEmailSe
 
 		if (connection.getConnectionDetails() == null || StringUtil.safeIsBlank(connection.getConnectionDetails()
 		        .get("apiKey")))
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 			        CoreMessageResourceService.MAIL_SEND_ERROR, "SENDGRID api key is not found");
 
 		String apiKey = connection.getConnectionDetails()
@@ -51,7 +52,8 @@ public class SendGridService extends AbstractEmailService implements IAppEmailSe
 						{
 			                logger.error("Error while sending it to send grid : {}", e.getResponseBodyAsString(), e);
 
-			                return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			                return this.msgService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 			                        CoreMessageResourceService.MAIL_SEND_ERROR,
 			                        "Error with body : " + e.getResponseBodyAsString(), e);
 		                })

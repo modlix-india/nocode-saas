@@ -39,6 +39,7 @@ import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunction
 import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -161,39 +162,41 @@ public class FunctionExecutionController {
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
-						this.functionService.getFunctionRepository(appCode, clientCode)).find(namespace, name),
+		        ca -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
+		                this.functionService.getFunctionRepository(appCode, clientCode)).find(namespace, name),
 
-				(ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-						new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode, clientCode))),
+		        (ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+		                new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode, clientCode))),
 
-				(ca, fun, schRepo) -> job == null ? getRequestParamsToArguments(fun.getSignature()
-						.getParameters(), request, schRepo) : Mono.just(job),
+		        (ca, fun, schRepo) -> job == null ? getRequestParamsToArguments(fun.getSignature()
+		                .getParameters(), request, schRepo) : Mono.just(job),
 
-				(ca, fun, schRepo, args) -> {
-					if (fun instanceof DefinitionFunction df && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
-							&& !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
-						return msgService.throwMessage(HttpStatus.FORBIDDEN,
-								AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
+		        (ca, fun, schRepo, args) ->
+				{
+			        if (fun instanceof DefinitionFunction df && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
+			                && !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(), ca.getAuthorities())) {
+				        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				                AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
 
-					}
+			        }
 
-					return fun
-							.execute(
-									new ReactiveFunctionExecutionParameters(
-											new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-													this.coreFunctionRepository,
-													functionService.getFunctionRepository(appCode, clientCode)),
-											schRepo).setArguments(args));
+			        return fun
+			                .execute(
+			                        new ReactiveFunctionExecutionParameters(
+			                                new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
+			                                        this.coreFunctionRepository,
+			                                        functionService.getFunctionRepository(appCode, clientCode)),
+			                                schRepo).setArguments(args));
 
-				},
+		        },
 
-				(ca, fun, schRepo, args, output) -> this.extractOutputEvent(output))
+		        (ca, fun, schRepo, args, output) -> this.extractOutputEvent(
+		                output))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionExecutionController.execute"))
-				.switchIfEmpty(this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
+		        .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+		                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Function", namespace + "." + name));
 
 	}
 

@@ -52,9 +52,9 @@ public class PermissionService
 				.flatMap(ca -> {
 
 					if (!ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode())) {
-						return messageResourceService.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
-								.flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.FORBIDDEN,
-										StringFormatter.format(msg, PERMISSION))));
+				        return messageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				                SecurityMessageResourceService.FORBIDDEN_CREATE, PERMISSION);
 					}
 					return super.create(entity);
 				});
@@ -76,10 +76,9 @@ public class PermissionService
 								if (managed.booleanValue())
 									return Mono.just(p);
 
-								return messageResourceService
-										.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-										.flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
-												StringFormatter.format(msg, PERMISSION, id))));
+				                return messageResourceService.throwMessage(
+				                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				                        SecurityMessageResourceService.OBJECT_NOT_FOUND, PERMISSION, id);
 							});
 
 				}));
@@ -190,9 +189,10 @@ public class PermissionService
 						}))
 				.onErrorResume(
 						ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
-								? this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
-										SecurityMessageResourceService.DELETE_PERMISSION_ERROR)
-								: Mono.error(ex));
+		                        ? this.messageResourceService.throwMessage(
+		                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
+		                                SecurityMessageResourceService.DELETE_PERMISSION_ERROR)
+		                        : Mono.error(ex));
 
 	}
 
