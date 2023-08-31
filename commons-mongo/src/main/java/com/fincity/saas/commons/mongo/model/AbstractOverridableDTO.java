@@ -5,6 +5,7 @@ import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -12,8 +13,9 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>>
-        extends AbstractUpdatableDTO<String, String> {
+		extends AbstractUpdatableDTO<String, String> {
 
 	private static final long serialVersionUID = -7561098495897714431L;
 
@@ -66,19 +68,19 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
 	protected void clone(D obj) {
 
 		this.setName(obj.getName())
-		        .setMessage(obj.getMessage())
-		        .setClientCode(obj.getClientCode())
-		        .setPermission(obj.getPermission())
-		        .setAppCode(obj.getAppCode())
-		        .setBaseClientCode(obj.getBaseClientCode())
-		        .setVersion(obj.getVersion())
-		        .setDescription(obj.getDescription())
-		        .setTitle(obj.getTitle())
-		        .setUpdatedAt(obj.getUpdatedAt())
-		        .setUpdatedBy(obj.getUpdatedBy())
-		        .setId(obj.getId())
-		        .setCreatedAt(obj.getCreatedAt())
-		        .setCreatedBy(obj.getCreatedBy());
+				.setMessage(obj.getMessage())
+				.setClientCode(obj.getClientCode())
+				.setPermission(obj.getPermission())
+				.setAppCode(obj.getAppCode())
+				.setBaseClientCode(obj.getBaseClientCode())
+				.setVersion(obj.getVersion())
+				.setDescription(obj.getDescription())
+				.setTitle(obj.getTitle())
+				.setUpdatedAt(obj.getUpdatedAt())
+				.setUpdatedBy(obj.getUpdatedBy())
+				.setId(obj.getId())
+				.setCreatedAt(obj.getCreatedAt())
+				.setCreatedBy(obj.getCreatedBy());
 
 		this.notOverridable = obj.getNotOverridable();
 	}

@@ -10,6 +10,7 @@ import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class AbstractSchema<D extends AbstractSchema<D>> extends AbstractOverridableDTO<D> {
 
 	private static final long serialVersionUID = 2089418665068611650L;
@@ -34,11 +36,10 @@ public class AbstractSchema<D extends AbstractSchema<D>> extends AbstractOverrid
 
 		if (base != null)
 			return DifferenceApplicator.apply(this.definition, base.getDefinition())
-			        .map(a ->
-					{
-				        this.definition = (Map<String, Object>) a;
-				        return (D) this;
-			        });
+					.map(a -> {
+						this.definition = (Map<String, Object>) a;
+						return (D) this;
+					});
 
 		return Mono.just((D) this);
 	}
@@ -51,11 +52,10 @@ public class AbstractSchema<D extends AbstractSchema<D>> extends AbstractOverrid
 			return Mono.just((D) this);
 
 		return Mono.just(this)
-		        .flatMap(e -> DifferenceExtractor.extract(e.definition, base.getDefinition())
-		                .map(k ->
-						{
-			                e.definition = (Map<String, Object>) k;
-			                return (D) e;
-		                }));
+				.flatMap(e -> DifferenceExtractor.extract(e.definition, base.getDefinition())
+						.map(k -> {
+							e.definition = (Map<String, Object>) k;
+							return (D) e;
+						}));
 	}
 }

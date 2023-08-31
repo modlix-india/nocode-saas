@@ -8,11 +8,13 @@ import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
+@ToString(callSuper = true)
 public class TokenObject extends AbstractDTO<ULong, ULong> {
 
 	private static final long serialVersionUID = -2389674283265151579L;

@@ -14,6 +14,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -23,6 +24,7 @@ import reactor.util.context.Context;
 @Document
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Application extends AbstractOverridableDTO<Application> {
 
 	private static final long serialVersionUID = 4162610982706108795L;
@@ -51,24 +53,23 @@ public class Application extends AbstractOverridableDTO<Application> {
 		if (base != null) {
 
 			return FlatMapUtil.flatMapMonoWithNull(
-			        () -> DifferenceApplicator.apply(this.translations, base.translations),
+					() -> DifferenceApplicator.apply(this.translations, base.translations),
 
-			        t -> DifferenceApplicator.apply(this.languages, base.languages),
+					t -> DifferenceApplicator.apply(this.languages, base.languages),
 
-			        (t, l) -> DifferenceApplicator.apply(this.properties, base.properties),
+					(t, l) -> DifferenceApplicator.apply(this.properties, base.properties),
 
-			        (t, l, p) ->
-					{
+					(t, l, p) -> {
 
-				        this.translations = (Map<String, Map<String, String>>) t;
-				        this.languages = (Map<String, Map<String, String>>) l;
-				        this.properties = (Map<String, Object>) p;
+						this.translations = (Map<String, Map<String, String>>) t;
+						this.languages = (Map<String, Map<String, String>>) l;
+						this.properties = (Map<String, Object>) p;
 
-				        if (this.defaultLanguage == null)
-					        this.defaultLanguage = base.defaultLanguage;
+						if (this.defaultLanguage == null)
+							this.defaultLanguage = base.defaultLanguage;
 
-				        return Mono.just(this);
-			        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "Application.applyOverride"));
+						return Mono.just(this);
+					}).contextWrite(Context.of(LogUtil.METHOD_NAME, "Application.applyOverride"));
 		}
 		return Mono.just(this);
 	}
@@ -83,28 +84,27 @@ public class Application extends AbstractOverridableDTO<Application> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> starting,
+				() -> starting,
 
-		        obj -> DifferenceExtractor.extract(obj.translations, base.translations),
+				obj -> DifferenceExtractor.extract(obj.translations, base.translations),
 
-		        (obj, tr) -> DifferenceExtractor.extract(obj.languages, base.languages),
+				(obj, tr) -> DifferenceExtractor.extract(obj.languages, base.languages),
 
-		        (obj, tr, lang) -> DifferenceExtractor.extract(obj.properties, base.properties),
+				(obj, tr, lang) -> DifferenceExtractor.extract(obj.properties, base.properties),
 
-		        (obj, tr, lang, props) ->
-				{
+				(obj, tr, lang, props) -> {
 
-			        obj.setTranslations((Map<String, Map<String, String>>) tr);
+					obj.setTranslations((Map<String, Map<String, String>>) tr);
 
-			        obj.setLanguages((Map<String, Map<String, String>>) lang);
+					obj.setLanguages((Map<String, Map<String, String>>) lang);
 
-			        obj.setProperties((Map<String, Object>) props);
+					obj.setProperties((Map<String, Object>) props);
 
-			        if (obj.defaultLanguage != null && obj.defaultLanguage.equals(base.defaultLanguage))
-				        obj.defaultLanguage = null;
+					if (obj.defaultLanguage != null && obj.defaultLanguage.equals(base.defaultLanguage))
+						obj.defaultLanguage = null;
 
-			        return Mono.just(obj);
-		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "Application.makeOverride"));
+					return Mono.just(obj);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "Application.makeOverride"));
 	}
 
 }

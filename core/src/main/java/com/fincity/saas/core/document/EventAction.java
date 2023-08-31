@@ -14,6 +14,7 @@ import com.fincity.saas.core.model.EventActionTask;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -23,10 +24,11 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "eventActionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class EventAction extends AbstractOverridableDTO<EventAction> {
-	
+
 	private static final long serialVersionUID = 8419515774158611099L;
-	
+
 	private Map<String, EventActionTask> tasks;
 
 	public EventAction(EventAction obj) {
@@ -42,11 +44,10 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
 		if (base != null)
 			return DifferenceApplicator.apply(this.tasks, base.tasks)
 					.defaultIfEmpty(Map.of())
-			        .map(a ->
-					{
-				        this.tasks = (Map<String, EventActionTask>) a;
-				        return this;
-			        });
+					.map(a -> {
+						this.tasks = (Map<String, EventActionTask>) a;
+						return this;
+					});
 
 		return Mono.just(this);
 	}
@@ -59,11 +60,10 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
 			return Mono.just(this);
 
 		return Mono.just(this)
-		        .flatMap(e -> DifferenceExtractor.extract(e.tasks, base.tasks)
-		                .map(k ->
-						{
-			                e.tasks = (Map<String, EventActionTask>) k;
-			                return e;
-		                }));
+				.flatMap(e -> DifferenceExtractor.extract(e.tasks, base.tasks)
+						.map(k -> {
+							e.tasks = (Map<String, EventActionTask>) k;
+							return e;
+						}));
 	}
 }
