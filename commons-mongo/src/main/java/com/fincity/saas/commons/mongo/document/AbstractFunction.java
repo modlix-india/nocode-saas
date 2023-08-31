@@ -10,6 +10,7 @@ import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class AbstractFunction<D extends AbstractFunction<D>> extends AbstractOverridableDTO<D> {
 
 	private static final long serialVersionUID = 2733397732360134939L;
@@ -36,13 +38,12 @@ public class AbstractFunction<D extends AbstractFunction<D>> extends AbstractOve
 
 		if (base != null)
 			return DifferenceApplicator.apply(this.definition, base.getDefinition())
-			        .map(a ->
-					{
-				        this.definition = (Map<String, Object>) a;
-				        if (this.executeAuth == null)
-					        this.executeAuth = base.getExecuteAuth();
-				        return (D) this;
-			        });
+					.map(a -> {
+						this.definition = (Map<String, Object>) a;
+						if (this.executeAuth == null)
+							this.executeAuth = base.getExecuteAuth();
+						return (D) this;
+					});
 
 		return Mono.just((D) this);
 	}
@@ -55,15 +56,14 @@ public class AbstractFunction<D extends AbstractFunction<D>> extends AbstractOve
 			return Mono.just((D) this);
 
 		return Mono.just(this)
-		        .flatMap(e -> DifferenceExtractor.extract(e.definition, base.getDefinition())
-		                .map(k ->
-						{
-			                e.definition = (Map<String, Object>) k;
+				.flatMap(e -> DifferenceExtractor.extract(e.definition, base.getDefinition())
+						.map(k -> {
+							e.definition = (Map<String, Object>) k;
 
-			                if (this.executeAuth != null && this.executeAuth.equals(base.getExecuteAuth()))
-				                this.executeAuth = null;
+							if (this.executeAuth != null && this.executeAuth.equals(base.getExecuteAuth()))
+								this.executeAuth = null;
 
-			                return (D) e;
-		                }));
+							return (D) e;
+						}));
 	}
 }

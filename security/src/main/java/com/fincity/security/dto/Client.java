@@ -7,11 +7,13 @@ import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private static final long serialVersionUID = 4312344235572008119L;

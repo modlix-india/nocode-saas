@@ -16,6 +16,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -26,6 +27,7 @@ import reactor.util.context.Context;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "templateFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Template extends AbstractOverridableDTO<Template> {
 
 	private static final long serialVersionUID = -6427509976748513994L;
@@ -59,36 +61,35 @@ public class Template extends AbstractOverridableDTO<Template> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> DifferenceApplicator.apply(this.templateParts, base.templateParts),
+				() -> DifferenceApplicator.apply(this.templateParts, base.templateParts),
 
-		        tempParts -> DifferenceApplicator.apply(this.resources, base.resources),
+				tempParts -> DifferenceApplicator.apply(this.resources, base.resources),
 
-		        (tempParts, rsrc) ->
-				{
+				(tempParts, rsrc) -> {
 
-			        this.templateParts = (Map<String, Map<String, String>>) tempParts;
-			        this.resources = (Map<String, String>) rsrc;
+					this.templateParts = (Map<String, Map<String, String>>) tempParts;
+					this.resources = (Map<String, String>) rsrc;
 
-			        if (this.templateType == null)
-				        this.templateType = base.templateType;
+					if (this.templateType == null)
+						this.templateType = base.templateType;
 
-			        if (this.defaultLanguage == null)
-				        this.defaultLanguage = base.defaultLanguage;
+					if (this.defaultLanguage == null)
+						this.defaultLanguage = base.defaultLanguage;
 
-			        if (this.toExpression == null)
-				        this.toExpression = base.toExpression;
+					if (this.toExpression == null)
+						this.toExpression = base.toExpression;
 
-			        if (this.fromExpression == null)
-				        this.fromExpression = base.fromExpression;
+					if (this.fromExpression == null)
+						this.fromExpression = base.fromExpression;
 
-			        if (this.languageExpression == null)
-				        this.languageExpression = base.languageExpression;
+					if (this.languageExpression == null)
+						this.languageExpression = base.languageExpression;
 
-			        return Mono.just(this);
-		        }
+					return Mono.just(this);
+				}
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Template.applyOverride"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Template.applyOverride"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -100,34 +101,33 @@ public class Template extends AbstractOverridableDTO<Template> {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> DifferenceExtractor.extract(this.templateParts, base.templateParts),
+				() -> DifferenceExtractor.extract(this.templateParts, base.templateParts),
 
-		        tempParts -> DifferenceExtractor.extract(this.resources, base.resources),
+				tempParts -> DifferenceExtractor.extract(this.resources, base.resources),
 
-		        (temParts, rsrc) ->
-				{
-			        this.templateParts = (Map<String, Map<String, String>>) temParts;
-			        this.resources = (Map<String, String>) rsrc;
+				(temParts, rsrc) -> {
+					this.templateParts = (Map<String, Map<String, String>>) temParts;
+					this.resources = (Map<String, String>) rsrc;
 
-			        if (StringUtil.safeEquals(this.templateType, base.templateType))
-				        this.templateType = null;
+					if (StringUtil.safeEquals(this.templateType, base.templateType))
+						this.templateType = null;
 
-			        if (StringUtil.safeEquals(this.defaultLanguage, base.defaultLanguage))
-				        this.defaultLanguage = null;
+					if (StringUtil.safeEquals(this.defaultLanguage, base.defaultLanguage))
+						this.defaultLanguage = null;
 
-			        if (StringUtil.safeEquals(this.toExpression, base.toExpression))
-				        this.toExpression = null;
+					if (StringUtil.safeEquals(this.toExpression, base.toExpression))
+						this.toExpression = null;
 
-			        if (StringUtil.safeEquals(this.fromExpression, base.fromExpression))
-				        this.fromExpression = null;
+					if (StringUtil.safeEquals(this.fromExpression, base.fromExpression))
+						this.fromExpression = null;
 
-			        if (StringUtil.safeEquals(this.languageExpression, base.languageExpression))
-				        this.languageExpression = null;
+					if (StringUtil.safeEquals(this.languageExpression, base.languageExpression))
+						this.languageExpression = null;
 
-			        return Mono.just(this);
-		        }
+					return Mono.just(this);
+				}
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Template.makeOverride"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Template.makeOverride"));
 	}
 }

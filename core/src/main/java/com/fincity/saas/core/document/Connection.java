@@ -12,6 +12,7 @@ import com.fincity.saas.core.enums.ConnectionType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -21,6 +22,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "connectionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Connection extends AbstractOverridableDTO<Connection> {
 
 	private static final long serialVersionUID = -5507743337705010640L;

@@ -16,6 +16,7 @@ import com.fincity.saas.ui.model.ComponentDefinition;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -26,6 +27,7 @@ import reactor.util.context.Context;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "pageFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Page extends AbstractOverridableDTO<Page> {
 
 	private static final long serialVersionUID = 6899134951550453853L;
@@ -55,28 +57,27 @@ public class Page extends AbstractOverridableDTO<Page> {
 		if (base != null) {
 
 			return FlatMapUtil
-			        .flatMapMonoWithNull(() -> DifferenceApplicator.apply(this.translations, base.translations),
+					.flatMapMonoWithNull(() -> DifferenceApplicator.apply(this.translations, base.translations),
 
-			                t -> DifferenceApplicator.apply(this.properties, base.properties),
+							t -> DifferenceApplicator.apply(this.properties, base.properties),
 
-			                (t, p) -> DifferenceApplicator.apply(this.eventFunctions, base.eventFunctions),
+							(t, p) -> DifferenceApplicator.apply(this.eventFunctions, base.eventFunctions),
 
-			                (t, p, e) -> DifferenceApplicator.apply(this.componentDefinition, base.componentDefinition),
+							(t, p, e) -> DifferenceApplicator.apply(this.componentDefinition, base.componentDefinition),
 
-			                (t, p, e, c) ->
-							{
-				                this.translations = (Map<String, Map<String, String>>) t;
-				                this.properties = (Map<String, Object>) p;
-				                this.eventFunctions = (Map<String, Object>) e;
-				                this.componentDefinition = (Map<String, ComponentDefinition>) c;
+							(t, p, e, c) -> {
+								this.translations = (Map<String, Map<String, String>>) t;
+								this.properties = (Map<String, Object>) p;
+								this.eventFunctions = (Map<String, Object>) e;
+								this.componentDefinition = (Map<String, ComponentDefinition>) c;
 
-				                this.device = base.device;
-				                if (this.rootComponent == null)
-					                this.rootComponent = base.rootComponent;
+								this.device = base.device;
+								if (this.rootComponent == null)
+									this.rootComponent = base.rootComponent;
 
-				                return Mono.just(this);
-			                })
-			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Page.applyOverride"));
+								return Mono.just(this);
+							})
+					.contextWrite(Context.of(LogUtil.METHOD_NAME, "Page.applyOverride"));
 		}
 		return Mono.just(this);
 	}
@@ -87,30 +88,29 @@ public class Page extends AbstractOverridableDTO<Page> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> Mono.just(this),
+				() -> Mono.just(this),
 
-		        obj -> DifferenceExtractor.extract(obj.properties, base.properties),
+				obj -> DifferenceExtractor.extract(obj.properties, base.properties),
 
-		        (obj, props) -> DifferenceExtractor.extract(obj.translations, base.translations),
+				(obj, props) -> DifferenceExtractor.extract(obj.translations, base.translations),
 
-		        (obj, props, trans) -> DifferenceExtractor.extract(obj.componentDefinition, base.componentDefinition),
+				(obj, props, trans) -> DifferenceExtractor.extract(obj.componentDefinition, base.componentDefinition),
 
-		        (obj, props, trans, cd) -> DifferenceExtractor.extract(obj.eventFunctions, base.eventFunctions),
+				(obj, props, trans, cd) -> DifferenceExtractor.extract(obj.eventFunctions, base.eventFunctions),
 
-		        (obj, props, trans, cd, evs) ->
-				{
+				(obj, props, trans, cd, evs) -> {
 
-			        obj.setProperties((Map<String, Object>) props);
-			        obj.setTranslations((Map<String, Map<String, String>>) trans);
-			        obj.setComponentDefinition((Map<String, ComponentDefinition>) cd);
-			        obj.setEventFunctions((Map<String, Object>) evs);
+					obj.setProperties((Map<String, Object>) props);
+					obj.setTranslations((Map<String, Map<String, String>>) trans);
+					obj.setComponentDefinition((Map<String, ComponentDefinition>) cd);
+					obj.setEventFunctions((Map<String, Object>) evs);
 
-			        if (obj.rootComponent != null && obj.rootComponent.equals(base.rootComponent))
-				        obj.rootComponent = null;
-			        return Mono.just(obj);
-		        }
+					if (obj.rootComponent != null && obj.rootComponent.equals(base.rootComponent))
+						obj.rootComponent = null;
+					return Mono.just(obj);
+				}
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Page.makeOverride"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Page.makeOverride"));
 	}
 }

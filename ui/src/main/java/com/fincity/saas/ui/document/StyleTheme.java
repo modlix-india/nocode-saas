@@ -15,6 +15,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -25,6 +26,7 @@ import reactor.util.context.Context;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "stylethemeFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class StyleTheme extends AbstractOverridableDTO<StyleTheme> {
 
 	private static final long serialVersionUID = 4355909627072800292L;
@@ -45,13 +47,12 @@ public class StyleTheme extends AbstractOverridableDTO<StyleTheme> {
 
 			return FlatMapUtil.flatMapMonoWithNull(
 
-			        () -> DifferenceApplicator.apply(this.variables, base.variables),
+					() -> DifferenceApplicator.apply(this.variables, base.variables),
 
-			        v ->
-					{
-				        this.variables = (Map<String, Map<String, String>>) v;
-				        return Mono.just(this);
-			        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleTheme.applyOverride"));
+					v -> {
+						this.variables = (Map<String, Map<String, String>>) v;
+						return Mono.just(this);
+					}).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleTheme.applyOverride"));
 		}
 		return Mono.just(this);
 	}
@@ -64,12 +65,11 @@ public class StyleTheme extends AbstractOverridableDTO<StyleTheme> {
 			return Mono.just(this);
 
 		return Mono.just(this)
-		        .flatMap(a -> DifferenceExtractor.extract(a.variables, base.variables)
-		                .map(e ->
-						{
-			                a.setVariables((Map<String, Map<String, String>>) e);
-			                return a;
-		                }));
+				.flatMap(a -> DifferenceExtractor.extract(a.variables, base.variables)
+						.map(e -> {
+							a.setVariables((Map<String, Map<String, String>>) e);
+							return a;
+						}));
 
 	}
 }

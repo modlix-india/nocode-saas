@@ -13,6 +13,7 @@ import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -22,6 +23,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "actionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Action extends AbstractOverridableDTO<Action> {
 
 	private static final long serialVersionUID = 3425030507970576753L;
@@ -45,15 +47,14 @@ public class Action extends AbstractOverridableDTO<Action> {
 		if (base != null)
 			return DifferenceApplicator.apply(this.properties, base.properties)
 					.defaultIfEmpty(Map.of())
-			        .map(a ->
-					{
-				        this.properties = (Map<String, String>) a;
-				        if (this.functionNamespace == null)
-					        this.functionNamespace = base.functionNamespace;
-				        if (this.functionName == null)
-					        this.functionName = base.functionName;
-				        return this;
-			        });
+					.map(a -> {
+						this.properties = (Map<String, String>) a;
+						if (this.functionNamespace == null)
+							this.functionNamespace = base.functionNamespace;
+						if (this.functionName == null)
+							this.functionName = base.functionName;
+						return this;
+					});
 
 		return Mono.just(this);
 	}
@@ -66,18 +67,17 @@ public class Action extends AbstractOverridableDTO<Action> {
 			return Mono.just(this);
 
 		return Mono.just(this)
-		        .flatMap(e -> DifferenceExtractor.extract(e.properties, base.properties)
-		                .map(k ->
-						{
-			                e.properties = (Map<String, String>) k;
+				.flatMap(e -> DifferenceExtractor.extract(e.properties, base.properties)
+						.map(k -> {
+							e.properties = (Map<String, String>) k;
 
-			                if (this.functionNamespace != null && this.functionNamespace.equals(base.functionNamespace))
-				                this.functionNamespace = null;
+							if (this.functionNamespace != null && this.functionNamespace.equals(base.functionNamespace))
+								this.functionNamespace = null;
 
-			                if (this.functionName != null && this.functionName.equals(base.functionName))
-				                this.functionName = null;
+							if (this.functionName != null && this.functionName.equals(base.functionName))
+								this.functionName = null;
 
-			                return e;
-		                }));
+							return e;
+						}));
 	}
 }

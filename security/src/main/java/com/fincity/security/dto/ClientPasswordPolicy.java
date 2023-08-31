@@ -7,9 +7,11 @@ import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 public class ClientPasswordPolicy extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private static final long serialVersionUID = -6555166027839281210L;

@@ -29,46 +29,46 @@ import reactor.util.function.Tuples;
 public class IndexHTMLService {
 
 	private static final String[] LINK_FIELDS = new String[] { "crossorigin", "href", "hreflang", "media",
-	        "referrerpolicy", "rel", "sizes", "title", "type" };
+			"referrerpolicy", "rel", "sizes", "title", "type" };
 
 	private static final String[] SCRIPT_FIELDS = new String[] { "async", "type", "crossorigin", "defer", "integrity",
-	        "nomodule", "referrerpolicy", "src" };
+			"nomodule", "referrerpolicy", "src" };
 
 	private static final String[] META_FIELDS = new String[] { "charset", "name", "http-equiv", "content" };
 
 	public static final String CACHE_NAME_INDEX = "indexCache";
 
 	private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
-	        2, "BEFORE_BODY", 3);
+			2, "BEFORE_BODY", 3);
 
 	private static final Map<String, String> ICON_PACK = Map.ofEntries(
 
-	        Map.entry("FREE_FONT_AWESOME_ALL",
-	                "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\" rel=\"stylesheet\" />"),
+			Map.entry("FREE_FONT_AWESOME_ALL",
+					"<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_SYMBOLS_OUTLINED",
-	                "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
+			Map.entry("MATERIAL_SYMBOLS_OUTLINED",
+					"<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_SYMBOLS_ROUNDED",
-	                "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
+			Map.entry("MATERIAL_SYMBOLS_ROUNDED",
+					"<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_SYMBOLS_SHARP",
-	                "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
+			Map.entry("MATERIAL_SYMBOLS_SHARP",
+					"<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_ICONS_FILLED",
-	                "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+			Map.entry("MATERIAL_ICONS_FILLED",
+					"<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_ICONS_OUTLINED",
-	                "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Outlined\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+			Map.entry("MATERIAL_ICONS_OUTLINED",
+					"<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Outlined\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_ICONS_ROUNDED",
-	                "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Round\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+			Map.entry("MATERIAL_ICONS_ROUNDED",
+					"<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Round\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_ICONS_SHARP",
-	                "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Sharp\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+			Map.entry("MATERIAL_ICONS_SHARP",
+					"<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Sharp\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
-	        Map.entry("MATERIAL_ICONS_TWO_TONE",
-	                "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Two+Tone\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />")
+			Map.entry("MATERIAL_ICONS_TWO_TONE",
+					"<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Two+Tone\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />")
 
 	);
 
@@ -80,12 +80,12 @@ public class IndexHTMLService {
 
 	public Mono<ChecksumObject> getIndexHTML(String appCode, String clientCode) {
 
-		return cacheService.cacheValueOrGet(CACHE_NAME_INDEX,
-		        () -> FlatMapUtil
-		                .flatMapMonoWithNull(() -> appService.read(appCode, appCode, clientCode),
-		                        app -> this.indexFromApp(app, appCode, clientCode))
-		                .contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
-		        appCode, "-", clientCode);
+		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode),
+				() -> FlatMapUtil
+						.flatMapMonoWithNull(() -> appService.read(appCode, appCode, clientCode),
+								app -> this.indexFromApp(app, appCode, clientCode))
+						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
+				clientCode);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -95,15 +95,15 @@ public class IndexHTMLService {
 			return List.of("", "", "", "");
 
 		List<Tuple2<String, String>> cps = codeParts.values()
-		        .stream()
-		        .filter(Objects::nonNull)
-		        .map(e -> (Map<String, Object>) e)
-		        .filter(Predicate.not(Map::isEmpty))
-		        .sorted(new MapWithOrderComparator())
-		        .filter(e -> !StringUtil.safeIsBlank(e.get("part")))
-		        .filter(e -> !StringUtil.safeIsBlank(e.get("place")))
-		        .map(e -> Tuples.of(StringUtil.safeValueOf(e.get("place")), StringUtil.safeValueOf(e.get("part"))))
-		        .toList();
+				.stream()
+				.filter(Objects::nonNull)
+				.map(e -> (Map<String, Object>) e)
+				.filter(Predicate.not(Map::isEmpty))
+				.sorted(new MapWithOrderComparator())
+				.filter(e -> !StringUtil.safeIsBlank(e.get("part")))
+				.filter(e -> !StringUtil.safeIsBlank(e.get("place")))
+				.map(e -> Tuples.of(StringUtil.safeValueOf(e.get("place")), StringUtil.safeValueOf(e.get("part"))))
+				.toList();
 
 		List<String> stringCps = new ArrayList<>();
 
@@ -131,7 +131,7 @@ public class IndexHTMLService {
 		StringBuilder str = new StringBuilder("<!DOCTYPE html><html lang=\"en\"><head>");
 		str.append(codeParts.get(0));
 		str.append(
-		        "<meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /><title>");
+				"<meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /><title>");
 
 		Object title = appProps.get("title");
 		if (title == null)
@@ -170,19 +170,18 @@ public class IndexHTMLService {
 			return "";
 
 		return map.values()
-		        .stream()
-		        .map(e ->
-				{
-			        if (e == null)
-				        return "";
+				.stream()
+				.map(e -> {
+					if (e == null)
+						return "";
 
-			        Map<String, Object> mso = (Map<String, Object>) e;
+					Map<String, Object> mso = (Map<String, Object>) e;
 
-			        return CommonsUtil.nonNullValue(mso.get("code"), ICON_PACK.get(mso.get("name")), "")
-			                .toString();
-		        })
-		        .filter(e -> !StringUtil.safeIsBlank(e))
-		        .collect(Collectors.joining("\n"));
+					return CommonsUtil.nonNullValue(mso.get("code"), ICON_PACK.get(mso.get("name")), "")
+							.toString();
+				})
+				.filter(e -> !StringUtil.safeIsBlank(e))
+				.collect(Collectors.joining("\n"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -192,18 +191,17 @@ public class IndexHTMLService {
 			return "";
 
 		return map.values()
-		        .stream()
-		        .map(e ->
-				{
-			        if (e == null)
-				        return "";
+				.stream()
+				.map(e -> {
+					if (e == null)
+						return "";
 
-			        Map<String, Object> mso = (Map<String, Object>) e;
+					Map<String, Object> mso = (Map<String, Object>) e;
 
-			        return StringUtil.safeValueOf(mso.get("code"), "");
-		        })
-		        .filter(e -> !StringUtil.safeIsBlank(e))
-		        .collect(Collectors.joining("\n"));
+					return StringUtil.safeValueOf(mso.get("code"), "");
+				})
+				.filter(e -> !StringUtil.safeIsBlank(e))
+				.collect(Collectors.joining("\n"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -234,9 +232,9 @@ public class IndexHTMLService {
 			return null;
 
 		return csp.entrySet()
-		        .stream()
-		        .map(e -> e.getKey() + " " + e.getValue())
-		        .collect(Collectors.joining(";"));
+				.stream()
+				.map(e -> e.getKey() + " " + e.getValue())
+				.collect(Collectors.joining(";"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -246,27 +244,27 @@ public class IndexHTMLService {
 			return;
 
 		str.append(tagType.values()
-		        .stream()
-		        .map(e -> (Map<String, Object>) e)
-		        .sorted(new MapWithOrderComparator())
-		        .map(e -> this.toTagString(tag, e, attributeList))
-		        .collect(Collectors.joining()));
+				.stream()
+				.map(e -> (Map<String, Object>) e)
+				.sorted(new MapWithOrderComparator())
+				.map(e -> this.toTagString(tag, e, attributeList))
+				.collect(Collectors.joining()));
 	}
 
 	private String toTagString(String tag, Map<String, Object> attributes, String[] attributeList) {
 
 		StringBuilder linkSB = new StringBuilder("<").append(tag)
-		        .append(' ');
+				.append(' ');
 
 		for (String attr : attributeList)
 			if (attributes.containsKey(attr))
 				linkSB.append(attr)
-				        .append('=')
-				        .append("\"")
-				        .append(attributes.get(attr))
-				        .append("\"");
+						.append('=')
+						.append("\"")
+						.append(attributes.get(attr))
+						.append("\"");
 
 		return linkSB.append("/> \n")
-		        .toString();
+				.toString();
 	}
 }
