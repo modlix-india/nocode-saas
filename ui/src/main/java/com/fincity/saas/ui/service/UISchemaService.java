@@ -19,15 +19,15 @@ public class UISchemaService extends AbstractSchemaService<UISchema, UISchemaDoc
 	}
 
 	@Override
-	protected String getCacheName(String appCode, String name) {
+	public String getCacheName(String appCode, String name) {
 
 		return new StringBuilder("UI").append(this.getObjectName())
-		        .append(CACHE_NAME)
-		        .append("_")
-		        .append(appCode)
-		        .append("_")
-		        .append(name)
-		        .toString();
+				.append(CACHE_NAME)
+				.append("_")
+				.append(appCode)
+				.append("_")
+				.append(name)
+				.toString();
 	}
 
 }

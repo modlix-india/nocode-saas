@@ -5,6 +5,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -31,8 +32,9 @@ public class StyleThemeService extends AbstractOverridableDataService<StyleTheme
 		        existing ->
 				{
 			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
-				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 			        existing.setVariables(entity.getVariables());
 

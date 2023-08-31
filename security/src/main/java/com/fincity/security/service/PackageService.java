@@ -214,9 +214,10 @@ public class PackageService extends
 				)
 				.onErrorResume(
 						ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
-								? this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
-										SecurityMessageResourceService.DELETE_PACKAGE_ERROR)
-								: Mono.error(ex));
+		                        ? this.securityMessageResourceService.throwMessage(
+		                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
+		                                SecurityMessageResourceService.DELETE_PACKAGE_ERROR)
+		                		: Mono.error(ex));
 	}
 
 	public Mono<List<ULong>> getRolesFromPackage(ULong packageId) {
@@ -243,8 +244,9 @@ public class PackageService extends
 				(ca, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.getRolesFromGivenPackage"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
 
 	}
 
@@ -304,8 +306,9 @@ public class PackageService extends
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.assignRoleToPackage"))
-							.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
 				});
 
 	}
@@ -331,8 +334,9 @@ public class PackageService extends
 		return this.dao.checkRoleAssignedForPackage(packageId, roleId)
 				.flatMap(result -> {
 					if (!result.booleanValue())
-						return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, packageId, roleId);
+				        return securityMessageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+				                SecurityMessageResourceService.OBJECT_NOT_FOUND, packageId, roleId);
 
 					return flatMapMono(
 
@@ -378,8 +382,9 @@ public class PackageService extends
 				);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.removeRoleFromPackage"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
 
 	}
 

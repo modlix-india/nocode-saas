@@ -9,6 +9,7 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
 @Document
 @CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'id': 1}", name = "personalizationFilteringIndex")
 @Accessors(chain = true)
+@ToString(callSuper = true)
 public class Personalization extends AbstractOverridableDTO<Personalization> {
 
 	private static final long serialVersionUID = 4797291119009554778L;

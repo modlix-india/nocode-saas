@@ -38,3 +38,5 @@ maven-wrapper.jar
 **/.mvn/
 
 *.log
+
+*.hprof

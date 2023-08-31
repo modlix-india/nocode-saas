@@ -21,7 +21,7 @@ import reactor.util.context.Context;
 @Service
 public class ManifestService {
 
-	private static final String CACHE_NAME_MANIFEST = "manifestCache";
+	public static final String CACHE_NAME_MANIFEST = "manifestCache";
 
 	@Autowired
 	private ApplicationService appService;
@@ -34,17 +34,12 @@ public class ManifestService {
 
 	public Mono<ChecksumObject> getManifest(String appCode, String clientCode) {
 
-		return cacheService.<ChecksumObject>get(CACHE_NAME_MANIFEST, appCode, "-", clientCode)
-		        .switchIfEmpty(Mono.defer(() ->
-
-				FlatMapUtil.flatMapMonoWithNull(
-
-				        () -> appService.read(appCode, appCode, clientCode),
-
-				        app -> cacheService.put(CACHE_NAME_MANIFEST, new ChecksumObject(this.manifestFromApp(app)),
-				                appCode, "-", clientCode))))
-
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ManifestService.getManifest"));
+		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_MANIFEST, appCode),
+				() -> FlatMapUtil
+						.flatMapMonoWithNull(() -> appService.read(appCode, appCode, clientCode),
+								app -> Mono.just(new ChecksumObject(this.manifestFromApp(app))))
+						.contextWrite(Context.of(LogUtil.METHOD_NAME, "ManifestService.getManifest")),
+				clientCode);
 	}
 
 	@SuppressWarnings("unchecked")

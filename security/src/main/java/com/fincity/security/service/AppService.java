@@ -69,8 +69,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public Mono<App> create(App entity) {
 
 		if (entity.getAppCode() != null && !StringUtil.onlyAlphabetAllowed(entity.getAppCode())) {
-			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
 		}
 
 		return FlatMapUtil.flatMapMono(
@@ -100,8 +100,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.create"))
-				.switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION)))
+		        .switchIfEmpty(
+		                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                        SecurityMessageResourceService.FORBIDDEN_CREATE,
+		                        APPLICATION))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
 				.flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI));
@@ -112,8 +114,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public Mono<App> update(App entity) {
 		return this.read(entity.getClientId())
 				.flatMap(e -> super.update(entity))
-				.switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-						SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity.getId())))
+		        .switchIfEmpty(
+		                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+		                        SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity
+		                                .getId()))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
 				.flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI))
@@ -126,8 +130,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public Mono<App> update(ULong key, Map<String, Object> fields) {
 		return this.read(key)
 				.flatMap(e -> super.update(key, fields))
-				.switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-						SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, key)))
+		        .switchIfEmpty(
+		                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+		                        SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION,
+		                        key))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
 				.flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
@@ -150,13 +156,13 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	public Mono<Integer> delete(ULong id) {
 		return this.read(id)
-				.flatMap(e -> super.delete(id)
-						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
-						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
-								.map(y -> x)))
-				.switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-						SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id)));
+		        .flatMap(e -> super.delete(id)
+		                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
+		                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+		                .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
+		                        .map(y -> x)))
+				.switchIfEmpty( messageResourceService.throwMessage(msg-> new GenericException( HttpStatus.NOT_FOUND, msg),
+						SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id));
 	}
 
 	@Override
@@ -245,9 +251,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 									cid -> cid.equals(clientId) ? this.dao.addClientAccess(appId, clientId, writeAccess)
 											: Mono.empty());
 				}, (ca, cliAccess, changed) -> this.evict(appId, clientId)
-						.map(e -> changed))
+						.map(e -> changed)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccess"))
-				.switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+				.switchIfEmpty(messageResourceService.throwMessage(msg -> new GenericException( HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
@@ -292,8 +298,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addPackageAccess"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.ASSIGN_PACKAGE_TO_CLIENT_AND_APP, packageId)));
+		        .switchIfEmpty(
+		                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                        SecurityMessageResourceService.ASSIGN_PACKAGE_TO_CLIENT_AND_APP, packageId));
 	}
 
 	public Mono<Boolean> removePackageAccess(ULong appId, ULong clientId, ULong packageId) {
@@ -334,14 +341,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 									clientId, packageId)
 
 				)
-							.switchIfEmpty(
-									Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-											SecurityMessageResourceService.REMOVE_PACKAGE_FROM_APP_ERROR)));
+			                .switchIfEmpty(this.messageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.REMOVE_PACKAGE_FROM_APP_ERROR));
 
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removePackageAccess"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.NO_PACKAGE_ASSIGNED_TO_APP)))
+		        .switchIfEmpty(
+		                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                        SecurityMessageResourceService.NO_PACKAGE_ASSIGNED_TO_APP))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 
@@ -376,8 +384,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addRoleAccess"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.ASSIGN_ROLE_TO_APP_ERROR)));
+		        .switchIfEmpty(
+		                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                        SecurityMessageResourceService.ASSIGN_ROLE_TO_APP_ERROR));
 	}
 
 	public Mono<Boolean> removeRoleAccess(ULong appId, ULong clientId, ULong roleId) {
@@ -402,13 +411,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 						(ca, sysOrManaged, appAccess, roleAccess) -> this.dao.removeRoleAccess(appId, clientId, roleId)
 
 				)
-						.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-								SecurityMessageResourceService.REMOVE_ROLE_FROM_APP_ERROR)))
+		                .switchIfEmpty(this.messageResourceService.throwMessage(
+		                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                        SecurityMessageResourceService.REMOVE_ROLE_FROM_APP_ERROR))
 
 				)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removeRoleAccess"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.NO_ROLE_ASSIGNED_TO_APP)))
+		        .switchIfEmpty(
+		                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                        SecurityMessageResourceService.NO_ROLE_ASSIGNED_TO_APP))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 
@@ -451,8 +462,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 								return this.dao.removeClientAccess(appId, accessId);
 							});
 				})
-				.switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.UNABLE_TO_DELETE, APPLICATION_ACCESS, accessId)))
+		        .switchIfEmpty(messageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg), APPLICATION_ACCESS,
+		                accessId))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
@@ -478,8 +490,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 								return this.dao.updateClientAccess(accessId, writeAccess);
 							});
 				})
-				.switchIfEmpty(Mono.defer(() -> messageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS, accessId)))
+		        .switchIfEmpty(
+		                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                        SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS,
+		                        accessId))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}

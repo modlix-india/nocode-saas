@@ -185,8 +185,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 				)
 				.onErrorResume(
 						ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
-								? this.securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN, ex,
-										SecurityMessageResourceService.DELETE_ROLE_ERROR)
+		                        ? this.securityMessageResourceService.throwMessage(
+		                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
+		                                SecurityMessageResourceService.DELETE_ROLE_ERROR)
 								: Mono.error(ex));
 
 	}
@@ -237,9 +238,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.assignPermissionToRole"))
-							.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId,
-									roleId));
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId,
+			                        roleId));
 
 				});
 
@@ -265,8 +267,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		return this.dao.checkPermissionExistsForRole(roleId, permissionId)
 				.flatMap(result -> {
 					if (!result.booleanValue())
-						return securityMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, roleId, permissionId);
+				        return securityMessageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+				                SecurityMessageResourceService.OBJECT_NOT_FOUND, roleId, permissionId);
 
 					return flatMapMono(
 
@@ -299,9 +302,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.removePermissionFromRole"))
-							.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-									SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId,
-									roleId));
+			                .switchIfEmpty(securityMessageResourceService.throwMessage(
+			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			                        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId,
+			                        roleId));
 
 				});
 
@@ -338,8 +342,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 						: this.dao.removePemissionFromUsers(permissionId, finalRoleUsers)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.removePermissionsFromUsers"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
 	}
 
 	public Mono<List<ULong>> getPermissionsFromRole(ULong roleId) {
@@ -366,8 +371,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 				(ca, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.getPermissionsFromGivenRole"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
-						SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
+		        .switchIfEmpty(securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
 
 	}
 

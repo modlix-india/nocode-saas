@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextUser;
@@ -75,8 +76,8 @@ public class ClientUrlService
 					return Mono.empty();
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
-				.switchIfEmpty(msgService.throwMessage(HttpStatus.NOT_FOUND,
-						SecurityMessageResourceService.OBJECT_NOT_FOUND, CLIENT_URL, id));
+		        .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+		                SecurityMessageResourceService.OBJECT_NOT_FOUND, CLIENT_URL, id));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")

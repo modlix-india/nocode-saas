@@ -13,6 +13,7 @@ import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -22,6 +23,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "eventDefinitionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 
 	private static final long serialVersionUID = -5343026916526769179L;
@@ -41,11 +43,10 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 		if (base != null)
 			return DifferenceApplicator.apply(this.schema, base.schema)
 					.defaultIfEmpty(Map.of())
-			        .map(a ->
-					{
-				        this.schema = (Map<String, Object>) a;
-				        return this;
-			        });
+					.map(a -> {
+						this.schema = (Map<String, Object>) a;
+						return this;
+					});
 
 		return Mono.just(this);
 	}
@@ -58,11 +59,10 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 			return Mono.just(this);
 
 		return Mono.just(this)
-		        .flatMap(e -> DifferenceExtractor.extract(e.schema, base.schema)
-		                .map(k ->
-						{
-			                e.schema = (Map<String, Object>) k;
-			                return e;
-		                }));
+				.flatMap(e -> DifferenceExtractor.extract(e.schema, base.schema)
+						.map(k -> {
+							e.schema = (Map<String, Object>) k;
+							return e;
+						}));
 	}
 }
