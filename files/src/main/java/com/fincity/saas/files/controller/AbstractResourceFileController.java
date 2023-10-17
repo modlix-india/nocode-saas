@@ -40,7 +40,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.service.list(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+				ca -> this.service.list(CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
 						request.getURI()
 								.toString(),
 						fileType, filter, page),
@@ -57,7 +57,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.service.delete(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+				ca -> this.service.delete(CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
 						request.getURI()
 								.toString()),
 
@@ -78,7 +78,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				ca -> filePart,
 
-				(ca, fp) -> this.service.create(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+				(ca, fp) -> this.service.create(CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
 						request.getURI()
 								.toString(),
 						fp, fileName, override != null ? BooleanUtil.safeValueOf(override) : null))
@@ -119,7 +119,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 				ca -> filePart,
 
 				(ca, fp) -> this.service
-						.createFromZipFile(CommonsUtil.nonNullValue(clientCode, ca.getLoggedInFromClientCode()),
+						.createFromZipFile(CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
 								request.getURI()
 										.toString(),
 								fp, override != null ? BooleanUtil.safeValueOf(override) : null))
