@@ -20,6 +20,7 @@ import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.Additio
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.mongo.service.AbstractFunctionService.NameOnly;
@@ -52,10 +53,10 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 		String namespace = StringUtil.safeValueOf(entity.getDefinition()
 		        .get(NAMESPACE));
 
-		if (name == null || namespace == null) {
-			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-			        AbstractMongoMessageResourceService.NAME_MISSING);
-		}
+        if (name == null || namespace == null) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    AbstractMongoMessageResourceService.NAME_MISSING);
+        }
 
 		entity.setName(namespace + "." + name);
 
@@ -72,7 +73,7 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 		        existing ->
 				{
 			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
 				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 			        String name = StringUtil.safeValueOf(entity.getDefinition()
@@ -80,18 +81,20 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 			        String namespace = StringUtil.safeValueOf(entity.getDefinition()
 			                .get(NAMESPACE));
 
-			        if (name == null || namespace == null) {
-				        return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                AbstractMongoMessageResourceService.NAME_MISSING);
-			        }
+                    if (name == null || namespace == null) {
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                AbstractMongoMessageResourceService.NAME_MISSING);
+                    }
 
 			        String schemaName = namespace + "." + name;
 
-			        if (!schemaName.equals(existing.getName())) {
+                    if (!schemaName.equals(existing.getName())) {
 
-				        return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
-				                AbstractMongoMessageResourceService.NAME_CHANGE);
-			        }
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                AbstractMongoMessageResourceService.NAME_CHANGE);
+                    }
 
 			        existing.setDefinition(entity.getDefinition());
 

@@ -388,8 +388,9 @@ public class AuthenticationService implements IAuthenticationService {
 		Mono<Client> loggedInClient = ((clientCode != null && !clientCode.isEmpty())
 				? this.clientService.getClientBy(clientCode.get(0))
 				: this.clientService.getClientBy(request))
-				.switchIfEmpty(this.resourceService.throwMessage(HttpStatus.UNAUTHORIZED,
-						SecurityMessageResourceService.UNKNOWN_CLIENT));
+		        .switchIfEmpty(
+		                this.resourceService.throwMessage(msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
+		                        SecurityMessageResourceService.UNKNOWN_CLIENT));
 
 		return loggedInClient.map(e -> (Authentication) new ContextAuthentication(
 				new ContextUser().setId(BigInteger.ZERO)
@@ -431,7 +432,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 		if (!host.equals(jwtClaims.getHostName())) {
 
-			return resourceService.throwMessage(HttpStatus.UNAUTHORIZED, SecurityMessageResourceService.UNKNOWN_TOKEN);
+			return resourceService.throwMessage(msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
+			        SecurityMessageResourceService.UNKNOWN_TOKEN);
 		}
 
 		return Mono.just(jwtClaims);

@@ -15,6 +15,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -25,6 +26,7 @@ import reactor.util.context.Context;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "storageFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Storage extends AbstractOverridableDTO<Storage> {
 
 	private static final long serialVersionUID = -5399288837130565200L;
@@ -62,15 +64,14 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 			return FlatMapUtil.flatMapMonoWithNull(() -> DifferenceApplicator.apply(this.schema, base.schema),
 
-			        s ->
-					{
-				        this.schema = (Map<String, Object>) s;
+					s -> {
+						this.schema = (Map<String, Object>) s;
 
-				        this.subApplyOverride(base);
+						this.subApplyOverride(base);
 
-				        return Mono.just(this);
-			        })
-			        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.applyOverride"));
+						return Mono.just(this);
+					})
+					.contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.applyOverride"));
 		}
 		return Mono.just(this);
 	}
@@ -108,21 +109,20 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-		        () -> Mono.just(this),
+				() -> Mono.just(this),
 
-		        obj -> DifferenceExtractor.extract(obj.schema, base.schema),
+				obj -> DifferenceExtractor.extract(obj.schema, base.schema),
 
-		        (obj, sch) ->
-				{
-			        obj.setSchema((Map<String, Object>) sch);
+				(obj, sch) -> {
+					obj.setSchema((Map<String, Object>) sch);
 
-			        this.subMakeOverride(base, obj);
+					this.subMakeOverride(base, obj);
 
-			        return Mono.just(obj);
-		        }
+					return Mono.just(obj);
+				}
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.makeOverride"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.makeOverride"));
 	}
 
 	private void subMakeOverride(Storage base, Storage obj) {

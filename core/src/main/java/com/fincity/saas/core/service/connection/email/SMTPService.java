@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
@@ -32,21 +33,21 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
 	        Connection connection) {
 
 		if (connection.getConnectionDetails() == null)
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 			        CoreMessageResourceService.MAIL_SEND_ERROR, "Connection details are missing");
 
 		Map<String, Object> connProps = (Map<String, Object>) connection.getConnectionDetails()
 		        .get("mailProps");
 
 		if (connProps == null || connProps.isEmpty())
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 			        CoreMessageResourceService.MAIL_SEND_ERROR, "Connection Properties with 'mail.' are missing");
 
 		if (StringUtil.safeIsBlank(connection.getConnectionDetails()
 		        .get("username")) || StringUtil.safeIsBlank(
 		                connection.getConnectionDetails()
 		                        .get("password")))
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 			        CoreMessageResourceService.MAIL_SEND_ERROR, "Connection username/password is missing");
 
 		return FlatMapUtil.flatMapMono(
@@ -94,7 +95,8 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
 
 				        logger.error("Error while sending : {}", mex.getMessage(), mex);
 
-				        return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 				                CoreMessageResourceService.MAIL_SEND_ERROR, mex.getMessage(), mex);
 			        }
 		        })

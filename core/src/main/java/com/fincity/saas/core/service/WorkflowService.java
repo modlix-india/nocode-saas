@@ -5,6 +5,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -25,7 +26,8 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 	public Mono<Workflow> create(Workflow entity) {
 
 		if (entity.getTrigger() == null) {
-			return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			return this.messageResourceService.throwMessage(
+			        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 			        CoreMessageResourceService.WORKFLOW_TRIGGER_MISSING);
 		}
 
@@ -42,11 +44,13 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 		        existing ->
 				{
 			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+				        return this.messageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
 				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 			        if (entity.getTrigger() == null) {
-				        return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+				        return this.messageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 				                CoreMessageResourceService.WORKFLOW_TRIGGER_MISSING);
 			        }
 

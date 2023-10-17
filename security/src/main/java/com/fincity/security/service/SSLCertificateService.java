@@ -40,6 +40,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -183,9 +184,10 @@ public class SSLCertificateService {
 						Thread.currentThread()
 								.interrupt();
 					} catch (AcmeException | IOException ex) {
-						return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, ex,
-								SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, ex.getMessage());
-					}
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
+				                SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, ex.getMessage());
+			    	}
 
 					return Mono.just(order.getCertificate());
 				},
@@ -238,8 +240,9 @@ public class SSLCertificateService {
 								.isBlank())
 							chError = tup.getT2();
 					} catch (AcmeException e) {
-						return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-								SecurityMessageResourceService.TRIGGER_FAILED);
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+				                SecurityMessageResourceService.TRIGGER_FAILED);
 					} catch (InterruptedException ie) {
 						Thread.currentThread()
 								.interrupt();
@@ -248,9 +251,10 @@ public class SSLCertificateService {
 					try {
 						order.update();
 					} catch (AcmeException e) {
-						return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-								SecurityMessageResourceService.TRIGGER_FAILED);
-					}
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+				                SecurityMessageResourceService.TRIGGER_FAILED);
+			        }
 
 					return this.challengeDao.updateStatus(challenge.getId(), chStatus, chError);
 				})
@@ -333,8 +337,8 @@ public class SSLCertificateService {
 						.filter(String::isBlank)
 						.count() != 0l) {
 
-			return this.msgService.throwMessage(HttpStatus.BAD_REQUEST,
-					SecurityMessageResourceService.BAD_CERT_REQUEST);
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.BAD_CERT_REQUEST);
 		}
 
 		// Here we are using the clientURLService to read the URL object which will
@@ -344,8 +348,9 @@ public class SSLCertificateService {
 				() -> this.requestDao.checkIfRequestExistOnURL(request.getUrlId())
 						.flatMap(
 								exists -> exists.booleanValue()
-										? this.msgService.throwMessage(HttpStatus.CONFLICT,
-												SecurityMessageResourceService.REQUEST_EXISTING)
+		                                ? this.msgService.throwMessage(
+		                                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+		                                        SecurityMessageResourceService.REQUEST_EXISTING)
 										: Mono.just(false)),
 
 				e -> SecurityContextUtil.getUsersContextAuthentication(),
@@ -399,7 +404,7 @@ public class SSLCertificateService {
 
 		if (StringUtil.safeIsBlank(this.sessionURL) || StringUtil.safeIsBlank(this.accountURL)
 				|| StringUtil.safeIsBlank(this.accountKey)) {
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			return this.msgService.throwMessage(msg -> new GenericException( HttpStatus.INTERNAL_SERVER_ERROR, msg),
 					SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
 		}
 
@@ -408,8 +413,8 @@ public class SSLCertificateService {
 		try {
 			login = session.login(new URI(this.accountURL).toURL(), accountKeyPair);
 		} catch (MalformedURLException | URISyntaxException e) {
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-					SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+			        SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
 		}
 
 		Account account = login.getAccount();
@@ -423,8 +428,8 @@ public class SSLCertificateService {
 					.domains(domains)
 					.create();
 		} catch (AcmeException e) {
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-					SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, e.getMessage());
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+			        SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, e.getMessage());
 		}
 
 		return Mono.just(order);
@@ -467,8 +472,8 @@ public class SSLCertificateService {
 			KeyPairUtils.writeKeyPair(kp, new OutputStreamWriter(bos));
 			return Mono.just(new String(bos.toByteArray()));
 		} catch (Exception ex) {
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-					SecurityMessageResourceService.ERROR_KEY_CSR);
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+			        SecurityMessageResourceService.ERROR_KEY_CSR);
 		}
 	}
 
@@ -500,9 +505,10 @@ public class SSLCertificateService {
 						csr.write(sw);
 						rec.setCsr(sw.toString());
 					} catch (Exception ex) {
-						return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-								SecurityMessageResourceService.ERROR_KEY_CSR);
-					}
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+				                SecurityMessageResourceService.ERROR_KEY_CSR);
+			    	}
 
 					return Mono.just(rec);
 				})
@@ -534,8 +540,8 @@ public class SSLCertificateService {
 		if (wrongURLs.isEmpty())
 			return Mono.just(true);
 
-		return this.msgService.throwMessage(HttpStatus.BAD_REQUEST, SecurityMessageResourceService.MISMATCH_DOMAINS,
-				wrongURLs.toString());
+		return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+		        SecurityMessageResourceService.MISMATCH_DOMAINS, wrongURLs.toString());
 	}
 
 	public Mono<List<SSLCertificateConfiguration>> getAllCertificates() {

@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.ConditionUtil;
@@ -188,8 +189,9 @@ public class SSLCertificateController {
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-						: this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-								SecurityMessageResourceService.ONLY_SYS_USER_CERTS),
+		                : this.msgService.throwMessage(
+		                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+		                        SecurityMessageResourceService.ONLY_SYS_USER_CERTS),
 
 				(ca, validUser) -> this.service.getLastUpdated(),
 

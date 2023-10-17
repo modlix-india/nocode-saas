@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Template;
@@ -81,7 +82,7 @@ public abstract class AbstractEmailService {
 
 		if (template.getTemplateParts() == null || template.getTemplateParts()
 		        .isEmpty()) {
-			return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 			        CoreMessageResourceService.MAIL_SEND_ERROR, "No template parts found");
 		}
 
@@ -159,7 +160,8 @@ public abstract class AbstractEmailService {
 		        (addrList, finList) ->
 				{
 			        if (finList.isEmpty()) {
-				        return this.msgService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+				        return this.msgService.throwMessage(
+				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 				                CoreMessageResourceService.MAIL_SEND_ERROR, "No Send Addresses Found.");
 			        }
 

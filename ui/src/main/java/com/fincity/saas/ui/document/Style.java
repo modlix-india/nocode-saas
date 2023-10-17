@@ -8,6 +8,7 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "styleFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Style extends AbstractOverridableDTO<Style> {
 
 	private static final long serialVersionUID = 4355909627072800292L;

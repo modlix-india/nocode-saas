@@ -13,6 +13,7 @@ import com.fincity.saas.core.model.WorkflowStep;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Mono;
 
@@ -22,6 +23,7 @@ import reactor.core.publisher.Mono;
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "workflowFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Workflow extends AbstractOverridableDTO<Workflow> {
 
 	private static final long serialVersionUID = -7863306840732076558L;

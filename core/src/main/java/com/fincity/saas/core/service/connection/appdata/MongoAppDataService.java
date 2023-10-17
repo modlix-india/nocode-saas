@@ -35,6 +35,7 @@ import com.fincity.nocode.kirun.engine.json.schema.validator.reactive.ReactiveSc
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -206,7 +207,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				.get(ID));
 
 		if (StringUtil.safeIsBlank(key))
-			return this.msgService.throwMessage(HttpStatus.NOT_FOUND,
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 					AbstractMongoMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, storage.getName(), key);
 
 		BsonObjectId objectId = new BsonObjectId(new ObjectId(key));
@@ -333,8 +334,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 					return Mono.just((Map<String, Object>) doc);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.read"))
-				.switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id)));
+				.switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id));
 	}
 
 	@Override
@@ -363,8 +364,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 					return Mono.just((Map<String, Object>) doc);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.read"))
-				.switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), versionId)));
+				.switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), versionId));
 
 	}
 
@@ -382,8 +383,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 						.findOneAndDelete(Filters.eq(ID, objectId)))
 						.map(e -> true))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.delete"))
-				.switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(HttpStatus.NOT_FOUND,
-						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id)));
+				.switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id));
 
 	}
 
@@ -746,7 +747,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				: mongoClients.computeIfAbsent(getConnectionString(conn), key -> this.getMongoClient(conn));
 
 		if (client == null)
-			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
+			throw msgService.nonReactiveMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 					CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
 		return client.getDatabase(clientCode + "_" + appCode)
@@ -759,7 +760,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				: mongoClients.computeIfAbsent(getConnectionString(conn), key -> this.getMongoClient(conn));
 
 		if (client == null)
-			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
+			throw msgService.nonReactiveMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 					CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
 		return client.getDatabase(clientCode + "_" + appCode)
@@ -770,7 +771,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		if (conn.getConnectionDetails() == null || StringUtil.safeIsBlank(conn.getConnectionDetails()
 				.get("url")))
-			throw msgService.nonReactiveMessage(HttpStatus.NOT_FOUND,
+			throw msgService.nonReactiveMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 					CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
 		return MongoClients.create(conn.getConnectionDetails()

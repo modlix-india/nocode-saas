@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -25,7 +26,7 @@ import reactor.util.context.Context;
 @Service
 public class ApplicationService extends AbstractOverridableDataService<Application, ApplicationRepository> {
 
-	private static final String PROPERTIES = "Properties : ";
+	private static final String CACHE_NAME_PROPERTIES = "cacheProperties";
 	@Autowired
 	private PageService pageService;
 
@@ -47,7 +48,7 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 				|| !StringUtil.safeEquals(entity.getName(), entity.getAppCode())
 				|| !StringUtil.onlyAlphabetAllowed(entity.getAppCode()))
 
-			return this.messageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					UIMessageResourceService.APP_NAME_MISMATCH);
 
 		return super.create(entity);
@@ -56,22 +57,28 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 	@Override
 	public Mono<Application> update(Application entity) {
 
-		return super.update(entity).flatMap(
-				e -> cacheService.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-						.flatMap(x -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
-								e.getClientCode()))
-						.map(x -> e));
+		return FlatMapUtil.flatMapMono(
+				() -> super.update(entity),
+				this::evictAll);
+	}
+
+	private Mono<Application> evictAll(Application e) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> cacheService.evictAll(
+						this.getCacheName(e.getAppCode() + "_" + IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode())),
+				x -> cacheService.evictAll(
+						this.getCacheName(e.getAppCode() + "_" + ManifestService.CACHE_NAME_MANIFEST, e.getAppCode())),
+				(x, y) -> cacheService
+						.evictAll(this.getCacheName(e.getAppCode() + "_" + CACHE_NAME_PROPERTIES, e.getAppCode())),
+				(x, y, z) -> Mono.just(e));
 	}
 
 	@Override
 	public Mono<Boolean> delete(String id) {
 
 		return this.read(id)
-				.flatMap(e -> super.delete(id).flatMap(x -> cacheService
-						.evict(IndexHTMLService.CACHE_NAME_INDEX, e.getAppCode(), "-", e.getClientCode())
-						.flatMap(v -> cacheService.evict(this.getCacheName(e.getAppCode(), e.getName()), PROPERTIES,
-								e.getClientCode()))
-						.map(y -> x)));
+				.flatMap(e -> super.delete(id).flatMap(x -> this.evictAll(e).thenReturn(x)));
 	}
 
 	@Override
@@ -83,7 +90,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 				existing -> {
 					if (existing.getVersion() != entity.getVersion())
-						return this.messageResourceService.throwMessage(HttpStatus.PRECONDITION_FAILED,
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
 								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setProperties(entity.getProperties())
@@ -104,9 +112,9 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> cacheService.makeKey(PROPERTIES, clientCode),
+				() -> Mono.just(clientCode),
 
-				key -> cacheService.get(this.getCacheName(appCode, name), key)
+				key -> cacheService.get(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode), key)
 						.map(this.pojoClass::cast),
 
 				(key, cApp) -> {
@@ -130,8 +138,9 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 								.newInstance(cApp != null ? cApp : mergedApp));
 					} catch (Exception e) {
 
-						return this.messageResourceService.throwMessage(HttpStatus.INTERNAL_SERVER_ERROR, e,
-								AbstractMongoMessageResourceService.UNABLE_TO_CREAT_OBJECT, this.getObjectName());
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+								AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT, this.getObjectName());
 					}
 				},
 
@@ -141,7 +150,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 						return Mono.empty();
 
 					if (cApp == null && mergedApp != null) {
-						cacheService.put(this.getCacheName(appCode, name), mergedApp, key);
+						cacheService.put(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode), mergedApp,
+								key);
 					}
 
 					return Mono.justOrEmpty(clonedApp.getProperties());

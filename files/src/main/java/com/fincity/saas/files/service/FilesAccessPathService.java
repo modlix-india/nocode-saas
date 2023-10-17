@@ -13,6 +13,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -59,11 +60,13 @@ public class FilesAccessPathService
 			entity.setAccessName(entity.getAccessName());
 			entity.setUserId(null);
 		} else {
-			msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
 		}
 
 		if (entity.getResourceType() == null)
-			msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
 
 		entity.setPath(entity.getPath() == null || entity.getPath()
 				.isBlank() ? "/"
@@ -107,7 +110,8 @@ public class FilesAccessPathService
 						e.setAccessName(entity.getAccessName());
 						e.setUserId(null);
 					} else {
-						msgService.throwMessage(HttpStatus.BAD_REQUEST, FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+				        msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+				                FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
 					}
 
 					e.setAllowSubPathAccess(entity.isAllowSubPathAccess());
@@ -186,7 +190,8 @@ public class FilesAccessPathService
 				.equals(ca.getUser()
 						.getClientId())) {
 
-			return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
+			return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			        FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
 		}
 
 		boolean hasStatic = SecurityContextUtil
@@ -209,13 +214,13 @@ public class FilesAccessPathService
 		for (String rtype : list) {
 
 			if (rtype.contains(FilesAccessPathResourceType.STATIC.toString()) && !hasStatic) {
-				return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION,
-						"STATIC Files PATH");
+				return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				        FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH");
 			}
 
 			if (rtype.contains(FilesAccessPathResourceType.SECURED.toString()) && !hasSecured) {
-				return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION,
-						"SECURED Files PATH");
+				return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				        FilesMessageResourceService.FORBIDDEN_PERMISSION, "SECURED Files PATH");
 			}
 		}
 
@@ -225,8 +230,8 @@ public class FilesAccessPathService
 	private Mono<AbstractCondition> processConditionWhenNoConditionsInRequest(AbstractCondition condition,
 			boolean hasStatic, boolean hasSecured) {
 		if (!hasSecured && !hasStatic)
-			return msgService.throwMessage(HttpStatus.FORBIDDEN, FilesMessageResourceService.FORBIDDEN_PERMISSION,
-					"STATIC Files PATH / SECURED Files PATH");
+			return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+			        FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH / SECURED Files PATH");
 
 		if (hasSecured && hasStatic)
 			return Mono.just(condition);
@@ -269,16 +274,17 @@ public class FilesAccessPathService
 							.getId(), clientCode);
 				},
 
-				(ca, managed) -> {
+		        (ca, managed) ->
+				{
 
-					if (!managed.booleanValue() || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
-							ca.getAuthorities())) {
-						return msgService.throwMessage(HttpStatus.FORBIDDEN,
-								FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
-					}
+			        if (!managed.booleanValue() || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
+			                ca.getAuthorities())) {
+				        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				                FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
+			        }
 
-					return Mono.just(ca.getLoggedInFromClientCode());
-				}
+			        return Mono.just(ca.getLoggedInFromClientCode());
+		        }
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));

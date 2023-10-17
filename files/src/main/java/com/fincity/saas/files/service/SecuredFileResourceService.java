@@ -23,6 +23,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -122,7 +123,8 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
 		)
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
-		        .switchIfEmpty(this.filesMessageResourceService.throwMessage(HttpStatus.FORBIDDEN,
+		        .switchIfEmpty(this.filesMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                FilesMessageResourceService.SECURED_KEY_CREATION_ERROR));
 	}
 
@@ -142,7 +144,8 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 			        Path file = Paths.get(this.securedResourceLocation + accessPath);
 
 			        if (!Files.exists(file))
-				        return this.filesMessageResourceService.throwMessage(HttpStatus.NOT_FOUND,
+				        return this.filesMessageResourceService.throwMessage(
+				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 				                FilesMessageResourceService.PATH_NOT_FOUND, accessPath);
 
 			        long fileMillis = -1;
@@ -174,11 +177,11 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	private Mono<String> createAccessKey(Long time, ChronoUnit unit, Long limit, String path) {
 
 		if (unit == null && time != null)
-			return filesMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			return filesMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 			        FilesMessageResourceService.TIME_UNIT_ERROR);
 
 		if (time == null && limit != null)
-			return filesMessageResourceService.throwMessage(HttpStatus.BAD_REQUEST,
+			return filesMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 			        FilesMessageResourceService.TIME_SPAN_ERROR);
 
 		time = time == null || time.toString()
