@@ -36,6 +36,9 @@ public interface IFeignSecurityService {
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/hasWriteAccess}")
 	public Mono<Boolean> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode);
 
+    @GetMapping("${security.feign.validClientCode:/api/security/clients/internal/validateClientCode}")
+    public Mono<Boolean> validClientCode(@RequestParam String clientCode);
+
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
 	public Mono<List<String>> appInheritance(@RequestParam String appCode, @RequestParam String urlClientCode,
 			@RequestParam String clientCode);

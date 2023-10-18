@@ -78,10 +78,12 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				ca -> filePart,
 
-				(ca, fp) -> this.service.create(CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-						request.getURI()
-								.toString(),
-						fp, fileName, override != null ? BooleanUtil.safeValueOf(override) : null))
+		        (ca, fp) -> this.service.create(
+		                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+		                request.getPath()
+		                        .toString(),
+		                fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
+		                        : null))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.create"));
 	}
