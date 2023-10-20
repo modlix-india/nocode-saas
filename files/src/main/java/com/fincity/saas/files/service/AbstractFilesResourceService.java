@@ -409,7 +409,7 @@ public abstract class AbstractFilesResourceService {
 	 * @return a Mono if the readAccess is granted by the requester
 	 */
 	protected Mono<Boolean> checkReadAccessWithClientCode(String resourcePath) {
-		return Mono.just(true); // should we make changes here
+		return Mono.just(true);
 	}
 
 	protected Mono<Void> makeMatchesStartDownload(DownloadOptions downloadOptions, ServerHttpRequest request,
