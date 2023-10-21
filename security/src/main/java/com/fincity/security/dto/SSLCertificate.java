@@ -23,7 +23,6 @@ public class SSLCertificate extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong urlId;
 	private String crt;
 	private String crtChain;
-	@JsonIgnore
 	private String crtKey;
 	private String csr;
 	private String domains;
@@ -32,4 +31,9 @@ public class SSLCertificate extends AbstractUpdatableDTO<ULong, ULong> {
 	private String issuer;
 	private Boolean current;
 	private LocalDateTime autoRenewTill;
+
+	@JsonIgnore
+	public String getCrtKey() {
+		return this.crtKey;
+	}
 }
