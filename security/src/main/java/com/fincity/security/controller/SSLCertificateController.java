@@ -106,7 +106,7 @@ public class SSLCertificateController {
 
 		ULong urlId = null;
 
-		if (!params.containsKey(URL_ID) && !params.get(URL_ID)
+		if (params.containsKey(URL_ID) && !params.get(URL_ID)
 				.isEmpty())
 			urlId = ULong.valueOf(params.get(URL_ID)
 					.get(0));
@@ -163,6 +163,13 @@ public class SSLCertificateController {
 	public Mono<ResponseEntity<Boolean>> deleteRequestByURLId(@RequestParam ULong urlId) {
 
 		return this.service.deleteRequestByURLId(urlId)
+				.map(ResponseEntity::ok);
+	}
+	
+	@DeleteMapping("/{id}")
+	public Mono<ResponseEntity<Boolean>> deleteCertificate(@PathVariable("id") String id) {
+
+		return this.service.deleteCertificate(ULong.valueOf(id))
 				.map(ResponseEntity::ok);
 	}
 
