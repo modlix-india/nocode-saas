@@ -40,6 +40,44 @@ public class IndexHTMLService {
 
 	private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
 			2, "BEFORE_BODY", 3);
+	
+	  private static final Map<String, String> CSP_HEADERS = Map.ofEntries(
+
+	            Map.entry("default-src", "default-src"),
+	            Map.entry("defaultSrc", "default-src"),
+	            Map.entry("child-src", "child-src"),
+	            Map.entry("childSrc", "child-src"),
+	            Map.entry("connect-src", "connect-src"),
+	            Map.entry("connectSrc", "connect-src"),
+	            Map.entry("font-src", "font-src"),
+	            Map.entry("fontSrc", "font-src"),
+	            Map.entry("frame-src", "frame-src"),
+	            Map.entry("frameSrc", "frame-src"),
+	            Map.entry("img-src", "img-src"),
+	            Map.entry("imgSrc", "img-src"),
+	            Map.entry("manifest-src", "manifest-src"),
+	            Map.entry("manifestSrc", "manifest-src"),
+	            Map.entry("media-src", "media-src"),
+	            Map.entry("mediaSrc", "media-src"),
+	            Map.entry("object-src", "object-src"),
+	            Map.entry("objectSrc", "object-src"),
+	            Map.entry("prefetch-src", "prefetch-src"),
+	            Map.entry("prefetchSrc", "prefetch-src"),
+	            Map.entry("script-src", "script-src"),
+	            Map.entry("scriptSrc", "script-src"),
+	            Map.entry("script-src-elem", "script-src-elem"),
+	            Map.entry("scripSrcElem", "script-src-elem"),
+	            Map.entry("script-src-attr", "script-src-attr"),
+	            Map.entry("scripSrcAttr", "script-src-attr"),
+	            Map.entry("style-src", "style-src"),
+	            Map.entry("styleSrc", "style-src"),
+	            Map.entry("style-src-elem", "style-src-elem"),
+	            Map.entry("styleSrcElem", "style-src-elem"),
+	            Map.entry("style-src-attr", "style-src-attr"),
+	            Map.entry("styleSrcAttr", "style-src-attr"),
+	            Map.entry("worker-src", "worker-src"),
+	            Map.entry("workerSrc", "worker-src"));
+
 
 	private static final Map<String, String> ICON_PACK = Map.ofEntries(
 
@@ -228,14 +266,30 @@ public class IndexHTMLService {
 
 	private String processCSP(Map<String, String> csp) {
 
-		if (csp == null || csp.isEmpty())
-			return null;
+        if (csp == null || csp.isEmpty())
+            return null;
 
-		return csp.entrySet()
-				.stream()
-				.map(e -> e.getKey() + " " + e.getValue())
-				.collect(Collectors.joining(";"));
-	}
+        Map<String, String> updatedCSP = new HashMap<>();
+
+        csp.entrySet()
+                .stream()
+                .forEach(e -> {
+
+                    String actualKey = CSP_HEADERS.get(e.getKey());
+
+                    if (updatedCSP.containsKey(actualKey)) {
+                        updatedCSP.put(actualKey, updatedCSP.get(actualKey) + " " + e.getValue());
+                    } else {
+                        updatedCSP.put(actualKey, actualKey + " " + e.getValue());
+                    }
+                });
+
+        return updatedCSP.values()
+                .stream()
+                .sorted()
+                .collect(Collectors.joining("; "));
+
+    }
 
 	@SuppressWarnings("unchecked")
 	private void processTagType(StringBuilder str, Map<String, Object> tagType, String tag, String[] attributeList) {
