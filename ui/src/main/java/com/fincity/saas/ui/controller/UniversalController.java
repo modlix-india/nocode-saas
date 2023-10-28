@@ -1,7 +1,5 @@
 package com.fincity.saas.ui.controller;
 
-import javax.ws.rs.Path;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -84,13 +82,13 @@ public class UniversalController {
 
 	private ResponseEntity<String> checkSumObjectToResponseEntity(String eTag, ChecksumObject e) {
 
-		if (e.getCheckSum()
-				.equals(eTag))
+		if (eTag != null && (eTag.contains(e.getCheckSum()) || e.getCheckSum()
+				.contains(eTag)))
 			return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
 					.build();
 
 		var rp = ResponseEntity.ok()
-				.header("eTag", e.getCheckSum())
+				.header("ETag", "W/" + e.getCheckSum())
 				.header("Cache-Control", "max-age: " + cacheAge + ", must-revalidate")
 				.header("x-frame-options", "SAMEORIGIN")
 				.header("X-Frame-Options", "SAMEORIGIN");
