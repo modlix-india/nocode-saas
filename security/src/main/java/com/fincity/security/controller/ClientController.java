@@ -49,6 +49,14 @@ public class ClientController
 		return this.service.isUserBeingManaged(userId, clientCode)
 		        .map(ResponseEntity::ok);
 	}
+	
+	@GetMapping("/internal/validateClientCode")
+	public Mono<ResponseEntity<Boolean>> validateClientCode(@RequestParam String clientCode) {
+
+		return this.service.getClientBy(clientCode)
+		        .flatMap(e -> Mono.just(e != null))
+		        .map(ResponseEntity::ok);
+	}
 
 	@GetMapping("/internal/getClientNAppCode")
 	public Mono<ResponseEntity<Tuple2<String, String>>> getClientNAppCode(@RequestParam String scheme,

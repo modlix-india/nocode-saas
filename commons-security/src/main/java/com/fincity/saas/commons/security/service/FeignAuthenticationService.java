@@ -125,4 +125,9 @@ public class FeignAuthenticationService implements IAuthenticationService {
 		return cacheService.cacheValueOrGet(CACHE_NAME_APP_WRITE_ACCESS,
 		        () -> this.feignAuthService.hasWriteAccess(appCode, clientCode), appCode, ":", clientCode);
 	}
+	
+    public Mono<Boolean> isValidClientCode(String clientCode) {
+
+        return this.feignAuthService.validClientCode(clientCode);
+    }
 }

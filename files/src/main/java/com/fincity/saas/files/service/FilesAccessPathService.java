@@ -13,6 +13,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -344,12 +345,12 @@ public class FilesAccessPathService
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> ca.isSystemClient() ? Mono.just(true)
-						: this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+		        ca -> ca.isSystemClient() ? this.securityService.isValidClientCode(clientCode)
+		                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
 
 				(ca, managed) -> {
 					if (!managed.booleanValue())
-						return Mono.just(false);
+						return Mono.empty();
 
 					return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
 							.getId()), clientCode, resourceType, ca.getAuthorities()
@@ -358,6 +359,8 @@ public class FilesAccessPathService
 									.toList());
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasWriteAccess"))
+		        .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+		                AbstractMessageService.OBJECT_NOT_FOUND, "Client", clientCode))
 				.defaultIfEmpty(false);
 	}
 }

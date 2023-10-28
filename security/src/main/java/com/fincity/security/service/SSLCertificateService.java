@@ -123,12 +123,12 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.clientUrlService.read(urlId),
+		        () -> this.clientUrlService.read(urlId),
 
-				clientUrl -> Mono.just(condition == null || condition.isEmpty() ? FilterCondition.make("urlId", urlId)
-						: ComplexCondition.and(FilterCondition.make("urlId", urlId), condition)),
+		        clientUrl -> Mono.just(condition == null || condition.isEmpty() ? FilterCondition.make("urlId", urlId)
+		                : ComplexCondition.and(FilterCondition.make("urlId", urlId), condition)),
 
-				(clientUrl, cond) -> this.certificateDao.readPageFilter(pageable, cond));
+		        (clientUrl, cond) -> this.certificateDao.readPageFilter(pageable, cond));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -136,14 +136,15 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.clientUrlService.read(certificate.getUrlId()),
+		        () -> this.clientUrlService.read(certificate.getUrlId()),
 
-				clientUrl -> this.certificateDao.create(certificate)
+		        clientUrl -> this.certificateDao.create(certificate)
 
 		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificate"))
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
-				.subscribeOn(Schedulers.boundedElastic());
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificate"))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
+		        .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+		        .subscribeOn(Schedulers.boundedElastic());
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -151,54 +152,56 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.requestDao.readById(requestId),
+		        () -> this.requestDao.readById(requestId),
 
-				request -> this.clientUrlService.read(request.getUrlId()),
+		        request -> this.clientUrlService.read(request.getUrlId()),
 
-				(request, clientUrl) -> this.loginAndGetOrder(request),
+		        (request, clientUrl) -> this.loginAndGetOrder(request),
 
-				(request, clientUrl, order) -> {
+		        (request, clientUrl, order) ->
+				{
 
-					try {
+			        try {
 
-						order.update();
+				        order.update();
 
-						PemReader reader = new PemReader(new StringReader(request.getCsr()));
-						PKCS10CertificationRequest csr = new PKCS10CertificationRequest(reader.readPemObject()
-								.getContent());
+				        PemReader reader = new PemReader(new StringReader(request.getCsr()));
+				        PKCS10CertificationRequest csr = new PKCS10CertificationRequest(reader.readPemObject()
+				                .getContent());
 
-						order.execute(csr.getEncoded());
+				        order.execute(csr.getEncoded());
 
-						int attempts = 10;
-						while (order.getStatus() != Status.VALID && attempts-- > 0) {
+				        int attempts = 10;
+				        while (order.getStatus() != Status.VALID && attempts-- > 0) {
 
-							if (order.getStatus() == Status.INVALID) {
-								break;
-							}
+					        if (order.getStatus() == Status.INVALID) {
+						        break;
+					        }
 
-							Thread.sleep(3000L);
-							order.update();
-						}
-					} catch (InterruptedException ex) {
+					        Thread.sleep(3000L);
+					        order.update();
+				        }
+			        } catch (InterruptedException ex) {
 
-						Thread.currentThread()
-								.interrupt();
-					} catch (AcmeException | IOException ex) {
+				        Thread.currentThread()
+				                .interrupt();
+			        } catch (AcmeException | IOException ex) {
 				        return this.msgService.throwMessage(
 				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
 				                SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, ex.getMessage());
-			    	}
+			        }
 
-					return Mono.just(order.getCertificate());
-				},
+			        return Mono.just(order.getCertificate());
+		        },
 
-				(request, clientUrl, order, certificate) -> this.certificateDao.create(request, certificate)
+		        (request, clientUrl, order, certificate) -> this.certificateDao.create(request, certificate)
 
 		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificate"))
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
-				.subscribeOn(Schedulers.boundedElastic())
-				.map(e -> true);
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificate"))
+		        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
+		        .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+		        .subscribeOn(Schedulers.boundedElastic())
+		        .map(e -> true);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -206,15 +209,16 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.challengeDao.readById(challengeId),
+		        () -> this.challengeDao.readById(challengeId),
 
-				challenge -> this.requestDao.readById(challenge.getRequestId()),
+		        challenge -> this.requestDao.readById(challenge.getRequestId()),
 
-				this::triggerChallenge,
+		        this::triggerChallenge,
 
-				(challenge, request, triggered) -> this.readRequestByURLId(request.getUrlId()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.triggerChallenge"))
-				.subscribeOn(Schedulers.boundedElastic());
+		        (challenge, request, triggered) -> this.readRequestByURLId(request.getUrlId()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.triggerChallenge"))
+		        .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+		        .subscribeOn(Schedulers.boundedElastic());
 
 	}
 
@@ -222,59 +226,58 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.loginAndGetOrder(request),
+		        () -> this.loginAndGetOrder(request),
 
-				order -> {
+		        order ->
+				{
 
-					var authChallengeTup = this.findChallengeAndAuthorization(order, challenge);
+			        var authChallengeTup = this.findChallengeAndAuthorization(order, challenge);
 
-					String chError = null;
-					String chStatus = null;
+			        String chError = null;
+			        String chStatus = null;
 
-					try {
+			        try {
 
-						Tuple2<String, String> tup = this.triggerChallenge(authChallengeTup.getT1(),
-								authChallengeTup.getT2());
-						chStatus = tup.getT1();
-						if (!tup.getT2()
-								.isBlank())
-							chError = tup.getT2();
-					} catch (AcmeException e) {
+				        Tuple2<String, String> tup = this.triggerChallenge(authChallengeTup.getT1(),
+				                authChallengeTup.getT2());
+				        chStatus = tup.getT1();
+				        if (!tup.getT2()
+				                .isBlank())
+					        chError = tup.getT2();
+			        } catch (AcmeException e) {
 				        return this.msgService.throwMessage(
 				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
 				                SecurityMessageResourceService.TRIGGER_FAILED);
-					} catch (InterruptedException ie) {
-						Thread.currentThread()
-								.interrupt();
-					}
+			        } catch (InterruptedException ie) {
+				        Thread.currentThread()
+				                .interrupt();
+			        }
 
-					try {
-						order.update();
-					} catch (AcmeException e) {
+			        try {
+				        order.update();
+			        } catch (AcmeException e) {
 				        return this.msgService.throwMessage(
 				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
 				                SecurityMessageResourceService.TRIGGER_FAILED);
 			        }
 
-					return this.challengeDao.updateStatus(challenge.getId(), chStatus, chError);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.readRequestByURLId"))
-				.subscribeOn(Schedulers.boundedElastic());
+			        return this.challengeDao.updateStatus(challenge.getId(), chStatus, chError);
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.readRequestByURLId"))
+		        .subscribeOn(Schedulers.boundedElastic());
 	}
 
 	private Tuple2<Authorization, Challenge> findChallengeAndAuthorization(Order order, SSLChallenge challenge) {
 
 		for (Authorization auth : order.getAuthorizations()) {
 			if (!auth.getIdentifier()
-					.getDomain()
-					.equals(challenge.getDomain()))
+			        .getDomain()
+			        .equals(challenge.getDomain()))
 				continue;
 
-			Challenge ch = auth
-					.findChallenge(challenge.getChallengeType().equals(Http01Challenge.TYPE)
-							? Http01Challenge.TYPE
-							: Dns01Challenge.TYPE)
-					.orElse(null);
+			Challenge ch = auth.findChallenge(challenge.getChallengeType()
+			        .equals(Http01Challenge.TYPE) ? Http01Challenge.TYPE : Dns01Challenge.TYPE)
+			        .orElse(null);
 
 			if (ch != null) {
 				return Tuples.of(auth, ch);
@@ -284,7 +287,7 @@ public class SSLCertificateService {
 	}
 
 	private Tuple2<String, String> triggerChallenge(Authorization auth, Challenge ch)
-			throws AcmeException, InterruptedException {
+	        throws AcmeException, InterruptedException {
 
 		String chStatus;
 		String chError = "";
@@ -304,8 +307,8 @@ public class SSLCertificateService {
 
 		if (status != Status.VALID) {
 			chError = ch.getError()
-					.map(Object::toString)
-					.orElse("Unknown error");
+			        .map(Object::toString)
+			        .orElse("Unknown error");
 		}
 
 		return Tuples.of(chStatus, chError);
@@ -316,26 +319,26 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.clientUrlService.read(urlId),
+		        () -> this.clientUrlService.read(urlId),
 
-				clientUrl -> this.requestDao.readByURLId(urlId),
+		        clientUrl -> this.requestDao.readByURLId(urlId),
 
-				(clientUrl, request) -> this.challengeDao.readChallengesByRequestId(request.getId()),
+		        (clientUrl, request) -> this.challengeDao.readChallengesByRequestId(request.getId()),
 
-				(clientUrl, request, challenges) -> Mono.just(new SSLCertificateOrder().setRequest(request)
-						.setChallenges(challenges)))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.readRequestByURLId"));
+		        (clientUrl, request, challenges) -> Mono.just(new SSLCertificateOrder().setRequest(request)
+		                .setChallenges(challenges)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.readRequestByURLId"));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<SSLCertificateOrder> createCertificateRequest(SSLCertificateOrderRequest request) {
 
 		if (request.getUrlId() == null || request.getDomainNames()
-				.isEmpty()
-				|| request.getDomainNames()
-						.stream()
-						.filter(String::isBlank)
-						.count() != 0l) {
+		        .isEmpty()
+		        || request.getDomainNames()
+		                .stream()
+		                .filter(String::isBlank)
+		                .count() != 0l) {
 
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 			        SecurityMessageResourceService.BAD_CERT_REQUEST);
@@ -345,30 +348,29 @@ public class SSLCertificateService {
 		// perform all the necessary checks like managed or not.
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.requestDao.checkIfRequestExistOnURL(request.getUrlId())
-						.flatMap(
-								exists -> exists.booleanValue()
-		                                ? this.msgService.throwMessage(
-		                                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
-		                                        SecurityMessageResourceService.REQUEST_EXISTING)
-										: Mono.just(false)),
+		        () -> this.requestDao.checkIfRequestExistOnURL(request.getUrlId())
+		                .flatMap(exists -> exists.booleanValue()
+		                        ? this.msgService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
+		                                SecurityMessageResourceService.REQUEST_EXISTING)
+		                        : Mono.just(false)),
 
-				e -> SecurityContextUtil.getUsersContextAuthentication(),
+		        e -> SecurityContextUtil.getUsersContextAuthentication(),
 
-				(e, ca) -> ca.isSystemClient() ? Mono.just("")
-						: this.clientUrlService.read(request.getUrlId())
-								.map(ClientUrl::getUrlPattern)
-								.map(String::toLowerCase),
+		        (e, ca) -> ca.isSystemClient() ? Mono.just("")
+		                : this.clientUrlService.read(request.getUrlId())
+		                        .map(ClientUrl::getUrlPattern)
+		                        .map(String::toLowerCase),
 
-				(e, ca, url) -> validateDomainNames(request, url),
+		        (e, ca, url) -> validateDomainNames(request, url),
 
-				(e, ca, url, valid) -> makeRecord(request).flatMap(this.requestDao::create),
+		        (e, ca, url, valid) -> makeRecord(request).flatMap(this.requestDao::create),
 
-				(e, ca, url, valid, sslRequest) -> this.createChallenges(sslRequest),
+		        (e, ca, url, valid, sslRequest) -> this.createChallenges(sslRequest),
 
-				(e, ca, url, valid, sslRequest, challenges) -> this.readRequestByURLId(request.getUrlId()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificateRequest"))
-				.subscribeOn(Schedulers.boundedElastic());
+		        (e, ca, url, valid, sslRequest, challenges) -> this.readRequestByURLId(request.getUrlId()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificateRequest"))
+		        .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+		        .subscribeOn(Schedulers.boundedElastic());
 
 	}
 
@@ -376,36 +378,37 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.requestDao.readById(requestId),
+		        () -> this.requestDao.readById(requestId),
 
-				this::createChallenges,
+		        this::createChallenges,
 
-				(req, challenges) -> this.readRequestByURLId(req.getUrlId()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createChallenges"))
-				.subscribeOn(Schedulers.boundedElastic());
+		        (req, challenges) -> this.readRequestByURLId(req.getUrlId()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createChallenges"))
+		        .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+		        .subscribeOn(Schedulers.boundedElastic());
 	}
 
 	private Mono<List<SSLChallenge>> createChallenges(SSLRequest sslRequest) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.challengeDao.deleteAllForRequest(sslRequest.getId()),
+		        () -> this.challengeDao.deleteAllForRequest(sslRequest.getId()),
 
-				deleted -> loginAndGetOrder(sslRequest),
+		        deleted -> loginAndGetOrder(sslRequest),
 
-				(deleted, finOrder) -> Flux.fromIterable(finOrder.getAuthorizations())
-						.map(auth -> makeSSLChallenge(sslRequest, auth))
-						.flatMap(this.challengeDao::create)
-						.collectList())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createChallenges"));
+		        (deleted, finOrder) -> Flux.fromIterable(finOrder.getAuthorizations())
+		                .map(auth -> makeSSLChallenge(sslRequest, auth))
+		                .flatMap(this.challengeDao::create)
+		                .collectList())
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createChallenges"));
 	}
 
 	private Mono<Order> loginAndGetOrder(SSLRequest sslRequest) {
 
 		if (StringUtil.safeIsBlank(this.sessionURL) || StringUtil.safeIsBlank(this.accountURL)
-				|| StringUtil.safeIsBlank(this.accountKey)) {
-			return this.msgService.throwMessage(msg -> new GenericException( HttpStatus.INTERNAL_SERVER_ERROR, msg),
-					SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
+		        || StringUtil.safeIsBlank(this.accountKey)) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+			        SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
 		}
 
 		Session session = new Session(this.sessionURL);
@@ -419,14 +422,14 @@ public class SSLCertificateService {
 
 		Account account = login.getAccount();
 		String[] domains = sslRequest.getDomains()
-				.split(",");
+		        .split(",");
 
 		Order order;
 
 		try {
 			order = account.newOrder()
-					.domains(domains)
-					.create();
+			        .domains(domains)
+			        .create();
 		} catch (AcmeException e) {
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
 			        SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, e.getMessage());
@@ -439,7 +442,7 @@ public class SSLCertificateService {
 		SSLChallenge challenge = new SSLChallenge();
 
 		Http01Challenge hch = auth.findChallenge(Http01Challenge.class)
-				.orElse(null);
+		        .orElse(null);
 
 		if (hch != null) {
 			challenge.setChallengeType(Http01Challenge.TYPE);
@@ -448,22 +451,22 @@ public class SSLCertificateService {
 		} else {
 
 			Dns01Challenge dch = auth.findChallenge(Dns01Challenge.class)
-					.orElse(null);
+			        .orElse(null);
 
 			if (dch != null) {
 				challenge.setChallengeType(Dns01Challenge.TYPE);
 				challenge.setToken(Dns01Challenge.toRRName(auth.getIdentifier()
-						.getDomain()));
+				        .getDomain()));
 				challenge.setAuthorization(dch.getDigest());
 			}
 		}
 
 		return challenge.setRequestId(sslRequest.getId())
-				.setDomain(auth.getIdentifier()
-						.getDomain())
-				.setRetryCount(0)
-				.setStatus(auth.getStatus()
-						.toString());
+		        .setDomain(auth.getIdentifier()
+		                .getDomain())
+		        .setRetryCount(0)
+		        .setStatus(auth.getStatus()
+		                .toString());
 	}
 
 	private Mono<String> keyPairToString(KeyPair kp) {
@@ -483,36 +486,37 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.keyPairToString(kp),
+		        () -> this.keyPairToString(kp),
 
-				key -> {
-					SSLRequest rec = new SSLRequest().setCrtKey(key)
-							.setOrganization(request.getOrganizationName())
-							.setDomains(request.getDomainNames()
-									.stream()
-									.collect(Collectors.joining(",")))
-							.setUrlId(request.getUrlId())
-							.setValidity(request.getValidityInMonths());
+		        key ->
+				{
+			        SSLRequest rec = new SSLRequest().setCrtKey(key)
+			                .setOrganization(request.getOrganizationName())
+			                .setDomains(request.getDomainNames()
+			                        .stream()
+			                        .collect(Collectors.joining(",")))
+			                .setUrlId(request.getUrlId())
+			                .setValidity(request.getValidityInMonths());
 
-					try {
-						CSRBuilder csr = new CSRBuilder();
-						for (String domain : request.getDomainNames()) {
-							csr.addDomain(domain);
-						}
-						csr.setOrganization(request.getOrganizationName());
-						csr.sign(kp);
-						StringWriter sw = new StringWriter();
-						csr.write(sw);
-						rec.setCsr(sw.toString());
-					} catch (Exception ex) {
+			        try {
+				        CSRBuilder csr = new CSRBuilder();
+				        for (String domain : request.getDomainNames()) {
+					        csr.addDomain(domain);
+				        }
+				        csr.setOrganization(request.getOrganizationName());
+				        csr.sign(kp);
+				        StringWriter sw = new StringWriter();
+				        csr.write(sw);
+				        rec.setCsr(sw.toString());
+			        } catch (Exception ex) {
 				        return this.msgService.throwMessage(
 				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 				                SecurityMessageResourceService.ERROR_KEY_CSR);
-			    	}
+			        }
 
-					return Mono.just(rec);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.makeRecord"));
+			        return Mono.just(rec);
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.makeRecord"));
 
 	}
 
@@ -533,9 +537,9 @@ public class SSLCertificateService {
 		final String testURL = url;
 
 		List<String> wrongURLs = request.getDomainNames()
-				.stream()
-				.filter(e -> !e.endsWith(testURL))
-				.toList();
+		        .stream()
+		        .filter(e -> !e.endsWith(testURL))
+		        .toList();
 
 		if (wrongURLs.isEmpty())
 			return Mono.just(true);
@@ -547,27 +551,43 @@ public class SSLCertificateService {
 	public Mono<List<SSLCertificateConfiguration>> getAllCertificates() {
 
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_CERTIFICATE, this.certificateDao::readAllCertificates,
-				CACHE_CERTIFICATE_VALUE);
+		        CACHE_CERTIFICATE_VALUE);
 	}
 
 	public Mono<String> getLastUpdated() {
 
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT,
-				this.certificateDao::getLastUpdated, CACHE_CERTIFICATE_LAST_UPDATED_VALUE);
+		        this.certificateDao::getLastUpdated, CACHE_CERTIFICATE_LAST_UPDATED_VALUE);
 	}
 
 	public Mono<Boolean> deleteRequestByURLId(ULong urlId) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.clientUrlService.read(urlId),
+		        () -> this.clientUrlService.read(urlId),
 
-				url -> this.requestDao.deleteByURLId(urlId))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.deleteRequestByURLId"))
-				.subscribeOn(Schedulers.boundedElastic());
+		        url -> this.requestDao.deleteByURLId(urlId))
+		        .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+		        .subscribeOn(Schedulers.boundedElastic())
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.deleteRequestByURLId"));
 	}
 
 	public Mono<String> getToken(String token) {
 		return this.challengeDao.getToken(token);
+	}
+
+	public Mono<Boolean> deleteCertificate(ULong id) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.certificateDao.readById(id),
+
+		        crt -> this.clientUrlService.read(crt.getUrlId()),
+
+		        (crt, curl) -> this.certificateDao.delete(id)
+		                .map(e -> e == 1))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+				.subscribeOn(Schedulers.boundedElastic())
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.deleteCertificate"));
 	}
 }
