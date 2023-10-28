@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Map.Entry;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -231,10 +232,27 @@ public class IndexHTMLService {
 		if (csp == null || csp.isEmpty())
 			return null;
 
-		return csp.entrySet()
-				.stream()
-				.map(e -> e.getKey() + " " + e.getValue())
-				.collect(Collectors.joining(";"));
+		StringBuilder cspString = new StringBuilder();
+
+		for (Entry<String, String> e : csp.entrySet()) {
+
+			String key = e.getKey();
+
+			StringBuilder sb = new StringBuilder(key);
+			for (int i = 0; i < sb.length(); i++) {
+				char c = sb.charAt(i);
+				if (!Character.isUpperCase(c))
+					continue;
+				sb.setCharAt(i, Character.toLowerCase(c));
+				sb.insert(i, '-');
+			}
+			cspString.append(key)
+					.append(' ')
+					.append(e.getValue())
+					.append(';');
+		}
+
+		return cspString.toString();
 	}
 
 	@SuppressWarnings("unchecked")

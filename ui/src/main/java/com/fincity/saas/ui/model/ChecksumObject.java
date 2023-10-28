@@ -38,6 +38,6 @@ public class ChecksumObject implements Serializable {
 			checkSum = Integer.toHexString(objectString.hashCode());
 		}
 
-		return this.checkSum;
+		return '"' + this.checkSum + '"';
 	}
 }
