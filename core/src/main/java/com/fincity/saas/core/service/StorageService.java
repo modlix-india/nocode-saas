@@ -2,6 +2,8 @@ package com.fincity.saas.core.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -22,10 +25,12 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
+import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.repository.StorageRepository;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -62,22 +67,61 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 									.flatMap(access -> {
 
 										if (!access.booleanValue())
-							                return coreMsgService.throwMessage(
-							                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-							                        CoreMessageResourceService.STORAGE_IS_APP_LEVEL);
+											return coreMsgService.throwMessage(
+													msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+													CoreMessageResourceService.STORAGE_IS_APP_LEVEL);
 
-										return super.create(entity);
+										return this.localCreate(entity);
 									});
 						}
 
-						return super.create(entity);
+						return this.localCreate(entity);
 					}
 
 			)
 					.contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.create"));
 		}
 
-		return super.create(entity);
+		return this.localCreate(entity);
+	}
+
+	private Mono<Storage> localCreate(Storage entity) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> entity.getRelations() == null ? Mono.just(List.<StorageRelation>of())
+						: Mono.just(entity.getRelations().values()),
+
+				r -> {
+
+					if (r.isEmpty())
+						return Mono.just(true);
+
+					return Mono.just(true);
+				},
+
+				(r, b) -> {
+
+					if (r.isEmpty())
+						return Mono.just(true);
+
+					for (StorageRelation relation : r) {
+
+						relation.setUniqueRelationId(
+								UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(),
+										entity.getName(), relation.getFieldName()));
+					}
+
+					return Flux.fromIterable(r).flatMap(relation -> this.read(relation.getStorageName(),
+							entity.getAppCode(), entity.getClientCode()).switchIfEmpty(
+									this.messageResourceService.throwMessage(
+											msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+											CoreMessageResourceService.NO_STORAGE_FOUND_WITH_NAME,
+											relation.getStorageName())))
+							.collectList().map(e -> true);
+				},
+
+				(r, b, c) -> super.create(entity));
 	}
 
 	@Override
@@ -102,9 +146,9 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 				existing -> {
 					if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(
-				                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setSchema(entity.getSchema())
 							.setIsAudited(entity.getIsAudited())

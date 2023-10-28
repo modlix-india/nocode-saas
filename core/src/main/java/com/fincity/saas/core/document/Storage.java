@@ -2,6 +2,7 @@ package com.fincity.saas.core.document;
 
 import java.util.Map;
 
+import org.apache.commons.lang3.builder.Diff;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -11,6 +12,7 @@ import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.core.model.StorageRelation;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -40,6 +42,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private String readAuth;
 	private String updateAuth;
 	private String deleteAuth;
+	private Map<String, StorageRelation> relations;
 
 	public Storage(Storage store) {
 
@@ -54,6 +57,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.deleteAuth = store.deleteAuth;
 		this.uniqueName = store.uniqueName;
 		this.isAppLevel = store.isAppLevel;
+		this.relations = CloneUtil.cloneMapObject(store.relations);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -62,10 +66,15 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 		if (base != null) {
 
-			return FlatMapUtil.flatMapMonoWithNull(() -> DifferenceApplicator.apply(this.schema, base.schema),
+			return FlatMapUtil.flatMapMonoWithNull(
 
-					s -> {
+					() -> DifferenceApplicator.apply(this.schema, base.schema),
+
+					s -> DifferenceApplicator.apply(this.relations, base.relations),
+
+					(s, r) -> {
 						this.schema = (Map<String, Object>) s;
+						this.relations = (Map<String, StorageRelation>) r;
 
 						this.subApplyOverride(base);
 
