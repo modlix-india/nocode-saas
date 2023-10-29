@@ -52,31 +52,30 @@ public class EventsQueListener {
 
 	@RabbitListener(queues = "#{'${events.mq.queues:events1,events2,events3}'.split(',')}", containerFactory = "directMesageListener", messageConverter = "jsonMessageConverter")
 	public Mono<Void> receive(@Payload EventQueObject message, Channel channel,
-	        @Header(AmqpHeaders.DELIVERY_TAG) long tag) {
+			@Header(AmqpHeaders.DELIVERY_TAG) long tag) {
 
 		Mono<Boolean> receivedMono = FlatMapUtil.flatMapMono(
 
-		        () -> eventActionService.read(message.getEventName(), message.getAppCode(), message.getClientCode()),
+				() -> eventActionService.read(message.getEventName(), message.getAppCode(), message.getClientCode()),
 
-		        eventAction ->
-				{
+				eventActionObject -> {
+					var eventAction = eventActionObject.getObject();
 
-			        if (eventAction.getTasks() == null || eventAction.getTasks()
-			                .isEmpty())
-				        return Mono.just(true);
+					if (eventAction.getTasks() == null || eventAction.getTasks()
+							.isEmpty())
+						return Mono.just(true);
 
-			        return Flux.fromIterable(eventAction.getTasks()
-			                .values())
-			                .filter(task -> this.actionServices.containsKey(task.getType()))
-			                .flatMap(task -> this.actionServices.get(task.getType())
-			                        .execute(eventAction, task, message))
-			                .onErrorResume(t ->
-							{
-				                logger.error("Error while executing tasks on : {} ", message, t);
-				                return Mono.just(Boolean.FALSE);
-			                })
-			                .reduce((a, b) -> a.booleanValue() && b.booleanValue());
-		        }
+					return Flux.fromIterable(eventAction.getTasks()
+							.values())
+							.filter(task -> this.actionServices.containsKey(task.getType()))
+							.flatMap(task -> this.actionServices.get(task.getType())
+									.execute(eventAction, task, message))
+							.onErrorResume(t -> {
+								logger.error("Error while executing tasks on : {} ", message, t);
+								return Mono.just(Boolean.FALSE);
+							})
+							.reduce((a, b) -> a.booleanValue() && b.booleanValue());
+				}
 
 		);
 
@@ -84,7 +83,7 @@ public class EventsQueListener {
 			receivedMono = receivedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, message.getXDebug()));
 		}
 		return receivedMono.contextWrite(Context.of(LogUtil.METHOD_NAME, "EventsQueListener.receive"))
-		        .then();
+				.then();
 
 	}
 

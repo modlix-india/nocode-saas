@@ -41,6 +41,13 @@ public class AbstractTransportController
 				.map(ResponseEntity::ok);
 	}
 
+	@GetMapping("/applyTransportCode/{code}")
+	public Mono<ResponseEntity<Boolean>> applyTransportWithTransportCode(@PathVariable("code") String code) {
+
+		return this.service.applyTransportWithTransportCode(code)
+				.map(ResponseEntity::ok);
+	}
+
 	@GetMapping("/transportTypes")
 	public Mono<ResponseEntity<List<String>>> transportTypes() {
 		return Mono.just(ResponseEntity.ok(this.service.getServieMap()
