@@ -44,6 +44,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.file.DataFileReader;
 import com.fincity.saas.commons.file.DataFileWriter;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -119,7 +120,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.create(conn, storage, dataObject), Storage::getCreateAuth,
@@ -144,7 +146,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.update(conn, storage, dataObject, override),
@@ -168,7 +171,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.read(conn, storage, id), Storage::getReadAuth,
@@ -193,7 +197,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.readPage(conn, storage, query), Storage::getReadAuth,
@@ -216,7 +221,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.delete(conn, storage, id), Storage::getDeleteAuth,
@@ -241,7 +247,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cas, hasAccess) -> this.writeDataToResponse(storage,
@@ -274,9 +281,9 @@ public class AppDataService {
 						return fluxToFile(dataFlux, fileType, dataHeaders, dfw, ovs, gson)
 								.flatMap(e -> flieToResponse(fileType, response, file, fPath, dfw));
 					} catch (Exception ex) {
-				        return this.msgService.throwMessage(
-				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
-				                CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
+						return this.msgService.throwMessage(
+								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
+								CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
 					}
 				});
 	}
@@ -300,7 +307,7 @@ public class AppDataService {
 			return zeroCopyResponse.writeWith(fPath, 0, length);
 		} catch (Exception ex) {
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
-			        CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
+					CoreMessageResourceService.NOT_ABLE_TO_DOWNLOAD_DATA, file);
 		}
 	}
 
@@ -339,15 +346,16 @@ public class AppDataService {
 				conn -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(conn, dataService) -> storageService.read(storageName, appCode, clientCode),
+				(conn, dataService) -> storageService.read(storageName, appCode, clientCode)
+						.map(ObjectWithUniqueID::getObject),
 
 				(conn, dataService, storage) -> this
 						.genericOperation(storage, (ca, hasAccess) -> downloadTemplate(storage, fileType, "notghjin"),
 								Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
 
-		                .switchIfEmpty(
-		                        this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                                CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR)))
+						.switchIfEmpty(
+								this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+										CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR)))
 
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
 	}
@@ -368,7 +376,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> uploadDataInternal(conn, storage, fileType, file, dataService),
@@ -382,7 +391,7 @@ public class AppDataService {
 
 		if (storage == null)
 			return msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-			        CoreMessageResourceService.STORAGE_NOT_FOUND);
+					CoreMessageResourceService.STORAGE_NOT_FOUND);
 
 		return FlatMapUtil.flatMapMono(
 
@@ -393,8 +402,8 @@ public class AppDataService {
 
 				bifun)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericOperation"))
-		        .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                msgString, storage.getName()));
+				.switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						msgString, storage.getName()));
 	}
 
 	private Mono<byte[]> downloadTemplate(Storage storage, DataFileType type, String temp) { // NOSONAR
@@ -426,10 +435,10 @@ public class AppDataService {
 						byte[] bytes = byteStream.toByteArray();
 						return Mono.just(bytes);
 					} catch (Exception e) {
-				        return this.msgService.throwMessage(
-				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-				                CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString());
-			    	}
+						return this.msgService.throwMessage(
+								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+								CoreMessageResourceService.TEMPLATE_GENERATION_ERROR, type.toString());
+					}
 
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.downloadTemplate"));
@@ -570,8 +579,8 @@ public class AppDataService {
 							.map(e -> true);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.uploadDataInternal"))
-		        .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                CoreMessageResourceService.NOT_ABLE_TO_READ_FILE_FORMAT, fileType));
+				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+						CoreMessageResourceService.NOT_ABLE_TO_READ_FILE_FORMAT, fileType));
 	}
 
 	private List<Mono<Boolean>> nestedFileToDB(Connection conn, Storage storage, DataFileType fileType,
@@ -665,7 +674,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.readVersion(conn, storage, versionId), Storage::getReadAuth,
@@ -690,7 +700,8 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc),
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.readPageVersion(conn, storage, versionId, query),

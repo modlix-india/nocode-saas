@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -42,9 +43,9 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 				existing -> {
 					if (existing.getVersion() != entity.getVersion())
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setDevice(entity.getDevice())
 							.setTranslations(entity.getTranslations())
@@ -61,11 +62,11 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 	}
 
 	@Override
-	public Mono<Page> read(String name, String appCode, String clientCode) {
+	public Mono<ObjectWithUniqueID<Page>> read(String name, String appCode, String clientCode) {
 
 		return super.read(name, appCode, clientCode).flatMap(pg -> {
 
-			if (StringUtil.safeIsBlank(pg.getPermission()))
+			if (StringUtil.safeIsBlank(pg.getObject().getPermission()))
 				return Mono.just(pg);
 
 			return flatMapMono(
@@ -107,7 +108,8 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 	}
 
 	@Override
-	protected Mono<Page> applyChange(String name, String appCode, String clientCode, Page page) {
+	protected Mono<ObjectWithUniqueID<Page>> applyChange(String name, String appCode, String clientCode, Page page,
+			String checksumString) {
 
 		return flatMapMono(
 
@@ -120,19 +122,19 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 					if (!SecurityContextUtil.hasAuthority(page.getPermission(), ca.getAuthorities())) {
 
 						if (StringUtil.safeIsBlank(props.get("forbiddenPage")))
-                            return this.messageResourceService.throwMessage(
-                                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                    AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, page.getPermission());
+							return this.messageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+									AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, page.getPermission());
 
 						return super.read(props.get("forbiddenPage")
 								.toString(), appCode, clientCode);
 					}
 
-					return Mono.just(page);
+					return Mono.just(new ObjectWithUniqueID<>(page, checksumString));
 				},
 
 				(ca, app, object) -> {
-					object.setComponentDefinition(object.getComponentDefinition()
+					object.getObject().setComponentDefinition(object.getObject().getComponentDefinition()
 							.entrySet()
 							.stream()
 							.filter(c -> c.getValue()
@@ -144,7 +146,7 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 					return Mono.just(object);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.applyChange"))
-				.defaultIfEmpty(page);
+				.defaultIfEmpty(new ObjectWithUniqueID<>(page, checksumString));
 
 	}
 }
