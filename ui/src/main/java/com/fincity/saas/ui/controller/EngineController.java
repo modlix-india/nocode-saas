@@ -1,11 +1,15 @@
 package com.fincity.saas.ui.controller;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.apache.poi.ss.formula.functions.LinearRegressionFunction.FUNCTION;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,8 +17,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
 import com.fincity.saas.commons.mongo.util.MergeMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.document.Style;
@@ -28,6 +36,9 @@ import com.fincity.saas.ui.service.UIFunctionService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @RestController
 @RequestMapping("api/ui/")
@@ -48,130 +59,214 @@ public class EngineController {
 	@Autowired
 	private UIFunctionService functionService;
 
+	@Value("${ui.resourceCacheAge:604800}")
+	private int cacheAge;
+
+	private static final ResponseEntity<Application> APPLICATION_NOT_FOUND = ResponseEntity
+			.notFound()
+			.build();
+
+	private static final ResponseEntity<Page> PAGE_NOT_FOUND = ResponseEntity
+			.notFound()
+			.build();
+
+	private static final ResponseEntity<UIFunction> FUNCTION_NOT_FOUND = ResponseEntity
+			.notFound()
+			.build();
+
+	private static final ResponseEntity<Map<String, Map<String, String>>> THEME_NOT_FOUND = ResponseEntity
+			.notFound()
+			.build();
+
+	public <T> Mono<ResponseEntity<T>> makeResponseEntity(ObjectWithUniqueID<T> obj,
+			String eTag) {
+
+		if (eTag != null && (eTag.contains(obj.getUniqueId()) || obj.getUniqueId()
+				.contains(eTag)))
+			return Mono.just(ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+					.build());
+
+		var rp = ResponseEntity.ok()
+				.header("ETag", "W/" + obj.getUniqueId())
+				.header("Cache-Control", "max-age: " + cacheAge + ", must-revalidate")
+				.header("x-frame-options", "SAMEORIGIN")
+				.header("X-Frame-Options", "SAMEORIGIN");
+
+		if (obj.getHeaders() != null)
+			obj.getHeaders()
+					.entrySet()
+					.stream()
+					.forEach(x -> rp.header(x.getKey(), x.getValue()));
+
+		return Mono.just(rp.body(obj.getObject()));
+	}
+
 	@GetMapping("application")
 	public Mono<ResponseEntity<Application>> application(@RequestHeader("appCode") String appCode,
-	        @RequestHeader("clientCode") String clientCode) {
+			@RequestHeader("clientCode") String clientCode,
+			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return this.appService.read(appCode, appCode, clientCode)
-		        .map(ResponseEntity::ok)
-		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
-		                .build())));
+				.flatMap(e -> this.makeResponseEntity(e, eTag))
+				.defaultIfEmpty(APPLICATION_NOT_FOUND);
 	}
 
 	@GetMapping("page/{pageName}")
 	public Mono<ResponseEntity<Page>> page(@RequestHeader("appCode") String appCode,
-	        @RequestHeader("clientCode") String clientCode, @PathVariable("pageName") String pageName) {
+			@RequestHeader("clientCode") String clientCode, @PathVariable("pageName") String pageName,
+			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return this.pageService.read(pageName, appCode, clientCode)
-		        .map(ResponseEntity::ok)
-		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
-		                .build())));
+				.flatMap(e -> this.makeResponseEntity(e, eTag))
+				.defaultIfEmpty(PAGE_NOT_FOUND);
 	}
 
 	@SuppressWarnings("unchecked")
 	@GetMapping(value = "style", produces = { "text/css" })
 	public Mono<ResponseEntity<String>> style(@RequestHeader("appCode") String appCode,
-	        @RequestHeader("clientCode") String clientCode) {
+			@RequestHeader("clientCode") String clientCode,
+			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-		Mono<List<String>> monoStyles = this.appService.read(appCode, appCode, clientCode)
-		        .flatMap(app ->
-				{
+		return FlatMapUtil.flatMapMono(
 
-			        if (app.getProperties() == null || app.getProperties()
-			                .isEmpty())
-				        return Mono.empty();
+				() -> this.appService.read(appCode, appCode, clientCode),
 
-			        Map<String, Map<String, Object>> styles = (Map<String, Map<String, Object>>) app.getProperties()
-			                .get("styles");
+				appObject -> {
 
-			        if (styles == null || styles.isEmpty())
-				        return Mono.empty();
+					var app = appObject.getObject();
 
-			        return stylesThemesFromProps(styles);
-		        });
+					if (app.getProperties() == null || app.getProperties()
+							.isEmpty())
+						return Mono.just(List.<String>of());
 
-		return monoStyles.flatMapMany(Flux::fromIterable)
-		        .flatMap(e -> this.styleService.read(e, appCode, clientCode))
-		        .map(Style::getStyleString)
-		        .collectList()
-		        .map(lst -> lst.stream()
-		                .collect(Collectors.joining("\n")))
-		        .defaultIfEmpty("")
-		        .map(ResponseEntity::ok);
+					Map<String, Map<String, Object>> styles = (Map<String, Map<String, Object>>) app.getProperties()
+							.get("styles");
+
+					if (styles == null || styles.isEmpty())
+						return Mono.just(List.<String>of());
+
+					return Mono.just(stylesThemesFromProps(styles));
+				},
+				(app, styles) -> {
+
+					if (styles == null || styles.isEmpty())
+						return Mono.just(new ObjectWithUniqueID<>("", app.getUniqueId()));
+
+					return Flux.fromIterable(styles)
+							.flatMap(e -> this.styleService.read(e, appCode, clientCode))
+							.collectList()
+							.flatMap(lst -> {
+								if (lst == null || lst.isEmpty())
+									return Mono.just(new ObjectWithUniqueID<>("", app.getUniqueId()));
+
+								if (lst.size() == 1)
+									return Mono.just(new ObjectWithUniqueID<>(lst.get(0).getObject().getStyleString(),
+											lst.get(0).getUniqueId() + app.getUniqueId()));
+								StringBuilder finString = new StringBuilder(lst.get(0).getObject().getStyleString());
+								StringBuilder sb = new StringBuilder();
+
+								for (int i = 1; i < lst.size(); i++) {
+									finString.append("\n");
+									finString.append(lst.get(i).getObject().getStyleString());
+									sb.append(lst.get(i).getUniqueId());
+								}
+
+								sb.append(app.getUniqueId());
+
+								return Mono.just(new ObjectWithUniqueID<>(finString.toString(), sb.toString()));
+							})
+							.defaultIfEmpty(new ObjectWithUniqueID<>("", app.getUniqueId()))
+							.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.style inner"));
+				},
+
+				(app, styles, theme) -> this.makeResponseEntity(theme, eTag))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.style"));
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	@GetMapping(value = "theme")
 	public Mono<ResponseEntity<Map<String, Map<String, String>>>> theme(@RequestHeader("appCode") String appCode,
-	        @RequestHeader("clientCode") String clientCode) {
+			@RequestHeader("clientCode") String clientCode,
+			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-		Mono<List<String>> monoStyles = this.appService.read(appCode, appCode, clientCode)
-		        .flatMap(app ->
-				{
+		return FlatMapUtil.flatMapMono(
 
-			        if (app.getProperties() == null || app.getProperties()
-			                .isEmpty())
-				        return Mono.empty();
+				() -> this.appService.read(appCode, appCode, clientCode),
 
-			        Map<String, Map<String, Object>> styles = (Map<String, Map<String, Object>>) app.getProperties()
-			                .get("themes");
+				appObject -> {
 
-			        if (styles == null || styles.isEmpty())
-				        return Mono.empty();
+					var app = appObject.getObject();
 
-			        return stylesThemesFromProps(styles);
-		        });
+					if (app.getProperties() == null || app.getProperties()
+							.isEmpty())
+						return Mono.just(List.<String>of());
 
-		return monoStyles.flatMapMany(Flux::fromIterable)
-		        .flatMap(e -> this.themeService.read(e, appCode, clientCode))
-		        .map(StyleTheme::getVariables)
-		        .collectList()
-		        .flatMap(lst -> {
-		        	if (lst == null || lst.isEmpty())
-		        		return Mono.empty();
-		        	
-		        	if (lst.size() == 1)
-		        		return Mono.just(lst.get(0));
-		        	
-		        	Map<String, Map<String, String>> finMap = lst.get(0);
-		        	
-		        	for (int i = 1; i<lst.size();i++)
-		        		finMap = MergeMapUtil.merge(finMap, lst.get(i));
-		        	
-		        	return Mono.just(finMap);
-		        })
-		        .defaultIfEmpty(Map.of())
-		        .map(ResponseEntity::ok);
+					Map<String, Map<String, Object>> styles = (Map<String, Map<String, Object>>) app.getProperties()
+							.get("themes");
+
+					if (styles == null || styles.isEmpty())
+						return Mono.just(List.<String>of());
+
+					return Mono.just(stylesThemesFromProps(styles));
+				},
+				(app, styles) -> {
+
+					if (styles == null || styles.isEmpty())
+						return Mono.just(new ObjectWithUniqueID<>(Map.of(), app.getUniqueId()));
+
+					return Flux.fromIterable(styles)
+							.flatMap(e -> this.themeService.read(e, appCode, clientCode))
+							.collectList()
+							.flatMap(lst -> {
+								if (lst == null || lst.isEmpty())
+									return Mono.just(new ObjectWithUniqueID<>(Map.<String, Map<String, String>>of(),
+											app.getUniqueId()));
+
+								if (lst.size() == 1)
+									return Mono.just(new ObjectWithUniqueID<>(lst.get(0).getObject().getVariables(),
+											lst.get(0).getUniqueId() + app.getUniqueId()));
+
+								Map<String, Map<String, String>> finMap = lst.get(0).getObject().getVariables();
+								StringBuilder sb = new StringBuilder();
+
+								for (int i = 1; i < lst.size(); i++) {
+									finMap = MergeMapUtil.merge(finMap, lst.get(i).getObject().getVariables());
+									sb.append(lst.get(i).getUniqueId());
+								}
+
+								sb.append(app.getUniqueId());
+
+								return Mono.just(new ObjectWithUniqueID<>(finMap, sb.toString()));
+							})
+							.defaultIfEmpty(new ObjectWithUniqueID<>(Map.of(), app.getUniqueId()))
+							.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.theme inner"));
+				},
+
+				(app, styles, theme) -> this.makeResponseEntity(theme, eTag))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.theme outer"));
 	}
 
-	private Mono<? extends List<String>> stylesThemesFromProps(Map<String, Map<String, Object>> styles) {
-		List<String> ss = styles.values()
-		        .stream()
-		        .sorted(new MapWithOrderComparator())
-		        .map(e ->
-				{
-		            Object styleName = e.get("name");
-		            if (styleName == null)
-		                return null;
-		            return styleName.toString();
-		        })
-		        .filter(Objects::nonNull)
-		        .toList();
-
-		if (ss.isEmpty())
-		    return Mono.empty();
-
-		return Mono.just(ss);
+	private List<String> stylesThemesFromProps(Map<String, Map<String, Object>> styles) {
+		return styles.values()
+				.stream()
+				.sorted(new MapWithOrderComparator())
+				.map(e -> {
+					Object styleName = e.get("name");
+					if (styleName == null)
+						return null;
+					return styleName.toString();
+				})
+				.filter(Objects::nonNull)
+				.toList();
 	}
 
 	@GetMapping("function/{namespace}/{name}")
 	public Mono<ResponseEntity<UIFunction>> function(@RequestHeader("appCode") String appCode,
-	        @RequestHeader("clientCode") String clientCode, @PathVariable("namespace") String namespace,
-	        @PathVariable("name") String name) {
+			@RequestHeader("clientCode") String clientCode, @PathVariable("namespace") String namespace,
+			@PathVariable("name") String name, @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return this.functionService.read(namespace + "." + name, appCode, clientCode)
-		        .map(ResponseEntity::ok)
-		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
-		                .build())));
+				.flatMap(e -> this.makeResponseEntity(e, eTag))
+				.defaultIfEmpty(FUNCTION_NOT_FOUND);
 	}
 }

@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.ui.model.ChecksumObject;
 import com.fincity.saas.ui.service.IndexHTMLService;
 import com.fincity.saas.ui.service.JSService;
 import com.fincity.saas.ui.service.ManifestService;
@@ -80,15 +80,15 @@ public class UniversalController {
 						.build())));
 	}
 
-	private ResponseEntity<String> checkSumObjectToResponseEntity(String eTag, ChecksumObject e) {
+	private ResponseEntity<String> checkSumObjectToResponseEntity(String eTag, ObjectWithUniqueID<String> e) {
 
-		if (eTag != null && (eTag.contains(e.getCheckSum()) || e.getCheckSum()
+		if (eTag != null && (eTag.contains(e.getUniqueId()) || e.getUniqueId()
 				.contains(eTag)))
 			return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
 					.build();
 
 		var rp = ResponseEntity.ok()
-				.header("ETag", "W/" + e.getCheckSum())
+				.header("ETag", "W/" + e.getUniqueId())
 				.header("Cache-Control", "max-age: " + cacheAge + ", must-revalidate")
 				.header("x-frame-options", "SAMEORIGIN")
 				.header("X-Frame-Options", "SAMEORIGIN");
@@ -99,7 +99,7 @@ public class UniversalController {
 					.stream()
 					.forEach(x -> rp.header(x.getKey(), x.getValue()));
 
-		return rp.body(e.getObjectString());
+		return rp.body(e.getObject());
 	}
 
 	@GetMapping("/.well-known/acme-challenge/{token}")
