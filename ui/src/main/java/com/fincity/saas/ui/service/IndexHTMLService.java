@@ -13,13 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
-import com.fincity.saas.ui.model.ChecksumObject;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -79,13 +79,18 @@ public class IndexHTMLService {
 	@Autowired
 	private CacheService cacheService;
 
-	public Mono<ChecksumObject> getIndexHTML(String appCode, String clientCode) {
+	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
 
 		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode),
+
 				() -> FlatMapUtil
-						.flatMapMonoWithNull(() -> appService.read(appCode, appCode, clientCode),
-								app -> this.indexFromApp(app, appCode, clientCode))
+						.flatMapMonoWithNull(
+
+								() -> appService.read(appCode, appCode, clientCode),
+
+								app -> this.indexFromApp(app.getObject(), appCode, clientCode))
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
+
 				clientCode);
 	}
 
@@ -123,7 +128,7 @@ public class IndexHTMLService {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Mono<ChecksumObject> indexFromApp(Application app, String appCode, String clientCode) {
+	private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode, String clientCode) {
 
 		Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
@@ -155,13 +160,13 @@ public class IndexHTMLService {
 
 		// Here the preference will be for the style from the style service.
 
-		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/api/ui/style\" />");
+		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
 
 		str.append("<script src=\"/js/index.js\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
 
-		return Mono.just(new ChecksumObject(str.toString()).setHeaders(processCSPHeaders(appProps)));
+		return Mono.just(new ObjectWithUniqueID<>(str.toString()).setHeaders(processCSPHeaders(appProps)));
 	}
 
 	@SuppressWarnings("unchecked")

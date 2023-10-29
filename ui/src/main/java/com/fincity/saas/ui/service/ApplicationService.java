@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -161,7 +162,8 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 	}
 
 	@Override
-	protected Mono<Application> applyChange(String name, String appCode, String clientCode, Application object) {
+	protected Mono<ObjectWithUniqueID<Application>> applyChange(String name, String appCode, String clientCode,
+			Application object, String id) {
 
 		if (object == null)
 			return Mono.empty();
@@ -186,14 +188,14 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 						pageName = props.get("forbiddenPage");
 
 					return this.pageService.read(pageName.toString(), object.getAppCode(), clientCode);
-
 				},
 
 				(ca, ssp, shellPage) -> {
 					object.getProperties()
-							.put("shellPageDefinition", shellPage);
+							.put("shellPageDefinition", shellPage == null ? null : shellPage.getObject());
 
-					return Mono.just(object);
+					return Mono.just(
+							new ObjectWithUniqueID<>(object, shellPage == null ? id : id + shellPage.getUniqueId()));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.applyChange"));
 	}
