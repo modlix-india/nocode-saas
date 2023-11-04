@@ -1,0 +1,28 @@
+use security;
+
+DROP TABLE IF EXISTS `security_app_property`;
+
+CREATE TABLE `security_app_property` (
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'App ID for which this property belongs to',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Client ID for which this property belongs to',
+
+    `NAME` VARCHAR(128) NOT NULL COMMENT 'Name of the property',
+    `VALUE` TEXT NULL DEFAULT NULL COMMENT 'Value of the property',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY (`APP_ID`, `CLIENT_ID`, `NAME`),
+    CONSTRAINT `FK1_APP_PROP_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_PROP_CLNT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+)
+ENGINE = INNODB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `security_app` 
+	ADD COLUMN `IS_TEMPLATE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Is this app or site a template?';
