@@ -16,7 +16,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +36,9 @@ import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.ObjectUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
@@ -45,7 +50,10 @@ import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.model.ClientRegistrationRequest;
+import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.util.PasswordUtil;
 
 import reactor.core.publisher.Mono;
@@ -99,6 +107,10 @@ public class ClientService
 
 	@Autowired
 	private EventCreationService ecService;
+
+	@Autowired
+	@Lazy
+	private AuthenticationService authenticationService;
 
 	@Value("${jwt.token.rememberme.expiry}")
 	private Integer remembermeExpiryInMinutes;
@@ -376,9 +388,9 @@ public class ClientService
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.assignPackageToClient"))
-			                .switchIfEmpty(securityMessageResourceService.throwMessage(
-			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-			                        SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
+							.switchIfEmpty(securityMessageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+									SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
 
 				}
 
@@ -426,9 +438,9 @@ public class ClientService
 		return this.dao.checkPackageAssignedForClient(clientId, packageId)
 				.flatMap(result -> {
 					if (!result.booleanValue())
-				        return securityMessageResourceService.throwMessage(
-				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-				                SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
+						return securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
 
 					return flatMapMono(
 
@@ -469,60 +481,67 @@ public class ClientService
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.removePackageFromClient"));
 				})
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
 
 	}
 
-	public Mono<Boolean> register(ServerHttpRequest httpRequest, ClientRegistrationRequest request) {
+	public Mono<ClientRegistrationResponse> register(
+			ClientRegistrationRequest registrationRequest, ServerHttpRequest request,
+			ServerHttpResponse response) {
 
 		Mono<ContextAuthentication> checkEmailExistsInIndividualClients = FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> {
-					if (request.isBusinessClient())
+					if (registrationRequest.isBusinessClient())
 						return Mono.just(ca);
 
-					return this.userService.checkUserExists(ca.getUrlAppCode(), ca.getUrlClientCode(), request)
+					return this.userService
+							.checkUserExists(ca.getUrlAppCode(), ca.getUrlClientCode(), registrationRequest)
 							.flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? null : ca));
 				}
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"))
-		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.CONFLICT, msg),
-		                SecurityMessageResourceService.USER_ALREADY_EXISTS, request.getEmailId()));
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.CONFLICT, msg),
+						SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
 
-		Mono<Boolean> mono = FlatMapUtil.flatMapMono(
+		Mono<ClientRegistrationResponse> mono = FlatMapUtil.flatMapMono(
 
 				() -> checkEmailExistsInIndividualClients,
 
-				ca -> this.registerClient(request, ca),
+				ca -> this.appService.getProperties(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+						ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE)
+						.map(e -> e.isEmpty() ? "" : e.get(0).getValue()),
 
-				(ca, client) -> this.dao.addManageRecord(ca.getUrlClientCode(), client.getId()),
+				(ca, prop) -> this.registerClient(registrationRequest, ca, prop),
 
-				(ca, client, manageId) -> this.dao.addDefaultPackages(client.getId(), ca.getUrlClientCode(),
+				(ca, prop, client) -> this.dao.addManageRecord(ca.getUrlClientCode(), client.getId()),
+
+				(ca, prop, client, manageId) -> this.dao.addDefaultPackages(client.getId(), ca.getUrlClientCode(),
 						ca.getUrlAppCode()),
 
-				(ca, client, manageId, added) -> registerUser(request, client),
+				(ca, prop, client, manageId, added) -> registerUser(registrationRequest, client, prop),
 
-				(ca, client, manageId, added, userTuple) -> this.getClientBy(ca.getUrlClientCode())
+				(ca, prop, client, manageId, added, userTuple) -> this.getClientBy(ca.getUrlClientCode())
 						.map(Client::getId),
 
-				(ca, client, manageId, added, userTuple, loggedInClientCode) -> {
+				(ca, prop, client, manageId, added, userTuple, loggedInClientCode) -> {
 
-					if (!StringUtil.safeIsBlank(request.getPassword())) {
+					if (!StringUtil.safeIsBlank(registrationRequest.getPassword())) {
 
-						return this.userService.makeOneTimeToken(httpRequest, ca, userTuple.getT1(), loggedInClientCode)
+						return this.userService.makeOneTimeToken(request, ca, userTuple.getT1(), loggedInClientCode)
 								.map(TokenObject::getToken);
 					}
 
 					return Mono.just("");
 				},
 
-				(ca, client, manageId, added, userTuple, loggedInClientCode, token) -> ecService
+				(ca, prop, client, manageId, added, userTuple, loggedInClientCode, token) -> ecService
 						.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
 								.setClientCode(ca.getUrlClientCode())
 								.setEventName(EventNames.CLIENT_REGISTERED)
@@ -532,13 +551,24 @@ public class ClientService
 								.setEventName(EventNames.USER_REGISTERED)
 								.setData(Map.of("client", client, "user", userTuple.getT1(), "token", token,
 										"passwordUsed", userTuple.getT2()))))
-						.map(e -> true)
+						.flatMap(e -> {
+							if (!AppService.APP_PROP_REG_TYPE_NO_VERIFICATION
+									.equals(prop))
+								return Mono.just(new ClientRegistrationResponse(true, null));
+
+							return this.authenticationService
+									.authenticate(new AuthenticationRequest()
+											.setUserName(CommonsUtil.nonNullValue(registrationRequest.getUserName(),
+													registrationRequest.getEmailId()))
+											.setPassword(registrationRequest.getPassword()), request, response)
+									.map(x -> new ClientRegistrationResponse(true, x));
+						})
 
 		);
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
 	}
 
-	private Mono<Tuple2<User, String>> registerUser(ClientRegistrationRequest request, Client client) {
+	private Mono<Tuple2<User, String>> registerUser(ClientRegistrationRequest request, Client client, String regType) {
 		User user = new User();
 		user.setClientId(client.getId());
 		user.setEmailId(request.getEmailId());
@@ -548,13 +578,18 @@ public class ClientService
 		user.setUserName(request.getUserName());
 
 		String password = "";
-		if (StringUtil.safeIsBlank(request.getPassword())) {
+		if (regType.contains(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)) {
 			password = PasswordUtil.generatePassword(8);
 			user.setPassword(password);
 			user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-		} else {
+		} else if (StringUtil.safeIsBlank(request.getPassword())) {
+
+		} else if (regType.contains(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
 			user.setPassword(request.getPassword());
 			user.setStatusCode(SecurityUserStatusCode.INACTIVE);
+		} else if (regType.contains(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION)) {
+			user.setPassword(request.getPassword());
+			user.setStatusCode(SecurityUserStatusCode.ACTIVE);
 		}
 
 		final String finPassword = password;
@@ -579,17 +614,24 @@ public class ClientService
 				(ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchPackages"))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
 
 	}
 
-	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca) {
+	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca, String regType) {
+
+		if ("".equals(regType)) {
+			return this.securityMessageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
+		}
+
 		if (ca.isAuthenticated())
 			return this.securityMessageResourceService.throwMessage(
-			        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
 
 		Client client = new Client();
 		client.setName(
@@ -603,8 +645,8 @@ public class ClientService
 
 		if (StringUtil.safeIsBlank(client.getName()))
 			return this.securityMessageResourceService.throwMessage(
-			        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
 
 		return flatMapMono(
 

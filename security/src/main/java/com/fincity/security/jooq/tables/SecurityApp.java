@@ -16,12 +16,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function9;
+import org.jooq.Function10;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row9;
+import org.jooq.Row10;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -105,6 +105,12 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * row is updated
      */
     public final TableField<SecurityAppRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
+
+    /**
+     * The column <code>security.security_app.IS_TEMPLATE</code>. Is this app or
+     * site a template?
+     */
+    public final TableField<SecurityAppRecord, Byte> IS_TEMPLATE = createField(DSL.name("IS_TEMPLATE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Is this app or site a template?");
 
     private SecurityApp(Name alias, Table<SecurityAppRecord> aliased) {
         this(alias, aliased, null);
@@ -217,18 +223,18 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row9 type methods
+    // Row10 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row9<ULong, ULong, String, String, SecurityAppAppType, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row9) super.fieldsRow();
+    public Row10<ULong, ULong, String, String, SecurityAppAppType, ULong, LocalDateTime, ULong, LocalDateTime, Byte> fieldsRow() {
+        return (Row10) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function9<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super Byte, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -236,7 +242,7 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function9<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super Byte, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
