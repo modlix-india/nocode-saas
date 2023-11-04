@@ -1,6 +1,7 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityAppUserRole.SECURITY_APP_USER_ROLE;
@@ -9,6 +10,8 @@ import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.jooq.Condition;
 import org.jooq.Record;
@@ -20,20 +23,25 @@ import org.jooq.types.UByte;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.ByteUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppProperty;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -98,6 +106,45 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
 		return hasOnlyInternalAccess(appCode, clientCode, 0);
+	}
+
+	public Mono<Boolean> hasReadAccess(ULong appId, ULong clientId) {
+
+		return hasOnlyInternalAccess(appId, clientId, 0);
+	}
+
+	public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
+
+		return hasOnlyInternalAccess(appId, clientId, 1);
+	}
+
+	private Mono<Boolean> hasOnlyInternalAccess(ULong appId, ULong clientId, int accessType) {
+
+		List<Condition> conditions = new ArrayList<>();
+		conditions.add(SECURITY_APP_ACCESS.APP_ID.eq(appId));
+		conditions.add(SECURITY_CLIENT.ID.eq(clientId));
+		if (accessType == 1) {
+			conditions.add(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
+		}
+
+		SelectConditionStep<Record1<ULong>> inQuery = this.dslContext.select(SECURITY_APP_ACCESS.APP_ID)
+				.from(SECURITY_APP_ACCESS)
+				.leftJoin(SECURITY_CLIENT)
+				.on(SECURITY_CLIENT.ID.eq(SECURITY_APP_ACCESS.CLIENT_ID))
+				.where(DSL.and(conditions));
+
+		var outQuery = this.dslContext.select(DSL.count())
+				.from(SECURITY_APP)
+				.leftJoin(SECURITY_CLIENT)
+				.on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
+				.where(SECURITY_APP.ID.eq(appId)
+						.and(SECURITY_CLIENT.ID.eq(clientId)
+								.or(SECURITY_APP.ID.in(inQuery))))
+				.limit(1);
+
+		return Mono.from(outQuery)
+				.map(Record1::value1)
+				.map(e -> e != 0);
 	}
 
 	private Mono<Boolean> hasOnlyInternalAccess(String appCode, String clientCode, int accessType) {
@@ -356,5 +403,76 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 						}))
 				.collectList()
 				.map(lst -> lst.get(lst.size() - 1));
+	}
+
+	public Mono<Boolean> toggleMakeTemplate(ULong appId, boolean isTemplate) {
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextUser,
+
+				user -> Mono.from(this.dslContext.update(SECURITY_APP)
+						.set(SECURITY_APP.IS_TEMPLATE, isTemplate ? ByteUtil.ONE : ByteUtil.ZERO)
+						.where(SECURITY_APP.ID.eq(appId))),
+
+				(user, count) -> Mono.just(count == 1))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.toggleMakeTemplate"));
+	}
+
+	public Mono<List<AppProperty>> getProperties(ULong clientId, ULong appId, String appCode, String propName) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> Mono.from(this.dslContext.selectFrom(SECURITY_APP)
+						.where(appId != null ? SECURITY_APP.ID.eq(appId) : SECURITY_APP.APP_CODE.eq(appCode))
+						.limit(1))
+						.map(e -> e.into(App.class)),
+
+				app -> {
+
+					List<Condition> conditions = new ArrayList<>();
+					conditions.add(SECURITY_APP_PROPERTY.APP_ID.eq(app.getId()));
+					if (propName != null)
+						conditions.add(SECURITY_APP_PROPERTY.NAME.eq(propName));
+
+					if (app.getClientId().equals(clientId))
+						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId));
+					else
+						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId).or(SECURITY_APP_PROPERTY.CLIENT_ID
+								.eq(app.getClientId())));
+
+					Mono<List<AppProperty>> flux = Flux.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
+							.where(DSL.and(conditions)))
+							.map(e -> e.into(AppProperty.class)).collectList();
+
+					return flux
+							.map(e -> e.stream().collect(Collectors.groupingBy(AppProperty::getName)).values().stream()
+									.map(x -> {
+										AppProperty p = x.get(0);
+										if (x.size() == 2)
+											return p.getClientId().equals(clientId) ? p : x.get(1);
+
+										return p;
+									}).collect(Collectors.toList()));
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getProperties"));
+	}
+
+	public Mono<Boolean> updateProperty(AppProperty property) {
+		return Mono.from(this.dslContext.insertInto(SECURITY_APP_PROPERTY)
+				.columns(SECURITY_APP_PROPERTY.APP_ID, SECURITY_APP_PROPERTY.CLIENT_ID,
+						SECURITY_APP_PROPERTY.NAME, SECURITY_APP_PROPERTY.VALUE)
+				.values(property.getAppId(), property.getClientId(), property.getName(), property.getValue())
+				.onDuplicateKeyUpdate()
+				.set(SECURITY_APP_PROPERTY.VALUE, property.getValue()))
+				.map(e -> true);
+	}
+
+	public Mono<Boolean> deleteProperty(ULong clientId, ULong appId, String propName) {
+		return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_PROPERTY)
+				.where(SECURITY_APP_PROPERTY.APP_ID.eq(appId)
+						.and(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId))
+						.and(SECURITY_APP_PROPERTY.NAME.eq(propName))))
+				.map(e -> e == 1);
 	}
 }

@@ -7,6 +7,7 @@ package com.fincity.security.jooq;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppPackage;
+import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientManage;
@@ -64,6 +65,11 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_package</code>.
      */
     public final SecurityAppPackage SECURITY_APP_PACKAGE = SecurityAppPackage.SECURITY_APP_PACKAGE;
+
+    /**
+     * The table <code>security.security_app_property</code>.
+     */
+    public final SecurityAppProperty SECURITY_APP_PROPERTY = SecurityAppProperty.SECURITY_APP_PROPERTY;
 
     /**
      * The table <code>security.security_app_user_role</code>.
@@ -189,6 +195,7 @@ public class Security extends SchemaImpl {
             SecurityApp.SECURITY_APP,
             SecurityAppAccess.SECURITY_APP_ACCESS,
             SecurityAppPackage.SECURITY_APP_PACKAGE,
+            SecurityAppProperty.SECURITY_APP_PROPERTY,
             SecurityAppUserRole.SECURITY_APP_USER_ROLE,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientManage.SECURITY_CLIENT_MANAGE,
