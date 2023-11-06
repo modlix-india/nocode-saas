@@ -36,7 +36,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R extends IOverridableDataRepository<D>>
-        extends AbstractOverridableDataService<D, R> {
+		extends AbstractOverridableDataService<D, R> {
 
 	protected AbstractFunctionService(Class<D> pojoClass) {
 		super(pojoClass);
@@ -48,66 +48,66 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 	private Map<String, ReactiveRepository<ReactiveFunction>> functions = new HashMap<>();
 
 	@Override
-    public Mono<D> create(D entity) {
+	public Mono<D> create(D entity) {
 
-        String name = StringUtil.safeValueOf(entity.getDefinition()
-                .get(NAME));
-        String namespace = StringUtil.safeValueOf(entity.getDefinition()
-                .get(NAMESPACE));
+		String name = StringUtil.safeValueOf(entity.getDefinition()
+				.get(NAME));
+		String namespace = StringUtil.safeValueOf(entity.getDefinition()
+				.get(NAMESPACE));
 
-        if (name == null || namespace == null) {
+		if (name == null || namespace == null) {
 
-            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST,
-                    msg),
-                    AbstractMongoMessageResourceService.NAME_MISSING);
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST,
+					msg),
+					AbstractMongoMessageResourceService.NAME_MISSING);
 
-        }
+		}
 
-        entity.setName(namespace + "." + name);
+		entity.setName(namespace + "." + name);
 
-        return super.create(entity);
-    }
+		return super.create(entity);
+	}
 
 	@Override
 	protected Mono<D> updatableEntity(D entity) {
 
-        return flatMapMono(
+		return flatMapMono(
 
-                () -> this.read(entity.getId()),
+				() -> this.read(entity.getId()),
 
-                existing -> {
-                    if (existing.getVersion() != entity.getVersion())
+				existing -> {
+					if (existing.getVersion() != entity.getVersion())
 
-                        return this.messageResourceService
-                                .throwMessage(msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                        AbstractMongoMessageResourceService.VERSION_MISMATCH);
+						return this.messageResourceService
+								.throwMessage(msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+										AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-                    String name = StringUtil.safeValueOf(entity.getDefinition()
-                            .get(NAME));
-                    String namespace = StringUtil.safeValueOf(entity.getDefinition()
-                            .get(NAMESPACE));
+					String name = StringUtil.safeValueOf(entity.getDefinition()
+							.get(NAME));
+					String namespace = StringUtil.safeValueOf(entity.getDefinition()
+							.get(NAMESPACE));
 
-                    if (name == null || namespace == null) {
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                AbstractMongoMessageResourceService.NAME_MISSING);
-                    }
+					if (name == null || namespace == null) {
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								AbstractMongoMessageResourceService.NAME_MISSING);
+					}
 
-                    String funName = namespace + "." + name;
+					String funName = namespace + "." + name;
 
-                    if (!funName.equals(existing.getName())) {
+					if (!funName.equals(existing.getName())) {
 
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                AbstractMongoMessageResourceService.NAME_CHANGE);
-                    }
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								AbstractMongoMessageResourceService.NAME_CHANGE);
+					}
 
-                    existing.setDefinition(entity.getDefinition());
-                    existing.setVersion(existing.getVersion() + 1)
-                            .setPermission(entity.getPermission());
+					existing.setDefinition(entity.getDefinition());
+					existing.setVersion(existing.getVersion() + 1)
+							.setPermission(entity.getPermission());
 
-                    return Mono.just(existing);
-                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFunctionService.updatableEntity"));
+					return Mono.just(existing);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFunctionService.updatableEntity"));
 	}
 
 	static class NameOnly {
@@ -117,22 +117,21 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 	public Flux<String> filterInRepo(String appCode, String clientCode, String filter) {
 
 		Flux<NameOnly> names = this.inheritanceService.order(appCode, clientCode, clientCode)
-		        .flatMapMany(ccs ->
-				{
-			        List<Criteria> criteria = new ArrayList<>();
+				.flatMapMany(ccs -> {
+					List<Criteria> criteria = new ArrayList<>();
 
-			        criteria.add(Criteria.where("appCode")
-			                .is(appCode));
-			        criteria.add(Criteria.where("clientCode")
-			                .in(ccs));
+					criteria.add(Criteria.where("appCode")
+							.is(appCode));
+					criteria.add(Criteria.where("clientCode")
+							.in(ccs));
 
-			        if (!StringUtil.safeIsBlank(filter))
-				        criteria.add(Criteria.where("name")
-				                .regex(Pattern.compile(filter, Pattern.CASE_INSENSITIVE)));
+					if (!StringUtil.safeIsBlank(filter))
+						criteria.add(Criteria.where("name")
+								.regex(Pattern.compile(filter, Pattern.CASE_INSENSITIVE)));
 
-			        return this.mongoTemplate.find(new Query(new Criteria().andOperator(criteria)), NameOnly.class,
-			                this.getCollectionName());
-		        });
+					return this.mongoTemplate.find(new Query(new Criteria().andOperator(criteria)), NameOnly.class,
+							this.getCollectionName());
+				});
 
 		return names.map(e -> e.name);
 	}
@@ -141,7 +140,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
 		return functions.computeIfAbsent(appCode + " - " + clientCode,
 
-		        key ->
+				key ->
 
 				new ReactiveRepository<ReactiveFunction>() {
 
@@ -153,30 +152,31 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
 								() -> read(fnName, appCode, clientCode),
 
-						        s ->
-								{
+								s -> {
 
-							        ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaTypeAdapter();
+									ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaTypeAdapter();
 
-							        AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
+									AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
 
-							        Gson gson = new GsonBuilder()
-							                .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-							                .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
-							                .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
-							                .create();
+									Gson gson = new GsonBuilder()
+											.registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+											.registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+											.registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
+											.create();
 
-							        arraySchemaTypeAdapter.setGson(gson);
+									arraySchemaTypeAdapter.setGson(gson);
 
-							        additionalTypeAdapter.setGson(gson);
+									additionalTypeAdapter.setGson(gson);
 
-							        FunctionDefinition fd = gson.fromJson(gson.toJsonTree(s.getDefinition()),
-							                FunctionDefinition.class);
+									FunctionDefinition fd = gson.fromJson(
+											gson.toJsonTree(s.getObject().getDefinition()),
+											FunctionDefinition.class);
 
-							        return Mono.just((ReactiveFunction) new DefinitionFunction(fd, s.getExecuteAuth()));
-						        })
-						        .contextWrite(Context.of(LogUtil.METHOD_NAME,
-						                "AbstractFunctionService.getFunctionRepository"));
+									return Mono.just((ReactiveFunction) new DefinitionFunction(fd,
+											s.getObject().getExecuteAuth()));
+								})
+								.contextWrite(Context.of(LogUtil.METHOD_NAME,
+										"AbstractFunctionService.getFunctionRepository"));
 
 					}
 

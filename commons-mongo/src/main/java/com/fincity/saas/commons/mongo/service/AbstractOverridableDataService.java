@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.zip.Checksum;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
@@ -43,6 +45,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -626,24 +629,27 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.paramToConditionLRO"));
 	}
 
-	public Mono<D> read(String name, String appCode, String clientCode) {
+	public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
 				() -> Mono.just(clientCode),
 
-				key -> cacheService.get(this.getCacheName(appCode, name), key)
-						.map(this.pojoClass::cast),
+				key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
 
-				(key, cApp) -> Mono.justOrEmpty(cApp)
-						.switchIfEmpty(Mono.defer(() -> SecurityContextUtil.getUsersContextAuthentication()
-								.map(ContextAuthentication::getUrlClientCode)
-								.defaultIfEmpty(clientCode)
-								.flatMap(cc -> readIfExistsInBase(name, appCode, cc, clientCode)))),
+				(key, cApp) -> {
+
+					if (cApp != null)
+						return Mono.just(cApp.getObject());
+
+					return SecurityContextUtil.getUsersContextAuthentication()
+							.map(ContextAuthentication::getUrlClientCode)
+							.defaultIfEmpty(clientCode)
+							.flatMap(cc -> readIfExistsInBase(name, appCode, cc, clientCode));
+				},
 
 				(key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
-						.flatMap(da -> this.readInternal(da.getId())
-								.map(this.pojoClass::cast)),
+						.flatMap(da -> this.readInternal(da.getId())).map(this.pojoClass::cast),
 
 				(key, cApp, dbApp, mergedApp) -> {
 
@@ -652,7 +658,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 					try {
 						return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
-								.newInstance(cApp != null ? cApp : mergedApp));
+								.newInstance(cApp != null ? cApp.getObject() : mergedApp));
 					} catch (Exception e) {
 
 						return this.messageResourceService.throwMessage(
@@ -664,13 +670,16 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				(key, cApp, dbApp, mergedApp, clonedApp) -> {
 
 					if (clonedApp == null)
-						return Mono.empty();
+						return Mono.<ObjectWithUniqueID<D>>empty();
+
+					String checksumCode = cApp == null ? UniqueUtil.shortUUID() : cApp.getUniqueId();
 
 					if (cApp == null && mergedApp != null) {
-						cacheService.put(this.getCacheName(appCode, name), mergedApp, key);
+						cacheService.put(this.getCacheName(appCode, name),
+								new ObjectWithUniqueID<>(mergedApp, checksumCode), key);
 					}
 
-					return this.applyChange(name, appCode, clientCode, clonedApp);
+					return this.applyChange(name, appCode, clientCode, clonedApp, checksumCode);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.read"));
 	}
@@ -700,9 +709,10 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readIfExistsInBase"));
 	}
 
-	protected Mono<D> applyChange(String name, String appCode, String clientCode, D object) { // NOSONAR
+	protected Mono<ObjectWithUniqueID<D>> applyChange(String name, String appCode, String clientCode, D object,
+			String checksumString) { // NOSONAR
 
-		return Mono.just(object);
+		return Mono.just(new ObjectWithUniqueID<>(object, checksumString));
 	}
 
 	public String getCacheName(String appCode, String name) {

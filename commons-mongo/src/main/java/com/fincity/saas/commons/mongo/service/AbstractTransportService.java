@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.mongo.document.Transport;
@@ -44,9 +45,23 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 								.setValue(entity.getUniqueTransportCode()))))
 				.collectList()
 				.flatMap(e -> e.isEmpty() ? super.create(entity)
-						: this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
+						: this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.CONFLICT, msg),
 								AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT,
 								"because transport with " + entity.getUniqueTransportCode() + " already exits"));
+
+	}
+
+	public Mono<Boolean> applyTransportWithTransportCode(String transportCode) {
+
+		return this.readAllFilter(new ComplexCondition()
+				.setConditions(List.of(new FilterCondition().setField("uniqueTransportCode")
+						.setValue(transportCode))))
+				.collectList()
+				.flatMap(e -> e.isEmpty() ? this.messageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Transport", transportCode)
+						: this.applyTransport(e.get(0).getId()));
 
 	}
 
@@ -73,8 +88,12 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 									service -> Mono.justOrEmpty(service.makeEntity(obj)),
 
-									(service, tentity) -> service.read(tentity.getName(), tentity.getAppCode(),
-											tentity.getClientCode()),
+									(service, tentity) -> service
+											.read(
+													tentity.getName(), tentity.getAppCode(),
+													tentity.getClientCode())
+											.map(e -> ((ObjectWithUniqueID<? extends AbstractOverridableDTO>) e)
+													.getObject()),
 
 									(service, tentity, entity) -> {
 
@@ -106,17 +125,17 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 	}
 
 	@Override
-    public Mono<Transport> update(Transport entity) {
+	public Mono<Transport> update(Transport entity) {
 
-        return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_MODIFIED, msg),
-                AbstractMessageService.CANNOT_BE_UPDATED);
-    }
+		return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_MODIFIED, msg),
+				AbstractMessageService.CANNOT_BE_UPDATED);
+	}
 
 	@Override
-    protected Mono<Transport> updatableEntity(Transport entity) {
-        return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_MODIFIED, msg),
-                AbstractMessageService.CANNOT_BE_UPDATED);
-    }
+	protected Mono<Transport> updatableEntity(Transport entity) {
+		return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_MODIFIED, msg),
+				AbstractMessageService.CANNOT_BE_UPDATED);
+	}
 
 	@Override
 	protected Mono<String> getLoggedInUserId() {
@@ -146,11 +165,11 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 				(ca, hasPermission) -> {
 
-                    if (!hasPermission.booleanValue()) {
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                AbstractMongoMessageResourceService.FORBIDDEN_CREATE, "Transport");
-                    }
+					if (!hasPermission.booleanValue()) {
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								AbstractMongoMessageResourceService.FORBIDDEN_CREATE, "Transport");
+					}
 
 					return Flux.fromIterable(this.getServieMap())
 							.flatMap(e -> {

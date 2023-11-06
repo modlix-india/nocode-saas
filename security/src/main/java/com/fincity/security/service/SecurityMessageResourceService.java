@@ -79,6 +79,9 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String TRIGGER_FAILED = "trigger_failed";
 	public static final String CERTIFICATE_PROBLEM = "certificate_problem";
 	public static final String ONLY_SYS_USER_CERTS = "only_sys_user_certs";
+	public static final String MANDATORY_APP_ID_CODE = "mandatory_app_id_code";
+	public static final String MANDATORY_APP_ID_NAME = "mandatory_app_id_name";
+	public static final String NO_REGISTRATION_AVAILABLE = "no_registration_available";
 
 	public SecurityMessageResourceService() {
 

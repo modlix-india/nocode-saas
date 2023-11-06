@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.ConnectionSubType;
@@ -70,20 +71,21 @@ public class EmailService {
 				},
 
 				actup -> connectionService.find(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
-		                .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-		                        CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-		                        templateName)),
+						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
+								templateName)),
 
 				(actup, conn) -> Mono.justOrEmpty(this.services.get(conn.getConnectionSubType()))
-		                .switchIfEmpty(
-		                        msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-		                                CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-		                                conn.getConnectionSubType())),
+						.switchIfEmpty(
+								msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+										CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
+										conn.getConnectionSubType())),
 
 				(actup, conn, mailService) -> templateService.read(templateName, actup.getT1(), actup.getT2())
-		                .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-		                        CoreMessageResourceService.TEMPLATE_DETAILS_MISSING,
-		                        templateName)),
+						.map(ObjectWithUniqueID::getObject)
+						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								CoreMessageResourceService.TEMPLATE_DETAILS_MISSING,
+								templateName)),
 
 				(actup, conn, mailService, template) -> mailService.sendMail(addresses, template, templateData, conn)
 

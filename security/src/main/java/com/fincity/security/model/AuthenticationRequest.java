@@ -3,8 +3,10 @@ package com.fincity.security.model;
 import org.jooq.types.ULong;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 @Data
+@Accessors(chain = true)
 public class AuthenticationRequest {
 
 	private String userName;

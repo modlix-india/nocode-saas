@@ -7,8 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.ui.model.ChecksumObject;
 
 import reactor.core.publisher.Mono;
 
@@ -38,38 +38,39 @@ public class JSService {
 	public void initialize() {
 
 		webClient = builder.baseUrl(jsURL)
-		        .build();
+				.build();
 	}
 
-	public Mono<ChecksumObject> getJSObject() {
+	public Mono<ObjectWithUniqueID<String>> getJSObject() {
 
 		if (jsURL == null || jsURL.isBlank())
-			return Mono.just(new ChecksumObject(""));
+			return Mono.just(new ObjectWithUniqueID<>(""));
 
-		Mono<ChecksumObject> cacheEmptyDefer = Mono.defer(() -> webClient.get()
-		        .uri("/index.js")
-		        .retrieve()
-		        .bodyToMono(String.class)
-		        .flatMap(jsString -> cacheService.put(CACHE_NAME_JS, new ChecksumObject(jsString), CACHE_OBJECT_JS_KEY))
-		        .defaultIfEmpty(new ChecksumObject("")));
+		Mono<ObjectWithUniqueID<String>> cacheEmptyDefer = Mono.defer(() -> webClient.get()
+				.uri("/index.js")
+				.retrieve()
+				.bodyToMono(String.class)
+				.flatMap(jsString -> cacheService.put(CACHE_NAME_JS, new ObjectWithUniqueID<>(jsString),
+						CACHE_OBJECT_JS_KEY))
+				.defaultIfEmpty(new ObjectWithUniqueID<>("")));
 
-		return cacheService.<ChecksumObject>get(CACHE_NAME_JS, CACHE_OBJECT_JS_KEY)
-		        .switchIfEmpty(cacheEmptyDefer);
+		return cacheService.<ObjectWithUniqueID<String>>get(CACHE_NAME_JS, CACHE_OBJECT_JS_KEY)
+				.switchIfEmpty(cacheEmptyDefer);
 	}
 
-	public Mono<ChecksumObject> getJSMapObject() {
+	public Mono<ObjectWithUniqueID<String>> getJSMapObject() {
 		if (jsURL == null || jsURL.isBlank())
-			return Mono.just(new ChecksumObject(""));
+			return Mono.just(new ObjectWithUniqueID<String>(""));
 
-		Mono<ChecksumObject> cacheEmptyDefer = Mono.defer(() -> webClient.get()
-		        .uri("/index.js.map")
-		        .retrieve()
-		        .bodyToMono(String.class)
-		        .flatMap(jsString -> cacheService.put(CACHE_NAME_JS_MAP, new ChecksumObject(jsString),
-		                CACHE_OBJECT_JS_MAP_KEY))
-		        .defaultIfEmpty(new ChecksumObject("")));
+		Mono<ObjectWithUniqueID<String>> cacheEmptyDefer = Mono.defer(() -> webClient.get()
+				.uri("/index.js.map")
+				.retrieve()
+				.bodyToMono(String.class)
+				.flatMap(jsString -> cacheService.put(CACHE_NAME_JS_MAP, new ObjectWithUniqueID<>(jsString),
+						CACHE_OBJECT_JS_MAP_KEY))
+				.defaultIfEmpty(new ObjectWithUniqueID<>("")));
 
-		return cacheService.<ChecksumObject>get(CACHE_NAME_JS_MAP, CACHE_OBJECT_JS_MAP_KEY)
-		        .switchIfEmpty(cacheEmptyDefer);
+		return cacheService.<ObjectWithUniqueID<String>>get(CACHE_NAME_JS_MAP, CACHE_OBJECT_JS_MAP_KEY)
+				.switchIfEmpty(cacheEmptyDefer);
 	}
 }

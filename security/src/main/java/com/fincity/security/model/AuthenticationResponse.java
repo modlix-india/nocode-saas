@@ -1,5 +1,6 @@
 package com.fincity.security.model;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 
@@ -11,7 +12,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class AuthenticationResponse {
+public class AuthenticationResponse implements Serializable {
 
 	private ContextUser user;
 	private Client client;

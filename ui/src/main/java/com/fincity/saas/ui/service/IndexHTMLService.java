@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Map.Entry;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -12,13 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
-import com.fincity.saas.ui.model.ChecksumObject;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -78,13 +79,18 @@ public class IndexHTMLService {
 	@Autowired
 	private CacheService cacheService;
 
-	public Mono<ChecksumObject> getIndexHTML(String appCode, String clientCode) {
+	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
 
 		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode),
+
 				() -> FlatMapUtil
-						.flatMapMonoWithNull(() -> appService.read(appCode, appCode, clientCode),
-								app -> this.indexFromApp(app, appCode, clientCode))
+						.flatMapMonoWithNull(
+
+								() -> appService.read(appCode, appCode, clientCode),
+
+								app -> this.indexFromApp(app.getObject(), appCode, clientCode))
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
+
 				clientCode);
 	}
 
@@ -122,7 +128,7 @@ public class IndexHTMLService {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Mono<ChecksumObject> indexFromApp(Application app, String appCode, String clientCode) {
+	private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode, String clientCode) {
 
 		Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
@@ -154,13 +160,13 @@ public class IndexHTMLService {
 
 		// Here the preference will be for the style from the style service.
 
-		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/api/ui/style\" />");
+		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
 
 		str.append("<script src=\"/js/index.js\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
 
-		return Mono.just(new ChecksumObject(str.toString()).setHeaders(processCSPHeaders(appProps)));
+		return Mono.just(new ObjectWithUniqueID<>(str.toString()).setHeaders(processCSPHeaders(appProps)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -231,10 +237,27 @@ public class IndexHTMLService {
 		if (csp == null || csp.isEmpty())
 			return null;
 
-		return csp.entrySet()
-				.stream()
-				.map(e -> e.getKey() + " " + e.getValue())
-				.collect(Collectors.joining(";"));
+		StringBuilder cspString = new StringBuilder();
+
+		for (Entry<String, String> e : csp.entrySet()) {
+
+			String key = e.getKey();
+
+			StringBuilder sb = new StringBuilder(key);
+			for (int i = 0; i < sb.length(); i++) {
+				char c = sb.charAt(i);
+				if (!Character.isUpperCase(c))
+					continue;
+				sb.setCharAt(i, Character.toLowerCase(c));
+				sb.insert(i, '-');
+			}
+			cspString.append(key)
+					.append(' ')
+					.append(e.getValue())
+					.append(';');
+		}
+
+		return cspString.toString();
 	}
 
 	@SuppressWarnings("unchecked")
