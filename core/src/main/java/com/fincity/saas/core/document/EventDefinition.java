@@ -9,6 +9,7 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.EqualsUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -29,11 +30,13 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 	private static final long serialVersionUID = -5343026916526769179L;
 
 	private Map<String, Object> schema; // NOSONAR
+	private Boolean includeContextAuthentication;
 
 	public EventDefinition(EventDefinition obj) {
 
 		super(obj);
 		this.schema = CloneUtil.cloneMapObject(obj.schema);
+		this.includeContextAuthentication = obj.includeContextAuthentication;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -45,6 +48,8 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 					.defaultIfEmpty(Map.of())
 					.map(a -> {
 						this.schema = (Map<String, Object>) a;
+						if (this.includeContextAuthentication == null)
+							this.includeContextAuthentication = base.includeContextAuthentication;
 						return this;
 					});
 
@@ -62,6 +67,9 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 				.flatMap(e -> DifferenceExtractor.extract(e.schema, base.schema)
 						.map(k -> {
 							e.schema = (Map<String, Object>) k;
+							if (EqualsUtil.safeEquals(e.includeContextAuthentication,
+									base.includeContextAuthentication))
+								e.includeContextAuthentication = null;
 							return e;
 						}));
 	}
