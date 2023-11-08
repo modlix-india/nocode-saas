@@ -81,6 +81,9 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 							.collect(Collectors.toMap(AbstractOverridableDataService::getObjectName,
 									Function.identity()));
 
+					if (transport.getObjects() == null || transport.getObjects().isEmpty())
+						return Mono.just(true);
+
 					return Flux.fromIterable(transport.getObjects())
 							.flatMap(obj -> FlatMapUtil.flatMapMonoWithNull(
 

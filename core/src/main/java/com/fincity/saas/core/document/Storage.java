@@ -1,8 +1,8 @@
 package com.fincity.saas.core.document;
 
+import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.builder.Diff;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -11,7 +11,9 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.EqualsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.model.StorageRelation;
 
 import lombok.Data;
@@ -43,6 +45,8 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private String updateAuth;
 	private String deleteAuth;
 	private Map<String, StorageRelation> relations;
+	private Boolean generateEvents;
+	private Map<StorageTriggerType, List<String>> triggers;
 
 	public Storage(Storage store) {
 
@@ -58,6 +62,9 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.uniqueName = store.uniqueName;
 		this.isAppLevel = store.isAppLevel;
 		this.relations = CloneUtil.cloneMapObject(store.relations);
+		this.generateEvents = store.generateEvents;
+
+		this.triggers = CloneUtil.cloneMapObject(store.triggers);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -72,9 +79,12 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 					s -> DifferenceApplicator.apply(this.relations, base.relations),
 
-					(s, r) -> {
+					(s, r) -> DifferenceApplicator.apply(this.triggers, base.triggers),
+
+					(s, r, t) -> {
 						this.schema = (Map<String, Object>) s;
 						this.relations = (Map<String, StorageRelation>) r;
+						this.triggers = (Map<StorageTriggerType, List<String>>) t;
 
 						this.subApplyOverride(base);
 
@@ -110,6 +120,9 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 		if (this.isAppLevel == null)
 			this.isAppLevel = base.isAppLevel;
+
+		if (this.generateEvents == null)
+			this.generateEvents = base.generateEvents;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -122,41 +135,49 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 				obj -> DifferenceExtractor.extract(obj.schema, base.schema),
 
-				(obj, sch) -> {
+				(obj, sch) -> DifferenceExtractor.extract(obj.relations, base.relations),
+
+				(obj, sch, rel) -> DifferenceExtractor.extract(obj.triggers, base.triggers),
+
+				(obj, sch, rel, t) -> {
 					obj.setSchema((Map<String, Object>) sch);
+					obj.setRelations((Map<String, StorageRelation>) rel);
+					obj.setTriggers((Map<StorageTriggerType, List<String>>) t);
 
 					this.subMakeOverride(base, obj);
 
 					return Mono.just(obj);
-				}
-
-		)
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.makeOverride"));
 	}
 
 	private void subMakeOverride(Storage base, Storage obj) {
 
-		if (obj.isAudited != null && obj.isAudited.equals(base.isAudited))
+		if (EqualsUtil.safeEquals(obj.isAudited, base.isAudited))
 			obj.isAudited = null;
 
-		if (obj.isVersioned != null && obj.isVersioned.equals(base.isVersioned))
+		if (EqualsUtil.safeEquals(obj.isVersioned, base.isVersioned))
 			obj.isVersioned = null;
 
-		if (obj.createAuth != null && obj.createAuth.equals(base.createAuth))
+		if (EqualsUtil.safeEquals(obj.createAuth, base.createAuth))
 			obj.createAuth = null;
 
-		if (obj.readAuth != null && obj.readAuth.equals(base.readAuth))
+		if (EqualsUtil.safeEquals(obj.readAuth, base.readAuth))
 			obj.readAuth = null;
 
-		if (obj.updateAuth != null && obj.updateAuth.equals(base.updateAuth))
+		if (EqualsUtil.safeEquals(obj.updateAuth, base.updateAuth))
 			obj.updateAuth = null;
 
-		if (obj.deleteAuth != null && obj.deleteAuth.equals(base.deleteAuth))
+		if (EqualsUtil.safeEquals(obj.deleteAuth, base.deleteAuth))
 			obj.deleteAuth = null;
 
-		if (obj.uniqueName != null && obj.uniqueName.equals(base.uniqueName))
+		if (EqualsUtil.safeEquals(obj.uniqueName, base.uniqueName))
 			obj.uniqueName = null;
 
-		obj.isAppLevel = base.isAppLevel;
+		if (EqualsUtil.safeEquals(obj.isAppLevel, base.isAppLevel))
+			obj.isAppLevel = null;
+
+		if (EqualsUtil.safeEquals(obj.generateEvents, base.generateEvents))
+			obj.generateEvents = null;
 	}
 }

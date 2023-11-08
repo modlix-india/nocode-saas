@@ -2,6 +2,7 @@ package com.fincity.saas.commons.mongo.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +23,7 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
@@ -43,8 +45,19 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 
 	private Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
 
+	private Gson gson;
+
 	protected AbstractSchemaService(Class<D> pojoClass) {
 		super(pojoClass);
+		AdditionalTypeAdapter at = new AdditionalTypeAdapter();
+		ArraySchemaTypeAdapter ast = new ArraySchemaTypeAdapter();
+		gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+				.registerTypeAdapter(AdditionalType.class, at)
+				.registerTypeAdapter(ArraySchemaType.class, ast)
+				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+				.create();
+		at.setGson(this.gson);
+		ast.setGson(this.gson);
 	}
 
 	@Override
@@ -117,10 +130,6 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 				return read(namespace + "." + name, appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject)
 						.map(s -> {
-							Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-									.registerTypeAdapter(AdditionalType.class, new AdditionalTypeAdapter())
-									.registerTypeAdapter(ArraySchemaType.class, new ArraySchemaTypeAdapter())
-									.create();
 
 							return gson.fromJson(gson.toJsonTree(s.getDefinition()), Schema.class);
 						});

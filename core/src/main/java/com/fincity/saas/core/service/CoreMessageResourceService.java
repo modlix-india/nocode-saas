@@ -44,4 +44,8 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String ONLY_SCHEMA_OBJECT_TYPE = "only_schema_object_type";
 
 	public static final String NO_STORAGE_FOUND_WITH_NAME = "no_storage_found_with_name";
+
+	public static final String STORAGE_SCHEMA_ALWAYS_OBJECT = "storage_schema_always_object";
+
+	public static final String STORAGE_SCHEMA_FIELD_ALREADY_EXISTS = "storage_schema_field_already_exists";
 }

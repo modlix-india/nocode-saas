@@ -2,7 +2,8 @@ package com.fincity.saas.core.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,10 +15,12 @@ import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySc
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
 import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -25,10 +28,12 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
+import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.repository.StorageRepository;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -42,8 +47,28 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 	@Autowired
 	private CoreMessageResourceService coreMsgService;
 
+	@Autowired
+	private CoreSchemaService coreSchemaService;
+
+	@Autowired
+	private CoreFunctionService coreFunctionService;
+
+	private Gson gson;
+
 	protected StorageService() {
 		super(Storage.class);
+
+		AdditionalTypeAdapter at = new AdditionalTypeAdapter();
+		ArraySchemaTypeAdapter ast = new ArraySchemaTypeAdapter();
+
+		this.gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+				.registerTypeAdapter(AdditionalType.class, at)
+				.registerTypeAdapter(ArraySchemaType.class, ast)
+				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+				.create();
+
+		at.setGson(this.gson);
+		ast.setGson(this.gson);
 	}
 
 	@Override
@@ -89,53 +114,175 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> entity.getRelations() == null ? Mono.just(List.<StorageRelation>of())
-						: Mono.just(entity.getRelations().values()),
+				() -> this.validate(entity),
 
-				r -> {
+				super::create)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.localCreate"));
+	}
 
-					if (r.isEmpty())
-						return Mono.just(true);
+	public Mono<Storage> validate(Storage storage) {
 
-					return Mono.just(true);
+		return FlatMapUtil.flatMapMono(
+				() -> {
+
+					Schema schema = gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class);
+
+					if (schema.getRef() == null)
+						return Mono.just(schema);
+
+					return ReactiveSchemaUtil.getSchemaFromRef(schema,
+							this.coreSchemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+							schema.getRef()).defaultIfEmpty(schema);
 				},
 
-				(r, b) -> {
+				schema -> {
 
-					if (r.isEmpty())
-						return Mono.just(true);
+					if (schema.getType().getAllowedSchemaTypes().size() != 1
+							|| !schema.getType().getAllowedSchemaTypes().contains(SchemaType.OBJECT)) {
 
-					for (StorageRelation relation : r) {
-
-						relation.setUniqueRelationId(
-								UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(),
-										entity.getName(), relation.getFieldName()));
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								CoreMessageResourceService.STORAGE_SCHEMA_ALWAYS_OBJECT);
 					}
 
-					return Flux.fromIterable(r).flatMap(relation -> this.read(relation.getStorageName(),
-							entity.getAppCode(), entity.getClientCode()).switchIfEmpty(
-									this.messageResourceService.throwMessage(
-											msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-											CoreMessageResourceService.NO_STORAGE_FOUND_WITH_NAME,
-											relation.getStorageName())))
-							.collectList().map(e -> true);
-				},
+					if (storage.getRelations() == null || storage.getRelations().isEmpty())
+						return Mono.just(storage);
 
-				(r, b, c) -> super.create(entity));
+					for (StorageRelation relation : storage.getRelations().values()) {
+
+						if (schema.getProperties().containsKey(relation.getFieldName())) {
+
+							return this.messageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+									CoreMessageResourceService.STORAGE_SCHEMA_FIELD_ALREADY_EXISTS,
+									relation.getFieldName());
+						}
+
+						if (relation.getUniqueRelationId() != null)
+							continue;
+
+						relation.setUniqueRelationId(
+								UniqueUtil.uniqueName(32, storage.getAppCode(), storage.getClientCode(),
+										storage.getName(), relation.getFieldName()));
+					}
+
+					return Flux.fromIterable(storage.getRelations().values())
+							.flatMap(relation -> this.read(relation.getStorageName(),
+									storage.getAppCode(), storage.getClientCode()).switchIfEmpty(
+											this.messageResourceService.throwMessage(
+													msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+													CoreMessageResourceService.NO_STORAGE_FOUND_WITH_NAME,
+													relation.getStorageName())))
+							.collectList().map(e -> storage);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.validate"));
 	}
 
 	@Override
 	public Mono<Storage> update(Storage entity) {
 
-		return super.update(entity).flatMap(uped -> this.cacheService.evict(CACHE_NAME_STORAGE_SCHEMA, uped.getId())
-				.map(e -> uped));
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.validate(entity),
+
+				storage -> this.read(entity.getId()),
+
+				(storage, existing) -> {
+
+					if (existing.getTriggers() == null
+							|| existing.getTriggers().get(StorageTriggerType.BEFORE_UPDATE_STORAGE) == null
+							|| existing.getTriggers().get(StorageTriggerType.BEFORE_UPDATE_STORAGE).isEmpty())
+						return Mono.just(true);
+
+					Map<String, JsonElement> args = Map.of("existing", gson.toJsonTree(existing), "creating",
+							gson.toJsonTree(storage));
+
+					return Flux.fromIterable(existing.getTriggers().get((StorageTriggerType.BEFORE_UPDATE_STORAGE)))
+							.flatMap(trigger -> this.coreFunctionService.execute(
+									trigger.substring(0, trigger.lastIndexOf('.')),
+									trigger.substring(trigger.lastIndexOf('.') + 1), entity.getAppCode(),
+									entity.getClientCode(),
+									args, null))
+							.collectList().map(e -> true);
+
+				},
+
+				(storage, existing, beforeExecuted) -> super.update(storage),
+
+				(storage, existing, beforeExecuted, created) -> {
+
+					if (existing.getTriggers() == null
+							|| existing.getTriggers().get(StorageTriggerType.AFTER_UPDATE_STORAGE) == null
+							|| existing.getTriggers().get(StorageTriggerType.AFTER_UPDATE_STORAGE).isEmpty())
+						return Mono.just(true);
+
+					Map<String, JsonElement> args = Map.of("existing", gson.toJsonTree(existing), "created",
+							gson.toJsonTree(created));
+
+					return Flux.fromIterable(existing.getTriggers().get((StorageTriggerType.AFTER_UPDATE_STORAGE)))
+							.flatMap(trigger -> this.coreFunctionService.execute(
+									trigger.substring(0, trigger.lastIndexOf('.')),
+									trigger.substring(trigger.lastIndexOf('.') + 1), entity.getAppCode(),
+									entity.getClientCode(),
+									args, null))
+							.collectList().map(e -> true);
+				},
+
+				(storage, existing, beforeExecuted, created, afterExecuted) -> this.cacheService
+						.evict(CACHE_NAME_STORAGE_SCHEMA, created.getId())
+						.map(e -> created).map(Storage.class::cast))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.update"));
 	}
 
 	@Override
 	public Mono<Boolean> delete(String id) {
 
-		return super.delete(id).flatMap(del -> this.cacheService.evict(CACHE_NAME_STORAGE_SCHEMA, id)
-				.map(e -> del));
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.read(id),
+
+				storage -> {
+
+					if (storage.getTriggers() == null
+							|| storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE_STORAGE) == null
+							|| storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE_STORAGE).isEmpty())
+						return Mono.just(true);
+
+					Map<String, JsonElement> args = Map.of("storage", gson.toJsonTree(storage));
+
+					return Flux.fromIterable(storage.getTriggers().get((StorageTriggerType.BEFORE_DELETE_STORAGE)))
+							.flatMap(trigger -> this.coreFunctionService.execute(
+									trigger.substring(0, trigger.lastIndexOf('.')),
+									trigger.substring(trigger.lastIndexOf('.') + 1), storage.getAppCode(),
+									storage.getClientCode(),
+									args, null))
+							.collectList().map(e -> true);
+
+				},
+
+				(storage, beforeExecuted) -> super.delete(id),
+
+				(storage, beforeExecuted, deleted) -> {
+
+					if (storage.getTriggers() == null
+							|| storage.getTriggers().get(StorageTriggerType.AFTER_DELETE_STORAGE) == null
+							|| storage.getTriggers().get(StorageTriggerType.AFTER_DELETE_STORAGE).isEmpty())
+						return Mono.just(true);
+
+					Map<String, JsonElement> args = Map.of("storage", gson.toJsonTree(storage));
+
+					return Flux.fromIterable(storage.getTriggers().get((StorageTriggerType.AFTER_DELETE_STORAGE)))
+							.flatMap(trigger -> this.coreFunctionService.execute(
+									trigger.substring(0, trigger.lastIndexOf('.')),
+									trigger.substring(trigger.lastIndexOf('.') + 1), storage.getAppCode(),
+									storage.getClientCode(),
+									args, null))
+							.collectList().map(e -> true);
+				},
+
+				(storage, beforeExecuted, deleted, afterExecuted) -> this.cacheService
+						.evict(CACHE_NAME_STORAGE_SCHEMA, id)
+						.map(e -> deleted))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.delete"));
 	}
 
 	@Override
@@ -157,29 +304,20 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 							.setCreateAuth(entity.getCreateAuth())
 							.setReadAuth(entity.getReadAuth())
 							.setUpdateAuth(entity.getUpdateAuth())
-							.setDeleteAuth(entity.getDeleteAuth());
+							.setDeleteAuth(entity.getDeleteAuth())
+							.setGenerateEvents(entity.getGenerateEvents())
+							.setTriggers(entity.getTriggers())
+							.setRelations(entity.getRelations());
 
 					existing.setVersion(existing.getVersion() + 1);
 
-					return Mono.just(existing);
+					return this.validate(existing);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.updatableEntity"));
 	}
 
 	public Mono<Schema> getSchema(Storage storage) {
 
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_STORAGE_SCHEMA, () -> {
-
-			AdditionalTypeAdapter at = new AdditionalTypeAdapter();
-			ArraySchemaTypeAdapter ast = new ArraySchemaTypeAdapter();
-			Gson gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-					.registerTypeAdapter(AdditionalType.class, at)
-					.registerTypeAdapter(ArraySchemaType.class, ast)
-					.create();
-
-			at.setGson(gson);
-			ast.setGson(gson);
-
-			return Mono.just(gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class));
-		}, storage.getId());
+		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_STORAGE_SCHEMA,
+				() -> Mono.just(gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class)), storage.getId());
 	}
 }

@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.expression.ParseException;
 import org.springframework.http.ContentDisposition;
@@ -46,6 +47,7 @@ import com.fincity.saas.commons.file.DataFileReader;
 import com.fincity.saas.commons.file.DataFileWriter;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -57,9 +59,11 @@ import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
+import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.ConnectionService;
+import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
@@ -94,6 +98,10 @@ public class AppDataService {
 	@Autowired
 	private CoreMessageResourceService msgService;
 
+	@Autowired
+	@Lazy
+	private CoreFunctionService functionService;
+
 	private EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
 
 	private static final Logger logger = LoggerFactory.getLogger(AppDataService.class);
@@ -124,10 +132,62 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-						(cona, hasAccess) -> dataService.create(conn, storage, dataObject), Storage::getCreateAuth,
+						(cona, hasAccess) -> this.createWithTriggers(dataService, conn, storage, dataObject),
+						Storage::getCreateAuth,
 						CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
+	}
+
+	private Mono<Boolean> executeTriggers(Storage storage, StorageTriggerType triggerType,
+			Map<String, JsonElement> args) {
+
+		return Flux.fromIterable(storage.getTriggers()
+				.get(triggerType))
+				.flatMap(trigger -> this.functionService.execute(trigger.substring(0, trigger.lastIndexOf('.')),
+						trigger.substring(trigger.lastIndexOf('.') + 1), storage.getAppCode(),
+						storage.getClientCode(), args, null))
+				.collectList()
+				.map(e -> true);
+	}
+
+	private Mono<Map<String, Object>> createWithTriggers(IAppDataService dataService, Connection conn, Storage storage,
+			DataObject dataObject) {
+
+		boolean noBeforeCreate = storage.getTriggers() == null
+				|| storage.getTriggers().get(StorageTriggerType.BEFORE_CREATE) == null
+				|| storage.getTriggers().get(StorageTriggerType.BEFORE_CREATE)
+						.isEmpty();
+
+		boolean noAfterCreate = storage.getTriggers() == null
+				|| storage.getTriggers().get(StorageTriggerType.AFTER_CREATE) == null
+				|| storage.getTriggers().get(StorageTriggerType.AFTER_CREATE)
+						.isEmpty();
+
+		if (noBeforeCreate && noAfterCreate)
+			return dataService.create(conn, storage, dataObject);
+
+		return FlatMapUtil.flatMapMono(
+				() -> {
+
+					if (noBeforeCreate)
+						return Mono.just(true);
+
+					return this.executeTriggers(storage, StorageTriggerType.BEFORE_CREATE, Map.of("dataObject",
+							new Gson().toJsonTree(dataObject.getData())));
+				},
+
+				beforeCreate -> dataService.create(conn, storage, dataObject),
+
+				(beforeCreate, created) -> {
+
+					if (noAfterCreate)
+						return Mono.just(created);
+
+					return this.executeTriggers(storage, StorageTriggerType.AFTER_CREATE, Map.of("dataObject",
+							new Gson().toJsonTree(created)))
+							.map(e -> created);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericCreate"));
 	}
 
 	public Mono<Map<String, Object>> update(String appCode, String clientCode, String storageName,
@@ -150,10 +210,66 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-						(cona, hasAccess) -> dataService.update(conn, storage, dataObject, override),
+						(cona, hasAccess) -> this.updateWithTriggers(ac, cc, dataService, conn, storage, dataObject,
+								override),
 						Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.update"));
+	}
+
+	private Mono<Map<String, Object>> updateWithTriggers(String appCode, String clientCode, IAppDataService dataService,
+			Connection conn, Storage storage,
+			DataObject dataObject, Boolean override) {
+
+		boolean noBeforeUpdate = storage.getTriggers() == null
+				|| storage.getTriggers().get(StorageTriggerType.BEFORE_UPDATE) == null
+				|| storage.getTriggers().get(StorageTriggerType.BEFORE_UPDATE)
+						.isEmpty();
+
+		boolean noAfterUpdate = storage.getTriggers() == null
+				|| storage.getTriggers().get(StorageTriggerType.AFTER_UPDATE) == null
+				|| storage.getTriggers().get(StorageTriggerType.AFTER_UPDATE)
+						.isEmpty();
+
+		if (noBeforeUpdate && noAfterUpdate)
+			return dataService.update(conn, storage, dataObject, override);
+
+		String id = StringUtil.safeValueOf(dataObject.getData().get("_id"));
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.read(appCode, clientCode, storage.getName(), id),
+
+				existing -> {
+
+					if (existing == null)
+						return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id);
+
+					if (noBeforeUpdate)
+						return Mono.just(true);
+
+					Map<String, JsonElement> args = Map.of("dataObject", new Gson().toJsonTree(dataObject.getData()),
+							"existingDataObject",
+							new Gson().toJsonTree(existing));
+
+					return this.executeTriggers(storage, StorageTriggerType.BEFORE_UPDATE, args);
+				},
+
+				(exiting, beforeUpdate) -> dataService.update(conn, storage, dataObject, override),
+
+				(exiting, beforeUpdate, created) -> {
+
+					if (noAfterUpdate)
+						return Mono.just(created);
+
+					Map<String, JsonElement> args = Map.of("dataObject", new Gson().toJsonTree(created),
+							"existingDataObject",
+							new Gson().toJsonTree(exiting));
+
+					return this.executeTriggers(storage, StorageTriggerType.AFTER_UPDATE, args)
+							.map(e -> created);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericUpdate"));
 	}
 
 	public Mono<Map<String, Object>> read(String appCode, String clientCode, String storageName, String id) {
@@ -225,10 +341,62 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-						(cona, hasAccess) -> dataService.delete(conn, storage, id), Storage::getDeleteAuth,
+						(cona, hasAccess) -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage,
+								id),
+						Storage::getDeleteAuth,
 						CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.delete"));
+	}
+
+	private Mono<Boolean> deleteWithTriggers(String appCode, String clientCode, IAppDataService dataService,
+			Connection conn, Storage storage, String id) {
+
+		boolean noBeforeDelete = storage.getTriggers() == null
+				|| storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE) == null
+				|| storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE)
+						.isEmpty();
+
+		boolean noAfterDelete = storage.getTriggers() == null
+				|| storage.getTriggers().get(StorageTriggerType.AFTER_DELETE) == null
+				|| storage.getTriggers().get(StorageTriggerType.AFTER_DELETE)
+						.isEmpty();
+
+		if (noBeforeDelete && noAfterDelete)
+			return dataService.delete(conn, storage, id);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.read(appCode, clientCode, storage.getName(), id),
+
+				existing -> {
+
+					if (existing == null)
+						return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id);
+
+					if (noBeforeDelete)
+						return Mono.just(true);
+
+					Map<String, JsonElement> args = Map.of("dataObject",
+							new Gson().toJsonTree(existing));
+
+					return this.executeTriggers(storage, StorageTriggerType.BEFORE_DELETE, args);
+				},
+
+				(exiting, beforeDelete) -> dataService.delete(conn, storage, id),
+
+				(exiting, beforeDelete, deleted) -> {
+
+					if (noAfterDelete)
+						return Mono.just(deleted);
+
+					Map<String, JsonElement> args = Map.of("dataObject",
+							new Gson().toJsonTree(exiting));
+
+					return this.executeTriggers(storage, StorageTriggerType.AFTER_DELETE, args)
+							.map(e -> deleted);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericDelete"));
 	}
 
 	public Mono<Void> downloadData(String appCode, String clientCode, String storageName, Query query,
