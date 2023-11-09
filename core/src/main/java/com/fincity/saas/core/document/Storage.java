@@ -47,11 +47,13 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private Map<String, StorageRelation> relations;
 	private Boolean generateEvents;
 	private Map<StorageTriggerType, List<String>> triggers;
+	private Map<String, Object> fieldDefinitionMap; // NOSONAR
 
 	public Storage(Storage store) {
 
 		super(store);
 		this.schema = CloneUtil.cloneMapObject(store.schema);
+
 		this.isAudited = store.isAudited;
 		this.isVersioned = store.isVersioned;
 
@@ -63,6 +65,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.isAppLevel = store.isAppLevel;
 		this.relations = CloneUtil.cloneMapObject(store.relations);
 		this.generateEvents = store.generateEvents;
+		this.fieldDefinitionMap = CloneUtil.cloneMapObject(store.fieldDefinitionMap);
 
 		this.triggers = CloneUtil.cloneMapObject(store.triggers);
 	}
@@ -81,10 +84,13 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 					(s, r) -> DifferenceApplicator.apply(this.triggers, base.triggers),
 
-					(s, r, t) -> {
+					(s, r, t) -> DifferenceApplicator.apply(this.fieldDefinitionMap, base.fieldDefinitionMap),
+
+					(s, r, t, f) -> {
 						this.schema = (Map<String, Object>) s;
 						this.relations = (Map<String, StorageRelation>) r;
 						this.triggers = (Map<StorageTriggerType, List<String>>) t;
+						this.fieldDefinitionMap = (Map<String, Object>) f;
 
 						this.subApplyOverride(base);
 
@@ -139,10 +145,13 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 				(obj, sch, rel) -> DifferenceExtractor.extract(obj.triggers, base.triggers),
 
-				(obj, sch, rel, t) -> {
+				(obj, sch, rel, t) -> DifferenceExtractor.extract(obj.fieldDefinitionMap, base.fieldDefinitionMap),
+
+				(obj, sch, rel, t, f) -> {
 					obj.setSchema((Map<String, Object>) sch);
 					obj.setRelations((Map<String, StorageRelation>) rel);
 					obj.setTriggers((Map<StorageTriggerType, List<String>>) t);
+					obj.setFieldDefinitionMap((Map<String, Object>) f);
 
 					this.subMakeOverride(base, obj);
 

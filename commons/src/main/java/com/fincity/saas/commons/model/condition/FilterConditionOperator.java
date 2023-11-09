@@ -14,4 +14,6 @@ public enum FilterConditionOperator {
 	IN,
 	LIKE,
 	STRING_LOOSE_EQUAL,
+	MATCH,
+	MATCH_ALL,
 }
