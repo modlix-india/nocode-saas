@@ -3,6 +3,7 @@ package com.fincity.saas.ui.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 
+import java.security.Security;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -50,15 +51,15 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 							.equals(ca.getUser()
 									.getId()
 									.toString()))
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
 
 					if (existing.getVersion() != entity.getVersion())
-					    
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setPersonalization(entity.getPersonalization());
 
@@ -74,16 +75,25 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 	}
 
 	@Override
-	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, Personalization entity,
+	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, String appode, String clientCode,
 			boolean checkAppWriteAccess) {
 
-		if (CREATE.equals(method) || UPDATE.equals(method))
-			return Mono.just(true);
+		return Mono.just(CREATE.equals(method) || UPDATE.equals(method) || DELETE.equals(method));
+	}
 
-		return Mono.just(ca.getUser()
-				.getId()
-				.toString()
-				.equals(entity.getCreatedBy()));
+	@Override
+	public Mono<Boolean> delete(String id) {
+
+		return this.read(id)
+				.flatMap(e -> SecurityContextUtil.getUsersContextUser().flatMap(u -> {
+
+					if (!e.getCreatedBy().equals(u.getId().toString()))
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								AbstractMongoMessageResourceService.CANNOT_CHANGE_PREF);
+
+					return Mono.just(e);
+				})).flatMap(x -> super.delete(id));
 	}
 
 	public Mono<Map<String, Object>> addPersonalization(String appName, String name,
