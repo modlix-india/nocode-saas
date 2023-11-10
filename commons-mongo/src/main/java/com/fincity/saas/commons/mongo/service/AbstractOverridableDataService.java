@@ -774,9 +774,11 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 				ca -> this.accessCheck(ca, UPDATE, appCode, clientCode, true),
 
-				(ca, hasAccess) -> {
+				(ca, hasAccess) -> this.accessCheck(ca, UPDATE, newBaseAppCode, clientCode, true),
 
-					if (!hasAccess.booleanValue())
+				(ca, hasAccess, hasBaseAppAccess) -> {
+
+					if (!hasAccess.booleanValue() || !hasBaseAppAccess.booleanValue())
 						return Mono.just(false);
 
 					Query query = new Query(new Criteria().andOperator(Criteria.where(APP_CODE).is(appCode),
