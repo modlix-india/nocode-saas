@@ -244,26 +244,31 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> ca.isSystemClient() ? Mono.just(true)
-						: this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser()
-								.getClientId()), clientId),
+				ca -> this.read(appId),
 
-				(ca, clientAccess) -> {
+				(ca, app) -> {
 
-					if (!clientAccess.booleanValue())
-						return Mono.empty();
+					if (ca.isSystemClient()) {
+						return this.dao.addClientAccess(appId, clientId, writeAccess);
+					}
 
-					return this.read(appId)
-							.map(App::getClientId)
-							.flatMap(
-									cid -> cid.equals(clientId) ? this.dao.addClientAccess(appId, clientId, writeAccess)
+					ULong usersClientId = ULongUtil.valueOf(ca.getUser()
+							.getClientId());
+
+					return this.clientService.isBeingManagedBy(app.getClientId(), clientId)
+							.flatMap(managed -> managed.booleanValue()
+									&& (usersClientId.equals(app.getClientId()) || app.isTemplate())
+											? this.dao.addClientAccess(appId, clientId,
+													writeAccess)
 											: Mono.empty());
-				}, (ca, cliAccess, changed) -> this.evict(appId, clientId)
-						.map(e -> changed)
-						.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccess"))
-						.switchIfEmpty(messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS)))
+
+				},
+
+				(ca, cliAccess, changed) -> this.evict(appId, clientId))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccess"))
+				.switchIfEmpty(messageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
 	}
