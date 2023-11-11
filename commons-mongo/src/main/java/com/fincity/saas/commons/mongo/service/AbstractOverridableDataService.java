@@ -342,7 +342,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		Flux<D> x = Mono.just(entity)
 				.expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
 						: this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(),
-								CommonsUtil.nonNullValue(e.getBaseAppCode(), e.getAppCode()),
+								e.getAppCode(),
 								e.getBaseClientCode()));
 
 		return x.collectList()

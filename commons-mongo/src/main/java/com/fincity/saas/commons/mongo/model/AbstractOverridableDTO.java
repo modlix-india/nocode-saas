@@ -24,7 +24,6 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
 	private String clientCode;
 	private String permission;
 	private String appCode;
-	private String baseAppCode;
 	private String baseClientCode;
 	private Boolean notOverridable;
 	private String description;
@@ -73,7 +72,6 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
 				.setClientCode(obj.getClientCode())
 				.setPermission(obj.getPermission())
 				.setAppCode(obj.getAppCode())
-				.setBaseAppCode(obj.getBaseAppCode())
 				.setBaseClientCode(obj.getBaseClientCode())
 				.setVersion(obj.getVersion())
 				.setDescription(obj.getDescription())
