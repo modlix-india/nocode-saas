@@ -1,12 +1,9 @@
 package com.fincity.saas.ui.controller;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-import org.apache.poi.ss.formula.functions.LinearRegressionFunction.FUNCTION;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -19,14 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
 import com.fincity.saas.commons.mongo.util.MergeMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.document.Page;
-import com.fincity.saas.ui.document.Style;
-import com.fincity.saas.ui.document.StyleTheme;
 import com.fincity.saas.ui.document.UIFunction;
 import com.fincity.saas.ui.service.ApplicationService;
 import com.fincity.saas.ui.service.PageService;
@@ -37,8 +31,6 @@ import com.fincity.saas.ui.service.UIFunctionService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @RestController
 @RequestMapping("api/ui/")

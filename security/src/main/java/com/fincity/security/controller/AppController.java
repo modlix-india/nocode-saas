@@ -35,9 +35,15 @@ public class AppController
 	@Value("${security.appCodeSuffix:}")
 	private String appCodeSuffix;
 
+	@Value("${security.resourceCacheAge:604800}")
+	private int cacheAge;
+
 	@GetMapping("/applyAppCodeSuffix")
 	public Mono<ResponseEntity<String>> applyAppCodeSuffix(@RequestParam String appCode) {
-		return Mono.just(ResponseEntity.ok(appCode + appCodeSuffix));
+		return Mono.just(ResponseEntity.ok().header("ETag", "W/" + appCode)
+				.header("Cache-Control", "max-age: " + cacheAge)
+				.header("x-frame-options", "SAMEORIGIN")
+				.header("X-Frame-Options", "SAMEORIGIN").body(appCode + appCodeSuffix));
 	}
 
 	@GetMapping("/internal/hasReadAccess")
