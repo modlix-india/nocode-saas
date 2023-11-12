@@ -62,3 +62,9 @@ jobs:
       - name: Building ui
         working-directory: ./ui
         run: mvn compile jib:build
+      - name: Building multi
+        working-directory: ./multi
+        run: mvn compile jib:build
+      - name: Building schedular
+        working-directory: ./schedular
+        run: mvn compile jib:build
