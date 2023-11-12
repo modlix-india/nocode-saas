@@ -27,73 +27,73 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 	}
 
 	public Mono<Boolean> hasPathReadAccess(String path, ULong userId, String clientCode,
-	        FilesAccessPathResourceType resourceType, List<String> accessList) {
+			FilesAccessPathResourceType resourceType, List<String> accessList) {
 
 		SelectLimitPercentStep<Record1<Integer>> query = this.dslContext.select(DSL.count())
-		        .from(FILES_ACCESS_PATH)
-		        .where(DSL.and(
+				.from(FILES_ACCESS_PATH)
+				.where(DSL.and(
 
-		                FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
-		                DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
-		                DSL.concat(path)
-		                        .like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
-		                                DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))))
+						FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
+						DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
+						DSL.concat(path)
+								.like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
+										DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))))
 
-		        .limit(1);
+				.limit(1);
 
 		if (logger.isDebugEnabled())
 			logger.debug(query.toString());
 		return Mono.from(query)
-		        .map(Record1::value1)
-		        .map(e -> e != 0)
-		        .flatMap(access ->
-				{
+				.map(Record1::value1)
+				.map(e -> e != 0)
+				.flatMap(access -> {
 
-			        if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
-				        return Mono.just(access);
+					if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+						return Mono.just(access);
 
-			        return Mono.from(this.dslContext.selectCount()
-			                .from(FILES_ACCESS_PATH)
-			                .where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode))))
-			                .map(Record1::value1)
-			                .map(e -> e == 0);
-		        });
+					return Mono.from(this.dslContext.selectCount()
+							.from(FILES_ACCESS_PATH)
+							.where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode),
+									FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType))))
+							.map(Record1::value1)
+							.map(e -> e == 0);
+				});
 	}
 
 	public Mono<Boolean> hasPathWriteAccess(String path, ULong userId, String clientCode,
-	        FilesAccessPathResourceType resourceType, List<String> accessList) {
+			FilesAccessPathResourceType resourceType, List<String> accessList) {
 
 		SelectConditionStep<FilesAccessPathRecord> query = this.dslContext.selectFrom(FILES_ACCESS_PATH)
-		        .where(DSL.and(
+				.where(DSL.and(
 
-		                FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
-		                DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
+						FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
+						DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
 
-		                DSL.concat(path)
-		                        .like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
-		                                DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))));
+						DSL.concat(path)
+								.like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
+										DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))));
 		if (logger.isDebugEnabled())
 			logger.debug(query.toString());
 
 		return Flux.from(query)
-		        .sort((a, b) -> b.getPath()
-		                .compareTo(a.getPath()))
-		        .next()
-		        .filter(e -> e.getWriteAccess()
-		                .equals(Byte.valueOf((byte) 1)))
-		        .map(e -> true)
-		        .defaultIfEmpty(false)
-		        .flatMap(access ->
-				{
+				.sort((a, b) -> b.getPath()
+						.compareTo(a.getPath()))
+				.next()
+				.filter(e -> e.getWriteAccess()
+						.equals(Byte.valueOf((byte) 1)))
+				.map(e -> true)
+				.defaultIfEmpty(false)
+				.flatMap(access -> {
 
-			        if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
-				        return Mono.just(access);
+					if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+						return Mono.just(access);
 
-			        return Mono.from(this.dslContext.selectCount()
-			                .from(FILES_ACCESS_PATH)
-			                .where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode))))
-			                .map(Record1::value1)
-			                .map(e -> e == 0);
-		        });
+					return Mono.from(this.dslContext.selectCount()
+							.from(FILES_ACCESS_PATH)
+							.where(DSL.and(FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode),
+									FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType))))
+							.map(Record1::value1)
+							.map(e -> e == 0);
+				});
 	}
 }

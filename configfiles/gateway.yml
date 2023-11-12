@@ -21,6 +21,14 @@ spring:
           uri: lb://core
           predicates:
             - Path=/api/core/**, /*/api/core/**, /*/*/api/core/**, /*/*/*/api/core/**, /*/*/*/*/api/core/**, /*/*/*/*/*/api/core/**, /*/*/*/*/*/*/api/core/**, /*/*/*/*/*/*/*/api/core/**,
+        - id: schedular
+          uri: lb://schedular
+          predicates:
+            - Path=/api/schedular/**, /*/api/schedular/**, /*/*/api/schedular/**, /*/*/*/api/schedular/**, /*/*/*/*/api/schedular/**, /*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/*/api/schedular/**,
+        - id: multi
+          uri: lb://multi
+          predicates:
+            - Path=/api/multi/**, /*/api/multi/**, /*/*/api/multi/**, /*/*/*/api/multi/**, /*/*/*/*/api/multi/**, /*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/api/multi/**,
         - id: ui
           uri: lb://ui
           predicates:

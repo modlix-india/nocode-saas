@@ -1,0 +1,41 @@
+spring:
+  r2dbc:
+    url: ${schedular.db.url}
+    username: ${schedular.db.username}
+    password: ${schedular.db.password}
+    pool:
+      initial-size: 2
+      max-size: 4
+      max-idle-time: 30m
+      validation-query: SELECT 1
+  flyway:
+    enabled: true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${schedular.db.flyway.url}
+    user: ${schedular.db.username}
+    password: ${schedular.db.password}
+  boot:
+    admin:
+      client:
+        instance:
+          name: Multi
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+  cloud:
+    gateway:
+      routes:
+        - id: schedular
+          uri: lb://schedular
+          predicates:
+            - Path=/api/schedular/**, /*/api/schedular/**, /*/*/api/schedular/**, /*/*/*/api/schedular/**, /*/*/*/*/api/schedular/**, /*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/*/api/schedular/**,
+
+management:
+  endpoint:
+    flyway:
+      enabled: true
+
+redis:
+  cache:
+    prefix: mul

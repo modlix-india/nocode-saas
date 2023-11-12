@@ -1,9 +1,11 @@
 package com.fincity.saas.commons.model.condition;
 
 import java.util.List;
+import java.util.Map;
 
 import com.fincity.saas.commons.util.StringUtil;
 
+import ch.qos.logback.core.filter.Filter;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -23,6 +25,7 @@ public class FilterCondition extends AbstractCondition {
 	private List<Object> multiValue; // NOSONAR
 	private boolean isValueField = false;
 	private boolean isToValueField = false;
+	private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;
 
 	@Override
 	public Flux<FilterCondition> findConditionWithField(String fieldName) {
@@ -42,6 +45,6 @@ public class FilterCondition extends AbstractCondition {
 	public static FilterCondition make(String field, Object value) {
 
 		return new FilterCondition().setField(field)
-		        .setValue(value);
+				.setValue(value);
 	}
 }

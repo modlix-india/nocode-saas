@@ -81,6 +81,9 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 							.collect(Collectors.toMap(AbstractOverridableDataService::getObjectName,
 									Function.identity()));
 
+					if (transport.getObjects() == null || transport.getObjects().isEmpty())
+						return Mono.just(true);
+
 					return Flux.fromIterable(transport.getObjects())
 							.flatMap(obj -> FlatMapUtil.flatMapMonoWithNull(
 
@@ -161,7 +164,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.accessCheck(ca, CREATE, to, false),
+				ca -> this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
 
 				(ca, hasPermission) -> {
 

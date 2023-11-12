@@ -2,6 +2,7 @@ package com.fincity.saas.commons.mongo.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,9 +21,11 @@ import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.Additio
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.mongo.document.AbstractFunction;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
@@ -162,6 +165,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 											.registerTypeAdapter(Type.class, new SchemaTypeAdapter())
 											.registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
 											.registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
+											.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 											.create();
 
 									arraySchemaTypeAdapter.setGson(gson);
