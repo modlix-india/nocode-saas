@@ -23,11 +23,11 @@ files:
 
 multi:
   db:
-    url: r2dbc:mysql://localhost:3306/files?serverTimezone=UTC
+    url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
     username: root
     password: Kiran@123
     flyway:
-      url: jdbc:mysql://localhost:3306/files
+      url: jdbc:mysql://localhost:3306/multi
 
 ui:
   mongo:

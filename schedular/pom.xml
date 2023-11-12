@@ -10,10 +10,10 @@
 		<!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
-	<artifactId>multi</artifactId>
+	<artifactId>schedular</artifactId>
 	<version>1.0.0</version>
-	<name>Multi</name>
-	<description>Fincity SAAS Multi server</description>
+	<name>Schedular</name>
+	<description>Fincity SAAS Schedular server</description>
 	<properties>
 		<java.version>20</java.version>
 		<spring-cloud.version>2021.0.3</spring-cloud.version>
@@ -195,7 +195,7 @@
 						<image>openjdk:alpine</image>
 					</from>
 					<to>
-						<image>ghcr.io/fincity-india/multi</image>
+						<image>ghcr.io/fincity-india/schedular</image>
 						<tags>
 							<tag>${env.ENVIRONMENT}</tag>
 							<tag>${project.version}</tag>
@@ -243,14 +243,14 @@
 						<configuration>
 							<jdbc>
 								<driver>com.mysql.cj.jdbc.Driver</driver>
-								<url>jdbc:mysql://localhost:3306/multi</url>
+								<url>jdbc:mysql://localhost:3306/schedular</url>
 								<user>root</user>
 								<password>Kiran@123</password>
 							</jdbc>
 							<generator>
 								<database>
-									<includes>multi_.*</includes>
-									<inputSchema>multi</inputSchema>
+									<includes>schedular_.*</includes>
+									<inputSchema>schedular</inputSchema>
 								</database>
 								<generate>
 									<deprecated>false</deprecated>
@@ -260,7 +260,7 @@
 									<fluentSetters>true</fluentSetters>
 								</generate>
 								<target>
-									<packageName>com.fincity.saas.multi.jooq</packageName>
+									<packageName>com.fincity.saas.schedular.jooq</packageName>
 									<directory>src/main/java</directory>
 								</target>
 							</generator>

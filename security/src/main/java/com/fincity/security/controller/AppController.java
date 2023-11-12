@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
@@ -53,6 +54,13 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
+	@GetMapping("/internal/hasDeleteAccess")
+	public Mono<ResponseEntity<Boolean>> hasDeleteAccess(@RequestParam String appCode) {
+
+		return this.service.hasDeleteAccess(appCode)
+				.map(ResponseEntity::ok);
+	}
+
 	@GetMapping("/internal/appInheritance")
 	public Mono<ResponseEntity<List<String>>> appInheritance(@RequestParam String appCode,
 			@RequestParam String urlClientCode, @RequestParam String clientCode) {
@@ -65,6 +73,21 @@ public class AppController
 	public Mono<ResponseEntity<Boolean>> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode) {
 
 		return this.service.hasWriteAccess(appCode, clientCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@DeleteMapping("/everything/{id}")
+	public Mono<ResponseEntity<Boolean>> deleteByAppId(@PathVariable(PATH_VARIABLE_ID) final ULong id,
+			@RequestParam(required = false) final Boolean forceDelete) {
+
+		return this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/appCode/{appCode}")
+	public Mono<ResponseEntity<App>> getAppCode(@PathVariable("appCode") final String appCode) {
+
+		return this.service.getAppByCode(appCode)
 				.map(ResponseEntity::ok);
 	}
 

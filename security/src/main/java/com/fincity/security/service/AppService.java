@@ -162,15 +162,71 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
-		return this.read(id)
-				.flatMap(e -> super.delete(id)
+
+		Mono<Integer> what = FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.read(id),
+
+				(ca, app) -> {
+					if (ca.isSystemClient())
+						return Mono.just(true);
+
+					if (app.getClientId().equals(id))
+						return Mono.just(true);
+
+					return this.clientService
+							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
+				},
+
+				(ca, app, hasAccess) -> super.delete(id)
 						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
 						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
-								.map(y -> x)))
+						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
+								.map(y -> x)));
+
+		return what
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id));
+								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.delete"));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
+	public Mono<Boolean> deleteEverything(ULong id, boolean forceDelete) {
+
+		Mono<Boolean> what = FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.read(id),
+
+				(ca, app) -> {
+					if (ca.isSystemClient() || app.getClientId().equals(id)
+							|| app.getClientId().toBigInteger().equals(ca.getLoggedInFromClientId())) {
+						if (forceDelete)
+							return Mono.just(true);
+						return this.dao.isNoneUsingTheAppOtherThan(id, ca.getUser().getClientId());
+					}
+
+					return Mono.just(false);
+				},
+
+				(ca, app, hasAccess) -> hasAccess.booleanValue() ? Mono.just(true) : Mono.empty(),
+
+				(ca, app, hasAccess, delete) -> this.dao.deleteEverythingRelated(id, app.getAppCode())
+						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_FULL_INH_BY_APPCODE))
+						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE,
+								app.getAppCode()).map(y -> x))
+
+		);
+
+		return what
+				.switchIfEmpty(
+						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteEverything"));
 	}
 
 	@Override
@@ -236,6 +292,24 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
 		return this.dao.hasWriteAccess(appCode, clientCode);
+	}
+
+	public Mono<Boolean> hasDeleteAccess(String appCode) {
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.getAppByCode(appCode),
+
+				(ca, app) -> {
+					if (ca.isSystemClient())
+						return Mono.just(true);
+
+					if (app.getClientId().equals(ULongUtil.valueOf(ca.getUser().getClientId())))
+						return Mono.just(true);
+
+					return this.clientService
+							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasDeleteAccess"));
 	}
 
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {

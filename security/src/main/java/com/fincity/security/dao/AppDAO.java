@@ -1,12 +1,13 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
 import static com.fincity.security.jooq.tables.SecurityAppUserRole.SECURITY_APP_USER_ROLE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -14,10 +15,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.jooq.Condition;
+import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
+import org.jooq.TransactionalPublishable;
 import org.jooq.impl.DSL;
 import org.jooq.types.UByte;
 import org.jooq.types.ULong;
@@ -36,6 +39,13 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
+import com.fincity.security.jooq.tables.SecurityApp;
+import com.fincity.security.jooq.tables.SecurityAppUserRole;
+import com.fincity.security.jooq.tables.SecurityClientUrl;
+import com.fincity.security.jooq.tables.SecurityPermission;
+import com.fincity.security.jooq.tables.SecuritySslCertificate;
+import com.fincity.security.jooq.tables.SecuritySslChallenge;
+import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
@@ -474,5 +484,98 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 						.and(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId))
 						.and(SECURITY_APP_PROPERTY.NAME.eq(propName))))
 				.map(e -> e == 1);
+	}
+
+	public Mono<Boolean> isNoneUsingTheAppOtherThan(ULong appId, BigInteger bigInteger) {
+		return Mono.just(
+				this.dslContext.selectCount()
+						.from(SECURITY_APP_ACCESS)
+						.where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
+								.and(SECURITY_APP_ACCESS.CLIENT_ID.ne(ULongUtil.valueOf(bigInteger))))
+						.fetchOne())
+				.map(Record1::value1)
+				.map(e -> e == 0);
+	}
+
+	public Mono<Boolean> deleteEverythingRelated(ULong appId, String appCode) {
+
+		return Mono.from(this.dslContext.transactionPublisher(config -> {
+
+			var dsl = config.dsl();
+
+			Mono<List<ULong>> urlIds = Flux
+					.from(dsl.select(SecurityClientUrl.SECURITY_CLIENT_URL.ID)
+							.from(SecurityClientUrl.SECURITY_CLIENT_URL)
+							.where(SecurityClientUrl.SECURITY_CLIENT_URL.APP_CODE.eq(appCode)))
+					.map(Record1::value1).collectList();
+
+			Mono<List<ULong>> permissionIds = Flux
+					.from(dsl.select(SecurityPermission.SECURITY_PERMISSION.ID)
+							.from(SecurityPermission.SECURITY_PERMISSION)
+							.where(SecurityPermission.SECURITY_PERMISSION.APP_ID.eq(appId)))
+					.map(Record1::value1).collectList();
+
+			Mono<List<ULong>> roleIds = Flux
+					.from(dsl.select(SecurityPermission.SECURITY_PERMISSION.ID)
+							.from(SecurityPermission.SECURITY_PERMISSION)
+							.where(SecurityPermission.SECURITY_PERMISSION.APP_ID.eq(appId)))
+					.map(Record1::value1).collectList();
+
+			return FlatMapUtil.flatMapMono(
+
+					() -> Mono.zip(
+
+							Mono.from(
+									dsl.deleteFrom(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.APP_ID.eq(appId))),
+
+							Mono.from(
+									dsl.deleteFrom(SECURITY_APP_USER_ROLE)
+											.where(SECURITY_APP_USER_ROLE.APP_ID.eq(appId))),
+
+							Mono.from(dsl.deleteFrom(SECURITY_APP_PACKAGE)
+									.where(SECURITY_APP_PACKAGE.APP_ID.eq(appId))),
+
+							Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
+									.where(SECURITY_APP_PROPERTY.APP_ID.eq(appId)))
+
+					),
+
+					a -> Mono.zip(urlIds, permissionIds, roleIds),
+
+					(a, tuple) -> Flux
+							.from(dsl.select(SecuritySslRequest.SECURITY_SSL_REQUEST.ID)
+									.from(SecuritySslRequest.SECURITY_SSL_REQUEST)
+									.where(SecuritySslRequest.SECURITY_SSL_REQUEST.URL_ID.in(tuple.getT1())))
+							.map(Record1::value1).collectList(),
+
+					(a, tuple, requests) -> Mono.zip(
+
+							Mono.from(dsl.delete(SecuritySslCertificate.SECURITY_SSL_CERTIFICATE)
+									.where(SecuritySslCertificate.SECURITY_SSL_CERTIFICATE.URL_ID.in(tuple.getT1()))),
+
+							FlatMapUtil.flatMapMono(
+									() -> Mono.from(dsl.delete(SecuritySslChallenge.SECURITY_SSL_CHALLENGE)
+											.where(SecuritySslChallenge.SECURITY_SSL_CHALLENGE.REQUEST_ID
+													.in(requests))),
+
+									x -> Mono.from(dsl.delete(SecuritySslRequest.SECURITY_SSL_REQUEST)
+											.where(SecuritySslRequest.SECURITY_SSL_REQUEST.ID.in(requests))),
+
+									(x, y) -> Mono.from(dsl.delete(SecurityClientUrl.SECURITY_CLIENT_URL)
+											.where(SecurityClientUrl.SECURITY_CLIENT_URL.ID.in(tuple.getT1())))),
+
+							Mono.from(dsl.delete(SecurityPermission.SECURITY_PERMISSION).where(
+									SecurityPermission.SECURITY_PERMISSION.ID.in(tuple.getT2()))),
+
+							Mono.from(dsl.delete(SecurityAppUserRole.SECURITY_APP_USER_ROLE)
+									.where(SecurityAppUserRole.SECURITY_APP_USER_ROLE.ROLE_ID.in(tuple.getT3())))
+
+					),
+
+					(a, tuple, requests, x) -> Mono.from(dsl.delete(SecurityApp.SECURITY_APP)
+							.where(SecurityApp.SECURITY_APP.ID.eq(appId))).map(e -> e == 1)
+
+			);
+		})).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
 	}
 }

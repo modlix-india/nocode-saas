@@ -82,6 +82,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String MANDATORY_APP_ID_CODE = "mandatory_app_id_code";
 	public static final String MANDATORY_APP_ID_NAME = "mandatory_app_id_name";
 	public static final String NO_REGISTRATION_AVAILABLE = "no_registration_available";
+	public static final String CANNOT_DELETE_APP = "cannot_delete_app";
 
 	public SecurityMessageResourceService() {
 
