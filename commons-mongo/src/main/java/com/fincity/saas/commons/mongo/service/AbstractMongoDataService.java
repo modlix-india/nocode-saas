@@ -11,7 +11,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -27,6 +29,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.LogUtil;
 
@@ -54,13 +57,12 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 		entity.setCreatedBy(null);
 		entity.setCreatedAt(LocalDateTime.now(ZoneId.of("UTC")));
 		return this.getLoggedInUserId()
-		        .map(e ->
-				{
-			        entity.setCreatedBy(e);
-			        return entity;
-		        })
-		        .defaultIfEmpty(entity)
-		        .flatMap(e -> this.repo.save(e));
+				.map(e -> {
+					entity.setCreatedBy(e);
+					return entity;
+				})
+				.defaultIfEmpty(entity)
+				.flatMap(e -> this.repo.save(e));
 
 	}
 
@@ -76,27 +78,27 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.filter(condition),
+				() -> this.filter(condition),
 
-		        crit -> Mono.just((new Query(crit)).skip(pageable.getOffset())
-		                .limit(pageable.getPageSize())
-		                .with(pageable.getSort())),
+				crit -> Mono.just((new Query(crit)).skip(pageable.getOffset())
+						.limit(pageable.getPageSize())
+						.with(pageable.getSort())),
 
-		        (crit, dataQuery) -> this.mongoTemplate.find(dataQuery, this.pojoClass)
-		                .collectList(),
+				(crit, dataQuery) -> this.mongoTemplate.find(dataQuery, this.pojoClass)
+						.collectList(),
 
-		        (crit, dataQuery, list) -> Mono.just((new Query(crit)).with(pageable.getSort())),
+				(crit, dataQuery, list) -> Mono.just((new Query(crit)).with(pageable.getSort())),
 
-		        (crit, dataQuery, list, countQuery) -> this.mongoTemplate.count(countQuery, this.pojoClass),
+				(crit, dataQuery, list, countQuery) -> this.mongoTemplate.count(countQuery, this.pojoClass),
 
-		        (crit, dataQuery, list, countQuery, count) -> Mono
-		                .just((Page<D>) new PageImpl<>(list, pageable, count)))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractMongoDataService.readPageFilter"));
+				(crit, dataQuery, list, countQuery, count) -> Mono
+						.just((Page<D>) new PageImpl<>(list, pageable, count)))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractMongoDataService.readPageFilter"));
 	}
 
 	public Flux<D> readAllFilter(AbstractCondition condition) {
 		return this.filter(condition)
-		        .flatMapMany(crit -> this.mongoTemplate.find(new Query(crit), this.pojoClass));
+				.flatMapMany(crit -> this.mongoTemplate.find(new Query(crit), this.pojoClass));
 	}
 
 	protected Mono<Criteria> filter(AbstractCondition condition) {
@@ -132,11 +134,11 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 		if (fc.getOperator() == IN) {
 
 			if (fc.getValue() == null && (fc.getMultiValue() == null || fc.getMultiValue()
-			        .isEmpty()))
+					.isEmpty()))
 				return Mono.empty();
 
 			return Mono.just(fc.isNegate() ? crit.nin(this.multiFieldValue(fc.getValue(), fc.getMultiValue()))
-			        : crit.in(this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
+					: crit.in(this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
 
 		}
 
@@ -157,38 +159,38 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 
 		switch (fc.getOperator()) {
 
-		case EQUALS:
-			return Mono.just(fc.isNegate() ? crit.ne(fc.getValue()) : crit.is(fc.getValue()));
+			case EQUALS:
+				return Mono.just(fc.isNegate() ? crit.ne(fc.getValue()) : crit.is(fc.getValue()));
 
-		case GREATER_THAN:
-			return Mono.just(fc.isNegate() ? crit.lte(fc.getValue()) : crit.gt(fc.getValue()));
+			case GREATER_THAN:
+				return Mono.just(fc.isNegate() ? crit.lte(fc.getValue()) : crit.gt(fc.getValue()));
 
-		case GREATER_THAN_EQUAL:
-			return Mono.just(fc.isNegate() ? crit.lt(fc.getValue()) : crit.gte(fc.getValue()));
+			case GREATER_THAN_EQUAL:
+				return Mono.just(fc.isNegate() ? crit.lt(fc.getValue()) : crit.gte(fc.getValue()));
 
-		case LESS_THAN:
-			return Mono.just(fc.isNegate() ? crit.gte(fc.getValue()) : crit.lt(fc.getValue()));
+			case LESS_THAN:
+				return Mono.just(fc.isNegate() ? crit.gte(fc.getValue()) : crit.lt(fc.getValue()));
 
-		case LESS_THAN_EQUAL:
-			return Mono.just(fc.isNegate() ? crit.gt(fc.getValue()) : crit.lte(fc.getValue()));
+			case LESS_THAN_EQUAL:
+				return Mono.just(fc.isNegate() ? crit.gt(fc.getValue()) : crit.lte(fc.getValue()));
 
-		case LIKE:
-			return Mono.just(fc.isNegate() ? crit.not()
-			        .regex(fc.getValue()
-			                .toString())
-			        : crit.regex(fc.getValue()
-			                .toString(), ""));
+			case LIKE:
+				return Mono.just(fc.isNegate() ? crit.not()
+						.regex(fc.getValue()
+								.toString())
+						: crit.regex(fc.getValue()
+								.toString(), ""));
 
-		case STRING_LOOSE_EQUAL:
+			case STRING_LOOSE_EQUAL:
 
-			return Mono.just(fc.isNegate() ? crit.not()
-			        .regex(fc.getValue()
-			                .toString())
-			        : crit.regex(fc.getValue()
-			                .toString()));
+				return Mono.just(fc.isNegate() ? crit.not()
+						.regex(fc.getValue()
+								.toString())
+						: crit.regex(fc.getValue()
+								.toString()));
 
-		default:
-			return Mono.empty();
+			default:
+				return Mono.empty();
 		}
 
 	}
@@ -203,7 +205,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 
 		int from = 0;
 		String iValue = objValue.toString()
-		        .trim();
+				.trim();
 
 		List<Object> obj = new ArrayList<>();
 		for (int i = 0; i < iValue.length(); i++) { // NOSONAR
@@ -216,7 +218,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 				continue;
 
 			String str = iValue.substring(from, i)
-			        .trim();
+					.trim();
 			if (str.isEmpty())
 				continue;
 
@@ -234,25 +236,24 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 	private Mono<Criteria> complexConditionFilter(ComplexCondition cc) {
 
 		if (cc.getConditions() == null || cc.getConditions()
-		        .isEmpty())
+				.isEmpty())
 			return Mono.empty();
 
 		return Flux.concat(cc.getConditions()
-		        .stream()
-		        .map(this::filter)
-		        .toList())
-		        .collectList()
-		        .map(conds ->
-				{
-			        if (cc.getOperator() == ComplexConditionOperator.AND)
-				        return cc.isNegate() ? new Criteria().orOperator(conds) : new Criteria().andOperator(conds);
+				.stream()
+				.map(this::filter)
+				.toList())
+				.collectList()
+				.map(conds -> {
+					if (cc.getOperator() == ComplexConditionOperator.AND)
+						return cc.isNegate() ? new Criteria().orOperator(conds) : new Criteria().andOperator(conds);
 
-			        return cc.isNegate() ? new Criteria().andOperator(conds) : new Criteria().orOperator(conds);
-		        });
+					return cc.isNegate() ? new Criteria().andOperator(conds) : new Criteria().orOperator(conds);
+				});
 	}
 
 	public Mono<Boolean> delete(I id) {
 		return this.repo.deleteById(id)
-		        .thenReturn(true);
+				.thenReturn(true);
 	}
 }

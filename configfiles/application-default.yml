@@ -21,6 +21,22 @@ files:
       static: /Users/kirangrandhi/Downloads/files/static
       secured: /Users/kirangrandhi/Downloads/files/secured
 
+multi:
+  db:
+    url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/multi
+
+schedular:
+  db:
+    url: r2dbc:mysql://localhost:3306/schedular?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/schedular
+
 ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin

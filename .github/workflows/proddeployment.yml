@@ -60,6 +60,12 @@ jobs:
       - name: Building core
         working-directory: ./core
         run: mvn clean install
+      - name: Building multi
+        working-directory: ./multi
+        run: mvn clean install
+      - name: Building schedular
+        working-directory: ./schedular
+        run: mvn clean install
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -76,3 +82,5 @@ jobs:
           aws s3 cp ./ui/target/*.jar s3://nclc-deployment/production/ui.jar
           aws s3 cp ./files/target/*.jar s3://nclc-deployment/production/files.jar
           aws s3 cp ./core/target/*.jar s3://nclc-deployment/production/core.jar
+          aws s3 cp ./multi/target/*.jar s3://nclc-deployment/development/multi.jar
+          aws s3 cp ./schedular/target/*.jar s3://nclc-deployment/development/schedular.jar
