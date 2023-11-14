@@ -38,6 +38,11 @@ public class MultiConfiguration extends AbstractJooqBaseConfiguration implements
 	}
 
 	@Bean
+	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+		return this.springSecurityFilterChain(http, authService, this.objectMapper);
+	}
+
+	@Bean
 	ReactiveHttpRequestInterceptor feignInterceptor() {
 		return request -> Mono.deferContextual(ctxView -> {
 

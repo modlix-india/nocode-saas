@@ -818,5 +818,4 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteProperty"));
 	}
-
 }
