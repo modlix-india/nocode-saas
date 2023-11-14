@@ -2,6 +2,7 @@ package com.fincity.saas.commons.security.feign;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -55,4 +56,13 @@ public interface IFeignSecurityService {
 	@DeleteMapping("${security.feign.deleteByAppId:/api/security/applications/{id}}")
 	public Mono<Boolean> deleteByAppId(@RequestHeader(name = "Authorization", required = false) String authorization,
 			@PathVariable("id") BigInteger id);
+
+	@GetMapping("${security.feign.transport:/api/security/transports/makeTransport}")
+	public Mono<Map<String, Object>> makeTransport(
+			@RequestHeader(name = "Authorization", required = false) String authorization,
+			@RequestHeader("X-Forwarded-Host") String forwardedHost,
+			@RequestHeader("X-Forwarded-Port") String forwardedPort,
+			@RequestHeader("clientCode") String clientCode,
+			@RequestHeader("appCode") String headerAppCode,
+			@RequestParam("applicationCode") String applicationCode);
 }

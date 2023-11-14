@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,8 @@ import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
+import com.fincity.security.model.TransportPOJO.AppTransportPackage;
+import com.fincity.security.model.TransportPOJO.AppTransportRole;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Flux;
@@ -185,9 +188,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 				)
 				.onErrorResume(
 						ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
-		                        ? this.securityMessageResourceService.throwMessage(
-		                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
-		                                SecurityMessageResourceService.DELETE_ROLE_ERROR)
+								? this.securityMessageResourceService.throwMessage(
+										msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
+										SecurityMessageResourceService.DELETE_ROLE_ERROR)
 								: Mono.error(ex));
 
 	}
@@ -238,10 +241,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.assignPermissionToRole"))
-			                .switchIfEmpty(securityMessageResourceService.throwMessage(
-			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-			                        SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId,
-			                        roleId));
+							.switchIfEmpty(securityMessageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+									SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR_FOR_ROLE, permissionId,
+									roleId));
 
 				});
 
@@ -267,9 +270,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 		return this.dao.checkPermissionExistsForRole(roleId, permissionId)
 				.flatMap(result -> {
 					if (!result.booleanValue())
-				        return securityMessageResourceService.throwMessage(
-				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-				                SecurityMessageResourceService.OBJECT_NOT_FOUND, roleId, permissionId);
+						return securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								SecurityMessageResourceService.OBJECT_NOT_FOUND, roleId, permissionId);
 
 					return flatMapMono(
 
@@ -302,10 +305,10 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.removePermissionFromRole"))
-			                .switchIfEmpty(securityMessageResourceService.throwMessage(
-			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-			                        SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId,
-			                        roleId));
+							.switchIfEmpty(securityMessageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+									SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId,
+									roleId));
 
 				});
 
@@ -342,9 +345,9 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 						: this.dao.removePemissionFromUsers(permissionId, finalRoleUsers)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.removePermissionsFromUsers"))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.REMOVE_PERMISSION_FROM_ROLE_ERROR, permissionId, roleId));
 	}
 
 	public Mono<List<ULong>> getPermissionsFromRole(ULong roleId) {
@@ -371,10 +374,20 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 				(ca, sysOrManaged) -> this.dao.getPermissionsFromGivenRole(roleId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.getPermissionsFromGivenRole"))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.FETCH_PERMISSION_ERROR, roleId));
 
 	}
 
+	public Mono<Map<ULong, Collection<String>>> getRoleNamesFromPackagesForTransport(List<ULong> packages, ULong appId,
+			ULong appClientId, ULong clientId) {
+
+		return this.dao.getRoleNamesFromPackagesForTransport(packages, appId, appClientId, clientId);
+	}
+
+	public Mono<List<AppTransportRole>> readForTransport(ULong appId, ULong appClientId, ULong clientId) {
+
+		return this.dao.readForTransport(appId, appClientId, clientId);
+	}
 }

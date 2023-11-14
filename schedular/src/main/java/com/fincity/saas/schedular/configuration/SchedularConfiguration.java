@@ -8,10 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
@@ -32,6 +35,11 @@ public class SchedularConfiguration extends AbstractJooqBaseConfiguration implem
 			else
 				log.debug(v);
 		}));
+	}
+
+	@Bean
+	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+		return this.springSecurityFilterChain(http, authService, this.objectMapper);
 	}
 
 	@Bean

@@ -13,8 +13,11 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
@@ -26,6 +29,7 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Permission;
@@ -33,6 +37,8 @@ import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityRolePermissionRecord;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
+import com.fincity.security.model.TransportPOJO.AppTransportPermission;
+import com.fincity.security.model.TransportPOJO.AppTransportRole;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -283,6 +289,66 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 				.map(e -> e.into(Permission.class))
 				.collectList();
 
+	}
+
+	public Mono<Map<ULong, Collection<String>>> getRoleNamesFromPackagesForTransport(List<ULong> packages, ULong appId,
+			ULong appClientId, ULong clientId) {
+
+		return Flux.from(
+
+				this.dslContext.select(SECURITY_PACKAGE_ROLE.PACKAGE_ID, SECURITY_ROLE.NAME)
+						.from(SECURITY_PACKAGE_ROLE)
+						.leftJoin(SECURITY_ROLE).on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE.ID))
+						.where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.in(packages).and(SECURITY_ROLE.APP_ID.eq(appId))
+								.and(SECURITY_ROLE.CLIENT_ID.eq(appClientId).or(SECURITY_ROLE.CLIENT_ID.eq(clientId))))
+
+		).map(e -> Tuples.of(e.get(SECURITY_PACKAGE_ROLE.PACKAGE_ID), e.get(SECURITY_ROLE.NAME)))
+				.collectMultimap(Tuple2::getT1, Tuple2::getT2);
+
+	}
+
+	public Mono<List<AppTransportRole>> readForTransport(ULong appId, ULong appClientId, ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> Flux.from(this.dslContext.selectFrom(SECURITY_ROLE).where(SECURITY_ROLE.APP_ID.eq(appId)
+						.and(SECURITY_ROLE.CLIENT_ID.eq(appClientId).or(SECURITY_ROLE.CLIENT_ID.eq(clientId)))))
+						.collectList(),
+
+				roles -> Flux
+						.from(this.dslContext
+								.select(SECURITY_ROLE_PERMISSION.ROLE_ID, SECURITY_PERMISSION.NAME,
+										SECURITY_PERMISSION.DESCRIPTION)
+								.from(SECURITY_ROLE_PERMISSION)
+								.leftJoin(SECURITY_PERMISSION)
+								.on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
+								.where(SECURITY_ROLE_PERMISSION.ROLE_ID
+										.in(roles.stream().map(SecurityRoleRecord::getId).toList())
+										.and(SECURITY_PERMISSION.APP_ID.eq(appId))
+										.and(SECURITY_PERMISSION.CLIENT_ID.eq(appClientId)
+												.or(SECURITY_PERMISSION.CLIENT_ID.eq(clientId)))))
+						.collectList(),
+
+				(roles, rolePermissions) -> {
+
+					Map<ULong, List<Tuple2<ULong, AppTransportPermission>>> rolePermissionMap = rolePermissions.stream()
+							.map(e -> Tuples.of(e.get(SECURITY_ROLE_PERMISSION.ROLE_ID),
+									new AppTransportPermission().setPermissionName(e.get(SECURITY_PERMISSION.NAME))
+											.setPermissionDescription(e.get(SECURITY_PERMISSION.DESCRIPTION))))
+							.collect(Collectors.groupingBy(Tuple2::getT1));
+
+					return Mono.just(roles.stream()
+							.map(e -> new AppTransportRole().setRoleName(e.get(SECURITY_ROLE.NAME))
+									.setRoleDescription(e.get(SECURITY_ROLE.DESCRIPTION))
+									.setPermissions(rolePermissionMap.get(e.getId()) == null ? null
+											: rolePermissionMap
+													.get(e.getId())
+													.stream()
+													.map(Tuple2::getT2)
+													.toList()))
+							.toList());
+
+				});
 	}
 
 }
