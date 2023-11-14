@@ -15,12 +15,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function10;
+import org.jooq.Function11;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row10;
+import org.jooq.Row11;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -64,6 +64,11 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
      * for which this permission belongs to
      */
     public final TableField<SecurityPackageRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID for which this permission belongs to");
+
+    /**
+     * The column <code>security.security_package.APP_ID</code>.
+     */
+    public final TableField<SecurityPackageRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED, this, "");
 
     /**
      * The column <code>security.security_package.CODE</code>. Package code
@@ -167,10 +172,11 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
 
     @Override
     public List<ForeignKey<SecurityPackageRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PACKAGE_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_PACKAGE_CLIENT_ID, Keys.FK2_PACKAGE_APP_ID);
     }
 
     private transient SecurityClient _securityClient;
+    private transient SecurityApp _securityApp;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
@@ -181,6 +187,17 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
             _securityClient = new SecurityClient(this, Keys.FK1_PACKAGE_CLIENT_ID);
 
         return _securityClient;
+    }
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityApp securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityApp(this, Keys.FK2_PACKAGE_APP_ID);
+
+        return _securityApp;
     }
 
     @Override
@@ -223,18 +240,18 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row10 type methods
+    // Row11 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row10<ULong, ULong, String, String, String, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row10) super.fieldsRow();
+    public Row11<ULong, ULong, ULong, String, String, String, Byte, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row11) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function11<? super ULong, ? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -242,7 +259,7 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super Byte, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

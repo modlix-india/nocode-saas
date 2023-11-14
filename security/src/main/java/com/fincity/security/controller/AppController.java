@@ -199,5 +199,4 @@ public class AppController
 		return this.service.deleteProperty(clientId, appId, name)
 				.map(ResponseEntity::ok);
 	}
-
 }
