@@ -46,6 +46,7 @@ public class TransportService {
                     transport.setUniqueTransportCode(UniqueUtil.shortUUID());
                     transport.setAppCode(app.getAppCode());
                     transport.setName(app.getAppName());
+                    transport.setType(app.getAppType().toString());
 
                     return Mono.just(transport);
                 },
