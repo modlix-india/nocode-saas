@@ -251,7 +251,7 @@ public class IndexHTMLService {
 				sb.setCharAt(i, Character.toLowerCase(c));
 				sb.insert(i, '-');
 			}
-			cspString.append(key)
+			cspString.append(sb.toString())
 					.append(' ')
 					.append(e.getValue())
 					.append(';');
