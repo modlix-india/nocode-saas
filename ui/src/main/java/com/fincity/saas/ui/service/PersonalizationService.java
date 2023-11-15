@@ -78,7 +78,8 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, String appode, String clientCode,
 			boolean checkAppWriteAccess) {
 
-		return Mono.just(CREATE.equals(method) || UPDATE.equals(method) || DELETE.equals(method));
+		return Mono
+				.just(CREATE.equals(method) || UPDATE.equals(method) || DELETE.equals(method) || READ.equals(method));
 	}
 
 	@Override
@@ -101,20 +102,21 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 		return flatMapMonoWithNull(
 
-				() -> SecurityContextUtil.getUsersContextUser()
-						.map(ContextUser::getId)
-						.map(Object::toString),
+				SecurityContextUtil::getUsersContextAuthentication,
 
-				id -> id == null ? Mono.empty() : this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id),
+				ca -> ca == null ? Mono.empty()
+						: this.repo.findOneByNameAndAppCodeAndClientCode(name + ca.getUser().getId(), appName,
+								ca.getClientCode()),
 
-				(id, person) -> {
+				(ca, person) -> {
 
-					if (id == null)
+					if (ca == null)
 						return Mono.just(personalization);
 
 					if (person == null) {
-						person = ((Personalization) new Personalization().setName(name)
-								.setAppCode(appName));
+						person = (Personalization) (new Personalization().setName(name + ca.getUser().getId())
+								.setAppCode(appName)
+								.setClientCode(ca.getClientCode()));
 
 						person.setPersonalization(personalization);
 						return this.create(person)
@@ -135,12 +137,12 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 		return flatMapMonoWithNull(
 
-				() -> SecurityContextUtil.getUsersContextUser()
-						.map(ContextUser::getId)
-						.map(Object::toString),
+				SecurityContextUtil::getUsersContextAuthentication,
 
-				id -> id == null ? Mono.empty()
-						: this.repo.findOneByNameAndAppCodeAndCreatedBy(name, appName, id)
+				ca -> ca == null ? Mono.empty()
+						: this.repo
+								.findOneByNameAndAppCodeAndClientCode(name + ca.getUser().getId(), appName,
+										ca.getClientCode())
 								.map(Personalization::getPersonalization)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.getPersonalization"))
@@ -151,13 +153,14 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 	public Mono<Boolean> deletePersonalization(String appName, String name) {
 		return flatMapMonoWithNull(
 
-				() -> SecurityContextUtil.getUsersContextUser()
-						.map(ContextUser::getId)
-						.map(Object::toString),
+				SecurityContextUtil::getUsersContextAuthentication,
 
-				id -> id == null ? Mono.empty()
-						: this.repo.deleteByNameAndAppCodeAndCreatedBy(name, appName, id)
-								.map(e -> e != 0l)
+				ca -> ca == null ? Mono.empty()
+						: this.repo
+								.findOneByNameAndAppCodeAndClientCode(name + ca.getUser().getId(), appName,
+										ca.getClientCode()),
+
+				(ca, person) -> this.delete(person.getId())
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PersonalizationService.deletePersonalization"))
 				.defaultIfEmpty(Boolean.FALSE);
