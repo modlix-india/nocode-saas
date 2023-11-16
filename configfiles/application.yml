@@ -18,6 +18,9 @@ eureka:
 #   shutdown: graceful
 
 management:
+  info:
+    env:
+      enabled: true
   security:
     enabled: false
   endpoint:

@@ -20,4 +20,5 @@ public class Package extends AbstractUpdatableDTO<ULong, ULong> {
 	private String name;
 	private String description;
 	private boolean base;
+	private ULong appId;
 }

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
@@ -35,15 +36,28 @@ public class AppController
 	@Value("${security.appCodeSuffix:}")
 	private String appCodeSuffix;
 
+	@Value("${security.resourceCacheAge:604800}")
+	private int cacheAge;
+
 	@GetMapping("/applyAppCodeSuffix")
 	public Mono<ResponseEntity<String>> applyAppCodeSuffix(@RequestParam String appCode) {
-		return Mono.just(ResponseEntity.ok(appCode + appCodeSuffix));
+		return Mono.just(ResponseEntity.ok().header("ETag", "W/" + appCode)
+				.header("Cache-Control", "max-age: " + cacheAge)
+				.header("x-frame-options", "SAMEORIGIN")
+				.header("X-Frame-Options", "SAMEORIGIN").body(appCode + appCodeSuffix));
 	}
 
 	@GetMapping("/internal/hasReadAccess")
 	public Mono<ResponseEntity<Boolean>> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode) {
 
 		return this.service.hasReadAccess(appCode, clientCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/hasDeleteAccess")
+	public Mono<ResponseEntity<Boolean>> hasDeleteAccess(@RequestParam String appCode) {
+
+		return this.service.hasDeleteAccess(appCode)
 				.map(ResponseEntity::ok);
 	}
 
@@ -59,6 +73,21 @@ public class AppController
 	public Mono<ResponseEntity<Boolean>> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode) {
 
 		return this.service.hasWriteAccess(appCode, clientCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@DeleteMapping("/everything/{id}")
+	public Mono<ResponseEntity<Boolean>> deleteByAppId(@PathVariable(PATH_VARIABLE_ID) final ULong id,
+			@RequestParam(required = false) final Boolean forceDelete) {
+
+		return this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/appCode/{appCode}")
+	public Mono<ResponseEntity<App>> getAppCode(@PathVariable("appCode") final String appCode) {
+
+		return this.service.getAppByCode(appCode)
 				.map(ResponseEntity::ok);
 	}
 
@@ -170,5 +199,4 @@ public class AppController
 		return this.service.deleteProperty(clientId, appId, name)
 				.map(ResponseEntity::ok);
 	}
-
 }

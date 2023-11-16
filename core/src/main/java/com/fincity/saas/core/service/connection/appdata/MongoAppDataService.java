@@ -27,6 +27,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
@@ -116,6 +118,15 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	@Autowired
 	private CoreSchemaService schemaService;
+
+	private static final Map<FilterConditionOperator, String> FILTER_MATCH_OPERATOR = Map.of(
+			FilterConditionOperator.EQUALS, "$eq",
+			FilterConditionOperator.GREATER_THAN, "$gt",
+			FilterConditionOperator.GREATER_THAN_EQUAL, "$gte",
+			FilterConditionOperator.LESS_THAN, "$lt",
+			FilterConditionOperator.LESS_THAN_EQUAL, "$lte",
+			FilterConditionOperator.LIKE, "$regex",
+			FilterConditionOperator.STRING_LOOSE_EQUAL, "$regex");
 
 	@PostConstruct
 	private void init() {
@@ -633,6 +644,31 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			return Mono.just(function.apply(fc.getField(), this.multiFieldValue(fc.getValue(), fc.getMultiValue())));
 		}
 
+		if (fc.getOperator() == FilterConditionOperator.MATCH) {
+
+			if (fc.getValue() == null)
+				return Mono.empty();
+
+			Document doc = new Document(Map.of(fc.getField(),
+					Map.of("$elemMatch",
+							Map.of(CommonsUtil.nonNullValue(FILTER_MATCH_OPERATOR.get(fc.getMatchOperator()), "$eq"),
+									fc.getValue()))));
+
+			return Mono.just(doc);
+		}
+
+		if (fc.getOperator() == FilterConditionOperator.MATCH_ALL) {
+
+			if (fc.getValue() == null && fc.getMultiValue() == null && fc.getMultiValue()
+					.isEmpty())
+				return Mono.empty();
+
+			Document doc = new Document(Map.of(fc.getField(), Map.of("$all", fc.getValue() == null ? fc.getMultiValue()
+					: List.of(fc.getValue()))));
+
+			return Mono.just(doc);
+		}
+
 		if (fc.getValue() == null)
 			return Mono.empty();
 
@@ -689,7 +725,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 			case STRING_LOOSE_EQUAL:
 				filter = Filters.regex(fc.getField(), fc.getValue()
-						.toString());
+						.toString(), "i");
 				return Mono.just(fc.isNegate() ? Filters.not(filter) : filter);
 
 			default:

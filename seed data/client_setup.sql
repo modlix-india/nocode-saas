@@ -1251,13 +1251,42 @@ COLLATE utf8mb4_unicode_ci;
 
 ALTER TABLE `security_app` 
 	ADD COLUMN `IS_TEMPLATE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Is this app or site a template?';
-    
 
--- V1__Initial script.sql
+-- V17__APPID to package (SECURITY)
+
+use security;
+
+
+ALTER TABLE `security`.`security_package` 
+ADD COLUMN `APP_ID` BIGINT UNSIGNED NULL DEFAULT NULL AFTER `CLIENT_ID`;
+
+ALTER TABLE `security`.`security_package` 
+ADD CONSTRAINT `FK2_PACKAGE_APP_ID`
+  FOREIGN KEY (`APP_ID`)
+  REFERENCES `security`.`security_app` (`ID`)
+  ON DELETE RESTRICT
+  ON UPDATE RESTRICT;
+
+-- V1__Initial script.sql (CORE)
 
 DROP DATABASE IF EXISTS `core`;
 
 CREATE DATABASE IF NOT EXISTS `core` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- V1__Initial script.sql (MULTI)
+
+DROP DATABASE IF EXISTS `multi`;
+
+CREATE DATABASE IF NOT EXISTS `multi` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+-- V1__Initial script.sql (SCHEDULAR)
+
+DROP DATABASE IF EXISTS `schedular`;
+
+CREATE DATABASE IF NOT EXISTS `schedular` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
 
 -- Add scripts from the project above this line and seed data below this line.
 

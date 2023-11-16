@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -29,6 +30,7 @@ import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
+import com.fincity.security.model.TransportPOJO.AppTransportPackage;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Flux;
@@ -214,10 +216,10 @@ public class PackageService extends
 				)
 				.onErrorResume(
 						ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
-		                        ? this.securityMessageResourceService.throwMessage(
-		                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
-		                                SecurityMessageResourceService.DELETE_PACKAGE_ERROR)
-		                		: Mono.error(ex));
+								? this.securityMessageResourceService.throwMessage(
+										msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
+										SecurityMessageResourceService.DELETE_PACKAGE_ERROR)
+								: Mono.error(ex));
 	}
 
 	public Mono<List<ULong>> getRolesFromPackage(ULong packageId) {
@@ -244,9 +246,9 @@ public class PackageService extends
 				(ca, sysOrManaged) -> this.dao.getRolesFromGivenPackage(packageId)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.getRolesFromGivenPackage"))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.FETCH_ROLE_ERROR, packageId));
 
 	}
 
@@ -306,9 +308,9 @@ public class PackageService extends
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.assignRoleToPackage"))
-			                .switchIfEmpty(securityMessageResourceService.throwMessage(
-			                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-			                        SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
+							.switchIfEmpty(securityMessageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+									SecurityMessageResourceService.ASSIGN_ROLE_ERROR, roleId, packageId));
 				});
 
 	}
@@ -334,9 +336,9 @@ public class PackageService extends
 		return this.dao.checkRoleAssignedForPackage(packageId, roleId)
 				.flatMap(result -> {
 					if (!result.booleanValue())
-				        return securityMessageResourceService.throwMessage(
-				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-				                SecurityMessageResourceService.OBJECT_NOT_FOUND, packageId, roleId);
+						return securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								SecurityMessageResourceService.OBJECT_NOT_FOUND, packageId, roleId);
 
 					return flatMapMono(
 
@@ -382,9 +384,9 @@ public class PackageService extends
 				);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.removeRoleFromPackage"))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.ROLE_REMOVE_FROM_PACKAGE_ERROR, roleId, packageId));
 
 	}
 
@@ -421,4 +423,24 @@ public class PackageService extends
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.removePermissionsFromUsers"));
 	}
 
+	public Mono<List<AppTransportPackage>> readForTransport(ULong appId, ULong appClientId, ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.dao.readForTransport(appId, appClientId, clientId),
+
+				packageList -> Flux.fromIterable(packageList).map(Package::getId)
+						.collectList()
+						.flatMap(e -> this.roleService.getRoleNamesFromPackagesForTransport(e, appId, appClientId,
+								clientId)),
+
+				(packageList, roleNames) -> Flux.fromIterable(packageList)
+						.map(e -> new AppTransportPackage().setPackageCode(e.getCode())
+								.setPackageDescription(e.getDescription()).setPackageName(e.getName())
+								.setRoles(null == roleNames.get(e.getId()) ? null
+										: new ArrayList<>(roleNames.get(e.getId()))))
+						.collectList()
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.readForTransport"));
+	}
 }
