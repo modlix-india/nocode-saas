@@ -2,17 +2,19 @@ package com.fincity.saas.multi.controller;
 
 import java.util.Map;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.multi.fiegn.IFeignCoreService;
-import com.fincity.saas.multi.fiegn.IFeignUIService;
+import com.fincity.saas.commons.security.dto.App;
+import com.fincity.saas.multi.dto.MultiApp;
+import com.fincity.saas.multi.dto.MultiAppUpdate;
+import com.fincity.saas.multi.service.ApplicationService;
 
 import reactor.core.publisher.Mono;
 
@@ -20,41 +22,46 @@ import reactor.core.publisher.Mono;
 @RequestMapping("api/multi/application")
 public class ApplicationController {
 
-    private final IFeignSecurityService securityService;
-    private final IFeignCoreService coreService;
-    private final IFeignUIService uiService;
+        private final ApplicationService applicationService;
 
-    public ApplicationController(IFeignSecurityService securityService, IFeignCoreService coreService,
-            IFeignUIService uiService) {
-        this.securityService = securityService;
-        this.coreService = coreService;
-        this.uiService = uiService;
-    }
+        public ApplicationController(ApplicationService applicationService) {
+                this.applicationService = applicationService;
+        }
 
-    @GetMapping("/transport")
-    public Mono<Map<String, Object>> transport(
-            @RequestHeader("X-Forwarded-Host") String forwardedHost,
-            @RequestHeader("X-Forwarded-Port") String forwardedPort,
-            @RequestHeader("clientCode") String clientCode,
-            @RequestHeader("appCode") String headerAppCode,
-            @RequestParam String appCode) {
+        @GetMapping("/transport")
+        public Mono<ResponseEntity<Map<String, Map<String, Object>>>> transport(
+                        @RequestHeader("X-Forwarded-Host") String forwardedHost,
+                        @RequestHeader("X-Forwarded-Port") String forwardedPort,
+                        @RequestHeader("clientCode") String clientCode,
+                        @RequestHeader("appCode") String headerAppCode,
+                        @RequestParam String appCode) {
 
-        return FlatMapUtil.flatMapMono(
+                return this.applicationService
+                                .transport(forwardedHost, forwardedPort, clientCode, headerAppCode, appCode)
+                                .map(ResponseEntity::ok);
+        }
 
-                SecurityContextUtil::getUsersContextAuthentication,
+        @PostMapping
+        public Mono<ResponseEntity<App>> createApplication(
+                        @RequestHeader("X-Forwarded-Host") String forwardedHost,
+                        @RequestHeader("X-Forwarded-Port") String forwardedPort,
+                        @RequestHeader("clientCode") String clientCode,
+                        @RequestHeader("appCode") String headerAppCode,
+                        @RequestBody MultiApp application) {
 
-                ca -> this.securityService.makeTransport(ca.getAccessToken(), forwardedHost, forwardedPort, clientCode,
-                        headerAppCode, appCode),
+                return this.applicationService.createApplication(forwardedHost, forwardedPort, clientCode,
+                                headerAppCode, application).map(ResponseEntity::ok);
+        }
 
-                (ca, security) -> this.coreService.makeTransport(ca.getAccessToken(), forwardedHost, forwardedPort,
-                        clientCode, headerAppCode,
-                        Map.of("appCode", appCode, "clientCode", ca.getClientCode())),
+        @PostMapping("/update")
+        public Mono<ResponseEntity<Boolean>> updateApplication(
+                        @RequestHeader("X-Forwarded-Host") String forwardedHost,
+                        @RequestHeader("X-Forwarded-Port") String forwardedPort,
+                        @RequestHeader("clientCode") String clientCode,
+                        @RequestHeader("appCode") String headerAppCode,
+                        @RequestBody MultiAppUpdate application) {
 
-                (ca, security, core) -> this.uiService.makeTransport(ca.getAccessToken(), forwardedHost, forwardedPort,
-                        clientCode, headerAppCode,
-                        Map.of("appCode", appCode, "clientCode", ca.getClientCode())),
-
-                (ca, security, core, ui) -> Mono.just(Map.of("security", security, "core", core, "ui", ui)));
-    }
-
+                return this.applicationService.updateApplication(forwardedHost, forwardedPort, clientCode,
+                                headerAppCode, application).map(ResponseEntity::ok);
+        }
 }

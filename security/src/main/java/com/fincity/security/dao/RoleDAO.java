@@ -351,4 +351,35 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 				});
 	}
 
+	public Mono<List<Role>> getRolesByNamesAndAppId(List<String> names, ULong appId) {
+
+		return Flux.from(
+				this.dslContext.selectFrom(SECURITY_ROLE)
+						.where(SECURITY_ROLE.NAME.in(names).and(SECURITY_ROLE.APP_ID.eq(appId))))
+				.map(e -> e.into(Role.class))
+				.collectList();
+	}
+
+	public Mono<List<Role>> createRolesFromTransport(List<Role> roles) {
+
+		return Flux.fromIterable(roles)
+				.flatMap(this::create)
+				.collectList();
+	}
+
+	public Mono<Boolean> createPackageRoles(Map<ULong, ULong> packageRoles) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> Mono.from(this.dslContext.deleteFrom(SECURITY_PACKAGE_ROLE)
+						.where(SECURITY_PACKAGE_ROLE.PACKAGE_ID.in(packageRoles.keySet()))),
+
+				delCount -> Mono.from(
+						this.dslContext
+								.insertInto(SECURITY_PACKAGE_ROLE, SECURITY_PACKAGE_ROLE.PACKAGE_ID,
+										SECURITY_PACKAGE_ROLE.ROLE_ID)
+								.values(packageRoles.entrySet().stream()
+										.map(e -> DSL.row(e.getKey(), e.getValue())).toList()))
+						.map(e -> true));
+	}
 }
