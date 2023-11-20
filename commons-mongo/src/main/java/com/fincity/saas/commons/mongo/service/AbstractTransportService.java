@@ -1,9 +1,11 @@
 package com.fincity.saas.commons.mongo.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -17,6 +19,7 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import com.fincity.saas.commons.mongo.model.TransportRequest;
 import com.fincity.saas.commons.mongo.repository.TransportRepository;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -27,8 +30,12 @@ import com.fincity.saas.commons.util.UniqueUtil;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 public abstract class AbstractTransportService extends AbstractOverridableDataService<Transport, TransportRepository> {
+
+	@Autowired
+	private IFeignSecurityService feignSecurityService;
 
 	protected AbstractTransportService() {
 		super(Transport.class);
@@ -52,7 +59,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 	}
 
-	public Mono<Boolean> applyTransportWithTransportCode(String transportCode) {
+	public Mono<Boolean> applyTransportWithTransportCode(String forwardedHost, String forwardedPort,
+			String transportCode) {
 
 		return this.readAllFilter(new ComplexCondition()
 				.setConditions(List.of(new FilterCondition().setField("uniqueTransportCode")
@@ -61,20 +69,31 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 				.flatMap(e -> e.isEmpty() ? this.messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Transport", transportCode)
-						: this.applyTransport(e.get(0).getId()));
+						: this.applyTransport(forwardedHost, forwardedPort, e.get(0).getId()));
 
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public Mono<Boolean> applyTransport(String id) {
+	public Mono<Boolean> applyTransport(String forwardedHost, String forwardedPort, String id) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.read(id),
+				SecurityContextUtil::getUsersContextAuthentication,
 
-				transport -> SecurityContextUtil.getUsersContextAuthentication(),
+				ca -> this.read(id),
 
-				(transport, ca) -> {
+				(ca, transport) -> {
+
+					if (StringUtil.safeIsBlank(transport.getActualAppCode()))
+						return Mono.just(Optional.<Tuple2<String, Boolean>>empty());
+
+					return this.feignSecurityService
+							.findBaseClientCodeForOverride(ca.getAccessToken(), forwardedHost, forwardedPort,
+									ca.getUrlClientCode(), ca.getUrlAppCode(), transport.getActualAppCode())
+							.map(Optional::of).defaultIfEmpty(Optional.empty());
+				},
+
+				(ca, transport, baseCodeTup) -> {
 
 					var serviceMap = this.getServieMap()
 							.stream()
@@ -89,7 +108,27 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 									() -> Mono.just(serviceMap.get(obj.getObjectType())),
 
-									service -> Mono.justOrEmpty(service.makeEntity(obj)),
+									service -> {
+										AbstractOverridableDTO aovdto = service.makeEntity(obj);
+
+										if (!StringUtil.safeIsBlank(transport.getActualAppCode()))
+											aovdto.setAppCode(transport.getActualAppCode());
+
+										if (baseCodeTup.isPresent()) {
+											if (baseCodeTup.get().getT2().booleanValue()) {
+												aovdto.setClientCode(baseCodeTup.get().getT1());
+												aovdto.setBaseClientCode(null);
+											} else {
+												aovdto.setClientCode(ca.getClientCode());
+												aovdto.setBaseClientCode(baseCodeTup.get().getT1());
+											}
+										} else {
+											aovdto.setClientCode(ca.getClientCode());
+											aovdto.setBaseClientCode(null);
+										}
+
+										return Mono.just(aovdto);
+									},
 
 									(service, tentity) -> service
 											.read(
@@ -101,7 +140,6 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 									(service, tentity, entity) -> {
 
 										tentity.setId(null);
-										tentity.setClientCode(ca.getClientCode());
 										tentity.setMessage("From transport : " + transport.getName());
 
 										AbstractOverridableDTO sentity = (AbstractOverridableDTO) entity;
@@ -122,7 +160,9 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 											Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.applyTransport")))
 							.collectList()
 							.map(e -> true);
-				})
+				}
+
+		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.applyTransport"))
 				.defaultIfEmpty(false);
 	}

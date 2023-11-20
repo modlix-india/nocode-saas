@@ -11,16 +11,13 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.jooq.Condition;
-import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
-import org.jooq.TransactionalPublishable;
 import org.jooq.impl.DSL;
 import org.jooq.types.UByte;
 import org.jooq.types.ULong;
@@ -33,7 +30,6 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
@@ -41,6 +37,7 @@ import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppUserRole;
+import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
@@ -415,19 +412,6 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.map(lst -> lst.get(lst.size() - 1));
 	}
 
-	public Mono<Boolean> toggleMakeTemplate(ULong appId, boolean isTemplate) {
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextUser,
-
-				user -> Mono.from(this.dslContext.update(SECURITY_APP)
-						.set(SECURITY_APP.IS_TEMPLATE, isTemplate ? ByteUtil.ONE : ByteUtil.ZERO)
-						.where(SECURITY_APP.ID.eq(appId))),
-
-				(user, count) -> Mono.just(count == 1))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.toggleMakeTemplate"));
-	}
-
 	public Mono<List<AppProperty>> getProperties(ULong clientId, ULong appId, String appCode, String propName) {
 
 		return FlatMapUtil.flatMapMono(
@@ -577,5 +561,25 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 			);
 		})).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
+	}
+
+	public Mono<Boolean> createPropertyFromTransport(ULong appId, ULong clientId, String propertyName,
+			String propertyValue) {
+
+		return Mono.from(this.dslContext.insertInto(SECURITY_APP_PROPERTY)
+				.columns(SECURITY_APP_PROPERTY.APP_ID, SECURITY_APP_PROPERTY.CLIENT_ID,
+						SECURITY_APP_PROPERTY.NAME, SECURITY_APP_PROPERTY.VALUE)
+				.values(appId, clientId, propertyName, propertyValue)
+				.onDuplicateKeyUpdate()
+				.set(SECURITY_APP_PROPERTY.VALUE, propertyValue))
+				.map(e -> e == 1);
+	}
+
+	public Mono<ULong> getManagedClientById(ULong clientId) {
+		return Mono.from(this.dslContext.select(SecurityClientManage.SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
+				.from(SecurityClientManage.SECURITY_CLIENT_MANAGE)
+				.where(SecurityClientManage.SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)))
+				.map(Record1::value1)
+				.defaultIfEmpty(ULong.valueOf(1L));
 	}
 }

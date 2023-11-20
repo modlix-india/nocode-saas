@@ -11,12 +11,14 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Record1;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -361,6 +363,22 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 								.and(SECURITY_PACKAGE.CLIENT_ID.eq(clientId)
 										.or(SECURITY_PACKAGE.CLIENT_ID.eq(appClientId)))))
 				.map(e -> e.into(Package.class))
+				.collectList();
+	}
+
+	public Mono<List<Package>> getPackagesByNamesAndAppId(List<String> names, ULong appId) {
+
+		return Flux.from(
+				this.dslContext.selectFrom(SECURITY_PACKAGE)
+						.where(SECURITY_PACKAGE.NAME.in(names).and(SECURITY_PACKAGE.APP_ID.eq(appId))))
+				.map(e -> e.into(Package.class))
+				.collectList();
+	}
+
+	public Mono<List<Package>> createPackagesFromTransport(List<Package> packages) {
+
+		return Flux.fromIterable(packages)
+				.flatMap(this::create)
 				.collectList();
 	}
 }

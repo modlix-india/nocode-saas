@@ -11,6 +11,8 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 @Service
 public class MultiMessageResourceService extends AbstractMessageService {
 
+	public static final String FORBIDDEN_CREATE = "forbidden_create";
+
 	public MultiMessageResourceService() {
 
 		super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

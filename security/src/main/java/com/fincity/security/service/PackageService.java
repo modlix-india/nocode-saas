@@ -6,10 +6,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -36,6 +39,8 @@ import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class PackageService extends
@@ -55,17 +60,20 @@ public class PackageService extends
 
 	private static final String UNASSIGNED_ROLE = " Role is removed from Package ";
 
-	@Autowired
 	private ClientService clientService;
-
-	@Autowired
 	private RoleService roleService;
-
-	@Autowired
 	private UserService userService;
-
-	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	public PackageService(
+			ClientService clientService, RoleService roleService, UserService userService,
+			SecurityMessageResourceService securityMessageResourceService) {
+
+		this.clientService = clientService;
+		this.roleService = roleService;
+		this.userService = userService;
+		this.securityMessageResourceService = securityMessageResourceService;
+	}
 
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
@@ -442,5 +450,84 @@ public class PackageService extends
 						.collectList()
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.readForTransport"));
+	}
+
+	public Mono<List<Package>> createPackagesFromTransport(ULong appId, List<AppTransportPackage> tPackages,
+			List<Role> roles) {
+
+		if (tPackages == null || tPackages.isEmpty())
+			return Mono.just(List.of());
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> SecurityContextUtil.hasAuthority("Authorities.Package_CREATE", ca.getAuthorities())
+						? Mono.just(true)
+						: securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								SecurityMessageResourceService.FORBIDDEN_CREATE, "Package"),
+
+				(ca, hasAccess) -> this.dao.getPackagesByNamesAndAppId(
+						tPackages.stream().map(AppTransportPackage::getPackageName).toList(),
+						appId),
+
+				(ca, hasAccess, packages) -> {
+
+					Map<String, Package> packageIndex = packages.stream().collect(
+							Collectors.toMap(Package::getName, Function.identity()));
+
+					List<AppTransportPackage> newPackages = tPackages.stream()
+							.filter(e -> packageIndex.get(e.getPackageName()) == null)
+							.toList();
+
+					if (newPackages.isEmpty())
+						return Mono.just(new ArrayList<>(packageIndex.values()));
+
+					ULong clientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+					List<Package> packs = newPackages.stream().map(
+							e -> new Package()
+									.setName(e.getPackageName())
+									.setDescription(e.getPackageDescription())
+									.setCode(e.getPackageCode())
+									.setAppId(appId)
+									.setClientId(clientId))
+							.toList();
+
+					return this.dao.createPackagesFromTransport(packs)
+							.map(e -> {
+								List<Package> newPackageList = new ArrayList<>(packageIndex.values());
+								newPackageList.addAll(e);
+								return newPackageList;
+							});
+				},
+
+				(ca, hasAccess, exitingPackages, packages) -> {
+
+					Map<String, Role> roleIndex = roles.stream().collect(
+							Collectors.toMap(Role::getName, Function.identity()));
+
+					Map<String, Package> packageIndex = packages.stream().collect(
+							Collectors.toMap(Package::getName, Function.identity()));
+
+					Map<ULong, ULong> mapping = tPackages.stream().flatMap(t -> {
+
+						Package pkg = packageIndex.get(t.getPackageName());
+
+						if (pkg == null)
+							return Stream.of();
+
+						return t.getRoles().stream()
+								.filter(r -> roleIndex.get(r) != null)
+								.map(p -> Tuples.of(pkg.getId(), roleIndex.get(p).getId()));
+
+					}).filter(Objects::nonNull).collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2));
+
+					return this.roleService
+							.createPackageRoles(mapping)
+							.map(e -> packages);
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "PackageService.createPackagesFromTransport"));
 	}
 }

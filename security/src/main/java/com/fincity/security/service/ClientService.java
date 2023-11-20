@@ -73,6 +73,7 @@ public class ClientService
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
+	private static final String CACHE_NAME_CLIENT_MANAGED = "clientManaged";
 	private static final String CACHE_NAME_CLIENT_INFO = "clientInfoById";
 	private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
 	private static final String CACHE_NAME_CLIENT_ID = "clientId";
@@ -212,7 +213,8 @@ public class ClientService
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
-		return this.dao.isBeingManagedBy(managingClientId, clientId);
+		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGED,
+				() -> this.dao.isBeingManagedBy(managingClientId, clientId), managingClientId, clientId);
 	}
 
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong id) {

@@ -1,5 +1,7 @@
 package com.fincity.security.dao;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoConsolidate;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
@@ -94,13 +96,24 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		if (managingClientId.equals(clientId))
 			return Mono.just(true);
 
-		return Mono.from(this.dslContext.select(DSL.count())
+		return flatMapMono(() -> Mono.from(this.dslContext.select(DSL.count())
 				.from(SECURITY_CLIENT_MANAGE)
 				.where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)
 						.and(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(managingClientId)))
 				.limit(1))
 				.map(Record1::value1)
-				.map(e -> e == 1);
+				.map(e -> e == 1), managed -> {
+					if (managed.booleanValue())
+						return Mono.just(true);
+
+					return Mono.from(Mono.from(this.dslContext.select(DSL.count())
+							.from(SECURITY_CLIENT)
+							.where(SECURITY_CLIENT.ID.eq(managingClientId)
+									.and(SECURITY_CLIENT.TYPE_CODE.eq("SYS")))
+							.limit(1))
+							.map(Record1::value1)
+							.map(e -> e == 1));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientDAO.isBeingManagedBy"));
 	}
 
 	@Override

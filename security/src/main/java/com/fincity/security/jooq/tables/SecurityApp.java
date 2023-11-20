@@ -6,6 +6,7 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
@@ -83,6 +84,11 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
     public final TableField<SecurityAppRecord, SecurityAppAppType> APP_TYPE = createField(DSL.name("APP_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("APP", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.security.jooq.enums.SecurityAppAppType.class), this, "Application type");
 
     /**
+     * The column <code>security.security_app.APP_ACCESS_TYPE</code>.
+     */
+    public final TableField<SecurityAppRecord, SecurityAppAppAccessType> APP_ACCESS_TYPE = createField(DSL.name("APP_ACCESS_TYPE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("OWN", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.security.jooq.enums.SecurityAppAppAccessType.class), this, "");
+
+    /**
      * The column <code>security.security_app.CREATED_BY</code>. ID of the user
      * who created this row
      */
@@ -105,12 +111,6 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * row is updated
      */
     public final TableField<SecurityAppRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
-
-    /**
-     * The column <code>security.security_app.IS_TEMPLATE</code>. Is this app or
-     * site a template?
-     */
-    public final TableField<SecurityAppRecord, Byte> IS_TEMPLATE = createField(DSL.name("IS_TEMPLATE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Is this app or site a template?");
 
     private SecurityApp(Name alias, Table<SecurityAppRecord> aliased) {
         this(alias, aliased, null);
@@ -227,14 +227,14 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Row10<ULong, ULong, String, String, SecurityAppAppType, ULong, LocalDateTime, ULong, LocalDateTime, Byte> fieldsRow() {
+    public Row10<ULong, ULong, String, String, SecurityAppAppType, SecurityAppAppAccessType, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
         return (Row10) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super Byte, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -242,7 +242,7 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super Byte, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
