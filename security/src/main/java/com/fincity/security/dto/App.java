@@ -3,6 +3,7 @@ package com.fincity.security.dto;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
 
 import lombok.Data;
@@ -22,5 +23,5 @@ public class App extends AbstractUpdatableDTO<ULong, ULong> {
 	private String appName;
 	private String appCode;
 	private SecurityAppAppType appType;
-	private boolean isTemplate;
+	private SecurityAppAppAccessType appAccessType = SecurityAppAppAccessType.OWN;
 }

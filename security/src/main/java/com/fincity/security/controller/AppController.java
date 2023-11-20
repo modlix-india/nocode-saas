@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +28,7 @@ import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.service.AppService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 @RestController
 @RequestMapping("api/security/applications")
@@ -112,13 +114,6 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/{id}/template")
-	public Mono<ResponseEntity<Boolean>> toggleMakeTemplate(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-			@RequestParam final boolean isTemplate) {
-		return this.service.toggleMakeTemplate(appId, isTemplate)
-				.map(ResponseEntity::ok);
-	}
-
 	@PostMapping("/{id}/packageAccess")
 	public Mono<ResponseEntity<Boolean>> addPackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
 			@RequestBody final ApplicationAccessPackageOrRoleRequest appRequest) {
@@ -197,6 +192,13 @@ public class AppController
 			@RequestParam String name) {
 
 		return this.service.deleteProperty(clientId, appId, name)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/findBaseClientCode/{applicationCode}")
+	public Mono<ResponseEntity<Tuple2<String, Boolean>>> findBaseClientCodeForOverride(
+			@PathVariable("") String applicationCode) {
+		return this.service.findBaseClientCodeForOverride(applicationCode)
 				.map(ResponseEntity::ok);
 	}
 }
