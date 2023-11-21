@@ -12,5 +12,6 @@ public class App {
 	private String appName;
 	private String appCode;
 	private String appType;
+	private String appAccessType;
 	private boolean isTemplate;
 }

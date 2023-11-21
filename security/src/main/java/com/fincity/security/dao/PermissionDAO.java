@@ -10,6 +10,7 @@ import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_R
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Field;
 import org.jooq.Record;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
@@ -31,6 +33,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -171,5 +174,35 @@ public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionReco
 	@Override
 	protected Field<ULong> getClientIDField() {
 		return SECURITY_PERMISSION.CLIENT_ID;
+	}
+
+	public Mono<List<Permission>> getPermissionsByNamesAndAppId(List<String> names, ULong appId) {
+
+		return Flux.from(
+				this.dslContext.selectFrom(SECURITY_PERMISSION)
+						.where(SECURITY_PERMISSION.NAME.in(names).and(SECURITY_PERMISSION.APP_ID.eq(appId))))
+				.map(e -> e.into(Permission.class))
+				.collectList();
+	}
+
+	public Mono<List<Permission>> createPermissionsFromTransport(List<Permission> permissions) {
+
+		return Flux.fromIterable(permissions).flatMap(this::create).collectList();
+	}
+
+	public Mono<Boolean> createRolePermissions(Map<ULong, ULong> rolePermissions) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> Mono.from(this.dslContext.deleteFrom(SECURITY_ROLE_PERMISSION)
+						.where(SECURITY_ROLE_PERMISSION.ROLE_ID.in(rolePermissions.keySet()))),
+
+				delCount -> Mono.from(
+						this.dslContext
+								.insertInto(SECURITY_ROLE_PERMISSION, SECURITY_ROLE_PERMISSION.ROLE_ID,
+										SECURITY_ROLE_PERMISSION.PERMISSION_ID)
+								.values(rolePermissions.entrySet().stream()
+										.map(e -> DSL.row(e.getKey(), e.getValue())).toList()))
+						.map(e -> true));
 	}
 }
