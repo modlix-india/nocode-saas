@@ -516,9 +516,15 @@ public class ClientService
 
 				() -> checkEmailExistsInIndividualClients,
 
-				ca -> this.appService.getProperties(ULong.valueOf(ca.getLoggedInFromClientId()), null,
-						ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE)
-						.map(e -> e.isEmpty() ? "" : e.get(0).getValue()),
+				ca -> {
+
+					ULong clientId = ULong.valueOf(ca.getLoggedInFromClientId());
+
+					return this.appService.getProperties(clientId, null,
+							ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE)
+							.map(e -> e.get(clientId) == null ? ""
+									: e.get(clientId).get(AppService.APP_PROP_REG_TYPE).getValue());
+				},
 
 				(ca, prop) -> this.registerClient(registrationRequest, ca, prop),
 
