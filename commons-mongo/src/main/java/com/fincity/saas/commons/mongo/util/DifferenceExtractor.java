@@ -4,6 +4,7 @@ import static com.fincity.saas.commons.util.EqualsUtil.safeEquals;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
@@ -81,8 +82,8 @@ public class DifferenceExtractor {
 				.distinct()
 				.subscribeOn(Schedulers.boundedElastic())
 				.filter(e -> !ObjectUtil.safeEquals(incoming.get(e), existing.get(e)))
-				.map(e -> Tuples.of(e, incoming.get(e)))
-				.collectMap(Tuple2::getT1, Tuple2::getT2)
+				.map(e -> Tuples.of(e, Optional.ofNullable(incoming.get(e))))
+				.collectMap(Tuple2::getT1, e -> e.getT2().orElse(null), HashMap::new)
 				.flatMap(e -> Mono.just(e.isEmpty() ? Map.of() : e));
 	}
 
