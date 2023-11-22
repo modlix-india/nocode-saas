@@ -726,7 +726,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				.flatMap(a -> this.dao.addClientAccess(a.getId(), clientId, isWriteAccess));
 	}
 
-	public Mono<List<AppProperty>> getProperties(ULong clientId, ULong appId, String appCode, String propName) {
+	public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,
+			String propName) {
 
 		if (appId == null && StringUtil.safeIsBlank(appCode)) {
 			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -740,20 +741,20 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				ca -> {
 
 					if (ca.isSystemClient())
-						return Mono.just(Boolean.TRUE);
+						return Mono.just(clientId == null ? List.<ULong>of() : List.of(clientId));
 
 					ULong userClientId = ULongUtil.valueOf(ca.getUser()
 							.getClientId());
 
-					if (userClientId.equals(clientId))
-						return Mono.just(Boolean.TRUE);
+					if (clientId == null || userClientId.equals(clientId))
+						return Mono.just(List.of(userClientId));
 
 					return this.clientService.isBeingManagedBy(userClientId, clientId)
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
+							.flatMap(managed -> managed.booleanValue() ? Mono.just(List.of(clientId)) : Mono.empty());
 				},
 
-				(ca, hasAccess) -> this.dao.getProperties(clientId, appId, appCode, propName))
-				.defaultIfEmpty(List.of())
+				(ca, idList) -> this.dao.getProperties(idList, appId, appCode, propName))
+				.defaultIfEmpty(Map.of())
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getProperties"));
 	}
 
