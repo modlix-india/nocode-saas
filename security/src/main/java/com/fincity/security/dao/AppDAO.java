@@ -48,7 +48,6 @@ import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
-import lombok.experimental.var;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
