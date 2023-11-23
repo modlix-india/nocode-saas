@@ -16,8 +16,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,11 +36,13 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.ObjectUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dao.ClientDAO;
+import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
@@ -51,9 +51,10 @@ import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.AuthenticationRequest;
-import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.model.ClientEmailWithCodeType;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
+import com.fincity.security.model.CodeType;
 import com.fincity.security.util.PasswordUtil;
 
 import reactor.core.publisher.Mono;
@@ -83,6 +84,8 @@ public class ClientService
 	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
 
 	private static final int VALIDITY_MINUTES = 30;
+	
+	private static final int UNIQUE_CODE_LENGTH = 8;
 
 	@Autowired
 	private CacheService cacheService;
@@ -108,6 +111,9 @@ public class ClientService
 
 	@Autowired
 	private EventCreationService ecService;
+	
+	@Autowired
+	private CodeAccessDAO codeAccessDAO;
 
 	@Autowired
 	@Lazy
@@ -486,6 +492,68 @@ public class ClientService
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
+
+	}
+	
+	public Mono<List<CodeAccess>> fetchCodesWithApp(String appCode, String clientCode, String emailId) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+		        ca -> Mono.just(ca.isSystemClient() ? clientCode : ca.getLoggedInFromClientCode()),
+
+		        (ca, client) -> this.codeAccessDAO.getRecordsByAppAndClientCodes(appCode, client, emailId));
+
+	}
+	
+	public Mono<Boolean> tiggerMailOnRequest(ClientEmailWithCodeType clientEmailWithCodeType, String appCode,
+	        String clientCode){
+		
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.justOrEmpty(clientEmailWithCodeType.getCode()
+		                .equals(CodeType.ON_REQUEST)),
+
+		        (ca, onReq) -> this.codeAccessDAO.checkClientAccess(clientCode, appCode,
+		                clientEmailWithCodeType.getEmailId())
+
+		);
+	}
+	
+	public Mono<Boolean> generateCodeAndTriggerMail(ClientEmailWithCodeType clientEmailWithCodeType, String appCode,
+	        String clientCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        () -> Mono.just(clientEmailWithCodeType.getCode()),
+
+		        codeType ->
+				{
+
+			        CodeAccess codeAccess = new CodeAccess();
+
+			        codeAccess.setEmailId(clientEmailWithCodeType.getEmailId());
+			        codeAccess.setCode(UniqueUtil.uniqueName(UNIQUE_CODE_LENGTH)); // check unique code generation
+
+			        Mono<Boolean> codeAccessRecord = this.codeAccessDAO.createRecordWithEmail(codeAccess, appCode,
+			                clientCode);
+
+			        if (!codeType.equals(CodeType.IMMEDIATE))
+				        return Mono.just(true);
+
+			        return codeAccessRecord.flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(appCode)
+			                .setClientCode(clientCode)
+			                .setEventName(EventNames.USER_CODE_GENERATION)
+			                .setData(Map.of("emailId", clientEmailWithCodeType.getEmailId(), "accessCode",
+			                        clientEmailWithCodeType.getCode()))));
+
+		        })
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateCodeAndTriggerMail"))
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
+		                SecurityMessageResourceService.MAIL_CANNOT_BE_TRIGGERED));
 
 	}
 

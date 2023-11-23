@@ -18,8 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.model.ClientEmailWithCodeType;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.service.ClientService;
@@ -93,6 +95,22 @@ public class ClientController
 			@RequestBody ClientRegistrationRequest registrationRequest) {
 
 		return this.clientService.register(registrationRequest, request, response)
+				.map(ResponseEntity::ok);
+	}
+	
+	@PostMapping("/generateCode")
+	public Mono<ResponseEntity<Boolean>> generateCode(@RequestBody ClientEmailWithCodeType clientEmailWithCodeType,
+	        @RequestParam String clientCode, @RequestParam String appCode) {
+
+		return this.clientService.generateCodeAndTriggerMail(clientEmailWithCodeType, appCode, clientCode)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@GetMapping("/fetchCodes")
+	public Mono<ResponseEntity<List<CodeAccess>>> fetchCodes(@RequestParam(required = true) String appCode,
+	        @RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
+
+		return this.clientService.fetchCodesWithApp(appCode, clientCode, emailId)
 				.map(ResponseEntity::ok);
 	}
 }
