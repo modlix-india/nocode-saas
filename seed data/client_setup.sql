@@ -1286,6 +1286,22 @@ DROP DATABASE IF EXISTS `schedular`;
 
 CREATE DATABASE IF NOT EXISTS `schedular` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- V18__APP access type (SECURITY)
+
+use security;
+
+
+ALTER TABLE `security`.`security_app` 
+DROP COLUMN `IS_TEMPLATE`,
+ADD COLUMN `APP_ACCESS_TYPE` ENUM('OWN', 'ANY', 'EXPLICIT') NOT NULL DEFAULT 'OWN' AFTER `APP_TYPE`;
+
+-- V19__APP Thumbnail URL (SECURITY)
+
+use security;
+
+
+ALTER TABLE `security`.`security_app` 
+ADD COLUMN `THUMB_URL` VARCHAR(1024) NULL DEFAULT NULL AFTER `APP_ACCESS_TYPE`;
 
 
 -- Add scripts from the project above this line and seed data below this line.

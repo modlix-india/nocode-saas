@@ -24,4 +24,5 @@ public class App extends AbstractUpdatableDTO<ULong, ULong> {
 	private String appCode;
 	private SecurityAppAppType appType;
 	private SecurityAppAppAccessType appAccessType = SecurityAppAppAccessType.OWN;
+	private String thumbUrl;
 }

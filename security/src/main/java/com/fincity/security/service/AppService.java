@@ -260,6 +260,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 							existing.setAppName(entity.getAppName());
 							existing.setAppAccessType(entity.getAppAccessType());
+							existing.setThumbUrl(entity.getThumbUrl());
 
 							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
 								return Mono.just(existing);
@@ -290,6 +291,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 							Map<String, Object> newMap = new HashMap<>();
 							newMap.put("appName", fields.get("appName"));
 							newMap.put("appAccessType", fields.get("appAccessType"));
+							newMap.put("thumbUrl", fields.get("thumbUrl"));
 
 							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
 								return Mono.just(newMap);
