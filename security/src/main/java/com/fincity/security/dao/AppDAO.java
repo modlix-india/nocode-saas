@@ -10,8 +10,10 @@ import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.jooq.Condition;
 import org.jooq.Record;
@@ -412,7 +414,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.map(lst -> lst.get(lst.size() - 1));
 	}
 
-	public Mono<List<AppProperty>> getProperties(ULong clientId, ULong appId, String appCode, String propName) {
+	public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(List<ULong> clientIds, ULong appId, String appCode,
+			String propName) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -428,28 +431,53 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 					if (propName != null)
 						conditions.add(SECURITY_APP_PROPERTY.NAME.eq(propName));
 
-					if (app.getClientId().equals(clientId))
-						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId));
+					if (clientIds != null && !clientIds.isEmpty())
+						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(app.getClientId())
+								.or(SECURITY_APP_PROPERTY.CLIENT_ID.in(clientIds)));
 					else
-						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId).or(SECURITY_APP_PROPERTY.CLIENT_ID
-								.eq(app.getClientId())));
+						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(app.getClientId()));
 
-					Mono<List<AppProperty>> flux = Flux.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
+					return Flux.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
 							.where(DSL.and(conditions)))
-							.map(e -> e.into(AppProperty.class)).collectList();
-
-					return flux
-							.map(e -> e.stream().collect(Collectors.groupingBy(AppProperty::getName)).values().stream()
-									.map(x -> {
-										AppProperty p = x.get(0);
-										if (x.size() == 2)
-											return p.getClientId().equals(clientId) ? p : x.get(1);
-
-										return p;
-									}).collect(Collectors.toList()));
+							.map(e -> e.into(AppProperty.class)).collectList()
+							.<Map<ULong, Map<String, AppProperty>>>map(
+									lst -> this.convertAttributesToMap(app.getClientId(), clientIds, lst));
 				}
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getProperties"));
+	}
+
+	public Map<ULong, Map<String, AppProperty>> convertAttributesToMap(ULong appClientId, List<ULong> clientIds,
+			List<AppProperty> lst) {
+
+		Map<String, AppProperty> appDefaultProps = new HashMap<>();
+		Map<ULong, Map<String, AppProperty>> appClientProps = new HashMap<>();
+
+		for (AppProperty prop : lst) {
+			if (prop.getClientId().equals(appClientId)) {
+				appDefaultProps.put(prop.getName(), prop);
+			}
+			if (!appClientProps.containsKey(prop.getClientId()))
+				appClientProps.put(prop.getClientId(), new HashMap<>());
+			appClientProps.get(prop.getClientId()).put(prop.getName(), prop);
+		}
+
+		for (Entry<ULong, Map<String, AppProperty>> entry : appClientProps.entrySet()) {
+
+			if (entry.getKey().equals(appClientId))
+				continue;
+
+			for (Entry<String, AppProperty> defaultProp : appDefaultProps.entrySet()) {
+				if (!entry.getValue().containsKey(defaultProp.getKey()))
+					entry.getValue().put(defaultProp.getKey(), defaultProp.getValue());
+			}
+		}
+
+		if (clientIds != null && !clientIds.contains(appClientId)) {
+			appClientProps.remove(appClientId);
+		}
+
+		return appClientProps;
 	}
 
 	public Mono<Boolean> updateProperty(AppProperty property) {

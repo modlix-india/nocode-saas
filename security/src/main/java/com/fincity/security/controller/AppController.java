@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -171,7 +171,8 @@ public class AppController
 	}
 
 	@GetMapping("/property")
-	public Mono<ResponseEntity<List<AppProperty>>> getProperty(@RequestParam ULong clientId,
+	public Mono<ResponseEntity<Map<ULong, Map<String, AppProperty>>>> getProperty(
+			@RequestParam(required = false) ULong clientId,
 			@RequestParam(required = false) ULong appId, @RequestParam(required = false) String appCode,
 			@RequestParam(required = false) String propName) {
 

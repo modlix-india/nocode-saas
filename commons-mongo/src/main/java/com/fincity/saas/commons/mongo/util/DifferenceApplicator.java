@@ -1,6 +1,8 @@
 package com.fincity.saas.commons.mongo.util;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
@@ -33,17 +35,16 @@ public class DifferenceApplicator {
 			return Mono.justOrEmpty(override);
 
 		return Flux.concat(Flux.fromIterable(base.keySet()), Flux.fromIterable(override.keySet()))
-		        .distinct()
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .flatMap(e ->
-				{
-			        if (!override.containsKey(e))
-				        return Mono.just(Tuples.of(e, base.get(e)));
+				.distinct()
+				.subscribeOn(Schedulers.boundedElastic())
+				.flatMap(e -> {
+					if (!override.containsKey(e))
+						return Mono.just(Tuples.of(e, base.get(e)));
 
-			        return apply(override.get(e), base.get(e)).map(d -> Tuples.of(e, d));
-		        })
-		        .collectMap(Tuple2::getT1, Tuple2::getT2)
-		        .flatMap(e -> e.isEmpty() ? Mono.justOrEmpty(Map.of()) : Mono.justOrEmpty(e));
+					return apply(override.get(e), base.get(e)).map(d -> Tuples.of(e, d));
+				})
+				.collectMap(Tuple2::getT1, Tuple2::getT2)
+				.flatMap(e -> e.isEmpty() ? Mono.justOrEmpty(Map.of()) : Mono.justOrEmpty(e));
 	}
 
 	public static Mono<Map<String, Boolean>> applyMapBoolean(Map<String, Boolean> override, Map<String, Boolean> base) {
@@ -54,11 +55,11 @@ public class DifferenceApplicator {
 			return Mono.justOrEmpty(override);
 
 		return Flux.concat(Flux.fromIterable(base.keySet()), Flux.fromIterable(override.keySet()))
-		        .distinct()
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .map(e -> Tuples.of(e, override.containsKey(e) ? override.get(e) : base.get(e)))
-		        .collectMap(Tuple2::getT1, Tuple2::getT2)
-		        .flatMap(e -> e.isEmpty() ? Mono.justOrEmpty(Map.of()) : Mono.justOrEmpty(e));
+				.distinct()
+				.subscribeOn(Schedulers.boundedElastic())
+				.map(e -> Tuples.of(e, Optional.ofNullable(override.containsKey(e) ? override.get(e) : base.get(e))))
+				.collectMap(Tuple2::getT1, e -> e.getT2().orElse(null), HashMap::new)
+				.flatMap(e -> e.isEmpty() ? Mono.justOrEmpty(Map.of()) : Mono.justOrEmpty(e));
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -124,15 +125,14 @@ public class DifferenceApplicator {
 		}
 
 		return Flux.concat(Flux.fromIterable(base.keySet()), Flux.fromIterable(override.keySet()))
-		        .distinct()
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .flatMap(e -> apply(override.get(e), base.get(e)).map(d -> Tuples.of(e, d)))
-		        .reduce(new JsonObject(), (jo, tup) ->
-				{
-			        jo.add(tup.getT1(), tup.getT2());
-			        return jo;
-		        })
-		        .flatMap(e -> e.size() == 0 ? Mono.justOrEmpty(new JsonObject()) : Mono.justOrEmpty(e));
+				.distinct()
+				.subscribeOn(Schedulers.boundedElastic())
+				.flatMap(e -> apply(override.get(e), base.get(e)).map(d -> Tuples.of(e, d)))
+				.reduce(new JsonObject(), (jo, tup) -> {
+					jo.add(tup.getT1(), tup.getT2());
+					return jo;
+				})
+				.flatMap(e -> e.size() == 0 ? Mono.justOrEmpty(new JsonObject()) : Mono.justOrEmpty(e));
 	}
 
 	private static Mono<Object> apply(ParameterReference override, ParameterReference base) {
@@ -158,24 +158,24 @@ public class DifferenceApplicator {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> apply(override.getStatements(), base.getStatements()),
+				() -> apply(override.getStatements(), base.getStatements()),
 
-		        statMap ->
-				{
+				statMap -> {
 
-			        override.setStatementGroupName(base.getStatementGroupName());
-			        override.setPosition(apply(override.getPosition(), base.getPosition()));
+					override.setStatementGroupName(base.getStatementGroupName());
+					override.setPosition(apply(override.getPosition(), base.getPosition()));
 
-			        if (override.getComment() == null)
-				        override.setComment(base.getComment());
+					if (override.getComment() == null)
+						override.setComment(base.getComment());
 
-			        if (override.getDescription() == null)
-				        override.setDescription(base.getDescription());
+					if (override.getDescription() == null)
+						override.setDescription(base.getDescription());
 
-			        override.setOverride(true);
-			        return Mono.justOrEmpty((Object) override);
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(StatementGroup, StatementGroup)"));
+					override.setOverride(true);
+					return Mono.justOrEmpty((Object) override);
+				})
+				.contextWrite(
+						Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(StatementGroup, StatementGroup)"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -186,34 +186,33 @@ public class DifferenceApplicator {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> applyMapBoolean(override.getDependentStatements(), base.getDependentStatements()),
+				() -> applyMapBoolean(override.getDependentStatements(), base.getDependentStatements()),
 
-		        depMap -> apply(override.getParameterMap(), base.getParameterMap()),
+				depMap -> apply(override.getParameterMap(), base.getParameterMap()),
 
-		        (depMap, paramMap) ->
-				{
+				(depMap, paramMap) -> {
 
-			        override.setStatementName(base.getStatementName());
-			        override.setDependentStatements(depMap);
-			        override.setParameterMap((Map<String, Map<String, ParameterReference>>) paramMap);
-			        override.setPosition(apply(override.getPosition(), base.getPosition()));
+					override.setStatementName(base.getStatementName());
+					override.setDependentStatements(depMap);
+					override.setParameterMap((Map<String, Map<String, ParameterReference>>) paramMap);
+					override.setPosition(apply(override.getPosition(), base.getPosition()));
 
-			        if (override.getComment() == null)
-				        override.setComment(base.getComment());
+					if (override.getComment() == null)
+						override.setComment(base.getComment());
 
-			        if (override.getDescription() == null)
-				        override.setDescription(base.getDescription());
+					if (override.getDescription() == null)
+						override.setDescription(base.getDescription());
 
-			        if (override.getName() == null)
-				        override.setName(base.getName());
+					if (override.getName() == null)
+						override.setName(base.getName());
 
-			        if (override.getNamespace() == null)
-				        override.setNamespace(base.getNamespace());
+					if (override.getNamespace() == null)
+						override.setNamespace(base.getNamespace());
 
-			        override.setOverride(true);
-			        return Mono.justOrEmpty((Object) override);
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(Statement, Statement)"));
+					override.setOverride(true);
+					return Mono.justOrEmpty((Object) override);
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(Statement, Statement)"));
 	}
 
 	private static Position apply(Position override, Position base) {
@@ -237,26 +236,26 @@ public class DifferenceApplicator {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> apply(override.getSteps(), base.getSteps()),
+				() -> apply(override.getSteps(), base.getSteps()),
 
-		        stepMap -> apply(override.getStepGroups(), base.getStepGroups()),
+				stepMap -> apply(override.getStepGroups(), base.getStepGroups()),
 
-		        (stepMap, stepGroupMap) ->
-				{
+				(stepMap, stepGroupMap) -> {
 
-			        override.setEvents(base.getEvents());
-			        override.setName(base.getName());
-			        override.setNamespace(base.getNamespace());
-			        override.setParameters(base.getParameters());
+					override.setEvents(base.getEvents());
+					override.setName(base.getName());
+					override.setNamespace(base.getNamespace());
+					override.setParameters(base.getParameters());
 
-			        override.setSteps((Map<String, Statement>) stepMap);
-			        override.setStepGroups((Map<String, StatementGroup>) stepGroupMap);
+					override.setSteps((Map<String, Statement>) stepMap);
+					override.setStepGroups((Map<String, StatementGroup>) stepGroupMap);
 
-			        return Mono.justOrEmpty((Object) override);
-		        }
+					return Mono.justOrEmpty((Object) override);
+				}
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "DifferenceApplicator.apply(FunctionDefinition, FunctionDefinition)"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"DifferenceApplicator.apply(FunctionDefinition, FunctionDefinition)"));
 	}
 
 	private DifferenceApplicator() {
