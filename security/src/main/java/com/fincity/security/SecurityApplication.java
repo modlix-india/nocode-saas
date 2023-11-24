@@ -16,7 +16,7 @@ import org.springframework.web.reactive.config.EnableWebFlux;
 @EnableReactiveMethodSecurity(order = Ordered.HIGHEST_PRECEDENCE)
 @EnableCaching
 @ComponentScan(basePackages = "com.fincity")
-@EnableAspectJAutoProxy(proxyTargetClass = true)
+@EnableAspectJAutoProxy(proxyTargetClass = true, exposeProxy = true)
 public class SecurityApplication {
 
 	public static void main(String[] args) {
