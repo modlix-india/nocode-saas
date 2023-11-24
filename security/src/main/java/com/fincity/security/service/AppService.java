@@ -141,7 +141,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
 	@Override
 	public Mono<App> update(App entity) {
-		return this.read(entity.getClientId())
+		return this.read(entity.getId())
 				.flatMap(e -> super.update(entity))
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -254,7 +254,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	protected Mono<App> updatableEntity(App entity) {
 
-		return ((AppService) AopContext.currentProxy()).read(entity.getId())
+		return this.read(entity.getId())
 				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
 						.flatMap(ca -> {
 
@@ -284,7 +284,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-		return ((AppService) AopContext.currentProxy()).read(key)
+		return this.read(key)
 				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
 						.flatMap(ca -> {
 
