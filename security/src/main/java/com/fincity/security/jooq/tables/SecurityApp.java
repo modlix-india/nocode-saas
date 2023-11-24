@@ -17,12 +17,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function10;
+import org.jooq.Function11;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row10;
+import org.jooq.Row11;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -87,6 +87,11 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * The column <code>security.security_app.APP_ACCESS_TYPE</code>.
      */
     public final TableField<SecurityAppRecord, SecurityAppAppAccessType> APP_ACCESS_TYPE = createField(DSL.name("APP_ACCESS_TYPE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("OWN", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.security.jooq.enums.SecurityAppAppAccessType.class), this, "");
+
+    /**
+     * The column <code>security.security_app.THUMB_URL</code>.
+     */
+    public final TableField<SecurityAppRecord, String> THUMB_URL = createField(DSL.name("THUMB_URL"), SQLDataType.VARCHAR(1024), this, "");
 
     /**
      * The column <code>security.security_app.CREATED_BY</code>. ID of the user
@@ -223,18 +228,18 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row10 type methods
+    // Row11 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row10<ULong, ULong, String, String, SecurityAppAppType, SecurityAppAppAccessType, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row10) super.fieldsRow();
+    public Row11<ULong, ULong, String, String, SecurityAppAppType, SecurityAppAppAccessType, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row11) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function11<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -242,7 +247,7 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
