@@ -28,8 +28,17 @@ import reactor.util.context.Context;
 public class ApplicationService extends AbstractOverridableDataService<Application, ApplicationRepository> {
 
 	private static final String CACHE_NAME_PROPERTIES = "cacheProperties";
-	@Autowired
+
 	private PageService pageService;
+
+	private UIFillerService fillerService;
+
+	@Autowired
+	public ApplicationService(PageService pageService, UIFillerService fillerService) {
+		super(Application.class);
+		this.pageService = pageService;
+		this.fillerService = fillerService;
+	}
 
 	protected ApplicationService() {
 		super(Application.class);
@@ -190,12 +199,35 @@ public class ApplicationService extends AbstractOverridableDataService<Applicati
 					return this.pageService.read(pageName.toString(), object.getAppCode(), clientCode);
 				},
 
-				(ca, ssp, shellPage) -> {
+				(ca, ssp, shellPage) -> this.fillerService.read(object.getAppCode(), object.getAppCode(), clientCode),
+
+				(ca, ssp, shellPage, filler) -> {
+
+					if (shellPage == null) {
+
+						if (filler == null)
+							return Mono.just(new ObjectWithUniqueID<>(object, id));
+
+						object.getProperties()
+								.put("fillerValues", filler.getObject().getValues());
+						return Mono.just(
+								new ObjectWithUniqueID<>(object, filler == null ? id : id + filler.getUniqueId()));
+					}
+
+					StringBuilder sb = new StringBuilder(id);
+
+					if (filler != null) {
+						sb.append(filler.getUniqueId());
+						object.getProperties()
+								.put("fillerValues", filler.getObject().getValues());
+					}
+
+					sb.append(shellPage.getUniqueId());
 					object.getProperties()
-							.put("shellPageDefinition", shellPage == null ? null : shellPage.getObject());
+							.put("shellPageDefinition", shellPage.getObject());
 
 					return Mono.just(
-							new ObjectWithUniqueID<>(object, shellPage == null ? id : id + shellPage.getUniqueId()));
+							new ObjectWithUniqueID<>(object, sb.toString()));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.applyChange"));
 	}
