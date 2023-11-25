@@ -4,11 +4,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.poi.ss.formula.functions.Complex;
 import org.jooq.types.ULong;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.util.Streamable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -875,5 +879,32 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 					return Mono.just(Tuples.of(appClient.getCode(), false));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findBaseClientCodeForOverride"));
+	}
+
+	public Mono<Page<App>> findAnyAppsByPage(Pageable pageable, AbstractCondition condition) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> {
+
+					if (ca.isSystemClient() || ca.getLoggedInFromClientId().equals(ca.getUser().getClientId()))
+						return Mono.just(Page.empty());
+
+					AbstractCondition updatedCondition = ComplexCondition.and(
+							FilterCondition.of("appAccessType",
+									SecurityAppAppAccessType.ANY.name(), FilterConditionOperator.EQUALS),
+							FilterCondition.of("clientId",
+									ca.getLoggedInFromClientId(), FilterConditionOperator.EQUALS));
+
+					if (condition != null && !condition.isEmpty()) {
+						updatedCondition = ComplexCondition.and(updatedCondition, condition);
+					}
+
+					return this.dao.readPageFilter(pageable, updatedCondition);
+
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findAnyAppsByPage"));
 	}
 }
