@@ -36,20 +36,24 @@ import reactor.util.context.Context;
 @RequestMapping("api/ui/")
 public class EngineController {
 
-	@Autowired
 	private ApplicationService appService;
 
-	@Autowired
 	private PageService pageService;
 
-	@Autowired
 	private StyleService styleService;
 
-	@Autowired
 	private StyleThemeService themeService;
 
-	@Autowired
 	private UIFunctionService functionService;
+
+	public EngineController(ApplicationService appService, PageService pageService, StyleService styleService,
+			StyleThemeService themeService, UIFunctionService functionService) {
+		this.appService = appService;
+		this.pageService = pageService;
+		this.styleService = styleService;
+		this.themeService = themeService;
+		this.functionService = functionService;
+	}
 
 	@Value("${ui.resourceCacheAge:604800}")
 	private int cacheAge;
@@ -63,10 +67,6 @@ public class EngineController {
 			.build();
 
 	private static final ResponseEntity<UIFunction> FUNCTION_NOT_FOUND = ResponseEntity
-			.notFound()
-			.build();
-
-	private static final ResponseEntity<Map<String, Map<String, String>>> THEME_NOT_FOUND = ResponseEntity
 			.notFound()
 			.build();
 

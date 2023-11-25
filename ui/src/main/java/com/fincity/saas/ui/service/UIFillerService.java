@@ -22,4 +22,16 @@ public class UIFillerService extends AbstractFillerService<UIFiller, UIFillerDoc
 	public String getAccessCheckName() {
 		return "Application";
 	}
+
+	@Override
+	public String getCacheName(String appCode, String name) {
+
+		return new StringBuilder("UI").append(this.getObjectName())
+				.append(CACHE_NAME)
+				.append("_")
+				.append(appCode)
+				.append("_")
+				.append(name)
+				.toString();
+	}
 }

@@ -5,7 +5,12 @@ import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
@@ -200,6 +206,13 @@ public class AppController
 	public Mono<ResponseEntity<Tuple2<String, Boolean>>> findBaseClientCodeForOverride(
 			@PathVariable("") String applicationCode) {
 		return this.service.findBaseClientCodeForOverride(applicationCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/findAnyApps")
+	public Mono<ResponseEntity<Page<App>>> findAnyApps(Pageable pageable, ServerHttpRequest request) {
+		pageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, PATH_VARIABLE_ID) : pageable);
+		return this.service.findAnyAppsByPage(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
 				.map(ResponseEntity::ok);
 	}
 }
