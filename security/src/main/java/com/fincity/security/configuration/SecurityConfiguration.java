@@ -58,6 +58,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 				"/api/security/users/findUserClients",
 
 				"/api/security/clients/register",
+				
+				"/api/security/clients/generateCode",
 
 				"/api/security/users/requestResetPassword",
 

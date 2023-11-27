@@ -84,6 +84,9 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String NO_REGISTRATION_AVAILABLE = "no_registration_available";
 	public static final String CANNOT_DELETE_APP = "cannot_delete_app";
 	public static final String MAIL_CANNOT_BE_TRIGGERED ="mail_cannot_be_triggered";
+	public static final String ACCESS_CODE_INCORRECT ="access_code_incorrect";
+	public static final String USER_ALREADY_CREATED ="user_already_created";
+	public static final String MISSING_PASSWORD ="missing_password";
 
 	public SecurityMessageResourceService() {
 

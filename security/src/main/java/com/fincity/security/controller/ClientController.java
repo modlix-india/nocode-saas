@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -21,7 +23,6 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.model.ClientEmailWithCodeType;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.service.ClientService;
@@ -98,19 +99,25 @@ public class ClientController
 				.map(ResponseEntity::ok);
 	}
 	
-	@PostMapping("/generateCode")
-	public Mono<ResponseEntity<Boolean>> generateCode(@RequestBody ClientEmailWithCodeType clientEmailWithCodeType,
-	        @RequestParam String clientCode, @RequestParam String appCode) {
+	@GetMapping("/generateCode")
+	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId) {
 
-		return this.clientService.generateCodeAndTriggerMail(clientEmailWithCodeType, appCode, clientCode)
+		return this.clientService.generateCodeAndTriggerMail(emailId)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@GetMapping("/triggerCodeOnRequest/{accessId}")
+	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId) {
+
+		return this.clientService.tiggerMailOnRequest(accessId)
 		        .map(ResponseEntity::ok);
 	}
 	
 	@GetMapping("/fetchCodes")
-	public Mono<ResponseEntity<List<CodeAccess>>> fetchCodes(@RequestParam(required = true) String appCode,
+	public Mono<ResponseEntity<Page<CodeAccess>>> fetchCodes(Pageable pageable,
 	        @RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
 
-		return this.clientService.fetchCodesWithApp(appCode, clientCode, emailId)
-				.map(ResponseEntity::ok);
+		return this.clientService.fetchCodesWithApp(pageable, clientCode, emailId)
+		        .map(ResponseEntity::ok);
 	}
 }

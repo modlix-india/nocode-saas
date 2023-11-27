@@ -1,92 +1,89 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityCodeAccess.SECURITY_CODE_ACCESS;
-
-import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Record1;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractDAO;
-import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.util.CodeUtil;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.jooq.tables.SecurityCodeAccess;
 import com.fincity.security.jooq.tables.records.SecurityCodeAccessRecord;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 public class CodeAccessDAO extends AbstractDAO<SecurityCodeAccessRecord, ULong, CodeAccess> {
 
+	private static final CodeUtil.CodeGenerationConfiguration CODEGEN_CONFIG = new CodeUtil.CodeGenerationConfiguration()
+	        .setNumeric(true)
+	        .setSeparators(new int[] { 4 })
+	        .setSeparator("-")
+	        .setLength(8);
+
 	public CodeAccessDAO() {
 		super(CodeAccess.class, SecurityCodeAccess.SECURITY_CODE_ACCESS, SecurityCodeAccess.SECURITY_CODE_ACCESS.ID);
 	}
 
-	public Mono<Boolean> createRecordWithEmail(CodeAccess codeAccess, String appCode, String clientCode) {
+	@Override
+	public Mono<CodeAccess> create(CodeAccess pojo) {
 
-		Condition appAndClientCode = SECURITY_CLIENT.CODE.eq(clientCode)
-		        .and(SECURITY_APP.APP_CODE.eq(appCode));
+		return FlatMapUtil.flatMapMonoWithNull(
 
-		return Mono.from(this.dslContext.select(SECURITY_APP.ID, SECURITY_CLIENT.ID)
-		        .from(SECURITY_APP)
-		        .leftJoin(SECURITY_CLIENT)
-		        .on(SECURITY_APP.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-		        .where(appAndClientCode)
-		        .limit(1))
-		        .flatMap(e ->
+		        () ->
 				{
 
-			        return Mono.from(this.dslContext
-			                .insertInto(SECURITY_CODE_ACCESS, SECURITY_CODE_ACCESS.EMAIL_ID, SECURITY_CODE_ACCESS.CODE,
-			                        SECURITY_CODE_ACCESS.APP_ID, SECURITY_CODE_ACCESS.CLIENT_ID)
-			                .values(codeAccess.getEmailId(), codeAccess.getCode(),
-			                        ULongUtil.valueOf(e.get(SECURITY_APP.ID)),
-			                        ULongUtil.valueOf(e.get(SECURITY_CLIENT.ID))));
+			        Condition condition = DSL.and(SECURITY_CODE_ACCESS.APP_ID.eq(pojo.getAppId()),
+			                SECURITY_CODE_ACCESS.CLIENT_ID.eq(pojo.getClientId()),
+			                SECURITY_CODE_ACCESS.EMAIL_ID.eq(pojo.getEmailId()));
+			        return Mono.from(this.dslContext.selectFrom(SECURITY_CODE_ACCESS)
+			                .where(condition)
+			                .limit(1))
+			                .map(e -> e.into(CodeAccess.class));
+		        },
 
-		        })
+		        exists ->
+				{
+
+			        if (exists != null)
+				        return Mono.just(exists);
+
+			        return Mono.just(CodeUtil.generate(CODEGEN_CONFIG))
+			                .expand(e ->
+							{
+				                Condition condition = DSL.and(SECURITY_CODE_ACCESS.APP_ID.eq(pojo.getAppId()),
+				                        SECURITY_CODE_ACCESS.CLIENT_ID.eq(pojo.getClientId()),
+				                        SECURITY_CODE_ACCESS.CODE.eq(e));
+				                return Mono.from(this.dslContext.selectCount()
+				                        .from(SECURITY_CODE_ACCESS)
+				                        .where(condition)
+				                        .limit(1))
+				                        .map(Record1::value1)
+				                        .flatMap(c ->
+										{
+					                        if (c == 0)
+						                        return Mono.empty();
+					                        return Mono.just(CodeUtil.generate(CODEGEN_CONFIG));
+				                        });
+			                })
+			                .collectList()
+			                .flatMap(e -> super.create(pojo.setCode(e.get(e.size() - 1))));
+		        });
+	}
+
+	public Mono<Boolean> checkClientAccessCode(ULong appId, ULong clientId, String emailId, String accessCode) {
+
+		return Mono.from(this.dslContext.selectCount()
+		        .from(SECURITY_CODE_ACCESS)
+		        .where(DSL.and(SECURITY_CODE_ACCESS.EMAIL_ID.eq(emailId), SECURITY_CODE_ACCESS.CODE.eq(accessCode),
+		                SECURITY_CODE_ACCESS.APP_ID.eq(appId), SECURITY_CODE_ACCESS.CLIENT_ID.eq(clientId)))
+		        .limit(1))
+		        .map(Record1::value1)
 		        .map(e -> e > 0);
 	}
-
-	public Mono<Boolean> checkClientAccess(String clientCode, String appCode, String emailId) {
-
-		Condition appAndClientCode = SECURITY_CLIENT.CODE.eq(clientCode)
-		        .and(SECURITY_APP.APP_CODE.eq(appCode));
-
-		return Mono.from(this.dslContext.select(SECURITY_APP.ID, SECURITY_CLIENT.ID)
-		        .from(SECURITY_APP)
-		        .leftJoin(SECURITY_CLIENT)
-		        .on(SECURITY_APP.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-		        .where(appAndClientCode)
-		        .limit(1))
-		        .flatMap(res -> Mono.from(this.dslContext.selectCount()
-		                .from(SECURITY_CODE_ACCESS)
-		                .where(SECURITY_CODE_ACCESS.EMAIL_ID.eq(emailId))))
-		        .map(Record1::value1)
-		        .map(e -> e == 1);
-	}
-
-	public Mono<List<CodeAccess>> getRecordsByAppAndClientCodes(String appCode, String clientCode, String emailId) {
-
-		Condition appAndClientCode = SECURITY_CLIENT.CODE.eq(clientCode)
-		        .and(SECURITY_APP.APP_CODE.eq(appCode));
-
-		return Mono.from(this.dslContext.select(SECURITY_APP.ID, SECURITY_CLIENT.ID)
-		        .from(SECURITY_APP)
-		        .leftJoin(SECURITY_CLIENT)
-		        .on(SECURITY_APP.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-		        .where(appAndClientCode)
-		        .limit(1))
-		        .flatMap(res -> Flux.from(this.dslContext.select(SECURITY_CODE_ACCESS.fields())
-		                .from(SECURITY_CODE_ACCESS)
-		                .where(SECURITY_CODE_ACCESS.EMAIL_ID.like("%" + emailId + "%")))
-		                .map(e -> e.into(CodeAccess.class))
-		                .collectList());
-
-	}
-
 }

@@ -67,7 +67,7 @@ public class ApplicationService {
                         Map.of("appCode", appCode, "clientCode", ca.getClientCode())),
 
                 (ca, security, core, ui) -> Mono
-                        .just(Map.of("security", security, "core", core, "ui", ui)))
+                        .just(Map.<String, Map<String, Object>>of("security", security, "core", core, "ui", ui)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.transport"));
     }
 
