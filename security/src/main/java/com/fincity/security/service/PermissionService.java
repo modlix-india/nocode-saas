@@ -109,7 +109,7 @@ public class PermissionService
 	@Override
 	protected Mono<Permission> updatableEntity(Permission entity) {
 
-		return ((PermissionService) AopContext.currentProxy()).read(entity.getId())
+		return this.read(entity.getId())
 				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
 						.flatMap(ca -> {
 
@@ -138,7 +138,7 @@ public class PermissionService
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-		return ((PermissionService) AopContext.currentProxy()).read(key)
+		return this.read(key)
 				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
 						.flatMap(ca -> {
 
