@@ -11,7 +11,6 @@ class CodeUtilTest {
         
         cd.setSeparators(new int[] {4,6});        
         String st = CodeUtil.generate(cd);
-        System.out.println(st);
     }
 
 }
