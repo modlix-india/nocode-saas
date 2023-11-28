@@ -1,7 +1,6 @@
 package com.fincity.security.dao;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoConsolidate;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;

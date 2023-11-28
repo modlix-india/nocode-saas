@@ -323,14 +323,14 @@ public class AppDataService {
 				(existing, beforeUpdate, created) -> {
 
 					if (noAfterUpdate)
-						return Mono.just(Tuples.of(created, Optional.of(existing)));
+						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created, Optional.of(existing)));
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(created),
 							EXISTING_DATA_OBJECT_KEY,
 							new Gson().toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_UPDATE, args)
-							.map(e -> Tuples.of(created, Optional.of(existing)));
+							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created, Optional.of(existing)));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.updateWithTriggers"));
 	}
 
@@ -458,13 +458,13 @@ public class AppDataService {
 				(existing, beforeDelete, deleted) -> {
 
 					if (noAfterDelete)
-						return Mono.just(Tuples.of(deleted, Optional.of(existing)));
+						return Mono.just(Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted, Optional.of(existing)));
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY,
 							new Gson().toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_DELETE, args)
-							.map(e -> Tuples.of(deleted, Optional.of(existing)));
+							.map(e -> Tuples.<Boolean, Optional<Map<String, Object>>>of( deleted, Optional.of(existing)));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericDelete"));
 	}
 

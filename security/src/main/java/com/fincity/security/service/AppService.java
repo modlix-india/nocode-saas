@@ -4,14 +4,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.poi.ss.formula.functions.Complex;
 import org.jooq.types.ULong;
-import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort.Order;
-import org.springframework.data.util.Streamable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -75,6 +71,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
 
 	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
+	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE";
+	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE";
+	public static final String APP_PROP_REG_TYPE_CODE_ON_REQUEST = "REGISTRATION_TYPE_CODE_ON_REQUEST";
+	public static final String APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE = "REGISTRATION_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE";
 	public static final String APP_PROP_REG_TYPE_EMAIL_VERIFY = "REGISTRATION_TYPE_EMAIL_VERIFY";
 	public static final String APP_PROP_REG_TYPE_PHONE_VERIFY_OTP = "REGISTRATION_TYPE_PHONE_VERIFY_OTP";
 	public static final String APP_PROP_REG_TYPE_EMAIL_PASSWORD = "REGISTRATION_TYPE_EMAIL_PASSWORD";
