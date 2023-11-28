@@ -57,7 +57,7 @@ public class SecurityCodeAccessRecord extends UpdatableRecordImpl<SecurityCodeAc
     }
 
     /**
-     * Setter for <code>security.security_code_access.CODE</code>. unique access
+     * Setter for <code>security.security_code_access.CODE</code>. Unique access
      * code for logging in
      */
     public SecurityCodeAccessRecord setCode(String value) {
@@ -66,7 +66,7 @@ public class SecurityCodeAccessRecord extends UpdatableRecordImpl<SecurityCodeAc
     }
 
     /**
-     * Getter for <code>security.security_code_access.CODE</code>. unique access
+     * Getter for <code>security.security_code_access.CODE</code>. Unique access
      * code for logging in
      */
     public String getCode() {

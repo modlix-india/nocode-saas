@@ -1,5 +1,6 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityCodeAccess.SECURITY_CODE_ACCESS;
 
 import org.jooq.Condition;
@@ -78,12 +79,29 @@ public class CodeAccessDAO extends AbstractDAO<SecurityCodeAccessRecord, ULong, 
 
 	public Mono<Boolean> checkClientAccessCode(ULong appId, ULong clientId, String emailId, String accessCode) {
 
+
 		return Mono.from(this.dslContext.selectCount()
 		        .from(SECURITY_CODE_ACCESS)
 		        .where(DSL.and(SECURITY_CODE_ACCESS.EMAIL_ID.eq(emailId), SECURITY_CODE_ACCESS.CODE.eq(accessCode),
-		                SECURITY_CODE_ACCESS.APP_ID.eq(appId), SECURITY_CODE_ACCESS.CLIENT_ID.eq(clientId)))
-		        .limit(1))
+		                SECURITY_CODE_ACCESS.APP_ID.eq(appId), SECURITY_CODE_ACCESS.CLIENT_ID.eq(clientId))))
 		        .map(Record1::value1)
-		        .map(e -> e > 0);
+
+		        .map(val -> val == 1);
+	}
+
+	public Mono<Boolean> deleteRecordAfterRegistration(String appCode, ULong clientId, String emailId,
+	        String accessCode) {
+
+		Condition cond = DSL.and(SECURITY_CODE_ACCESS.EMAIL_ID.eq(emailId))
+		        .and(SECURITY_CODE_ACCESS.CLIENT_ID.eq(clientId))
+		        .and(SECURITY_CODE_ACCESS.CODE.eq(accessCode))
+		        .and(SECURITY_CODE_ACCESS.APP_ID.eq(this.dslContext.select(SECURITY_APP.ID)
+		                .from(SECURITY_APP)
+		                .where(SECURITY_APP.APP_CODE.eq(appCode))));
+		
+
+		return Mono.from(this.dslContext.deleteFrom(SECURITY_CODE_ACCESS)
+		        .where(cond))
+		        .map(e -> e == 1);
 	}
 }

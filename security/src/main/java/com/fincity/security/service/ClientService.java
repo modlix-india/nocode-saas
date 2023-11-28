@@ -63,6 +63,7 @@ import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.util.PasswordUtil;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -508,7 +509,7 @@ public class ClientService
 
 	}
 
-	public Mono<Page<CodeAccess>> fetchCodesWithApp(Pageable page, String clientCode, String emailId) {
+	public Mono<Page<CodeAccess>> fetchCodesBasedOnClient(Pageable page, String clientCode, String emailId) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -733,6 +734,20 @@ public class ClientService
 
 			                return Mono.just(new ClientRegistrationResponse(true, null));
 		                })
+		                .flatMap(e ->
+						{
+			                if (prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
+			                        || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
+			                        || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST)
+			                        || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE))
+
+				                this.codeAccessDAO
+				                        .deleteRecordAfterRegistration(ca.getUrlAppCode(),  ULongUtil.valueOf(ca.getLoggedInFromClientId()),
+				                                registrationRequest.getEmailId(), registrationRequest.getCode())
+				                        .subscribe();
+
+			                return Mono.just(e);
+		                })
 
 		);
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
@@ -839,8 +854,10 @@ public class ClientService
 			                || regType.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE))
 
 				        return this.codeAccessDAO
-				                .checkClientAccessCode(ULongUtil.valueOf(ca.getLoggedInFromClientId()), app.getId(),
-				                        request.getEmailId(), request.getCode())
+				                .checkClientAccessCode(
+				                        app.getId(), ULongUtil.valueOf(ca.getLoggedInFromClientId()), request
+				                                .getEmailId(),
+				                        request.getCode())
 				                .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? true : null));
 
 			        return Mono.just(true);

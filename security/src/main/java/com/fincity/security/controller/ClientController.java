@@ -117,7 +117,7 @@ public class ClientController
 	public Mono<ResponseEntity<Page<CodeAccess>>> fetchCodes(Pageable pageable,
 	        @RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
 
-		return this.clientService.fetchCodesWithApp(pageable, clientCode, emailId)
+		return this.clientService.fetchCodesBasedOnClient(pageable, clientCode, emailId)
 		        .map(ResponseEntity::ok);
 	}
 }

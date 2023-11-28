@@ -63,13 +63,13 @@ public class SecurityCodeAccess extends TableImpl<SecurityCodeAccessRecord> {
      * The column <code>security.security_code_access.EMAIL_ID</code>. Email id
      * of the client
      */
-    public final TableField<SecurityCodeAccessRecord, String> EMAIL_ID = createField(DSL.name("EMAIL_ID"), SQLDataType.VARCHAR(256).nullable(false), this, "Email id of the client");
+    public final TableField<SecurityCodeAccessRecord, String> EMAIL_ID = createField(DSL.name("EMAIL_ID"), SQLDataType.VARCHAR(320).nullable(false), this, "Email id of the client");
 
     /**
-     * The column <code>security.security_code_access.CODE</code>. unique access
+     * The column <code>security.security_code_access.CODE</code>. Unique access
      * code for logging in
      */
-    public final TableField<SecurityCodeAccessRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.VARCHAR(256).nullable(false), this, "unique access code for logging in");
+    public final TableField<SecurityCodeAccessRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(32).nullable(false), this, "Unique access code for logging in");
 
     /**
      * The column <code>security.security_code_access.APP_ID</code>. App id to
@@ -147,7 +147,7 @@ public class SecurityCodeAccess extends TableImpl<SecurityCodeAccessRecord> {
 
     @Override
     public List<UniqueKey<SecurityCodeAccessRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_CODE_ACCESS_EMAIL_APP_CLIENT, Keys.KEY_SECURITY_CODE_ACCESS_ACCESS_CODE_UNIQUE);
+        return Arrays.asList(Keys.KEY_SECURITY_CODE_ACCESS_UK1_CODE_ACCESS_EMAIL_APP_CLIENT, Keys.KEY_SECURITY_CODE_ACCESS_UK1_CODE_ACCESS_CODE);
     }
 
     @Override
