@@ -534,8 +534,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.from(SECURITY_CLIENT_MANAGE)
 				.where(SECURITY_CLIENT_MANAGE.CLIENT_ID.in(list)))
 				.map(Record1::value1)
-				.collectList()
-				.log();
+				.collectList();
 	}
 
 }
