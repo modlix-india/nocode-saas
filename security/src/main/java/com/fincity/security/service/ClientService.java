@@ -63,10 +63,10 @@ import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.util.PasswordUtil;
 
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
+
 
 @Service
 public class ClientService
@@ -578,14 +578,15 @@ public class ClientService
 
 		        (ca, app, client) -> this.userService.findUserClients(new AuthenticationRequest().setUserName(emailId)
 		                .setIdentifierType(AuthenticationIdentifierType.EMAIL_ID), ca.getUrlAppCode(),
-		                ca.getUrlClientCode()),
+		                ca.getUrlClientCode()).flatMap(e -> this.dao.getManagingClientIds(e.stream()
+				                .map(UserClient::getClient)
+				                .map(Client::getId)
+				                .toList())),
 
 		        (ca, app, client, userClients) ->
 				{
 
 			        boolean hasUser = userClients.stream()
-			                .map(UserClient::getClient)
-			                .map(Client::getId)
 			                .anyMatch(e -> e.equals(client.getId()));
 
 			        return Mono.justOrEmpty(!hasUser ? true : null);
@@ -812,6 +813,21 @@ public class ClientService
 		                SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
 
 	}
+	
+	private String getValidClientName(ClientRegistrationRequest request) {
+
+		if (!StringUtil.safeIsBlank(request.getClientName()))
+			return request.getClientName();
+		if (!StringUtil.safeIsBlank(request.getFirstName()) || !StringUtil.safeIsBlank(request.getLastName()))
+			return (StringUtil.safeValueOf(request.getFirstName(), "")
+			        + StringUtil.safeValueOf(request.getLastName(), ""));
+		if (!StringUtil.safeIsBlank(request.getEmailId()))
+			return request.getEmailId();
+		if (!StringUtil.safeIsBlank(request.getUserName()))
+			return request.getUserName();
+
+		return "";
+	}
 
 	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca, String regType) {
 
@@ -827,11 +843,15 @@ public class ClientService
 			        SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
 
 		Client client = new Client();
-		client.setName(
-		        StringUtil.safeIsBlank(request.getClientName())
-		                ? (StringUtil.safeValueOf(request.getFirstName(), "")
-		                        + StringUtil.safeValueOf(request.getLastName(), ""))
-		                : request.getClientName());
+
+		String clientName = getValidClientName(request);
+
+		if (StringUtil.safeIsBlank(clientName))
+			return this.securityMessageResourceService.throwMessage(
+			        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+			        SecurityMessageResourceService.FIELDS_MISSING);
+		
+		client.setName(clientName);
 		client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
 		client.setLocaleCode(request.getLocaleCode());
 		client.setTokenValidityMinutes(VALIDITY_MINUTES);

@@ -15,6 +15,8 @@ import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
+import static com.fincity.saas.commons.util.StringUtil.removeSpecialCharacters;
+
 
 import java.util.HashSet;
 import java.util.List;
@@ -488,7 +490,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 	public Mono<String> getValidClientCode(String name) {
 
-		String clientCode = name.substring(0, name.length() <= 5 ? name.length() : 5)
+		name = removeSpecialCharacters(name);
+		
+		String clientCode = name.substring(0, name.length() < 5 ? name.length() : 5)
 				.toUpperCase();
 
 		return Flux.just(clientCode)
@@ -522,6 +526,16 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 						.where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)))
 				.map(e -> e.into(Package.class))
 				.collectList();
+	}
+
+	public Mono<List<ULong>> getManagingClientIds(List<ULong> list) {
+		
+		return Flux.from(this.dslContext.select(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
+				.from(SECURITY_CLIENT_MANAGE)
+				.where(SECURITY_CLIENT_MANAGE.CLIENT_ID.in(list)))
+				.map(Record1::value1)
+				.collectList()
+				.log();
 	}
 
 }
