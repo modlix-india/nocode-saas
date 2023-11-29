@@ -230,17 +230,18 @@ public class ClientUrlService
 	}
 	
 	public Mono<Page<ClientUrl>> getUrlsBasedOnApp(Pageable page, String appCode) {
-		return FlatMapUtil.flatMapMono(
-		        SecurityContextUtil::getUsersContextAuthentication,
-		        ca ->
-				{
-			        List<AbstractCondition> conditions = new ArrayList<>(
-			                List.of(FilterCondition.make("appCode", appCode)));
-			        if (!ca.isSystemClient())
-				        conditions.add(FilterCondition.make("clientId", ca.getLoggedInFromClientId()));
-			        AbstractCondition condition = new ComplexCondition().setConditions(conditions)
-			                .setOperator(ComplexConditionOperator.AND);
-			        return this.dao.readPageFilter(page, condition);
-		        });
+
+		if (StringUtil.safeIsBlank(appCode))
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.MANDATORY_APP_CODE);
+
+		return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> {
+			List<AbstractCondition> conditions = new ArrayList<>(List.of(FilterCondition.make("appCode", appCode)));
+			if (!ca.isSystemClient())
+				conditions.add(FilterCondition.make("clientId", ca.getLoggedInFromClientId()));
+			AbstractCondition condition = new ComplexCondition().setConditions(conditions)
+					.setOperator(ComplexConditionOperator.AND);
+			return this.dao.readPageFilter(page, condition);
+		}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getUrlsBasedOnApp"));
 	}
 }
