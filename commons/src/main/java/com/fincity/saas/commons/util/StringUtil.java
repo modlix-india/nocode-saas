@@ -64,4 +64,20 @@ public class StringUtil {
 		
 		return str.substring(0, len + 1);
 	}
+	
+	public static String removeSpecialCharacters(String str) {
+	    
+	    if(str == null || str.isBlank())
+	        return str;
+	    
+	    StringBuilder sb = new StringBuilder(str.length());
+	    
+	    for(int i=0;i<str.length();i++) {
+	        char c = str.charAt(i);
+	        if(Character.isLetter(c))
+	            sb.append(c);
+	    }
+	    
+	    return sb.toString();
+	}
 }
