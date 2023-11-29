@@ -2,7 +2,9 @@ package com.fincity.security.service;
 
 import static com.fincity.security.service.ClientService.CACHE_NAME_CLIENT_URL;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -17,6 +19,9 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
@@ -222,5 +227,20 @@ public class ClientUrlService
 		return SecurityContextUtil.getUsersContextUser()
 		        .map(ContextUser::getId)
 		        .map(ULong::valueOf);
+	}
+	
+	public Mono<Page<ClientUrl>> getUrlsBasedOnApp(Pageable page, String appCode) {
+		return FlatMapUtil.flatMapMono(
+		        SecurityContextUtil::getUsersContextAuthentication,
+		        ca ->
+				{
+			        List<AbstractCondition> conditions = new ArrayList<>(
+			                List.of(FilterCondition.make("appCode", appCode)));
+			        if (!ca.isSystemClient())
+				        conditions.add(FilterCondition.make("clientId", ca.getLoggedInFromClientId()));
+			        AbstractCondition condition = new ComplexCondition().setConditions(conditions)
+			                .setOperator(ComplexConditionOperator.AND);
+			        return this.dao.readPageFilter(page, condition);
+		        });
 	}
 }
