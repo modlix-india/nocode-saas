@@ -4,6 +4,7 @@ import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +22,7 @@ import reactor.core.publisher.Mono;
 public class ClientUrlController
         extends AbstractJOOQDataController<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO, ClientUrlService> {
 
+	@GetMapping("/fetchUrls")
 	public Mono<ResponseEntity<Page<ClientUrl>>> getUrlsOfApp(Pageable page,
 	        @RequestParam(required = true) String appCode) {
 		return this.service.getUrlsBasedOnApp(page, appCode)
