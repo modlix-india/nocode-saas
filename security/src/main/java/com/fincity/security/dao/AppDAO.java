@@ -16,13 +16,19 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
+import org.jooq.SortField;
+import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.jooq.types.UByte;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -37,9 +43,9 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
+import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppUserRole;
-import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
@@ -603,11 +609,47 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.map(e -> e == 1);
 	}
 
-	public Mono<ULong> getManagedClientById(ULong clientId) {
-		return Mono.from(this.dslContext.select(SecurityClientManage.SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
-				.from(SecurityClientManage.SECURITY_CLIENT_MANAGE)
-				.where(SecurityClientManage.SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)))
-				.map(Record1::value1)
-				.defaultIfEmpty(ULong.valueOf(1L));
+	public Mono<Page<App>> readAnyAppsPageFilter(org.springframework.data.domain.Pageable pageable,
+			AbstractCondition condition, ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> super.filter(condition),
+
+				filterCondition -> {
+
+					List<SortField<?>> orderBy = new ArrayList<>();
+
+					pageable.getSort()
+							.forEach(order -> {
+								Field<?> field = this.getField(order.getProperty());
+								if (field != null)
+									orderBy.add(field.sort(
+											order.getDirection() == Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
+							});
+
+					Condition anyAppCondition = DSL.and(filterCondition, SECURITY_APP.CLIENT_ID.eq(clientId),
+							SECURITY_APP.APP_ACCESS_TYPE.eq(SecurityAppAppAccessType.ANY));
+
+					final Mono<Integer> recordsCount = Mono
+							.from(this.dslContext.selectCount().from(SECURITY_APP).where(anyAppCondition))
+							.map(Record1::value1);
+
+					SelectConditionStep<SecurityAppRecord> selectJoinStep = this.dslContext.selectFrom(SECURITY_APP)
+							.where(anyAppCondition);
+					if (!orderBy.isEmpty()) {
+						selectJoinStep.orderBy(orderBy);
+					}
+
+					Mono<List<App>> recordsList = Flux.from(selectJoinStep.limit(pageable.getPageSize())
+							.offset(pageable.getOffset()))
+							.map(e -> e.into(this.pojoClass))
+							.collectList();
+
+					return recordsList.flatMap(
+							list -> recordsCount
+									.map(count -> PageableExecutionUtils.getPage(list, pageable, () -> count)));
+				});
 	}
+
 }
