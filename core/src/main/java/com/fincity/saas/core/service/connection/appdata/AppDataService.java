@@ -75,7 +75,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.netflix.discovery.converters.Auto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -404,9 +403,16 @@ public class AppDataService {
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage,
-								id).flatMap(
-										e -> this.generateEvent(ca, appCode, clientCode, storage, "Delete",
-												e.getT2().orElse(null), null).map(x -> e.getT1())),
+		                        id)
+		                        .flatMap(e -> e.getT2()
+		                                .isPresent()
+		                                        ? this.generateEvent(ca, appCode, clientCode, storage, "Delete",
+		                                                e.getT2()
+		                                                        .orElse(null),
+		                                                null)
+		                                                .map(x -> e.getT1())
+		                                        : Mono.just(e
+		                                                .getT1())),
 						Storage::getDeleteAuth,
 						CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
 
