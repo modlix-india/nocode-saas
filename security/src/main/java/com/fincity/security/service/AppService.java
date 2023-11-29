@@ -118,8 +118,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.dao.getManagedClientById(ULongUtil.valueOf(ca.getUser()
-						.getClientId())),
+				ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
+						.getClientId())).map(Client::getId),
 
 				(ca, managedClientId) -> entity.getAppCode() == null
 						? this.dao.generateAppCode(entity).map(entity::setAppCode)
@@ -367,7 +367,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 									return Mono.empty();
 
 								if (!usersClientId.equals(app.getClientId())
-										&& SecurityAppAppAccessType.ANY == app.getAppAccessType())
+										&& SecurityAppAppAccessType.ANY != app.getAppAccessType())
 									return Mono.empty();
 
 								return this.dao.addClientAccess(appId, clientId,
@@ -892,17 +892,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 					if (ca.isSystemClient() || ca.getLoggedInFromClientId().equals(ca.getUser().getClientId()))
 						return Mono.just(Page.empty());
 
-					AbstractCondition updatedCondition = ComplexCondition.and(
-							FilterCondition.of("appAccessType",
-									SecurityAppAppAccessType.ANY.name(), FilterConditionOperator.EQUALS),
-							FilterCondition.of("clientId",
-									ca.getLoggedInFromClientId(), FilterConditionOperator.EQUALS));
-
-					if (condition != null && !condition.isEmpty()) {
-						updatedCondition = ComplexCondition.and(updatedCondition, condition);
-					}
-
-					return this.dao.readPageFilter(pageable, updatedCondition);
+					return this.dao.readAnyAppsPageFilter(pageable, condition,
+							ULongUtil.valueOf(ca.getLoggedInFromClientId()));
 
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findAnyAppsByPage"));
