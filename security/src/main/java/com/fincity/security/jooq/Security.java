@@ -6,6 +6,8 @@ package com.fincity.security.jooq;
 
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
+import com.fincity.security.jooq.tables.SecurityAppLimitations;
+import com.fincity.security.jooq.tables.SecurityAppOwnerLimitations;
 import com.fincity.security.jooq.tables.SecurityAppPackage;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppUserRole;
@@ -61,6 +63,16 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_access</code>.
      */
     public final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
+
+    /**
+     * The table <code>security.security_app_limitations</code>.
+     */
+    public final SecurityAppLimitations SECURITY_APP_LIMITATIONS = SecurityAppLimitations.SECURITY_APP_LIMITATIONS;
+
+    /**
+     * The table <code>security.security_app_owner_limitations</code>.
+     */
+    public final SecurityAppOwnerLimitations SECURITY_APP_OWNER_LIMITATIONS = SecurityAppOwnerLimitations.SECURITY_APP_OWNER_LIMITATIONS;
 
     /**
      * The table <code>security.security_app_package</code>.
@@ -200,6 +212,8 @@ public class Security extends SchemaImpl {
         return Arrays.asList(
             SecurityApp.SECURITY_APP,
             SecurityAppAccess.SECURITY_APP_ACCESS,
+            SecurityAppLimitations.SECURITY_APP_LIMITATIONS,
+            SecurityAppOwnerLimitations.SECURITY_APP_OWNER_LIMITATIONS,
             SecurityAppPackage.SECURITY_APP_PACKAGE,
             SecurityAppProperty.SECURITY_APP_PROPERTY,
             SecurityAppUserRole.SECURITY_APP_USER_ROLE,
