@@ -1,9 +1,8 @@
 package com.fincity.security.controller;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,13 +19,13 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/clienturls")
 public class ClientUrlController
-        extends AbstractJOOQDataController<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO, ClientUrlService> {
+		extends AbstractJOOQDataController<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO, ClientUrlService> {
 
 	@GetMapping("/fetchUrls")
-	public Mono<ResponseEntity<Page<ClientUrl>>> getUrlsOfApp(Pageable page,
-	        @RequestParam(required = true) String appCode) {
-		return this.service.getUrlsBasedOnApp(page, appCode)
-		        .map(ResponseEntity::ok);
+	public Mono<List<String>> getUrlsOfApp(@RequestParam(required = true) String appCode,
+			@RequestParam(required = false) String suffix) {
+		
+		return this.service.getUrlsBasedOnApp(appCode, suffix);
 	}
-	
+
 }
