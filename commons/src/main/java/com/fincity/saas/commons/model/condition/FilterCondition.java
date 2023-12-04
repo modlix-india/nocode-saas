@@ -47,4 +47,10 @@ public class FilterCondition extends AbstractCondition {
 		return new FilterCondition().setField(field)
 				.setValue(value);
 	}
+
+	public static FilterCondition of(String field, Object value, FilterConditionOperator operator) {
+
+		return new FilterCondition().setField(field)
+				.setValue(value).setOperator(operator);
+	}
 }

@@ -10,6 +10,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -73,11 +74,17 @@ public class IndexHTMLService {
 
 	);
 
-	@Autowired
-	private ApplicationService appService;
+	@Value("${ui.cdn.prefix:}")
+	private String cdnPrefix;
 
-	@Autowired
+	private ApplicationService appService;
 	private CacheService cacheService;
+
+	public IndexHTMLService(ApplicationService appService, CacheService cacheService) {
+
+		this.appService = appService;
+		this.cacheService = cacheService;
+	}
 
 	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
 
@@ -161,7 +168,7 @@ public class IndexHTMLService {
 		// Here the preference will be for the style from the style service.
 
 		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
-
+		str.append("<script>window.cdnPrefix='" + this.cdnPrefix + "'</script>");
 		str.append("<script src=\"/js/index.js\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");

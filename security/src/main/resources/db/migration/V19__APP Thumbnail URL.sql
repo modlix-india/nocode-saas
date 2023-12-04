@@ -1,0 +1,6 @@
+use security;
+
+
+ALTER TABLE `security`.`security_app` 
+ADD COLUMN `THUMB_URL` VARCHAR(1024) NULL DEFAULT NULL AFTER `APP_ACCESS_TYPE`;
+

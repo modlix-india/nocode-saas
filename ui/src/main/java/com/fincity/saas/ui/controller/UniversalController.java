@@ -1,6 +1,5 @@
 package com.fincity.saas.ui.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,16 +20,12 @@ import reactor.core.publisher.Mono;
 @RestController
 public class UniversalController {
 
-	@Autowired
 	private JSService jsService;
 
-	@Autowired
 	private IndexHTMLService indexHTMLService;
 
-	@Autowired
 	private ManifestService manifestService;
 
-	@Autowired
 	private IFeignSecurityService securityService;
 
 	@Value("${ui.jsURL:}")
@@ -38,6 +33,14 @@ public class UniversalController {
 
 	@Value("${ui.resourceCacheAge:604800}")
 	private int cacheAge;
+
+	public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
+			IFeignSecurityService securityService) {
+		this.jsService = jsService;
+		this.indexHTMLService = indexHTMLService;
+		this.manifestService = manifestService;
+		this.securityService = securityService;
+	}
 
 	@GetMapping(value = "js/index.js", produces = "text/javascript")
 	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag) {

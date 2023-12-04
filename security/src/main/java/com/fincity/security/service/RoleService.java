@@ -7,6 +7,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
@@ -18,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -28,9 +31,9 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.RoleDAO;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
+import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
-import com.fincity.security.model.TransportPOJO.AppTransportPackage;
 import com.fincity.security.model.TransportPOJO.AppTransportRole;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
@@ -51,11 +54,17 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 	private static final String ROLE = "role";
 
-	@Autowired
 	private ClientService clientService;
-
-	@Autowired
+	private PermissionService permissionService;
 	private SecurityMessageResourceService securityMessageResourceService;
+
+	public RoleService(ClientService clientService, PermissionService permissionService,
+			SecurityMessageResourceService securityMessageResourceService) {
+
+		this.clientService = clientService;
+		this.securityMessageResourceService = securityMessageResourceService;
+		this.permissionService = permissionService;
+	}
 
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
@@ -389,5 +398,62 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	public Mono<List<AppTransportRole>> readForTransport(ULong appId, ULong appClientId, ULong clientId) {
 
 		return this.dao.readForTransport(appId, appClientId, clientId);
+	}
+
+	public Mono<List<Role>> createRolesFromTransport(ULong appId, List<AppTransportRole> tRoles) {
+
+		if (tRoles == null || tRoles.isEmpty())
+			return Mono.just(List.of());
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> SecurityContextUtil.hasAuthority("Authorities.Role_CREATE", ca.getAuthorities()) ? Mono.just(true)
+						: securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								SecurityMessageResourceService.FORBIDDEN_CREATE, "Role"),
+
+				(ca, hasAccess) -> this.dao.getRolesByNamesAndAppId(
+						tRoles.stream().map(AppTransportRole::getRoleName).toList(),
+						appId),
+
+				(ca, hasAccess, roles) -> {
+
+					Map<String, Role> roleIndex = roles.stream().collect(
+							Collectors.toMap(Role::getName, Function.identity()));
+
+					List<AppTransportRole> newRoles = tRoles.stream()
+							.filter(e -> roleIndex.get(e.getRoleName()) == null)
+							.toList();
+
+					if (newRoles.isEmpty())
+						return Mono.just(new ArrayList<>(roleIndex.values()));
+
+					ULong clientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+					return this.dao.createRolesFromTransport(
+							newRoles.stream().map(
+									e -> new Role()
+											.setName(e.getRoleName())
+											.setDescription(e.getRoleDescription())
+											.setAppId(appId)
+											.setClientId(clientId))
+									.toList())
+							.map(e -> {
+								List<Role> newRoleList = new ArrayList<>(roleIndex.values());
+								newRoleList.addAll(e);
+								return newRoleList;
+							});
+				},
+
+				(ca, hasAccess, existingRoles, roles) -> this.permissionService
+						.createPermissionsFromTransport(appId, tRoles, roles).map(e -> roles))
+
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.createRolesFromTransport"));
+	}
+
+	public Mono<Boolean> createPackageRoles(Map<ULong, ULong> packageRoles) {
+		return this.dao.createPackageRoles(packageRoles);
 	}
 }

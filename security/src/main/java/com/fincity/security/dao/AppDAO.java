@@ -10,20 +10,25 @@ import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.jooq.Condition;
-import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
-import org.jooq.TransactionalPublishable;
+import org.jooq.SortField;
+import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.jooq.types.UByte;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -33,12 +38,12 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
+import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppUserRole;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
@@ -415,20 +420,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.map(lst -> lst.get(lst.size() - 1));
 	}
 
-	public Mono<Boolean> toggleMakeTemplate(ULong appId, boolean isTemplate) {
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextUser,
-
-				user -> Mono.from(this.dslContext.update(SECURITY_APP)
-						.set(SECURITY_APP.IS_TEMPLATE, isTemplate ? ByteUtil.ONE : ByteUtil.ZERO)
-						.where(SECURITY_APP.ID.eq(appId))),
-
-				(user, count) -> Mono.just(count == 1))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.toggleMakeTemplate"));
-	}
-
-	public Mono<List<AppProperty>> getProperties(ULong clientId, ULong appId, String appCode, String propName) {
+	public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(List<ULong> clientIds, ULong appId, String appCode,
+			String propName) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -444,28 +437,53 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 					if (propName != null)
 						conditions.add(SECURITY_APP_PROPERTY.NAME.eq(propName));
 
-					if (app.getClientId().equals(clientId))
-						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId));
+					if (clientIds != null && !clientIds.isEmpty())
+						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(app.getClientId())
+								.or(SECURITY_APP_PROPERTY.CLIENT_ID.in(clientIds)));
 					else
-						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId).or(SECURITY_APP_PROPERTY.CLIENT_ID
-								.eq(app.getClientId())));
+						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(app.getClientId()));
 
-					Mono<List<AppProperty>> flux = Flux.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
+					return Flux.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
 							.where(DSL.and(conditions)))
-							.map(e -> e.into(AppProperty.class)).collectList();
-
-					return flux
-							.map(e -> e.stream().collect(Collectors.groupingBy(AppProperty::getName)).values().stream()
-									.map(x -> {
-										AppProperty p = x.get(0);
-										if (x.size() == 2)
-											return p.getClientId().equals(clientId) ? p : x.get(1);
-
-										return p;
-									}).collect(Collectors.toList()));
+							.map(e -> e.into(AppProperty.class)).collectList()
+							.<Map<ULong, Map<String, AppProperty>>>map(
+									lst -> this.convertAttributesToMap(app.getClientId(), clientIds, lst));
 				}
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getProperties"));
+	}
+
+	public Map<ULong, Map<String, AppProperty>> convertAttributesToMap(ULong appClientId, List<ULong> clientIds,
+			List<AppProperty> lst) {
+
+		Map<String, AppProperty> appDefaultProps = new HashMap<>();
+		Map<ULong, Map<String, AppProperty>> appClientProps = new HashMap<>();
+
+		for (AppProperty prop : lst) {
+			if (prop.getClientId().equals(appClientId)) {
+				appDefaultProps.put(prop.getName(), prop);
+			}
+			if (!appClientProps.containsKey(prop.getClientId()))
+				appClientProps.put(prop.getClientId(), new HashMap<>());
+			appClientProps.get(prop.getClientId()).put(prop.getName(), prop);
+		}
+
+		for (Entry<ULong, Map<String, AppProperty>> entry : appClientProps.entrySet()) {
+
+			if (entry.getKey().equals(appClientId))
+				continue;
+
+			for (Entry<String, AppProperty> defaultProp : appDefaultProps.entrySet()) {
+				if (!entry.getValue().containsKey(defaultProp.getKey()))
+					entry.getValue().put(defaultProp.getKey(), defaultProp.getValue());
+			}
+		}
+
+		if (clientIds != null && !clientIds.contains(appClientId)) {
+			appClientProps.remove(appClientId);
+		}
+
+		return appClientProps;
 	}
 
 	public Mono<Boolean> updateProperty(AppProperty property) {
@@ -578,4 +596,60 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			);
 		})).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
 	}
+
+	public Mono<Boolean> createPropertyFromTransport(ULong appId, ULong clientId, String propertyName,
+			String propertyValue) {
+
+		return Mono.from(this.dslContext.insertInto(SECURITY_APP_PROPERTY)
+				.columns(SECURITY_APP_PROPERTY.APP_ID, SECURITY_APP_PROPERTY.CLIENT_ID,
+						SECURITY_APP_PROPERTY.NAME, SECURITY_APP_PROPERTY.VALUE)
+				.values(appId, clientId, propertyName, propertyValue)
+				.onDuplicateKeyUpdate()
+				.set(SECURITY_APP_PROPERTY.VALUE, propertyValue))
+				.map(e -> e == 1);
+	}
+
+	public Mono<Page<App>> readAnyAppsPageFilter(org.springframework.data.domain.Pageable pageable,
+			AbstractCondition condition, ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> super.filter(condition),
+
+				filterCondition -> {
+
+					List<SortField<?>> orderBy = new ArrayList<>();
+
+					pageable.getSort()
+							.forEach(order -> {
+								Field<?> field = this.getField(order.getProperty());
+								if (field != null)
+									orderBy.add(field.sort(
+											order.getDirection() == Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
+							});
+
+					Condition anyAppCondition = DSL.and(filterCondition, SECURITY_APP.CLIENT_ID.eq(clientId),
+							SECURITY_APP.APP_ACCESS_TYPE.eq(SecurityAppAppAccessType.ANY));
+
+					final Mono<Integer> recordsCount = Mono
+							.from(this.dslContext.selectCount().from(SECURITY_APP).where(anyAppCondition))
+							.map(Record1::value1);
+
+					SelectConditionStep<SecurityAppRecord> selectJoinStep = this.dslContext.selectFrom(SECURITY_APP)
+							.where(anyAppCondition);
+					if (!orderBy.isEmpty()) {
+						selectJoinStep.orderBy(orderBy);
+					}
+
+					Mono<List<App>> recordsList = Flux.from(selectJoinStep.limit(pageable.getPageSize())
+							.offset(pageable.getOffset()))
+							.map(e -> e.into(this.pojoClass))
+							.collectList();
+
+					return recordsList.flatMap(
+							list -> recordsCount
+									.map(count -> PageableExecutionUtils.getPage(list, pageable, () -> count)));
+				});
+	}
+
 }

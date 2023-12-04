@@ -17,6 +17,7 @@ public class TransportPOJO implements Serializable {
 	private String name;
 	private String uniqueTransportCode;
 	private String type;
+	private String clientCode;
 	private List<AppTransportRole> roles;
 	private List<AppTransportPackage> packages;
 	private List<AppTransportProperty> properties;

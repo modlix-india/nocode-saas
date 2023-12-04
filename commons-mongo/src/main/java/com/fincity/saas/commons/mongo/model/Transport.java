@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-public class TransportPOJO extends AbstractOverridableDTO<TransportPOJO> {
+public class Transport extends AbstractOverridableDTO<Transport> {
 
 	private static final long serialVersionUID = -5436810186809455453L;
 
@@ -19,12 +19,12 @@ public class TransportPOJO extends AbstractOverridableDTO<TransportPOJO> {
 	private String type;
 
 	@Override
-	public Mono<TransportPOJO> applyOverride(TransportPOJO base) {
+	public Mono<Transport> applyOverride(Transport base) {
 		return Mono.just(this);
 	}
 
 	@Override
-	public Mono<TransportPOJO> makeOverride(TransportPOJO base) {
+	public Mono<Transport> makeOverride(Transport base) {
 		return Mono.just(this);
 	}
 }

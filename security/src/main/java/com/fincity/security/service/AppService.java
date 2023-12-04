@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
-import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +18,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -33,10 +33,15 @@ import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
+import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
+import com.fincity.security.model.TransportPOJO.AppTransportProperty;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppRecord, ULong, App, AppDAO> {
@@ -66,6 +71,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
 
 	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
+	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE";
+	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE";
+	public static final String APP_PROP_REG_TYPE_CODE_ON_REQUEST = "REGISTRATION_TYPE_CODE_ON_REQUEST";
+	public static final String APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE = "REGISTRATION_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE";
 	public static final String APP_PROP_REG_TYPE_EMAIL_VERIFY = "REGISTRATION_TYPE_EMAIL_VERIFY";
 	public static final String APP_PROP_REG_TYPE_PHONE_VERIFY_OTP = "REGISTRATION_TYPE_PHONE_VERIFY_OTP";
 	public static final String APP_PROP_REG_TYPE_EMAIL_PASSWORD = "REGISTRATION_TYPE_EMAIL_PASSWORD";
@@ -80,7 +89,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 					SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
 		}
 
-		return FlatMapUtil.flatMapMono(
+		Mono<App> normalFlow = FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
@@ -103,9 +112,26 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				(ca, app) -> app.getAppCode() == null ? this.dao.generateAppCode(app)
 						.map(app::setAppCode) : Mono.just(app),
 
-				(ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp)
+				(ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp));
 
-		)
+		Mono<App> explicitAppCreationFlow = FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
+						.getClientId())).map(Client::getId),
+
+				(ca, managedClientId) -> entity.getAppCode() == null
+						? this.dao.generateAppCode(entity).map(entity::setAppCode)
+						: Mono.just(entity),
+
+				(ca, managedClientId, appCodeAddedApp) -> super.create(appCodeAddedApp.setClientId(managedClientId)),
+
+				(ca, mci, ac, created) -> this.dao.addClientAccess(created.getId(), ULongUtil.valueOf(ca.getUser()
+						.getClientId()), true)
+						.flatMap(x -> Mono.just(created)));
+
+		return (entity.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT ? explicitAppCreationFlow : normalFlow)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.create"))
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -119,7 +145,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
 	@Override
 	public Mono<App> update(App entity) {
-		return this.read(entity.getClientId())
+		return this.read(entity.getId())
 				.flatMap(e -> super.update(entity))
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -232,11 +258,13 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	protected Mono<App> updatableEntity(App entity) {
 
-		return ((AppService) AopContext.currentProxy()).read(entity.getId())
+		return this.read(entity.getId())
 				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
 						.flatMap(ca -> {
 
 							existing.setAppName(entity.getAppName());
+							existing.setAppAccessType(entity.getAppAccessType());
+							existing.setThumbUrl(entity.getThumbUrl());
 
 							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
 								return Mono.just(existing);
@@ -260,12 +288,14 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-		return ((AppService) AopContext.currentProxy()).read(key)
+		return this.read(key)
 				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
 						.flatMap(ca -> {
 
 							Map<String, Object> newMap = new HashMap<>();
 							newMap.put("appName", fields.get("appName"));
+							newMap.put("appAccessType", fields.get("appAccessType"));
+							newMap.put("thumbUrl", fields.get("thumbUrl"));
 
 							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
 								return Mono.just(newMap);
@@ -322,19 +352,27 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 				(ca, app) -> {
 
-					if (ca.isSystemClient()) {
-						return this.dao.addClientAccess(appId, clientId, writeAccess);
-					}
-
 					ULong usersClientId = ULongUtil.valueOf(ca.getUser()
 							.getClientId());
 
+					if (ca.isSystemClient()
+							&& app.getClientId().equals(usersClientId)) {
+						return this.dao.addClientAccess(appId, clientId, writeAccess);
+					}
+
 					return this.clientService.isBeingManagedBy(app.getClientId(), clientId)
-							.flatMap(managed -> managed.booleanValue()
-									&& (usersClientId.equals(app.getClientId()) || app.isTemplate())
-											? this.dao.addClientAccess(appId, clientId,
-													writeAccess)
-											: Mono.empty());
+							.flatMap(managed -> {
+
+								if (!managed.booleanValue())
+									return Mono.empty();
+
+								if (!usersClientId.equals(app.getClientId())
+										&& SecurityAppAppAccessType.ANY != app.getAppAccessType())
+									return Mono.empty();
+
+								return this.dao.addClientAccess(appId, clientId,
+										writeAccess);
+							});
 
 				},
 
@@ -694,23 +732,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				.flatMap(a -> this.dao.addClientAccess(a.getId(), clientId, isWriteAccess));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
-	public Mono<Boolean> toggleMakeTemplate(ULong appId, boolean isTemplate) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.read(appId),
-
-				app -> this.dao.toggleMakeTemplate(appId, isTemplate)
-
-		)
-				.switchIfEmpty(
-						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, appId))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.toggleMakeTemplate"));
-	}
-
-	public Mono<List<AppProperty>> getProperties(ULong clientId, ULong appId, String appCode, String propName) {
+	public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,
+			String propName) {
 
 		if (appId == null && StringUtil.safeIsBlank(appCode)) {
 			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -724,20 +747,20 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				ca -> {
 
 					if (ca.isSystemClient())
-						return Mono.just(Boolean.TRUE);
+						return Mono.just(clientId == null ? List.<ULong>of() : List.of(clientId));
 
 					ULong userClientId = ULongUtil.valueOf(ca.getUser()
 							.getClientId());
 
-					if (userClientId.equals(clientId))
-						return Mono.just(Boolean.TRUE);
+					if (clientId == null || userClientId.equals(clientId))
+						return Mono.just(List.of(userClientId));
 
 					return this.clientService.isBeingManagedBy(userClientId, clientId)
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
+							.flatMap(managed -> managed.booleanValue() ? Mono.just(List.of(clientId)) : Mono.empty());
 				},
 
-				(ca, hasAccess) -> this.dao.getProperties(clientId, appId, appCode, propName))
-				.defaultIfEmpty(List.of())
+				(ca, idList) -> this.dao.getProperties(idList, appId, appCode, propName))
+				.defaultIfEmpty(Map.of())
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getProperties"));
 	}
 
@@ -817,5 +840,62 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 					return this.dao.deleteProperty(clientId, appId, name);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteProperty"));
+	}
+
+	public Mono<Boolean> createPropertiesFromTransport(ULong appId, List<AppTransportProperty> properties) {
+
+		if (properties == null || properties.isEmpty())
+			return Mono.just(true);
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> Flux.fromIterable(properties)
+						.flatMap(p -> this.dao.createPropertyFromTransport(appId,
+								ULongUtil.valueOf(ca.getUser().getClientId()), p.getPropertyName(),
+								p.getPropertyValue()))
+						.map(e -> true).collectList().map(e -> true));
+	}
+
+	public Mono<Tuple2<String, Boolean>> findBaseClientCodeForOverride(String applicationCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.getAppByCode(applicationCode),
+
+				(ca, app) -> (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()) ? Mono.empty()
+						: this.clientService.readInternal(app.getClientId())),
+
+				(ca, app, appClient) -> {
+
+					if (app.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT) {
+						return this.hasWriteAccess(applicationCode, ca.getClientCode()).flatMap(
+								e -> e.booleanValue() ? Mono.just(Tuples.of(appClient.getCode(), true)) : Mono.empty());
+					}
+
+					return Mono.just(Tuples.of(appClient.getCode(), false));
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findBaseClientCodeForOverride"));
+	}
+
+	public Mono<Page<App>> findAnyAppsByPage(Pageable pageable, AbstractCondition condition) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> {
+
+					if (ca.isSystemClient() || ca.getLoggedInFromClientId().equals(ca.getUser().getClientId()))
+						return Mono.just(Page.empty());
+
+					return this.dao.readAnyAppsPageFilter(pageable, condition,
+							ULongUtil.valueOf(ca.getLoggedInFromClientId()));
+
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findAnyAppsByPage"));
 	}
 }

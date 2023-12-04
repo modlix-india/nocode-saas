@@ -2,6 +2,8 @@ package com.fincity.security.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,5 +26,10 @@ public class TransportController {
     @GetMapping("/makeTransport")
     public Mono<ResponseEntity<TransportPOJO>> makeTransport(@RequestParam String applicationCode) {
         return transportService.makeTransport(applicationCode).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/createAndApply")
+    public Mono<ResponseEntity<Boolean>> createAndApply(@RequestBody TransportPOJO pojo) {
+        return transportService.createAndApply(pojo).map(ResponseEntity::ok);
     }
 }

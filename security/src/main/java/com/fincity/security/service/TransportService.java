@@ -68,4 +68,26 @@ public class TransportService {
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "TransportService.makeTransport"));
     }
 
+    public Mono<Boolean> createAndApply(TransportPOJO pojo) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.appService.getAppByCode(pojo.getAppCode()),
+
+                (ca, app) -> this.appService.hasWriteAccess(pojo.getAppCode(), pojo.getClientCode()),
+
+                (ca, app, hasWriteAccess) -> this.roleService.createRolesFromTransport(app.getId(), pojo.getRoles()),
+
+                (ca, app, hasWriteAccess, createdRoles) -> this.packageService.createPackagesFromTransport(app.getId(),
+                        pojo.getPackages(), createdRoles),
+
+                (ca, app, hasWriteAccess, createdRoles, createdPackages) -> this.appService
+                        .createPropertiesFromTransport(app.getId(),
+                                pojo.getProperties())
+
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "TransportService.createAndApply"));
+    }
+
 }

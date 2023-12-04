@@ -1,10 +1,16 @@
 package com.fincity.security.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -17,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
@@ -27,6 +34,7 @@ import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.service.AppService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 @RestController
 @RequestMapping("api/security/applications")
@@ -112,13 +120,6 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/{id}/template")
-	public Mono<ResponseEntity<Boolean>> toggleMakeTemplate(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-			@RequestParam final boolean isTemplate) {
-		return this.service.toggleMakeTemplate(appId, isTemplate)
-				.map(ResponseEntity::ok);
-	}
-
 	@PostMapping("/{id}/packageAccess")
 	public Mono<ResponseEntity<Boolean>> addPackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
 			@RequestBody final ApplicationAccessPackageOrRoleRequest appRequest) {
@@ -176,7 +177,8 @@ public class AppController
 	}
 
 	@GetMapping("/property")
-	public Mono<ResponseEntity<List<AppProperty>>> getProperty(@RequestParam ULong clientId,
+	public Mono<ResponseEntity<Map<ULong, Map<String, AppProperty>>>> getProperty(
+			@RequestParam(required = false) ULong clientId,
 			@RequestParam(required = false) ULong appId, @RequestParam(required = false) String appCode,
 			@RequestParam(required = false) String propName) {
 
@@ -197,6 +199,20 @@ public class AppController
 			@RequestParam String name) {
 
 		return this.service.deleteProperty(clientId, appId, name)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/findBaseClientCode/{applicationCode}")
+	public Mono<ResponseEntity<Tuple2<String, Boolean>>> findBaseClientCodeForOverride(
+			@PathVariable("") String applicationCode) {
+		return this.service.findBaseClientCodeForOverride(applicationCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/findAnyApps")
+	public Mono<ResponseEntity<Page<App>>> findAnyApps(Pageable pageable, ServerHttpRequest request) {
+		pageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, PATH_VARIABLE_ID) : pageable);
+		return this.service.findAnyAppsByPage(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
 				.map(ResponseEntity::ok);
 	}
 }

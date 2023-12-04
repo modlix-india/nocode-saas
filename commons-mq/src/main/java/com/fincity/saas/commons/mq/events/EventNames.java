@@ -9,6 +9,7 @@ public class EventNames {
 	public static final String USER_PASSWORD_CHANGED = "USER_PASSWORD_CHANGED";
 	public static final String USER_PASSWORD_RESET_DONE = "USER_PASSWORD_RESET_DONE";
 	public static final String USER_RESET_PASSWORD_REQUEST = "USER_RESET_PASSWORD_REQUEST";
+	public static final String USER_CODE_GENERATION = "USER_CODE_GENERATION";
 
 	private EventNames() {
 	}
