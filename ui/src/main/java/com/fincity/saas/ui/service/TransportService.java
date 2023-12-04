@@ -29,12 +29,15 @@ public class TransportService extends AbstractTransportService {
 	@Autowired
 	private UISchemaService schemaService;
 
+	@Autowired
+	private UIFillerService fillerService;
+
 	@SuppressWarnings("rawtypes")
 	@Override
 	public List<AbstractOverridableDataService> getServieMap() {
-		return List.of(appService, pageService, styleService, themeService, funService, schemaService);
+		return List.of(appService, pageService, styleService, themeService, funService, schemaService, fillerService);
 	}
-	
+
 	@Override
 	protected String getTransportType() {
 		return "ui";
