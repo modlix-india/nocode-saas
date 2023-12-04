@@ -18,6 +18,8 @@ import reactor.util.context.Context;
 public abstract class AbstractFillerService<D extends AbstractFiller<D>, R extends IOverridableDataRepository<D>>
 		extends AbstractOverridableDataService<D, R> {
 
+	private static final String FILLER_READ = "_FILLER_READ";
+
 	@Autowired
 	private CacheService cacheService;
 
@@ -29,22 +31,22 @@ public abstract class AbstractFillerService<D extends AbstractFiller<D>, R exten
 	public Mono<D> create(D entity) {
 
 		entity.setName(entity.getAppCode());
-		return super.create(entity).flatMap(e -> this.cacheService
-				.evict(this.getCacheName(e.getAppCode(), e.getAppCode()), e.getClientCode()).map(x -> e));
+		return super.create(entity).flatMap(this.cacheService
+				.evictAllFunction(this.getCacheName(entity.getAppCode(), entity.getAppCode()) + FILLER_READ));
 	}
 
 	@Override
 	public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) {
 
-		return this.cacheService.cacheEmptyValueOrGet(this.getCacheName(appCode, appCode) + "_READ",
+		return this.cacheService.cacheEmptyValueOrGet(this.getCacheName(appCode, appCode) + FILLER_READ,
 				() -> super.read(name, appCode, clientCode), clientCode);
 	}
 
 	@Override
 	public Mono<D> update(D entity) {
 
-		return super.update(entity).flatMap(e -> this.cacheService
-				.evict(this.getCacheName(e.getAppCode(), e.getAppCode()), e.getClientCode()).map(x -> e));
+		return super.update(entity).flatMap(this.cacheService
+				.evictAllFunction(this.getCacheName(entity.getAppCode(), entity.getAppCode()) + FILLER_READ));
 	}
 
 	@Override
@@ -73,7 +75,7 @@ public abstract class AbstractFillerService<D extends AbstractFiller<D>, R exten
 	@Override
 	public Mono<Boolean> delete(String id) {
 
-		return this.read(id).flatMap(e -> super.delete(id).flatMap(x -> this.cacheService
-				.evict(this.getCacheName(e.getAppCode(), e.getAppCode()), e.getClientCode()).thenReturn(x)));
+		return this.read(id).flatMap(entity -> super.delete(id).flatMap(this.cacheService
+				.evictAllFunction(this.getCacheName(entity.getAppCode(), entity.getAppCode()) + FILLER_READ)));
 	}
 }
