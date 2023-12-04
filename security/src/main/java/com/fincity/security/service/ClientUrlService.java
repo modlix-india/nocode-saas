@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
+import lombok.NonNull;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -51,14 +53,17 @@ public class ClientUrlService
 	@Autowired
 	private AppService appService;
 
+	@Value("${security.appCodeSuffix:}")
+	private String appCodeSuffix;
+
 	private static final String CACHE_NAME_CLIENT_URI = "uri";
 
 	// This is used in gateway
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
-	
-	private static final String HTTPS = "https://"; 
-	
-	private static final String SLASH ="/";
+
+	private static final String HTTPS = "https://";
+
+	private static final String SLASH = "/";
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
@@ -216,7 +221,7 @@ public class ClientUrlService
 		return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
 	}
 
-	public Mono<List<String>> getUrlsBasedOnApp(String appCode, String suffix) {
+	public Mono<List<String>> getUrlsBasedOnApp(@NonNull String appCode, String suffix) {
 
 		if (StringUtil.safeIsBlank(appCode))
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -226,9 +231,10 @@ public class ClientUrlService
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(ULongUtil.valueOf(ca.getLoggedInFromClientId())),
+				ca -> Mono.just(ULongUtil.valueOf(ca.getUser().getClientId())),
 
-				(ca, clientId) -> this.dao.getClientUrlsBasedOnAppAndClient(appCode, clientId, ca.isSystemClient()),
+				(ca, clientId) -> ca.isSystemClient() ? this.dao.getClientUrlsBasedOnAppAndClient(appCode, null)
+						: this.dao.getClientUrlsBasedOnAppAndClient(appCode, clientId),
 
 				(ca, clientId, urlList) -> this.appService.getAppByCode(appCode),
 
@@ -237,9 +243,9 @@ public class ClientUrlService
 					if (!StringUtil.safeIsBlank(suffix)) {
 
 						if (app.getClientId().equals(clientId))
-							urlList.add(HTTPS + appCode + suffix + SLASH);
+							urlList.add(HTTPS + appCode + appCodeSuffix + suffix + SLASH);
 						else
-							urlList.add(HTTPS + appCode + suffix + SLASH + ca.getLoggedInFromClientCode() + SLASH
+							urlList.add(HTTPS + appCode + appCodeSuffix + suffix + SLASH + ca.getClientCode() + SLASH
 									+ "page" + SLASH);
 					}
 

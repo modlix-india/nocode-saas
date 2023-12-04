@@ -51,15 +51,13 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 	}
 
 	
-	public Mono<List<String>> getClientUrlsBasedOnAppAndClient(String appCode, ULong clientId, boolean isSystem) {
+	public Mono<List<String>> getClientUrlsBasedOnAppAndClient(String appCode, ULong clientId) {
 
 		List<Condition> conds = new ArrayList<>();
 
 		conds.add(SECURITY_CLIENT_URL.APP_CODE.eq(appCode));
 
-		System.err.println(isSystem);
-
-		if (!isSystem)
+		if (!clientId.equals(null))
 			conds.add(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId));
 
 		return Flux.from(
