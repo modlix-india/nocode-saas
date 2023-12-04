@@ -1,7 +1,6 @@
 package com.fincity.saas.commons.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,11 +22,11 @@ class CodeUtilTest {
 		String st = CodeUtil.generate();
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st, NUMBERS));
-		assertFalse(contains(st,SEPERATOR+CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, NUMBERS));
+
 	}
 
-	private boolean contains(String str, String allowedchrs) {
+	private boolean isValidString(String str, String allowedchrs) {
 		for (char c : str.toCharArray()) {
 			if (!allowedchrs.contains(String.valueOf(c))) {
 				return false;
@@ -35,8 +34,7 @@ class CodeUtilTest {
 		}
 		return true;
 	}
-	
-	
+
 	@Test
 	void test() {
 
@@ -46,8 +44,7 @@ class CodeUtilTest {
 		assertEquals(10, st.length());
 		assertEquals('-', st.charAt(4));
 		assertEquals('-', st.charAt(7));
-		assertTrue(contains(st, NUMBERS + SEPERATOR));
-		assertFalse(contains(st,CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, NUMBERS + SEPERATOR));
 
 	}
 
@@ -73,12 +70,12 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(10, st.length());
-		assertTrue(contains(st, NUMBERS + SEPERATOR+CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, NUMBERS + SEPERATOR + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS));
 		assertTrue(st.charAt(3) == '-' && st.charAt(8) == '-',
 		        "Separators should be present at the specified positions");
-		
+
 	}
-	
+
 	@Test
 	void testCustomvthsep() {
 		cd.setLength(8)
@@ -92,12 +89,13 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(10, st.length());
-		assertTrue(contains(st, NUMBERS + SEPERATOR+SMALL_CASE));
+		assertTrue(isValidString(st, NUMBERS + SEPERATOR + SMALL_CASE));
 		assertTrue(st.charAt(3) == '-' && st.charAt(8) == '-',
 		        "Separators should be present at the specified positions");
-		assertFalse(contains(st,CAPITAL_CASE+SPECIAL_CHARS));
+
 	}
-	
+
+
 	@Test
 	void testCustomvthsep2() {
 		cd.setLength(11)
@@ -111,12 +109,12 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
-		assertTrue(contains(st, NUMBERS + SEPERATOR+CAPITAL_CASE));
+		assertTrue(isValidString(st, NUMBERS + SEPERATOR + CAPITAL_CASE));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
 		        "Separators should be present at the specified positions");
-		assertFalse(contains(st,SMALL_CASE+SPECIAL_CHARS));
+
 	}
-	
+
 	@Test
 	void testCustomvthsep3() {
 		cd.setLength(11)
@@ -130,12 +128,12 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
-		assertTrue(contains(st, NUMBERS + SEPERATOR+SPECIAL_CHARS));
+		assertTrue(isValidString(st, NUMBERS + SEPERATOR + SPECIAL_CHARS));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
 		        "Separators should be present at the specified positions");
-		assertFalse(contains(st,CAPITAL_CASE+SMALL_CASE));
+
 	}
-	
+
 	@Test
 	void testCustomvthsep4() {
 		cd.setLength(11)
@@ -149,12 +147,12 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
-		assertTrue(contains(st, SEPERATOR+CAPITAL_CASE+SMALL_CASE));
+		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE + SMALL_CASE));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
 		        "Separators should be present at the specified positions");
-		assertFalse(contains(st,SPECIAL_CHARS));
+
 	}
-	
+
 	@Test
 	void testCustomvthsep5() {
 		cd.setLength(11)
@@ -168,12 +166,12 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
-		assertTrue(contains(st, SEPERATOR+SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, SEPERATOR + SMALL_CASE + SPECIAL_CHARS));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
 		        "Separators should be present at the specified positions");
-		assertFalse(contains(st,CAPITAL_CASE));
+
 	}
-	
+
 	@Test
 	void testCustomvthsep6() {
 		cd.setLength(11)
@@ -182,17 +180,17 @@ class CodeUtilTest {
 		        .setCapitalCase(true)
 		        .setSpecialChars(true)
 		        .setSeparator("-")
-		        .setSeparators(new int[] { 2,3,4 });
+		        .setSeparators(new int[] { 2, 3, 4 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(14, st.length());
-		assertTrue(contains(st, SEPERATOR+CAPITAL_CASE+SPECIAL_CHARS));
-		assertTrue(st.charAt(2) == '-' && st.charAt(4) == '-'&&st.charAt(6)=='-',
+		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE + SPECIAL_CHARS));
+		assertTrue(st.charAt(2) == '-' && st.charAt(4) == '-' && st.charAt(6) == '-',
 		        "Separators should be present at the specified positions");
-		assertFalse(contains(st,SMALL_CASE));
+
 	}
-	
+
 	@Test
 	void testCustomCodeGeneration2() {
 		cd.setLength(8)
@@ -204,8 +202,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st,CAPITAL_CASE));
-		assertFalse(contains(st,SEPERATOR+NUMBERS+SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, CAPITAL_CASE));
+
 	}
 
 	@Test
@@ -219,10 +217,10 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st,SMALL_CASE));
-		assertFalse(contains(st,SEPERATOR+CAPITAL_CASE+NUMBERS+SPECIAL_CHARS));
+		assertTrue(isValidString(st, SMALL_CASE));
+
 	}
-	
+
 	@Test
 	void testCustomCodeGeneration4() {
 		cd.setLength(8)
@@ -234,8 +232,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st,SPECIAL_CHARS));
-		assertFalse(contains(st,SEPERATOR+CAPITAL_CASE+SMALL_CASE+NUMBERS));
+		assertTrue(isValidString(st, SPECIAL_CHARS));
+
 	}
 
 	@Test
@@ -249,8 +247,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st,SMALL_CASE+NUMBERS+SPECIAL_CHARS));
-		assertFalse(contains(st,SEPERATOR+CAPITAL_CASE));
+		assertTrue(isValidString(st, SMALL_CASE + NUMBERS + SPECIAL_CHARS));
+
 	}
 
 	@Test
@@ -264,10 +262,10 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st,SMALL_CASE+NUMBERS));
-		assertFalse(contains(st,SEPERATOR+CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, SMALL_CASE + NUMBERS));
+
 	}
-	
+
 	@Test
 	void testCustomCodeGeneration7() {
 		cd.setLength(8)
@@ -279,10 +277,10 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st,CAPITAL_CASE+NUMBERS));
-		assertFalse(contains(st,SEPERATOR+SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, CAPITAL_CASE + NUMBERS));
+
 	}
-	
+
 	@Test
 	void testCustomCodeGeneration8() {
 		cd.setLength(8)
@@ -294,8 +292,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(8, st.length());
-		assertTrue(contains(st,NUMBERS+SPECIAL_CHARS));
-		assertFalse(contains(st,SEPERATOR+CAPITAL_CASE+SMALL_CASE));
+		assertTrue(isValidString(st, NUMBERS + SPECIAL_CHARS));
+
 	}
 
 	@Test
@@ -308,8 +306,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(config);
 		assertNotNull(st);
 		assertEquals(10, st.length());
-		assertTrue(contains(st, NUMBERS + SEPERATOR+CAPITAL_CASE+SMALL_CASE));
-		assertFalse(contains(st,SPECIAL_CHARS));
+		assertTrue(isValidString(st, NUMBERS + SEPERATOR + CAPITAL_CASE + SMALL_CASE));
+
 	}
 
 	@Test
@@ -322,8 +320,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(10, st.length());
-		assertTrue(contains(st, SEPERATOR+CAPITAL_CASE+SMALL_CASE));
-		assertFalse(contains(st,SPECIAL_CHARS));
+		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE + SMALL_CASE));
+
 	}
 
 	@Test
@@ -336,8 +334,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(9, st.length());
-		assertTrue(contains(st, SEPERATOR+CAPITAL_CASE));
-		assertFalse(contains(st,SMALL_CASE+SPECIAL_CHARS));
+		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE));
+
 	}
 
 	@Test
@@ -350,9 +348,9 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(15, st.length());
-		assertTrue(contains(st, SEPERATOR+SMALL_CASE));
-		assertFalse(contains(st,CAPITAL_CASE+SPECIAL_CHARS));
-		}
+		assertTrue(isValidString(st, SEPERATOR + SMALL_CASE));
+
+	}
 
 	@Test
 	void testCodeGenerationWithNoSeparator5() {
@@ -364,8 +362,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(2, st.length());
-		assertTrue(contains(st, SEPERATOR+CAPITAL_CASE+SMALL_CASE));
-		assertFalse(contains(st,SPECIAL_CHARS));
+		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE + SMALL_CASE));
+
 	}
 
 	@Test
@@ -378,8 +376,8 @@ class CodeUtilTest {
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(19, st.length());
-		assertTrue(contains(st,SEPERATOR+CAPITAL_CASE+SMALL_CASE));
-		assertFalse(contains(st,SPECIAL_CHARS));
+		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE + SMALL_CASE));
+
 	}
 
 	@Test
@@ -411,4 +409,128 @@ class CodeUtilTest {
 		assertThrows(StringIndexOutOfBoundsException.class, () -> CodeUtil.generate(cd),
 		        "Separator position should not be beyond the length of the generated st");
 	}
+
+	@Test
+	void testnegativelength() {
+		cd.setLength(-1)
+		        .setNumeric(true)
+		        .setSeparator("-");
+
+		assertThrows(NegativeArraySizeException.class, () -> CodeUtil.generate(cd),
+		        "Separator position should not be beyond the length of the generated st");
+	}
+
+	@Test
+	void testsmallerlength() {
+		cd.setLength(2)
+		        .setNumeric(true)
+		        .setSmallCase(true)
+		        .setCapitalCase(true)
+		        .setSpecialChars(true);
+		String st = CodeUtil.generate(cd);
+		assertEquals(2, st.length());
+		assertTrue(isValidString(st, NUMBERS + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS));
+	}
+
+	@Test
+	void testseparator() {
+		cd.setLength(7)
+		        .setNumeric(true)
+		        .setSmallCase(true)
+		        .setCapitalCase(true)
+		        .setSpecialChars(true)
+		        .setSeparator("*")
+		        .setSeparators(new int[] { 3, 4 });
+		String st = CodeUtil.generate(cd);
+		assertEquals(9, st.length());
+		assertTrue(isValidString(st, NUMBERS + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS + "*"));
+	}
+
+	@Test
+	void testseparator2() {
+		cd.setLength(7)
+		        .setSeparator("*")
+		        .setSeparators(new int[] { 3, 4 });
+		String st = CodeUtil.generate(cd);
+		assertEquals(9, st.length());
+		assertTrue(isValidString(st, NUMBERS + "*"));
+	}
+
+	@Test
+	void testseparator3() {
+		cd.setLength(7)
+		        .setSeparator("*");
+		String st = CodeUtil.generate(cd);
+		assertEquals(7, st.length());
+		assertTrue(isValidString(st, NUMBERS + "*"));
+	}
+	
+	@Test
+	void testlen() {
+		cd.setLength(0);
+		String st = CodeUtil.generate(cd);
+		assertEquals(0, st.length());
+		
+	}
+	
+	@Test
+	void testsample() {
+		cd.setLength(7)
+		        
+		        .setSeparator("*")
+		        .setSeparators(new int[] { 0,7 });
+		String st = CodeUtil.generate(cd);
+		assertEquals(9, st.length());
+		assertTrue(isValidString(st, NUMBERS+"*"));
+	}
+	
+	@Test
+	void testsample2() {
+		cd.setLength(7)
+		        
+		        .setSeparator("*")
+		        .setSeparators(new int[] { 3, 4 });
+		String st = CodeUtil.generate(cd);
+		assertEquals(9, st.length());
+		assertTrue(isValidString(st, NUMBERS+"*"));
+	}
+	
+	@Test
+	void testnegseplen() {
+		cd.setLength(7)
+		        .setSeparator("-")
+		        .setSeparators(new int[] { -1,7 });
+		assertThrows(StringIndexOutOfBoundsException.class, () -> CodeUtil.generate(cd));
+	}
+	
+	@Test
+	void minlentest() {
+		cd.setLength(4)
+		.setNumeric(true)
+		.setCapitalCase(true)
+		.setSmallCase(true)
+		.setSpecialChars(true);
+		
+		String st=CodeUtil.generate(cd);
+		assertEquals(4,st.length());
+		assertTrue(isValidString(st, NUMBERS+CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS));
+		
+	}
+	
+	@Test
+	void minlentest2() {
+		cd.setLength(4)
+		.setNumeric(true)
+		.setCapitalCase(true)
+		.setSmallCase(true)
+		.setSpecialChars(true)
+		.setSeparator("-")
+		.setSeparators(new int[] {2});
+		
+		String st=CodeUtil.generate(cd);
+		assertEquals(5,st.length());
+		assertTrue(isValidString(st, NUMBERS+CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS+SEPERATOR));
+		
+	}
+
 }
