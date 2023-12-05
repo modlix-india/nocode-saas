@@ -89,6 +89,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String MISSING_PASSWORD = "missing_password";
 	public static final String FIELDS_MISSING = "fields_missing";
 	public static final String ONLY_SYS_USER_ACTION = "only_sys_user_action";
+	public static final String MANDATORY_APP_CODE = "mandatory_app_code";
 
 	public SecurityMessageResourceService() {
 
