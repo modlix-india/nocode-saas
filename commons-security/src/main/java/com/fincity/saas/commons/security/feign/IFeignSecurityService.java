@@ -101,4 +101,6 @@ public interface IFeignSecurityService {
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader("appCode") String headerAppCode,
 			@PathVariable("applicationCode") String applicationCode);
+	
+	
 }

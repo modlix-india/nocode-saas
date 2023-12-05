@@ -62,6 +62,13 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	@Autowired
 	private RoleService roleService;
+	
+	@Autowired
+	private LimitAccessService limitAccessService;
+	
+	@Autowired
+	private LimitOwnerAccessService limitOwnerAccessService;
+
 
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
 	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -87,6 +94,26 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
 		}
+		
+		FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(ca.getUser()
+		                .getClientId() == ca.getLoggedInFromClientId()),
+
+		        (ca, isOwner) -> this.getAppByCode(ca.getUrlAppCode()),
+
+		        (ca, isOwner, app) -> this.clientService.getClientBy(ca.getClientCode()),
+
+		        (ca, isOwner, app, client) -> isOwner.booleanValue()
+		                ? this.limitOwnerAccessService.readByAppAndClient(app.getId(), client.getId(),
+		                        APPLICATION + " CREATE")
+		                : this.limitAccessService.readByAppAndClient(app.getId(), client.getId(),
+		                        APPLICATION + " CREATE"),
+		        (ca, isOwner, app, client, limitAccess) -> Mono.just(limitAccess)
+
+		);
 
 		Mono<App> normalFlow = FlatMapUtil.flatMapMono(
 

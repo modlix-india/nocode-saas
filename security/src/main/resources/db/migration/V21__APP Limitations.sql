@@ -37,3 +37,17 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+SELECT ID FROM `security_client` WHERE CODE = 'SYSTEM' LIMIT 1 INTO @v_client_system;
+
+SELECT ID FROM `security_user` WHERE USER_NAME = 'sysadmin' and CLIENT_ID = @v_client_system LIMIT 1 INTO @v_user_sysadmin;
+
+INSERT IGNORE INTO `security`.`security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`) VALUES (@v_user_sysadmin, 'Limitations CREATE', 'Limitations create');
+
+INSERT IGNORE INTO `security`.`security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`) VALUES (@v_user_sysadmin, 'Limitations UPDATE', 'Limitations update');
+
+INSERT IGNORE INTO `security`.`security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`) VALUES (@v_user_sysadmin, 'Limitations DELETE', 'Limitations delete');
+
+INSERT IGNORE INTO `security`.`security_role` (`CLIENT_ID`, `NAME`, `DESCRIPTION`) VALUES (@v_user_sysadmin, 'Limitations Manager', 'Role to hold Limitations operations permissions');
+
+INSERT IGNORE INTO `security`.`security_package` (`CLIENT_ID`, `CODE`, `NAME`, `DESCRIPTION`, `BASE`) VALUES (@v_user_sysadmin, 'LIMIT', 'Limitations Management', 'Limitations management roles and permissions will be part of this package', FALSE);
+
