@@ -503,8 +503,10 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				ac -> paramToConditionLRO(params, appCode),
 
 				(ac, tup) -> this.filter(tup.getT1()),
+				
+				(ac, tup, crit) -> params.size() == 1 && params.containsKey(APP_CODE) ? Mono.just(true) : Mono.just(false),
 
-				(ac, tup, crit) -> this.mongoTemplate
+				(ac, tup, crit, canCache) -> this.mongoTemplate
 						.find(new Query(new Criteria().andOperator(crit,
 								new Criteria().orOperator(Criteria.where("notOverridable")
 										.ne(Boolean.TRUE),
@@ -513,7 +515,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 								.with(pageable.getSort()), ListResultObject.class, this.getCollectionName())
 						.collectList(),
 
-				(ac, tup, crit, list) -> {
+				(ac, tup, crit, canCache, list) -> {
 
 					Map<String, ListResultObject> things = new HashMap<>();
 
@@ -537,6 +539,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 					}
 
 					List<ListResultObject> nList = filterBasedOnPageSize(pageable, list, things);
+					
+					if (canCache)
+						this.cacheService.put(appCode + "_READPAGEFILTER", nList, "YOUR_CLIENTID");
 
 					return Mono.just((Page<ListResultObject>) new PageImpl<>(nList, pageable, list.size()));
 				})
