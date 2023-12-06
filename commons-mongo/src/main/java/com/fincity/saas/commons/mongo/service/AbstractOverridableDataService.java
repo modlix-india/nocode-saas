@@ -497,16 +497,18 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 						AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
 
 		Mono<Page<ListResultObject>> returnList = FlatMapUtil.flatMapMono(
-
-				() -> accessCheck,
-
-				ac -> paramToConditionLRO(params, appCode),
-
-				(ac, tup) -> this.filter(tup.getT1()),
 				
-				(ac, tup, crit) -> params.size() == 1 && params.containsKey(APP_CODE) ? Mono.just(true) : Mono.just(false),
+				SecurityContextUtil::getUsersContextAuthentication,
 
-				(ac, tup, crit, canCache) -> this.mongoTemplate
+				(ca) -> accessCheck,
+
+				(ca, ac) -> paramToConditionLRO(params, appCode),
+
+				(ca, ac, tup) -> this.filter(tup.getT1()),
+				
+				(ca, ac, tup, crit) -> params.size() == 1 && params.containsKey(APP_CODE) ? Mono.just(true) : Mono.just(false),
+
+				(ca, ac, tup, crit, canCache) -> this.mongoTemplate
 						.find(new Query(new Criteria().andOperator(crit,
 								new Criteria().orOperator(Criteria.where("notOverridable")
 										.ne(Boolean.TRUE),
@@ -515,7 +517,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 								.with(pageable.getSort()), ListResultObject.class, this.getCollectionName())
 						.collectList(),
 
-				(ac, tup, crit, canCache, list) -> {
+				(ca, ac, tup, crit, canCache, list) -> {
 
 					Map<String, ListResultObject> things = new HashMap<>();
 
@@ -541,7 +543,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 					List<ListResultObject> nList = filterBasedOnPageSize(pageable, list, things);
 					
 					if (canCache)
-						this.cacheService.put(this.getCacheName(appCode, "_READ"), nList, "YOUR_CLIENTID");
+						this.cacheService.put(this.getCacheName(appCode, "_READ_PAGE"), nList, ca.getClientCode());
 
 					return Mono.just((Page<ListResultObject>) new PageImpl<>(nList, pageable, list.size()));
 				})
