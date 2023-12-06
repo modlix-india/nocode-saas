@@ -541,13 +541,13 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 					}
 
 					List<ListResultObject> nList = filterBasedOnPageSize(pageable, list, things);
-					
+
 					if (canCache)
-						this.cacheService.put(this.getCacheName(appCode, "_READ_PAGE"), nList, ca.getClientCode());
+						this.cacheService.cacheValueOrGet(this.getCacheName(appCode, "_READ_PAGE"),
+								() -> Mono.just(nList), ca.getClientCode());
 
 					return Mono.just((Page<ListResultObject>) new PageImpl<>(nList, pageable, list.size()));
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readPageFilterLRO"));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readPageFilterLRO"));
 
 		return returnList.defaultIfEmpty(new PageImpl<>(List.of(), pageable, 0));
 	}
