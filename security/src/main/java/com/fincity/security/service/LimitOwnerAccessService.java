@@ -7,21 +7,29 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.LimitOwnerAccessDAO;
 import com.fincity.security.dto.LimitAccess;
 import com.fincity.security.jooq.tables.records.SecurityAppOwnerLimitationsRecord;
 
 import reactor.core.publisher.Mono;
 
+@Service
 public class LimitOwnerAccessService extends
         AbstractJOOQUpdatableDataService<SecurityAppOwnerLimitationsRecord, ULong, LimitAccess, LimitOwnerAccessDAO> {
 
 	private static final String LIMIT = "limit";
+
+	private static final String SEPERATOR = "_";
+
+	@Autowired
+	private CacheService cacheService;
 
 	@Autowired
 	private SecurityMessageResourceService messageResourceService;
@@ -43,12 +51,6 @@ public class LimitOwnerAccessService extends
 
 		map.put(LIMIT, fields.get(LIMIT));
 		return Mono.just(map);
-	}
-
-	public Mono<LimitAccess> readByAppAndClient(ULong appId, ULong clientId, String objectName) {
-
-		return this.dao.getByAppandClientId(appId, clientId, objectName);
-
 	}
 
 	@Override
@@ -111,6 +113,14 @@ public class LimitOwnerAccessService extends
 		        .switchIfEmpty(this.messageResourceService.throwMessage(
 		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 		                SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "delete", ""));
+
+	}
+
+	public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName) {
+
+		return this.cacheService.cacheValueOrGet(
+		        appId.toString() + SEPERATOR + clientId.toString() + SEPERATOR + objectName,
+		        () -> this.dao.getByAppandClientId(appId, clientId, objectName));
 
 	}
 }

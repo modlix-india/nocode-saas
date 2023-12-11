@@ -382,4 +382,19 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 										.map(e -> DSL.row(e.getKey(), e.getValue())).toList()))
 						.map(e -> true));
 	}
+		
+
+	public Mono<Long> roleCountByAppIdAndClientId(ULong appId, ULong clientId) {
+
+		return Mono.from(this.dslContext.selectCount()
+		        .from(SECURITY_ROLE)
+		        .where(SECURITY_ROLE.CLIENT_ID.eq(clientId)
+		                .and(SECURITY_ROLE.APP_ID.eq(appId))))
+		        .map(Record1::value1)
+		        .map(Number::longValue)
+		        .map(e -> {
+		        	System.out.println(e);
+		        	return e;
+		        });
+	}
 }

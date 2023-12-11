@@ -87,8 +87,8 @@ public class ClientService
 
 	private static final String CLIENT_ID = "clientId";
 	
-	private static final String CLIENT = "Client";
-
+	private static final String CLIENT ="Client";
+	
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
 	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
@@ -121,17 +121,15 @@ public class ClientService
 	private EventCreationService ecService;
 	
 	@Autowired
-	private LimitAccessService limitAccessService;
-	
-	@Autowired
-	private LimitOwnerAccessService limitOwnerAccessService;
-
-	@Autowired
 	private CodeAccessDAO codeAccessDAO;
 
 	@Autowired
 	@Lazy
 	private AuthenticationService authenticationService;
+	
+	@Autowired
+	@Lazy
+	private LimitService limitService;
 
 	@Value("${jwt.token.rememberme.expiry}")
 	private Integer remembermeExpiryInMinutes;
@@ -251,27 +249,7 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.Client_CREATE')")
 	@Override
 	public Mono<Client> create(Client entity) {
-		
-		FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> Mono.just(ca.getUser()
-		                .getClientId() == ca.getLoggedInFromClientId()),
-
-		        (ca, isOwner) -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-		        (ca, isOwner, urlApp) -> this.getClientBy(ca.getClientCode()),
-
-		        (ca, isOwner, urlApp, urlClient) -> isOwner.booleanValue()
-		                ? this.limitOwnerAccessService.readByAppAndClient(urlApp.getId(), urlClient.getId(),
-		                        CLIENT + " CREATE")
-		                : this.limitAccessService.readByAppAndClient(urlApp.getId(), urlClient.getId(),
-		                        CLIENT + " CREATE"),
-
-		        (ca, isOwner, urlApp, urlClient, limitAccess) -> Mono.just(true)
-
-		);
 
 		return SecurityContextUtil.getUsersContextAuthentication()
 		        .flatMap(ca -> super.create(entity).map(e ->

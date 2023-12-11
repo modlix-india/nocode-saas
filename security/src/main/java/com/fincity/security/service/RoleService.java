@@ -53,13 +53,15 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	private static final String ROLE = "role";
 
 	private ClientService clientService;
+	private LimitService limitService;
 	private PermissionService permissionService;
 	private SecurityMessageResourceService securityMessageResourceService;
 
-	public RoleService(ClientService clientService, PermissionService permissionService,
-			SecurityMessageResourceService securityMessageResourceService) {
+	public RoleService(ClientService clientService, LimitService limitService, PermissionService permissionService,
+	        SecurityMessageResourceService securityMessageResourceService) {
 
 		this.clientService = clientService;
+		this.limitService = limitService;
 		this.securityMessageResourceService = securityMessageResourceService;
 		this.permissionService = permissionService;
 	}
@@ -72,32 +74,38 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	@Override
 	@PreAuthorize("hasAuthority('Authorities.Role_CREATE')")
 	public Mono<Role> create(Role entity) {
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> {
-					if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-						return super.create(entity);
 
-					ULong userClientId = ULongUtil.valueOf(ca.getUser()
-							.getClientId());
+		return this.limitService
+		        .canCreate(entity.getAppId(), entity.getClientId(), "Role_CREATE",
+		                (app, client) -> this.dao.roleCountByAppIdAndClientId(app, client))
+		        .flatMap(ca ->
+				{
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        return super.create(entity);
 
-					if (entity.getClientId() == null || userClientId.equals(entity.getClientId())) {
-						entity.setClientId(userClientId);
-						return super.create(entity);
-					}
+			        ULong userClientId = ULongUtil.valueOf(ca.getUser()
+			                .getClientId());
 
-					return clientService.isBeingManagedBy(userClientId, entity.getClientId())
-							.flatMap(managed -> {
-								if (managed.booleanValue())
-									return super.create(entity);
 
-								return Mono.empty();
-							})
-							.switchIfEmpty(Mono.defer(() -> securityMessageResourceService
-									.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
-									.flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
-											StringFormatter.format(msg, "User"))))));
+			        if (entity.getClientId() == null || userClientId.equals(entity.getClientId())) {
+				        entity.setClientId(userClientId);
+				        return super.create(entity);
+			        }
 
-				});
+			        return clientService.isBeingManagedBy(userClientId, entity.getClientId())
+			                .flatMap(managed ->
+							{
+				                if (managed.booleanValue())
+					                return super.create(entity);
+
+				                return Mono.empty();
+			                })
+			                .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
+			                        .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
+			                        .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
+			                                StringFormatter.format(msg, "User"))))));
+
+		        });
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Role_READ')")

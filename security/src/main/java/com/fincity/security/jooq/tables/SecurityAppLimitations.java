@@ -81,7 +81,7 @@ public class SecurityAppLimitations extends TableImpl<SecurityAppLimitationsReco
      * The column <code>security.security_app_limitations.LIMIT</code>. Number
      * of times to perform this task for selected app and client.
      */
-    public final TableField<SecurityAppLimitationsRecord, ULong> LIMIT = createField(DSL.name("LIMIT"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Number of times to perform this task for selected app and client.");
+    public final TableField<SecurityAppLimitationsRecord, Long> LIMIT = createField(DSL.name("LIMIT"), SQLDataType.BIGINT.nullable(false), this, "Number of times to perform this task for selected app and client.");
 
     /**
      * The column <code>security.security_app_limitations.CREATED_BY</code>. ID
@@ -147,7 +147,7 @@ public class SecurityAppLimitations extends TableImpl<SecurityAppLimitationsReco
 
     @Override
     public List<UniqueKey<SecurityAppLimitationsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_APP_LIMITATIONS_UK1_LIMIT_APP_CLIENT);
+        return Arrays.asList(Keys.KEY_SECURITY_APP_LIMITATIONS_UK1_APP_CLIENT_NAME);
     }
 
     @Override
@@ -224,14 +224,14 @@ public class SecurityAppLimitations extends TableImpl<SecurityAppLimitationsReco
     // -------------------------------------------------------------------------
 
     @Override
-    public Row7<ULong, ULong, ULong, String, ULong, ULong, LocalDateTime> fieldsRow() {
+    public Row7<ULong, ULong, ULong, String, Long, ULong, LocalDateTime> fieldsRow() {
         return (Row7) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function7<? super ULong, ? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function7<? super ULong, ? super ULong, ? super ULong, ? super String, ? super Long, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -239,7 +239,7 @@ public class SecurityAppLimitations extends TableImpl<SecurityAppLimitationsReco
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function7<? super ULong, ? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function7<? super ULong, ? super ULong, ? super ULong, ? super String, ? super Long, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

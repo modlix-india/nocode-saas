@@ -4,10 +4,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.LimitAccessDAO;
 import com.fincity.security.dto.LimitAccess;
 import com.fincity.security.jooq.tables.records.SecurityAppLimitationsRecord;
@@ -19,6 +21,11 @@ public class LimitAccessService
         extends AbstractJOOQUpdatableDataService<SecurityAppLimitationsRecord, ULong, LimitAccess, LimitAccessDAO> {
 
 	private static final String LIMIT = "limit";
+
+	private static final String SEPERATOR = "_";
+
+	@Autowired
+	private CacheService cacheService;
 
 	@Override
 	protected Mono<LimitAccess> updatableEntity(LimitAccess entity) {
@@ -39,10 +46,10 @@ public class LimitAccessService
 		return Mono.just(map);
 	}
 
+	public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName) {
 
-	public Mono<LimitAccess> readByAppAndClient(ULong appId, ULong clientId, String objectName) {
-
-		return this.dao.getByAppandClientId(appId, clientId, objectName);
+		return cacheService.cacheValueOrGet(appId.toString() + SEPERATOR + clientId.toString() + SEPERATOR + objectName,
+		        () -> this.dao.getByAppandClientId(appId, clientId, objectName));
 
 	}
 
@@ -63,5 +70,5 @@ public class LimitAccessService
 	public Mono<Integer> delete(ULong id) {
 		return super.delete(id);
 	}
-	
+
 }

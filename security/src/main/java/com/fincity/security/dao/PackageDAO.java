@@ -1,6 +1,5 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
@@ -11,19 +10,15 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Record1;
-import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
@@ -32,7 +27,6 @@ import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
 
 @Component
 public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, ULong, com.fincity.security.dto.Package> {
@@ -380,5 +374,15 @@ public class PackageDAO extends AbstractClientCheckDAO<SecurityPackageRecord, UL
 		return Flux.fromIterable(packages)
 				.flatMap(this::create)
 				.collectList();
+	}
+	
+	public Mono<Long> getPackagesCountByAppAndClientId(ULong appId, ULong clientId) {
+
+		return Mono.from(this.dslContext.selectCount()
+		        .from(SECURITY_PACKAGE)
+		        .where(SECURITY_PACKAGE.APP_ID.eq(appId)
+		                .and(SECURITY_PACKAGE.CLIENT_ID.eq(clientId))))
+		        .map(Record1::value1)
+		        .map(Number::longValue);
 	}
 }

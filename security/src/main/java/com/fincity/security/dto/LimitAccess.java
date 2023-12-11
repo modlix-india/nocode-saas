@@ -20,5 +20,5 @@ public class LimitAccess extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong appId;
 	private ULong clientId;
 	private String name;
-	private ULong limit;
+	private Long limit;
 }
