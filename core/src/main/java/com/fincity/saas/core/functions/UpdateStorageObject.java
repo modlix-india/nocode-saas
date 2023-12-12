@@ -5,16 +5,21 @@ import java.util.Map;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
+import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
@@ -37,6 +42,10 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 	private static final String ISPARTIAL = "isPartial";
 
 	private static final String ID = "_id";
+
+	private static final String APP_CODE = "appCode";
+
+	private static final String CLIENT_CODE = "clientCode";
 
 	private AppDataService appDataService;
 
@@ -68,7 +77,15 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 						DATA_OBJECT_ID, Parameter.of(DATA_OBJECT_ID, Schema.ofString(DATA_OBJECT_ID)),
 
-						DATA_OBJECT, Parameter.of(DATA_OBJECT, Schema.ofObject(DATA_OBJECT))
+						DATA_OBJECT, Parameter.of(DATA_OBJECT, Schema.ofObject(DATA_OBJECT)),
+
+						APP_CODE,
+						Parameter.of(APP_CODE,
+								Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
+
+						CLIENT_CODE,
+						Parameter.of(CLIENT_CODE,
+								Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))
 
 				))
 				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
@@ -93,6 +110,12 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 				.get(DATA_OBJECT)
 				.getAsJsonObject();
 
+		JsonElement appCodeJSON = context.getArguments().get(APP_CODE);
+		String appCode = appCodeJSON == null || appCodeJSON.isJsonNull() ? null : appCodeJSON.getAsString();
+
+		JsonElement clientCodeJSON = context.getArguments().get(CLIENT_CODE);
+		String clientCode = clientCodeJSON == null || clientCodeJSON.isJsonNull() ? null : clientCodeJSON.getAsString();
+
 		if (storageName == null)
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
 					Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
@@ -110,7 +133,8 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 		DataObject dataObject = new DataObject().setData(updatableDataObject);
 
-		return appDataService.update(null, null, storageName, dataObject, !isPartial)
+		return appDataService.update(StringUtil.isNullOrBlank(appCode) ? null : appCode,
+				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObject, !isPartial)
 				.map(updatedObject -> new FunctionOutput(
 						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatableObject))))));
 	}
