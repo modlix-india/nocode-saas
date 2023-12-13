@@ -86,7 +86,7 @@ public class PackageService extends
 	public Mono<Package> create(Package entity) {
 
 		return this.limitService
-		        .canCreate(entity.getAppId(), entity.getClientId(), "Package_CREATE",
+		        .canCreate(entity.getAppId(), entity.getClientId(), "Package",
 		                (app, client) -> this.dao.getPackagesCountByAppAndClientId(app, client))
 
 		        .flatMap(ca ->

@@ -392,9 +392,7 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		                .and(SECURITY_ROLE.APP_ID.eq(appId))))
 		        .map(Record1::value1)
 		        .map(Number::longValue)
-		        .map(e -> {
-		        	System.out.println(e);
-		        	return e;
-		        });
+		        .map(Number::longValue);
+
 	}
 }

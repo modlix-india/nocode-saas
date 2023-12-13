@@ -63,6 +63,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Autowired
 	private RoleService roleService;
 	
+	@Autowired
+	private LimitService limitService;
 	
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
 	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -92,7 +94,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		Mono<App> normalFlow = FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+		        () -> this.limitService.canCreate("App",
+		                (appId, clientId) -> this.dao.getAppsCountByAppIdAndClientId(appId, clientId)),
 
 				ca -> {
 
@@ -117,7 +120,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		Mono<App> explicitAppCreationFlow = FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+		        () -> this.limitService.canCreate("App",
+		                (appId, clientId) -> this.dao.getAppsCountByAppIdAndClientId(appId, clientId)),
+
 
 				ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
 						.getClientId())).map(Client::getId),

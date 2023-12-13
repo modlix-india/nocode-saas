@@ -76,7 +76,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 	public Mono<Role> create(Role entity) {
 
 		return this.limitService
-		        .canCreate(entity.getAppId(), entity.getClientId(), "Role_CREATE",
+		        .canCreate(entity.getAppId(), entity.getClientId(), "Role",
 		                (app, client) -> this.dao.roleCountByAppIdAndClientId(app, client))
 		        .flatMap(ca ->
 				{

@@ -725,5 +725,14 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.collectList();
 
 	}
+	
+	public Mono<Long> getUserCountForSelectedClient(ULong clientId) {
+
+		return Mono.from(this.dslContext.selectCount()
+		        .from(SECURITY_USER)
+		        .where(SECURITY_USER.CLIENT_ID.eq(clientId)))
+		        .map(Record1::value1)
+		        .map(Number::longValue);
+	}
 
 }

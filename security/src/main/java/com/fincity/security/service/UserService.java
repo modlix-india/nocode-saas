@@ -95,6 +95,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	@Autowired
 	private EventCreationService ecService;
+	
+	@Autowired
+	private LimitService limitService;
 
 	@Value("${jwt.key}")
 	private String tokenKey;
@@ -162,7 +165,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		entity.setPassword(null);
 		entity.setPasswordHashed(false);
 
-		return SecurityContextUtil.getUsersContextAuthentication()
+		return this.limitService
+		        .canCreate(entity.getClientId(), "User", clientId -> this.dao.getUserCountForSelectedClient(clientId))
 		        .flatMap(ca ->
 				{
 
