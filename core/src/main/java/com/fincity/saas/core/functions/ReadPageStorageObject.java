@@ -144,8 +144,30 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 		return this.appDataService
 				.readPage(StringUtil.isNullOrBlank(appCode) ? null : appCode,
 						StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dsq)
-				.map(receivedObject -> new FunctionOutput(
-						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
+				.map(receivedObject -> {
+
+					Map<String, Object> pg = Map.of("content", receivedObject.getContent(),
+							"page", Map.of(
+									"first", receivedObject.isFirst(),
+
+									"last", receivedObject.isLast(),
+
+									"size", receivedObject.getSize(),
+
+									"page", receivedObject.getNumber(),
+
+									"totalElements", receivedObject.getTotalElements(),
+
+									"totalPages", receivedObject.getTotalPages(),
+
+									"sort", receivedObject.getSort(),
+
+									"numberOfElements", receivedObject.getNumberOfElements()),
+							"total", receivedObject.getTotalElements());
+
+					return new FunctionOutput(
+							List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(pg)))));
+				});
 	}
 
 }
