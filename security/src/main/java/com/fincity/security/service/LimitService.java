@@ -40,7 +40,7 @@ public class LimitService {
 	@Lazy
 	private AppService appService;
 
-	private static final String CREATE = "create";
+	private static final String CREATE = "CREATE";
 
 	public Mono<Long> fetchLimits(String objectName) {
 
@@ -92,9 +92,9 @@ public class LimitService {
 		        (ca, isOwner, urlApp,
 		                urlClient) -> (isOwner.booleanValue()
 		                        ? this.limitOwnerAccessService.readByAppandClientId(urlApp.getId(), urlClient.getId(),
-		                                getAuthorityName(objectName, "CREATE"))
+		                                getAuthorityName(objectName, CREATE))
 		                        : this.limitAccessService.readByAppandClientId(urlApp.getId(), urlClient.getId(),
-		                                getAuthorityName(objectName, "CREATE"))),
+		                                getAuthorityName(objectName, CREATE))),
 
 		        (ca, isOwner, urlApp, urlClient, limitAccess) ->
 				{
@@ -111,7 +111,7 @@ public class LimitService {
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitService.canCreate"))
 		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
 		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                SecurityMessageResourceService.LIMIT_MISMATCH, CREATE, objectName));
+		                SecurityMessageResourceService.LIMIT_MISMATCH, CREATE.toLowerCase(), objectName));
 
 	}
 
@@ -121,7 +121,7 @@ public class LimitService {
 	}
 
 	public Mono<ContextAuthentication> canCreate(ULong clientId, String objectName,
-	        Function<ULong, Mono<Long>> unaryfunction) {
+	        Function<ULong, Mono<Long>> function) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -134,50 +134,11 @@ public class LimitService {
 
 		        (ca, isOwner, urlApp) -> this.clientService.getClientBy(ca.getUrlClientCode()),
 
-		        (ca, isOwner, urlApp,
-		                urlClient) -> (isOwner.booleanValue()
+		        (ca, isOwner, urlApp, urlClient) -> (isOwner.booleanValue()
 		                        ? this.limitOwnerAccessService.readByAppandClientId(urlApp.getId(), urlClient.getId(),
-		                                getAuthorityName(objectName, "CREATE"))
+		                                getAuthorityName(objectName, CREATE))
 		                        : this.limitAccessService.readByAppandClientId(urlApp.getId(), urlClient.getId(),
-		                                getAuthorityName(objectName, "CREATE"))),
-
-		        (ca, isOwner, urlApp, urlClient, limitAccess) ->
-				{
-			        if (limitAccess == -1)
-				        return Mono.just(true);
-
-			        return unaryfunction.apply(CommonsUtil.nonNullValue(clientId, ULongUtil.valueOf(ca.getUser()
-			                .getClientId())))
-			                .flatMap(e -> Mono.justOrEmpty(e < limitAccess ? true : null));
-		        },
-
-		        (ca, isOwner, urlApp, urlClient, limitAccess, created) -> Mono.just(ca))
-
-		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                SecurityMessageResourceService.LIMIT_MISMATCH, CREATE, objectName));
-
-	}
-
-	public Mono<ContextAuthentication> canCreate(String objectName, BiFunction<ULong, ULong, Mono<Long>> biFunction) {
-
-		return FlatMapUtil.flatMapMono(
-
-		        SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> Mono.just(ca.getLoggedInFromClientId() == ca.getUser()
-		                .getClientId()),
-
-		        (ca, isOwner) -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-		        (ca, isOwner, urlApp) -> this.clientService.getClientBy(ca.getUrlClientCode()),
-
-		        (ca, isOwner, urlApp,
-		                urlClient) -> (isOwner.booleanValue()
-		                        ? this.limitOwnerAccessService.readByAppandClientId(urlApp.getId(), urlClient.getId(),
-		                                getAuthorityName(objectName, "CREATE"))
-		                        : this.limitAccessService.readByAppandClientId(urlApp.getId(), urlClient.getId(),
-		                                getAuthorityName(objectName, "CREATE"))),
+		                                getAuthorityName(objectName, CREATE))),
 
 		        (ca, isOwner, urlApp, urlClient, limitAccess) ->
 				{
@@ -185,7 +146,7 @@ public class LimitService {
 			        if (limitAccess == -1)
 				        return Mono.just(true);
 
-			        return biFunction.apply(urlApp.getId(), urlClient.getId())
+			        return function.apply(CommonsUtil.nonNullValue(clientId, urlClient.getId()))
 			                .flatMap(e -> Mono.justOrEmpty(e < limitAccess ? true : null));
 		        },
 
@@ -195,7 +156,7 @@ public class LimitService {
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitService.canCreate"))
 		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
 		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                SecurityMessageResourceService.LIMIT_MISMATCH, CREATE, objectName));
+		                SecurityMessageResourceService.LIMIT_MISMATCH, CREATE.toLowerCase(), objectName));
 
 	}
 

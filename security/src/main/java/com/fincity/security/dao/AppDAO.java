@@ -6,7 +6,6 @@ import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_P
 import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
 import static com.fincity.security.jooq.tables.SecurityAppUserRole.SECURITY_APP_USER_ROLE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -666,27 +665,22 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        });
 	}
 
-	public Mono<Long> getAppsCountByAppIdAndClientId(ULong appId, ULong clientId) {
+	public Mono<Long> getAppsCountByAppIdAndClientId(ULong clientId) {
 
-		Condition appCond = DSL.and(SECURITY_APP_ACCESS.APP_ID.eq(appId));
+		Condition appAndWriteAccessCond = DSL.and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf((byte) 1)))
+		        .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId));
 
-		return FlatMapUtil.flatMapMono(
-
-		        () -> Flux.from(this.dslContext.select(SECURITY_CLIENT.ID)
-		                .from(SECURITY_CLIENT)
-		                .leftJoin(SECURITY_CLIENT_MANAGE)
-		                .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID))
-		                .where(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)))
-		                .map(Record1::value1)
-		                .collectList(),
-
-		        managedClientList -> Mono.from(this.dslContext.selectCount()
+		return Flux.from(this.dslContext.select(SECURITY_APP.ID)
+		        .from(SECURITY_APP)
+		        .where(SECURITY_APP.CLIENT_ID.eq(clientId))
+		        .union(this.dslContext.select(SECURITY_APP_ACCESS.APP_ID)
 		                .from(SECURITY_APP_ACCESS)
-		                .where(appCond.and(SECURITY_APP_ACCESS.CLIENT_ID.in(managedClientList))))
-		                .map(Record1::value1)
-		                .map(Number::longValue)
-
-		);
+		                .where(appAndWriteAccessCond)))
+		        .map(Record1::value1)
+		        .distinct()
+		        .collectList()
+		        .flatMap(e -> Mono.just(e.size()))
+		        .map(Number::longValue);
 
 	}
 

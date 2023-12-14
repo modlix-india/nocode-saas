@@ -538,28 +538,4 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.collectList();
 	}
 
-	public void getClientCountByAppIdandClientId(ULong appId, ULong clientId) {
-		
-		
-
-	   Flux.from(this.dslContext.select(SECURITY_CLIENT.fields())
-		        .from(SECURITY_CLIENT));
-
-		Flux.from(this.dslContext.select(SECURITY_APP_ACCESS.fields())
-		        .from(SECURITY_APP_ACCESS)
-		        .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
-		                .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))));
-
-		Flux.from(this.dslContext.select(SECURITY_CLIENT.ID)
-		        .from(SECURITY_CLIENT)
-		        .leftJoin(SECURITY_CLIENT_MANAGE)
-		        .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-		        .where(SECURITY_CLIENT.ID.eq(clientId)
-		                .or(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId))))
-		        .map(Record1::value1)
-		        .collectList()
-		        .map(HashSet::new);
-		
-
-	}
 }

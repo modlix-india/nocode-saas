@@ -92,6 +92,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String MANDATORY_APP_CODE = "mandatory_app_code";
 	public static final String LIMIT_MISMATCH = "limit_mismatch";
 	public static final String MANDATORY_APP_ID = "mandatory_app_id";
+	public static final String FORBIDDEN_UPDATE = "forbidden_update";
+	public static final String FORBIDDEN_DELETE = "forbidden_delete";
 
 	public SecurityMessageResourceService() {
 

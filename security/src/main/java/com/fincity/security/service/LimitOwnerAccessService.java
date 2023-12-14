@@ -93,8 +93,6 @@ public class LimitOwnerAccessService extends
 	@PreAuthorize("hasAuthority('Authorities.Limitations_DELETE')")
 	public Mono<Integer> delete(ULong id) {
 
-		Mono<LimitAccess> entity = super.read(id);
-
 		return FlatMapUtil.flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
@@ -104,12 +102,8 @@ public class LimitOwnerAccessService extends
 			        if (!ca.isSystemClient())
 				        return Mono.empty();
 
-			        return entity;
-		        },
-
-		        (ca, ent) -> super.delete(id)
-
-		)
+			        return super.read(id).flatMap(e -> super.delete(e.getId()));
+		        })
 		        .switchIfEmpty(this.messageResourceService.throwMessage(
 		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 		                SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "delete", ""));

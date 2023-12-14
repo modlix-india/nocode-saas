@@ -94,8 +94,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		Mono<App> normalFlow = FlatMapUtil.flatMapMono(
 
-		        () -> this.limitService.canCreate("App",
-		                (appId, clientId) -> this.dao.getAppsCountByAppIdAndClientId(appId, clientId)),
+		        () -> this.limitService.canCreate(entity.getClientId(), "App",
+		                clientId -> this.dao.getAppsCountByAppIdAndClientId(clientId)),
 
 				ca -> {
 
@@ -120,9 +120,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		Mono<App> explicitAppCreationFlow = FlatMapUtil.flatMapMono(
 
-		        () -> this.limitService.canCreate("App",
-		                (appId, clientId) -> this.dao.getAppsCountByAppIdAndClientId(appId, clientId)),
-
+		        () -> this.limitService.canCreate(entity.getClientId(), "App",
+		                clientId -> this.dao.getAppsCountByAppIdAndClientId(clientId)),
 
 				ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
 						.getClientId())).map(Client::getId),
