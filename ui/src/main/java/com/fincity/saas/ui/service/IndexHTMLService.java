@@ -74,8 +74,8 @@ public class IndexHTMLService {
 
 	);
 
-	@Value("${ui.cdn.prefix:}")
-	private String cdnPrefix;
+	@Value("${ui.cdnHostName:}")
+	private String cdnHostName;
 
 	private ApplicationService appService;
 	private CacheService cacheService;
@@ -168,7 +168,7 @@ public class IndexHTMLService {
 		// Here the preference will be for the style from the style service.
 
 		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
-		str.append("<script>window.cdnPrefix='" + this.cdnPrefix + "'</script>");
+		str.append("<script>window.cdnPrefix='" + this.cdnHostName + "'</script>");
 		str.append("<script src=\"/js/index.js\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
@@ -258,9 +258,17 @@ public class IndexHTMLService {
 				sb.setCharAt(i, Character.toLowerCase(c));
 				sb.insert(i, '-');
 			}
+
+			String value = e.getValue();
+
+			if (!StringUtil.safeIsBlank(value))
+				value += " " + this.cdnHostName;
+			else
+				value = this.cdnHostName;
+
 			cspString.append(sb.toString())
 					.append(' ')
-					.append(e.getValue())
+					.append(value)
 					.append(';');
 		}
 
