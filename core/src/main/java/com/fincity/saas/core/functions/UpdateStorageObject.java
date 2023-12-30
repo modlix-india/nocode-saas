@@ -2,11 +2,10 @@ package com.fincity.saas.core.functions;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.StreamSupport;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
@@ -19,7 +18,6 @@ import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
@@ -46,6 +44,10 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 	private static final String APP_CODE = "appCode";
 
 	private static final String CLIENT_CODE = "clientCode";
+
+	private static final String EAGER = "eager";
+
+	private static final String EAGER_FIELDS = "eagerFields";
 
 	private AppDataService appDataService;
 
@@ -85,9 +87,13 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 						CLIENT_CODE,
 						Parameter.of(CLIENT_CODE,
-								Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))
+								Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive(""))),
 
-				))
+						EAGER,
+						Parameter.of(EAGER, Schema.ofBoolean(EAGER).setDefaultValue(new JsonPrimitive(false))),
+
+						EAGER_FIELDS,
+						Parameter.of(EAGER_FIELDS, Schema.ofArray(EAGER_FIELDS), true)))
 				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
 
@@ -109,6 +115,12 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 		JsonObject updatableObject = context.getArguments()
 				.get(DATA_OBJECT)
 				.getAsJsonObject();
+
+		boolean eager = context.getArguments().get(EAGER).getAsBoolean();
+
+		List<String> eagerFields = StreamSupport
+				.stream(context.getArguments().get(EAGER_FIELDS).getAsJsonArray().spliterator(), false)
+				.map(JsonElement::getAsString).toList();
 
 		JsonElement appCodeJSON = context.getArguments().get(APP_CODE);
 		String appCode = appCodeJSON == null || appCodeJSON.isJsonNull() ? null : appCodeJSON.getAsString();
@@ -134,7 +146,8 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 		DataObject dataObject = new DataObject().setData(updatableDataObject);
 
 		return appDataService.update(StringUtil.isNullOrBlank(appCode) ? null : appCode,
-				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObject, !isPartial)
+				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObject, !isPartial, eager,
+				eagerFields)
 				.map(updatedObject -> new FunctionOutput(
 						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatableObject))))));
 	}

@@ -22,7 +22,7 @@ public class FilterCondition extends AbstractCondition {
 	private FilterConditionOperator operator = FilterConditionOperator.EQUALS;
 	private Object value; // NOSONAR
 	private Object toValue; // NOSONAR
-	private List<Object> multiValue; // NOSONAR
+	private List<?> multiValue; // NOSONAR
 	private boolean isValueField = false;
 	private boolean isToValueField = false;
 	private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;

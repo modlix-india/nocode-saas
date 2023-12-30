@@ -10,12 +10,14 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.annotation.PostConstruct;
 
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.expression.ParseException;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -48,7 +51,10 @@ import com.fincity.saas.commons.file.DataFileReader;
 import com.fincity.saas.commons.file.DataFileWriter;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -62,9 +68,12 @@ import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
+import com.fincity.saas.core.enums.StorageRelationConstraint;
+import com.fincity.saas.core.enums.StorageRelationType;
 import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
+import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
@@ -76,10 +85,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
@@ -91,6 +103,7 @@ public class AppDataService {
 	private ConnectionService connectionService;
 
 	@Autowired
+	@Lazy
 	private StorageService storageService;
 
 	@Autowired
@@ -121,6 +134,16 @@ public class AppDataService {
 	private static final String DATA_OBJECT_KEY = "dataObject";
 	private static final String EXISTING_DATA_OBJECT_KEY = "existingDataObject";
 
+	@Data
+	@AllArgsConstructor
+	private static class RelationDataObject {
+		private String fieldName;
+		private boolean isNew;
+		private Map<String, Object> data;
+		private String id;
+		private Throwable exception;
+	}
+
 	@PostConstruct
 	public void init() {
 
@@ -128,7 +151,7 @@ public class AppDataService {
 	}
 
 	public Mono<Map<String, Object>> create(String appCode, String clientCode, String storageName,
-			DataObject dataObject) {
+			DataObject dataObject, Boolean eager, List<String> eagerFields) {
 
 		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
 
@@ -147,12 +170,102 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-						(cona, hasAccess) -> this.createWithTriggers(dataService, conn, storage, dataObject)
-								.flatMap(e -> this.generateEvent(ca, ac, cc, storage, "Create", e, null)),
+						(cona, hasAccess) -> FlatMapUtil.flatMapMono(
+
+								() -> this.processRelationsForCreate(ac, cc, storage, dataObject, dataService, conn),
+
+								updatedDataObject -> this.createWithTriggers(dataService, conn, storage,
+										updatedDataObject),
+
+								(updatedDataObject, created) -> {
+
+									if (!BooleanUtil.safeValueOf(storage.getGenerateEvents()))
+										return Mono.just(created);
+
+									return this.generateEvent(ca, ac, cc, storage, "Create", created, null);
+								}),
 						Storage::getCreateAuth,
-						CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE));
+						CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE),
+
+				(ca, ac, cc, conn, dataService, storage, created) -> this.fillRelatedObjects(ac, cc, storage, created,
+						dataService, conn,
+						BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
+								: eagerFields));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
+	}
+
+	private Mono<Map<String, Object>> fillRelatedObjects(String appCode, String clientCode, Storage storage,
+			Map<String, Object> created, IAppDataService dataService, Connection conn,
+			List<String> eagerFields) {
+
+		if ((storage.getRelations() == null
+				|| storage.getRelations().isEmpty()) ||
+				(eagerFields == null || eagerFields.isEmpty()))
+			return Mono.just(created);
+
+		List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> relationList = prepareMonosForPage(
+				appCode, clientCode, storage, dataService, conn, eagerFields, created);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> Flux.fromIterable(relationList)
+						.flatMap(e -> e)
+						.collectList(),
+
+				tuples -> {
+
+					for (Tuple3<String, StorageRelationType, List<Map<String, Object>>> tuple : tuples) {
+
+						if (tuple.getT2() == StorageRelationType.TO_MANY) {
+							List<String> oldList = (List<String>) created.get(tuple.getT1());
+							created.put(tuple.getT1(),
+									tuple.getT3().stream().sorted(
+											(a, b) -> oldList.indexOf(a.get("_id")) - oldList.indexOf(b.get("_id")))
+											.toList());
+						} else {
+							if (tuple.getT3().isEmpty())
+								created.remove(tuple.getT1());
+							else
+								created.put(tuple.getT1(), tuple.getT3().get(0));
+						}
+					}
+
+					return Mono.just(created);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.fillRelatedObjects"));
+
+	}
+
+	private List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> prepareMonosForPage(
+			String appCode,
+			String clientCode, Storage storage, IAppDataService dataService, Connection conn,
+			List<String> eagerFields, Map<String, Object> created) {
+		List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> relationList = new ArrayList<>();
+
+		for (String key : eagerFields) {
+			StorageRelation relation = storage.getRelations().get(key);
+			Query query = new Query();
+			query.setSize(50);
+			List<String> value = new ArrayList<>();
+			if (created.get(key) instanceof List<?> lst) {
+				value = lst.stream().map(Object::toString).toList();
+			} else if (created.get(key) instanceof String id) {
+				value = List.of(id);
+			}
+			query.setCondition(new FilterCondition().setField("_id").setOperator(FilterConditionOperator.IN)
+					.setMultiValue(value));
+			relationList.add(
+					FlatMapUtil.flatMapMono(
+
+							() -> this.storageService.read(relation.getStorageName(), appCode, clientCode)
+									.map(ObjectWithUniqueID::getObject),
+
+							storageObj -> dataService.readPageAsFlux(conn, storageObj, query).collectList()
+									.map(e -> Tuples.of(key, relation.getRelationType(), e)))
+
+			);
+		}
+		return relationList;
 	}
 
 	private Mono<Map<String, Object>> generateEvent(ContextAuthentication ca, String appCode, String clientCode,
@@ -241,8 +354,178 @@ public class AppDataService {
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericCreate"));
 	}
 
+	private Mono<Tuple2<Boolean, String>> checkOrCreateRelatedObject(String appCode, String clientCode,
+			IAppDataService dataService, Connection conn, String storageName, Map<String, Object> map) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.storageService.read(storageName, appCode, clientCode)
+						.map(ObjectWithUniqueID::getObject),
+				storage -> {
+
+					if (!StringUtil.safeIsBlank(map.get("_id")))
+						return dataService.checkifExists(conn, storage, map.get("_id").toString())
+								.flatMap(e -> {
+									if (e.booleanValue())
+										return Mono.just(Tuples.of(false, map.get("_id").toString()));
+
+									return this.msgService.throwMessage(
+											msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+											AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storageName,
+											map.get("_id").toString());
+								});
+
+					return this
+							.create(appCode, clientCode, storageName, new DataObject().setData(map), false, List.of())
+							.map(e -> Tuples.of(true, e.get("_id").toString()));
+
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.checkOrCreateRelatedObject"));
+	}
+
+	private Mono<DataObject> processRelationsForCreate(String appCode, String clientCode, Storage storage,
+			DataObject dataObject, IAppDataService dataService, Connection conn) {
+
+		if (storage.getRelations() == null || storage.getRelations().isEmpty())
+			return Mono.just(dataObject);
+
+		Map<String, Object> dob = CloneUtil.cloneMapObject(dataObject.getData());
+		List<Mono<RelationDataObject>> relationList = getRelationDataObjectList(appCode, clientCode, storage,
+				dataService, conn,
+				dob);
+
+		if (relationList.isEmpty())
+			return Mono.just(dataObject);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> Flux.fromIterable(relationList).flatMap(e -> e).collectList(),
+
+				list -> {
+
+					List<RelationDataObject> errorObjects = list.stream().filter(e -> !Objects.isNull(e.getException()))
+							.toList();
+					if (!errorObjects.isEmpty())
+						return this.checkAndDeleteCreatedObjects(appCode, clientCode, storage, dataService, conn, list,
+								errorObjects);
+
+					for (Entry<String, List<RelationDataObject>> e : list.stream()
+							.collect(Collectors.groupingBy(RelationDataObject::getFieldName)).entrySet()) {
+
+						if (e.getValue() == null || e.getValue().isEmpty()) {
+							dob.remove(e.getKey());
+							continue;
+						}
+
+						StorageRelation relation = storage.getRelations().get(e.getKey());
+
+						if (relation.getRelationType() == StorageRelationType.TO_MANY) {
+							List<String> ids = e.getValue().stream().map(RelationDataObject::getId).toList();
+							dob.put(e.getKey(), ids);
+						} else {
+							dob.put(e.getKey(), e.getValue().get(0).getId());
+						}
+					}
+
+					dataObject.setData(dob);
+					return Mono.just(dataObject);
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.processRelations"));
+	}
+
+	private Mono<Boolean> deleteCreatedRelatedObject(String appCode, String clientCode, IAppDataService dataService,
+			Connection conn, String storageName, String id) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.storageService.read(storageName, appCode, clientCode)
+						.map(ObjectWithUniqueID::getObject),
+
+				storage -> dataService.delete(conn, storage, id))
+
+				.contextWrite(
+						Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteCreatedRelatedObject"));
+	}
+
+	private Mono<DataObject> checkAndDeleteCreatedObjects(String appCode, String clientCode, Storage storage,
+			IAppDataService dataService, Connection conn, List<RelationDataObject> list,
+			List<RelationDataObject> errorObjects) {
+		List<RelationDataObject> createdList = list.stream()
+				.filter(e -> Objects.isNull(e.getException())).filter(RelationDataObject::isNew)
+				.toList();
+
+		if (createdList.isEmpty())
+			return this.msgService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg,
+							errorObjects.get(0).getException()),
+					CoreMessageResourceService.INVALID_RELATION_DATA,
+					errorObjects.get(0).getFieldName(), errorObjects.get(0).getData().toString());
+
+		return Flux.fromIterable(createdList)
+				.flatMap(e -> this.deleteCreatedRelatedObject(appCode, clientCode, dataService, conn,
+						storage.getRelations().get(e.getFieldName()).getStorageName(), e.getId())
+						.onErrorResume(th -> Mono.just(true)))
+				.collectList()
+				.flatMap(e -> this.msgService.throwMessage(
+						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg,
+								errorObjects.get(0).getException()),
+						CoreMessageResourceService.INVALID_RELATION_DATA,
+						errorObjects.get(0).getFieldName(), errorObjects.get(0).getData().toString()));
+	}
+
+	private List<Mono<RelationDataObject>> getRelationDataObjectList(String appCode, String clientCode, Storage storage,
+			IAppDataService dataService, Connection conn, Map<String, Object> dob) {
+
+		List<Mono<RelationDataObject>> relationList = new ArrayList<>();
+
+		for (Entry<String, StorageRelation> relation : storage.getRelations().entrySet()) {
+
+			String key = relation.getKey();
+
+			if (dob.get(key) == null)
+				continue;
+
+			List<Map<String, Object>> list = convertForeignKeyValuesToObjects(dob, relation, key);
+
+			if (!list.isEmpty()) {
+				for (Map<String, Object> map : list) {
+					relationList.add(this.checkOrCreateRelatedObject(appCode, clientCode, dataService, conn,
+							relation.getValue().getStorageName(), map)
+							.map(e -> new RelationDataObject(key, e.getT1(), map,
+									e.getT2(), null))
+							.onErrorResume(
+									e -> Mono.just(new RelationDataObject(key, false,
+											map, null, e))));
+				}
+			}
+		}
+		return relationList;
+	}
+
+	private List<Map<String, Object>> convertForeignKeyValuesToObjects(Map<String, Object> dob,
+			Entry<String, StorageRelation> relation,
+			String key) {
+
+		List<Map<String, Object>> list = List.of();
+		if (relation.getValue().getRelationType() == StorageRelationType.TO_MANY) {
+
+			if (dob.get(key) instanceof List<?> lst)
+				list = lst.stream()
+						.map(e -> e instanceof Map ? (Map<String, Object>) e : Map.of("_id", (Object) e.toString()))
+						.toList();
+			else if (dob.get(key) instanceof String ids)
+				list = Stream.of(ids.split(",")).map(String::trim).map(id -> Map.of("_id", (Object) id)).toList();
+		} else {
+
+			if (dob.get(key) instanceof Map<?, ?>)
+				list = List.of((Map<String, Object>) dob.get(key));
+			else
+				list = List.of(Map.of("_id", dob.get(key).toString()));
+		}
+		return list;
+	}
+
 	public Mono<Map<String, Object>> update(String appCode, String clientCode, String storageName,
-			DataObject dataObject, Boolean override) {
+			DataObject dataObject, Boolean override, Boolean eager, List<String> eagerFields) {
 
 		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
 
@@ -261,13 +544,108 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-						(cona, hasAccess) -> this.updateWithTriggers(ac, cc, dataService, conn, storage, dataObject,
-								override)
-								.flatMap(e -> this.generateEvent(ca, appCode, clientCode, storage, "Update",
+						(cona, hasAccess) -> FlatMapUtil.flatMapMono(
+
+								() -> this.processRelationsForUpdate(ac, cc, dataService, conn, storage, dataObject,
+										override),
+
+								updatedDataObject -> this.updateWithTriggers(ac, cc, dataService, conn, storage,
+										updatedDataObject,
+										override),
+
+								(updatedDataObject, e) -> this.generateEvent(ca, appCode, clientCode,
+										storage, "Update",
 										e.getT1(), e.getT2().orElse(null))),
 						Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.update"));
+	}
+
+	private Mono<DataObject> processRelationsForUpdate(String appCode, String clientCode, IAppDataService dataService,
+			Connection conn,
+			Storage storage, DataObject dataObject, Boolean override) {
+
+		if (storage.getRelations() == null || storage.getRelations().isEmpty())
+			return Mono.just(dataObject);
+
+		final Map<String, Object> dob = CloneUtil.cloneMapObject(dataObject.getData());
+
+		List<Mono<RelationDataObject>> relationList = getRelationDataObjectList(appCode, clientCode, storage,
+				dataService, conn, dob);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.read(appCode, clientCode, appCode, dob.get("_id").toString(), false, List.of()),
+
+				existing -> Flux.fromIterable(relationList).flatMap(e -> e).collectList(),
+
+				(existing, list) -> {
+
+					List<RelationDataObject> errorObjects = list.stream().filter(e -> !Objects.isNull(e.getException()))
+							.toList();
+					if (!errorObjects.isEmpty())
+						return this.checkAndDeleteCreatedObjects(appCode, clientCode, storage, dataService, conn, list,
+								errorObjects);
+
+					List<Mono<Boolean>> removalList = new ArrayList<>();
+
+					for (Entry<String, List<RelationDataObject>> e : list.stream()
+							.collect(Collectors.groupingBy(RelationDataObject::getFieldName)).entrySet()) {
+
+						if ((override.booleanValue() && !dob.containsKey(e.getKey())
+								&& existing.get(e.getKey()) == null) ||
+								(!override.booleanValue() && !dob.containsKey(e.getKey())))
+							continue;
+
+						StorageRelation relation = storage.getRelations().get(e.getKey());
+
+						if (relation.getUpdateConstraint() == StorageRelationConstraint.CASCADE) {
+							if (!override.booleanValue())
+								continue;
+
+							Set<Tuple2<String, String>> allIds = Set.of();
+							if (existing.get(e.getKey()) instanceof List<?> lst) {
+								allIds = lst.stream().map(id -> Tuples.of(relation.getStorageName(), id.toString()))
+										.collect(Collectors.toSet());
+							} else if (existing.get(e.getKey()) instanceof String id) {
+								allIds = Set.of(Tuples.of(relation.getStorageName(), id));
+							}
+
+							if (dob.get(e.getKey()) instanceof List<?> lst) {
+								for (Object id : lst) {
+									Tuple2<String, String> tup = Tuples.of(relation.getStorageName(), id.toString());
+									if (allIds.contains(tup)) {
+										allIds.remove(tup);
+									}
+								}
+							} else if (dob.get(e.getKey()) instanceof String id) {
+								Tuple2<String, String> tup = Tuples.of(relation.getStorageName(), id.toString());
+								if (allIds.contains(tup)) {
+									allIds.remove(tup);
+								}
+							}
+
+							if (!allIds.isEmpty()) {
+								for (Tuple2<String, String> id : allIds) {
+									removalList
+											.add(this.deleteCreatedRelatedObject(appCode, clientCode, dataService, conn,
+													id.getT1(), id.getT2()).onErrorResume(th -> Mono.just(true)));
+								}
+							}
+						}
+
+						if (relation.getRelationType() == StorageRelationType.TO_MANY) {
+							List<String> ids = e.getValue().stream().map(RelationDataObject::getId).toList();
+							dob.put(e.getKey(), ids);
+						} else {
+							dob.put(e.getKey(), e.getValue().get(0).getId());
+						}
+					}
+
+					dataObject.setData(dob);
+					return Flux.fromIterable(removalList).flatMap(e -> e).collectList()
+							.map(e -> dataObject);
+				});
 	}
 
 	private Mono<Tuple2<Map<String, Object>, Optional<Map<String, Object>>>> updateWithTriggers(String appCode,
@@ -292,14 +670,14 @@ public class AppDataService {
 
 		if (noBeforeUpdate && noAfterUpdate) {
 
-			return this.read(appCode, clientCode, storage.getName(), id)
+			return this.read(appCode, clientCode, storage.getName(), id, false, List.of())
 					.flatMap(existing -> dataService
 							.update(conn, storage, dataObject, override).map(e -> Tuples.of(e, Optional.of(existing))));
 		}
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.read(appCode, clientCode, storage.getName(), id),
+				() -> this.read(appCode, clientCode, storage.getName(), id, false, List.of()),
 
 				existing -> {
 
@@ -322,18 +700,21 @@ public class AppDataService {
 				(existing, beforeUpdate, created) -> {
 
 					if (noAfterUpdate)
-						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created, Optional.of(existing)));
+						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created,
+								Optional.of(existing)));
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(created),
 							EXISTING_DATA_OBJECT_KEY,
 							new Gson().toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_UPDATE, args)
-							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created, Optional.of(existing)));
+							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created,
+									Optional.of(existing)));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.updateWithTriggers"));
 	}
 
-	public Mono<Map<String, Object>> read(String appCode, String clientCode, String storageName, String id) {
+	public Mono<Map<String, Object>> read(String appCode, String clientCode, String storageName, String id,
+			Boolean eager, List<String> eagerFields) {
 
 		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
 
@@ -351,9 +732,14 @@ public class AppDataService {
 				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
-				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
+				(ca, ac, cc, conn, dataService, storage) -> this.<Map<String, Object>>genericOperation(storage,
 						(cona, hasAccess) -> dataService.read(conn, storage, id), Storage::getReadAuth,
-						CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+						CoreMessageResourceService.FORBIDDEN_READ_STORAGE),
+
+				(ca, ac, cc, conn, dataService, storage, read) -> this.fillRelatedObjects(ac, cc, storage, read,
+						dataService, conn,
+						BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
+								: eagerFields));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.read"));
 	}
@@ -379,7 +765,26 @@ public class AppDataService {
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> dataService.readPage(conn, storage, query), Storage::getReadAuth,
-						CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+						CoreMessageResourceService.FORBIDDEN_READ_STORAGE),
+
+				(ca, ac, cc, conn, dataService, storage, page) -> {
+
+					if (storage.getRelations() == null || storage.getRelations().isEmpty())
+						return Mono.just(page);
+
+					return FlatMapUtil.flatMapMono(
+
+							() -> Flux.fromIterable(page.getContent())
+									.flatMap(e -> this.fillRelatedObjects(ac, cc, storage, e, dataService,
+											conn,
+											BooleanUtil.safeValueOf(query.getEager())
+													? storage.getRelations().keySet().stream().toList()
+													: query.getEagerFields()))
+									.collectList(),
+
+							list -> Mono.just(PageableExecutionUtils.getPage(list, page.getPageable(),
+									() -> page.getTotalElements())));
+				});
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
 	}
@@ -402,21 +807,103 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-						(cona, hasAccess) -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage,
-		                        id)
-		                        .flatMap(e -> e.getT2()
-		                                .isPresent()
-		                                        ? this.generateEvent(ca, appCode, clientCode, storage, "Delete",
-		                                                e.getT2()
-		                                                        .orElse(null),
-		                                                null)
-		                                                .map(x -> e.getT1())
-		                                        : Mono.just(e
-		                                                .getT1())),
+						(cona, hasAccess) -> FlatMapUtil.flatMapMono(
+
+								() -> this.deleteRelatedObjects(appCode, clientCode, dataService, conn, storage, id),
+
+								deleted -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage, id),
+
+								(deleted, e) -> {
+									if (!e.getT2().isPresent())
+										return Mono.just(e.getT1());
+
+									return this.generateEvent(ca, appCode, clientCode, storage, "Delete",
+											e.getT2().orElse(null), null).map(x -> e.getT1());
+								}),
 						Storage::getDeleteAuth,
 						CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.delete"));
+	}
+
+	private Mono<Boolean> deleteRelatedObjects(String appCode, String clientCode, IAppDataService dataService,
+			Connection conn, Storage storage, String id) {
+
+		if (storage.getRelations() == null || storage.getRelations().isEmpty())
+			return Mono.just(true);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.read(appCode, clientCode, storage.getName(), id, false, null),
+
+				obj -> {
+
+					List<Mono<Tuple3<Boolean, String, String>>> restrictList = new ArrayList<>();
+
+					for (Entry<String, StorageRelation> relation : storage.getRelations().entrySet()) {
+
+						if (relation.getValue().getDeleteConstraint() == StorageRelationConstraint.NOTHING
+								|| relation.getValue().getDeleteConstraint() == StorageRelationConstraint.CASCADE
+								|| obj.get(relation.getKey()) == null)
+							continue;
+
+						if (obj.get(relation.getKey()) instanceof List lst) {
+							for (Object o : lst)
+								restrictList.add(this.storageService
+										.read(relation.getValue().getStorageName(), appCode, clientCode)
+										.map(ObjectWithUniqueID::getObject)
+										.flatMap(inStorage -> dataService.checkifExists(conn, inStorage,
+												o.toString()))
+										.map(s -> Tuples.of(s, relation.getValue().getStorageName(), o.toString())));
+						} else {
+							restrictList.add(this.storageService
+									.read(relation.getValue().getStorageName(), appCode, clientCode)
+									.map(ObjectWithUniqueID::getObject)
+									.flatMap(inStorage -> dataService.checkifExists(conn, inStorage,
+											obj.get(relation.getKey()).toString())
+											.map(s -> Tuples.of(s, relation.getValue().getStorageName(),
+													obj.get(relation.getKey()).toString()))));
+						}
+					}
+
+					return Flux.fromIterable(restrictList).flatMap(e -> e).collectList().flatMap(lst -> {
+
+						List<Tuple3<Boolean, String, String>> errorList = lst.stream()
+								.filter(e -> e.getT1().booleanValue()).toList();
+
+						if (errorList.isEmpty())
+							return Mono.just(true);
+
+						return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								CoreMessageResourceService.CANNOT_DELETE_STORAGE_WITH_RESTRICT,
+								errorList.stream().map(e -> e.getT2() + ":" + e.getT3()).toList());
+					});
+				},
+
+				(obj, restrict) -> {
+
+					List<Mono<Boolean>> deleteList = new ArrayList<>();
+
+					for (Entry<String, StorageRelation> relation : storage.getRelations().entrySet()) {
+
+						if (relation.getValue().getDeleteConstraint() != StorageRelationConstraint.CASCADE
+								|| obj.get(relation.getKey()) == null)
+							continue;
+
+						if (obj.get(relation.getKey()) instanceof List lst) {
+							for (Object o : lst)
+								deleteList.add(this.delete(appCode, clientCode, relation.getValue().getStorageName(),
+										o.toString()));
+						} else {
+							deleteList.add(this.delete(appCode, clientCode, relation.getValue().getStorageName(),
+									obj.get(relation.getKey()).toString()));
+						}
+					}
+
+					return Flux.fromIterable(deleteList).flatMap(e -> e).collectList().map(e -> true);
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteRelatedObjects"));
 	}
 
 	private Mono<Tuple2<Boolean, Optional<Map<String, Object>>>> deleteWithTriggers(String appCode, String clientCode,
@@ -437,12 +924,12 @@ public class AppDataService {
 			return dataService.delete(conn, storage, id).map(e -> Tuples.of(e, Optional.empty()));
 
 		if (noBeforeDelete && noAfterDelete)
-			return this.read(appCode, clientCode, storage.getName(), id).flatMap(
+			return this.read(appCode, clientCode, storage.getName(), id, false, List.of()).flatMap(
 					existing -> dataService.delete(conn, storage, id).map(e -> Tuples.of(e, Optional.of(existing))));
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.read(appCode, clientCode, storage.getName(), id),
+				() -> this.read(appCode, clientCode, storage.getName(), id, false, List.of()),
 
 				existing -> {
 
@@ -464,13 +951,15 @@ public class AppDataService {
 				(existing, beforeDelete, deleted) -> {
 
 					if (noAfterDelete)
-						return Mono.just(Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted, Optional.of(existing)));
+						return Mono.just(
+								Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted, Optional.of(existing)));
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY,
 							new Gson().toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_DELETE, args)
-							.map(e -> Tuples.<Boolean, Optional<Map<String, Object>>>of( deleted, Optional.of(existing)));
+							.map(e -> Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted,
+									Optional.of(existing)));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericDelete"));
 	}
 
@@ -951,5 +1440,30 @@ public class AppDataService {
 						Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPageVersion"));
+	}
+
+	public Mono<Boolean> deleteStorage(String appCode, String clientCode, String storageName) {
+
+		Mono<Boolean> mono = FlatMapUtil.flatMapMonoWithNull(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+
+				(ca, ac, cc, conn) -> Mono
+						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
+
+				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
+						(cona, hasAccess) -> dataService.deleteStorage(conn, storage), Storage::getDeleteAuth,
+						CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteStorage"));
+
 	}
 }

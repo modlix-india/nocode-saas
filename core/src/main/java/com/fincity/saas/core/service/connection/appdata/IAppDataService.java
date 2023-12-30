@@ -29,6 +29,9 @@ public interface IAppDataService {
 	public Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId);
 
 	public Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String versionId,
-	        Query query);
+			Query query);
 
+	public Mono<Boolean> checkifExists(Connection conn, Storage storage, String id);
+
+	public Mono<Boolean> deleteStorage(Connection conn, Storage storage);
 }
