@@ -55,10 +55,8 @@ public class UniversalController {
 	public Mono<ResponseEntity<String>> indexJSMap(
 			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-		return jsService.getJSMapObject()
-				.map(e -> checkSumObjectToResponseEntity(eTag, e))
-				.switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound()
-						.build())));
+		return Mono.just(ResponseEntity.notFound()
+				.build());
 	}
 
 	@GetMapping(value = "manifest/manifest.json", produces = MimeTypeUtils.APPLICATION_JSON_VALUE)

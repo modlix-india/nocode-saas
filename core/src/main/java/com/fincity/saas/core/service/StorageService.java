@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,8 @@ import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
+import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
@@ -29,11 +32,14 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.enums.StorageTriggerType;
+import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.repository.StorageRepository;
+import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.netflix.discovery.converters.Auto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -131,7 +137,9 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 						return Mono.just(schema);
 
 					return ReactiveSchemaUtil.getSchemaFromRef(schema,
-							this.coreSchemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+							new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+									new CoreSchemaRepository(), this.coreSchemaService
+											.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
 							schema.getRef()).defaultIfEmpty(schema);
 				},
 

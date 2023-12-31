@@ -28,6 +28,8 @@ public class Query implements Serializable {
 	private Boolean count = Boolean.TRUE;
 	private List<String> fields;
 	private Boolean excludeFields = Boolean.FALSE;
+	private Boolean eager = Boolean.FALSE;
+	private List<String> eagerFields;
 
 	public Pageable getPageable() {
 		return PageRequest.of(this.page, this.size, this.sort);

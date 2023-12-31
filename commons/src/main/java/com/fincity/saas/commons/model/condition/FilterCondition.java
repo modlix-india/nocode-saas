@@ -1,11 +1,9 @@
 package com.fincity.saas.commons.model.condition;
 
 import java.util.List;
-import java.util.Map;
 
 import com.fincity.saas.commons.util.StringUtil;
 
-import ch.qos.logback.core.filter.Filter;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -22,7 +20,7 @@ public class FilterCondition extends AbstractCondition {
 	private FilterConditionOperator operator = FilterConditionOperator.EQUALS;
 	private Object value; // NOSONAR
 	private Object toValue; // NOSONAR
-	private List<Object> multiValue; // NOSONAR
+	private List<?> multiValue; // NOSONAR
 	private boolean isValueField = false;
 	private boolean isToValueField = false;
 	private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;
