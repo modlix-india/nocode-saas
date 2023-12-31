@@ -2,11 +2,10 @@ package com.fincity.saas.core.functions;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.StreamSupport;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
@@ -18,7 +17,6 @@ import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.reflect.TypeToken;
@@ -40,6 +38,10 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 	private static final String APP_CODE = "appCode";
 
 	private static final String CLIENT_CODE = "clientCode";
+
+	private static final String EAGER = "eager";
+
+	private static final String EAGER_FIELDS = "eagerFields";
 
 	private AppDataService appDataService;
 
@@ -73,7 +75,13 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
 						CLIENT_CODE,
 						Parameter.of(CLIENT_CODE,
-								Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))))
+								Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive(""))),
+
+						EAGER,
+						Parameter.of(EAGER, Schema.ofBoolean(EAGER).setDefaultValue(new JsonPrimitive(false))),
+
+						EAGER_FIELDS,
+						Parameter.of(EAGER_FIELDS, Schema.ofString(EAGER_FIELDS), true)))
 				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 
 	}
@@ -95,6 +103,12 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 		JsonElement clientCodeJSON = context.getArguments().get(CLIENT_CODE);
 		String clientCode = clientCodeJSON == null || clientCodeJSON.isJsonNull() ? null : clientCodeJSON.getAsString();
 
+		boolean eager = context.getArguments().get(EAGER).getAsBoolean();
+
+		List<String> eagerFields = StreamSupport
+				.stream(context.getArguments().get(EAGER_FIELDS).getAsJsonArray().spliterator(), false)
+				.map(JsonElement::getAsString).toList();
+
 		if (storageName == null || dataObject == null)
 
 			return Mono.just(new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonObject())))));
@@ -105,7 +119,7 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
 		return appDataService.create(StringUtil.isNullOrBlank(appCode) ? null : appCode,
 				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName,
-				new DataObject().setData(dataObj))
+				new DataObject().setData(dataObj), eager, eagerFields)
 				.map(obj -> new FunctionOutput(
 						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(obj))))));
 
