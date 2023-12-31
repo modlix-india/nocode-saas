@@ -1,11 +1,9 @@
 package com.fincity.saas.commons.model.condition;
 
 import java.util.List;
-import java.util.Map;
 
 import com.fincity.saas.commons.util.StringUtil;
 
-import ch.qos.logback.core.filter.Filter;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;

@@ -81,7 +81,7 @@ public class ReadStorageObject extends AbstractReactiveFunction {
 						Parameter.of(EAGER, Schema.ofBoolean(EAGER).setDefaultValue(new JsonPrimitive(false))),
 
 						EAGER_FIELDS,
-						Parameter.of(EAGER_FIELDS, Schema.ofArray(EAGER_FIELDS), true)))
+						Parameter.of(EAGER_FIELDS, Schema.ofString(EAGER_FIELDS), true)))
 
 				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
