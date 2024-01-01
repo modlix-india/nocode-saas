@@ -169,7 +169,7 @@ public class AppDataService {
 				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
-				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
+				(ca, ac, cc, conn, dataService, storage) -> this.<Map<String,Object>>genericOperation(storage,
 						(cona, hasAccess) -> FlatMapUtil.flatMapMono(
 
 								() -> this.processRelationsForCreate(ac, cc, storage, dataObject, dataService, conn),
@@ -763,7 +763,7 @@ public class AppDataService {
 				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
-				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
+				(ca, ac, cc, conn, dataService, storage) -> this.<Page<Map<String, Object>>>genericOperation(storage,
 						(cona, hasAccess) -> dataService.readPage(conn, storage, query), Storage::getReadAuth,
 						CoreMessageResourceService.FORBIDDEN_READ_STORAGE),
 
