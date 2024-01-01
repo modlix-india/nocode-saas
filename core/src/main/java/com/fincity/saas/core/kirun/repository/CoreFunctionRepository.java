@@ -8,12 +8,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.saas.core.functions.CreateStorageObject;
-import com.fincity.saas.core.functions.DeleteStorageObject;
-import com.fincity.saas.core.functions.ReadPageStorageObject;
-import com.fincity.saas.core.functions.ReadStorageObject;
-import com.fincity.saas.core.functions.UpdateStorageObject;
+import com.fincity.saas.core.functions.rest.DeleteRequest;
+import com.fincity.saas.core.functions.rest.GetRequest;
+import com.fincity.saas.core.functions.rest.PatchRequest;
+import com.fincity.saas.core.functions.rest.PostRequest;
+import com.fincity.saas.core.functions.rest.PutRequest;
+import com.fincity.saas.core.functions.storage.CreateStorageObject;
+import com.fincity.saas.core.functions.storage.DeleteStorageObject;
+import com.fincity.saas.core.functions.storage.ReadPageStorageObject;
+import com.fincity.saas.core.functions.storage.ReadStorageObject;
+import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.rest.RestService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -24,7 +30,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 	private List<String> filterableNames;
 
-	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper) {
+	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService) {
 
 		ReactiveFunction createStorage = new CreateStorageObject(appDataService);
 
@@ -36,34 +42,45 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper);
 
-		repoMap.put(createStorage.getSignature()
-		        .getFullName(), createStorage);
+		ReactiveFunction getRequest = new GetRequest(restService);
 
-		repoMap.put(deleteStorage.getSignature()
-		        .getFullName(), deleteStorage);
+		ReactiveFunction postRequest = new PostRequest(restService);
 
-		repoMap.put(updateStorage.getSignature()
-		        .getFullName(), updateStorage);
+		ReactiveFunction putRequest = new PutRequest(restService);
 
-		repoMap.put(readStorage.getSignature()
-		        .getFullName(), readStorage);
+		ReactiveFunction patchRequest = new PatchRequest(restService);
 
-		repoMap.put(readPageStorage.getSignature()
-		        .getFullName(), readPageStorage);
+		ReactiveFunction deleteRequest = new DeleteRequest(restService);
 
-		this.filterableNames = repoMap.values()
-		        .stream()
-		        .map(ReactiveFunction::getSignature)
-		        .map(FunctionSignature::getFullName)
-		        .toList();
+		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
+
+		repoMap.put(deleteStorage.getSignature().getFullName(), deleteStorage);
+
+		repoMap.put(updateStorage.getSignature().getFullName(), updateStorage);
+
+		repoMap.put(readStorage.getSignature().getFullName(), readStorage);
+
+		repoMap.put(readPageStorage.getSignature().getFullName(), readPageStorage);
+
+		repoMap.put(getRequest.getSignature().getFullName(), getRequest);
+
+		repoMap.put(postRequest.getSignature().getFullName(), postRequest);
+
+		repoMap.put(putRequest.getSignature().getFullName(), putRequest);
+
+		repoMap.put(patchRequest.getSignature().getFullName(), patchRequest);
+
+		repoMap.put(deleteRequest.getSignature().getFullName(), deleteRequest);
+
+		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
+				.map(FunctionSignature::getFullName).toList();
 	}
 
 	@Override
 	public Flux<String> filter(String name) {
 		final String filterName = name == null ? "" : name;
 		return Flux.fromStream(filterableNames.stream())
-		        .filter(e -> e.toLowerCase()
-		                .indexOf(filterName.toLowerCase()) != -1);
+				.filter(e -> e.toLowerCase().indexOf(filterName.toLowerCase()) != -1);
 	}
 
 	@Override

@@ -53,7 +53,7 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 		return super.create(entity).flatMap(this::makeOtherNotDefault)
 		        .flatMap(e -> cacheService
 		                .evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
-		                        e.getConnectionType())
+		                        e.getConnectionType(), ":null")
 		                .map(b -> e));
 	}
 
@@ -81,7 +81,11 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 		return super.update(entity).flatMap(this::makeOtherNotDefault)
 		        .flatMap(e -> cacheService
 		                .evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
-		                        e.getConnectionType())
+		                        e.getConnectionType(), ":", e.getName())
+		                .map(b -> e))
+		        .flatMap(e -> cacheService
+		                .evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
+		                        e.getConnectionType(), ":null")
 		                .map(b -> e))
 		        .flatMap(e ->
 				{
@@ -155,7 +159,7 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 						)))
 		                .collectList()
 		                .flatMap(cons -> findRightConnection(name, cons)),
-		        appCode, ":", clientCode, ":", type);
+		        appCode, ":", clientCode, ":", type, ":", name);
 	}
 
 	private Mono<? extends Connection> findRightConnection(String name, List<Connection> cons) {

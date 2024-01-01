@@ -1,10 +1,12 @@
-package com.fincity.saas.core.functions;
+package com.fincity.saas.core.functions.storage;
 
 import java.util.List;
 import java.util.Map;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
@@ -13,18 +15,21 @@ import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
 
-public class DeleteStorageObject extends AbstractReactiveFunction {
+public class ReadStorageObject extends AbstractReactiveFunction {
 
 	private static final String DATA_OBJECT_ID = "dataObjectId";
 
 	private static final String EVENT_RESULT = "result";
 
-	private static final String FUNCTION_NAME = "Delete";
+	private static final String FUNCTION_NAME = "Read";
 
 	private static final String NAME_SPACE = "CoreServices.Storage";
 
@@ -36,7 +41,8 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 
 	private AppDataService appDataService;
 
-	public DeleteStorageObject(AppDataService appDataService) {
+	public ReadStorageObject(AppDataService appDataService) {
+
 		this.appDataService = appDataService;
 	}
 
@@ -53,9 +59,12 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 		Event errorEvent = new Event().setName(Event.ERROR)
 				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
-		return new FunctionSignature().setName(FUNCTION_NAME)
-				.setNamespace(NAME_SPACE)
-				.setParameters(Map.of(STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
+		return new FunctionSignature().setNamespace(NAME_SPACE)
+				.setName(FUNCTION_NAME)
+				.setParameters(Map.of(
+
+						STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
+
 						DATA_OBJECT_ID, Parameter.of(DATA_OBJECT_ID, Schema.ofString(DATA_OBJECT_ID)),
 
 						APP_CODE,
@@ -65,6 +74,7 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 						CLIENT_CODE,
 						Parameter.of(CLIENT_CODE,
 								Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))))
+
 				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
 
@@ -90,13 +100,16 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 					Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
 
 		if (dataObjectId == null)
-			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR, Map.of(Event.ERROR,
-					new JsonPrimitive("Please provide the id for which delete needs to be performed."))))));
 
-		return appDataService.delete(StringUtil.isNullOrBlank(appCode) ? null : appCode,
+			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
+					Map.of(Event.ERROR, new JsonPrimitive("Please provide the data object id."))))));
+
+		Gson gson = new GsonBuilder().create();
+
+		return this.appDataService.read(StringUtil.isNullOrBlank(appCode) ? null : appCode,
 				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObjectId)
-				.map(result -> new FunctionOutput(List.of(EventResult.outputOf(
-						Map.of(EVENT_RESULT, new JsonPrimitive(dataObjectId + " deleted this data object"))))));
+				.map(receivedObject -> new FunctionOutput(
+						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
 	}
 
 }

@@ -29,6 +29,7 @@ import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.rest.RestService;
 import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
@@ -45,13 +46,16 @@ public class FunctionController
 
 	@Autowired
 	private ObjectMapper objectMapper;
+	
+	@Autowired
+	private RestService restService;
 
 	private CoreFunctionRepository coreFunRepo;
 
 	@PostConstruct
 	public void init() {
 
-		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper);
+		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService);
 	}
 
 	@GetMapping("/repositoryFind")
