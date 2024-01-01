@@ -2,7 +2,7 @@ security:
   db:
     url: r2dbc:mysql://localhost:3306/security?serverTimezone=UTC
     username: root
-    password: root
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/security
   subdomain:
@@ -13,7 +13,7 @@ files:
   db:
     url: r2dbc:mysql://localhost:3306/files?serverTimezone=UTC
     username: root
-    password: root
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/files
   resources:
@@ -25,7 +25,7 @@ multi:
   db:
     url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
     username: root
-    password: root
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/multi
 
@@ -33,21 +33,21 @@ schedular:
   db:
     url: r2dbc:mysql://localhost:3306/schedular?serverTimezone=UTC
     username: root
-    password: root
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/schedular
 
 ui:
   mongo:
-    uri: mongodb://raja:raja%40123@localhost:27017/ui?authSource=admin
+    uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
 
 core:
   mongo:
-    uri: mongodb://raja:raja%40123@localhost:27017/core?authSource=admin
+    uri: mongodb://root:Kiran%40123@localhost:27017/core?authSource=admin
   db:
     url: r2dbc:mysql://localhost:3306/core?serverTimezone=UTC
     username: root
-    password: root
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/core
 
@@ -56,7 +56,7 @@ spring:
     enabled: false
 
 redis:
-  url: redis://rajaavinashalli@localhost:6379
+  url: redis://kiran%40123@localhost:6379
   codec: object
   cache:
     prefix: cmn
@@ -75,8 +75,8 @@ logging:
 mq:
   host: localhost
   port: 5672
-  username: guest
-  password: guest
+  username: fincity
+  password: fincity
 
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594
