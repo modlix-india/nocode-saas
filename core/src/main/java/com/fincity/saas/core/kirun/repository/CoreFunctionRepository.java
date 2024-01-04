@@ -8,11 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.saas.core.functions.rest.DeleteRequest;
-import com.fincity.saas.core.functions.rest.GetRequest;
-import com.fincity.saas.core.functions.rest.PatchRequest;
-import com.fincity.saas.core.functions.rest.PostRequest;
-import com.fincity.saas.core.functions.rest.PutRequest;
+import com.fincity.saas.core.functions.rest.CallRequest;
 import com.fincity.saas.core.functions.storage.CreateStorageObject;
 import com.fincity.saas.core.functions.storage.DeleteStorageObject;
 import com.fincity.saas.core.functions.storage.ReadPageStorageObject;
@@ -42,15 +38,13 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper);
 
-		ReactiveFunction getRequest = new GetRequest(restService);
+		ReactiveFunction getRequest = new CallRequest(restService, "GetRequest", "GET", false);
+		ReactiveFunction postRequest = new CallRequest(restService, "PostRequest", "POST", true);
+		ReactiveFunction putRequest = new CallRequest(restService, "PutRequest", "PUT", true);
+		ReactiveFunction patchRequest = new CallRequest(restService, "PatchRequest", "PATCH", true);
+		ReactiveFunction deleteRequest = new CallRequest(restService, "DeleteRequest", "DELETE", false);
+		ReactiveFunction callRequest = new CallRequest(restService, "CallRequest", "", true);
 
-		ReactiveFunction postRequest = new PostRequest(restService);
-
-		ReactiveFunction putRequest = new PutRequest(restService);
-
-		ReactiveFunction patchRequest = new PatchRequest(restService);
-
-		ReactiveFunction deleteRequest = new DeleteRequest(restService);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
 
@@ -71,6 +65,8 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(patchRequest.getSignature().getFullName(), patchRequest);
 
 		repoMap.put(deleteRequest.getSignature().getFullName(), deleteRequest);
+		
+		repoMap.put(callRequest.getSignature().getFullName(), callRequest);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();

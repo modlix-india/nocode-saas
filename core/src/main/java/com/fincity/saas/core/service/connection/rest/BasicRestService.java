@@ -1,91 +1,194 @@
 package com.fincity.saas.core.service.connection.rest;
 
+import java.lang.reflect.Type;
 import java.time.Duration;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriBuilder;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.Connection;
+import com.fincity.saas.core.dto.RestRequest;
 import com.fincity.saas.core.dto.RestResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.reflect.TypeToken;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
 @Service
 public class BasicRestService extends AbstractRestService implements IRestService {
 
 	@Override
-	public Mono<RestResponse> call(String url, MultiValueMap<String, String> headers, String[] pathParameters,
-			Map<String, String> queryParameters, int timeout, Connection connection, String method,
-			JsonElement payload) {
+	public Mono<RestResponse> call(Connection connection, RestRequest request) {
 
-		WebClient.Builder webClientBuilder = WebClient.builder();
-		Duration timeoutDuration = Duration.ofSeconds(timeout == 0 ? 300 : timeout);
+		return FlatMapUtil.flatMapMono(
 
-		if (connection != null) {
-			webClientBuilder = applyConnectionDetails(webClientBuilder, connection);
-			if (connection.getConnectionDetails().containsKey("baseUrl")) {
-				String baseUrl = connection.getConnectionDetails().get("baseUrl").toString();
-				if (baseUrl.trim().endsWith("/"))
-					baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
-				if (url.trim().startsWith("/")) {
-					url = url.substring(1, url.length());
-				}
-				url = baseUrl + '/' + url;
-			}
-		}
-		Gson gson = new Gson();
-		WebClient webClient = webClientBuilder.baseUrl(url).build();
-		WebClient.RequestBodySpec  requestBuilder = webClient.method(HttpMethod.resolve(method)).uri(uriBuilder -> {
-			uriBuilder = applyPathParameters(uriBuilder, pathParameters);
-			uriBuilder = applyQueryParameters(uriBuilder, queryParameters);
-			return uriBuilder.build();
-		}).headers(httpHeaders -> applyHeaders(httpHeaders, headers));
-		if(payload != null) {
-			return requestBuilder.bodyValue(gson.fromJson(payload, Object.class))
-				.exchangeToMono(clientResponse -> handleResponse(clientResponse, timeoutDuration));
-		}
-		return requestBuilder.exchangeToMono(clientResponse -> handleResponse(clientResponse, timeoutDuration));
+				() -> this.applyConnectionDetails(connection, request.getUrl(), request.isIgnoreDefaultHeaders(),
+						request.getTimeout()),
+
+				tup -> {
+
+					HttpHeaders headers = tup.getT2();
+
+					if (request.getHeaders() != null && !request.getHeaders().isEmpty())
+						headers.addAll(request.getHeaders());
+
+					WebClient.Builder webClientBuilder = WebClient.builder();
+					WebClient webClient = webClientBuilder.baseUrl(tup.getT1()).build();
+					WebClient.RequestBodySpec requestBuilder = webClient.method(HttpMethod.resolve(request.getMethod()))
+							.uri(uriBuilder -> {
+								uriBuilder = applyQueryParameters(uriBuilder, request.getQueryParameters());
+								return uriBuilder.build(request.getPathParameters());
+							}).headers(h -> h.addAll(headers));
+
+					if (request.getPayload() == null)
+						return requestBuilder
+								.exchangeToMono(clientResponse -> handleResponse(clientResponse, tup.getT3()));
+
+					if (headers.getContentType() != null
+							&& headers.getContentType().isCompatibleWith(MediaType.MULTIPART_FORM_DATA)) {
+						var newPayload = getFormDataFromJson(request.getPayload());
+						return doRequestWithFormData(newPayload, requestBuilder, tup.getT3());
+					}
+					if (headers.getContentType() != null
+							&& headers.getContentType().isCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED)) {
+						var newPayload = getURLFormDataFromJson(request.getPayload());
+						return doRequestWithFormData(newPayload, requestBuilder, tup.getT3());
+					}
+
+					Gson gson = new Gson();
+					return requestBuilder.bodyValue(gson.fromJson(request.getPayload(), Object.class))
+							.exchangeToMono(clientResponse -> handleResponse(clientResponse, tup.getT3()));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "BasicRestService.call"));
+
 	}
 
-	private WebClient.Builder applyConnectionDetails(WebClient.Builder builder, Connection connection) {
+	private MultipartBodyBuilder getFormDataFromJson(JsonElement payload) {
+
+		MultipartBodyBuilder builder = new MultipartBodyBuilder();
+		if (!payload.isJsonObject())
+			return builder;
+		for (var x : payload.getAsJsonObject().entrySet()) {
+			if (x.getValue().isJsonArray()) {
+				var array = x.getValue().getAsJsonArray();
+				byte[][] byteArrayArray = new byte[array.size()][];
+				for (var y = 0; y < array.size(); y++) {
+					byteArrayArray[y] = decodeToFile(array.get(y).getAsString());
+				}
+
+				builder.part(x.getKey(), byteArrayArray);
+			} else {
+				builder.part(x.getKey(), decodeToFile(x.getValue().getAsString()));
+			}
+		}
+
+		return builder;
+	}
+
+	private MultiValueMap<String, String> getURLFormDataFromJson(JsonElement payload) {
+		if (!payload.isJsonObject())
+			return null;
+		MultiValueMap<String, String> builder = new LinkedMultiValueMap<>();
+		for (var x : payload.getAsJsonObject().entrySet()) {
+
+			builder.add(x.getKey(), x.getValue().getAsString());
+
+		}
+
+		return builder;
+	}
+
+	private static byte[] decodeToFile(String base64EncodedFile) {
+
+		try {
+			byte[] fileData = Base64.getDecoder().decode(base64EncodedFile);
+			return fileData;
+		} catch (Exception e) {
+			System.err.println("Error decoding file: " + e.getMessage());
+		}
+		return new byte[0];
+	}
+
+	private Mono<RestResponse> doRequestWithFormData(MultipartBodyBuilder builder,
+			WebClient.RequestBodySpec requestBuilder, Duration timeoutDuration) {
+		return requestBuilder.bodyValue(builder.build())
+				.exchangeToMono(clientResponse -> handleResponse(clientResponse, timeoutDuration));
+	}
+
+	private Mono<RestResponse> doRequestWithFormData(MultiValueMap<String, String> builder,
+			WebClient.RequestBodySpec requestBuilder, Duration timeoutDuration) {
+		return requestBuilder.bodyValue(builder)
+				.exchangeToMono(clientResponse -> handleResponse(clientResponse, timeoutDuration));
+	}
+
+	private Mono<Tuple3<String, HttpHeaders, Duration>> applyConnectionDetails(Connection connection, String url,
+			boolean ignoreDefaultHeaders, int timeout) {
+
+		HttpHeaders headers = new HttpHeaders();
+
+		Duration timeoutDuration = Duration.ofSeconds(timeout < 1 ? 300 : timeout);
+
+		if (connection == null) {
+			return Mono.just(Tuples.of(url, headers, timeoutDuration));
+		}
 
 		Map<String, Object> connectionDetails = connection.getConnectionDetails();
+
+		if (connectionDetails == null || connectionDetails.isEmpty())
+			return Mono.just(Tuples.of(url, headers, timeoutDuration));
+
+		if (connectionDetails.get("timeout") instanceof Integer conTimeout) {
+			timeoutDuration = Duration.ofSeconds(timeout < 1 ? conTimeout : timeout);
+		}
+
 		if (connectionDetails.containsKey("userName") && connectionDetails.containsKey("password")) {
 			String userName = (String) connectionDetails.get("userName");
 			String password = (String) connectionDetails.get("password");
 			String basicAuth = "Basic "
 					+ java.util.Base64.getEncoder().encodeToString((userName + ":" + password).getBytes());
-			return builder.defaultHeader("Authorization", basicAuth);
+			headers.set("Authorization", basicAuth);
 		}
-		return builder;
-	}
 
-	private UriBuilder applyPathParameters(UriBuilder uriBuilder, String[] pathParameters) {
-		if (pathParameters != null && pathParameters.length > 0) {
-			return uriBuilder.pathSegment(pathParameters);
+		if (connectionDetails.containsKey("defaultHeaders") && !ignoreDefaultHeaders
+				&& connectionDetails.get("defaultHeaders") instanceof Map<?, ?> dHeaders) {
+
+			for (Entry<?, ?> header : dHeaders.entrySet())
+				if (header.getValue() != null)
+					headers.set(header.getKey().toString(), header.getValue().toString());
 		}
-		return uriBuilder;
 
-	}
+		if (connectionDetails.containsKey("baseUrl")) {
 
-	private HttpHeaders applyHeaders(HttpHeaders headers, MultiValueMap<String, String> givenHeaders) {
-		if (givenHeaders == null || givenHeaders.isEmpty())
-			return headers;
-		headers.addAll(givenHeaders);
-		return headers;
+			String baseUrl = connectionDetails.get("baseUrl").toString();
+			if (baseUrl.trim().endsWith("/"))
+				baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
+			if (url.trim().startsWith("/")) {
+				url = url.substring(1, url.length());
+			}
+			url = baseUrl + '/' + url;
+		}
+
+		return Mono.just(Tuples.of(url, headers, timeoutDuration));
 	}
 
 	private UriBuilder applyQueryParameters(UriBuilder uriBuilder, Map<String, String> queryParameters) {
@@ -101,42 +204,56 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 		HttpHeaders headers = clientResponse.headers().asHttpHeaders();
 		MediaType contentType = headers.getContentType();
 
-		if (contentType != null) {
-			RestResponse restResponse = new RestResponse();
-			restResponse.setHeaders(clientResponse.headers().asHttpHeaders().toSingleValueMap());
-			restResponse.setStatus(clientResponse.statusCode().value());
+		RestResponse restResponse = new RestResponse();
+		restResponse.setHeaders(clientResponse.headers().asHttpHeaders().toSingleValueMap());
+		restResponse.setStatus(clientResponse.statusCode().value());
 
-			if (contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
+		if (contentType == null)
+			return clientResponse.bodyToMono(String.class).map(textData -> restResponse.setData(textData))
+					.timeout(timeout).onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 
-				return clientResponse.bodyToMono(String.class)
-						.map(jsonData -> processJsonResponse(jsonData, restResponse)).timeout(timeout)
-						.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
-			} else if (contentType.isCompatibleWith(MediaType.TEXT_PLAIN)) {
+		if (contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
 
-				return clientResponse.bodyToMono(String.class)
-						.map(textData -> processTextResponse(textData, restResponse)).timeout(timeout)
-						.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
-			} else if (contentType.getType().equals(MimeTypeUtils.APPLICATION_OCTET_STREAM.getType())) {
-				return clientResponse.bodyToMono(Resource.class)
-						.map(binaryData -> processBinaryResponse(binaryData, restResponse)).timeout(timeout)
-						.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
-			} else {
-				return Mono.just(createErrorResponse(new UnsupportedOperationException("Unsupported content type")));
-			}
-		} else {
-			return Mono.just(createErrorResponse(new IllegalStateException("Content-Type header not present")));
+			return clientResponse.bodyToMono(String.class)
+					.map(jsonData -> restResponse.setData(processJsonResponse(jsonData))).timeout(timeout)
+					.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
+		} else if (contentType.getType().equals(MimeTypeUtils.APPLICATION_OCTET_STREAM.getType())) {
+
+			return clientResponse.bodyToMono(Resource.class)
+					.map(binaryData -> processBinaryResponse(binaryData, restResponse)).timeout(timeout)
+					.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 		}
+
+		return clientResponse.bodyToMono(String.class).map(textData -> restResponse.setData(textData)).timeout(timeout)
+				.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 	}
 
-	private RestResponse processJsonResponse(String jsonData, RestResponse restResponse) {
-		restResponse.setData(JsonParser.parseString(jsonData));
-		restResponse.setStatus(HttpStatus.OK.value());
-		return restResponse;
-	}
+	private Object processJsonResponse(String jsonData) {
+		Gson gson = new Gson();
+		JsonElement jsonElement = gson.fromJson(jsonData, JsonElement.class);
+		if (jsonElement.isJsonPrimitive()) {
 
-	private RestResponse processTextResponse(String textData, RestResponse restResponse) {
-		restResponse.setData(textData);
-		return restResponse;
+			JsonPrimitive prim = jsonElement.getAsJsonPrimitive();
+			if (prim.isNumber())
+				return prim.getAsNumber();
+			else if (prim.isJsonNull())
+				return null;
+			else if (prim.isBoolean())
+				return prim.getAsBoolean();
+			else if (prim.isString())
+				return prim.getAsString();
+		} else if (jsonElement.isJsonObject()) {
+
+			Type mapType = new TypeToken<Map<String, Object>>() {
+			}.getType();
+			return gson.fromJson(jsonData, mapType);
+		} else if (jsonElement.isJsonArray()) {
+
+			Type arrayType = new TypeToken<List<Object>>() {
+			}.getType();
+			return gson.fromJson(jsonData, arrayType);
+		}
+		return null;
 	}
 
 	private RestResponse processBinaryResponse(Resource binaryData, RestResponse restResponse) {
