@@ -1,4 +1,4 @@
-package com.fincity.saas.core.functions;
+package com.fincity.saas.core.functions.storage;
 
 import java.util.List;
 import java.util.Map;
