@@ -180,6 +180,16 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				.defaultIfEmpty(false);
 	}
 
+	//appcode, clientcode, objectname
+	
+    protected Mono<Boolean> checkLimitAllowed(ContextAuthentication ca, String method, String appCode,
+            String clientCode) {
+        
+        
+        return Mono.just(true);
+    }
+	
+	
 	public String getAccessCheckName() {
 		return this.getObjectName();
 	}
