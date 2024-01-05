@@ -48,4 +48,12 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String STORAGE_SCHEMA_ALWAYS_OBJECT = "storage_schema_always_object";
 
 	public static final String STORAGE_SCHEMA_FIELD_ALREADY_EXISTS = "storage_schema_field_already_exists";
+
+	public static final String STORAGE_RELATION_OBJECT_CREATION_ERROR = "storage_relation_object_creation_error";
+
+	public static final String STORAGE_RELATION_DATA_TYPE_MISMATCH = "storage_relation_data_type_mismatch";
+
+	public static final String INVALID_RELATION_DATA = "invalid_relation_data";
+
+	public static final String CANNOT_DELETE_STORAGE_WITH_RESTRICT = "cannot_delete_storage_with_restrict";
 }

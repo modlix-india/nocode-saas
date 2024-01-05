@@ -192,7 +192,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 
 	}
 
-	private List<Object> multiFieldValue(Object objValue, List<Object> values) {
+	private List<?> multiFieldValue(Object objValue, List<?> values) {
 
 		if (values != null && !values.isEmpty())
 			return values;

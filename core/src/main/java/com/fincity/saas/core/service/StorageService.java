@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -34,9 +35,11 @@ import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.repository.StorageRepository;
+import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.netflix.discovery.converters.Auto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

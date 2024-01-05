@@ -24,6 +24,7 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
     private StorageRelationType relationType;
     private String fieldName;
     private StorageRelationConstraint deleteConstraint = StorageRelationConstraint.NOTHING;
+    private StorageRelationConstraint updateConstraint = StorageRelationConstraint.NOTHING;
 
     public StorageRelation(StorageRelation relation) {
         this.uniqueRelationId = relation.uniqueRelationId;
@@ -31,6 +32,7 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
         this.relationType = relation.relationType;
         this.fieldName = relation.fieldName;
         this.deleteConstraint = relation.deleteConstraint;
+        this.updateConstraint = relation.updateConstraint;
     }
 
     @Override
@@ -53,6 +55,9 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
 
         if (this.deleteConstraint == null)
             this.deleteConstraint = base.deleteConstraint;
+
+        if (this.updateConstraint == null)
+            this.updateConstraint = base.updateConstraint;
 
         return Mono.just(this);
     }
@@ -89,6 +94,11 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
             diff.deleteConstraint = null;
         else
             diff.deleteConstraint = this.deleteConstraint;
+
+        if (!EqualsUtil.safeEquals(this.updateConstraint, inc.updateConstraint))
+            diff.updateConstraint = null;
+        else
+            diff.updateConstraint = this.updateConstraint;
 
         return Mono.just(diff);
     }
