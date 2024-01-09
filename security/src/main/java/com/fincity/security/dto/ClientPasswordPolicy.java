@@ -17,6 +17,7 @@ public class ClientPasswordPolicy extends AbstractUpdatableDTO<ULong, ULong> {
 	private static final long serialVersionUID = -6555166027839281210L;
 
 	private ULong clientId;
+	private ULong appId;
 	private boolean atleastOneUppercase;
 	private boolean atleastoneLowercase;
 	private boolean atleastOneDigit;
