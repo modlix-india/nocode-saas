@@ -383,6 +383,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 					doc.remove(ID);
 					doc.append(ID, id);
 					return Mono.just((Map<String, Object>) doc);
+				},
+
+				(ca, doc, obj) -> {
+					if (storage.getRelations() != null) {
+						updateDocWithIds(storage, doc);
+					}
+					return Mono.just((Map<String, Object>) doc);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.read"))
 				.switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
