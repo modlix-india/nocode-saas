@@ -46,7 +46,7 @@ public class FunctionController
 
 	@Autowired
 	private ObjectMapper objectMapper;
-	
+
 	@Autowired
 	private RestService restService;
 
@@ -100,7 +100,8 @@ public class FunctionController
 	@GetMapping("/repositoryFilter")
 	public Mono<ResponseEntity<List<String>>> filter(@RequestParam(required = false) String appCode,
 			@RequestParam(required = false) String clientCode,
-			@RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos, String filter) {
+			@RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
+			@RequestParam(required = false, defaultValue = "") String filter) {
 
 		return FlatMapUtil.flatMapMono(
 
