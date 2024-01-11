@@ -231,9 +231,27 @@ public class ClientService
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong id) {
 
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-				() -> this.dao.getClientPasswordPolicy(id), id);
+		        () -> this.dao.getClientPasswordPolicy(id), id);
 	}
+	
+	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong appId, ULong clientId) {
 
+		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
+		        () -> this.dao.getClientPasswordPolicyWithAppId(appId, clientId), clientId, ":", appId);
+	}
+	
+	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(String appCode, ULong clientId) {
+
+		return flatMapMono(() -> this.appService.getAppByCode(appCode),
+
+		        app -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
+		                () -> this.dao.getClientPasswordPolicyWithAppId(app.getId(), clientId), clientId, ":",
+		                app.getId())
+
+		);
+
+	}
+	
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_TYPE, () -> this.dao.getClientTypeNCode(id), id);
@@ -328,6 +346,7 @@ public class ClientService
 				.map(ContextUser::getId)
 				.map(ULong::valueOf);
 	}
+	
 
 	// For creating user.
 	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) { // NOSONAR

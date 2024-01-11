@@ -15,12 +15,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function19;
+import org.jooq.Function20;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row19;
+import org.jooq.Row20;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -187,6 +187,11 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
      */
     public final TableField<SecurityClientPasswordPolicyRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
+    /**
+     * The column <code>security.security_client_password_policy.APP_ID</code>.
+     */
+    public final TableField<SecurityClientPasswordPolicyRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED, this, "");
+
     private SecurityClientPasswordPolicy(Name alias, Table<SecurityClientPasswordPolicyRecord> aliased) {
         this(alias, aliased, null);
     }
@@ -240,15 +245,16 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
 
     @Override
     public List<UniqueKey<SecurityClientPasswordPolicyRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_PASSWORD_POLICY_UK1_CLIENT_PWD_POL_ID);
+        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_PASSWORD_POLICY_UK1_APP_ID_CLIENT_PWD_POL_ID);
     }
 
     @Override
     public List<ForeignKey<SecurityClientPasswordPolicyRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_CLIENT_PWD_POL_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_CLIENT_PWD_POL_ID, Keys.FK2_CLIENT_PWD_POL_ID);
     }
 
     private transient SecurityClient _securityClient;
+    private transient SecurityApp _securityApp;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
@@ -256,9 +262,20 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
      */
     public SecurityClient securityClient() {
         if (_securityClient == null)
-            _securityClient = new SecurityClient(this, Keys.FK1_CLIENT_PWD_POL_CLIENT_ID);
+            _securityClient = new SecurityClient(this, Keys.FK1_CLIENT_PWD_POL_ID);
 
         return _securityClient;
+    }
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityApp securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityApp(this, Keys.FK2_CLIENT_PWD_POL_ID);
+
+        return _securityApp;
     }
 
     @Override
@@ -301,18 +318,18 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
     }
 
     // -------------------------------------------------------------------------
-    // Row19 type methods
+    // Row20 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row19<ULong, ULong, Byte, Byte, Byte, Byte, Byte, String, UShort, UShort, UShort, UShort, UShort, UShort, UShort, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row19) super.fieldsRow();
+    public Row20<ULong, ULong, Byte, Byte, Byte, Byte, Byte, String, UShort, UShort, UShort, UShort, UShort, UShort, UShort, ULong, LocalDateTime, ULong, LocalDateTime, ULong> fieldsRow() {
+        return (Row20) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function19<? super ULong, ? super ULong, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super String, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function20<? super ULong, ? super ULong, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super String, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super ULong, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -320,7 +337,7 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function19<? super ULong, ? super ULong, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super String, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function20<? super ULong, ? super ULong, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super Byte, ? super String, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super UShort, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? super ULong, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
