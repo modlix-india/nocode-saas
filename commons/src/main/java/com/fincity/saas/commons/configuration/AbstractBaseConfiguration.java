@@ -64,11 +64,11 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	public void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
 
 		configurer.defaultCodecs()
-		        .jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
+				.jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
 		configurer.defaultCodecs()
-		        .jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
+				.jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
 		configurer.defaultCodecs()
-		        .maxInMemorySize(5242880);
+				.maxInMemorySize(50 * 1024 * 1024);
 		WebFluxConfigurer.super.configureHttpMessageCodecs(configurer);
 	}
 
@@ -111,7 +111,7 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
 	@Bean
 	RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
-	        @Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
+			@Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
 
 		if (connection == null)
 			return null;
@@ -126,6 +126,6 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 			return null;
 
 		return client.connectPubSub()
-		        .async();
+				.async();
 	}
 }
