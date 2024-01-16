@@ -19,6 +19,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.multi.dto.MultiApp;
 import com.fincity.saas.multi.dto.MultiAppUpdate;
 import com.fincity.saas.multi.fiegn.IFeignCoreService;
@@ -265,6 +266,7 @@ public class ApplicationService {
 
         map.put("appCode", appCode);
         map.put("clientCode", clientCode);
+        map.put("uniqueTransportCode", UniqueUtil.shortUUID());
 
         if (map.get("objects") instanceof List<?> lst)
             for (Object e : lst) {
