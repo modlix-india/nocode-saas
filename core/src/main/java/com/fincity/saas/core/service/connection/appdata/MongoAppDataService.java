@@ -55,6 +55,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
+import com.fincity.saas.core.gson.ObjectIdTypeAdapter;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.model.StorageRelation;
@@ -62,6 +63,7 @@ import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mongodb.client.model.Aggregates;
@@ -97,6 +99,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	private static final String MESSAGE = "message";
 
 	private static final String OPERATION = "operation";
+
+	private static final Gson gson = new GsonBuilder().registerTypeAdapter(ObjectId.class, new ObjectIdTypeAdapter())
+			.create();
 
 	@Autowired
 	private MongoClient defaultClient;
@@ -280,7 +285,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				(ca, schema, overridableObject) -> {
 
-					JsonObject job = (new Gson()).toJsonTree(overridableObject)
+					JsonObject job = (gson).toJsonTree(overridableObject)
 							.getAsJsonObject();
 
 					Map<String, JsonElement> map = new HashMap<>();
