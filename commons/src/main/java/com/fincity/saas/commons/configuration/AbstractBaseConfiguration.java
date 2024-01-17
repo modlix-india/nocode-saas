@@ -136,7 +136,8 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 		registry.addMapping("/**")
 				.allowedOriginPatterns("https://*.openbracket.in", "https://*.dev.openbracket.in",
 						"https://*.stage.openbracket.in", "https://openbracket.in", "https://dev.openbracket.in",
-						"https://stage.openbracket.in")
+						"https://stage.openbracket.in", "http://localhost:1234", "http://localhost:3000",
+						"http://localhost:8080")
 				.allowedMethods("*")
 				.maxAge(3600);
 	}
