@@ -99,6 +99,14 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
+	@GetMapping("/internal/explicitInfo/{appCode}")
+	public Mono<ResponseEntity<com.fincity.saas.commons.security.dto.App>> getAppExplicitInfoByCode(
+			@PathVariable("appCode") final String appCode) {
+
+		return this.service.getAppExplicitInfoByCode(appCode)
+				.map(ResponseEntity::ok);
+	}
+
 	@PostMapping("/{id}/access")
 	public Mono<ResponseEntity<Boolean>> addClientAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
 			@RequestBody final ApplicationAccessRequest request) {
