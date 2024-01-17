@@ -14,6 +14,7 @@ import org.springframework.http.codec.json.Jackson2JsonDecoder;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.reactive.config.CorsRegistry;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
@@ -127,5 +128,16 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
 		return client.connectPubSub()
 				.async();
+	}
+
+	@Override
+	public void addCorsMappings(CorsRegistry registry) {
+
+		registry.addMapping("/**")
+				.allowedOriginPatterns("https://*.openbracket.in", "https://*.dev.openbracket.in",
+						"https://*.stage.openbracket.in", "https://openbracket.in", "https://dev.openbracket.in",
+						"https://stage.openbracket.in")
+				.allowedMethods("*")
+				.maxAge(3600);
 	}
 }
