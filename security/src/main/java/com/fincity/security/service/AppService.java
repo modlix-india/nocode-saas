@@ -8,6 +8,8 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.util.Streamable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -69,6 +71,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
 	private static final String CACHE_NAME_APP_FULL_INH_BY_APPCODE = "fullInhAppByCode";
 	private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
+	private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
 
 	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
 	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE";
@@ -119,7 +122,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
-						.getClientId())).map(Client::getId),
+						.getClientId())).map(Client::getId).switchIfEmpty(this.clientService.getSystemClientId()),
 
 				(ca, managedClientId) -> entity.getAppCode() == null
 						? this.dao.generateAppCode(entity).map(entity::setAppCode)
@@ -897,5 +900,24 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findAnyAppsByPage"));
+	}
+
+	public Mono<com.fincity.saas.commons.security.dto.App> getAppExplicitInfoByCode(String appCode) {
+
+		Mono<com.fincity.saas.commons.security.dto.App> appMono = FlatMapUtil.flatMapMono(
+				() -> this.dao.getByAppCodeExplicitInfo(appCode),
+
+				(app) -> Mono.just(app.getClientId()).map(ULong::valueOf)
+						.flatMap(this.clientService::readInternal)
+						.map(Client::getCode)
+						.map(app::setClientCode),
+
+				(x, app) -> Mono.justOrEmpty(app.getExplicitClientId()).map(ULong::valueOf)
+						.flatMap(this.clientService::readInternal)
+						.map(Client::getCode)
+						.map(app::setExplicitOwnerClientCode)
+						.defaultIfEmpty(app));
+
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE_EXPLICIT, () -> appMono, appCode);
 	}
 }

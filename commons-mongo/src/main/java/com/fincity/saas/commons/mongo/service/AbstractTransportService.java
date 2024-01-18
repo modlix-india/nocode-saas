@@ -51,11 +51,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 						.setConditions(List.of(new FilterCondition().setField("uniqueTransportCode")
 								.setValue(entity.getUniqueTransportCode()))))
 				.collectList()
-				.flatMap(e -> e.isEmpty() ? super.create(entity)
-						: this.messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.CONFLICT, msg),
-								AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT,
-								"because transport with " + entity.getUniqueTransportCode() + " already exits"));
+				.flatMap(e -> e.isEmpty() ? super.create(entity) : Mono.just(e.get(0)));
 
 	}
 
@@ -69,12 +65,13 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 				.flatMap(e -> e.isEmpty() ? this.messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Transport", transportCode)
-						: this.applyTransport(forwardedHost, forwardedPort, e.get(0).getId()));
+						: this.applyTransport(forwardedHost, forwardedPort, e.get(0).getId(), null, false));
 
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public Mono<Boolean> applyTransport(String forwardedHost, String forwardedPort, String id) {
+	public Mono<Boolean> applyTransport(String forwardedHost, String forwardedPort, String id,
+			String transportForAppCode, boolean isBaseApp) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -84,12 +81,12 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
 				(ca, transport) -> {
 
-					if (StringUtil.safeIsBlank(transport.getActualAppCode()))
+					if (StringUtil.safeIsBlank(transportForAppCode))
 						return Mono.just(Optional.<Tuple2<String, Boolean>>empty());
 
 					return this.feignSecurityService
 							.findBaseClientCodeForOverride(ca.getAccessToken(), forwardedHost, forwardedPort,
-									ca.getUrlClientCode(), ca.getUrlAppCode(), transport.getActualAppCode())
+									ca.getUrlClientCode(), ca.getUrlAppCode(), transportForAppCode)
 							.map(Optional::of).defaultIfEmpty(Optional.empty());
 				},
 
@@ -111,8 +108,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 									service -> {
 										AbstractOverridableDTO aovdto = service.makeEntity(obj);
 
-										if (!StringUtil.safeIsBlank(transport.getActualAppCode()))
-											aovdto.setAppCode(transport.getActualAppCode());
+										if (!StringUtil.safeIsBlank(transportForAppCode))
+											aovdto.setAppCode(transportForAppCode);
 
 										if (baseCodeTup.isPresent()) {
 											if (baseCodeTup.get().getT2().booleanValue()) {
@@ -145,7 +142,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 										AbstractOverridableDTO sentity = (AbstractOverridableDTO) entity;
 
 										if (sentity != null
-												&& StringUtil.safeEquals(ca.getClientCode(), sentity.getClientCode())) {
+												&& (isBaseApp || StringUtil.safeEquals(ca.getClientCode(),
+														sentity.getClientCode()))) {
 											tentity.setVersion(sentity.getVersion());
 											tentity.setId(sentity.getId());
 											return service.update(tentity);
