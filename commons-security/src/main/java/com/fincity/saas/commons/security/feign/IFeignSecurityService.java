@@ -55,12 +55,15 @@ public interface IFeignSecurityService {
 	@GetMapping("${security.feign.getAppByCode:/api/security/applications/internal/appCode/{appCode}}")
 	public Mono<App> getAppByCode(@PathVariable("appCode") String appCode);
 
+	@GetMapping("${security.feign.getAppByCode:/api/security/applications/internal/explicitInfo/{appCode}}")
+	public Mono<App> getAppExplicitInfoByCode(@PathVariable("appCode") String appCode);
+
 	@GetMapping("${security.feign.getAppById:/api/security/applications/{id}}")
 	public Mono<App> getAppById(@RequestHeader(name = "Authorization", required = false) String authorization,
 			@RequestHeader("X-Forwarded-Host") String forwardedHost,
 			@RequestHeader("X-Forwarded-Port") String forwardedPort,
 			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader("appCode") String headerAppCode, @PathVariable("appCode") String id);
+			@RequestHeader("appCode") String headerAppCode, @PathVariable("id") String id);
 
 	@DeleteMapping("${security.feign.deleteByAppId:/api/security/applications/{id}}")
 	public Mono<Boolean> deleteByAppId(@RequestHeader(name = "Authorization", required = false) String authorization,
@@ -75,7 +78,7 @@ public interface IFeignSecurityService {
 			@RequestHeader("appCode") String headerAppCode,
 			@RequestParam("applicationCode") String applicationCode);
 
-	@GetMapping("${security.feign.createApp:/api/security/applications/}")
+	@PostMapping("${security.feign.createApp:/api/security/applications/}")
 	public Mono<App> createApp(
 			@RequestHeader(name = "Authorization", required = false) String authorization,
 			@RequestHeader("X-Forwarded-Host") String forwardedHost,

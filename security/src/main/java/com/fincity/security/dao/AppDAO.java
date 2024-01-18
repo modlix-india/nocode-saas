@@ -400,6 +400,27 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .map(e -> e.into(App.class));
 	}
 
+	public Mono<com.fincity.saas.commons.security.dto.App> getByAppCodeExplicitInfo(String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> Mono.from(this.dslContext.selectFrom(SECURITY_APP)
+						.where(SECURITY_APP.APP_CODE.eq(appCode))
+						.limit(1))
+						.map(e -> e.into(com.fincity.saas.commons.security.dto.App.class)),
+
+				app -> {
+
+					if (!"EXPLICIT".equals(app.getAppAccessType()))
+						return Mono.just(app);
+
+					return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
+							.where(DSL.and(SECURITY_APP_ACCESS.APP_ID.eq(ULong.valueOf(app.getId())),
+									SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1))))
+							.limit(1)).map(e -> e.getClientId().toBigInteger()).map(app::setExplicitClientId)
+							.defaultIfEmpty(app);
+				});
+	}
+
 	public Mono<String> generateAppCode(App app) {
 
 		String appName = StringUtil.safeValueOf(app.getAppName(), "newapp");

@@ -56,6 +56,7 @@ import reactor.util.function.Tuples;
 public abstract class AbstractOverridableDataService<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>>
 		extends AbstractMongoUpdatableDataService<String, D, R> {
 
+	private static final String READ_PAGE = "_READ_PAGE";
 	private static final String CLIENT_CODE = "clientCode";
 	private static final String APP_CODE = "appCode";
 
@@ -109,7 +110,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				(ca, ent, cent) -> this.accessCheck(ca, CREATE, ent.getAppCode(), ent.getClientCode(), true),
 
 				(ca, ent, cent, hasSecurity) -> hasSecurity.booleanValue() ? Mono.just(cent) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.create"))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).create (accessCheck)"))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
 						this.getObjectName()));
@@ -137,7 +139,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 								: Mono.empty(),
 
 				(cEntity, merged, overridden, created, version) -> this.read(created.getId()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.create"))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).create"))
 				.flatMap(this::evictRecursively)
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
@@ -154,10 +157,18 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				() -> SecurityContextUtil.hasAuthority("Authorities." + this.getAccessCheckName() + "_" + method,
 						ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
 
-				access -> {
+				access -> this.securityService.getAppExplicitInfoByCode(appCode),
+
+				(access, explicitApp) -> {
 					if (ca.getClientCode()
 							.equals(clientCode))
 						return Mono.just(true);
+
+					if ("EXPLICIT".equals(explicitApp.getAppAccessType())) {
+
+						return Mono.just(clientCode.equals(explicitApp.getClientCode())
+								|| clientCode.equals(explicitApp.getExplicitOwnerClientCode()));
+					}
 
 					if (checkAppWriteAccess)
 						return this.securityService.isBeingManaged(ca.getClientCode(), clientCode);
@@ -167,7 +178,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 								.map(e -> e.contains(ca.getClientCode()));
 				},
 
-				(access, managed) -> {
+				(access, explicitApp, managed) -> {
 
 					if (!managed.booleanValue())
 						return Mono.empty();
@@ -176,7 +187,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 							? this.securityService.hasWriteAccess(appCode, ca.getClientCode())
 							: this.securityService.hasReadAccess(appCode, ca.getClientCode());
 				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.accessCheck"))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).accessCheck"))
 				.defaultIfEmpty(false);
 	}
 
@@ -233,7 +245,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 				(entity, ca, hasAccess, merged) -> hasAccess.booleanValue() ? this.applyOverride(entity, merged)
 						: Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.read"))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).read"))
 				.switchIfEmpty(
 						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
 								msg), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
@@ -248,7 +261,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				this::getMergedSources,
 
 				this::applyOverride)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readInternal"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).readInternal"));
 	}
 
 	@Override
@@ -262,7 +276,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 						entity == null ? null : entity.getClientCode(), true),
 
 				(ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.update"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).update"));
 
 		return crtEnt.flatMap(e -> flatMapMonoWithNull(
 
@@ -286,13 +301,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 				(merged, overridden, created, version) -> this.read(created.getId()),
 
-				(m, o, c, v, f) -> {
-
-					this.evictRecursively(f)
-							.subscribe();
-
-					return Mono.just(f);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.update")));
+				(m, o, c, v, f) -> this.evictRecursively(f))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).update")));
 	}
 
 	protected Mono<D> evictRecursively(D f) {
@@ -300,7 +311,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		return FlatMapUtil.flatMapMono(() -> cacheService.evictAll(this.getCacheName(f.getAppCode(), f.getName())),
 
 				(evict1) -> cacheService
-						.evictAll(this.getCacheName(f.getAppCode(), this.getObjectName()) + "_READ_PAGE"),
+						.evictAll(this.getCacheName(f.getAppCode(), this.getObjectName()) + READ_PAGE),
 
 				(evict1, evict2) -> Mono.just(evict1 && evict2).map(e -> f));
 	}
@@ -312,7 +323,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				.switchIfEmpty(messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
 						msg), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 				() -> exists,
 
@@ -334,12 +345,21 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id);
 
-					cacheService.evict(this.getCacheName(entity.getAppCode(), entity.getName()), entity.getClientCode())
-							.subscribe();
-					cacheService.evictAll(this.getCacheName(entity.getAppCode(), this.getObjectName()) + "_READ_PAGE")
-							.subscribe();
-					return super.delete(id);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.delete")).switchIfEmpty(
+					return super.delete(id)
+
+							.flatMap(e -> cacheService
+									.evict(this.getCacheName(entity.getAppCode(), entity.getName()),
+											entity.getClientCode())
+									.map(x -> e))
+
+							.flatMap(e -> cacheService
+									.evictAll(this.getCacheName(entity.getAppCode(), this.getObjectName()) + READ_PAGE)
+									.map(x -> e));
+				})
+
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).delete"))
+				.switchIfEmpty(
 						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 								AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
 	}
@@ -463,7 +483,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 				(ca, access) -> access.getT1()
 						.booleanValue() ? Mono.just(access) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.accessCheckForTransport"))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).accessCheckForTransport"))
 				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
@@ -477,6 +498,13 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) { // NOSONAR
 
 		final String appCode = params.getFirst(APP_CODE) == null ? "" : params.getFirst(APP_CODE);
+		final String clientCode = params.getFirst(CLIENT_CODE);
+
+		int ignoreCount = 1;
+		if (params.containsKey("page"))
+			ignoreCount++;
+		if (params.containsKey("size"))
+			ignoreCount++;
 
 		Mono<Tuple2<Boolean, String>> accessCheck = FlatMapUtil.flatMapMono(
 
@@ -485,8 +513,6 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				ca -> {
 					if (!ca.isAuthenticated())
 						return Mono.empty();
-
-					String clientCode = params.getFirst(CLIENT_CODE);
 
 					if (clientCode == null || ca.getClientCode()
 							.equals(clientCode))
@@ -501,7 +527,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 				(ca, access) -> access.getT1()
 						.booleanValue() ? Mono.just(access) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readPageFilterLRO"))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName()
+								+ "Service).readPageFilterLRO (accessCheck)"))
 				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
@@ -510,45 +538,24 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				(ca) -> accessCheck,
+				ca -> accessCheck,
 
-				(ca, ac) -> Mono.just(params.size() == 1 && params.containsKey(APP_CODE)),
+				(ca, ac) -> this.paramToConditionLRO(params, appCode),
 
-				(ca, ac, canCache) -> {
-					return paramToConditionLRO(params, appCode);
-				},
+				(ca, ac, tup) -> this.filter(tup.getT1()),
 
-				(ca, ac, canCache, tup) -> {
-					return this.filter(tup.getT1());
-				},
+				(ca, ac, tup, crit) -> this.mongoTemplate.find(
+						new Query(new Criteria().andOperator(crit,
+								new Criteria().orOperator(Criteria.where("notOverridable").ne(Boolean.TRUE),
+										Criteria.where(CLIENT_CODE).is(ac.getT2()))))
+								.with(pageable.getSort()),
+						ListResultObject.class, this.getCollectionName()).collectList(),
 
-				(ca, ac, canCache, tup, crit) -> {
-							return this.mongoTemplate.find(
-									new Query(new Criteria().andOperator(crit,
-											new Criteria().orOperator(Criteria.where("notOverridable").ne(Boolean.TRUE),
-													Criteria.where(CLIENT_CODE).is(ac.getT2()))))
-											.with(pageable.getSort()),
-									ListResultObject.class, this.getCollectionName()).collectList();
-						},
-
-				(ca, ac, canCache, tup, crit, list) -> {
-					
-					if (canCache) {
-
-						return FlatMapUtil.flatMapMono(
-
-								() -> cacheService.cacheValueOrGet(
-										this.getCacheName(appCode, this.getObjectName()) + "_READ_PAGE",
-										() -> Mono.just(list), ca.getClientCode()),
-
-								nList -> Mono
-										.just((Page<ListResultObject>) new PageImpl<>(nList, pageable, nList.size())));
-
-					}
+				(ca, ac, tup, crit, list) -> {
 
 					Map<String, ListResultObject> things = new HashMap<>();
 
-					String clientCode = tup.getT2().isEmpty() ? null : tup.getT2().get(tup.getT2().size() - 1);
+					String inClientCode = tup.getT2().isEmpty() ? null : tup.getT2().get(tup.getT2().size() - 1);
 
 					for (ListResultObject lro : list) {
 
@@ -557,21 +564,38 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 							continue;
 						}
 
-						if (lro.getClientCode().equals(clientCode)) {
+						if (lro.getClientCode().equals(inClientCode)) {
 							things.put(lro.getName(), lro);
 						}
 					}
 
-					List<ListResultObject> nList = filterBasedOnPageSize(pageable, list, things);
+					Tuple2<Integer, List<ListResultObject>> nList = filterBasedOnPageSize(pageable, list, things);
 
-					return Mono.just((Page<ListResultObject>) new PageImpl<>(nList, pageable, list.size()));
+					return Mono.just((Page<ListResultObject>) new PageImpl<>(nList.getT2(), pageable, nList.getT1()));
 
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readPageFilterLRO"));
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).readPageFilterLRO"))
+				.defaultIfEmpty(new PageImpl<>(List.of(), pageable, 0));
 
-		return returnList.defaultIfEmpty(new PageImpl<>(List.of(), pageable, 0));
+		if (((params.size() == ignoreCount) || params.isEmpty()))
+			return FlatMapUtil.flatMapMono(
+
+					SecurityContextUtil::getUsersContextAuthentication,
+
+					ca -> this.cacheService.cacheValueOrGet(
+							this.getCacheName(appCode, this.getObjectName()) + READ_PAGE, () -> returnList,
+							ca.getClientCode(),
+							":",
+							"" + pageable.getPageNumber(),
+							":",
+							"" + pageable.getPageSize()));
+
+		return returnList;
 	}
 
-	private List<ListResultObject> filterBasedOnPageSize(Pageable pageable, List<ListResultObject> list,
+	private Tuple2<Integer, List<ListResultObject>> filterBasedOnPageSize(Pageable pageable,
+			List<ListResultObject> list,
 			Map<String, ListResultObject> things) {
 
 		Set<String> ids = things.values()
@@ -587,10 +611,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 		int from = (int) pageable.getOffset();
 		int to = (int) pageable.getOffset() + pageable.getPageSize();
 
-		if (nList.size() > from)
-			return nList.subList(from, to >= nList.size() ? nList.size() : to);
+		int size = nList.size();
 
-		return List.of();
+		if (nList.size() > from)
+			return Tuples.of(size, nList.subList(from, to >= nList.size() ? nList.size() : to));
+
+		return Tuples.of(size, List.of());
 	}
 
 	private Mono<Tuple2<ComplexCondition, List<String>>> paramToConditionLRO(MultiValueMap<String, String> params,
@@ -665,7 +691,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 									.setOperator(ComplexConditionOperator.AND), inheritance);
 					return Mono.just(tup);
 				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.paramToConditionLRO"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).paramToConditionLRO"));
 	}
 
 	public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) {
@@ -720,7 +747,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 					return this.applyChange(name, appCode, clientCode, clonedApp, checksumCode);
 				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.read"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).read"));
 	}
 
 	protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
@@ -745,7 +773,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				},
 
 				(clientCodes, lst, found) -> Mono.just(this.pojoClass.cast(found)))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.readIfExistsInBase"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).readIfExistsInBase"));
 	}
 
 	protected Mono<ObjectWithUniqueID<D>> applyChange(String name, String appCode, String clientCode, D object,
@@ -775,7 +804,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 						.setClientCode(clientCode)
 						.setId(null))
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.createForClient"));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME,
+				"AbstractOverridableService (" + this.getObjectName() + "Service).createForClient"));
 	}
 
 	public TransportObject makeTransportObject(Object entity) {
@@ -819,6 +849,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 							query, Update.update("baseAppCode", newBaseAppCode), this.getCollectionName())
 							.map(e -> true);
 				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractOverridableDataService.updatedBaseAppCode"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).updatedBaseAppCode"));
 	}
 }

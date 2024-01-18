@@ -23,7 +23,7 @@ public interface IFeignUIService {
 			@RequestBody Map<String, Object> request);
 
 	@PostMapping("${core.transport.createAndApply:/api/ui/transports/createAndApply}")
-	public Mono<Boolean> createAndApplyTransport(
+	public Mono<Map<String, Object>> createAndApplyTransport(
 			@RequestHeader(name = "Authorization", required = false) String authorization,
 			@RequestHeader("X-Forwarded-Host") String forwardedHost,
 			@RequestHeader("X-Forwarded-Port") String forwardedPort,

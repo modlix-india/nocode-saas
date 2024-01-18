@@ -889,4 +889,9 @@ public class ClientService
 						SecurityMessageResourceService.ACCESS_CODE_INCORRECT));
 
 	}
+
+	public Mono<ULong> getSystemClientId() {
+		return this.cacheService.cacheValueOrGet("CACHE_SYSTEM_CLIENT_ID", () -> this.dao.getSystemClientId(),
+				"SYSTEM");
+	}
 }

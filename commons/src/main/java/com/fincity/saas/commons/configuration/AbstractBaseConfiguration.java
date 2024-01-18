@@ -14,6 +14,7 @@ import org.springframework.http.codec.json.Jackson2JsonDecoder;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.reactive.config.CorsRegistry;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
@@ -64,11 +65,11 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	public void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
 
 		configurer.defaultCodecs()
-		        .jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
+				.jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
 		configurer.defaultCodecs()
-		        .jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
+				.jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
 		configurer.defaultCodecs()
-		        .maxInMemorySize(5242880);
+				.maxInMemorySize(50 * 1024 * 1024);
 		WebFluxConfigurer.super.configureHttpMessageCodecs(configurer);
 	}
 
@@ -111,7 +112,7 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
 	@Bean
 	RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
-	        @Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
+			@Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
 
 		if (connection == null)
 			return null;
@@ -126,6 +127,18 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 			return null;
 
 		return client.connectPubSub()
-		        .async();
+				.async();
+	}
+
+	@Override
+	public void addCorsMappings(CorsRegistry registry) {
+
+		registry.addMapping("/**")
+				.allowedOriginPatterns("https://*.openbracket.in", "https://*.dev.openbracket.in",
+						"https://*.stage.openbracket.in", "https://openbracket.in", "https://dev.openbracket.in",
+						"https://stage.openbracket.in", "http://localhost:1234", "http://localhost:3000",
+						"http://localhost:8080")
+				.allowedMethods("*")
+				.maxAge(3600);
 	}
 }

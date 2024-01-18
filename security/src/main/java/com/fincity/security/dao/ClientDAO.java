@@ -1,6 +1,7 @@
 package com.fincity.security.dao;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.saas.commons.util.StringUtil.removeSpecialCharacters;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
@@ -270,24 +271,17 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		if (managingClientCode.equals(clientCode))
 			return Mono.just(true);
 
-		Table<SecurityClientRecord> orig = SECURITY_CLIENT.asTable("orig");
-		Table<SecurityClientRecord> manage = SECURITY_CLIENT.asTable("manage");
+		return FlatMapUtil.flatMapMono(
 
-		return Mono.from(this.dslContext.select(DSL.count())
-				.from(SECURITY_CLIENT_MANAGE)
-				.leftJoin(orig)
-				.on(orig.field("ID", ULong.class)
-						.eq(SECURITY_CLIENT_MANAGE.CLIENT_ID))
-				.leftJoin(manage)
-				.on(manage.field("ID", ULong.class)
-						.eq(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID))
-				.where(orig.field("CODE", String.class)
-						.eq(clientCode)
-						.and(manage.field("CODE", String.class)
-								.eq(managingClientCode)))
-				.limit(1))
-				.map(Record1::value1)
-				.map(e -> e == 1);
+				() -> this.getClientBy(clientCode),
+
+				c -> this.getClientBy(managingClientCode),
+
+				(c, m) -> this.getManagingClientId(c.getId())
+						.switchIfEmpty(Mono.defer(this::getSystemClientId)),
+
+				(c, m, mcid) -> Mono.just(m.getId().equals(mcid)))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientDAO.isBeingManagedBy"));
 	}
 
 	public Mono<Boolean> isUserBeingManaged(ULong userId, String clientCode) {
@@ -492,7 +486,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 	public Mono<String> getValidClientCode(String name) {
 
 		name = removeSpecialCharacters(name);
-		
+
 		String clientCode = name.substring(0, name.length() < 5 ? name.length() : 5)
 				.toUpperCase();
 
@@ -530,12 +524,21 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 	}
 
 	public Mono<List<ULong>> getManagingClientIds(List<ULong> list) {
-		
+
 		return Flux.from(this.dslContext.select(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
 				.from(SECURITY_CLIENT_MANAGE)
 				.where(SECURITY_CLIENT_MANAGE.CLIENT_ID.in(list)))
 				.map(Record1::value1)
 				.collectList();
+	}
+
+	public Mono<ULong> getSystemClientId() {
+
+		return Mono.from(this.dslContext.select(SECURITY_CLIENT.ID)
+				.from(SECURITY_CLIENT)
+				.where(SECURITY_CLIENT.TYPE_CODE.eq("SYS"))
+				.limit(1))
+				.map(Record1::value1);
 	}
 
 }
