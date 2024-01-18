@@ -61,10 +61,10 @@ public class LimitAccessService
 		return Mono.just(map);
 	}
 
-	public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName) {
+	public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName, ULong urlClientId) {
 
 		return cacheService.cacheValueOrGet(appId.toString() + SEPERATOR + clientId.toString() + SEPERATOR + objectName,
-		        () -> this.dao.getByAppandClientId(appId, clientId, objectName));
+		        () -> this.dao.getByAppandClientId(appId, clientId, objectName, urlClientId));
 
 	}
 

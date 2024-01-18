@@ -19,4 +19,6 @@ public interface IOverridableDataRepository<D extends AbstractOverridableDTO<D>>
 	public Flux<D> findByNameAndAppCodeAndBaseClientCode(String name, String appCode, String baseClientCode);
 
 	public Mono<Long> countByNameAndAppCodeAndBaseClientCode(String name, String appCode, String clientCode);
+	
+	public Mono<Long> countByAppCodeAndClientCode(String appCode, String clientCode);
 }

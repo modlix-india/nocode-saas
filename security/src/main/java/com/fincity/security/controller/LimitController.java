@@ -1,5 +1,6 @@
 package com.fincity.security.controller;
 
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,14 +16,18 @@ import reactor.core.publisher.Mono;
 @RequestMapping("api/security/limits")
 public class LimitController {
 
-	@Autowired
-	private LimitService limitService;
+    @Autowired
+    private LimitService limitService;
 
-	@GetMapping("/internal/fetchLimits")
-	public Mono<ResponseEntity<Long>> fetchLimits(@RequestParam(required = true) String objectName) {
+    @GetMapping("/internal/getLimit")
+    public Mono<ResponseEntity<Long>> getLimit(
+            @RequestParam(required = true) String appCode,
+            @RequestParam(required = true) ULong clientId,
+            @RequestParam(required = true) String urlClientCode,
+            @RequestParam(required = true) String objectName) {
 
-		return this.limitService.fetchLimits(objectName)
-				.map(ResponseEntity::ok);
-	}
+        return this.limitService.fetchLimits(appCode, clientId, urlClientCode, objectName)
+                .map(ResponseEntity::ok);
+    }
 
 }

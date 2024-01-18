@@ -48,6 +48,12 @@ public interface IFeignSecurityService {
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
 	public Mono<List<String>> appInheritance(@RequestParam String appCode, @RequestParam String urlClientCode,
 			@RequestParam String clientCode);
+	
+	@GetMapping("${security.feign.hasWriteAccess:/api/security/limits/internal/getLimit}")
+    public Mono<Long> getLimit(@RequestParam String appCode, 
+            @RequestParam BigInteger clientId,
+            @RequestParam String urlClientCode,
+            @RequestParam String objectName);
 
 	@GetMapping("${security.feign.token:/api/security/ssl/token/{token}}")
 	public Mono<String> token(@PathVariable("token") String token);
