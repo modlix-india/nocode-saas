@@ -47,11 +47,7 @@ public class ClientPasswordPolicyService extends
 	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 	        '_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
 
-	// check app id whenever applicable
-
-	// create only one record for each client id when app id is null otherwise throw
-	// error
-
+	
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
 	public Mono<ClientPasswordPolicy> create(ClientPasswordPolicy entity) {
@@ -89,8 +85,6 @@ public class ClientPasswordPolicyService extends
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
 	@Override
 	public Mono<ClientPasswordPolicy> read(ULong id) {
-
-		// need to cache here if required
 
 		return super.read(id);
 	}
@@ -132,6 +126,7 @@ public class ClientPasswordPolicyService extends
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
 	@Override
 	public Mono<ClientPasswordPolicy> update(ULong key, Map<String, Object> fields) {
+		
 		return this.dao.canBeUpdated(key)
 		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
 		        .flatMap(e -> cacheService
@@ -160,6 +155,7 @@ public class ClientPasswordPolicyService extends
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
+		
 		return this.dao.canBeUpdated(id)
 		        .flatMap(e -> e.booleanValue() ? super.delete(id) : Mono.empty())
 		        .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_PWD_POLICY, id)) // evict cache is wrong here
@@ -290,7 +286,7 @@ public class ClientPasswordPolicyService extends
 	}
 
 	private String getAppIdIfExists(ULong id) {
-		return StringUtil.safeIsBlank(id) ? ":" + id : "";
+		return !StringUtil.safeIsBlank(id) ? ":" + id : "";
 	}
 
 }

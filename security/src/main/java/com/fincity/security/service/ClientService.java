@@ -348,28 +348,6 @@ public class ClientService
 	}
 	
 
-	// For creating user.
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) { // NOSONAR
-
-		return this.dao.getClientPasswordPolicy(clientId)
-				.map(e -> {// NOSONAR
-							// Need to check the password policy
-					return true;
-				})
-				.switchIfEmpty(Mono.just(Boolean.TRUE));
-	}
-
-	// For existing user.
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong userId, String password) { // NOSONAR
-
-		return this.dao.getClientPasswordPolicy(clientId)
-				.map(e -> { // NOSONAR
-							// Need to check the password policy
-					return true;
-				})
-				.switchIfEmpty(Mono.just(Boolean.TRUE));
-	}
-
 	public Mono<Client> getClientInfoById(BigInteger id) {
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_INFO, () -> this.read(ULong.valueOf(id)), id);
 	}
@@ -650,8 +628,8 @@ public class ClientService
 						SecurityMessageResourceService.USER_ALREADY_CREATED));
 	}
 
-	public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
-			ServerHttpRequest request, ServerHttpResponse response) {
+	public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest, // NOSONAR
+			ServerHttpRequest request, ServerHttpResponse response) { 
 
 		Mono<ContextAuthentication> checkEmailExistsInIndividualClients = FlatMapUtil.flatMapMono(
 

@@ -6,6 +6,7 @@ import java.util.List;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -54,12 +55,22 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	public String getPhoneNumber() {
 		return PLACEHOLDER.equals(this.phoneNumber) ? null : this.phoneNumber;
 	}
-
+	
+	@JsonProperty
+	public void setPassword(String password) {
+		this.password = password;
+	}
+	
+	@JsonProperty
+	public void setPasswordHashed(boolean passwordHashed) {
+		this.passwordHashed = passwordHashed;
+	}
+	
 	@JsonIgnore
 	public String getPassword() {
 		return this.password;
 	}
-
+	
 	@JsonIgnore
 	public boolean isPasswordHashed() {
 		return this.passwordHashed;

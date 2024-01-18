@@ -15,6 +15,7 @@ import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -396,6 +397,17 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(e -> e.into(PastPassword.class))
 				.collectList()
 				.defaultIfEmpty(List.of());
+	}
+	
+	
+	public Mono<LocalDateTime> getLatestPasswordDateBasedOnPolicy(ULong userId) {
+
+		return Mono.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.CREATED_AT)
+		        .from(SECURITY_PAST_PASSWORDS)
+		        .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
+		        .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
+		        .limit(1))
+		        .map(Record1::value1);
 	}
 
 	public Mono<Boolean> checkPermissionAssignedForUser(ULong userId, ULong permissionId) {

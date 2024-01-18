@@ -90,6 +90,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String FIELDS_MISSING = "fields_missing";
 	public static final String MANDATORY_APP_CODE = "mandatory_app_code";
 	public static final String MANDATORY_APP_ID = "mandatory_app_id";
+	public static final String PASSWORD_EXPIRED = "password_expired";
 
 	public SecurityMessageResourceService() {
 

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.jooq.types.ULong;
+import org.jooq.types.UShort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -764,6 +765,19 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 			        return Mono.just(true);
 		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkPasswordInPastPasswords"));
+
+	}
+	
+	public Mono<Boolean> checkPasswordExpiry(ULong userId, UShort expiryInDays) {
+
+		return this.dao.getLatestPasswordDateBasedOnPolicy(userId)
+		        .flatMap(createdAt ->
+				{
+			        LocalDateTime pastDate = createdAt.plusDays(expiryInDays.longValue());
+			        return Mono.just(pastDate.isAfter(LocalDateTime.now()));
+
+		        })
+		        .defaultIfEmpty(true);
 
 	}
 
