@@ -95,7 +95,7 @@ public class ClientPasswordPolicyService extends
 		        .map(e ->
 				{
 			        e.setAtleastOneDigit(entity.isAtleastOneDigit());
-			        e.setAtleastoneLowercase(entity.isAtleastoneLowercase());
+			        e.setAtleastOneLowercase(entity.isAtleastOneLowercase());
 			        e.setAtleastOneSpecialChar(entity.isAtleastOneSpecialChar());
 			        e.setAtleastOneUppercase(entity.isAtleastOneUppercase());
 			        e.setNoFailedAttempts(entity.getNoFailedAttempts());
