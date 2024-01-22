@@ -1,6 +1,5 @@
 package com.fincity.saas.core.service.connection.rest;
 
-import java.net.URL;
 import java.util.EnumMap;
 
 import javax.annotation.PostConstruct;
@@ -58,29 +57,14 @@ public class RestService {
 							.map(e -> Tuples.of(e.getUrlAppCode(), e.getUrlClientCode()));
 				},
 
-				codeTuple -> {
-					if (!connectionName.isBlank()) {
-						return connectionService
-								.find(connectionName, codeTuple.getT1(), codeTuple.getT2(), ConnectionType.REST_API)
-								.switchIfEmpty(
-										msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-												CoreMessageResourceService.CONNECTION_DETAILS_MISSING, connectionName));
-					}
-					try {
-						new URL(request.getUrl());
-					} catch (Exception e) {
-						msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								CoreMessageResourceService.CONNECTION_DETAILS_MISSING, request.getUrl());
-					}
-					return Mono.empty();
-				},
-
+				codeTuple -> connectionService
+						.find(connectionName, codeTuple.getT1(), codeTuple.getT2(), ConnectionType.REST_API)
+						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								CoreMessageResourceService.CONNECTION_DETAILS_MISSING, connectionName)),
 				(codeTuple, connection) -> {
 					return Mono.just(this.services.get(
 							connection != null ? connection.getConnectionSubType() : ConnectionSubType.REST_API_BASIC));
-				},
-
-				(codeTuple, connection, service) -> service.call(connection, request)
+				}, (codeTuple, connection, service) -> service.call(connection, request)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RestService.doCall"));
 

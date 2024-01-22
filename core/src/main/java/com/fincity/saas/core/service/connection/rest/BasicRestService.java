@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
@@ -21,10 +23,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriBuilder;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.dto.RestRequest;
 import com.fincity.saas.core.dto.RestResponse;
+import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -38,13 +42,19 @@ import reactor.util.function.Tuples;
 @Service
 public class BasicRestService extends AbstractRestService implements IRestService {
 
+	@Autowired
+	private CoreMessageResourceService msgService;
+
 	@Override
 	public Mono<RestResponse> call(Connection connection, RestRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.applyConnectionDetails(connection, request.getUrl(), request.isIgnoreDefaultHeaders(),
-						request.getTimeout()),
+				() -> this
+						.applyConnectionDetails(connection, request.getUrl(), request.isIgnoreDefaultHeaders(),
+								request.getTimeout())
+						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								CoreMessageResourceService.CONNECTION_DETAILS_MISSING, connection.getName())),
 
 				tup -> {
 
@@ -148,14 +158,10 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
 		Duration timeoutDuration = Duration.ofSeconds(timeout < 1 ? 300 : timeout);
 
-		if (connection == null) {
-			return Mono.just(Tuples.of(url, headers, timeoutDuration));
-		}
-
 		Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
 		if (connectionDetails == null || connectionDetails.isEmpty())
-			return Mono.just(Tuples.of(url, headers, timeoutDuration));
+			return Mono.empty();
 
 		if (connectionDetails.get("timeout") instanceof Integer conTimeout) {
 			timeoutDuration = Duration.ofSeconds(timeout < 1 ? conTimeout : timeout);
