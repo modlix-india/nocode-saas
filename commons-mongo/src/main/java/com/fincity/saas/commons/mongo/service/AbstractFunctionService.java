@@ -105,6 +105,7 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 								AbstractMongoMessageResourceService.NAME_CHANGE);
 					}
 
+					existing.setExecuteAuth(entity.getExecuteAuth());
 					existing.setDefinition(entity.getDefinition());
 					existing.setVersion(existing.getVersion() + 1)
 							.setPermission(entity.getPermission());
