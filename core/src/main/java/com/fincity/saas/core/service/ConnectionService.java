@@ -51,10 +51,10 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 	@Override
 	public Mono<Connection> create(Connection entity) {
 		return super.create(entity).flatMap(this::makeOtherNotDefault)
-		        .flatMap(e -> cacheService
-		                .evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
-		                        e.getConnectionType())
-		                .map(b -> e));
+				.flatMap(e -> cacheService
+						.evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
+								e.getConnectionType(), ":null")
+						.map(b -> e));
 	}
 
 	private Mono<Connection> makeOtherNotDefault(Connection conn) {
@@ -63,37 +63,40 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 			return Mono.just(conn);
 
 		Criteria criteria = new Criteria().andOperator(Criteria.where("id")
-		        .ne(conn.getId()),
-		        Criteria.where("appCode")
-		                .is(conn.getAppCode()),
-		        Criteria.where("clientCode")
-		                .is(conn.getClientCode()),
-		        Criteria.where("connectionType")
-		                .is(conn.getConnectionType()));
+				.ne(conn.getId()),
+				Criteria.where("appCode")
+						.is(conn.getAppCode()),
+				Criteria.where("clientCode")
+						.is(conn.getClientCode()),
+				Criteria.where("connectionType")
+						.is(conn.getConnectionType()));
 
 		return this.mongoTemplate
-		        .updateMulti(Query.query(criteria), Update.update("defaultConnection", Boolean.FALSE), pojoClass)
-		        .map(e -> conn);
+				.updateMulti(Query.query(criteria), Update.update("defaultConnection", Boolean.FALSE), pojoClass)
+				.map(e -> conn);
 	}
 
 	@Override
 	public Mono<Connection> update(Connection entity) {
 		return super.update(entity).flatMap(this::makeOtherNotDefault)
-		        .flatMap(e -> cacheService
-		                .evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
-		                        e.getConnectionType())
-		                .map(b -> e))
-		        .flatMap(e ->
-				{
+				.flatMap(e -> cacheService
+						.evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
+								e.getConnectionType(), ":", e.getName())
+						.map(b -> e))
+				.flatMap(e -> cacheService
+						.evict(CACHE_NAME_CONNECTION, e.getAppCode(), ":", e.getClientCode(), ":",
+								e.getConnectionType(), ":null")
+						.map(b -> e))
+				.flatMap(e -> {
 
-			        if (pubAsyncCommand == null)
-				        return Mono.just(e);
+					if (pubAsyncCommand == null)
+						return Mono.just(e);
 
-			        return Mono
-			                .fromCompletionStage(
-			                        pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
-			                .map(x -> e);
-		        });
+					return Mono
+							.fromCompletionStage(
+									pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
+							.map(x -> e);
+				});
 	}
 
 	@Override
@@ -105,7 +108,7 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 				return Mono.just(e);
 
 			return Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, "Connection : " + id))
-			        .map(x -> e);
+					.map(x -> e);
 		});
 	}
 
@@ -114,21 +117,20 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
 		return flatMapMono(
 
-		        () -> this.read(entity.getId()),
+				() -> this.read(entity.getId()),
 
-		        existing ->
-				{
-			        if (existing.getVersion() != entity.getVersion())
-				        return this.messageResourceService.throwMessage(
-				                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-				                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+				existing -> {
+					if (existing.getVersion() != entity.getVersion())
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-			        existing.setConnectionSubType(entity.getConnectionSubType());
-			        existing.setConnectionDetails(entity.getConnectionDetails());
-			        existing.setVersion(existing.getVersion() + 1);
+					existing.setConnectionSubType(entity.getConnectionSubType());
+					existing.setConnectionDetails(entity.getConnectionDetails());
+					existing.setVersion(existing.getVersion() + 1);
 
-			        return Mono.just(existing);
-		        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.updatableEntity"));
+					return Mono.just(existing);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.updatableEntity"));
 	}
 
 	public Mono<Connection> find(String appCode, String clientCode, ConnectionType type) {
@@ -139,23 +141,23 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CONNECTION,
 
-		        () -> this.readAllFilter(new ComplexCondition().setOperator(ComplexConditionOperator.AND)
-		                .setConditions(List.of(
+				() -> this.readAllFilter(new ComplexCondition().setOperator(ComplexConditionOperator.AND)
+						.setConditions(List.of(
 
-		                        new FilterCondition().setField("appCode")
-		                                .setValue(appCode)
-		                                .setOperator(FilterConditionOperator.EQUALS),
-		                        new FilterCondition().setField("clientCode")
-		                                .setValue(clientCode)
-		                                .setOperator(FilterConditionOperator.EQUALS),
-		                        new FilterCondition().setField("connectionType")
-		                                .setValue(type.toString())
-		                                .setOperator(FilterConditionOperator.EQUALS)
+								new FilterCondition().setField("appCode")
+										.setValue(appCode)
+										.setOperator(FilterConditionOperator.EQUALS),
+								new FilterCondition().setField("clientCode")
+										.setValue(clientCode)
+										.setOperator(FilterConditionOperator.EQUALS),
+								new FilterCondition().setField("connectionType")
+										.setValue(type.toString())
+										.setOperator(FilterConditionOperator.EQUALS)
 
 						)))
-		                .collectList()
-		                .flatMap(cons -> findRightConnection(name, cons)),
-		        appCode, ":", clientCode, ":", type);
+						.collectList()
+						.flatMap(cons -> findRightConnection(name, cons)),
+				appCode, ":", clientCode, ":", type, ":", name == null ? "null" : name);
 	}
 
 	private Mono<? extends Connection> findRightConnection(String name, List<Connection> cons) {
@@ -175,7 +177,7 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 				defaultCon = conn;
 
 			if (finCon == null || CommonsUtil.nonNullValue(finCon.getUpdatedAt(), finCon.getCreatedAt())
-			        .isAfter(CommonsUtil.nonNullValue(conn.getUpdatedAt(), conn.getCreatedAt())))
+					.isAfter(CommonsUtil.nonNullValue(conn.getUpdatedAt(), conn.getCreatedAt())))
 				finCon = conn;
 		}
 

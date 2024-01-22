@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -156,22 +157,22 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 					if (storage.getRelations() == null || storage.getRelations().isEmpty())
 						return Mono.just(storage);
 
-					for (StorageRelation relation : storage.getRelations().values()) {
+					for (Entry<String, StorageRelation> relationEntry : storage.getRelations().entrySet()) {
 
-						if (schema.getProperties().containsKey(relation.getFieldName())) {
+						if (schema.getProperties().containsKey(relationEntry.getKey())) {
 
 							return this.messageResourceService.throwMessage(
 									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 									CoreMessageResourceService.STORAGE_SCHEMA_FIELD_ALREADY_EXISTS,
-									relation.getFieldName());
+									relationEntry.getKey());
 						}
 
-						if (relation.getUniqueRelationId() != null)
+						if (relationEntry.getValue().getUniqueRelationId() != null)
 							continue;
 
-						relation.setUniqueRelationId(
+						relationEntry.getValue().setUniqueRelationId(
 								UniqueUtil.uniqueName(32, storage.getAppCode(), storage.getClientCode(),
-										storage.getName(), relation.getFieldName()));
+										storage.getName(), relationEntry.getKey()));
 					}
 
 					return Flux.fromIterable(storage.getRelations().values())
@@ -315,7 +316,8 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 							.setDeleteAuth(entity.getDeleteAuth())
 							.setGenerateEvents(entity.getGenerateEvents())
 							.setTriggers(entity.getTriggers())
-							.setRelations(entity.getRelations());
+							.setRelations(entity.getRelations())
+							.setFieldDefinitionMap(entity.getFieldDefinitionMap());
 
 					existing.setVersion(existing.getVersion() + 1);
 

@@ -41,7 +41,7 @@ public abstract class AbstractTransportController
 	public Mono<ResponseEntity<Boolean>> applyTransport(@RequestHeader("X-Forwarded-Host") String forwardedHost,
 			@RequestHeader("X-Forwarded-Port") String forwardedPort, @PathVariable("id") String transportId) {
 
-		return this.service.applyTransport(forwardedHost, forwardedPort, transportId)
+		return this.service.applyTransport(forwardedHost, forwardedPort, transportId, null, false)
 				.map(ResponseEntity::ok);
 	}
 
@@ -71,14 +71,13 @@ public abstract class AbstractTransportController
 			@RequestBody Transport pojo) {
 
 		Transport entity = this.mapper.convertValue(pojo, Transport.class);
-		entity.setActualAppCode(applicationCode);
-		entity.setIsForBaseApp(isForBaseApp);
 
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.service.create(entity),
 
-				c -> this.service.applyTransport(forwardedHost, forwardedPort, c.getId()),
+				c -> this.service.applyTransport(forwardedHost, forwardedPort, c.getId(), applicationCode,
+						isForBaseApp),
 
 				(c, applied) -> Mono.just(ResponseEntity.ok(c)))
 

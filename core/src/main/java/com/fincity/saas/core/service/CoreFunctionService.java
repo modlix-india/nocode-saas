@@ -34,18 +34,21 @@ import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractFunctionService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.CoreFunction;
 import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.rest.RestService;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -61,6 +64,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@Autowired
 	@Lazy
 	private AppDataService appDataService;
+	
+	@Autowired
+	@Lazy
+	private RestService restService;
 
 	@Autowired
 	@Lazy
@@ -69,7 +76,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@PostConstruct
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-				new CoreFunctionRepository(appDataService, objectMapper));
+				new CoreFunctionRepository(appDataService, objectMapper, restService));
 	}
 
 	protected CoreFunctionService() {
@@ -119,7 +126,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 													getFunctionRepository(appCode, clientCode)),
 											schRepo).setArguments(args));
 
-				});
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "CoreFunctionService.execute"));
 
 	}
 
@@ -134,8 +141,8 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
 					List<String> value = queryParams.get(e.getKey());
 
-					if (value == null || value.isEmpty())
-						return null;
+					if (value == null)
+						return Mono.empty();
 
 					Schema schema = e.getValue()
 							.getSchema();
