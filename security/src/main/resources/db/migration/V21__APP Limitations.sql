@@ -49,3 +49,19 @@ INSERT IGNORE INTO `security`.`security_role` (`CLIENT_ID`, `NAME`, `DESCRIPTION
 
 INSERT IGNORE INTO `security`.`security_package` (`CLIENT_ID`, `CODE`, `NAME`, `DESCRIPTION`, `BASE`) VALUES (@v_user_sysadmin, 'LIMIT', 'Limitations Management', 'Limitations management roles and permissions will be part of this package', FALSE);
 
+SELECT ID FROM `security_permission` WHERE NAME = 'Limitations CREATE' LIMIT 1 INTO @v_permission_limit_create;
+SELECT ID FROM `security_permission` WHERE NAME = 'Limitations UPDATE' LIMIT 1 INTO @v_permission_limit_update;
+SELECT ID FROM `security_permission` WHERE NAME = 'Limitations DELETE' LIMIT 1 INTO @v_permission_limit_delete;
+
+SELECT ID FROM `security_role` WHERE NAME = 'Limitations Manager' LIMIT 1 INTO @v_role_limit;
+
+SELECT ID FROM `security_package` WHERE NAME = 'Limitations Management' LIMIT 1 INTO @v_package_limit;
+
+INSERT IGNORE INTO `security`.`security_role_permission` (`ROLE_ID`, `PERMISSION_ID`) VALUES (@v_role_limit, @v_permission_limit_create), (@v_role_limit, @v_permission_limit_update), (@v_role_limit, @v_permission_limit_delete);
+
+INSERT IGNORE INTO `security`.`security_package_role` (`ROLE_ID`, `PACKAGE_ID`) VALUES (@v_role_limit, @v_package_limit);
+
+INSERT IGNORE INTO `security`.`security_client_package` (`CLIENT_ID`, `PACKAGE_ID`) VALUES (@v_client_system, @v_package_limit);
+
+
+

@@ -73,6 +73,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
 	private static final String CACHE_NAME_APP_FULL_INH_BY_APPCODE = "fullInhAppByCode";
 	private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
+	private static final String CACHE_NAME_APP_BY_APPID = "byAppId";
 	private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
 
 	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
@@ -331,6 +332,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
 		return this.dao.hasWriteAccess(appCode, clientCode);
 	}
+	
+	public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
+        return this.dao.hasWriteAccess(appId, clientId);
+    }
 
 	public Mono<Boolean> hasDeleteAccess(String appCode) {
 		return FlatMapUtil.flatMapMono(
@@ -349,6 +354,24 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasDeleteAccess"));
 	}
+	
+	public Mono<Boolean> hasDeleteAccess(ULong appId) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.getAppById(appId),
+
+                (ca, app) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
+
+                    if (app.getClientId().equals(ULongUtil.valueOf(ca.getUser().getClientId())))
+                        return Mono.just(true);
+
+                    return this.clientService
+                            .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasDeleteAccess"));
+    }
 
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
 
@@ -643,6 +666,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE, () -> this.dao.getByAppCode(appCode),
 				appCode);
 	}
+	
+	public Mono<App> getAppById(ULong id) {
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> super.read(id),
+                id);
+    }
 
 	public Mono<List<Package>> getPackagesAssignedToApp(String appCode, ULong clientId) {
 

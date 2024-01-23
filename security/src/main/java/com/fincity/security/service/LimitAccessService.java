@@ -28,146 +28,197 @@ import reactor.util.context.Context;
 public class LimitAccessService
         extends AbstractJOOQUpdatableDataService<SecurityAppLimitationsRecord, ULong, LimitAccess, LimitAccessDAO> {
 
-	private static final String LIMIT = "limit";
+    private static final String LIMIT = "limit";
 
-	private static final String SEPERATOR = "_";
+    private static final String SEPERATOR = "_";
 
-	@Autowired
-	private CacheService cacheService;
+    @Autowired
+    private CacheService cacheService;
 
-	@Autowired
-	@Lazy
-	private AppService appService;
-	
-	@Autowired
-	private SecurityMessageResourceService messageResourceService;
+    @Autowired
+    @Lazy
+    private AppService appService;
 
-	@Override
-	protected Mono<LimitAccess> updatableEntity(LimitAccess entity) {
+    @Autowired
+    private SecurityMessageResourceService messageResourceService;
 
-		return this.read(entity.getId())
-		        .map(e -> e.setLimit(entity.getLimit()));
-	}
+    @Autowired
+    @Lazy
+    private ClientService clientService;
 
-	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+    @Override
+    protected Mono<LimitAccess> updatableEntity(LimitAccess entity) {
 
-		HashMap<String, Object> map = new HashMap<>();
+        return this.read(entity.getId())
+                .map(e -> e.setLimit(entity.getLimit()));
+    }
 
-		if (fields == null)
-			return Mono.just(map);
+    @Override
+    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-		map.put(LIMIT, fields.get(LIMIT));
-		return Mono.just(map);
-	}
+        HashMap<String, Object> map = new HashMap<>();
 
-	public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName, ULong urlClientId) {
+        if (fields == null)
+            return Mono.just(map);
 
-		return cacheService.cacheValueOrGet(appId.toString() + SEPERATOR + clientId.toString() + SEPERATOR + objectName,
-		        () -> this.dao.getByAppandClientId(appId, clientId, objectName, urlClientId));
+        map.put(LIMIT, fields.get(LIMIT));
+        return Mono.just(map);
+    }
 
-	}
+    public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName, ULong urlClientId) {
 
-	@Override
-	@PreAuthorize("hasAuthority('Authorities.Limitations_CREATE')")
-	public Mono<LimitAccess> create(LimitAccess entity) {
+        return cacheService.cacheValueOrGet(appId.toString() + SEPERATOR + clientId.toString() + SEPERATOR + objectName,
+                () -> this.dao.getByAppandClientId(appId, clientId, objectName, urlClientId));
 
-		return FlatMapUtil.flatMapMono(
+    }
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Limitations_CREATE')")
+    public Mono<LimitAccess> create(LimitAccess entity) {
 
-		        ca -> Mono.just(entity.getClientId() == ULongUtil.valueOf(ca.getUser()
-		                .getClientId()))
-		                .flatMap(e -> Mono.just(e.booleanValue() ? e
-		                        : entity.getClientId() == ULongUtil.valueOf(ca.getLoggedInFromClientId()))),
+        return FlatMapUtil.flatMapMono(
 
-		        (ca, sameClient) -> sameClient.booleanValue() ? Mono.just(sameClient)
-		                : this.appService.read(entity.getAppId())
-		                        .flatMap(e -> Mono.just(entity.getClientId() == e.getClientId())),
+                SecurityContextUtil::getUsersContextAuthentication,
 
-		        (ca, sameClient, valid) ->
-				{
-			        if (!valid.booleanValue())
-				        return Mono.empty();
+                ca -> this.appService.read(entity.getAppId()),
 
-			        return super.create(entity);
-		        }
+                (ca, app) -> {
 
-		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.create"))
-		        .switchIfEmpty(
-		                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                        SecurityMessageResourceService.FORBIDDEN_CREATE, LIMIT));
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
 
-	}
+                    if (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()))
+                        return Mono.just(true);
 
-	@Override
-	@PreAuthorize("hasAuthority('Authorities.Limitations_UPDATE')")
-	public Mono<LimitAccess> update(LimitAccess entity) {
+                    return this.appService
+                            .hasWriteAccess(entity.getAppId(), ULongUtil.valueOf(ca.getUser().getClientId()))
+                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
+                },
 
-		return FlatMapUtil.flatMapMono(
+                (ca, app, hasAccess) -> {
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+                    if (entity.getClientId().equals(app.getClientId()))
+                        return Mono.just(true);
 
-		        ca -> Mono.just(entity.getClientId() == ULongUtil.valueOf(ca.getUser()
-		                .getClientId()))
-		                .flatMap(e -> Mono.just(e.booleanValue() ? e
-		                        : entity.getClientId() == ULongUtil.valueOf(ca.getLoggedInFromClientId()))),
+                    return this.appService.hasWriteAccess(entity.getAppId(), entity.getClientId())
+                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
+                },
 
-		        (ca, sameClient) -> sameClient.booleanValue() ? Mono.just(sameClient)
-		                : this.appService.read(entity.getAppId())
-		                        .flatMap(e -> Mono.just(entity.getClientId() == e.getClientId())),
+                (ca, app, hasAccess, hasWriteAccess) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
 
-		        (ca, sameClient, valid) ->
-				{
-			        if (!valid.booleanValue())
-				        return Mono.empty();
+                    return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
+                            entity.getClientId());
+                },
+                (ca, app, hasAccess, hasWriteAccess, isBeingManaged) -> isBeingManaged.booleanValue()
+                        ? super.create(entity)
+                        : Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.create"))
+                .switchIfEmpty(
+                        this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                SecurityMessageResourceService.FORBIDDEN_CREATE, LIMIT));
 
-			        return super.update(entity);
-		        }
+    }
 
-		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.update"))
-		        .switchIfEmpty(
-		                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                        SecurityMessageResourceService.FORBIDDEN_UPDATE, LIMIT));
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Limitations_UPDATE')")
+    public Mono<LimitAccess> update(LimitAccess entity) {
 
-	}
+        return FlatMapUtil.flatMapMono(
 
-	@Override
-	@PreAuthorize("hasAuthority('Authorities.Limitations_DELETE')")
-	public Mono<Integer> delete(ULong id) {
+                SecurityContextUtil::getUsersContextAuthentication,
 
-		return FlatMapUtil.flatMapMono(
+                ca -> this.appService.read(entity.getAppId()),
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+                (ca, app) -> {
 
-		        ca -> super.read(id),
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
 
-		        (ca, entity) -> Mono.just(entity.getClientId() == ULongUtil.valueOf(ca.getUser()
-		                .getClientId()))
-		                .flatMap(e -> Mono.just(e.booleanValue() ? e
-		                        : entity.getClientId() == ULongUtil.valueOf(ca.getLoggedInFromClientId()))),
+                    if (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()))
+                        return Mono.just(true);
 
-		        (ca, entity, sameClient) ->  ((Boolean) sameClient).booleanValue() ? Mono.just(sameClient)
-		                : this.appService.read(entity.getAppId())
-		                        .flatMap(e -> Mono.just(entity.getClientId() == e.getClientId())),
+                    return this.appService
+                            .hasWriteAccess(entity.getAppId(), ULongUtil.valueOf(ca.getUser().getClientId()))
+                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
+                },
 
-		        (ca, entity, sameClient, valid) ->
-				{
+                (ca, app, hasAccess) -> {
 
-			        if (!((Boolean) valid).booleanValue())
-				        return Mono.empty();
+                    if (entity.getClientId().equals(app.getClientId()))
+                        return Mono.just(true);
 
-			        return super.delete(id);
-		        }
+                    return this.appService.hasWriteAccess(entity.getAppId(), entity.getClientId())
+                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
+                },
 
-		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.delete"))
-		        .switchIfEmpty(
-		                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                        SecurityMessageResourceService.FORBIDDEN_DELETE, LIMIT));
+                (ca, app, hasAccess, hasWriteAccess) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
 
-	}
+                    return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
+                            entity.getClientId());
+                },
+                (ca, app, hasAccess, hasWriteAccess, isBeingManaged) -> isBeingManaged.booleanValue()
+                        ? super.create(entity)
+                        : Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.update"))
+                .switchIfEmpty(
+                        this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                SecurityMessageResourceService.FORBIDDEN_UPDATE, LIMIT));
+
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Limitations_DELETE')")
+    public Mono<Integer> delete(ULong id) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.read(id),
+
+                (ca, entity) -> this.appService.read(entity.getAppId()),
+
+                (ca, entity, app) -> {
+
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
+
+                    if (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()))
+                        return Mono.just(true);
+
+                    return this.appService
+                            .hasDeleteAccess(entity.getAppId())
+                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
+                },
+
+                (ca, entity, app, hasAccess) -> {
+
+                    if (entity.getClientId().equals(app.getClientId()))
+                        return Mono.just(true);
+
+                    return this.appService.hasDeleteAccess(entity.getAppId())
+                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
+                },
+
+                (ca, entity, app, hasAccess, hasWriteAccess) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
+
+                    return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
+                            entity.getClientId());
+                },
+                (ca, entity, app, hasAccess, hasWriteAccess, isBeingManaged) -> isBeingManaged.booleanValue()
+                        ? super.delete(id)
+                        : Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.delete"))
+                .switchIfEmpty(
+                        this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                SecurityMessageResourceService.FORBIDDEN_DELETE, LIMIT));
+
+    }
 
 }

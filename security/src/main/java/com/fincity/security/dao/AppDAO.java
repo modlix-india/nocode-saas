@@ -131,7 +131,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 	public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
 
-		return hasOnlyInternalAccess(appId, clientId, 1);
+		return hasOnlyInternalAccessWithId(appId, clientId, 1);
 	}
 
 	private Mono<Boolean> hasOnlyInternalAccess(ULong appId, ULong clientId, int accessType) {
@@ -188,6 +188,32 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		        .map(Record1::value1)
 		        .map(e -> e != 0);
 	}
+	
+	private Mono<Boolean> hasOnlyInternalAccessWithId(ULong appId, ULong clientId, int accessType) {
+
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(SECURITY_CLIENT.ID.eq(clientId));
+        if (accessType == 1) {
+            conditions.add(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
+        }
+
+        SelectConditionStep<Record1<ULong>> inQuery = this.dslContext.select(SECURITY_APP_ACCESS.APP_ID)
+                .from(SECURITY_APP_ACCESS)
+                .leftJoin(SECURITY_CLIENT)
+                .on(SECURITY_CLIENT.ID.eq(SECURITY_APP_ACCESS.CLIENT_ID))
+                .where(DSL.and(conditions));
+
+        return Mono.from(this.dslContext.select(DSL.count())
+                .from(SECURITY_APP)
+                .leftJoin(SECURITY_CLIENT)
+                .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
+                .where(SECURITY_APP.ID.eq(appId)
+                        .and(SECURITY_CLIENT.ID.eq(clientId)
+                                .or(SECURITY_APP.ID.in(inQuery))))
+                .limit(1))
+                .map(Record1::value1)
+                .map(e -> e != 0);
+    }
 
 	public Mono<Boolean> hasAppEditAccess(ULong appId, ULong clientId) {
 
