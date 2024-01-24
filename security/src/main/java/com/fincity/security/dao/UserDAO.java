@@ -383,24 +383,36 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.isBeingManagedBy"));
 	}
 
-	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {
+	
+	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(String appCode, ULong clientId,
+	        ULong loggedInClientId, ULong userId) {
 
 		return Mono.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.PASS_HISTORY_COUNT)
-				.from(SECURITY_CLIENT_PASSWORD_POLICY)
-				.where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId))
-				.limit(1))
-				.flatMapMany(cnt -> Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
-						.from(SECURITY_PAST_PASSWORDS)
-						.where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
-						.orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
-						.limit(cnt.value1())))
-				.map(e -> e.into(PastPassword.class))
-				.collectList()
-				.defaultIfEmpty(List.of());
+		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
+		        .leftJoin(SECURITY_APP)
+		        .on(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(SECURITY_APP.ID))
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.in(clientId, loggedInClientId)
+		                .and(SECURITY_APP.APP_CODE.eq(appCode)
+		                        .or(SECURITY_APP.APP_CODE.isNull())))
+		        .orderBy(
+		                loggedInClientId.longValue() < clientId.longValue()
+		                        ? SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.desc()
+		                        : SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.asc(),
+		                SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.desc())
+		        .limit(1))
+		        .flatMapMany(cnt -> Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
+		                .from(SECURITY_PAST_PASSWORDS)
+		                .where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
+		                .orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
+		                .limit(cnt.value1())))
+		        .map(e -> e.into(PastPassword.class))
+		        .collectList()
+		        .defaultIfEmpty(List.of());
+
 	}
 	
 	
-	public Mono<LocalDateTime> getLatestPasswordDateBasedOnPolicy(ULong userId) {
+	public Mono<LocalDateTime> getLatestPasswordCreationDate(ULong userId) {
 
 		return Mono.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.CREATED_AT)
 		        .from(SECURITY_PAST_PASSWORDS)

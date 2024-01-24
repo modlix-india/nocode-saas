@@ -66,12 +66,12 @@ public class UserController
 
 	@PostMapping("{userId}/updatePassword")
 	public Mono<ResponseEntity<Boolean>> updatePasswordForUser(@PathVariable ULong userId,
-			@RequestBody RequestUpdatePassword passwordRequest) {
+	        @RequestBody RequestUpdatePassword passwordRequest) {
 
 		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(), userId,
-						passwordRequest, false))
-				.map(ResponseEntity::ok);
+		        .flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
+		                ULong.valueOf(ca.getLoggedInFromClientId()), userId, passwordRequest, false))
+		        .map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/findUserClients")
@@ -104,10 +104,11 @@ public class UserController
 	public Mono<ResponseEntity<Boolean>> changePassword(@RequestBody RequestUpdatePassword passwordRequest) {
 
 		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
-						ULong.valueOf(ca.getUser()
-								.getId()),
-						passwordRequest, true))
+		        .flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
+		                ULong.valueOf(ca.getLoggedInFromClientId()), ULong.valueOf(ca.getUser()
+		                        .getId()),
+		                passwordRequest,
+		                true))
 				.map(ResponseEntity::ok);
 	}
 

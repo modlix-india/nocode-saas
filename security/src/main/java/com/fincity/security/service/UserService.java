@@ -208,9 +208,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	private Mono<User> passwordPolicyCheck(User user, String password) { // modified this method for validating password
 	                                                                     // of user while it was being created
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca -> this.clientPasswordPolicyService.checkAllConditions(ca.getUrlAppCode(),
-		                user.getClientId(), password))
+		return this.clientPasswordPolicyService.checkAllConditions(user.getClientId(), password)
 		        .map(valid -> user);
 
 	}
@@ -607,7 +605,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return this.dao.checkRoleCreatedByUser(roleId, userId);
 	}
 
-	public Mono<Boolean> updateNewPassword(String urlAppCode, String urlClientCode, ULong reqUserId,
+	public Mono<Boolean> updateNewPassword(String urlAppCode, String urlClientCode, ULong loggedInClientId, ULong reqUserId,
 	        RequestUpdatePassword requestPassword, boolean isResetPassword) {
 
 		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
@@ -620,12 +618,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        user -> this.checkHierarchy(user, reqUserId, requestPassword.getNewPassword()),
 
-		        (user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(urlAppCode,
-		                user.getClientId(), requestPassword
-		                        .getNewPassword()),
+		        (user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(user.getClientId(),
+		                requestPassword.getNewPassword()),
 
 		        (user, isUpdatable, isValid) -> isResetPassword ? Mono.just(true)
-		                : this.checkPasswordInPastPasswords(user, requestPassword.getNewPassword()),
+		                : this.checkPasswordInPastPasswords(urlAppCode, requestPassword.getNewPassword(),
+		                        loggedInClientId,
+		                        user),
 
 		        (user, isUpdatable, isValid, isPastPassword) -> this.dao
 		                .setPassword(reqUserId, requestPassword.getNewPassword(), user.getId())
@@ -743,11 +742,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return Mono.just(false);
 	}
 
-	private Mono<Boolean> checkPasswordInPastPasswords(User user, String newPassword) {  // include app id
+	private Mono<Boolean> checkPasswordInPastPasswords(String appCode, String newPassword, ULong loggedInClientId,  User user) {
 
 		return flatMapMono(
 
-		        () -> this.dao.getPastPasswordsBasedOnPolicy(user.getId(), user.getClientId()),
+		        () -> this.dao.getPastPasswordsBasedOnPolicy(appCode, user.getClientId(), loggedInClientId, user.getId()),
 
 		        pastPasswords ->
 				{
@@ -770,7 +769,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	
 	public Mono<Boolean> checkPasswordExpiry(ULong userId, UShort expiryInDays) {
 
-		return this.dao.getLatestPasswordDateBasedOnPolicy(userId)
+		return this.dao.getLatestPasswordCreationDate(userId)
 		        .flatMap(createdAt ->
 				{
 			        LocalDateTime pastDate = createdAt.plusDays(expiryInDays.longValue());
