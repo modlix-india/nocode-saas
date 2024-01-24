@@ -258,14 +258,22 @@ public class AuthenticationService implements IAuthenticationService {
 
 		if (pol.getPassExpiryInDays() != null) {
 
-			soxLogService.create(new SoxLog().setObjectId(u.getId())
-			        .setActionName(SecuritySoxLogActionName.LOGIN)
-			        .setObjectName(SecuritySoxLogObjectName.USER)
-			        .setDescription("Password expired"))
-			        .subscribe();
 
 			return this.userService.checkPasswordExpiry(u.getId(), pol.getPassExpiryInDays())
-			        .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? 1 : null))
+			        .flatMap(e ->
+					{
+
+				        if (e.booleanValue())
+					        return Mono.just(1);
+
+				        soxLogService.create(new SoxLog().setObjectId(u.getId())
+				                .setActionName(SecuritySoxLogActionName.LOGIN)
+				                .setObjectName(SecuritySoxLogObjectName.USER)
+				                .setDescription("Password expired"))
+				                .subscribe();
+
+				        return Mono.empty();
+			        })
 			        .switchIfEmpty(
 			                this.resourceService.throwMessage(msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
 			                        SecurityMessageResourceService.PASSWORD_EXPIRED));

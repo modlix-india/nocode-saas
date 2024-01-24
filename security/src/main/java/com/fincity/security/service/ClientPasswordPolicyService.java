@@ -46,7 +46,7 @@ public class ClientPasswordPolicyService extends
 
 	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 	        '_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
-
+	
 	
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
@@ -126,7 +126,7 @@ public class ClientPasswordPolicyService extends
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
 	@Override
 	public Mono<ClientPasswordPolicy> update(ULong key, Map<String, Object> fields) {
-		
+
 		return this.dao.canBeUpdated(key)
 		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
 		        .flatMap(e -> cacheService
@@ -151,30 +151,26 @@ public class ClientPasswordPolicyService extends
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
 
-	// evicting cache was being done in wrong way
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
-		
+
 		return this.dao.canBeUpdated(id)
 		        .flatMap(e -> e.booleanValue() ? super.delete(id) : Mono.empty())
-		        .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_PWD_POLICY, id)) // evict cache is wrong here
+		        .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_PWD_POLICY, id))
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(
 		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
 
-	// need to add app id as part of it
-
-	// check app id is null or not
-
-	public Mono<Boolean> checkAllConditions(String appCode, ULong clientId, String password) {
+	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
 
 		return flatMapMono(
 
 		        SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.dao.getByAppCodeAndClient(appCode, clientId, ULong.valueOf(ca.getLoggedInFromClientId())),
+		        ca -> this.dao.getByAppCodeAndClient(ca.getUrlAppCode(), clientId,
+		                ULong.valueOf(ca.getLoggedInFromClientId())),
 
 		        (ca, passwordPolicy) -> checkAlphanumericExists(passwordPolicy, password),
 

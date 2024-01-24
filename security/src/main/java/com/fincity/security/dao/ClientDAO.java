@@ -43,7 +43,6 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
-import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 
@@ -56,8 +55,6 @@ import reactor.util.function.Tuples;
 @Service
 public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong, Client> {
 	
-	private static String app = "APP_ID";
-	private static String client = "CLIENT_ID";
 
 	protected ClientDAO() {
 		super(Client.class, SECURITY_CLIENT, SECURITY_CLIENT.ID);
@@ -78,20 +75,12 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong clientId) {
 
-		Table<SecurityClientPasswordPolicyRecord> cp1 = SECURITY_CLIENT_PASSWORD_POLICY.asTable("CP1");
-		Table<SecurityClientPasswordPolicyRecord> cp2 = SECURITY_CLIENT_PASSWORD_POLICY.asTable("CP2");
-
-		return Mono.from(this.dslContext.select(cp1.fields())
-		        .from(cp1)
-		        .leftJoin(cp2)
-		        .on(cp1.field(app, ULong.class)
-		                .eq(cp2.field(app, ULong.class)))
-		        .where(cp1.field(client, ULong.class)
-		                .eq(clientId)
-		                .and(cp2.field(app, ULong.class)
-		                        .isNull()))
+		return Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT_PASSWORD_POLICY)
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)
+		                .and(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.isNull()))
 		        .limit(1))
 		        .map(e -> e.into(ClientPasswordPolicy.class));
+
 	}
 
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicyWithAppId( ULong appId, ULong clientId) {
@@ -103,18 +92,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.map(e -> e.into(ClientPasswordPolicy.class));
 	}
 	
-	public Mono<ClientPasswordPolicy> getByAppCodeAndClient(String appCode, ULong clientId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY)
-		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
-		        .leftJoin(SECURITY_APP)
-		        .on(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(SECURITY_APP.ID))
-		        .where(SECURITY_APP.APP_CODE.eq(appCode)
-		                .and(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)))
-		        .limit(1))
-		        .map(e -> e.into(ClientPasswordPolicy.class));
-
-	}
 	
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 

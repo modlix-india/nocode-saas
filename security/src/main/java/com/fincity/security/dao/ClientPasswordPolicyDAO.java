@@ -3,11 +3,8 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 
-import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record1;
-import org.jooq.Table;
-import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -21,9 +18,6 @@ import reactor.core.publisher.Mono;
 public class ClientPasswordPolicyDAO
         extends AbstractClientCheckDAO<SecurityClientPasswordPolicyRecord, ULong, ClientPasswordPolicy> {
 
-	private static String app = "APP_ID";
-	private static String client = "CLIENT_ID";
-
 	@Override
 	protected Field<ULong> getClientIDField() {
 		return SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID;
@@ -35,105 +29,40 @@ public class ClientPasswordPolicyDAO
 
 	public Mono<Boolean> checkValidEntity(ULong clientId) {
 
-		Table<SecurityClientPasswordPolicyRecord> cp1 = SECURITY_CLIENT_PASSWORD_POLICY.asTable("CP1");
-		Table<SecurityClientPasswordPolicyRecord> cp2 = SECURITY_CLIENT_PASSWORD_POLICY.asTable("CP2");
-
 		return Mono.from(this.dslContext.selectCount()
-		        .from(cp1)
-		        .leftJoin(cp2)
-		        .on(cp1.field(app, ULong.class)
-		                .eq(cp2.field(app, ULong.class)))
-		        .where(cp1.field(client, ULong.class)
-		                .eq(clientId)
-		                .and(cp2.field(app, ULong.class)
-		                        .isNull())))
+		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)
+		                .and(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.isNull())))
 		        .map(Record1::value1)
 		        .flatMap(e -> Mono.justOrEmpty(e == 0 ? true : null));
 
 	}
 
-	
-	public Mono<ClientPasswordPolicy> getByAppAndClient(ULong appId, ULong clientId, ULong loggedInClientId) {
-
-		Table<SecurityClientPasswordPolicyRecord> cp1 = SECURITY_CLIENT_PASSWORD_POLICY.asTable("CP1");
-		Table<SecurityClientPasswordPolicyRecord> cp2 = SECURITY_CLIENT_PASSWORD_POLICY.asTable("CP2");
-
-		Condition cond = DSL.and(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)
-		        .or(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(loggedInClientId)))
-		        .and(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(appId));
-
-		return Flux.from(this.dslContext.selectFrom(SECURITY_CLIENT_PASSWORD_POLICY)
-		        .where(cond))
-		        .map(e -> e.into(ClientPasswordPolicy.class))
-		        .collectList()
-		        .flatMap(e ->
-				{
-
-			        if (!e.isEmpty())
-				        return Mono.just(e);
-
-			        return Flux.from(this.dslContext.select(cp1.fields())
-			                .from(cp1)
-			                .leftJoin(cp2)
-			                .on(cp1.field(app, ULong.class)
-			                        .eq(cp2.field(app, ULong.class)))
-			                .where(cp1.field(client, ULong.class)
-			                        .in(clientId, loggedInClientId)
-			                        .and(cp2.field(app, ULong.class)
-			                                .isNull())))
-			                .map(a -> a.into(ClientPasswordPolicy.class))
-			                .collectList();
-		        })
-		        .flatMap(e ->
-				{
-			        if (e.isEmpty())
-				        return Mono.empty();
-
-			        if (e.size() == 1)
-				        return Mono.just(e.get(0));
-
-			        return Mono.just(e.get(clientId.equals(e.get(0)
-			                .getClientId()) ? 0 : 1));
-		        });
-	}
-
 	public Mono<ClientPasswordPolicy> getByAppCodeAndClient(String appCode, ULong clientId, ULong loggedInClientId) {
-
-		Condition cond = DSL.and(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)
-		        .or(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(loggedInClientId)));
 
 		return Flux.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.fields())
 		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
 		        .leftJoin(SECURITY_APP)
 		        .on(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(SECURITY_APP.ID))
-		        .where(cond.and(SECURITY_APP.APP_CODE.eq(appCode))))
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.in(clientId, loggedInClientId)
+		                .and(SECURITY_APP.APP_CODE.eq(appCode)
+		                        .or(SECURITY_APP.APP_CODE.isNull())))
+		        .orderBy(
+		                loggedInClientId.longValue() < clientId.longValue()
+		                        ? SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.desc()
+		                        : SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.asc(),
+		                SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.desc()))
 		        .map(e -> e.into(ClientPasswordPolicy.class))
 		        .collectList()
 		        .flatMap(e ->
 				{
 
-			        if (!e.isEmpty())
-				        return Mono.just(e);
-
-			        return Flux.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.fields())
-			                .from(SECURITY_CLIENT_PASSWORD_POLICY)
-			                .leftJoin(SECURITY_APP)
-			                .on(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(SECURITY_APP.ID))
-			                .where(cond.and(SECURITY_APP.ID.isNull())))
-			                .map(a -> a.into(ClientPasswordPolicy.class))
-			                .collectList();
-		        })
-		        .flatMap(e ->
-				{
 			        if (e.isEmpty())
 				        return Mono.empty();
 
-			        if (e.size() == 1)
-				        return Mono.just(e.get(0));
-
-			        return Mono.just(e.get(clientId.equals(e.get(0)
-			                .getClientId()) ? 0 : 1));
+			        return Mono.just(e.get(0));
 		        });
+
 	}
 
 }
