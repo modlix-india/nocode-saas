@@ -73,25 +73,23 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.map(HashSet::new);
 	}
 
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong clientId) {
+	
+	public Mono<ClientPasswordPolicy> getClientPasswordPolicyWithAppId(ULong appId, ULong clientId,
+	        ULong loggedInClientId) {
 
 		return Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT_PASSWORD_POLICY)
-		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)
-		                .and(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.isNull()))
+		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.in(clientId, loggedInClientId)
+		                .and(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(appId)
+		                        .or(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.isNull())))
+		        .orderBy(
+		                loggedInClientId.longValue() < clientId.longValue()
+		                        ? SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.desc()
+		                        : SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.asc(),
+		                SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.desc())
 		        .limit(1))
 		        .map(e -> e.into(ClientPasswordPolicy.class));
 
 	}
-
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicyWithAppId( ULong appId, ULong clientId) {
-
-		return Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT_PASSWORD_POLICY)
-		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)
-		                .and(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(appId)))
-		        .limit(1))
-				.map(e -> e.into(ClientPasswordPolicy.class));
-	}
-	
 	
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 

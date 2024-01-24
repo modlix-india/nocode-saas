@@ -228,25 +228,14 @@ public class ClientService
 				() -> this.dao.isBeingManagedBy(managingClientId, clientId), managingClientId, "-", clientId);
 	}
 
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong id) {
-
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-		        () -> this.dao.getClientPasswordPolicy(id), id);
-	}
 	
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong appId, ULong clientId) {
-
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-		        () -> this.dao.getClientPasswordPolicyWithAppId(appId, clientId), clientId, ":", appId);
-	}
-	
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(String appCode, ULong clientId) {
+	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(String appCode, ULong clientId, ULong loggedInClientId) {
 
 		return flatMapMono(() -> this.appService.getAppByCode(appCode),
 
 		        app -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-		                () -> this.dao.getClientPasswordPolicyWithAppId(app.getId(), clientId), clientId, ":",
-		                app.getId())
+		                () -> this.dao.getClientPasswordPolicyWithAppId(app.getId(), clientId, loggedInClientId),
+		                clientId, ":", app.getId())
 
 		);
 

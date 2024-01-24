@@ -20,6 +20,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.ClientPasswordPolicyDAO;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
@@ -46,8 +47,7 @@ public class ClientPasswordPolicyService extends
 
 	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 	        '_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
-	
-	
+
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
 	public Mono<ClientPasswordPolicy> create(ClientPasswordPolicy entity) {
@@ -162,6 +162,23 @@ public class ClientPasswordPolicyService extends
 		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
+	public Mono<ClientPasswordPolicy> fetchPolicyByAppandClientIds(ULong appId, ULong clientId) {
+
+		return flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> ca.isSystemClient() ? Mono.just(true)
+		                : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getLoggedInFromClientId()), clientId)
+		                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+		        (ca, validClient) -> cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
+		                () -> this.dao.getByAppAndClientIds(appId, clientId), clientId, ":", appId)
+
+		);
+
+	}
+	
 
 	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
 

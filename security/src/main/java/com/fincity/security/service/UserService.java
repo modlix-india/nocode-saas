@@ -779,6 +779,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		        .defaultIfEmpty(true);
 
 	}
+	
+	public Mono<Boolean> triggerPasswordExpiryWarning(ULong userId, UShort warnInDays) {
+
+		return this.dao.getLatestPasswordCreationDate(userId)
+		        .flatMap(createdAt ->
+				{
+			        LocalDateTime latestDate = createdAt.plusDays(warnInDays.longValue());
+			        return Mono.just(true);
+		        })
+		        .defaultIfEmpty(true);
+	}
 
 	public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
 

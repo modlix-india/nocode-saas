@@ -154,7 +154,7 @@ public class AuthenticationService implements IAuthenticationService {
 				(tup, linCCheck) -> this.checkPassword(authRequest, tup.getT3()),
 
 		        (tup, linCCheck, passwordChecked) -> this.clientService.getClientPasswordPolicy(appCode, tup.getT2()
-		                .getId())
+		                .getId(), tup.getT1().getId())
 		                .flatMap(policy -> this.checkFailedAttemptsAndPasswordExpiry(tup.getT3(), policy))
 		                .defaultIfEmpty(1),
 
