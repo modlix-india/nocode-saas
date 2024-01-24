@@ -18,6 +18,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.LimitAccessDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.LimitAccess;
 import com.fincity.security.jooq.tables.records.SecurityAppLimitationsRecord;
 
@@ -31,6 +32,9 @@ public class LimitAccessService
     private static final String LIMIT = "limit";
 
     private static final String SEPERATOR = "_";
+
+    // We are using this cache in feignAuthenticationService
+    private static final String CACHE_NAME_OBJECT_LIMIT = "objectLimit";
 
     @Autowired
     private CacheService cacheService;
@@ -96,24 +100,34 @@ public class LimitAccessService
                 },
 
                 (ca, app, hasAccess) -> {
-
-                    if (entity.getClientId().equals(app.getClientId()))
-                        return Mono.just(true);
-
-                    return this.appService.hasWriteAccess(entity.getAppId(), entity.getClientId())
-                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
-                },
-
-                (ca, app, hasAccess, hasWriteAccess) -> {
                     if (ca.isSystemClient())
                         return Mono.just(true);
 
                     return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
                             entity.getClientId());
                 },
-                (ca, app, hasAccess, hasWriteAccess, isBeingManaged) -> isBeingManaged.booleanValue()
+                (ca, app, hasAccess, isBeingManaged) -> isBeingManaged.booleanValue()
                         ? super.create(entity)
-                        : Mono.empty())
+                        : Mono.<LimitAccess>empty(),
+
+                (ca, app, hasAccess, isBeingManaged, object) -> this.clientService.readInternal(entity.getClientId())
+                        .map(Client::getCode),
+
+                (ca, app, hasAccess, isBeingManaged, object,
+                        clientCode) -> {
+                    Mono<Boolean> eviction;
+                    if (ca.getLoggedInFromClientCode().equals(clientCode))
+                        eviction = this.cacheService.evictAll(CACHE_NAME_OBJECT_LIMIT + "-" + entity.getName() + "-"
+                                + ca.getLoggedInFromClientCode() + "-" + app.getAppCode());
+                    else
+                        eviction = this.cacheService
+                                .evict(CACHE_NAME_OBJECT_LIMIT + "-" + entity.getName() + "-"
+                                        + ca.getLoggedInFromClientCode() + "-" + app.getAppCode(), clientCode);
+
+                    return eviction.map(x -> object);
+                }
+
+        )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.create"))
                 .switchIfEmpty(
                         this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -145,24 +159,33 @@ public class LimitAccessService
                 },
 
                 (ca, app, hasAccess) -> {
-
-                    if (entity.getClientId().equals(app.getClientId()))
-                        return Mono.just(true);
-
-                    return this.appService.hasWriteAccess(entity.getAppId(), entity.getClientId())
-                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
-                },
-
-                (ca, app, hasAccess, hasWriteAccess) -> {
                     if (ca.isSystemClient())
                         return Mono.just(true);
 
                     return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
                             entity.getClientId());
                 },
-                (ca, app, hasAccess, hasWriteAccess, isBeingManaged) -> isBeingManaged.booleanValue()
-                        ? super.create(entity)
-                        : Mono.empty())
+
+                (ca, app, hasAccess, isBeingManaged) -> isBeingManaged.booleanValue()
+                        ? super.update(entity)
+                        : Mono.<LimitAccess>empty(),
+
+                (ca, app, hasAccess, isBeingManaged, object) -> this.clientService.readInternal(entity.getClientId())
+                        .map(Client::getCode),
+
+                (ca, app, hasAccess, isBeingManaged, object,
+                        clientCode) -> {
+                    Mono<Boolean> eviction;
+                    if (ca.getLoggedInFromClientCode().equals(clientCode))
+                        eviction = this.cacheService.evictAll(CACHE_NAME_OBJECT_LIMIT + "-" + entity.getName() + "-"
+                                + ca.getLoggedInFromClientCode() + "-" + app.getAppCode());
+                    else
+                        eviction = this.cacheService
+                                .evict(CACHE_NAME_OBJECT_LIMIT + "-" + entity.getName() + "-"
+                                        + ca.getLoggedInFromClientCode() + "-" + app.getAppCode(), clientCode);
+
+                    return eviction.map(x -> object);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.update"))
                 .switchIfEmpty(
                         this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -196,24 +219,35 @@ public class LimitAccessService
                 },
 
                 (ca, entity, app, hasAccess) -> {
-
-                    if (entity.getClientId().equals(app.getClientId()))
-                        return Mono.just(true);
-
-                    return this.appService.hasDeleteAccess(entity.getAppId())
-                            .flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? e : null));
-                },
-
-                (ca, entity, app, hasAccess, hasWriteAccess) -> {
                     if (ca.isSystemClient())
                         return Mono.just(true);
 
                     return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
                             entity.getClientId());
                 },
-                (ca, entity, app, hasAccess, hasWriteAccess, isBeingManaged) -> isBeingManaged.booleanValue()
+
+                (ca, entity, app, hasAccess, isBeingManaged) -> isBeingManaged.booleanValue()
                         ? super.delete(id)
-                        : Mono.empty())
+                        : Mono.<Integer>empty(),
+
+                (ca, entity, app, hasAccess, isBeingManaged, object) -> this.clientService
+                        .readInternal(entity.getClientId()).map(Client::getCode),
+
+                (ca, entity, app, hasAccess, isBeingManaged, object, clientCode) -> {
+                    Mono<Boolean> eviction;
+
+                    if (ca.getLoggedInFromClientCode().equals(clientCode))
+                        eviction = this.cacheService.evictAll(CACHE_NAME_OBJECT_LIMIT + "-" + entity.getName() + "-"
+                                + ca.getLoggedInFromClientCode() + "-" + app.getAppCode());
+                    else
+                        eviction = this.cacheService
+                                .evict(CACHE_NAME_OBJECT_LIMIT + "-" + entity.getName() + "-"
+                                        + ca.getLoggedInFromClientCode() + "-" + app.getAppCode(), clientCode);
+
+                    return eviction.map(x -> object);
+                }
+
+        )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "LimitAccessService.delete"))
                 .switchIfEmpty(
                         this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),

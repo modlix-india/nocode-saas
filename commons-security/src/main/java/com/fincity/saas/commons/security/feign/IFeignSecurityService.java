@@ -51,7 +51,7 @@ public interface IFeignSecurityService {
 	
 	@GetMapping("${security.feign.hasWriteAccess:/api/security/limits/internal/getLimit}")
     public Mono<Long> getLimit(@RequestParam String appCode, 
-            @RequestParam BigInteger clientId,
+            @RequestParam String clientCode,
             @RequestParam String urlClientCode,
             @RequestParam String objectName);
 

@@ -30,7 +30,11 @@ public class LimitAccessDAO extends AbstractUpdatableDAO<SecurityAppLimitationsR
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_APP_LIMITATIONS)
                 .where(cond).orderBy(SECURITY_APP_LIMITATIONS.CLIENT_ID.desc()))
-                .collectList().flatMap(list -> list.isEmpty() ? Mono.empty() : Mono.just(list.get(0).getLimit()))
+                .collectList().flatMap(list -> list.isEmpty() ? Mono.empty()
+                        : Mono.justOrEmpty(
+                                list.size() == 1 ? list.get(0).getLimit()
+                                        : list.stream().filter(e -> e.getClientId().equals(clientId)).findFirst()
+                                                .map(SecurityAppLimitationsRecord::getLimit).orElse(null)))
                 .defaultIfEmpty(10L);
     }
 }

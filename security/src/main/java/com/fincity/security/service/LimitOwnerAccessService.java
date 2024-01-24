@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.LimitOwnerAccessDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.LimitAccess;
 import com.fincity.security.jooq.tables.records.SecurityAppOwnerLimitationsRecord;
 
@@ -24,97 +26,137 @@ import reactor.core.publisher.Mono;
 public class LimitOwnerAccessService extends
         AbstractJOOQUpdatableDataService<SecurityAppOwnerLimitationsRecord, ULong, LimitAccess, LimitOwnerAccessDAO> {
 
-	private static final String LIMIT = "limit";
+    private static final String LIMIT = "limit";
 
-	private static final String SEPERATOR = "_";
+    private static final String SEPERATOR = "_";
 
-	@Autowired
-	private CacheService cacheService;
+    // We are using this cache in feignAuthenticationService
+    private static final String CACHE_NAME_OBJECT_LIMIT = "objectLimit";
 
-	@Autowired
-	private SecurityMessageResourceService messageResourceService;
+    @Autowired
+    private CacheService cacheService;
 
-	@Override
-	protected Mono<LimitAccess> updatableEntity(LimitAccess entity) {
+    @Autowired
+    @Lazy
+    private AppService appService;
 
-		return this.read(entity.getId())
-		        .map(e -> e.setLimit(entity.getLimit()));
-	}
+    @Autowired
+    @Lazy
+    private ClientService clientService;
 
-	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+    @Autowired
+    private SecurityMessageResourceService messageResourceService;
 
-		HashMap<String, Object> map = new HashMap<>();
+    @Override
+    protected Mono<LimitAccess> updatableEntity(LimitAccess entity) {
 
-		if (fields == null)
-			return Mono.just(map);
+        return this.read(entity.getId())
+                .map(e -> e.setLimit(entity.getLimit()));
+    }
 
-		map.put(LIMIT, fields.get(LIMIT));
-		return Mono.just(map);
-	}
+    @Override
+    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-	@Override
-	@PreAuthorize("hasAuthority('Authorities.Limitations_CREATE')")
-	public Mono<LimitAccess> create(LimitAccess entity) {
+        HashMap<String, Object> map = new HashMap<>();
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca ->
-				{
-			        if (!ca.isSystemClient())
-				        return Mono.empty();
+        if (fields == null)
+            return Mono.just(map);
 
-			        return super.create(entity);
-		        })
-		        .switchIfEmpty(this.messageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "create", entity.getName()));
+        map.put(LIMIT, fields.get(LIMIT));
+        return Mono.just(map);
+    }
 
-	}
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Limitations_CREATE')")
+    public Mono<LimitAccess> create(LimitAccess entity) {
 
-	@Override
-	@PreAuthorize("hasAuthority('Authorities.Limitations_UPDATE')")
-	public Mono<LimitAccess> update(LimitAccess entity) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-		        .flatMap(ca ->
-				{
-			        if (!ca.isSystemClient())
-				        return Mono.empty();
+                ca -> this.appService.read(entity.getAppId()),
 
-			        return super.update(entity);
-		        })
-		        .switchIfEmpty(this.messageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "update", entity.getName()));
+                (ca, app) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
 
-	}
+                    if (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()))
+                        return Mono.just(true);
 
-	@Override
-	@PreAuthorize("hasAuthority('Authorities.Limitations_DELETE')")
-	public Mono<Integer> delete(ULong id) {
+                    return Mono.empty();
+                },
+                (ca, app, isValid) -> super.create(entity),
 
-		return FlatMapUtil.flatMapMono(
+                (ca, app, isValid, object) -> this.clientService
+                        .readInternal(entity.getClientId()).map(Client::getCode),
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+                (ca, app, isValid, object, clientCode) -> {
+                    Mono<Boolean> eviction = this.cacheService
+                            .evict(CACHE_NAME_OBJECT_LIMIT + "-" + entity.getName() + "-"
+                                    + clientCode + "-" + app.getAppCode(), clientCode);
+                    return eviction.map(x -> object);
 
-		        ca ->
-				{
-			        if (!ca.isSystemClient())
-				        return Mono.empty();
+                })
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "create", entity.getName()));
 
-			        return super.read(id).flatMap(e -> super.delete(e.getId()));
-		        })
-		        .switchIfEmpty(this.messageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-		                SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "delete", ""));
+    }
 
-	}
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Limitations_UPDATE')")
+    public Mono<LimitAccess> update(LimitAccess entity) {
 
-	public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-		return this.cacheService.cacheValueOrGet(
-		        appId.toString() + SEPERATOR + clientId.toString() + SEPERATOR + objectName,
-		        () -> this.dao.getByAppandClientId(appId, clientId, objectName));
+                ca -> this.appService.read(entity.getAppId()),
 
-	}
+                (ca, app) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
+
+                    if (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()))
+                        return Mono.just(true);
+
+                    return Mono.empty();
+                },
+                (ca, app, isValid) -> super.update(entity))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "update", entity.getName()));
+
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Limitations_DELETE')")
+    public Mono<Integer> delete(ULong id) {
+
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.read(id),
+                (ca, entity) -> this.appService.read(entity.getAppId()),
+                (ca, entity, app) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
+
+                    if (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()))
+                        return Mono.just(true);
+
+                    return Mono.empty();
+                },
+                (ca, entity, app, isValid) -> super.delete(id))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        SecurityMessageResourceService.ONLY_SYS_USER_ACTION, "delete", ""));
+
+    }
+
+    public Mono<Long> readByAppandClientId(ULong appId, ULong clientId, String objectName) {
+
+        return this.cacheService.cacheValueOrGet(
+                appId.toString() + SEPERATOR + clientId.toString() + SEPERATOR + objectName,
+                () -> this.dao.getByAppandClientId(appId, clientId, objectName));
+
+    }
 }

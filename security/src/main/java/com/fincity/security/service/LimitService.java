@@ -16,6 +16,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.security.dto.Client;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -42,17 +43,23 @@ public class LimitService {
 
     private static final String CREATE = "CREATE";
 
-    public Mono<Long> fetchLimits(String appCode, ULong clientId, String urlClientCode, String objectName) {
+    public Mono<Long> fetchLimits(String appCode, String clientCode, String urlClientCode, String objectName) {
 
         return FlatMapUtil.flatMapMono(
+
                 () -> appService.getAppByCode(appCode),
-                (app) -> clientService.getClientBy(urlClientCode),
-                (app, client) -> Mono.just(clientId == client.getId()),
-                (app, client, isOwner) -> (isOwner.booleanValue()
-                        ? this.limitOwnerAccessService.readByAppandClientId(app.getId(), client.getId(),
+
+                (app) -> clientService.getClientBy(clientCode).map(Client::getId),
+
+                (app, clientId) -> clientService.getClientBy(urlClientCode).map(Client::getId),
+
+                (app, clientId, urlClientId) -> Mono.just(clientId == urlClientId),
+
+                (app, clientId, urlClientId, isOwner) -> (isOwner.booleanValue()
+                        ? this.limitOwnerAccessService.readByAppandClientId(app.getId(), urlClientId,
                                 objectName)
                         : this.limitAccessService.readByAppandClientId(app.getId(), clientId,
-                                objectName, client.getId())));
+                                objectName, urlClientId)));
 
     }
 

@@ -24,7 +24,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
     private static final String CACHE_NAME_USER_BEING_MANAGED = "userBeingManaged";
     private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
-	private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
+    private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
     private static final String CACHE_NAME_OBJECT_LIMIT = "objectLimit";
 
     @Autowired(required = false)
@@ -33,77 +33,77 @@ public class FeignAuthenticationService implements IAuthenticationService {
     @Autowired
     private CacheService cacheService;
 
-	@Override
-	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, String clientCode,
-			String appCode, ServerHttpRequest request) {
+    @Override
+    public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, String clientCode,
+            String appCode, ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> cacheService.<Authentication>get(CACHE_NAME_TOKEN, bearerToken),
+                () -> cacheService.<Authentication>get(CACHE_NAME_TOKEN, bearerToken),
 
-				cToken -> {
+                cToken -> {
 
-					if (cToken != null)
-						return Mono.just(cToken);
+                    if (cToken != null)
+                        return Mono.just(cToken);
 
-					return this.getAuthenticationFromSecurity(isBasic, bearerToken, clientCode, appCode, request)
-							.flatMap(e -> {
+                    return this.getAuthenticationFromSecurity(isBasic, bearerToken, clientCode, appCode, request)
+                            .flatMap(e -> {
 
-								if (!e.isAuthenticated())
-									return Mono.just(e);
+                                if (!e.isAuthenticated())
+                                    return Mono.just(e);
 
-								return cacheService.put(CACHE_NAME_TOKEN, e, bearerToken);
-							});
-				}
+                                return cacheService.put(CACHE_NAME_TOKEN, e, bearerToken);
+                            });
+                }
 
-		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FeignAuthenticationService.getAuthentication"));
-	}
+        )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FeignAuthenticationService.getAuthentication"));
+    }
 
-	private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken, String clientCode,
-			String appCode, ServerHttpRequest request) {
+    private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken, String clientCode,
+            String appCode, ServerHttpRequest request) {
 
         if (feignAuthService == null)
             return Mono.empty();
 
-		if (request.getURI()
-				.getPath()
-				.indexOf("actuator/") != -1)
-			return Mono.empty();
+        if (request.getURI()
+                .getPath()
+                .indexOf("actuator/") != -1)
+            return Mono.empty();
 
-		String host = request.getURI()
-				.getHost();
-		String port = "" + request.getURI()
-				.getPort();
+        String host = request.getURI()
+                .getHost();
+        String port = "" + request.getURI()
+                .getPort();
 
-		List<String> forwardedHost = request.getHeaders()
-				.get("X-Forwarded-Host");
+        List<String> forwardedHost = request.getHeaders()
+                .get("X-Forwarded-Host");
 
         if (forwardedHost != null && !forwardedHost.isEmpty()) {
             host = forwardedHost.get(0);
         }
 
-		List<String> forwardedPort = request.getHeaders()
-				.get("X-Forwarded-Port");
-		if (forwardedPort != null && !forwardedPort.isEmpty()) {
-			port = forwardedPort.get(0);
-			int ind = port.indexOf(',');
-			if (ind != -1) {
-				port = port.substring(0, ind);
-			}
-		}
+        List<String> forwardedPort = request.getHeaders()
+                .get("X-Forwarded-Port");
+        if (forwardedPort != null && !forwardedPort.isEmpty()) {
+            port = forwardedPort.get(0);
+            int ind = port.indexOf(',');
+            if (ind != -1) {
+                port = port.substring(0, ind);
+            }
+        }
 
-		return this.feignAuthService
-				.contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port, clientCode, appCode)
-				.map(Authentication.class::cast);
-	}
+        return this.feignAuthService
+                .contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port, clientCode, appCode)
+                .map(Authentication.class::cast);
+    }
 
     public Mono<Boolean> isBeingManaged(String managingClientCode, String clientCode) {
 
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED,
-				() -> this.feignAuthService.isBeingManaged(managingClientCode, clientCode), managingClientCode, ":",
-				clientCode);
-	}
+        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED,
+                () -> this.feignAuthService.isBeingManaged(managingClientCode, clientCode), managingClientCode, ":",
+                clientCode);
+    }
 
     public Mono<Boolean> isUserBeingManaged(Object userId, String clientCode) {
 
@@ -117,9 +117,9 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
     public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
 
-		return cacheService.cacheValueOrGet(CACHE_NAME_APP_READ_ACCESS,
-				() -> this.feignAuthService.hasReadAccess(appCode, clientCode), appCode, ":", clientCode);
-	}
+        return cacheService.cacheValueOrGet(CACHE_NAME_APP_READ_ACCESS,
+                () -> this.feignAuthService.hasReadAccess(appCode, clientCode), appCode, ":", clientCode);
+    }
 
     public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
 
@@ -127,20 +127,20 @@ public class FeignAuthenticationService implements IAuthenticationService {
                 () -> this.feignAuthService.hasWriteAccess(appCode, clientCode), appCode, ":", clientCode);
     }
 
-    public Mono<Long> getLimit(String appCode, BigInteger clientId, String objectName, String urlClientCode) {
+    public Mono<Long> getLimit(String appCode, String clientCode, String objectName, String urlClientCode) {
 
-        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_OBJECT_LIMIT,
-                () -> this.feignAuthService.getLimit(appCode, clientId, objectName, urlClientCode), appCode, ":",
-                clientId, ":", objectName, ":", urlClientCode);
+        return cacheService.cacheEmptyValueOrGet(
+                CACHE_NAME_OBJECT_LIMIT + "-" + objectName + "-" + urlClientCode + "-" + appCode,
+                () -> this.feignAuthService.getLimit(appCode, clientCode, objectName, urlClientCode), clientCode);
     }
 
     public Mono<Boolean> isValidClientCode(String clientCode) {
 
-		return this.feignAuthService.validClientCode(clientCode);
-	}
+        return this.feignAuthService.validClientCode(clientCode);
+    }
 
-	public Mono<App> getAppExplicitInfoByCode(String appCode) {
-		return cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE_EXPLICIT,
-				() -> this.feignAuthService.getAppExplicitInfoByCode(appCode), appCode);
-	}
+    public Mono<App> getAppExplicitInfoByCode(String appCode) {
+        return cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE_EXPLICIT,
+                () -> this.feignAuthService.getAppExplicitInfoByCode(appCode), appCode);
+    }
 }

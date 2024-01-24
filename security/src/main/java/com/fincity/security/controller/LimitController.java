@@ -22,11 +22,11 @@ public class LimitController {
     @GetMapping("/internal/getLimit")
     public Mono<ResponseEntity<Long>> getLimit(
             @RequestParam(required = true) String appCode,
-            @RequestParam(required = true) ULong clientId,
+            @RequestParam(required = true) String clientCode,
             @RequestParam(required = true) String urlClientCode,
             @RequestParam(required = true) String objectName) {
 
-        return this.limitService.fetchLimits(appCode, clientId, urlClientCode, objectName)
+        return this.limitService.fetchLimits(appCode, clientCode, urlClientCode, objectName)
                 .map(ResponseEntity::ok);
     }
 
