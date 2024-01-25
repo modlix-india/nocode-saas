@@ -65,14 +65,4 @@ public class ClientPasswordPolicyDAO
 
 	}
 
-	public Mono<ClientPasswordPolicy> getByAppAndClientIds(ULong appId, ULong clientId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.fields())
-		        .from(SECURITY_CLIENT_PASSWORD_POLICY)
-		        .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)
-		                .and(SECURITY_CLIENT_PASSWORD_POLICY.APP_ID.eq(appId)))
-		        .limit(1))
-		        .map(e -> e.into(ClientPasswordPolicy.class));
-	}
-
 }

@@ -162,22 +162,6 @@ public class ClientPasswordPolicyService extends
 		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 	}
-
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
-	public Mono<ClientPasswordPolicy> fetchPolicyByAppandClientIds(ULong appId, ULong clientId) {
-
-		return flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
-
-		        ca -> ca.isSystemClient() ? Mono.just(true)
-		                : this.clientService.isBeingManagedBy(ULong.valueOf(ca.getLoggedInFromClientId()), clientId)
-		                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-		        (ca, validClient) -> cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-		                () -> this.dao.getByAppAndClientIds(appId, clientId), clientId, ":", appId)
-
-		);
-
-	}
 	
 
 	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
