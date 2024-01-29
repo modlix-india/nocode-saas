@@ -115,7 +115,7 @@ public class CallRequest extends AbstractReactiveFunction {
 				Parameter.ofEntry(TIMEOUT, Schema.ofInteger(TIMEOUT).setDefaultValue(new JsonPrimitive(0))),
 
 				Parameter.ofEntry(CONNECTION_NAME,
-						Schema.ofString(CONNECTION_NAME).setDefaultValue(new JsonPrimitive("")))
+						Schema.ofString(CONNECTION_NAME))
 
 		));
 
