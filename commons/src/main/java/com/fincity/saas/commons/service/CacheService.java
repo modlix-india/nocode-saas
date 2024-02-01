@@ -255,7 +255,7 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 
 		return Mono.just(this.cacheManager.getCacheNames()
 		        .stream()
-		        .map(e -> e.substring(this.redisPrefix.length() + 1))
+		        .map(e -> e.startsWith(this.redisPrefix) ? e.substring(this.redisPrefix.length() + 1) : e)
 		        .toList());
 	}
 
@@ -305,4 +305,6 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		return v -> this.evict(cacheName, keys)
 		        .map(e -> v);
 	}
+	
+	
 }

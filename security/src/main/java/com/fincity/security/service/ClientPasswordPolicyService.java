@@ -14,8 +14,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -64,21 +66,30 @@ public class ClientPasswordPolicyService extends
 		        (ca, validEntry) ->
 				{
 
-			        ULong currentUser = ULong.valueOf(ca.getLoggedInFromClientId());
+			        ULong currentUserClientId = ULongUtil.valueOf(ca.getUser()
+			                .getClientId());
 
-			        if (ca.isSystemClient() || currentUser.equals(entity.getClientId()))
+			        if (ca.isSystemClient() || currentUserClientId.equals(entity.getClientId()))
 				        return super.create(entity);
 
-			        return this.clientService.isBeingManagedBy(currentUser, entity.getClientId())
+			        return this.clientService.isBeingManagedBy(currentUserClientId, entity.getClientId())
 			                .flatMap(managed -> managed.booleanValue() ? super.create(entity) : Mono.empty());
-		        }
+		        },
 
-		).flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId(), getAppIdIfExists(e.getAppId()))
-		        .map(x -> e))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		        (ca, validEntry, policy) -> cacheService.put(CACHE_NAME_CLIENT_PWD_POLICY, policy,
+		                getKey(ca.getUrlAppCode(), policy))
+
+		).switchIfEmpty(
+		        securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
 
+	}
+
+	private String getKey(String appCode, ClientPasswordPolicy policy) {
+
+		return policy.getAppId() != null ? appCode + ":" + policy.getClientId()
+		        : policy.getClientId()
+		                .toString();
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
@@ -126,42 +137,92 @@ public class ClientPasswordPolicyService extends
 	@Override
 	public Mono<ClientPasswordPolicy> update(ULong key, Map<String, Object> fields) {
 
-		return this.dao.canBeUpdated(key)
-		        .flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
-		        .flatMap(e -> cacheService
-		                .evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId(), getAppIdIfExists(e.getAppId()))
-		                .map(x -> e))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		return flatMapMono(
+
+		        () -> this.dao.canBeUpdated(key)
+		                .flatMap(e ->
+						{
+
+			                if (!e.booleanValue())
+				                return Mono.empty();
+
+			                return super.update(key, fields);
+
+		                }),
+
+		        updatedEntity -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca -> cacheService
+		                        .evict(CACHE_NAME_CLIENT_PWD_POLICY, getKey(ca.getUrlAppCode(), updatedEntity))
+		                        .flatMap(evicted -> cacheService.put(CACHE_NAME_CLIENT_PWD_POLICY, updatedEntity,
+		                                getKey(ca.getUrlAppCode(), updatedEntity))))
+		                .map(e -> updatedEntity)
+
+		).switchIfEmpty(
+		        securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
 	@Override
 	public Mono<ClientPasswordPolicy> update(ClientPasswordPolicy entity) {
 
-		return this.dao.canBeUpdated(entity.getId())
-		        .flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
-		        .flatMap(e -> cacheService
-		                .evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId(), getAppIdIfExists(e.getAppId()))
-		                .map(x -> e))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		return flatMapMono(
+
+		        () -> this.dao.canBeUpdated(entity.getId())
+		                .flatMap(e ->
+						{
+
+			                if (!e.booleanValue())
+				                return Mono.empty();
+
+			                return super.update(entity);
+
+		                }),
+
+		        updatedEntity -> SecurityContextUtil.getUsersContextAuthentication()
+		                .flatMap(ca -> cacheService
+		                        .evict(CACHE_NAME_CLIENT_PWD_POLICY, getKey(ca.getUrlAppCode(), updatedEntity))
+		                        .flatMap(evicted -> cacheService.put(CACHE_NAME_CLIENT_PWD_POLICY, updatedEntity,
+		                                getKey(ca.getUrlAppCode(), updatedEntity))))
+		                .map(e -> updatedEntity)
+
+		).switchIfEmpty(
+		        securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
 
-		return this.dao.canBeUpdated(id)
-		        .flatMap(e -> e.booleanValue() ? super.delete(id) : Mono.empty())
-		        .flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_PWD_POLICY, id))
+		return FlatMapUtil.flatMapMono(
+
+		        () -> this.read(id),
+
+		        passwordPolicy -> this.dao.canBeUpdated(id)
+		                .flatMap(e ->
+						{
+			                if (!e.booleanValue())
+
+				                return Mono.empty();
+
+			                return super.delete(id)
+			                        .flatMap(deleted -> SecurityContextUtil.getUsersContextAuthentication()
+			                                .flatMap(ca -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY,
+			                                        getKey(ca.getUrlAppCode(), passwordPolicy)))
+			                                .map(a -> deleted)
+
+									);
+		                })
+
+		)
 		        .switchIfEmpty(securityMessageResourceService.throwMessage(
 		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+
 	}
-	
 
 	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
 
@@ -279,10 +340,6 @@ public class ClientPasswordPolicyService extends
 			        SecurityMessageResourceService.REGEX_MISMATCH);
 
 		return Mono.just(true);
-	}
-
-	private String getAppIdIfExists(ULong id) {
-		return !StringUtil.safeIsBlank(id) ? ":" + id : "";
 	}
 
 }

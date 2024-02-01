@@ -231,15 +231,44 @@ public class ClientService
 	
 	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(String appCode, ULong clientId, ULong loggedInClientId) {
 
-		return flatMapMono(() -> this.appService.getAppByCode(appCode),
+		return FlatMapUtil.flatMapMonoWithNull(
 
-		        app -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-		                () -> this.dao.getClientPasswordPolicyWithAppId(app.getId(), clientId, loggedInClientId),
-		                clientId, ":", app.getId())
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-		);
+		        ca -> cacheService.<ClientPasswordPolicy>get(CACHE_NAME_CLIENT_PWD_POLICY, ca.getUrlAppCode(), ":",
+		                clientId),
+
+		        (ca, one) -> one != null ? Mono.just(one)
+		                : cacheService.<ClientPasswordPolicy>get(CACHE_NAME_CLIENT_PWD_POLICY, clientId),
+
+		        (ca, one, two) -> two != null ? Mono.just(two)
+		                : cacheService.<ClientPasswordPolicy>get(CACHE_NAME_CLIENT_PWD_POLICY, ca.getUrlAppCode(), ":",
+		                        loggedInClientId),
+
+		        (ca, one, two, three) -> three != null ? Mono.just(three)
+		                : cacheService.<ClientPasswordPolicy>get(CACHE_NAME_CLIENT_PWD_POLICY, loggedInClientId),
+
+		        (ca, one, two, three, four) ->
+				{
+
+			        if (four != null)
+				        return Mono.just(four);
+
+			        return this.dao.getClientPasswordPolicyWithAppCode(appCode, clientId, loggedInClientId)
+			                .flatMap(e -> cacheService.put(CACHE_NAME_CLIENT_PWD_POLICY, e,
+			                        getKey(ca.getUrlAppCode(), e)));
+		        });
+
 
 	}
+
+	private String getKey(String appCode, ClientPasswordPolicy policy) {
+
+		return policy.getAppId() != null ? appCode + ":" + policy.getClientId()
+		        : policy.getClientId()
+		                .toString();
+	}
+
 	
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 
