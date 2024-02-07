@@ -55,11 +55,13 @@ public class LimitService {
 
                 (app, clientId, urlClientId) -> Mono.just(clientId == urlClientId),
 
-                (app, clientId, urlClientId, isOwner) -> (isOwner.booleanValue()
-                        ? this.limitOwnerAccessService.readByAppandClientId(app.getId(), urlClientId,
-                                objectName)
-                        : this.limitAccessService.readByAppandClientId(app.getId(), clientId,
-                                objectName, urlClientId)));
+                (app, clientId, urlClientId, isOwner) -> {
+                    return (isOwner.booleanValue()
+                            ? this.limitOwnerAccessService.readByAppandClientId(app.getId(), urlClientId,
+                                    objectName)
+                            : this.limitAccessService.readByAppandClientId(app.getId(), clientId,
+                                    objectName, urlClientId));
+                });
 
     }
 

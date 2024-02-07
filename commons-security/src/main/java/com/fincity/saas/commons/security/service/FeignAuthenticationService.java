@@ -131,7 +131,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
         return cacheService.cacheEmptyValueOrGet(
                 CACHE_NAME_OBJECT_LIMIT + "-" + objectName + "-" + urlClientCode + "-" + appCode,
-                () -> this.feignAuthService.getLimit(appCode, clientCode, objectName, urlClientCode), clientCode);
+                () ->  this.feignAuthService.getLimit(appCode, clientCode, objectName, urlClientCode), clientCode);
     }
 
     public Mono<Boolean> isValidClientCode(String clientCode) {

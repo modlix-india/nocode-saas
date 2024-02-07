@@ -161,7 +161,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 						return Mono.just(true);
 
 					return this.repo.countByAppCodeAndClientCode(appCode, clientCode).map(c -> c < limit);
-				});
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).checkLimit"));
 
 	}
 
