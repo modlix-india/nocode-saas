@@ -2,11 +2,14 @@ package com.fincity.saas.commons.configuration;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.web.ReactivePageableHandlerMethodArgumentResolver;
 import org.springframework.http.codec.ServerCodecConfigurer;
@@ -27,6 +30,7 @@ import com.fincity.saas.commons.codec.RedisObjectCodec;
 import com.fincity.saas.commons.jackson.CommonsSerializationModule;
 import com.fincity.saas.commons.jackson.SortSerializationModule;
 import com.fincity.saas.commons.jackson.TupleSerializationModule;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -140,5 +144,18 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 						"http://localhost:8080")
 				.allowedMethods("*")
 				.maxAge(3600);
+	}
+
+	@Bean
+	public Caffeine<Object, Object> caffeineConfig() {
+		return Caffeine.newBuilder()
+				.expireAfterAccess(Duration.ofMinutes(5));
+	}
+
+	@Bean
+	public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
+		CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
+		caffeineCacheManager.setCaffeine(caffeine);
+		return caffeineCacheManager;
 	}
 }

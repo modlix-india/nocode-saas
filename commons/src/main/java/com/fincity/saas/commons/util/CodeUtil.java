@@ -9,14 +9,16 @@ import lombok.experimental.Accessors;
 
 public class CodeUtil {
 
+    private static final Random rand = new Random();
+
     @Data
     @Accessors(chain = true)
     public static class CodeGenerationConfiguration {
 
         private int length = 8;
         private boolean numeric = true;
-        private boolean smallCase = false;
-        private boolean capitalCase = false;
+        private boolean lowercase = false;
+        private boolean uppercase = false;
         private boolean specialChars = false;
         private int[] separators;
         private String separator = "-";
@@ -33,7 +35,6 @@ public class CodeUtil {
 
     public static String generate(CodeGenerationConfiguration config) {
 
-        Random rand = new Random();
         StringBuilder sb = new StringBuilder(config.getLength()
                 + (config.separators == null ? 0 : config.separators.length) * config.separator.length());
 
@@ -41,9 +42,9 @@ public class CodeUtil {
 
         if (config.numeric)
             charSets.add(NUMBERS);
-        if (config.capitalCase)
+        if (config.lowercase)
             charSets.add(CAPITAL_CASE);
-        if (config.smallCase)
+        if (config.uppercase)
             charSets.add(SMALL_CASE);
         if (config.specialChars)
             charSets.add(SPECIAL_CHARS);
