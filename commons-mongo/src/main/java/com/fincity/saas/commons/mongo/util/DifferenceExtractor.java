@@ -15,7 +15,6 @@ import com.fincity.nocode.kirun.engine.model.StatementGroup;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.ObjectUtil;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
@@ -81,7 +80,7 @@ public class DifferenceExtractor {
 		return Flux.concat(Flux.fromIterable(existing.keySet()), Flux.fromIterable(incoming.keySet()))
 				.distinct()
 				.subscribeOn(Schedulers.boundedElastic())
-				.filter(e -> !ObjectUtil.safeEquals(incoming.get(e), existing.get(e)))
+				.filter(e -> !safeEquals(incoming.get(e), existing.get(e)))
 				.map(e -> Tuples.of(e, Optional.ofNullable(incoming.get(e))))
 				.collectMap(Tuple2::getT1, e -> e.getT2().orElse(null), HashMap::new)
 				.flatMap(e -> Mono.just(e.isEmpty() ? Map.of() : e));

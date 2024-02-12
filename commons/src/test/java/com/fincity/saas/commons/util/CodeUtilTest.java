@@ -60,144 +60,143 @@ class CodeUtilTest {
 	@Test
 	void testCustomCodeGeneration() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSmallCase(true)
-		        .setCapitalCase(true)
-		        .setSpecialChars(true)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 3, 7 });
+				.setNumeric(true)
+				.setLowercase(true)
+				.setUppercase(true)
+				.setSpecialChars(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 3, 7 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(10, st.length());
 		assertTrue(isValidString(st, NUMBERS + SEPERATOR + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS));
 		assertTrue(st.charAt(3) == '-' && st.charAt(8) == '-',
-		        "Separators should be present at the specified positions");
+				"Separators should be present at the specified positions");
 
 	}
 
 	@Test
 	void testCustomvthsep() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSmallCase(true)
-		        .setCapitalCase(false)
-		        .setSpecialChars(false)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 3, 7 });
+				.setNumeric(true)
+				.setLowercase(true)
+				.setUppercase(false)
+				.setSpecialChars(false)
+				.setSeparator("-")
+				.setSeparators(new int[] { 3, 7 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(10, st.length());
 		assertTrue(isValidString(st, NUMBERS + SEPERATOR + SMALL_CASE));
 		assertTrue(st.charAt(3) == '-' && st.charAt(8) == '-',
-		        "Separators should be present at the specified positions");
+				"Separators should be present at the specified positions");
 
 	}
-
 
 	@Test
 	void testCustomvthsep2() {
 		cd.setLength(11)
-		        .setNumeric(true)
-		        .setSmallCase(false)
-		        .setCapitalCase(true)
-		        .setSpecialChars(false)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 2, 9 });
+				.setNumeric(true)
+				.setLowercase(false)
+				.setUppercase(true)
+				.setSpecialChars(false)
+				.setSeparator("-")
+				.setSeparators(new int[] { 2, 9 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
 		assertTrue(isValidString(st, NUMBERS + SEPERATOR + CAPITAL_CASE));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
-		        "Separators should be present at the specified positions");
+				"Separators should be present at the specified positions");
 
 	}
 
 	@Test
 	void testCustomvthsep3() {
 		cd.setLength(11)
-		        .setNumeric(true)
-		        .setSmallCase(false)
-		        .setCapitalCase(false)
-		        .setSpecialChars(true)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 2, 9 });
+				.setNumeric(true)
+				.setLowercase(false)
+				.setUppercase(false)
+				.setSpecialChars(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 2, 9 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
 		assertTrue(isValidString(st, NUMBERS + SEPERATOR + SPECIAL_CHARS));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
-		        "Separators should be present at the specified positions");
+				"Separators should be present at the specified positions");
 
 	}
 
 	@Test
 	void testCustomvthsep4() {
 		cd.setLength(11)
-		        .setNumeric(false)
-		        .setSmallCase(true)
-		        .setCapitalCase(true)
-		        .setSpecialChars(false)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 2, 9 });
+				.setNumeric(false)
+				.setLowercase(true)
+				.setUppercase(true)
+				.setSpecialChars(false)
+				.setSeparator("-")
+				.setSeparators(new int[] { 2, 9 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
 		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE + SMALL_CASE));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
-		        "Separators should be present at the specified positions");
+				"Separators should be present at the specified positions");
 
 	}
 
 	@Test
 	void testCustomvthsep5() {
 		cd.setLength(11)
-		        .setNumeric(false)
-		        .setSmallCase(true)
-		        .setCapitalCase(false)
-		        .setSpecialChars(true)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 2, 9 });
+				.setNumeric(false)
+				.setLowercase(true)
+				.setUppercase(false)
+				.setSpecialChars(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 2, 9 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(13, st.length());
 		assertTrue(isValidString(st, SEPERATOR + SMALL_CASE + SPECIAL_CHARS));
 		assertTrue(st.charAt(2) == '-' && st.charAt(10) == '-',
-		        "Separators should be present at the specified positions");
+				"Separators should be present at the specified positions");
 
 	}
 
 	@Test
 	void testCustomvthsep6() {
 		cd.setLength(11)
-		        .setNumeric(false)
-		        .setSmallCase(false)
-		        .setCapitalCase(true)
-		        .setSpecialChars(true)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 2, 3, 4 });
+				.setNumeric(false)
+				.setLowercase(false)
+				.setUppercase(true)
+				.setSpecialChars(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 2, 3, 4 });
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
 		assertEquals(14, st.length());
 		assertTrue(isValidString(st, SEPERATOR + CAPITAL_CASE + SPECIAL_CHARS));
 		assertTrue(st.charAt(2) == '-' && st.charAt(4) == '-' && st.charAt(6) == '-',
-		        "Separators should be present at the specified positions");
+				"Separators should be present at the specified positions");
 
 	}
 
 	@Test
 	void testCustomCodeGeneration2() {
 		cd.setLength(8)
-		        .setNumeric(false)
-		        .setSmallCase(false)
-		        .setCapitalCase(true)
-		        .setSpecialChars(false);
+				.setNumeric(false)
+				.setLowercase(false)
+				.setUppercase(true)
+				.setSpecialChars(false);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -209,10 +208,10 @@ class CodeUtilTest {
 	@Test
 	void testCustomCodeGeneration3() {
 		cd.setLength(8)
-		        .setNumeric(false)
-		        .setSmallCase(true)
-		        .setCapitalCase(false)
-		        .setSpecialChars(false);
+				.setNumeric(false)
+				.setLowercase(true)
+				.setUppercase(false)
+				.setSpecialChars(false);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -224,10 +223,10 @@ class CodeUtilTest {
 	@Test
 	void testCustomCodeGeneration4() {
 		cd.setLength(8)
-		        .setNumeric(false)
-		        .setSmallCase(false)
-		        .setCapitalCase(false)
-		        .setSpecialChars(true);
+				.setNumeric(false)
+				.setLowercase(false)
+				.setUppercase(false)
+				.setSpecialChars(true);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -239,10 +238,10 @@ class CodeUtilTest {
 	@Test
 	void testCustomCodeGeneration5() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSmallCase(true)
-		        .setCapitalCase(false)
-		        .setSpecialChars(true);
+				.setNumeric(true)
+				.setLowercase(true)
+				.setUppercase(false)
+				.setSpecialChars(true);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -254,10 +253,10 @@ class CodeUtilTest {
 	@Test
 	void testCustomCodeGeneration6() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSmallCase(true)
-		        .setCapitalCase(false)
-		        .setSpecialChars(false);
+				.setNumeric(true)
+				.setLowercase(true)
+				.setUppercase(false)
+				.setSpecialChars(false);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -269,10 +268,10 @@ class CodeUtilTest {
 	@Test
 	void testCustomCodeGeneration7() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSmallCase(false)
-		        .setCapitalCase(true)
-		        .setSpecialChars(false);
+				.setNumeric(true)
+				.setLowercase(false)
+				.setUppercase(true)
+				.setSpecialChars(false);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -284,10 +283,10 @@ class CodeUtilTest {
 	@Test
 	void testCustomCodeGeneration8() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSmallCase(false)
-		        .setCapitalCase(false)
-		        .setSpecialChars(true);
+				.setNumeric(true)
+				.setLowercase(false)
+				.setUppercase(false)
+				.setSpecialChars(true);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -299,9 +298,9 @@ class CodeUtilTest {
 	@Test
 	void testCodeGenerationWithNoSeparator() {
 		CodeUtil.CodeGenerationConfiguration config = new CodeUtil.CodeGenerationConfiguration().setLength(10)
-		        .setNumeric(true)
-		        .setSmallCase(true)
-		        .setCapitalCase(true);
+				.setNumeric(true)
+				.setLowercase(true)
+				.setUppercase(true);
 
 		String st = CodeUtil.generate(config);
 		assertNotNull(st);
@@ -313,9 +312,9 @@ class CodeUtilTest {
 	@Test
 	void testCodeGenerationWithNoSeparator2() {
 		cd.setLength(10)
-		        .setNumeric(false)
-		        .setSmallCase(true)
-		        .setCapitalCase(true);
+				.setNumeric(false)
+				.setLowercase(true)
+				.setUppercase(true);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -327,9 +326,9 @@ class CodeUtilTest {
 	@Test
 	void testCodeGenerationWithNoSeparator3() {
 		cd.setLength(9)
-		        .setNumeric(false)
-		        .setSmallCase(false)
-		        .setCapitalCase(true);
+				.setNumeric(false)
+				.setLowercase(false)
+				.setUppercase(true);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -341,9 +340,9 @@ class CodeUtilTest {
 	@Test
 	void testCodeGenerationWithNoSeparator4() {
 		cd.setLength(15)
-		        .setNumeric(false)
-		        .setSmallCase(true)
-		        .setCapitalCase(false);
+				.setNumeric(false)
+				.setLowercase(true)
+				.setUppercase(false);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -355,9 +354,9 @@ class CodeUtilTest {
 	@Test
 	void testCodeGenerationWithNoSeparator5() {
 		cd.setLength(2)
-		        .setNumeric(false)
-		        .setSmallCase(true)
-		        .setCapitalCase(true);
+				.setNumeric(false)
+				.setLowercase(true)
+				.setUppercase(true);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -369,9 +368,9 @@ class CodeUtilTest {
 	@Test
 	void test2() {
 		cd.setLength(19)
-		        .setNumeric(false)
-		        .setSmallCase(true)
-		        .setCapitalCase(true);
+				.setNumeric(false)
+				.setLowercase(true)
+				.setUppercase(true);
 
 		String st = CodeUtil.generate(cd);
 		assertNotNull(st);
@@ -383,50 +382,50 @@ class CodeUtilTest {
 	@Test
 	void testSeparatorBeyondLength() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 10 });
+				.setNumeric(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 10 });
 		assertThrows(StringIndexOutOfBoundsException.class, () -> CodeUtil.generate(cd),
-		        "Separator position should not be beyond the length of the generated st");
+				"Separator position should not be beyond the length of the generated st");
 	}
 
 	@Test
 	void testSeparatorBeyondLength2() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 7, 12 });
+				.setNumeric(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 7, 12 });
 		assertThrows(StringIndexOutOfBoundsException.class, () -> CodeUtil.generate(cd),
-		        "Separator position should not be beyond the length of the generated st");
+				"Separator position should not be beyond the length of the generated st");
 	}
 
 	@Test
 	void testSeparatorBeyondLength3() {
 		cd.setLength(8)
-		        .setNumeric(true)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { 10, 12 });
+				.setNumeric(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 10, 12 });
 		assertThrows(StringIndexOutOfBoundsException.class, () -> CodeUtil.generate(cd),
-		        "Separator position should not be beyond the length of the generated st");
+				"Separator position should not be beyond the length of the generated st");
 	}
 
 	@Test
 	void testnegativelength() {
 		cd.setLength(-1)
-		        .setNumeric(true)
-		        .setSeparator("-");
+				.setNumeric(true)
+				.setSeparator("-");
 
 		assertThrows(NegativeArraySizeException.class, () -> CodeUtil.generate(cd),
-		        "Separator position should not be beyond the length of the generated st");
+				"Separator position should not be beyond the length of the generated st");
 	}
 
 	@Test
 	void testsmallerlength() {
 		cd.setLength(2)
-		        .setNumeric(true)
-		        .setSmallCase(true)
-		        .setCapitalCase(true)
-		        .setSpecialChars(true);
+				.setNumeric(true)
+				.setLowercase(true)
+				.setUppercase(true)
+				.setSpecialChars(true);
 		String st = CodeUtil.generate(cd);
 		assertEquals(2, st.length());
 		assertTrue(isValidString(st, NUMBERS + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS));
@@ -435,12 +434,12 @@ class CodeUtilTest {
 	@Test
 	void testseparator() {
 		cd.setLength(7)
-		        .setNumeric(true)
-		        .setSmallCase(true)
-		        .setCapitalCase(true)
-		        .setSpecialChars(true)
-		        .setSeparator("*")
-		        .setSeparators(new int[] { 3, 4 });
+				.setNumeric(true)
+				.setLowercase(true)
+				.setUppercase(true)
+				.setSpecialChars(true)
+				.setSeparator("*")
+				.setSeparators(new int[] { 3, 4 });
 		String st = CodeUtil.generate(cd);
 		assertEquals(9, st.length());
 		assertTrue(isValidString(st, NUMBERS + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS + "*"));
@@ -449,8 +448,8 @@ class CodeUtilTest {
 	@Test
 	void testseparator2() {
 		cd.setLength(7)
-		        .setSeparator("*")
-		        .setSeparators(new int[] { 3, 4 });
+				.setSeparator("*")
+				.setSeparators(new int[] { 3, 4 });
 		String st = CodeUtil.generate(cd);
 		assertEquals(9, st.length());
 		assertTrue(isValidString(st, NUMBERS + "*"));
@@ -459,78 +458,78 @@ class CodeUtilTest {
 	@Test
 	void testseparator3() {
 		cd.setLength(7)
-		        .setSeparator("*");
+				.setSeparator("*");
 		String st = CodeUtil.generate(cd);
 		assertEquals(7, st.length());
 		assertTrue(isValidString(st, NUMBERS + "*"));
 	}
-	
+
 	@Test
 	void testlen() {
 		cd.setLength(0);
 		String st = CodeUtil.generate(cd);
 		assertEquals(0, st.length());
-		
+
 	}
-	
+
 	@Test
 	void testsample() {
 		cd.setLength(7)
-		        
-		        .setSeparator("*")
-		        .setSeparators(new int[] { 0,7 });
+
+				.setSeparator("*")
+				.setSeparators(new int[] { 0, 7 });
 		String st = CodeUtil.generate(cd);
 		assertEquals(9, st.length());
-		assertTrue(isValidString(st, NUMBERS+"*"));
+		assertTrue(isValidString(st, NUMBERS + "*"));
 	}
-	
+
 	@Test
 	void testsample2() {
 		cd.setLength(7)
-		        
-		        .setSeparator("*")
-		        .setSeparators(new int[] { 3, 4 });
+
+				.setSeparator("*")
+				.setSeparators(new int[] { 3, 4 });
 		String st = CodeUtil.generate(cd);
 		assertEquals(9, st.length());
-		assertTrue(isValidString(st, NUMBERS+"*"));
+		assertTrue(isValidString(st, NUMBERS + "*"));
 	}
-	
+
 	@Test
 	void testnegseplen() {
 		cd.setLength(7)
-		        .setSeparator("-")
-		        .setSeparators(new int[] { -1,7 });
+				.setSeparator("-")
+				.setSeparators(new int[] { -1, 7 });
 		assertThrows(StringIndexOutOfBoundsException.class, () -> CodeUtil.generate(cd));
 	}
-	
+
 	@Test
 	void minlentest() {
 		cd.setLength(4)
-		.setNumeric(true)
-		.setCapitalCase(true)
-		.setSmallCase(true)
-		.setSpecialChars(true);
-		
-		String st=CodeUtil.generate(cd);
-		assertEquals(4,st.length());
-		assertTrue(isValidString(st, NUMBERS+CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS));
-		
+				.setNumeric(true)
+				.setUppercase(true)
+				.setLowercase(true)
+				.setSpecialChars(true);
+
+		String st = CodeUtil.generate(cd);
+		assertEquals(4, st.length());
+		assertTrue(isValidString(st, NUMBERS + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS));
+
 	}
-	
+
 	@Test
 	void minlentest2() {
 		cd.setLength(4)
-		.setNumeric(true)
-		.setCapitalCase(true)
-		.setSmallCase(true)
-		.setSpecialChars(true)
-		.setSeparator("-")
-		.setSeparators(new int[] {2});
-		
-		String st=CodeUtil.generate(cd);
-		assertEquals(5,st.length());
-		assertTrue(isValidString(st, NUMBERS+CAPITAL_CASE+SMALL_CASE+SPECIAL_CHARS+SEPERATOR));
-		
+				.setNumeric(true)
+				.setUppercase(true)
+				.setLowercase(true)
+				.setSpecialChars(true)
+				.setSeparator("-")
+				.setSeparators(new int[] { 2 });
+
+		String st = CodeUtil.generate(cd);
+		assertEquals(5, st.length());
+		assertTrue(isValidString(st, NUMBERS + CAPITAL_CASE + SMALL_CASE + SPECIAL_CHARS + SEPERATOR));
+
 	}
 
 }
