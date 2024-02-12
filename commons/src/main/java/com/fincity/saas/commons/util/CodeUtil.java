@@ -25,8 +25,8 @@ public class CodeUtil {
     }
 
     private static final String NUMBERS = "0123456789";
-    private static final String CAPITAL_CASE = "BCDFGHJKLMNPQRSTVWXZ";
-    private static final String SMALL_CASE = "bcdfghjklmnpqrstvwxz";
+    private static final String UPPERCASE = "BCDFGHJKLMNPQRSTVWXZ";
+    private static final String LOWERCASE = "bcdfghjklmnpqrstvwxz";
     private static final String SPECIAL_CHARS = "!@#$";
 
     public static String generate() {
@@ -42,10 +42,10 @@ public class CodeUtil {
 
         if (config.numeric)
             charSets.add(NUMBERS);
-        if (config.lowercase)
-            charSets.add(CAPITAL_CASE);
         if (config.uppercase)
-            charSets.add(SMALL_CASE);
+            charSets.add(UPPERCASE);
+        if (config.lowercase)
+            charSets.add(LOWERCASE);
         if (config.specialChars)
             charSets.add(SPECIAL_CHARS);
 
