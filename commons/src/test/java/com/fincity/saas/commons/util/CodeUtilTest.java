@@ -27,6 +27,7 @@ class CodeUtilTest {
 	}
 
 	private boolean isValidString(String str, String allowedchrs) {
+		System.out.println(str + "   -   " + allowedchrs);
 		for (char c : str.toCharArray()) {
 			if (!allowedchrs.contains(String.valueOf(c))) {
 				return false;
