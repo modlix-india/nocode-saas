@@ -8,10 +8,9 @@ import reactor.core.publisher.Mono;
 
 public class BooleanUtil {
 
-    private static final Byte BYTE_1 = Byte.valueOf((byte) 1);
+    private static final Byte BYTE_0 = Byte.valueOf((byte) 0);
 
     public static boolean safeValueOf(Object object) {
-        boolean returnValue = false;
 
         if (object == null)
             return false;
@@ -20,9 +19,11 @@ public class BooleanUtil {
             return b;
 
         if (object instanceof Byte)
-            return BYTE_1.equals(object);
+            return !BYTE_0.equals(object);
 
         String value = object.toString();
+
+        boolean returnValue = false;
 
         if (!value.isBlank()) {
             if ("yes".equalsIgnoreCase(value) || "y".equalsIgnoreCase(value) || "true".equalsIgnoreCase(value)
@@ -52,7 +53,7 @@ public class BooleanUtil {
             return b;
 
         if (object instanceof Byte)
-            return BYTE_1.equals(object);
+            return !BYTE_0.equals(object);
 
         String value = object.toString();
 
