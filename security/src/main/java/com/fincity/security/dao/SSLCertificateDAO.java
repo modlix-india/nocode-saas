@@ -38,6 +38,8 @@ import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 @Component
 public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertificateRecord, ULong, SSLCertificate> {
@@ -53,7 +55,7 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 	@Override
 	public Mono<SSLCertificate> create(SSLCertificate pojo) {
 
-		return super.create(pojo).flatMap(this::makeRestOfNotCurrent);
+		return super.create(pojo).subscribeOn(Schedulers.boundedElastic()).flatMap(this::makeRestOfNotCurrent);
 	}
 
 	private Mono<SSLCertificate> makeRestOfNotCurrent(SSLCertificate cert) {
@@ -70,7 +72,8 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 		})).map(e -> cert)
 				.onErrorResume(e -> this.msgResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
-						SecurityMessageResourceService.CERTIFICATE_PROBLEM));
+						SecurityMessageResourceService.CERTIFICATE_PROBLEM))
+				.subscribeOn(Schedulers.boundedElastic());
 	}
 
 	public Mono<SSLCertificate> create(SSLRequest request, Certificate certificate) {
