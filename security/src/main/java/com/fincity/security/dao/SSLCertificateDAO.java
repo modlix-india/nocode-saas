@@ -38,7 +38,6 @@ import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 @Component
@@ -70,9 +69,7 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 
 			return Mono.from(query);
 		})).map(e -> cert)
-				.onErrorResume(e -> this.msgResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
-						SecurityMessageResourceService.CERTIFICATE_PROBLEM))
+				.onErrorResume(e -> Mono.just(cert))
 				.subscribeOn(Schedulers.boundedElastic());
 	}
 
