@@ -4,8 +4,6 @@ import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.r2dbc.connection.R2dbcTransactionManager;
-import org.springframework.transaction.ReactiveTransactionManager;
 
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
@@ -35,27 +33,17 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 	}
 
 	@Bean
-	ConnectionFactory dbConnectionFactory() {
+	DSLContext context() {
 
 		Builder props = ConnectionFactoryOptions.parse(url)
 				.mutate();
-		return ConnectionFactories.get(props
+		ConnectionFactory factory = ConnectionFactories.get(props
 				.option(ConnectionFactoryOptions.DRIVER, "pool")
 				.option(ConnectionFactoryOptions.PROTOCOL, "mysql")
 				.option(ConnectionFactoryOptions.USER, username)
 				.option(ConnectionFactoryOptions.PASSWORD, password)
 				.build());
-	}
-
-	@Bean
-	DSLContext context(ConnectionFactory factory) {
-
 		return DSL.using(new ConnectionPool(ConnectionPoolConfiguration.builder(factory)
 				.build()));
-	}
-
-	@Bean
-	ReactiveTransactionManager transactionManager(ConnectionFactory factory) {
-		return new R2dbcTransactionManager(factory);
 	}
 }
