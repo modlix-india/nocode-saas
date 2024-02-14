@@ -29,21 +29,21 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 	public void initialize(AbstractMessageService messageResourceService) {
 		super.initialize();
 		this.objectMapper.registerModule(
-		        new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageResourceService));
+				new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageResourceService));
 	}
 
 	@Bean
 	DSLContext context() {
-		
+
 		Builder props = ConnectionFactoryOptions.parse(url)
-		        .mutate();
+				.mutate();
 		ConnectionFactory factory = ConnectionFactories.get(props
-		        .option(ConnectionFactoryOptions.DRIVER, "pool")
-		        .option(ConnectionFactoryOptions.PROTOCOL, "mysql")
-		        .option(ConnectionFactoryOptions.USER, username)
-		        .option(ConnectionFactoryOptions.PASSWORD, password)
-		        .build());
+				.option(ConnectionFactoryOptions.DRIVER, "pool")
+				.option(ConnectionFactoryOptions.PROTOCOL, "mysql")
+				.option(ConnectionFactoryOptions.USER, username)
+				.option(ConnectionFactoryOptions.PASSWORD, password)
+				.build());
 		return DSL.using(new ConnectionPool(ConnectionPoolConfiguration.builder(factory)
-		        .build()));
+				.build()));
 	}
 }

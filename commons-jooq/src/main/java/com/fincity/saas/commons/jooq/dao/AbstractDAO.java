@@ -44,7 +44,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec;
 import org.springframework.r2dbc.core.Parameter;
+import org.springframework.transaction.ReactiveTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -83,6 +85,9 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	@Autowired
 	protected DatabaseClient dbClient;
+
+	@Autowired
+	protected ReactiveTransactionManager transactionManager;
 
 	protected final Table<R> table;
 	protected final Field<I> idField;
@@ -185,40 +190,46 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 						.toList());
 
 		String sql = query.getSQL(ParamType.NAMED);
-		GenericExecuteSpec querySpec = this.dbClient.sql(sql)
-				.filter((statement, executeFunction) -> statement.returnGeneratedValues(this.idField.getName())
-						.execute());
 
-		for (int i = 0; i < values.size(); i++) {
+		TransactionalOperator rxtx = TransactionalOperator.create(this.transactionManager);
 
-			Field<?> eachField = values.get(i)
-					.getT1();
-			Object v = values.get(i)
-					.getT2();
-			Class<?> classs = eachField.getType();
+		return rxtx.execute(action -> {
 
-			if (CONVERTERS.containsKey(v.getClass())) {
+			GenericExecuteSpec querySpec = this.dbClient.sql(sql)
+					.filter((statement, executeFunction) -> statement.returnGeneratedValues(this.idField.getName())
+							.execute());
 
-				Tuple2<Object, Class<?>> x = CONVERTERS.get(v.getClass())
-						.apply((UNumber) v);
-				v = x.getT1();
-				classs = x.getT2();
+			for (int i = 0; i < values.size(); i++) {
+
+				Field<?> eachField = values.get(i)
+						.getT1();
+				Object v = values.get(i)
+						.getT2();
+				Class<?> classs = eachField.getType();
+
+				if (CONVERTERS.containsKey(v.getClass())) {
+
+					Tuple2<Object, Class<?>> x = CONVERTERS.get(v.getClass())
+							.apply((UNumber) v);
+					v = x.getT1();
+					classs = x.getT2();
+				}
+
+				querySpec = querySpec.bind(Integer.toString(i + 1), Parameter.fromOrEmpty(v, classs));
 			}
 
-			querySpec = querySpec.bind(Integer.toString(i + 1), Parameter.fromOrEmpty(v, classs));
-		}
+			Mono<I> id = querySpec.fetch()
+					.first()
+					.map(e -> (I) e.get(this.idField.getName()));
 
-		Mono<I> id = querySpec.fetch()
-				.first()
-				.map(e -> (I) e.get(this.idField.getName()));
+			String selectQuery = this.dslContext.select(this.table.fields())
+					.from(this.table)
+					.getSQL() + " where " + this.idField.getName() + " = ";
 
-		String selectQuery = this.dslContext.select(this.table.fields())
-				.from(this.table)
-				.getSQL() + " where " + this.idField.getName() + " = ";
-
-		return id.map(i -> dbClient.sql(selectQuery + i + " limit 1"))
-				.flatMap(spec -> spec.map(this::rowMapper)
-						.first());
+			return id.map(i -> dbClient.sql(selectQuery + i + " limit 1"))
+					.flatMap(spec -> spec.map(this::rowMapper)
+							.first());
+		}).next();
 	}
 
 	public Mono<Integer> delete(I id) {
