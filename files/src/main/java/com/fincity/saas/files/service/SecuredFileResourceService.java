@@ -32,6 +32,7 @@ import com.fincity.saas.files.dto.FilesSecuredAccessKey;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
+import com.fincity.saas.files.model.ImageDetails;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -98,12 +99,12 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	}
 
 	@Override
-	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
+	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override, ImageDetails imageDetails) {
 
 		if (override == null)
 			override = false;
 
-		return super.create(clientCode, uri, fp, fileName, override);
+		return super.create(clientCode, uri, fp, fileName, override, imageDetails);
 	}
 
 	public Mono<String> createSecuredAccess(Long timeSpan, ChronoUnit timeUnit, Long accessLimit, String uri) {

@@ -10,6 +10,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 
@@ -21,6 +22,7 @@ import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
+import com.fincity.saas.files.model.ImageDetails;
 import com.fincity.saas.files.service.AbstractFilesResourceService;
 
 import reactor.core.publisher.Mono;
@@ -73,7 +75,48 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 			@RequestPart(name = "file", required = false) Mono<FilePart> filePart,
 			@RequestParam(required = false) String clientCode,
 			@RequestPart(required = false, name = "override") String override,
-			@RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request) {
+			@RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request,
+			@RequestPart(required = false) String width,
+			@RequestPart(required = false) String height,
+			@RequestPart(required = false) String rotation,
+			@RequestPart(required = false) String isCropped,
+			@RequestPart(required = false) String xAxis,
+			@RequestPart(required = false) String yAxis,
+			@RequestPart(required = false) String cropAreaWidth,
+			@RequestPart(required = false) String cropAreaHeight,
+			@RequestPart(required = false) String flipHorizontal,
+			@RequestPart(required = false) String flipVertical,
+			@RequestPart(required = false) String backgroundColor,
+			@RequestPart(required = false) String keepAspectRatio,
+			@RequestPart(required = false) String scaleX,
+			@RequestPart(required = false) String scaleY,
+			@RequestPart(required = false) String name) {
+		
+//		System.out.println(Integer.parseInt(width) + " = "+ Integer.parseInt(height)+ " = "+ Integer.parseInt(rotation)+ " = "+ Boolean.parseBoolean(isCropped)+ " = "+ Integer.parseInt(xAsix)+ " = "+ Integer.parseInt(yAxis)+ " = "+ Integer.parseInt(cropAreaWidth)+ " = "+
+//				Integer.parseInt(cropAreaHeight)+ " = "+ Boolean.parseBoolean(flipHorizontal)+ " = "+ Boolean.parseBoolean(flipVertical)+ " = "+ backgroundColor+ " = "+ Boolean.parseBoolean(keepAspectRatio)+ " = "+ Integer.parseInt(scaleX)+ " = "+ Integer.parseInt(scaleY)+ " = "+ name);
+		
+		System.out.println("what hello");
+		System.out.println(Integer.parseInt(width));
+		System.out.println(Integer.parseInt(height));
+		System.out.println(Integer.parseInt(rotation));
+		System.out.println(isCropped != null ? BooleanUtil.safeValueOf(isCropped) : null);
+		System.out.println(Integer.parseInt(xAxis));
+		System.out.println(Integer.parseInt(yAxis));
+		System.out.println(Integer.parseInt(cropAreaWidth));
+		System.out.println(Integer.parseInt(cropAreaHeight));
+		System.out.println(flipHorizontal != null ? BooleanUtil.safeValueOf(flipHorizontal) : null);
+		System.out.println(flipVertical != null ? BooleanUtil.safeValueOf(flipVertical) : null);
+		System.out.println(backgroundColor);
+		System.out.println(keepAspectRatio != null ? BooleanUtil.safeValueOf(keepAspectRatio) : null);
+		System.out.println(Integer.parseInt(scaleX));
+		System.out.println(Integer.parseInt(scaleY));
+		System.out.println(name);
+		
+		ImageDetails imageDetails = new ImageDetails(Integer.parseInt(width), Integer.parseInt(height), Integer.parseInt(rotation), isCropped != null ? BooleanUtil.safeValueOf(isCropped) : null, Integer.parseInt(xAxis), Integer.parseInt(yAxis), Integer.parseInt(cropAreaWidth),
+				Integer.parseInt(cropAreaHeight), flipHorizontal != null ? BooleanUtil.safeValueOf(flipHorizontal) : null, flipVertical != null ? BooleanUtil.safeValueOf(flipVertical) : null, backgroundColor, keepAspectRatio != null ? BooleanUtil.safeValueOf(keepAspectRatio) : null, Integer.parseInt(scaleX), Integer.parseInt(scaleY), name);
+//		ImageDetails imageDetails = new ImageDetails(null, null, null, null, null, null, null, null, null, null, backgroundColor, null, null, null, name);
+		
+		System.out.println("imageDetails "+imageDetails);
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
@@ -81,12 +124,15 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				ca -> filePart,
 
-		        (ca, fp) -> this.service.create(
-		                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-		                request.getPath()
-		                        .toString(),
-		                fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
-		                        : null))
+		        (ca, fp) ->{
+//		        	System.out.println("ttttjjjjjj "+fp);
+		        	return  this.service.create(
+			                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+			                request.getPath()
+			                        .toString(),
+			                fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
+			                        : null, imageDetails);
+		        })
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.create"));
 	}

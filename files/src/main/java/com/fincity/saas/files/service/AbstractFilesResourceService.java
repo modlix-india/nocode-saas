@@ -2,12 +2,15 @@ package com.fincity.saas.files.service;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -20,6 +23,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -64,6 +68,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
+import com.fincity.saas.files.model.ImageDetails;
 import com.fincity.saas.files.util.FileExtensionUtil;
 
 import reactor.core.publisher.Flux;
@@ -332,8 +337,7 @@ public abstract class AbstractFilesResourceService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> Mono.just(this.resolvePathWithClientCode(request.getURI()
-						.toString()))
+				() -> Mono.just(this.resolvePathWithClientCode(request.getURI().toString()))
 						.map(Tuple2::getT1),
 
 				this::checkReadAccessWithClientCode,
@@ -702,7 +706,7 @@ public abstract class AbstractFilesResourceService {
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.delete"));
 	}
 
-	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
+	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override, ImageDetails imageDetails) {
 
 		boolean ovr = override == null || override.booleanValue();
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
@@ -725,19 +729,125 @@ public abstract class AbstractFilesResourceService {
 				},
 
 				(hasPermission, file) -> {
+					
+					if(fp==null) {
+						System.out.println("null");
+					}else {
+						System.out.println("hello test");
+					}
 
 					if (fp == null)
 						return Mono.just(
 								this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
+					
+					String fileType = null;
+					
+					try {
+						fileType = Files.probeContentType(file);
+					} catch (Exception e2) {
+						e2.printStackTrace();
+					}
+					System.out.println("file type "+fileType);
+					
+					if (fp != null && fileType != null && fileType.startsWith("image/")) {
 
-					return FlatMapUtil
-							.flatMapMonoWithNull(() -> fp.transferTo(file),
-									x -> Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-											file.toFile())))
+						return FlatMapUtil.flatMapMonoWithNull(
+
+								() -> fp.transferTo(file),
+
+								x -> Mono.just(file.toFile()),
+
+								(x, actualFile) -> {
+									try {
+										BufferedImage bufferedImage = ImageIO.read(actualFile);
+//										System.out.println("bufferedImage "+bufferedImage);
+										BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(), imageDetails.getHeight());
+//										System.out.println("resizedImage "+resizedImage);
+										BufferedImage croppedImage = cropImage(resizedImage, imageDetails.getXAsix(), imageDetails.getYAxis(), imageDetails.getCropAreaWidth(), imageDetails.getCropAreaHeight());
+//										System.out.println("croppedImage "+croppedImage);
+										BufferedImage rotatedImage = rotateImage(croppedImage, imageDetails.getRotation());
+//										System.out.println("rotatedImage "+rotatedImage);
+//										return Mono.just(rotatedImage);
+										return Mono.just(rotatedImage);
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+									return null;
+								},
+								
+								(x, actualFile, updatedFile) -> {
+									try {
+										String imageName = actualFile.getName();
+								        int lastDotIndex = imageName.lastIndexOf('.');
+								        String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
+										FileOutputStream fos = new FileOutputStream(actualFile);
+										OutputStream os = new FileOutputStream(actualFile);
+//								        Boolean isDone = ImageIO.write(updatedFile, imageExtension, os);
+										Boolean isDone = ImageIO.write(updatedFile, imageExtension, actualFile);
+										for(var a : ImageIO.getWriterFormatNames()) {
+											System.out.println("a "+a);
+										}
+										System.out.println("is done "+isDone);
+									} catch (IOException e) {
+//									} catch (Exception e) {
+										e.printStackTrace();
+									}
+									return Mono.just(this.convertToFileDetailWhileCreation(
+										urlResourcePath, clientCode,
+										file.toFile()));
+									}
+								)
+								.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+
+					}
+					System.out.println("here i am");
+
+					return FlatMapUtil.flatMapMonoWithNull(
+									() -> fp.transferTo(file),
+									x -> Mono.just(
+											this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,file.toFile())
+									)
+								)
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
+	
+    public BufferedImage rotateImage(BufferedImage originalImage, double angle) {
+    	int width = originalImage.getWidth();
+        int height = originalImage.getHeight();
+        
+        double radians = Math.toRadians(angle);
+        double rotatedWidth = Math.abs(Math.sin(radians) * height) + Math.abs(Math.cos(radians) * width);
+        double rotatedHeight = Math.abs(Math.sin(radians) * width) + Math.abs(Math.cos(radians) * height);
+        
+        BufferedImage rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, originalImage.getType());
+
+        Graphics2D g2d = rotatedImage.createGraphics();
+
+        AffineTransform transform = new AffineTransform();
+        transform.rotate(radians, rotatedWidth / 2, rotatedHeight / 2);
+
+        g2d.setTransform(transform);
+        int x = (int) ((rotatedWidth - width) / 2);
+        int y = (int) ((rotatedHeight - height) / 2);
+        g2d.drawImage(originalImage, x, y, null);
+        g2d.dispose();
+
+        return rotatedImage;
+    }
+	
+	public BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) throws IOException {
+	    BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+	    Graphics2D graphics2D = resizedImage.createGraphics();
+	    graphics2D.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null);
+	    graphics2D.dispose();
+	    return resizedImage;
+	}
+	
+    public BufferedImage cropImage(BufferedImage originalImage, int xAxis, int yAxis, int width, int height) {
+        return originalImage.getSubimage(xAxis, yAxis, width, height);
+    }
 
 	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
 
