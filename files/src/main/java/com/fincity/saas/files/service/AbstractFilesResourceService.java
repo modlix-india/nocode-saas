@@ -731,6 +731,46 @@ public abstract class AbstractFilesResourceService {
 				},
 
 				(hasPermission, file) -> {
+
+					if (fp == null)
+						return Mono.just(
+								this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
+					
+					return FlatMapUtil
+							.flatMapMonoWithNull(() -> fp.transferTo(file),
+									x -> Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
+											file.toFile())
+											)
+									)
+							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+	}
+
+	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override, ImageDetails imageDetails) {
+
+		boolean ovr = override == null || override.booleanValue();
+		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
+		String resourcePath = tup.getT1();
+		String urlResourcePath = tup.getT2();
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+				() -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode, this.getResourceType()),
+
+				hasPermission -> {
+
+					if (!hasPermission.booleanValue())
+						return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
+
+					Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
+
+					return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr);
+				},
+
+				(hasPermission, file) -> {
 					
 					if(fp==null) {
 						System.out.println("null");
@@ -809,6 +849,7 @@ public abstract class AbstractFilesResourceService {
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
+	
 	
     public BufferedImage rotateImage(BufferedImage originalImage, double angle) {
     	int width = originalImage.getWidth();
