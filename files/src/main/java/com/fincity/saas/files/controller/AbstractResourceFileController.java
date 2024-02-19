@@ -125,7 +125,6 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 				ca -> filePart,
 
 		        (ca, fp) ->{
-//		        	System.out.println("ttttjjjjjj "+fp);
 		        	return  this.service.create(
 			                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
 			                request.getPath()

@@ -2,6 +2,8 @@ package com.fincity.saas.files.service;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
@@ -760,14 +762,9 @@ public abstract class AbstractFilesResourceService {
 								(x, actualFile) -> {
 									try {
 										BufferedImage bufferedImage = ImageIO.read(actualFile);
-//										System.out.println("bufferedImage "+bufferedImage);
 										BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(), imageDetails.getHeight());
-//										System.out.println("resizedImage "+resizedImage);
 										BufferedImage croppedImage = cropImage(resizedImage, imageDetails.getXAsix(), imageDetails.getYAxis(), imageDetails.getCropAreaWidth(), imageDetails.getCropAreaHeight());
-//										System.out.println("croppedImage "+croppedImage);
 										BufferedImage rotatedImage = rotateImage(croppedImage, imageDetails.getRotation());
-//										System.out.println("rotatedImage "+rotatedImage);
-//										return Mono.just(rotatedImage);
 										return Mono.just(rotatedImage);
 									} catch (IOException e) {
 										e.printStackTrace();
@@ -821,9 +818,16 @@ public abstract class AbstractFilesResourceService {
         double rotatedWidth = Math.abs(Math.sin(radians) * height) + Math.abs(Math.cos(radians) * width);
         double rotatedHeight = Math.abs(Math.sin(radians) * width) + Math.abs(Math.cos(radians) * height);
         
+        System.out.println("originalImage.getType() "+originalImage.getType());
+        
         BufferedImage rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, originalImage.getType());
+//        BufferedImage rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, BufferedImage.TYPE_INT_RGB);
 
         Graphics2D g2d = rotatedImage.createGraphics();
+        
+        Color color = getColorFromString("");
+        g2d.setColor(color);
+        g2d.fillRect(0, 0, rotatedImage.getWidth(), rotatedImage.getHeight());
 
         AffineTransform transform = new AffineTransform();
         transform.rotate(radians, rotatedWidth / 2, rotatedHeight / 2);
@@ -838,15 +842,43 @@ public abstract class AbstractFilesResourceService {
     }
 	
 	public BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) throws IOException {
-	    BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
-	    Graphics2D graphics2D = resizedImage.createGraphics();
-	    graphics2D.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null);
-	    graphics2D.dispose();
-	    return resizedImage;
+//	    BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+//	    Graphics2D graphics2D = resizedImage.createGraphics();
+//	    graphics2D.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null);
+//	    graphics2D.dispose();
+//	    return resizedImage;
+		
+
+		Image resultingImage = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
+		BufferedImage outputImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+		outputImage.getGraphics().drawImage(resultingImage, 0, 0, null);
+		return outputImage;
+		
+		
+//		BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+//
+//        Graphics2D g2d = resizedImage.createGraphics();
+//        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+//        g2d.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null);
+//        g2d.dispose();
+//
+//        return resizedImage;
 	}
 	
     public BufferedImage cropImage(BufferedImage originalImage, int xAxis, int yAxis, int width, int height) {
         return originalImage.getSubimage(xAxis, yAxis, width, height);
+    }
+    
+    public static Color getColorFromString(String colorString) {
+        if (colorString == null || colorString.trim().length()<=3 || colorString.trim().isEmpty()) {
+            return new Color(0, 0, 0, 0);
+        }
+        if (colorString.startsWith("#")) {
+            colorString = colorString.substring(1);
+        }
+
+        int rgbValue = Integer.parseInt(colorString, 16);
+        return new Color(rgbValue);
     }
 
 	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
