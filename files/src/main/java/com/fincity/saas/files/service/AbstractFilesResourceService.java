@@ -340,7 +340,7 @@ public abstract class AbstractFilesResourceService {
 		return FlatMapUtil.flatMapMono(
 
 				() -> Mono.just(this.resolvePathWithClientCode(request.getURI().toString()))
-						.map(Tuple2::getT1),
+						.map(Tuple2::getT1), // why added this part
 
 				this::checkReadAccessWithClientCode,
 
@@ -708,7 +708,7 @@ public abstract class AbstractFilesResourceService {
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.delete"));
 	}
 
-	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override, ImageDetails imageDetails) {
+	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
 
 		boolean ovr = override == null || override.booleanValue();
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
@@ -739,11 +739,8 @@ public abstract class AbstractFilesResourceService {
 					return FlatMapUtil
 							.flatMapMonoWithNull(() -> fp.transferTo(file),
 									x -> Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-											file.toFile())
-											)
-									)
+											file.toFile())))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
-
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
