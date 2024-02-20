@@ -13,7 +13,6 @@ public class ImageDetails {
 	private Integer width;
 	private Integer height;
 	private Integer rotation;
-	private Boolean isCropped;
 	private Integer xAsix;
 	private Integer yAxis;
 	private Integer cropAreaWidth;
@@ -25,10 +24,4 @@ public class ImageDetails {
 	private Integer scaleX;
 	private Integer scaleY;
 	private String name;
-//	private ResizeDirection resizeDirection = ResizeDirection.HORIZONTAL;
-
-//	public enum ResizeDirection {
-//		HORIZONTAL, VERTICAL;
-//	}
-
 }

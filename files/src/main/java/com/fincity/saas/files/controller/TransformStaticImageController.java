@@ -28,7 +28,7 @@ public class TransformStaticImageController {
 
 	@Autowired
 	private StaticFileResourceService service;
-	
+
 	@PostMapping("/**")
 	public Mono<ResponseEntity<FileDetail>> create(
 			@RequestPart(name = "file", required = false) Mono<FilePart> filePart,
@@ -36,18 +36,16 @@ public class TransformStaticImageController {
 			@RequestPart(required = false, name = "override") String override,
 			@RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request,
 			@RequestPart(required = false) String width, @RequestPart(required = false) String height,
-			@RequestPart(required = false) String rotation, @RequestPart(required = false) String isCropped,
-			@RequestPart(required = false) String xAxis, @RequestPart(required = false) String yAxis,
-			@RequestPart(required = false) String cropAreaWidth, @RequestPart(required = false) String cropAreaHeight,
-			@RequestPart(required = false) String flipHorizontal, @RequestPart(required = false) String flipVertical,
-			@RequestPart(required = false) String backgroundColor,
+			@RequestPart(required = false) String rotation, @RequestPart(required = false) String xAxis,
+			@RequestPart(required = false) String yAxis, @RequestPart(required = false) String cropAreaWidth,
+			@RequestPart(required = false) String cropAreaHeight, @RequestPart(required = false) String flipHorizontal,
+			@RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
 			@RequestPart(required = false) String keepAspectRatio, @RequestPart(required = false) String scaleX,
 			@RequestPart(required = false) String scaleY) {
 
 		ImageDetails imageDetails = new ImageDetails(Integer.parseInt(width), Integer.parseInt(height),
-				Integer.parseInt(rotation), isCropped != null ? BooleanUtil.safeValueOf(isCropped) : null,
-				Integer.parseInt(xAxis), Integer.parseInt(yAxis), Integer.parseInt(cropAreaWidth),
-				Integer.parseInt(cropAreaHeight),
+				Integer.parseInt(rotation), Integer.parseInt(xAxis), Integer.parseInt(yAxis),
+				Integer.parseInt(cropAreaWidth), Integer.parseInt(cropAreaHeight),
 				flipHorizontal != null ? BooleanUtil.safeValueOf(flipHorizontal) : null,
 				flipVertical != null ? BooleanUtil.safeValueOf(flipVertical) : null, backgroundColor,
 				keepAspectRatio != null ? BooleanUtil.safeValueOf(keepAspectRatio) : null, Integer.parseInt(scaleX),
@@ -59,12 +57,11 @@ public class TransformStaticImageController {
 
 				ca -> filePart,
 
-				(ca, fp) -> {
-					return this.service.imageUpload(
-							CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-							request.getPath().toString(), fp, fileName,
-							override != null ? BooleanUtil.safeValueOf(override) : null, imageDetails);
-				}).map(ResponseEntity::ok)
+				(ca, fp) -> this.service.imageUpload(
+						CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+						request.getPath().toString(), fp, fileName,
+						override != null ? BooleanUtil.safeValueOf(override) : null, imageDetails))
+				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "TransformStaticImageController.create"));
 	}
 

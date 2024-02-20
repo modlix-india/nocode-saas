@@ -10,7 +10,6 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 
@@ -22,7 +21,6 @@ import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
-import com.fincity.saas.files.model.ImageDetails;
 import com.fincity.saas.files.service.AbstractFilesResourceService;
 
 import reactor.core.publisher.Mono;
@@ -83,14 +81,12 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				ca -> filePart,
 
-		        (ca, fp) ->{
-		        	return  this.service.create(
-			                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-			                request.getPath()
-			                        .toString(),
-			                fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
-			                        : null);
-		        })
+				(ca, fp) -> this.service.create(
+		                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+		                request.getPath()
+		                        .toString(),
+		                fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
+		                        : null))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.create"));
 	}

@@ -32,7 +32,6 @@ import com.fincity.saas.files.dto.FilesSecuredAccessKey;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
-import com.fincity.saas.files.model.ImageDetails;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
