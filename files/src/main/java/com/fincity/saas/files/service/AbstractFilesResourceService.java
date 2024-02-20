@@ -3,16 +3,13 @@ package com.fincity.saas.files.service;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -25,7 +22,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -91,6 +87,8 @@ public abstract class AbstractFilesResourceService {
 	private static final String STATIC_TYPE = "static";
 
 	private static final String SECURED_TYPE = "secured";
+	
+	private static final String TRANSFORM_TYPE = "transform";
 
 	private static final String GENERIC_URI_PART_STATIC = GENERIC_URI_PART + STATIC_TYPE;
 
@@ -748,6 +746,12 @@ public abstract class AbstractFilesResourceService {
 	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override, ImageDetails imageDetails) {
 
 		boolean ovr = override == null || override.booleanValue();
+
+		if (uri.indexOf(TRANSFORM_TYPE) != -1) {
+			int ind = uri.indexOf(TRANSFORM_TYPE);
+			uri = uri.substring(0, ind) + uri.substring(ind + TRANSFORM_TYPE.length() + 1);
+		}
+
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
@@ -768,87 +772,75 @@ public abstract class AbstractFilesResourceService {
 				},
 
 				(hasPermission, file) -> {
-					
-					if(fp==null) {
-						System.out.println("null");
-					}else {
-						System.out.println("hello test");
-					}
 
 					if (fp == null)
 						return Mono.just(
 								this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
-					
+
 					String fileType = null;
-					
+
 					try {
 						fileType = Files.probeContentType(file);
-					} catch (Exception e2) {
-						e2.printStackTrace();
+
+					} catch (IOException e2) {
+						return Mono.empty();
 					}
-					System.out.println("file type "+fileType);
-					
-					if (fp != null && fileType != null && fileType.startsWith("image/")) {
 
-						return FlatMapUtil.flatMapMonoWithNull(
-
-								() -> fp.transferTo(file),
-
-								x -> Mono.just(file.toFile()),
-
-								(x, actualFile) -> {
-									try {
-										BufferedImage bufferedImage = ImageIO.read(actualFile);
-										BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(), imageDetails.getHeight());
-										BufferedImage croppedImage = cropImage(resizedImage, imageDetails.getXAsix(), imageDetails.getYAxis(), imageDetails.getCropAreaWidth(), imageDetails.getCropAreaHeight());
-										BufferedImage rotatedImage = rotateImage(croppedImage, imageDetails.getRotation());
-										return Mono.just(rotatedImage);
-									} catch (IOException e) {
-										e.printStackTrace();
-									}
-									return null;
-								},
-								
-								(x, actualFile, updatedFile) -> {
-									try {
-										String imageName = actualFile.getName();
-								        int lastDotIndex = imageName.lastIndexOf('.');
-								        String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
-										FileOutputStream fos = new FileOutputStream(actualFile);
-										OutputStream os = new FileOutputStream(actualFile);
-//								        Boolean isDone = ImageIO.write(updatedFile, imageExtension, os);
-										Boolean isDone = ImageIO.write(updatedFile, imageExtension, actualFile);
-										for(var a : ImageIO.getWriterFormatNames()) {
-											System.out.println("a "+a);
-										}
-										System.out.println("is done "+isDone);
-									} catch (IOException e) {
-//									} catch (Exception e) {
-										e.printStackTrace();
-									}
-									return Mono.just(this.convertToFileDetailWhileCreation(
-										urlResourcePath, clientCode,
-										file.toFile()));
-									}
-								)
-								.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
-
-					}
-					System.out.println("here i am");
+					if (fileType == null || !fileType.startsWith("image/"))
+						return Mono.empty();
 
 					return FlatMapUtil.flatMapMonoWithNull(
-									() -> fp.transferTo(file),
-									x -> Mono.just(
-											this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,file.toFile())
-									)
-								)
+
+							() -> fp.transferTo(file),
+
+							x -> Mono.just(file.toFile()),
+
+							(x, actualFile) -> {
+
+								try {
+									BufferedImage bufferedImage = ImageIO.read(actualFile);
+									BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(),
+											imageDetails.getHeight());
+									BufferedImage croppedImage = cropImage(resizedImage, imageDetails.getXAsix(),
+											imageDetails.getYAxis(), imageDetails.getCropAreaWidth(),
+											imageDetails.getCropAreaHeight());
+									BufferedImage rotatedImage = rotateImage(croppedImage, imageDetails.getRotation(),
+											imageDetails.getBackgroundColor(), actualFile);
+
+									return Mono.just(rotatedImage);
+								} catch (IOException e) {
+									return Mono.empty();
+								}
+
+							},
+
+							(x, actualFile, updatedFile) -> {
+								
+								try {
+									String imageName = actualFile.getName();
+									int lastDotIndex = imageName.lastIndexOf('.');
+									String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
+									ImageIO.write(updatedFile, imageExtension, actualFile);
+									return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
+											file.toFile()));
+
+								} catch (IOException e) {
+									return Mono.empty();
+								}
+
+							})
+							.switchIfEmpty(msgService.throwMessage(
+									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+									FilesMessageResourceService.IMAGE_TRANSFORM_ERROR))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+
 				})
+				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+						FilesMessageResourceService.IMAGE_FILE_REQUIRED))	
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
 	
-	
-    public BufferedImage rotateImage(BufferedImage originalImage, double angle) {
+    public BufferedImage rotateImage(BufferedImage originalImage, double angle, String backgroundColor, File file) {
     	int width = originalImage.getWidth();
         int height = originalImage.getHeight();
         
@@ -856,14 +848,18 @@ public abstract class AbstractFilesResourceService {
         double rotatedWidth = Math.abs(Math.sin(radians) * height) + Math.abs(Math.cos(radians) * width);
         double rotatedHeight = Math.abs(Math.sin(radians) * width) + Math.abs(Math.cos(radians) * height);
         
-        System.out.println("originalImage.getType() "+originalImage.getType());
+        String fileExtension = getFileExtension(file);
+        BufferedImage rotatedImage;
         
-        BufferedImage rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, originalImage.getType());
-//        BufferedImage rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, BufferedImage.TYPE_INT_RGB);
+        if(fileExtension.equals("png")) {
+        	rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, BufferedImage.TYPE_INT_ARGB);
+        } else {
+        	rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, originalImage.getType());
+        }
 
         Graphics2D g2d = rotatedImage.createGraphics();
         
-        Color color = getColorFromString("");
+        Color color = getColorFromString(backgroundColor);
         g2d.setColor(color);
         g2d.fillRect(0, 0, rotatedImage.getWidth(), rotatedImage.getHeight());
 
@@ -880,31 +876,25 @@ public abstract class AbstractFilesResourceService {
     }
 	
 	public BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) throws IOException {
-//	    BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
-//	    Graphics2D graphics2D = resizedImage.createGraphics();
-//	    graphics2D.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null);
-//	    graphics2D.dispose();
-//	    return resizedImage;
-		
-
 		Image resultingImage = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
 		BufferedImage outputImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
 		outputImage.getGraphics().drawImage(resultingImage, 0, 0, null);
 		return outputImage;
-		
-		
-//		BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
-//
-//        Graphics2D g2d = resizedImage.createGraphics();
-//        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-//        g2d.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null);
-//        g2d.dispose();
-//
-//        return resizedImage;
 	}
 	
     public BufferedImage cropImage(BufferedImage originalImage, int xAxis, int yAxis, int width, int height) {
         return originalImage.getSubimage(xAxis, yAxis, width, height);
+    }
+    
+    private static String getFileExtension(File file) {
+        String fileName = file.getName();
+        int lastDotIndex = fileName.lastIndexOf('.');
+        
+        if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+            return fileName.substring(lastDotIndex + 1).toLowerCase();
+        } else {
+            return "";
+        }
     }
     
     public static Color getColorFromString(String colorString) {

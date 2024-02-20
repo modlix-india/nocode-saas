@@ -42,6 +42,8 @@ public class FilesMessageResourceService extends AbstractMessageService {
 	public static final String UNABLE_TO_READ_UP_FILE = "unable_to_read_up_file";
 	public static final String UNABLE_CREATE_DOWNLOAD_FILE = "unable_create_download_file";
 	public static final String WRONG_FILE_TYPE = "wrong_file_type";
+	public static final String IMAGE_FILE_REQUIRED = "image_file_required";
+	public static final String IMAGE_TRANSFORM_ERROR ="image_transform_error";
 
 	public FilesMessageResourceService() {
 

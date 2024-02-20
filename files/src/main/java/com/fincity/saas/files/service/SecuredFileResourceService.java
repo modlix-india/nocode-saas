@@ -99,12 +99,12 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	}
 
 	@Override
-	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override, ImageDetails imageDetails) {
+	public Mono<FileDetail> create(String clientCode, String uri, FilePart fp, String fileName, Boolean override) {
 
 		if (override == null)
 			override = false;
 
-		return super.create(clientCode, uri, fp, fileName, override, imageDetails);
+		return super.create(clientCode, uri, fp, fileName, override);
 	}
 
 	public Mono<String> createSecuredAccess(Long timeSpan, ChronoUnit timeUnit, Long accessLimit, String uri) {
