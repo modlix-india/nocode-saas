@@ -337,8 +337,9 @@ public abstract class AbstractFilesResourceService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> Mono.just(this.resolvePathWithClientCode(request.getURI().toString()))
-						.map(Tuple2::getT1), // why added this part
+				() -> Mono.just(this.resolvePathWithClientCode(request.getURI()
+						.toString()))
+						.map(Tuple2::getT1),
 
 				this::checkReadAccessWithClientCode,
 
