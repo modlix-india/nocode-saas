@@ -17,8 +17,6 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public class App extends AbstractUpdatableDTO<ULong, ULong> {
 
-	private static final long serialVersionUID = -486795902544156589L;
-
 	private ULong clientId;
 	private String appName;
 	private String appCode;
