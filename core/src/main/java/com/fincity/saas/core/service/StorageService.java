@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +24,8 @@ import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRe
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
+import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -36,11 +37,9 @@ import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.repository.StorageRepository;
-import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.netflix.discovery.converters.Auto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -317,7 +316,8 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 							.setGenerateEvents(entity.getGenerateEvents())
 							.setTriggers(entity.getTriggers())
 							.setRelations(entity.getRelations())
-							.setFieldDefinitionMap(entity.getFieldDefinitionMap());
+							.setFieldDefinitionMap(entity.getFieldDefinitionMap())
+							.setOnlyThruKIRun(entity.getOnlyThruKIRun());
 
 					existing.setVersion(existing.getVersion() + 1);
 
@@ -329,5 +329,21 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_STORAGE_SCHEMA,
 				() -> Mono.just(gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class)), storage.getId());
+	}
+
+	@Override
+	public Mono<ObjectWithUniqueID<Storage>> read(String name, String appCode, String clientCode) {
+
+		return super.read(name, appCode, clientCode)
+				.flatMap(e -> {
+					if (!BooleanUtil.safeValueOf(e.getObject().getOnlyThruKIRun()))
+						return Mono.just(e);
+
+					return Mono.deferContextual(cv -> {
+						if ("true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
+							return Mono.just(e);
+						return Mono.empty();
+					});
+				});
 	}
 }
