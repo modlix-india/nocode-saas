@@ -155,9 +155,16 @@ public class ApplicationService {
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> application.getTransportDefinition() == null
                         || application.getTransportDefinition().isEmpty()
-                                ? WebClient.create(
-                                        application.getTransportDefinitionURL())
-                                        .get().retrieve()
+                                ? WebClient.builder().exchangeStrategies(
+                                        ExchangeStrategies.builder().codecs(
+                                                clientCodecConfigurer -> clientCodecConfigurer
+                                                        .defaultCodecs()
+                                                        .maxInMemorySize(
+                                                                50 * 1024 * 1024))
+                                                .build())
+                                        .baseUrl(
+                                                application.getTransportDefinitionURL())
+                                        .build().get().retrieve()
                                         .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                                         })
                                 : Mono.just(application.getTransportDefinition()),

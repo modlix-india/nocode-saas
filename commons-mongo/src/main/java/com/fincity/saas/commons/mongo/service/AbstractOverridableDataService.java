@@ -175,7 +175,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 					else
 						return this.inheritanceService
 								.order(appCode, ca.getUrlClientCode(), ca.getClientCode())
-								.map(e -> e.contains(ca.getClientCode()));
+								.map(e -> e.contains(ca.getClientCode()) && e.contains(clientCode));
 				},
 
 				(access, explicitApp, managed) -> {

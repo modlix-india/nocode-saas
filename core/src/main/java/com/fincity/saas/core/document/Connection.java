@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 
@@ -30,8 +31,17 @@ public class Connection extends AbstractOverridableDTO<Connection> {
 	private ConnectionType connectionType;
 	private ConnectionSubType connectionSubType;
 	private Map<String, Object> connectionDetails; // NOSONAR
-	private Integer order;
-	private Boolean defaultConnection = false;
+	private Boolean isAppLevel = false;
+	private Boolean onlyThruKIRun = false;
+
+	public Connection(Connection base) {
+		super(base);
+		this.connectionType = base.connectionType;
+		this.connectionSubType = base.connectionSubType;
+		this.connectionDetails = CloneUtil.cloneMapObject(base.connectionDetails);
+		this.isAppLevel = base.isAppLevel;
+		this.onlyThruKIRun = base.onlyThruKIRun;
+	}
 
 	@Override
 	public Mono<Connection> applyOverride(Connection base) {

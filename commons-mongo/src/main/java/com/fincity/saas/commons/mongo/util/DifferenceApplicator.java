@@ -68,7 +68,7 @@ public class DifferenceApplicator {
 	public static Mono<Object> apply(Object override, Object base) {
 
 		if (override == null)
-			return Mono.justOrEmpty(base);
+			return Mono.empty();
 
 		if (override instanceof Map && base instanceof Map)
 			return apply((Map<String, Object>) override, (Map<String, Object>) base).map(e -> e);
@@ -91,7 +91,7 @@ public class DifferenceApplicator {
 		if (override instanceof JsonElement ist && base instanceof JsonElement est)
 			return apply(ist, est).map(Function.identity());
 
-		return Mono.justOrEmpty(base);
+		return Mono.justOrEmpty(override);
 	}
 
 	private static Mono<JsonElement> apply(JsonElement override, JsonElement base) {
