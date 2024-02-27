@@ -39,17 +39,13 @@ public class TransformStaticImageController {
 			@RequestPart(required = false) String rotation, @RequestPart(required = false) String xAxis,
 			@RequestPart(required = false) String yAxis, @RequestPart(required = false) String cropAreaWidth,
 			@RequestPart(required = false) String cropAreaHeight, @RequestPart(required = false) String flipHorizontal,
-			@RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
-			@RequestPart(required = false) String keepAspectRatio, @RequestPart(required = false) String scaleX,
-			@RequestPart(required = false) String scaleY) {
+			@RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor) {
 
 		ImageDetails imageDetails = new ImageDetails(Integer.parseInt(width), Integer.parseInt(height),
 				Integer.parseInt(rotation), Integer.parseInt(xAxis), Integer.parseInt(yAxis),
 				Integer.parseInt(cropAreaWidth), Integer.parseInt(cropAreaHeight),
 				flipHorizontal != null ? BooleanUtil.safeValueOf(flipHorizontal) : null,
-				flipVertical != null ? BooleanUtil.safeValueOf(flipVertical) : null, backgroundColor,
-				keepAspectRatio != null ? BooleanUtil.safeValueOf(keepAspectRatio) : null, Integer.parseInt(scaleX),
-				Integer.parseInt(scaleY), fileName);
+				flipVertical != null ? BooleanUtil.safeValueOf(flipVertical) : null, backgroundColor);
 
 		return FlatMapUtil.flatMapMonoWithNull(
 

@@ -13,15 +13,11 @@ public class ImageDetails {
 	private Integer width;
 	private Integer height;
 	private Integer rotation;
-	private Integer xAsix;
+	private Integer xAxis;
 	private Integer yAxis;
 	private Integer cropAreaWidth;
 	private Integer cropAreaHeight;
 	private Boolean flipHorizontal = Boolean.FALSE;
 	private Boolean flipVertical = Boolean.FALSE;
 	private String backgroundColor;
-	private Boolean keepAspectRatio = Boolean.TRUE;
-	private Integer scaleX;
-	private Integer scaleY;
-	private String name;
 }

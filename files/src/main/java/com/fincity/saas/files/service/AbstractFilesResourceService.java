@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -800,12 +801,29 @@ public abstract class AbstractFilesResourceService {
 
 								try {
 									BufferedImage bufferedImage = ImageIO.read(actualFile);
+									
 									BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(),
 											imageDetails.getHeight());
-									BufferedImage croppedImage = cropImage(resizedImage, imageDetails.getXAsix(),
-											imageDetails.getYAxis(), imageDetails.getCropAreaWidth(),
-											imageDetails.getCropAreaHeight());
-									BufferedImage rotatedImage = rotateImage(croppedImage, imageDetails.getRotation(),
+									
+									BufferedImage croppedImage = resizedImage;
+									if(imageDetails.getCropAreaWidth()>0 && imageDetails.getCropAreaHeight()>0) {		
+										croppedImage = cropImage(resizedImage, imageDetails.getXAxis(),
+												imageDetails.getYAxis(), imageDetails.getCropAreaWidth(),
+												imageDetails.getCropAreaHeight());
+									}
+
+									BufferedImage flippedImage = croppedImage;
+									if(imageDetails.getFlipHorizontal().booleanValue()){
+										BufferedImage flippedHorizontal = flipHorizontal(flippedImage);
+										flippedImage = null;
+										flippedImage = flippedHorizontal;
+									}
+									if(imageDetails.getFlipVertical().booleanValue()) {
+										BufferedImage flippedVertical = flipVertical(flippedImage);
+										flippedImage = null;
+										flippedImage = flippedVertical;
+									}
+									BufferedImage rotatedImage = rotateImage(flippedImage, imageDetails.getRotation(),
 											imageDetails.getBackgroundColor(), actualFile);
 
 									return Mono.just(rotatedImage);
@@ -887,6 +905,22 @@ public abstract class AbstractFilesResourceService {
         return originalImage.getSubimage(xAxis, yAxis, width, height);
     }
     
+    public BufferedImage flipHorizontal(BufferedImage originalImage) {
+        AffineTransform tx = AffineTransform.getScaleInstance(-1, 1);
+        tx.translate(-originalImage.getWidth(null), 0);
+
+        AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
+        return op.filter(originalImage, null);
+    }
+
+    public BufferedImage flipVertical(BufferedImage originalImage) {
+        AffineTransform tx = AffineTransform.getScaleInstance(1, -1);
+        tx.translate(0, -originalImage.getHeight(null));
+
+        AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
+        return op.filter(originalImage, null);
+    }
+    
     private static String getFileExtension(File file) {
         String fileName = file.getName();
         int lastDotIndex = fileName.lastIndexOf('.');
@@ -905,9 +939,20 @@ public abstract class AbstractFilesResourceService {
         if (colorString.startsWith("#")) {
             colorString = colorString.substring(1);
         }
+        
+        if(colorString.length()<=6) {
+          int rgbValue = Integer.parseInt(colorString, 16);
+          return new Color(rgbValue);
+        }
+        
+        int rgbValue = Integer.parseInt(colorString.substring(0, 6), 16);
+        int alphaValue = Integer.parseInt(colorString.substring(6), 16);
+        
+        int r = (rgbValue >> 16) & 0xFF;
+        int g = (rgbValue >> 8) & 0xFF;
+        int b = rgbValue & 0xFF;
 
-        int rgbValue = Integer.parseInt(colorString, 16);
-        return new Color(rgbValue);
+        return new Color(r, g, b, alphaValue);
     }
 
 	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
