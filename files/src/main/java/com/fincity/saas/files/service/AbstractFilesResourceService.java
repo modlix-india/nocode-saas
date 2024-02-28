@@ -855,7 +855,11 @@ public abstract class AbstractFilesResourceService {
 									String imageName = actualFile.getName();
 									int lastDotIndex = imageName.lastIndexOf('.');
 									String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
-									ImageIO.write(updatedFile, imageExtension, actualFile);
+									
+									String newImageName = fileName + "." + imageExtension;
+									File updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
+									ImageIO.write(updatedFile, imageExtension, updatedFileWithNewName);
+									
 									return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
 											file[0].toFile()));
 
