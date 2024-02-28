@@ -745,15 +745,14 @@ public abstract class AbstractFilesResourceService {
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
 
-	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override, ImageDetails imageDetails) {
-
+	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override,
+			ImageDetails imageDetails, String filePath) {
+		
 		boolean ovr = override == null || override.booleanValue();
-
 		if (uri.indexOf(TRANSFORM_TYPE) != -1) {
 			int ind = uri.indexOf(TRANSFORM_TYPE);
 			uri = uri.substring(0, ind) + uri.substring(ind + TRANSFORM_TYPE.length() + 1);
 		}
-
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
@@ -763,7 +762,6 @@ public abstract class AbstractFilesResourceService {
 				() -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode, this.getResourceType()),
 
 				hasPermission -> {
-
 					if (!hasPermission.booleanValue())
 						return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
@@ -773,17 +771,27 @@ public abstract class AbstractFilesResourceService {
 					return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr);
 				},
 
-				(hasPermission, file) -> {
+				(hasPermission, path) -> {
+					Path[] file = new Path[1];
 
-					if (fp == null)
-						return Mono.just(
-								this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
+					if (path != null) {
+						file[0] = path;
+					}
+
+					if (fp == null) {
+						if (ovr) {
+							file[0] = Paths.get(this.getBaseLocation(),
+									this.resolvePathWithClientCode(filePath).getT1());
+						} else {
+							return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
+									file[0].toFile()));
+						}
+					}
 
 					String fileType = null;
 
 					try {
-						fileType = Files.probeContentType(file);
-
+						fileType = Files.probeContentType(file[0]);
 					} catch (IOException e2) {
 						return Mono.empty();
 					}
@@ -793,40 +801,48 @@ public abstract class AbstractFilesResourceService {
 
 					return FlatMapUtil.flatMapMonoWithNull(
 
-							() -> fp.transferTo(file),
+							() -> {
+								if (fp != null) {
+									return fp.transferTo(file[0]);
+								} else {
+									return Mono.empty();
+								}
+							},
 
-							x -> Mono.just(file.toFile()),
+							x -> {
+								return Mono.just(file[0].toFile());
+							},
 
 							(x, actualFile) -> {
-
 								try {
 									BufferedImage bufferedImage = ImageIO.read(actualFile);
-									
+
 									BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(),
 											imageDetails.getHeight());
-									
-									BufferedImage croppedImage = resizedImage;
-									if(imageDetails.getCropAreaWidth()>0 && imageDetails.getCropAreaHeight()>0) {		
-										croppedImage = cropImage(resizedImage, imageDetails.getXAxis(),
-												imageDetails.getYAxis(), imageDetails.getCropAreaWidth(),
-												imageDetails.getCropAreaHeight());
-									}
 
-									BufferedImage flippedImage = croppedImage;
-									if(imageDetails.getFlipHorizontal().booleanValue()){
+									BufferedImage flippedImage = resizedImage;
+									if (imageDetails.getFlipHorizontal().booleanValue()) {
 										BufferedImage flippedHorizontal = flipHorizontal(flippedImage);
 										flippedImage = null;
 										flippedImage = flippedHorizontal;
 									}
-									if(imageDetails.getFlipVertical().booleanValue()) {
+									if (imageDetails.getFlipVertical().booleanValue()) {
 										BufferedImage flippedVertical = flipVertical(flippedImage);
 										flippedImage = null;
 										flippedImage = flippedVertical;
 									}
+
 									BufferedImage rotatedImage = rotateImage(flippedImage, imageDetails.getRotation(),
 											imageDetails.getBackgroundColor(), actualFile);
 
-									return Mono.just(rotatedImage);
+									BufferedImage croppedImage = rotatedImage;
+									if (imageDetails.getCropAreaWidth() > 0 && imageDetails.getCropAreaHeight() > 0) {
+										croppedImage = cropImage(rotatedImage, imageDetails.getXAxis(),
+												imageDetails.getYAxis(), imageDetails.getCropAreaWidth(),
+												imageDetails.getCropAreaHeight());
+									}
+
+									return Mono.just(croppedImage);
 								} catch (IOException e) {
 									return Mono.empty();
 								}
@@ -834,31 +850,31 @@ public abstract class AbstractFilesResourceService {
 							},
 
 							(x, actualFile, updatedFile) -> {
-								
+
 								try {
 									String imageName = actualFile.getName();
 									int lastDotIndex = imageName.lastIndexOf('.');
 									String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
 									ImageIO.write(updatedFile, imageExtension, actualFile);
 									return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-											file.toFile()));
+											file[0].toFile()));
 
 								} catch (IOException e) {
 									return Mono.empty();
 								}
 
 							})
-							.switchIfEmpty(msgService.throwMessage(
-									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-									FilesMessageResourceService.IMAGE_TRANSFORM_ERROR))
+							.switchIfEmpty(
+									msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+											FilesMessageResourceService.IMAGE_TRANSFORM_ERROR))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 
 				})
 				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-						FilesMessageResourceService.IMAGE_FILE_REQUIRED))	
+						FilesMessageResourceService.IMAGE_FILE_REQUIRED))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
-	
+
     public BufferedImage rotateImage(BufferedImage originalImage, double angle, String backgroundColor, File file) {
     	int width = originalImage.getWidth();
         int height = originalImage.getHeight();
