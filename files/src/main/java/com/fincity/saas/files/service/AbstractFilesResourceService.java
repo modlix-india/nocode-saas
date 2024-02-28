@@ -746,8 +746,7 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override,
-			ImageDetails imageDetails, String filePath) {
-		
+			ImageDetails imageDetails, String filePath, Boolean overrideImage) {
 		boolean ovr = override == null || override.booleanValue();
 		if (uri.indexOf(TRANSFORM_TYPE) != -1) {
 			int ind = uri.indexOf(TRANSFORM_TYPE);
@@ -756,7 +755,7 @@ public abstract class AbstractFilesResourceService {
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
-
+		
 		return FlatMapUtil.flatMapMonoWithNull(
 
 				() -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode, this.getResourceType()),
@@ -779,7 +778,7 @@ public abstract class AbstractFilesResourceService {
 					}
 
 					if (fp == null) {
-						if (ovr) {
+						if (overrideImage) {
 							file[0] = Paths.get(this.getBaseLocation(),
 									this.resolvePathWithClientCode(filePath).getT1());
 						} else {
@@ -857,6 +856,19 @@ public abstract class AbstractFilesResourceService {
 									String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
 									
 									String newImageName = fileName + "." + imageExtension;
+									
+									if (!overrideImage) {
+							            for (int i = 1; i <= 100; i++) {
+							                newImageName = fileName + "" + i + "." + imageExtension;
+
+							                boolean fileExists = checkIfNameExistsInFileSystem(newImageName, actualFile.getParentFile());
+
+							                if (!fileExists) {
+							                    break;
+							                }
+							            }
+							        }
+
 									File updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
 									ImageIO.write(updatedFile, imageExtension, updatedFileWithNewName);
 									
@@ -877,6 +889,11 @@ public abstract class AbstractFilesResourceService {
 				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 						FilesMessageResourceService.IMAGE_FILE_REQUIRED))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+	}
+	
+	private boolean checkIfNameExistsInFileSystem(String newImageName, File directory) {
+	    Path filePath = Paths.get(directory.getAbsolutePath(), newImageName);
+	    return Files.exists(filePath);
 	}
 
     public BufferedImage rotateImage(BufferedImage originalImage, double angle, String backgroundColor, File file) {
