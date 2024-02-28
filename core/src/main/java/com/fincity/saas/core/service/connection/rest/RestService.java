@@ -58,7 +58,7 @@ public class RestService {
 				},
 
 				codeTuple -> connectionService
-						.find(connectionName, codeTuple.getT1(), codeTuple.getT2(), ConnectionType.REST_API)
+						.read(connectionName, codeTuple.getT1(), codeTuple.getT2(), ConnectionType.REST_API)
 						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 								CoreMessageResourceService.CONNECTION_DETAILS_MISSING, connectionName)),
 				(codeTuple, connection) -> {

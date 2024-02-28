@@ -70,7 +70,7 @@ public class EmailService {
 							.map(e -> Tuples.of(e.getUrlAppCode(), e.getClientCode()));
 				},
 
-				actup -> connectionService.find(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
+				actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
 						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 								CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
 								templateName)),

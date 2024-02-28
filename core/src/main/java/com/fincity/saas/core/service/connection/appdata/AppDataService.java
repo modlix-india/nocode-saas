@@ -161,7 +161,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -535,7 +535,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -724,7 +724,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -755,7 +755,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -798,7 +798,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -974,7 +974,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1073,7 +1073,8 @@ public class AppDataService {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> connectionService.find(appCode, clientCode, ConnectionType.APP_DATA),
+				() -> connectionService.read("appData", appCode, clientCode)
+						.map(ObjectWithUniqueID::getObject),
 
 				conn -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1103,7 +1104,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1401,7 +1402,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1427,7 +1428,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1452,7 +1453,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.find(ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),

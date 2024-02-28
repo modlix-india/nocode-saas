@@ -16,10 +16,13 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveKIRuntime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
 public class DefinitionFunction extends AbstractReactiveFunction {
+
+	public static final String CONTEXT_KEY = "KIRun Runtime";
 
 	private final FunctionDefinition definition;
 	private final String executionAuthorization;
@@ -32,12 +35,12 @@ public class DefinitionFunction extends AbstractReactiveFunction {
 	@Override
 	public Map<String, Event> getProbableEventSignature(Map<String, List<Schema>> probableParameters) {
 		return this.getSignature()
-		        .getEvents();
+				.getEvents();
 	}
 
 	@Override
 	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-		return new ReactiveKIRuntime(definition).execute(context);
+		return new ReactiveKIRuntime(definition).execute(context).contextWrite(Context.of(CONTEXT_KEY, "true"));
 	}
 
 	@JsonIgnore
@@ -54,7 +57,7 @@ public class DefinitionFunction extends AbstractReactiveFunction {
 		FunctionDefinition fd = new FunctionDefinition(this.definition);
 		fd.setStepGroups(Map.of());
 		fd.setSteps(Map.of());
-		
+
 		return fd;
 	}
 }

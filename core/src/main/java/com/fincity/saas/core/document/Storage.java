@@ -40,6 +40,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private Boolean isAudited = false;
 	private Boolean isVersioned = false;
 	private Boolean isAppLevel = false;
+	private Boolean onlyThruKIRun = false;
 	private String createAuth;
 	private String readAuth;
 	private String updateAuth;
@@ -63,6 +64,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.deleteAuth = store.deleteAuth;
 		this.uniqueName = store.uniqueName;
 		this.isAppLevel = store.isAppLevel;
+		this.onlyThruKIRun = store.onlyThruKIRun;
 		this.relations = CloneUtil.cloneMapObject(store.relations);
 		this.generateEvents = store.generateEvents;
 		this.fieldDefinitionMap = CloneUtil.cloneMapObject(store.fieldDefinitionMap);
@@ -127,6 +129,9 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		if (this.isAppLevel == null)
 			this.isAppLevel = base.isAppLevel;
 
+		if (this.onlyThruKIRun == null)
+			this.onlyThruKIRun = base.onlyThruKIRun;
+
 		if (this.generateEvents == null)
 			this.generateEvents = base.generateEvents;
 	}
@@ -185,6 +190,9 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 		if (EqualsUtil.safeEquals(obj.isAppLevel, base.isAppLevel))
 			obj.isAppLevel = null;
+
+		if (EqualsUtil.safeEquals(obj.onlyThruKIRun, base.onlyThruKIRun))
+			obj.onlyThruKIRun = null;
 
 		if (EqualsUtil.safeEquals(obj.generateEvents, base.generateEvents))
 			obj.generateEvents = null;
