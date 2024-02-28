@@ -748,10 +748,13 @@ public abstract class AbstractFilesResourceService {
 	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override,
 			ImageDetails imageDetails, String filePath, Boolean overrideImage) {
 		boolean ovr = override == null || override.booleanValue();
+		
+		// just removing the TRANSFORM_TYPE from the uri
 		if (uri.indexOf(TRANSFORM_TYPE) != -1) {
 			int ind = uri.indexOf(TRANSFORM_TYPE);
 			uri = uri.substring(0, ind) + uri.substring(ind + TRANSFORM_TYPE.length() + 1);
 		}
+		
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
@@ -770,46 +773,48 @@ public abstract class AbstractFilesResourceService {
 					return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr);
 				},
 
-				(hasPermission, path) -> {
-					Path[] file = new Path[1];
+				(hasPermission, relativePath) -> {
+					// taking an array so can update the path in future because Path data types behave as final
+					Path[] path = new Path[1];
 
-					if (path != null) {
-						file[0] = path;
+					if (relativePath != null) {
+						path[0] = relativePath;
 					}
 
+					// just updating the path according to override condition
 					if (fp == null) {
 						if (overrideImage) {
-							file[0] = Paths.get(this.getBaseLocation(),
+							path[0] = Paths.get(this.getBaseLocation(),
 									this.resolvePathWithClientCode(filePath).getT1());
+							
+							// just checking the fileTpe if it is an image or not.
+							String fileType = null;
+							try {
+								fileType = Files.probeContentType(path[0]);
+							} catch (IOException e2) {
+								return Mono.empty();
+							}
+
+							if (fileType == null || !fileType.startsWith("image/"))
+								return Mono.empty();
 						} else {
-							return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-									file[0].toFile()));
+//							return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
+//									path[0].toFile()));
 						}
 					}
-
-					String fileType = null;
-
-					try {
-						fileType = Files.probeContentType(file[0]);
-					} catch (IOException e2) {
-						return Mono.empty();
-					}
-
-					if (fileType == null || !fileType.startsWith("image/"))
-						return Mono.empty();
 
 					return FlatMapUtil.flatMapMonoWithNull(
 
 							() -> {
 								if (fp != null) {
-									return fp.transferTo(file[0]);
+									return fp.transferTo(path[0]);
 								} else {
 									return Mono.empty();
 								}
 							},
 
 							x -> {
-								return Mono.just(file[0].toFile());
+								return Mono.just(path[0].toFile());
 							},
 
 							(x, actualFile) -> {
@@ -821,14 +826,14 @@ public abstract class AbstractFilesResourceService {
 
 									BufferedImage flippedImage = resizedImage;
 									if (imageDetails.getFlipHorizontal().booleanValue()) {
-										BufferedImage flippedHorizontal = flipHorizontal(flippedImage);
+										BufferedImage flippedHorizontalImage = flipHorizontal(flippedImage);
 										flippedImage = null;
-										flippedImage = flippedHorizontal;
+										flippedImage = flippedHorizontalImage;
 									}
 									if (imageDetails.getFlipVertical().booleanValue()) {
-										BufferedImage flippedVertical = flipVertical(flippedImage);
+										BufferedImage flippedVerticalImage = flipVertical(flippedImage);
 										flippedImage = null;
-										flippedImage = flippedVertical;
+										flippedImage = flippedVerticalImage;
 									}
 
 									BufferedImage rotatedImage = rotateImage(flippedImage, imageDetails.getRotation(),
@@ -836,8 +841,8 @@ public abstract class AbstractFilesResourceService {
 
 									BufferedImage croppedImage = rotatedImage;
 									if (imageDetails.getCropAreaWidth() > 0 && imageDetails.getCropAreaHeight() > 0) {
-										croppedImage = cropImage(rotatedImage, imageDetails.getXAxis(),
-												imageDetails.getYAxis(), imageDetails.getCropAreaWidth(),
+										croppedImage = cropImage(rotatedImage, imageDetails.getCropAreaX(),
+												imageDetails.getCropAreaY(), imageDetails.getCropAreaWidth(),
 												imageDetails.getCropAreaHeight());
 									}
 
@@ -848,9 +853,9 @@ public abstract class AbstractFilesResourceService {
 
 							},
 
-							(x, actualFile, updatedFile) -> {
-
+							(x, actualFile, resizedImage) -> {
 								try {
+									// just updating the file name if given any. Otherwise just writing the resized image. 
 									String imageName = actualFile.getName();
 									int lastDotIndex = imageName.lastIndexOf('.');
 									String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
@@ -870,10 +875,12 @@ public abstract class AbstractFilesResourceService {
 							        }
 
 									File updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
-									ImageIO.write(updatedFile, imageExtension, updatedFileWithNewName);
+									
+									// writing the resized image.
+									ImageIO.write(resizedImage, imageExtension, updatedFileWithNewName);
 									
 									return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-											file[0].toFile()));
+											path[0].toFile()));
 
 								} catch (IOException e) {
 									return Mono.empty();

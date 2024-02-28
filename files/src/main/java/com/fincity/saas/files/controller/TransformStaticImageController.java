@@ -36,18 +36,24 @@ public class TransformStaticImageController {
 			@RequestPart(required = false, name = "override") String override,
 			@RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request,
 			@RequestPart(required = false) String width, @RequestPart(required = false) String height,
-			@RequestPart(required = false) String rotation, @RequestPart(required = false) String xAxis,
-			@RequestPart(required = false) String yAxis, @RequestPart(required = false) String cropAreaWidth,
+			@RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
+			@RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
 			@RequestPart(required = false) String cropAreaHeight, @RequestPart(required = false) String flipHorizontal,
 			@RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
-			@RequestPart(name="path" ,required = false) String flipPath,
+			@RequestPart(name="path" ,required = false) String filePath,
 			@RequestPart(required = false, name = "overrideImage") String overrideImage) {
-
-		ImageDetails imageDetails = new ImageDetails(Integer.parseInt(width), Integer.parseInt(height),
-				Integer.parseInt(rotation), Integer.parseInt(xAxis), Integer.parseInt(yAxis),
-				Integer.parseInt(cropAreaWidth), Integer.parseInt(cropAreaHeight),
-				flipHorizontal != null ? BooleanUtil.safeValueOf(flipHorizontal) : null,
-				flipVertical != null ? BooleanUtil.safeValueOf(flipVertical) : null, backgroundColor);
+		
+		ImageDetails imageDetails = new ImageDetails()
+				.setWidth(Integer.parseInt(width))
+				.setHeight(Integer.parseInt(height))
+				.setRotation(Integer.parseInt(rotation))
+				.setCropAreaX(Integer.parseInt(cropAreaX))
+				.setCropAreaY(Integer.parseInt(cropAreaY))
+				.setCropAreaWidth(Integer.parseInt(cropAreaWidth))
+				.setCropAreaHeight(Integer.parseInt(cropAreaHeight))
+				.setFlipHorizontal(flipHorizontal != null ? BooleanUtil.safeValueOf(flipHorizontal) : null)
+				.setFlipVertical(flipVertical != null ? BooleanUtil.safeValueOf(flipVertical) : null)
+				.setBackgroundColor(backgroundColor);
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
@@ -58,7 +64,7 @@ public class TransformStaticImageController {
 				(ca, fp) -> this.service.imageUpload(
 						CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
 						request.getPath().toString(), fp, fileName,
-						override != null ? BooleanUtil.safeValueOf(override) : null, imageDetails, flipPath, overrideImage != null ? BooleanUtil.safeValueOf(overrideImage) : null))
+						override != null ? BooleanUtil.safeValueOf(override) : null, imageDetails, filePath, overrideImage != null ? BooleanUtil.safeValueOf(overrideImage) : null))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "TransformStaticImageController.create"));
 	}

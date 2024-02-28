@@ -1,6 +1,5 @@
 package com.fincity.saas.files.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -8,13 +7,12 @@ import lombok.experimental.Accessors;
 @Data
 @EqualsAndHashCode
 @Accessors(chain = true)
-@AllArgsConstructor
 public class ImageDetails {
 	private Integer width;
 	private Integer height;
 	private Integer rotation;
-	private Integer xAxis;
-	private Integer yAxis;
+	private Integer cropAreaX;
+	private Integer cropAreaY;
 	private Integer cropAreaWidth;
 	private Integer cropAreaHeight;
 	private Boolean flipHorizontal = Boolean.FALSE;
