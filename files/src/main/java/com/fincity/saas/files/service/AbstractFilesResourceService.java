@@ -727,7 +727,7 @@ public abstract class AbstractFilesResourceService {
 
 					Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
-					return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr);
+					return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr, false);
 				},
 
 				(hasPermission, file) -> {
@@ -770,7 +770,7 @@ public abstract class AbstractFilesResourceService {
 
 					Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
-					return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr);
+					return this.createOrGetPath(path, urlResourcePath, fp, fileName, ovr, true);
 				},
 
 				(hasPermission, relativePath) -> {
@@ -783,26 +783,47 @@ public abstract class AbstractFilesResourceService {
 
 					// just updating the path according to override condition
 					if (fp == null) {
-						if (overrideImage) {
+						if (ovr) {
+							path[0] = Paths.get(this.getBaseLocation(),
+									this.resolvePathWithClientCode(filePath).getT1());
+						} else {
 							path[0] = Paths.get(this.getBaseLocation(),
 									this.resolvePathWithClientCode(filePath).getT1());
 							
-							// just checking the fileTpe if it is an image or not.
-							String fileType = null;
-							try {
-								fileType = Files.probeContentType(path[0]);
-							} catch (IOException e2) {
-								return Mono.empty();
-							}
-
-							if (fileType == null || !fileType.startsWith("image/"))
-								return Mono.empty();
-						} else {
-//							return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-//									path[0].toFile()));
+							for (int i = 1; i <= 100; i++) {
+								int lastIndex = filePath.lastIndexOf(".");
+								String extension = filePath.substring(lastIndex);
+								Path newImagePath = path[0].resolve(fileName + i + extension);
+								
+					            if (!Files.exists(newImagePath)) {
+					            	try {
+					                    Files.copy(path[0], newImagePath, StandardCopyOption.REPLACE_EXISTING);
+					                    path[0] = newImagePath;
+					                    break;
+					                    
+					                } catch (IOException e) {
+					                    Mono.empty();
+					                }
+					            }
+//					            else {
+//									return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
+//											path[0].toFile()));
+//					            }
+					        }
 						}
 					}
+					
+					// just checking the fileTpe if it is an image or not. if not work here then put in fp==null && ovr
+					String fileType = null;
+					try {
+						fileType = Files.probeContentType(path[0]);
+					} catch (IOException e2) {
+						return Mono.empty();
+					}
 
+					if (fileType == null || !fileType.startsWith("image/"))
+						return Mono.empty();
+					
 					return FlatMapUtil.flatMapMonoWithNull(
 
 							() -> {
@@ -848,6 +869,7 @@ public abstract class AbstractFilesResourceService {
 
 									return Mono.just(croppedImage);
 								} catch (IOException e) {
+									e.printStackTrace();
 									return Mono.empty();
 								}
 
@@ -862,7 +884,7 @@ public abstract class AbstractFilesResourceService {
 									
 									String newImageName = fileName + "." + imageExtension;
 									
-									if (!overrideImage) {
+									if (!ovr) {
 							            for (int i = 1; i <= 100; i++) {
 							                newImageName = fileName + "" + i + "." + imageExtension;
 
@@ -873,7 +895,7 @@ public abstract class AbstractFilesResourceService {
 							                }
 							            }
 							        }
-
+									
 									File updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
 									
 									// writing the resized image.
@@ -1137,7 +1159,7 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	private Mono<Path> createOrGetPath(Path path, String resourcePath, FilePart fp, String fileName, boolean ovr) {
+	private Mono<Path> createOrGetPath(Path path, String resourcePath, FilePart fp, String fileName, boolean ovr, boolean isResizingImg) {
 
 		if (!Files.exists(path))
 			try {
@@ -1159,7 +1181,7 @@ public abstract class AbstractFilesResourceService {
 		Path file = path.resolve(
 				fileName == null ? fp.filename() : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName));
 
-		if (Files.exists(file) && !ovr)
+		if (Files.exists(file) && !ovr && !isResizingImg)
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					FilesMessageResourceService.ALREADY_EXISTS, "File", file.getFileName());
 
