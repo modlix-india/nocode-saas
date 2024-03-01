@@ -40,8 +40,7 @@ public class TransformStaticImageController {
 			@RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
 			@RequestPart(required = false) String cropAreaHeight, @RequestPart(required = false) String flipHorizontal,
 			@RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
-			@RequestPart(name="path" ,required = false) String filePath,
-			@RequestPart(required = false, name = "overrideImage") String overrideImage) {
+			@RequestPart(name="path" ,required = false) String filePath) {
 		
 		ImageDetails imageDetails = new ImageDetails()
 				.setWidth(Integer.parseInt(width))
@@ -64,7 +63,7 @@ public class TransformStaticImageController {
 				(ca, fp) -> this.service.imageUpload(
 						CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
 						request.getPath().toString(), fp, fileName,
-						override != null ? BooleanUtil.safeValueOf(override) : null, imageDetails, filePath, overrideImage != null ? BooleanUtil.safeValueOf(overrideImage) : null))
+						override != null ? BooleanUtil.safeValueOf(override) : null, imageDetails, filePath))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "TransformStaticImageController.create"));
 	}

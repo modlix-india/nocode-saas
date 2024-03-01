@@ -746,7 +746,7 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override,
-			ImageDetails imageDetails, String filePath, Boolean overrideImage) {
+			ImageDetails imageDetails, String filePath) {
 		boolean ovr = override == null || override.booleanValue();
 		
 		// just removing the TRANSFORM_TYPE from the uri
