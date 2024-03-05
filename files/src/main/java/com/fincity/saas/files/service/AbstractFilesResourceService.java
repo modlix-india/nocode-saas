@@ -774,49 +774,16 @@ public abstract class AbstractFilesResourceService {
 				},
 
 				(hasPermission, relativePath) -> {
-					// taking an array so can update the path in future because Path data types behave as final
-					Path[] path = new Path[1];
+					// taking as an array so can update the path in future because Path data types behave as final
+					Path[] targetPath = new Path[1];
 
-					if (relativePath != null) {
-						path[0] = relativePath;
-					}
-
-					// just updating the path according to override condition
-					if (fp == null) {
-						if (ovr) {
-							path[0] = Paths.get(this.getBaseLocation(),
-									this.resolvePathWithClientCode(filePath).getT1());
-						} else {
-							path[0] = Paths.get(this.getBaseLocation(),
-									this.resolvePathWithClientCode(filePath).getT1());
-							
-							for (int i = 1; i <= 100; i++) {
-								int lastIndex = filePath.lastIndexOf(".");
-								String extension = filePath.substring(lastIndex);
-								Path newImagePath = path[0].resolve(fileName + i + extension);
-								
-					            if (!Files.exists(newImagePath)) {
-					            	try {
-					                    Files.copy(path[0], newImagePath, StandardCopyOption.REPLACE_EXISTING);
-					                    path[0] = newImagePath;
-					                    break;
-					                    
-					                } catch (IOException e) {
-					                    Mono.empty();
-					                }
-					            }
-//					            else {
-//									return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-//											path[0].toFile()));
-//					            }
-					        }
-						}
-					}
+					// updating the target path according to override condition
+					updatePathAccToOverrideCondition(fp, targetPath, filePath, ovr, fileName);
 					
 					// just checking the fileTpe if it is an image or not. if not work here then put in fp==null && ovr
 					String fileType = null;
 					try {
-						fileType = Files.probeContentType(path[0]);
+						fileType = Files.probeContentType(targetPath[0]);
 					} catch (IOException e2) {
 						return Mono.empty();
 					}
@@ -824,99 +791,137 @@ public abstract class AbstractFilesResourceService {
 					if (fileType == null || !fileType.startsWith("image/"))
 						return Mono.empty();
 					
-					return FlatMapUtil.flatMapMonoWithNull(
-
-							() -> {
-								if (fp != null) {
-									return fp.transferTo(path[0]);
-								} else {
-									return Mono.empty();
-								}
-							},
-
-							x -> {
-								return Mono.just(path[0].toFile());
-							},
-
-							(x, actualFile) -> {
-								try {
-									BufferedImage bufferedImage = ImageIO.read(actualFile);
-
-									BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(),
-											imageDetails.getHeight());
-
-									BufferedImage flippedImage = resizedImage;
-									if (imageDetails.getFlipHorizontal().booleanValue()) {
-										BufferedImage flippedHorizontalImage = flipHorizontal(flippedImage);
-										flippedImage = null;
-										flippedImage = flippedHorizontalImage;
-									}
-									if (imageDetails.getFlipVertical().booleanValue()) {
-										BufferedImage flippedVerticalImage = flipVertical(flippedImage);
-										flippedImage = null;
-										flippedImage = flippedVerticalImage;
-									}
-
-									BufferedImage rotatedImage = rotateImage(flippedImage, imageDetails.getRotation(),
-											imageDetails.getBackgroundColor(), actualFile);
-
-									BufferedImage croppedImage = rotatedImage;
-									if (imageDetails.getCropAreaWidth() > 0 && imageDetails.getCropAreaHeight() > 0) {
-										croppedImage = cropImage(rotatedImage, imageDetails.getCropAreaX(),
-												imageDetails.getCropAreaY(), imageDetails.getCropAreaWidth(),
-												imageDetails.getCropAreaHeight());
-									}
-
-									return Mono.just(croppedImage);
-								} catch (IOException e) {
-									e.printStackTrace();
-									return Mono.empty();
-								}
-
-							},
-
-							(x, actualFile, resizedImage) -> {
-								try {
-									// just updating the file name if given any. Otherwise just writing the resized image. 
-									String imageName = actualFile.getName();
-									int lastDotIndex = imageName.lastIndexOf('.');
-									String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
-									
-									String newImageName = fileName + "." + imageExtension;
-									
-									if (!ovr) {
-							            for (int i = 1; i <= 100; i++) {
-							                newImageName = fileName + "" + i + "." + imageExtension;
-
-							                boolean fileExists = checkIfNameExistsInFileSystem(newImageName, actualFile.getParentFile());
-
-							                if (!fileExists) {
-							                    break;
-							                }
-							            }
-							        }
-									
-									File updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
-									
-									// writing the resized image.
-									ImageIO.write(resizedImage, imageExtension, updatedFileWithNewName);
-									
-									return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-											path[0].toFile()));
-
-								} catch (IOException e) {
-									return Mono.empty();
-								}
-
-							})
-							.switchIfEmpty(
-									msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-											FilesMessageResourceService.IMAGE_TRANSFORM_ERROR))
-							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+					return updateAndProcessImage(fp, targetPath, fileName, ovr, imageDetails, urlResourcePath, clientCode);
 
 				})
 				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 						FilesMessageResourceService.IMAGE_FILE_REQUIRED))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+	}
+	
+	private void updatePathAccToOverrideCondition(FilePart fp, Path[] targetPath, String filePath, boolean ovr, String fileName) {
+		if(targetPath[0]!=null) {
+			if (fp == null) {
+				if (ovr) {
+					targetPath[0] = Paths.get(this.getBaseLocation(),
+							this.resolvePathWithClientCode(filePath).getT1());
+				} else {
+					targetPath[0] = Paths.get(this.getBaseLocation(),
+							this.resolvePathWithClientCode(filePath).getT1());
+					
+					for (int i = 1; i <= 100; i++) {
+						int lastIndex = filePath.lastIndexOf(".");
+						String extension = filePath.substring(lastIndex);
+						Path newImagePath = targetPath[0].resolve(fileName + i + extension);
+						
+			            if (!Files.exists(newImagePath)) {
+			            	try {
+			                    Files.copy(targetPath[0], newImagePath, StandardCopyOption.REPLACE_EXISTING);
+			                    targetPath[0] = newImagePath;
+			                    break;
+			                    
+			                } catch (IOException e) {
+			                    Mono.error(e);
+			                }
+			            }
+			        }
+				}
+			}
+		}else {
+			Mono.empty();
+		}
+	}
+	
+	private Mono<FileDetail> updateAndProcessImage(FilePart fp, Path[] path, String fileName, boolean ovr,
+                                      ImageDetails imageDetails, String urlResourcePath, String clientCode){
+		return FlatMapUtil.flatMapMonoWithNull(
+
+				() -> {
+					if (fp != null) {
+						return fp.transferTo(path[0]);
+					} else {
+						return Mono.empty();
+					}
+				},
+
+				x -> {
+					return Mono.just(path[0].toFile());
+				},
+
+				(x, actualFile) -> {
+					try {
+						BufferedImage bufferedImage = ImageIO.read(actualFile);
+
+						BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(),
+								imageDetails.getHeight());
+
+						BufferedImage flippedImage = resizedImage;
+						if (imageDetails.getFlipHorizontal().booleanValue()) {
+							BufferedImage flippedHorizontalImage = flipHorizontal(flippedImage);
+							flippedImage = null;
+							flippedImage = flippedHorizontalImage;
+						}
+						if (imageDetails.getFlipVertical().booleanValue()) {
+							BufferedImage flippedVerticalImage = flipVertical(flippedImage);
+							flippedImage = null;
+							flippedImage = flippedVerticalImage;
+						}
+
+						BufferedImage rotatedImage = rotateImage(flippedImage, imageDetails.getRotation(),
+								imageDetails.getBackgroundColor(), actualFile);
+
+						BufferedImage croppedImage = rotatedImage;
+						if (imageDetails.getCropAreaWidth() > 0 && imageDetails.getCropAreaHeight() > 0) {
+							croppedImage = cropImage(rotatedImage, imageDetails.getCropAreaX(),
+									imageDetails.getCropAreaY(), imageDetails.getCropAreaWidth(),
+									imageDetails.getCropAreaHeight());
+						}
+
+						return Mono.just(croppedImage);
+					} catch (IOException e) {
+						e.printStackTrace();
+						return Mono.empty();
+					}
+
+				},
+
+				(x, actualFile, resizedImage) -> {
+					try {
+						// just updating the file name if given any. Otherwise just writing the resized image. 
+						String imageName = actualFile.getName();
+						int lastDotIndex = imageName.lastIndexOf('.');
+						String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
+						
+						String newImageName = fileName + "." + imageExtension;
+						
+						if (!ovr) {
+				            for (int i = 1; i <= 100; i++) {
+				                newImageName = fileName + "" + i + "." + imageExtension;
+
+				                boolean fileExists = checkIfNameExistsInFileSystem(newImageName, actualFile.getParentFile());
+
+				                if (!fileExists) {
+				                    break;
+				                }
+				            }
+				        }
+						
+						File updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
+						
+						// writing the resized image.
+						ImageIO.write(resizedImage, imageExtension, updatedFileWithNewName);
+						
+						return Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
+								path[0].toFile()));
+
+					} catch (IOException e) {
+						return Mono.empty();
+					}
+
+				})
+				.switchIfEmpty(
+						msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								FilesMessageResourceService.IMAGE_TRANSFORM_ERROR))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
 	

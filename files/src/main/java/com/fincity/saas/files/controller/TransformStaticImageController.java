@@ -34,14 +34,14 @@ public class TransformStaticImageController {
 			@RequestPart(name = "file", required = false) Mono<FilePart> filePart,
 			@RequestParam(required = false) String clientCode,
 			@RequestPart(required = false, name = "override") String override,
-			@RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request,
 			@RequestPart(required = false) String width, @RequestPart(required = false) String height,
 			@RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
 			@RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
 			@RequestPart(required = false) String cropAreaHeight, @RequestPart(required = false) String flipHorizontal,
 			@RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
-			@RequestPart(name="path" ,required = false) String filePath) {
-		
+			@RequestPart(name="path" ,required = false) String filePath,
+			@RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request) {
+
 		ImageDetails imageDetails = new ImageDetails()
 				.setWidth(Integer.parseInt(width))
 				.setHeight(Integer.parseInt(height))
