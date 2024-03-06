@@ -797,7 +797,7 @@ public abstract class AbstractFilesResourceService {
 				})
 				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 						FilesMessageResourceService.IMAGE_FILE_REQUIRED))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.imageUpload"));
 	}
 	
 	private Mono<Void> updatePathAccToOverrideCondition(FilePart fp, Path[] targetPath, String filePath, boolean ovr,
@@ -897,7 +897,7 @@ public abstract class AbstractFilesResourceService {
 			String newImageName = fileName + "." + imageExtension;
 
 			if (!ovr) {
-				for (int i = 1; i <= 100; i++) {
+				for (int i = 1; i <= 10; i++) {
 					newImageName = fileName + "" + i + "." + imageExtension;
 
 					boolean fileExists = checkIfNameExistsInFileSystem(newImageName, actualFile.getParentFile());
