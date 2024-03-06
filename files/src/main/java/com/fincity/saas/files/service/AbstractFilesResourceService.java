@@ -805,27 +805,29 @@ public abstract class AbstractFilesResourceService {
 		if (targetPath[0] != null && fp == null) {
 			targetPath[0] = Paths.get(this.getBaseLocation(), this.resolvePathWithClientCode(filePath).getT1());
 			if (!ovr) {
-				for (int i = 1; i <= 100; i++) {
-					int lastDotIndex = filePath.lastIndexOf(".");
-					String extension = filePath.substring(lastDotIndex);
-					Path newImagePath = targetPath[0].resolve(fileName + i + extension);
+				updatePathForNonOverride(targetPath, fileName, filePath);
+			}
+		}
+		return Mono.empty();
+	}
+	
+	private Mono<Void> updatePathForNonOverride(Path[] targetPath, String fileName, String filePath) {
+		for (int i = 1; i <= 100; i++) {
+			int lastDotIndex = filePath.lastIndexOf(".");
+			String extension = filePath.substring(lastDotIndex);
+			Path newImagePath = targetPath[0].resolve(fileName + i + extension);
 
-					if (!Files.exists(newImagePath)) {
-						try {
-							Files.copy(targetPath[0], newImagePath, StandardCopyOption.REPLACE_EXISTING);
-							targetPath[0] = newImagePath;
-							break;
-
-						} catch (IOException e) {
-							return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-									FilesMessageResourceService.UNABLE_TO_COPY_THE_IMAGE_FILE);
-						}
-					}
-
+			if (!Files.exists(newImagePath)) {
+				try {
+					Files.copy(targetPath[0], newImagePath, StandardCopyOption.REPLACE_EXISTING);
+					targetPath[0] = newImagePath;
+					break;
+				} catch (IOException e) {
+					return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+							FilesMessageResourceService.UNABLE_TO_COPY_THE_IMAGE_FILE);
 				}
 			}
 		}
-
 		return Mono.empty();
 	}
 
@@ -840,23 +842,48 @@ public abstract class AbstractFilesResourceService {
 					return Mono.empty();
 				},
 
-				x -> {
-					return Mono.just(targetPath[0].toFile());
-				},
+				x -> Mono.just(targetPath[0].toFile()),
 
-				(x, actualFile) -> {
-					return computeAndResizeImage(actualFile, imageDetails);
-				},
+				(x, actualFile) -> computeAndResizeImage(actualFile, imageDetails),
 
-				(x, actualFile, resizedImage) -> {
-					return renameAndRewriteImage(actualFile, fileName, ovr, resizedImage, targetPath, urlResourcePath,
-							clientCode);
-
-				})
+				(x, actualFile, resizedImage) -> renameAndRewriteImage(actualFile, fileName, ovr, resizedImage,
+						targetPath, urlResourcePath, clientCode))
 				.switchIfEmpty(
 						msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 								FilesMessageResourceService.IMAGE_TRANSFORM_ERROR))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+	}
+
+	private Mono<BufferedImage> computeAndResizeImage(File actualFile, ImageDetails imageDetails) {
+		try {
+			BufferedImage bufferedImage = ImageIO.read(actualFile);
+
+			BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(), imageDetails.getHeight());
+
+			BufferedImage flippedImage = resizedImage;
+			if (imageDetails.getFlipHorizontal().booleanValue()) {
+				BufferedImage flippedHorizontalImage = flipHorizontal(resizedImage);
+				flippedImage = flippedHorizontalImage;
+			}
+			if (imageDetails.getFlipVertical().booleanValue()) {
+				BufferedImage flippedVerticalImage = flipVertical(flippedImage);
+				flippedImage = flippedVerticalImage;
+			}
+
+			BufferedImage rotatedImage = rotateImage(flippedImage, imageDetails.getRotation(),
+					imageDetails.getBackgroundColor(), actualFile);
+
+			BufferedImage croppedImage = rotatedImage;
+			if (imageDetails.getCropAreaWidth() > 0 && imageDetails.getCropAreaHeight() > 0) {
+				croppedImage = cropImage(rotatedImage, imageDetails.getCropAreaX(), imageDetails.getCropAreaY(),
+						imageDetails.getCropAreaWidth(), imageDetails.getCropAreaHeight());
+			}
+
+			return Mono.just(croppedImage);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return Mono.empty();
+		}
 	}
 	
 	private Mono<FileDetail> renameAndRewriteImage(File actualFile, String fileName, boolean ovr,
@@ -890,40 +917,6 @@ public abstract class AbstractFilesResourceService {
 					.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, targetPath[0].toFile()));
 
 		} catch (IOException e) {
-			return Mono.empty();
-		}
-	}
-
-	private Mono<BufferedImage> computeAndResizeImage(File actualFile, ImageDetails imageDetails) {
-		try {
-			BufferedImage bufferedImage = ImageIO.read(actualFile);
-
-			BufferedImage resizedImage = resizeImage(bufferedImage, imageDetails.getWidth(), imageDetails.getHeight());
-
-			BufferedImage flippedImage = resizedImage;
-			if (imageDetails.getFlipHorizontal().booleanValue()) {
-				BufferedImage flippedHorizontalImage = flipHorizontal(flippedImage);
-				flippedImage = null;
-				flippedImage = flippedHorizontalImage;
-			}
-			if (imageDetails.getFlipVertical().booleanValue()) {
-				BufferedImage flippedVerticalImage = flipVertical(flippedImage);
-				flippedImage = null;
-				flippedImage = flippedVerticalImage;
-			}
-
-			BufferedImage rotatedImage = rotateImage(flippedImage, imageDetails.getRotation(),
-					imageDetails.getBackgroundColor(), actualFile);
-
-			BufferedImage croppedImage = rotatedImage;
-			if (imageDetails.getCropAreaWidth() > 0 && imageDetails.getCropAreaHeight() > 0) {
-				croppedImage = cropImage(rotatedImage, imageDetails.getCropAreaX(), imageDetails.getCropAreaY(),
-						imageDetails.getCropAreaWidth(), imageDetails.getCropAreaHeight());
-			}
-
-			return Mono.just(croppedImage);
-		} catch (IOException e) {
-			e.printStackTrace();
 			return Mono.empty();
 		}
 	}
@@ -968,7 +961,7 @@ public abstract class AbstractFilesResourceService {
         return rotatedImage;
     }
 	
-	public BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) throws IOException {
+	public BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) {
 		Image resultingImage = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
 		BufferedImage outputImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
 		outputImage.getGraphics().drawImage(resultingImage, 0, 0, null);
