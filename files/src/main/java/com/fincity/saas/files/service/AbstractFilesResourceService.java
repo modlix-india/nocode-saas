@@ -778,8 +778,10 @@ public abstract class AbstractFilesResourceService {
 					Path[] targetPath = new Path[1];
 					targetPath[0] = relativePath;
 
-					// updating the target path according to override condition
-					updatePathAccToOverrideCondition(fp, targetPath, filePath, ovr, fileName);
+					if (fp == null) {
+						targetPath[0] = Paths.get(this.getBaseLocation(),
+								this.resolvePathWithClientCode(filePath).getT1());
+					}
 
 					// just checking the fileTpe if it is an image or not. if not work here then put in fp==null && ovr
 					String fileType = null;
@@ -799,37 +801,6 @@ public abstract class AbstractFilesResourceService {
 						FilesMessageResourceService.IMAGE_FILE_REQUIRED))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.imageUpload"));
 	}
-	
-	private Mono<Void> updatePathAccToOverrideCondition(FilePart fp, Path[] targetPath, String filePath, boolean ovr,
-			String fileName) {
-		if (targetPath[0] != null && fp == null) {
-			targetPath[0] = Paths.get(this.getBaseLocation(), this.resolvePathWithClientCode(filePath).getT1());
-			if (!ovr) {
-				updatePathForNonOverride(targetPath, fileName, filePath);
-			}
-		}
-		return Mono.empty();
-	}
-	
-	private Mono<Void> updatePathForNonOverride(Path[] targetPath, String fileName, String filePath) {
-		for (int i = 1; i <= 100; i++) {
-			int lastDotIndex = filePath.lastIndexOf(".");
-			String extension = filePath.substring(lastDotIndex);
-			Path newImagePath = targetPath[0].resolve(fileName + i + extension);
-
-			if (!Files.exists(newImagePath)) {
-				try {
-					Files.copy(targetPath[0], newImagePath, StandardCopyOption.REPLACE_EXISTING);
-					targetPath[0] = newImagePath;
-					break;
-				} catch (IOException e) {
-					return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-							FilesMessageResourceService.UNABLE_TO_COPY_THE_IMAGE_FILE);
-				}
-			}
-		}
-		return Mono.empty();
-	}
 
 	private Mono<FileDetail> processImage(FilePart fp, Path[] targetPath, String fileName, boolean ovr,
                                       ImageDetails imageDetails, String urlResourcePath, String clientCode){
@@ -846,7 +817,7 @@ public abstract class AbstractFilesResourceService {
 
 				(x, actualFile) -> computeAndResizeImage(actualFile, imageDetails),
 
-				(x, actualFile, resizedImage) -> renameAndRewriteImage(actualFile, fileName, ovr, resizedImage,
+				(x, actualFile, resizedImage) -> renameAndRewriteImage(fp, actualFile, fileName, ovr, resizedImage,
 						targetPath, urlResourcePath, clientCode))
 				.switchIfEmpty(
 						msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -886,29 +857,33 @@ public abstract class AbstractFilesResourceService {
 		}
 	}
 	
-	private Mono<FileDetail> renameAndRewriteImage(File actualFile, String fileName, boolean ovr,
+	private Mono<FileDetail> renameAndRewriteImage(FilePart fp, File actualFile, String fileName, boolean ovr,
 			BufferedImage resizedImage, Path[] targetPath, String urlResourcePath, String clientCode) {
 		try {
-			// just updating the file name if given any. Otherwise just writing the resized image.
+			File updatedFileWithNewName = actualFile;
+			
 			String imageName = actualFile.getName();
 			int lastDotIndex = imageName.lastIndexOf('.');
 			String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
-
-			String newImageName = fileName + "." + imageExtension;
-
-			if (!ovr) {
-				for (int i = 1; i <= 10; i++) {
-					newImageName = fileName + "" + i + "." + imageExtension;
-
-					boolean fileExists = checkIfNameExistsInFileSystem(newImageName, actualFile.getParentFile());
-
-					if (!fileExists) {
-						break;
+			
+			if(fp==null) {
+				// just updating the file name if given any. Otherwise just writing the resized image.
+				String newImageName = fileName + "." + imageExtension;
+			
+				if (!ovr) {
+					for (int i = 1; i <= 10; i++) {
+						newImageName = fileName + "" + i + "." + imageExtension;
+			
+						boolean fileExists = checkIfNameExistsInFileSystem(newImageName, actualFile.getParentFile());
+			
+						if (!fileExists) {
+							break;
+						}
 					}
 				}
+			
+				updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
 			}
-
-			File updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
 
 			// writing the resized image.
 			ImageIO.write(resizedImage, imageExtension, updatedFileWithNewName);
