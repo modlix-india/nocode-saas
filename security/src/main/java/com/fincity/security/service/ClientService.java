@@ -165,6 +165,10 @@ public class ClientService
 				.flatMap(this::readInternal);
 	}
 
+	public Mono<List<Client>> getClientsBy(List<ULong> ids) {
+		return this.dao.getClientsBy(ids);
+	}
+
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> {
