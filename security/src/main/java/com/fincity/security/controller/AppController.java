@@ -29,6 +29,7 @@ import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
+import com.fincity.security.model.AppDependency;
 import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.model.PropertiesResponse;
@@ -97,6 +98,13 @@ public class AppController
 	public Mono<ResponseEntity<App>> getAppCode(@PathVariable("appCode") final String appCode) {
 
 		return this.service.getAppByCode(appCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/appCode/{appCode}")
+	public Mono<ResponseEntity<App>> getAppByCode(@PathVariable("appCode") final String appCode) {
+
+		return this.service.getAppByCodeCheckAccess(appCode)
 				.map(ResponseEntity::ok);
 	}
 
@@ -231,4 +239,11 @@ public class AppController
 		return this.service.findAnyAppsByPage(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
 				.map(ResponseEntity::ok);
 	}
+
+	@GetMapping("/dependencies")
+	public Mono<ResponseEntity<List<AppDependency>>> getAppDependencies(@RequestParam String appCode) {
+		return this.service.getAppDependencies(appCode)
+				.map(ResponseEntity::ok);
+	}
+
 }
