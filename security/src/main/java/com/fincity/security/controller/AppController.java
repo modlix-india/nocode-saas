@@ -29,8 +29,10 @@ import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
+import com.fincity.security.model.AppDependency;
 import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
+import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.service.AppService;
 
 import reactor.core.publisher.Mono;
@@ -96,6 +98,13 @@ public class AppController
 	public Mono<ResponseEntity<App>> getAppCode(@PathVariable("appCode") final String appCode) {
 
 		return this.service.getAppByCode(appCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/appCode/{appCode}")
+	public Mono<ResponseEntity<App>> getAppByCode(@PathVariable("appCode") final String appCode) {
+
+		return this.service.getAppByCodeCheckAccess(appCode)
 				.map(ResponseEntity::ok);
 	}
 
@@ -185,12 +194,12 @@ public class AppController
 	}
 
 	@GetMapping("/property")
-	public Mono<ResponseEntity<Map<ULong, Map<String, AppProperty>>>> getProperty(
+	public Mono<ResponseEntity<PropertiesResponse>> getProperty(
 			@RequestParam(required = false) ULong clientId,
 			@RequestParam(required = false) ULong appId, @RequestParam(required = false) String appCode,
 			@RequestParam(required = false) String propName) {
 
-		return this.service.getProperties(clientId, appId, appCode, propName)
+		return this.service.getPropertiesWithClients(clientId, appId, appCode, propName)
 				.map(ResponseEntity::ok);
 	}
 
@@ -210,6 +219,13 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
+	@DeleteMapping("/property/{id}")
+	public Mono<ResponseEntity<Boolean>> deleteProperty(@PathVariable(PATH_VARIABLE_ID) ULong propertyId) {
+
+		return this.service.deletePropertyById(propertyId)
+				.map(ResponseEntity::ok);
+	}
+
 	@GetMapping("/findBaseClientCode/{applicationCode}")
 	public Mono<ResponseEntity<Tuple2<String, Boolean>>> findBaseClientCodeForOverride(
 			@PathVariable("") String applicationCode) {
@@ -223,4 +239,11 @@ public class AppController
 		return this.service.findAnyAppsByPage(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
 				.map(ResponseEntity::ok);
 	}
+
+	@GetMapping("/dependencies")
+	public Mono<ResponseEntity<List<AppDependency>>> getAppDependencies(@RequestParam String appCode) {
+		return this.service.getAppDependencies(appCode)
+				.map(ResponseEntity::ok);
+	}
+
 }
