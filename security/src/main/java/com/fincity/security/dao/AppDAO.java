@@ -451,7 +451,9 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 						.limit(1))
 						.map(e -> e.into(App.class)),
 
-				app -> {
+				app -> SecurityContextUtil.getUsersContextAuthentication(),
+
+				(app, ca) -> {
 
 					List<Condition> conditions = new ArrayList<>();
 					conditions.add(SECURITY_APP_PROPERTY.APP_ID.eq(app.getId()));
@@ -461,7 +463,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 					if (clientIds != null && !clientIds.isEmpty())
 						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(app.getClientId())
 								.or(SECURITY_APP_PROPERTY.CLIENT_ID.in(clientIds)));
-					else
+					else if (!ca.isSystemClient())
 						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(app.getClientId()));
 
 					return Flux.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
@@ -472,6 +474,21 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				}
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getProperties"));
+	}
+
+	public Mono<AppProperty> getPropertyById(ULong id) {
+
+		return Mono.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
+				.where(SECURITY_APP_PROPERTY.ID.eq(id))
+				.limit(1))
+				.map(e -> e.into(AppProperty.class));
+	}
+
+	public Mono<Boolean> deletePropertyById(ULong id) {
+
+		return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_PROPERTY)
+				.where(SECURITY_APP_PROPERTY.ID.eq(id)))
+				.map(e -> e == 1);
 	}
 
 	public Map<ULong, Map<String, AppProperty>> convertAttributesToMap(ULong appClientId, List<ULong> clientIds,

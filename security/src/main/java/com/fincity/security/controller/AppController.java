@@ -31,6 +31,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
+import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.service.AppService;
 
 import reactor.core.publisher.Mono;
@@ -185,12 +186,12 @@ public class AppController
 	}
 
 	@GetMapping("/property")
-	public Mono<ResponseEntity<Map<ULong, Map<String, AppProperty>>>> getProperty(
+	public Mono<ResponseEntity<PropertiesResponse>> getProperty(
 			@RequestParam(required = false) ULong clientId,
 			@RequestParam(required = false) ULong appId, @RequestParam(required = false) String appCode,
 			@RequestParam(required = false) String propName) {
 
-		return this.service.getProperties(clientId, appId, appCode, propName)
+		return this.service.getPropertiesWithClients(clientId, appId, appCode, propName)
 				.map(ResponseEntity::ok);
 	}
 
@@ -207,6 +208,13 @@ public class AppController
 			@RequestParam String name) {
 
 		return this.service.deleteProperty(clientId, appId, name)
+				.map(ResponseEntity::ok);
+	}
+
+	@DeleteMapping("/property/{id}")
+	public Mono<ResponseEntity<Boolean>> deleteProperty(@PathVariable(PATH_VARIABLE_ID) ULong propertyId) {
+
+		return this.service.deletePropertyById(propertyId)
 				.map(ResponseEntity::ok);
 	}
 
