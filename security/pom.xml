@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.7.12</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<relativePath />
+		<!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fincity.saas</groupId>
 	<artifactId>security</artifactId>
@@ -91,6 +91,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
+			<version>1.18.30</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jooq</groupId>
@@ -100,7 +101,7 @@
 		<dependency>
 			<groupId>org.jooq</groupId>
 			<artifactId>jooq</artifactId>
-			<version>3.18.3</version> <!--$NO-MVN-MAN-VER$-->
+			<version>3.18.3</version>			<!--$NO-MVN-MAN-VER$-->
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
@@ -115,7 +116,7 @@
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-jackson</artifactId> <!-- or jjwt-gson if Gson is
+			<artifactId>jjwt-jackson</artifactId>			<!-- or jjwt-gson if Gson is
 			preferred -->
 			<version>0.11.5</version>
 			<scope>runtime</scope>

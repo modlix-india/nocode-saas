@@ -316,6 +316,12 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.map(e -> e.into(Client.class));
 	}
 
+	public Mono<List<Client>> getClientsBy(List<ULong> clientIds) {
+
+		return Flux.from(this.dslContext.selectFrom(SECURITY_CLIENT)
+				.where(SECURITY_CLIENT.ID.in(clientIds))).map(e -> e.into(Client.class)).collectList();
+	}
+
 	public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {
 
 		Condition packageCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)

@@ -6,8 +6,13 @@ package com.fincity.security.jooq;
 
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
+import com.fincity.security.jooq.tables.SecurityAppCustomerPackage;
+import com.fincity.security.jooq.tables.SecurityAppCustomerUserRole;
+import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppPackage;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
+import com.fincity.security.jooq.tables.SecurityAppRegAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegCustomerAccess;
 import com.fincity.security.jooq.tables.SecurityAppUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientManage;
@@ -63,6 +68,21 @@ public class Security extends SchemaImpl {
     public final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
 
     /**
+     * The table <code>security.security_app_customer_package</code>.
+     */
+    public final SecurityAppCustomerPackage SECURITY_APP_CUSTOMER_PACKAGE = SecurityAppCustomerPackage.SECURITY_APP_CUSTOMER_PACKAGE;
+
+    /**
+     * The table <code>security.security_app_customer_user_role</code>.
+     */
+    public final SecurityAppCustomerUserRole SECURITY_APP_CUSTOMER_USER_ROLE = SecurityAppCustomerUserRole.SECURITY_APP_CUSTOMER_USER_ROLE;
+
+    /**
+     * The table <code>security.security_app_dependency</code>.
+     */
+    public final SecurityAppDependency SECURITY_APP_DEPENDENCY = SecurityAppDependency.SECURITY_APP_DEPENDENCY;
+
+    /**
      * The table <code>security.security_app_package</code>.
      */
     public final SecurityAppPackage SECURITY_APP_PACKAGE = SecurityAppPackage.SECURITY_APP_PACKAGE;
@@ -71,6 +91,16 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_property</code>.
      */
     public final SecurityAppProperty SECURITY_APP_PROPERTY = SecurityAppProperty.SECURITY_APP_PROPERTY;
+
+    /**
+     * The table <code>security.security_app_reg_access</code>.
+     */
+    public final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
+
+    /**
+     * The table <code>security.security_app_reg_customer_access</code>.
+     */
+    public final SecurityAppRegCustomerAccess SECURITY_APP_REG_CUSTOMER_ACCESS = SecurityAppRegCustomerAccess.SECURITY_APP_REG_CUSTOMER_ACCESS;
 
     /**
      * The table <code>security.security_app_user_role</code>.
@@ -200,8 +230,13 @@ public class Security extends SchemaImpl {
         return Arrays.asList(
             SecurityApp.SECURITY_APP,
             SecurityAppAccess.SECURITY_APP_ACCESS,
+            SecurityAppCustomerPackage.SECURITY_APP_CUSTOMER_PACKAGE,
+            SecurityAppCustomerUserRole.SECURITY_APP_CUSTOMER_USER_ROLE,
+            SecurityAppDependency.SECURITY_APP_DEPENDENCY,
             SecurityAppPackage.SECURITY_APP_PACKAGE,
             SecurityAppProperty.SECURITY_APP_PROPERTY,
+            SecurityAppRegAccess.SECURITY_APP_REG_ACCESS,
+            SecurityAppRegCustomerAccess.SECURITY_APP_REG_CUSTOMER_ACCESS,
             SecurityAppUserRole.SECURITY_APP_USER_ROLE,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientManage.SECURITY_CLIENT_MANAGE,
