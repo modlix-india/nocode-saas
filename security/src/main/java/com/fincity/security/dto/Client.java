@@ -24,5 +24,5 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 	private int tokenValidityMinutes;
 	private String localeCode;
 	private SecurityClientStatusCode statusCode;
-
+	private String businessType;
 }

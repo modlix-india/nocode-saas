@@ -1,11 +1,9 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityAppDependency.SECURITY_APP_DEPENDENCY;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
-import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
+import static com.fincity.security.jooq.tables.SecurityAppDependency.SECURITY_APP_DEPENDENCY;
 import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
-import static com.fincity.security.jooq.tables.SecurityAppUserRole.SECURITY_APP_USER_ROLE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 
 import java.math.BigInteger;
@@ -28,6 +26,7 @@ import org.jooq.impl.DSL;
 import org.jooq.types.UByte;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
@@ -44,9 +43,9 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
+import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.tables.SecurityApp;
-import com.fincity.security.jooq.tables.SecurityAppUserRole;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
@@ -203,108 +202,6 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 	}
 
-	public Mono<Boolean> hasPackageAssignedWithApp(ULong appId, ULong clientId, ULong packageId) {
-
-		return Mono.from(this.dslContext.select(DSL.count())
-				.from(SECURITY_APP_PACKAGE)
-				.where(SECURITY_APP_PACKAGE.APP_ID.eq(appId)
-						.and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId))
-						.and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
-				.map(Record1::value1)
-				.map(e -> e > 0);
-	}
-
-	public Mono<Boolean> hasRoleAssignedWithApp(ULong appId, ULong clientId, ULong roleId) {
-
-		return Mono.from(
-
-				this.dslContext.selectCount()
-						.from(SECURITY_APP_USER_ROLE)
-						.where(SECURITY_APP_USER_ROLE.APP_ID.eq(appId)
-								.and(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(clientId))
-								.and(SECURITY_APP_USER_ROLE.ROLE_ID.eq(roleId))))
-				.map(Record1::value1)
-				.map(e -> e > 0);
-	}
-
-	public Mono<Boolean> addRoleAccess(ULong appId, ULong clientId, ULong roleId) {
-
-		return Mono.from(
-
-				this.dslContext.insertInto(SECURITY_APP_USER_ROLE)
-						.columns(SECURITY_APP_USER_ROLE.APP_ID, SECURITY_APP_USER_ROLE.CLIENT_ID,
-								SECURITY_APP_USER_ROLE.ROLE_ID)
-						.values(appId, clientId, roleId)
-
-		)
-				.map(e -> e == 1);
-	}
-
-	public Flux<ULong> fetchRolesBasedOnClient(ULong clientId, ULong appId) {
-
-		return Flux.from(
-
-				this.dslContext.select(SECURITY_APP_USER_ROLE.ROLE_ID)
-						.from(SECURITY_APP_USER_ROLE)
-						.where(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(clientId)
-								.and(SECURITY_APP_USER_ROLE.APP_ID.eq(appId)))
-
-		)
-				.map(Record1::value1)
-				.map(ULongUtil::valueOf);
-	}
-
-	public Flux<ULong> fetchPackagesBasedOnClient(ULong clientId, ULong appId) {
-
-		return Flux.from(
-
-				this.dslContext.select(SECURITY_APP_PACKAGE.PACKAGE_ID)
-						.from(SECURITY_APP_PACKAGE)
-						.where(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId)
-								.and(SECURITY_APP_PACKAGE.APP_ID.eq(appId))))
-				.map(Record1::value1);
-
-	}
-
-	public Mono<Boolean> addPackageAccess(ULong appId, ULong clientId, ULong packageId) {
-
-		return Mono.from(
-
-				this.dslContext.insertInto(SECURITY_APP_PACKAGE)
-						.columns(SECURITY_APP_PACKAGE.CLIENT_ID, SECURITY_APP_PACKAGE.APP_ID,
-								SECURITY_APP_PACKAGE.PACKAGE_ID)
-						.values(clientId, appId, packageId)
-
-		)
-				.map(e -> e == 1);
-
-	}
-
-	public Mono<Boolean> removePackageAccess(ULong id, ULong clientId, ULong packageId) {
-
-		return Mono.from(
-
-				this.dslContext.deleteFrom(SECURITY_APP_PACKAGE)
-						.where(SECURITY_APP_PACKAGE.APP_ID.eq(id)
-								.and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(clientId))
-								.and(SECURITY_APP_PACKAGE.PACKAGE_ID.eq(packageId))))
-				.map(e -> e == 1);
-
-	}
-
-	public Mono<Boolean> removeRoleAccess(ULong appId, ULong clientId, ULong roleId) {
-
-		return Mono.from(
-
-				this.dslContext.deleteFrom(SECURITY_APP_USER_ROLE)
-						.where(SECURITY_APP_USER_ROLE.APP_ID.eq(appId)
-								.and(SECURITY_APP_USER_ROLE.CLIENT_ID.eq(clientId))
-								.and(SECURITY_APP_USER_ROLE.ROLE_ID.eq(roleId)))
-
-		)
-				.map(e -> e == 1);
-	}
-
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
 
 		UByte edit = UByte.valueOf(writeAccess ? 1 : 0);
@@ -371,25 +268,6 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 					return clientList;
 				});
-	}
-
-	public Flux<ULong> getClientIdsWithAccess(String appCode, boolean onlyWriteAccess) {
-
-		Condition accessCheckCondition = SECURITY_APP.APP_CODE.eq(appCode);
-		if (onlyWriteAccess)
-			accessCheckCondition = accessCheckCondition.and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)));
-
-		return Flux.from(this.dslContext.select(SECURITY_APP.CLIENT_ID)
-				.from(SECURITY_APP)
-				.where(SECURITY_APP.APP_CODE.eq(appCode))
-				.union(this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID)
-						.from(SECURITY_APP_ACCESS)
-						.leftJoin(SECURITY_APP)
-						.on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
-						.where(accessCheckCondition)))
-				.map(Record1::value1)
-				.distinct()
-				.sort();
 	}
 
 	public Mono<App> getByAppCode(String appCode) {
@@ -742,5 +620,11 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 								return dependencies;
 							});
 				});
+	}
+
+	public Mono<Page<Client>> getAppClients(String appCode, boolean onlyWriteAccess, String name, ULong clientId,
+			Pageable pageable) {
+
+		throw new UnsupportedOperationException("Unimplemented method 'getAppClients'");
 	}
 }
