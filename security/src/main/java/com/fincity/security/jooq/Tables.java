@@ -6,14 +6,11 @@ package com.fincity.security.jooq;
 
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
-import com.fincity.security.jooq.tables.SecurityAppCustomerPackage;
-import com.fincity.security.jooq.tables.SecurityAppCustomerUserRole;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
-import com.fincity.security.jooq.tables.SecurityAppPackage;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
-import com.fincity.security.jooq.tables.SecurityAppRegCustomerAccess;
-import com.fincity.security.jooq.tables.SecurityAppUserRole;
+import com.fincity.security.jooq.tables.SecurityAppRegPackage;
+import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
@@ -54,24 +51,9 @@ public class Tables {
     public static final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
 
     /**
-     * The table <code>security.security_app_customer_package</code>.
-     */
-    public static final SecurityAppCustomerPackage SECURITY_APP_CUSTOMER_PACKAGE = SecurityAppCustomerPackage.SECURITY_APP_CUSTOMER_PACKAGE;
-
-    /**
-     * The table <code>security.security_app_customer_user_role</code>.
-     */
-    public static final SecurityAppCustomerUserRole SECURITY_APP_CUSTOMER_USER_ROLE = SecurityAppCustomerUserRole.SECURITY_APP_CUSTOMER_USER_ROLE;
-
-    /**
      * The table <code>security.security_app_dependency</code>.
      */
     public static final SecurityAppDependency SECURITY_APP_DEPENDENCY = SecurityAppDependency.SECURITY_APP_DEPENDENCY;
-
-    /**
-     * The table <code>security.security_app_package</code>.
-     */
-    public static final SecurityAppPackage SECURITY_APP_PACKAGE = SecurityAppPackage.SECURITY_APP_PACKAGE;
 
     /**
      * The table <code>security.security_app_property</code>.
@@ -84,14 +66,14 @@ public class Tables {
     public static final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
 
     /**
-     * The table <code>security.security_app_reg_customer_access</code>.
+     * The table <code>security.security_app_reg_package</code>.
      */
-    public static final SecurityAppRegCustomerAccess SECURITY_APP_REG_CUSTOMER_ACCESS = SecurityAppRegCustomerAccess.SECURITY_APP_REG_CUSTOMER_ACCESS;
+    public static final SecurityAppRegPackage SECURITY_APP_REG_PACKAGE = SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
 
     /**
-     * The table <code>security.security_app_user_role</code>.
+     * The table <code>security.security_app_reg_user_role</code>.
      */
-    public static final SecurityAppUserRole SECURITY_APP_USER_ROLE = SecurityAppUserRole.SECURITY_APP_USER_ROLE;
+    public static final SecurityAppRegUserRole SECURITY_APP_REG_USER_ROLE = SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE;
 
     /**
      * The table <code>security.security_client</code>.

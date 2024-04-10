@@ -6,6 +6,7 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityAppRegAccessLevel;
 import com.fincity.security.jooq.tables.records.SecurityAppRegAccessRecord;
 
 import java.time.LocalDateTime;
@@ -15,12 +16,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function8;
+import org.jooq.Function11;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row8;
+import org.jooq.Row11;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -66,15 +67,33 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
     public final TableField<SecurityAppRegAccessRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID");
 
     /**
+     * The column <code>security.security_app_reg_access.CLIENT_TYPE</code>.
+     * Client type
+     */
+    public final TableField<SecurityAppRegAccessRecord, String> CLIENT_TYPE = createField(DSL.name("CLIENT_TYPE"), SQLDataType.CHAR(4).nullable(false).defaultValue(DSL.inline("BUS", SQLDataType.CHAR)), this, "Client type");
+
+    /**
      * The column <code>security.security_app_reg_access.APP_ID</code>. App ID
      */
     public final TableField<SecurityAppRegAccessRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App ID");
 
     /**
-     * The column <code>security.security_app_reg_access.DEP_APP_ID</code>. App
-     * ID of the dependent app
+     * The column <code>security.security_app_reg_access.ALLOW_APP_ID</code>.
+     * App ID of the dependent app
      */
-    public final TableField<SecurityAppRegAccessRecord, ULong> DEP_APP_ID = createField(DSL.name("DEP_APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App ID of the dependent app");
+    public final TableField<SecurityAppRegAccessRecord, ULong> ALLOW_APP_ID = createField(DSL.name("ALLOW_APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App ID of the dependent app");
+
+    /**
+     * The column <code>security.security_app_reg_access.LEVEL</code>. Access
+     * level
+     */
+    public final TableField<SecurityAppRegAccessRecord, SecurityAppRegAccessLevel> LEVEL = createField(DSL.name("LEVEL"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("CLIENT", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.security.jooq.enums.SecurityAppRegAccessLevel.class), this, "Access level");
+
+    /**
+     * The column <code>security.security_app_reg_access.BUSINESS_TYPE</code>.
+     * Business type
+     */
+    public final TableField<SecurityAppRegAccessRecord, String> BUSINESS_TYPE = createField(DSL.name("BUSINESS_TYPE"), SQLDataType.CHAR(10).nullable(false).defaultValue(DSL.inline("COMMON", SQLDataType.CHAR)), this, "Business type");
 
     /**
      * The column <code>security.security_app_reg_access.CREATED_BY</code>. ID
@@ -157,12 +176,13 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
 
     @Override
     public List<ForeignKey<SecurityAppRegAccessRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_REG_ACC_CLNT_ID, Keys.FK2_APP_REG_ACC_APP_ID, Keys.FK3_APP_REG_ACC_DEP_APP_ID);
+        return Arrays.asList(Keys.FK1_APP_REG_ACC_CLNT_ID, Keys.FK4_APP_REG_ACC_CLIENT_TYPE, Keys.FK2_APP_REG_ACC_APP_ID, Keys.FK3_APP_REG_ACC_ALLOW_APP_ID);
     }
 
     private transient SecurityClient _securityClient;
+    private transient SecurityClientType _securityClientType;
     private transient SecurityApp _fk2AppRegAccAppId;
-    private transient SecurityApp _fk3AppRegAccDepAppId;
+    private transient SecurityApp _fk3AppRegAccAllowAppId;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
@@ -173,6 +193,17 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
             _securityClient = new SecurityClient(this, Keys.FK1_APP_REG_ACC_CLNT_ID);
 
         return _securityClient;
+    }
+
+    /**
+     * Get the implicit join path to the
+     * <code>security.security_client_type</code> table.
+     */
+    public SecurityClientType securityClientType() {
+        if (_securityClientType == null)
+            _securityClientType = new SecurityClientType(this, Keys.FK4_APP_REG_ACC_CLIENT_TYPE);
+
+        return _securityClientType;
     }
 
     /**
@@ -188,13 +219,13 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
 
     /**
      * Get the implicit join path to the <code>security.security_app</code>
-     * table, via the <code>FK3_APP_REG_ACC_DEP_APP_ID</code> key.
+     * table, via the <code>FK3_APP_REG_ACC_ALLOW_APP_ID</code> key.
      */
-    public SecurityApp fk3AppRegAccDepAppId() {
-        if (_fk3AppRegAccDepAppId == null)
-            _fk3AppRegAccDepAppId = new SecurityApp(this, Keys.FK3_APP_REG_ACC_DEP_APP_ID);
+    public SecurityApp fk3AppRegAccAllowAppId() {
+        if (_fk3AppRegAccAllowAppId == null)
+            _fk3AppRegAccAllowAppId = new SecurityApp(this, Keys.FK3_APP_REG_ACC_ALLOW_APP_ID);
 
-        return _fk3AppRegAccDepAppId;
+        return _fk3AppRegAccAllowAppId;
     }
 
     @Override
@@ -237,18 +268,18 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
     }
 
     // -------------------------------------------------------------------------
-    // Row8 type methods
+    // Row11 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row8<ULong, ULong, ULong, ULong, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row8) super.fieldsRow();
+    public Row11<ULong, ULong, String, ULong, ULong, SecurityAppRegAccessLevel, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row11) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function8<? super ULong, ? super ULong, ? super ULong, ? super ULong, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function11<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegAccessLevel, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -256,7 +287,7 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function8<? super ULong, ? super ULong, ? super ULong, ? super ULong, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegAccessLevel, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
