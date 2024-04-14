@@ -193,11 +193,6 @@ public class SecurityAppRegFileAccess extends TableImpl<SecurityAppRegFileAccess
     }
 
     @Override
-    public List<UniqueKey<SecurityAppRegFileAccessRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_APP_REG_FILE_ACCESS_CLIENT_ID);
-    }
-
-    @Override
     public List<ForeignKey<SecurityAppRegFileAccessRecord, ?>> getReferences() {
         return Arrays.asList(Keys.FK1_APP_REG_FILE_ACC_CLNT_ID, Keys.FK4_APP_REG_FILE_ACC_CLIENT_TYPE, Keys.FK2_APP_REG_FILE_ACC_APP_ID);
     }
