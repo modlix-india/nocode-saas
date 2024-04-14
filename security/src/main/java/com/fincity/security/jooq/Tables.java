@@ -9,6 +9,7 @@ import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegPackage;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
@@ -64,6 +65,11 @@ public class Tables {
      * The table <code>security.security_app_reg_access</code>.
      */
     public static final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
+
+    /**
+     * The table <code>security.security_app_reg_file_access</code>.
+     */
+    public static final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
 
     /**
      * The table <code>security.security_app_reg_package</code>.

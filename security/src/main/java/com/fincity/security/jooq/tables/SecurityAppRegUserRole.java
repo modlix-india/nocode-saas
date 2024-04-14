@@ -16,12 +16,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function11;
+import org.jooq.Function9;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row11;
+import org.jooq.Row9;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -110,18 +110,6 @@ public class SecurityAppRegUserRole extends TableImpl<SecurityAppRegUserRoleReco
      * Time when this row is created
      */
     public final TableField<SecurityAppRegUserRoleRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
-
-    /**
-     * The column <code>security.security_app_reg_user_role.UPDATED_BY</code>.
-     * ID of the user who updated this row
-     */
-    public final TableField<SecurityAppRegUserRoleRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
-
-    /**
-     * The column <code>security.security_app_reg_user_role.UPDATED_AT</code>.
-     * Time when this row is updated
-     */
-    public final TableField<SecurityAppRegUserRoleRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityAppRegUserRole(Name alias, Table<SecurityAppRegUserRoleRecord> aliased) {
         this(alias, aliased, null);
@@ -272,18 +260,18 @@ public class SecurityAppRegUserRole extends TableImpl<SecurityAppRegUserRoleReco
     }
 
     // -------------------------------------------------------------------------
-    // Row11 type methods
+    // Row9 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row11<ULong, ULong, String, ULong, ULong, SecurityAppRegUserRoleLevel, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row11) super.fieldsRow();
+    public Row9<ULong, ULong, String, ULong, ULong, SecurityAppRegUserRoleLevel, String, ULong, LocalDateTime> fieldsRow() {
+        return (Row9) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function11<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegUserRoleLevel, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function9<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegUserRoleLevel, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -291,7 +279,7 @@ public class SecurityAppRegUserRole extends TableImpl<SecurityAppRegUserRoleReco
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegUserRoleLevel, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function9<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegUserRoleLevel, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
