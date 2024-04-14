@@ -34,6 +34,7 @@ import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.service.AppService;
+import com.fincity.security.service.appregistration.AppRegistrationService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -48,6 +49,12 @@ public class AppController
 
 	@Value("${security.resourceCacheAge:604800}")
 	private int cacheAge;
+
+	private AppRegistrationService appRegistrationService;
+
+	public AppController(AppRegistrationService appRegistrationService) {
+		this.appRegistrationService = appRegistrationService;
+	}
 
 	@GetMapping("/applyAppCodeSuffix")
 	public Mono<ResponseEntity<String>> applyAppCodeSuffix(@RequestParam String appCode) {
@@ -90,7 +97,9 @@ public class AppController
 	public Mono<ResponseEntity<Boolean>> deleteByAppId(@PathVariable(PATH_VARIABLE_ID) final ULong id,
 			@RequestParam(required = false) final Boolean forceDelete) {
 
-		return this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+		return this.appRegistrationService.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+				.flatMap(e -> this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+						.map(f -> e.booleanValue() && f.booleanValue()))
 				.map(ResponseEntity::ok);
 	}
 
@@ -210,7 +219,4 @@ public class AppController
 			@RequestParam String dependencyCode) {
 		return this.service.removeAppDependency(appCode, dependencyCode).map(ResponseEntity::ok);
 	}
-
-	// Chnage from here
-
 }

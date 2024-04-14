@@ -155,7 +155,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(r -> (r.value3() == null ? ""
 						: r.value3()
 								.toUpperCase() + ".")
-						+ (SYSTEM.equals(r.value1()) ? r.value2() : r.value1() + "_" + r.value2()))
+						+ r.value2())
 				.map(r -> "Authorities." + r.replace(' ', '_'))
 				.collectList()
 				.map(e -> {

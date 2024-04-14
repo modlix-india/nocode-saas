@@ -459,22 +459,10 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
 			return FlatMapUtil.flatMapMono(
 
-					() -> Mono.zip(
+					() ->
 
-							Mono.from(
-									dsl.deleteFrom(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.APP_ID.eq(appId))),
-
-							Mono.from(
-									dsl.deleteFrom(SECURITY_APP_USER_ROLE)
-											.where(SECURITY_APP_USER_ROLE.APP_ID.eq(appId))),
-
-							Mono.from(dsl.deleteFrom(SECURITY_APP_PACKAGE)
-									.where(SECURITY_APP_PACKAGE.APP_ID.eq(appId))),
-
-							Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
-									.where(SECURITY_APP_PROPERTY.APP_ID.eq(appId)))
-
-					),
+					Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
+							.where(SECURITY_APP_PROPERTY.APP_ID.eq(appId))),
 
 					a -> Mono.zip(urlIds, permissionIds, roleIds),
 
@@ -501,17 +489,12 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 											.where(SecurityClientUrl.SECURITY_CLIENT_URL.ID.in(tuple.getT1())))),
 
 							Mono.from(dsl.delete(SecurityPermission.SECURITY_PERMISSION).where(
-									SecurityPermission.SECURITY_PERMISSION.ID.in(tuple.getT2()))),
-
-							Mono.from(dsl.delete(SecurityAppUserRole.SECURITY_APP_USER_ROLE)
-									.where(SecurityAppUserRole.SECURITY_APP_USER_ROLE.ROLE_ID.in(tuple.getT3())))
+									SecurityPermission.SECURITY_PERMISSION.ID.in(tuple.getT2())))
 
 					),
 
 					(a, tuple, requests, x) -> Mono.from(dsl.delete(SecurityApp.SECURITY_APP)
-							.where(SecurityApp.SECURITY_APP.ID.eq(appId))).map(e -> e == 1)
-
-			);
+							.where(SecurityApp.SECURITY_APP.ID.eq(appId))).map(e -> e == 1));
 		})).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
 	}
 

@@ -7,6 +7,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.jooq.types.ULong;
@@ -47,11 +48,13 @@ import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dto.ClientType;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
+import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -204,8 +207,7 @@ public class ClientService
 			return Mono.empty();
 
 		return this.appService.getAppByCode(code)
-				.flatMap(app -> this.getClientInfoById(app.getClientId()
-						.toBigInteger())
+				.flatMap(app -> this.getClientInfoById(app.getClientId())
 						.map(client -> new ClientUrlPattern("", client.getCode(), uriHost, app.getAppCode())));
 	}
 
@@ -359,10 +361,14 @@ public class ClientService
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_INFO, () -> this.read(ULong.valueOf(id)), id);
 	}
 
+	public Mono<Client> getClientInfoById(ULong id) {
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_INFO, () -> this.read(id), id);
+	}
+
 	public Mono<Client> getManagedClientOfClientById(ULong clientId) {
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_MANAGED_CLIENT_INFO,
 				() -> this.dao.getManagingClientId(clientId)
-						.flatMap(e -> this.getClientInfoById(e.toBigInteger())),
+						.flatMap(this::getClientInfoById),
 				clientId);
 	}
 
@@ -413,6 +419,51 @@ public class ClientService
 
 				);
 
+	}
+
+	public Mono<Boolean> hasPackageAccess(ULong clientId, ULong packageId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.getPackage(packageId),
+
+				(ca, pack) -> {
+
+					if (pack.isBase())
+						return Mono.just(true);
+
+					if (CommonsUtil.safeEquals(clientId, pack.getClientId()))
+						return Mono.just(true);
+
+					return this.dao.checkPackageAssignedForClient(clientId, packageId)
+							.flatMap(e -> e.booleanValue() ? Mono.just(true)
+									: this.isBeingManagedBy(clientId, pack.getClientId()));
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasPackageAccess"));
+	}
+
+	public Mono<Boolean> hasRoleAccess(ULong clientId, ULong roleId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.getRole(roleId),
+
+				(ca, role) -> {
+
+					if (CommonsUtil.safeEquals(clientId, role.getClientId()))
+						return Mono.just(true);
+
+					return this.dao.checkRoleAssignedForClient(clientId, roleId)
+							.flatMap(e -> e.booleanValue() ? Mono.just(true)
+									: this.isBeingManagedBy(clientId, role.getClientId()));
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasRoleAccess"));
 	}
 
 	private Mono<Boolean> checkClientAndPackageManaged(ULong loggedInClientId, ULong clientId, ULong packageClientId) {
@@ -890,5 +941,87 @@ public class ClientService
 	public Mono<ULong> getSystemClientId() {
 		return this.cacheService.cacheValueOrGet("CACHE_SYSTEM_CLIENT_ID", () -> this.dao.getSystemClientId(),
 				"SYSTEM");
+	}
+
+	public Mono<ClientLevelType> getClientLevelType(ULong clientId, String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppByCode(appCode),
+
+				app -> this.getClientLevelType(clientId, app.getId()))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientLevelType(ULong,String)"));
+	}
+
+	public static record LevelTypeReturnRecord(ClientLevelType type, Client client) {
+		public LevelTypeReturnRecord(ClientLevelType type) {
+			this(type, null);
+		}
+
+		public LevelTypeReturnRecord(Client client) {
+			this(null, client);
+		}
+	}
+
+	// Only four levels of the client type is fixed and any further will lead to
+	// confusion.
+	public Mono<ClientLevelType> getClientLevelType(ULong clientId, ULong appId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.read(appId),
+
+				app -> this.getClientInfoById(app.getClientId()),
+
+				(app, appClient) -> {
+					if (appClient.getId()
+							.equals(clientId))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.OWNER));
+
+					return this.getManagedClientOfClientById(clientId).map(LevelTypeReturnRecord::new);
+				},
+
+				(app, appClient, first) -> {
+
+					if (first.type() != null)
+						return Mono.just(first);
+
+					if (first.client()
+							.getId()
+							.equals(appClient.getId()))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.CLIENT));
+
+					return this.getManagedClientOfClientById(first.client.getId())
+							.map(LevelTypeReturnRecord::new);
+				},
+
+				(app, appClient, first, second) -> {
+
+					if (second.type() != null)
+						return Mono.just(second);
+
+					if (second.client()
+							.getId()
+							.equals(appClient.getId()))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.CUSTOMER));
+
+					return this.getManagedClientOfClientById(second.client.getId())
+							.map(LevelTypeReturnRecord::new);
+				},
+
+				(app, appClient, first, second, third) -> {
+
+					if (third.type() != null)
+						return Mono.just(third);
+
+					if (third.client()
+							.getId()
+							.equals(appClient.getId()))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.CONSUMER));
+
+					return Mono.empty();
+				})
+				.map(LevelTypeReturnRecord::type)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientLevelType(ULong,ULong)"));
 	}
 }

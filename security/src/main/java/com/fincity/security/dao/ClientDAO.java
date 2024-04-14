@@ -1,6 +1,5 @@
 package com.fincity.security.dao;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.saas.commons.util.StringUtil.removeSpecialCharacters;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
@@ -38,10 +37,12 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
+import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -96,15 +97,15 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		if (managingClientId.equals(clientId))
 			return Mono.just(true);
 
-		return flatMapMono(() -> Mono.from(this.dslContext.select(DSL.count())
-				.from(SECURITY_CLIENT_MANAGE)
-				.where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)
-						.and(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(managingClientId)))
-				.limit(1))
-				.map(Record1::value1)
-				.map(e -> e == 1), managed -> {
-					if (managed.booleanValue())
-						return Mono.just(true);
+		return FlatMapUtil.flatMapMonoWithNull(
+
+				() -> Mono.from(this.dslContext.select(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
+						.from(SECURITY_CLIENT_MANAGE).where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)))
+						.map(Record1::value1),
+
+				manageClientId -> {
+					if (manageClientId != null)
+						return Mono.just(manageClientId.equals(managingClientId));
 
 					return Mono.from(Mono.from(this.dslContext.select(DSL.count())
 							.from(SECURITY_CLIENT)
@@ -113,6 +114,16 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 							.limit(1))
 							.map(Record1::value1)
 							.map(e -> e == 1));
+				},
+
+				(manageClientId, managed) -> {
+					if (BooleanUtil.safeValueOf(managed))
+						return Mono.just(managed);
+
+					if (manageClientId == null)
+						return Mono.just(false);
+
+					return this.isBeingManagedBy(managingClientId, manageClientId);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientDAO.isBeingManagedBy"));
 	}
 
@@ -370,6 +381,16 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.map(e -> e.into(Package.class));
 	}
 
+	public Mono<Role> getRole(ULong roleId) {
+
+		return Mono.from(this.dslContext.select(SECURITY_ROLE.fields())
+				.from(SECURITY_ROLE)
+				.where(SECURITY_ROLE.ID.eq(roleId))
+				.limit(1))
+				.filter(Objects::nonNull)
+				.map(e -> e.into(Role.class));
+	}
+
 	public Mono<Boolean> checkPackageAssignedForClient(ULong clientId, ULong packageId) {
 
 		return Mono.from(
@@ -483,7 +504,17 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.from(SECURITY_CLIENT_MANAGE)
 				.where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId))
 				.limit(1))
-				.map(Record1::value1);
+				.map(Record1::value1)
+				.switchIfEmpty(Mono.defer(() ->
+
+				Mono.from(this.dslContext.select(SECURITY_CLIENT.ID)
+						.from(SECURITY_CLIENT)
+						.where(SECURITY_CLIENT.TYPE_CODE.eq("SYS"))
+						.limit(1))
+						.map(Record1::value1)
+						.flatMap(id -> id.equals(clientId) ? Mono.empty() : Mono.just(id))
+
+				));
 	}
 
 	public Mono<String> getValidClientCode(String name) {
