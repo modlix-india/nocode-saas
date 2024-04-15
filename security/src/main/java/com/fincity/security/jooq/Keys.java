@@ -4,6 +4,7 @@
 package com.fincity.security.jooq;
 
 
+import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
@@ -13,6 +14,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegPackage;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
+import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
@@ -31,8 +33,10 @@ import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityUserAddress;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
+import com.fincity.security.jooq.tables.records.SecurityAddressRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppDependencyRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppPropertyRecord;
@@ -41,6 +45,7 @@ import com.fincity.security.jooq.tables.records.SecurityAppRegAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRegFileAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRegPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRegUserRoleRecord;
+import com.fincity.security.jooq.tables.records.SecurityClientAddressRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientManageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
@@ -59,6 +64,7 @@ import com.fincity.security.jooq.tables.records.SecuritySoxLogRecord;
 import com.fincity.security.jooq.tables.records.SecuritySslCertificateRecord;
 import com.fincity.security.jooq.tables.records.SecuritySslChallengeRecord;
 import com.fincity.security.jooq.tables.records.SecuritySslRequestRecord;
+import com.fincity.security.jooq.tables.records.SecurityUserAddressRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
@@ -81,6 +87,7 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<SecurityAddressRecord> KEY_SECURITY_ADDRESS_PRIMARY = Internal.createUniqueKey(SecurityAddress.SECURITY_ADDRESS, DSL.name("KEY_security_address_PRIMARY"), new TableField[] { SecurityAddress.SECURITY_ADDRESS.ID }, true);
     public static final UniqueKey<SecurityAppRecord> KEY_SECURITY_APP_PRIMARY = Internal.createUniqueKey(SecurityApp.SECURITY_APP, DSL.name("KEY_security_app_PRIMARY"), new TableField[] { SecurityApp.SECURITY_APP.ID }, true);
     public static final UniqueKey<SecurityAppRecord> KEY_SECURITY_APP_UK1_APPCODE = Internal.createUniqueKey(SecurityApp.SECURITY_APP, DSL.name("KEY_security_app_UK1_APPCODE"), new TableField[] { SecurityApp.SECURITY_APP.APP_CODE }, true);
     public static final UniqueKey<SecurityAppAccessRecord> KEY_SECURITY_APP_ACCESS_PRIMARY = Internal.createUniqueKey(SecurityAppAccess.SECURITY_APP_ACCESS, DSL.name("KEY_security_app_access_PRIMARY"), new TableField[] { SecurityAppAccess.SECURITY_APP_ACCESS.ID }, true);
@@ -98,6 +105,7 @@ public class Keys {
     public static final UniqueKey<SecurityAppRegUserRoleRecord> KEY_SECURITY_APP_REG_USER_ROLE_PRIMARY = Internal.createUniqueKey(SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE, DSL.name("KEY_security_app_reg_user_role_PRIMARY"), new TableField[] { SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE.ID }, true);
     public static final UniqueKey<SecurityClientRecord> KEY_SECURITY_CLIENT_PRIMARY = Internal.createUniqueKey(SecurityClient.SECURITY_CLIENT, DSL.name("KEY_security_client_PRIMARY"), new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final UniqueKey<SecurityClientRecord> KEY_SECURITY_CLIENT_UK1_CLIENT_CODE = Internal.createUniqueKey(SecurityClient.SECURITY_CLIENT, DSL.name("KEY_security_client_UK1_CLIENT_CODE"), new TableField[] { SecurityClient.SECURITY_CLIENT.CODE }, true);
+    public static final UniqueKey<SecurityClientAddressRecord> KEY_SECURITY_CLIENT_ADDRESS_PRIMARY = Internal.createUniqueKey(SecurityClientAddress.SECURITY_CLIENT_ADDRESS, DSL.name("KEY_security_client_address_PRIMARY"), new TableField[] { SecurityClientAddress.SECURITY_CLIENT_ADDRESS.ID }, true);
     public static final UniqueKey<SecurityClientManageRecord> KEY_SECURITY_CLIENT_MANAGE_PRIMARY = Internal.createUniqueKey(SecurityClientManage.SECURITY_CLIENT_MANAGE, DSL.name("KEY_security_client_manage_PRIMARY"), new TableField[] { SecurityClientManage.SECURITY_CLIENT_MANAGE.ID }, true);
     public static final UniqueKey<SecurityClientPackageRecord> KEY_SECURITY_CLIENT_PACKAGE_PRIMARY = Internal.createUniqueKey(SecurityClientPackage.SECURITY_CLIENT_PACKAGE, DSL.name("KEY_security_client_package_PRIMARY"), new TableField[] { SecurityClientPackage.SECURITY_CLIENT_PACKAGE.ID }, true);
     public static final UniqueKey<SecurityClientPackageRecord> KEY_SECURITY_CLIENT_PACKAGE_UK1_CLIENT_PACKAGE = Internal.createUniqueKey(SecurityClientPackage.SECURITY_CLIENT_PACKAGE, DSL.name("KEY_security_client_package_UK1_CLIENT_PACKAGE"), new TableField[] { SecurityClientPackage.SECURITY_CLIENT_PACKAGE.CLIENT_ID, SecurityClientPackage.SECURITY_CLIENT_PACKAGE.PACKAGE_ID }, true);
@@ -131,6 +139,7 @@ public class Keys {
     public static final UniqueKey<SecuritySslRequestRecord> KEY_SECURITY_SSL_REQUEST_URL_ID = Internal.createUniqueKey(SecuritySslRequest.SECURITY_SSL_REQUEST, DSL.name("KEY_security_ssl_request_URL_ID"), new TableField[] { SecuritySslRequest.SECURITY_SSL_REQUEST.URL_ID }, true);
     public static final UniqueKey<SecurityUserRecord> KEY_SECURITY_USER_PRIMARY = Internal.createUniqueKey(SecurityUser.SECURITY_USER, DSL.name("KEY_security_user_PRIMARY"), new TableField[] { SecurityUser.SECURITY_USER.ID }, true);
     public static final UniqueKey<SecurityUserRecord> KEY_SECURITY_USER_UK1_USER_NAME = Internal.createUniqueKey(SecurityUser.SECURITY_USER, DSL.name("KEY_security_user_UK1_USER_NAME"), new TableField[] { SecurityUser.SECURITY_USER.CLIENT_ID, SecurityUser.SECURITY_USER.USER_NAME, SecurityUser.SECURITY_USER.EMAIL_ID, SecurityUser.SECURITY_USER.PHONE_NUMBER }, true);
+    public static final UniqueKey<SecurityUserAddressRecord> KEY_SECURITY_USER_ADDRESS_PRIMARY = Internal.createUniqueKey(SecurityUserAddress.SECURITY_USER_ADDRESS, DSL.name("KEY_security_user_address_PRIMARY"), new TableField[] { SecurityUserAddress.SECURITY_USER_ADDRESS.ID }, true);
     public static final UniqueKey<SecurityUserRolePermissionRecord> KEY_SECURITY_USER_ROLE_PERMISSION_PRIMARY = Internal.createUniqueKey(SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION, DSL.name("KEY_security_user_role_permission_PRIMARY"), new TableField[] { SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION.ID }, true);
     public static final UniqueKey<SecurityUserTokenRecord> KEY_SECURITY_USER_TOKEN_PRIMARY = Internal.createUniqueKey(SecurityUserToken.SECURITY_USER_TOKEN, DSL.name("KEY_security_user_token_PRIMARY"), new TableField[] { SecurityUserToken.SECURITY_USER_TOKEN.ID }, true);
 
@@ -161,6 +170,8 @@ public class Keys {
     public static final ForeignKey<SecurityAppRegUserRoleRecord, SecurityRoleRecord> FK3_APP_REG_ROLE_ROLE_ID = Internal.createForeignKey(SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE, DSL.name("FK3_APP_REG_ROLE_ROLE_ID"), new TableField[] { SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE.ROLE_ID }, Keys.KEY_SECURITY_ROLE_PRIMARY, new TableField[] { SecurityRole.SECURITY_ROLE.ID }, true);
     public static final ForeignKey<SecurityAppRegUserRoleRecord, SecurityClientTypeRecord> FK4_APP_REG_ROLE_CLIENT_TYPE = Internal.createForeignKey(SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE, DSL.name("FK4_APP_REG_ROLE_CLIENT_TYPE"), new TableField[] { SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE.CLIENT_TYPE }, Keys.KEY_SECURITY_CLIENT_TYPE_UK1_CLIENT_TYPE_CODE, new TableField[] { SecurityClientType.SECURITY_CLIENT_TYPE.CODE }, true);
     public static final ForeignKey<SecurityClientRecord, SecurityClientTypeRecord> FK1_CLIENT_CLIENT_TYPE_CODE = Internal.createForeignKey(SecurityClient.SECURITY_CLIENT, DSL.name("FK1_CLIENT_CLIENT_TYPE_CODE"), new TableField[] { SecurityClient.SECURITY_CLIENT.TYPE_CODE }, Keys.KEY_SECURITY_CLIENT_TYPE_UK1_CLIENT_TYPE_CODE, new TableField[] { SecurityClientType.SECURITY_CLIENT_TYPE.CODE }, true);
+    public static final ForeignKey<SecurityClientAddressRecord, SecurityClientRecord> FK1_CLIENT_ADDRESS_CLIENT_ID = Internal.createForeignKey(SecurityClientAddress.SECURITY_CLIENT_ADDRESS, DSL.name("FK1_CLIENT_ADDRESS_CLIENT_ID"), new TableField[] { SecurityClientAddress.SECURITY_CLIENT_ADDRESS.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
+    public static final ForeignKey<SecurityClientAddressRecord, SecurityAddressRecord> FK2_CLIENT_ADDRESS_ADDRESS_ID = Internal.createForeignKey(SecurityClientAddress.SECURITY_CLIENT_ADDRESS, DSL.name("FK2_CLIENT_ADDRESS_ADDRESS_ID"), new TableField[] { SecurityClientAddress.SECURITY_CLIENT_ADDRESS.ADDRESS_ID }, Keys.KEY_SECURITY_ADDRESS_PRIMARY, new TableField[] { SecurityAddress.SECURITY_ADDRESS.ID }, true);
     public static final ForeignKey<SecurityClientManageRecord, SecurityClientRecord> FK1_CLIENT_MANAGE_CLIENT_ID = Internal.createForeignKey(SecurityClientManage.SECURITY_CLIENT_MANAGE, DSL.name("FK1_CLIENT_MANAGE_CLIENT_ID"), new TableField[] { SecurityClientManage.SECURITY_CLIENT_MANAGE.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final ForeignKey<SecurityClientManageRecord, SecurityClientRecord> FK1_CLIENT_MANAGE_MNG_CLIENT_ID = Internal.createForeignKey(SecurityClientManage.SECURITY_CLIENT_MANAGE, DSL.name("FK1_CLIENT_MANAGE_MNG_CLIENT_ID"), new TableField[] { SecurityClientManage.SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final ForeignKey<SecurityClientPackageRecord, SecurityClientRecord> FK1_CLIENT_PACKAGE_CLIENT_ID = Internal.createForeignKey(SecurityClientPackage.SECURITY_CLIENT_PACKAGE, DSL.name("FK1_CLIENT_PACKAGE_CLIENT_ID"), new TableField[] { SecurityClientPackage.SECURITY_CLIENT_PACKAGE.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
@@ -188,6 +199,8 @@ public class Keys {
     public static final ForeignKey<SecuritySslChallengeRecord, SecuritySslRequestRecord> FK1_SSL_CHLNG_REQ_ID = Internal.createForeignKey(SecuritySslChallenge.SECURITY_SSL_CHALLENGE, DSL.name("FK1_SSL_CHLNG_REQ_ID"), new TableField[] { SecuritySslChallenge.SECURITY_SSL_CHALLENGE.REQUEST_ID }, Keys.KEY_SECURITY_SSL_REQUEST_PRIMARY, new TableField[] { SecuritySslRequest.SECURITY_SSL_REQUEST.ID }, true);
     public static final ForeignKey<SecuritySslRequestRecord, SecurityClientUrlRecord> FK1_SSL_REQ_CLNT_URL_ID = Internal.createForeignKey(SecuritySslRequest.SECURITY_SSL_REQUEST, DSL.name("FK1_SSL_REQ_CLNT_URL_ID"), new TableField[] { SecuritySslRequest.SECURITY_SSL_REQUEST.URL_ID }, Keys.KEY_SECURITY_CLIENT_URL_PRIMARY, new TableField[] { SecurityClientUrl.SECURITY_CLIENT_URL.ID }, true);
     public static final ForeignKey<SecurityUserRecord, SecurityClientRecord> FK1_USER_CLIENT_ID = Internal.createForeignKey(SecurityUser.SECURITY_USER, DSL.name("FK1_USER_CLIENT_ID"), new TableField[] { SecurityUser.SECURITY_USER.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
+    public static final ForeignKey<SecurityUserAddressRecord, SecurityUserRecord> FK1_USER_ADDRESS_USER_ID = Internal.createForeignKey(SecurityUserAddress.SECURITY_USER_ADDRESS, DSL.name("FK1_USER_ADDRESS_USER_ID"), new TableField[] { SecurityUserAddress.SECURITY_USER_ADDRESS.USER_ID }, Keys.KEY_SECURITY_USER_PRIMARY, new TableField[] { SecurityUser.SECURITY_USER.ID }, true);
+    public static final ForeignKey<SecurityUserAddressRecord, SecurityAddressRecord> FK2_USER_ADDRESS_ADDRESS_ID = Internal.createForeignKey(SecurityUserAddress.SECURITY_USER_ADDRESS, DSL.name("FK2_USER_ADDRESS_ADDRESS_ID"), new TableField[] { SecurityUserAddress.SECURITY_USER_ADDRESS.ADDRESS_ID }, Keys.KEY_SECURITY_ADDRESS_PRIMARY, new TableField[] { SecurityAddress.SECURITY_ADDRESS.ID }, true);
     public static final ForeignKey<SecurityUserRolePermissionRecord, SecurityUserRecord> FK1_USER_ROLE_USER_ID = Internal.createForeignKey(SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION, DSL.name("FK1_USER_ROLE_USER_ID"), new TableField[] { SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION.USER_ID }, Keys.KEY_SECURITY_USER_PRIMARY, new TableField[] { SecurityUser.SECURITY_USER.ID }, true);
     public static final ForeignKey<SecurityUserRolePermissionRecord, SecurityRoleRecord> FK2_USER_ROLE_ROLE_ID = Internal.createForeignKey(SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION, DSL.name("FK2_USER_ROLE_ROLE_ID"), new TableField[] { SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION.ROLE_ID }, Keys.KEY_SECURITY_ROLE_PRIMARY, new TableField[] { SecurityRole.SECURITY_ROLE.ID }, true);
     public static final ForeignKey<SecurityUserRolePermissionRecord, SecurityPermissionRecord> FK3_USER_ROLE_PERMISSION_ID = Internal.createForeignKey(SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION, DSL.name("FK3_USER_ROLE_PERMISSION_ID"), new TableField[] { SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID }, Keys.KEY_SECURITY_PERMISSION_PRIMARY, new TableField[] { SecurityPermission.SECURITY_PERMISSION.ID }, true);

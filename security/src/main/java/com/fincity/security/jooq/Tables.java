@@ -4,6 +4,7 @@
 package com.fincity.security.jooq;
 
 
+import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
@@ -13,6 +14,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegPackage;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
+import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
@@ -31,6 +33,7 @@ import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityUserAddress;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 
@@ -40,6 +43,11 @@ import com.fincity.security.jooq.tables.SecurityUserToken;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Tables {
+
+    /**
+     * The table <code>security.security_address</code>.
+     */
+    public static final SecurityAddress SECURITY_ADDRESS = SecurityAddress.SECURITY_ADDRESS;
 
     /**
      * The table <code>security.security_app</code>.
@@ -85,6 +93,11 @@ public class Tables {
      * The table <code>security.security_client</code>.
      */
     public static final SecurityClient SECURITY_CLIENT = SecurityClient.SECURITY_CLIENT;
+
+    /**
+     * The table <code>security.security_client_address</code>.
+     */
+    public static final SecurityClientAddress SECURITY_CLIENT_ADDRESS = SecurityClientAddress.SECURITY_CLIENT_ADDRESS;
 
     /**
      * The table <code>security.security_client_manage</code>.
@@ -175,6 +188,11 @@ public class Tables {
      * The table <code>security.security_user</code>.
      */
     public static final SecurityUser SECURITY_USER = SecurityUser.SECURITY_USER;
+
+    /**
+     * The table <code>security.security_user_address</code>.
+     */
+    public static final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
 
     /**
      * The table <code>security.security_user_role_permission</code>.

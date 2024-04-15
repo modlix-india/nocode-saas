@@ -4,6 +4,7 @@
 package com.fincity.security.jooq;
 
 
+import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
@@ -13,6 +14,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegPackage;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
+import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
@@ -31,6 +33,7 @@ import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityUserAddress;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 
@@ -54,6 +57,11 @@ public class Security extends SchemaImpl {
      * The reference instance of <code>security</code>
      */
     public static final Security SECURITY = new Security();
+
+    /**
+     * The table <code>security.security_address</code>.
+     */
+    public final SecurityAddress SECURITY_ADDRESS = SecurityAddress.SECURITY_ADDRESS;
 
     /**
      * The table <code>security.security_app</code>.
@@ -99,6 +107,11 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_client</code>.
      */
     public final SecurityClient SECURITY_CLIENT = SecurityClient.SECURITY_CLIENT;
+
+    /**
+     * The table <code>security.security_client_address</code>.
+     */
+    public final SecurityClientAddress SECURITY_CLIENT_ADDRESS = SecurityClientAddress.SECURITY_CLIENT_ADDRESS;
 
     /**
      * The table <code>security.security_client_manage</code>.
@@ -191,6 +204,11 @@ public class Security extends SchemaImpl {
     public final SecurityUser SECURITY_USER = SecurityUser.SECURITY_USER;
 
     /**
+     * The table <code>security.security_user_address</code>.
+     */
+    public final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
+
+    /**
      * The table <code>security.security_user_role_permission</code>.
      */
     public final SecurityUserRolePermission SECURITY_USER_ROLE_PERMISSION = SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
@@ -216,6 +234,7 @@ public class Security extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            SecurityAddress.SECURITY_ADDRESS,
             SecurityApp.SECURITY_APP,
             SecurityAppAccess.SECURITY_APP_ACCESS,
             SecurityAppDependency.SECURITY_APP_DEPENDENCY,
@@ -225,6 +244,7 @@ public class Security extends SchemaImpl {
             SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE,
             SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE,
             SecurityClient.SECURITY_CLIENT,
+            SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientManage.SECURITY_CLIENT_MANAGE,
             SecurityClientPackage.SECURITY_CLIENT_PACKAGE,
             SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY,
@@ -243,6 +263,7 @@ public class Security extends SchemaImpl {
             SecuritySslChallenge.SECURITY_SSL_CHALLENGE,
             SecuritySslRequest.SECURITY_SSL_REQUEST,
             SecurityUser.SECURITY_USER,
+            SecurityUserAddress.SECURITY_USER_ADDRESS,
             SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION,
             SecurityUserToken.SECURITY_USER_TOKEN
         );
