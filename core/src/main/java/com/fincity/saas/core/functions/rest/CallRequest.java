@@ -1,9 +1,11 @@
 package com.fincity.saas.core.functions.rest;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -177,7 +179,21 @@ public class CallRequest extends AbstractReactiveFunction {
 		return restService.doCall(appCode, clientCode, connectionName, request)
 				.map(obj -> new FunctionOutput(
 						List.of(EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
-								gson.toJsonTree(obj.getHeaders()), STATUS_CODE, gson.toJsonTree(obj.getStatus()))))));
+								gson.toJsonTree(obj.getHeaders()), STATUS_CODE, gson.toJsonTree(obj.getStatus()))))))
+				.onErrorResume((e) -> {
+					Gson gson1 = new Gson();
+
+					JsonElement eventDataJson = gson1.toJsonTree(e.getMessage());
+					JsonElement eventHeadersJson = gson1.toJsonTree(headers);
+					JsonElement statusCodeJson = gson1.toJsonTree(HttpStatus.INTERNAL_SERVER_ERROR);
+
+					EventResult errorResult = EventResult.of(Event.ERROR, Map.of(EVENT_DATA, eventDataJson,
+							EVENT_HEADERS, eventHeadersJson, STATUS_CODE, statusCodeJson));
+
+					List<EventResult> errorResultList = Collections.singletonList(errorResult);
+
+					return Mono.just(new FunctionOutput(errorResultList));
+				});
 
 	}
 }
