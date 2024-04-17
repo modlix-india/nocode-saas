@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -27,6 +26,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
@@ -49,20 +49,12 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String APPLICATION = "Application";
 	private static final String APPLICATION_ACCESS = "Application access";
 
-	@Autowired
-	private ClientService clientService;
-
-	@Autowired
-	private SecurityMessageResourceService messageResourceService;
-
-	@Autowired
-	private CacheService cacheService;
-
-	@Autowired
-	private PackageService packageService;
-
-	@Autowired
-	private RoleService roleService;
+	private final ClientService clientService;
+	private final SecurityMessageResourceService messageResourceService;
+	private final CacheService cacheService;
+	private final PackageService packageService;
+	private final RoleService roleService;
+	private final AppRegistrationDAO appRegistrationDao;
 
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
 	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -82,6 +74,20 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public static final String APP_PROP_REG_TYPE_EMAIL_PASSWORD = "REGISTRATION_TYPE_EMAIL_PASSWORD";
 	public static final String APP_PROP_REG_TYPE_NO_VERIFICATION = "REGISTRATION_TYPE_NO_VERIFICATION";
 	public static final String APP_PROP_REG_TYPE_NO_REGISTRATION = "REGISTRATION_TYPE_NO_REGISTRATION";
+
+	public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
+
+	public AppService(ClientService clientService, PackageService packageService, RoleService roleService,
+			SecurityMessageResourceService messageResourceService, CacheService cacheService,
+			AppRegistrationDAO appRegistrationDao) {
+
+		this.clientService = clientService;
+		this.packageService = packageService;
+		this.roleService = roleService;
+		this.messageResourceService = messageResourceService;
+		this.cacheService = cacheService;
+		this.appRegistrationDao = appRegistrationDao;
+	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
@@ -529,10 +535,27 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppClients"));
 	}
 
-	public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong clientId, boolean isWriteAccess) {
+	public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong urlClientId, Client client) {
 
-		return this.getAppByCode(urlAppCode)
-				.flatMap(a -> this.dao.addClientAccess(a.getId(), clientId, isWriteAccess));
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.getAppByCode(urlAppCode),
+
+				app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
+
+				(app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(app.getId(),
+						app.getClientId(), urlClientId, client.getTypeCode(), levelType, client.getBusinessType()),
+
+				(app, levelType, appIds) -> {
+
+					Mono<List<Boolean>> mons = Flux.fromIterable(appIds)
+							.flatMap(appId -> this.dao.addClientAccess(appId, client.getId(), false))
+							.collectList();
+
+					return mons.map(e -> true);
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
 	}
 
 	public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,

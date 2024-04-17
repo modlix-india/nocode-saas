@@ -29,6 +29,8 @@ import reactor.util.context.Context;
 @Service
 public class AppRegistrationService {
 
+    public static final String DEFAULT_BUSINESS_TYPE = "COMMON";
+
     private final AppService appService;
     private final RoleService roleService;
     private final PackageService packageService;

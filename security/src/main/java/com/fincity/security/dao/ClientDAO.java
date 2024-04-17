@@ -2,7 +2,6 @@ package com.fincity.security.dao;
 
 import static com.fincity.saas.commons.util.StringUtil.removeSpecialCharacters;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityAppPackage.SECURITY_APP_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
@@ -43,6 +42,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
+import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -199,53 +199,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 						.values(clientId, packageId))
 				.map(val -> val > 0);
 
-	}
-
-	public Mono<Boolean> addDefaultPackages(ULong clientId, String clientCode, String appCode) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> Mono.from(this.dslContext.select(SECURITY_CLIENT.ID)
-						.from(SECURITY_CLIENT)
-						.where(SECURITY_CLIENT.CODE.eq(clientCode))
-						.limit(1))
-						.map(Record1::value1),
-
-				urlClientId -> Mono.from(this.dslContext.select(SECURITY_APP.ID, SECURITY_APP.CLIENT_ID)
-						.from(SECURITY_APP)
-						.where(SECURITY_APP.APP_CODE.eq(appCode))
-						.limit(1))
-						.map(e -> Tuples.of(e.value1(), e.value2())),
-
-				(urlClientId,
-						appIdClientId) -> Mono.from(this.dslContext
-								.insertInto(SECURITY_CLIENT_PACKAGE, SECURITY_CLIENT_PACKAGE.CLIENT_ID,
-										SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
-								.select(this.dslContext.select(DSL.value(clientId)
-										.as("CLIENT_ID"), SECURITY_APP_PACKAGE.PACKAGE_ID)
-										.from(SECURITY_APP_PACKAGE)
-										.where(SECURITY_APP_PACKAGE.APP_ID.eq(appIdClientId.getT1())
-												.and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(urlClientId))))),
-
-				(urlClientId, appIdClientId, insertCount) -> {
-
-					if (insertCount > 0)
-						return Mono.just(true);
-
-					return Mono
-							.from(this.dslContext
-									.insertInto(SECURITY_CLIENT_PACKAGE, SECURITY_CLIENT_PACKAGE.CLIENT_ID,
-											SECURITY_CLIENT_PACKAGE.PACKAGE_ID)
-									.select(this.dslContext.select(DSL.value(clientId)
-											.as("CLIENT_ID"), SECURITY_APP_PACKAGE.PACKAGE_ID)
-											.from(SECURITY_APP_PACKAGE)
-											.where(SECURITY_APP_PACKAGE.APP_ID.eq(appIdClientId.getT1())
-													.and(SECURITY_APP_PACKAGE.CLIENT_ID.eq(appIdClientId.getT2())))))
-							.map(count -> count > 0);
-				}
-
-		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientDAO.addDefaultPackages"));
 	}
 
 	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {

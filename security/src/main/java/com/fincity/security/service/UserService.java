@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +38,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
@@ -75,29 +75,32 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	private static final int VALIDITY_MINUTES = 30;
 
-	@Autowired
-	private ClientService clientService;
-
-	@Autowired
-	private ClientPasswordPolicyService clientPasswordPolicyService;
-
-	@Autowired
-	private PasswordEncoder passwordEncoder;
-
-	@Autowired
-	private SecurityMessageResourceService securityMessageResourceService;
-
-	@Autowired
-	private SoxLogService soxLogService;
-
-	@Autowired
-	private TokenService tokenService;
-
-	@Autowired
-	private EventCreationService ecService;
+	private final ClientService clientService;
+	private final ClientPasswordPolicyService clientPasswordPolicyService;
+	private final PasswordEncoder passwordEncoder;
+	private final SecurityMessageResourceService securityMessageResourceService;
+	private final SoxLogService soxLogService;
+	private final TokenService tokenService;
+	private final EventCreationService ecService;
+	private final AppRegistrationDAO appRegistrationDAO;
 
 	@Value("${jwt.key}")
 	private String tokenKey;
+
+	public UserService(ClientService clientService, ClientPasswordPolicyService clientPasswordPolicyService,
+			PasswordEncoder passwordEncoder, SecurityMessageResourceService securityMessageResourceService,
+			SoxLogService soxLogService, TokenService tokenService, EventCreationService ecService,
+			AppRegistrationDAO appRegistrationDAO) {
+
+		this.clientService = clientService;
+		this.clientPasswordPolicyService = clientPasswordPolicyService;
+		this.passwordEncoder = passwordEncoder;
+		this.securityMessageResourceService = securityMessageResourceService;
+		this.soxLogService = soxLogService;
+		this.tokenService = tokenService;
+		this.ecService = ecService;
+		this.appRegistrationDAO = appRegistrationDAO;
+	}
 
 	public Mono<User> findByUserName(ULong clientId, String userName,
 			AuthenticationIdentifierType authenticationIdentifierType) {
@@ -771,7 +774,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	// Don't call this method other than from the client service register method
-	public Mono<User> createForRegistration(User user) {
+	public Mono<User> createForRegistration(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+			User user) {
 
 		String password = user.getPassword();
 		user.setPassword(null);
@@ -808,8 +812,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 							SecurityContextUtil::getUsersContextAuthentication,
 
-							ca -> this.dao.addDefaultRoles(createdUser.getId(), ca.getUrlClientCode(),
-									ca.getUrlAppCode()))
+							ca -> this.addDefaultRoles(appId, appClientId, urlClientId, client,
+									createdUser.getId()))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createForRegistration"));
 
 					return roledUser.map(x -> createdUser);
@@ -821,6 +825,24 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
 						.flatMap(msg -> Mono.error(
 								new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User"))))));
+	}
+
+	public Mono<Boolean> addDefaultRoles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+			ULong userId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.clientService.getClientLevelType(client.getId(), appId),
+
+				levelType -> this.appRegistrationDAO.getRoleIdsForRegistration(appId, appClientId, urlClientId,
+						client.getTypeCode(), levelType, client.getBusinessType()),
+
+				(levelType, roles) -> Flux.fromIterable(roles)
+						.flatMap(roleId -> this.dao.addRoleToUser(userId, roleId)).collectList(),
+
+				(levelType, roles, addedRoles) -> Mono.just(true)
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
 	}
 
 	public Mono<Boolean> makeUserActive() {

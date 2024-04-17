@@ -25,6 +25,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
@@ -254,5 +255,20 @@ public class ClientUrlService
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getUrlsBasedOnApp"));
 
+	}
+
+	public Mono<Boolean> checkSubDomainAvailability(String subDomain) {
+
+		if (StringUtil.safeIsBlank(subDomain))
+			return Mono.just(false);
+
+		return this.dao.checkSubDomainAvailability(subDomain);
+	}
+
+	public Mono<ClientUrl> createForRegistration(ClientUrl entity) {
+
+		entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
+
+		return super.create(entity);
 	}
 }
