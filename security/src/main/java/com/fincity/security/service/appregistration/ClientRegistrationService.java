@@ -25,12 +25,14 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.CodeAccessDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.enums.ClientLevelType;
+import com.fincity.security.feign.IFeignFilesService;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.model.AuthenticationRequest;
@@ -44,6 +46,7 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.UserService;
 import com.fincity.security.util.PasswordUtil;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -60,6 +63,8 @@ public class ClientRegistrationService {
     private final ClientService clientService;
     private final EventCreationService ecService;
     private final ClientUrlService clientUrlService;
+    private final AppRegistrationDAO appRegistrationDAO;
+    private final IFeignFilesService filesService;
 
     private final SecurityMessageResourceService securityMessageResourceService;
 
@@ -71,7 +76,8 @@ public class ClientRegistrationService {
     public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
             SecurityMessageResourceService securityMessageResourceService,
             AuthenticationService authenticationService, CodeAccessDAO codeAccessDAO, ClientService clientService,
-            EventCreationService ecService, ClientUrlService clientUrlService) {
+            EventCreationService ecService, ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO,
+            IFeignFilesService filesService) {
         this.dao = dao;
         this.appService = appService;
         this.userService = userService;
@@ -80,6 +86,8 @@ public class ClientRegistrationService {
         this.clientService = clientService;
         this.ecService = ecService;
         this.clientUrlService = clientUrlService;
+        this.appRegistrationDAO = appRegistrationDAO;
+        this.filesService = filesService;
 
         this.securityMessageResourceService = securityMessageResourceService;
     }
@@ -129,9 +137,6 @@ public class ClientRegistrationService {
                         msg -> new GenericException(HttpStatus.CONFLICT, msg),
                         SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
 
-        var a = this.checkSubDomainAvailability("",
-                registrationRequest.getSubDomain(), registrationRequest.isBusinessClient());
-
         return FlatMapUtil.flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
@@ -154,7 +159,8 @@ public class ClientRegistrationService {
                                 e.get(app.getClientId()), this.subDomainEndings))
                         .defaultIfEmpty(this.subDomainEndings),
 
-                (ca, exists, app, client, levelType, usageType, suffix) -> a,
+                (ca, exists, app, client, levelType, usageType, suffix) -> this.checkSubDomainAvailability("",
+                        registrationRequest.getSubDomain(), registrationRequest.isBusinessClient()),
 
                 (ca, exists, app, client, levelType, usageType, suffix, subDomain) -> Mono
                         .just(Tuples.of(subDomain, ca))
@@ -355,7 +361,9 @@ public class ClientRegistrationService {
                     return Mono.just("");
                 },
 
-                (tup, prop, client, userTuple, token) -> ecService
+                (tup, prop, client, userTuple, token) -> this.addFilesAccessPath(tup.getT2(), client),
+
+                (tup, prop, client, userTuple, token, filesAccessCreated) -> this.ecService
                         .createEvent(new EventQueObject().setAppCode(tup.getT2().getUrlAppCode())
                                 .setClientCode(tup.getT2().getLoggedInFromClientCode())
                                 .setEventName(EventNames.CLIENT_REGISTERED)
@@ -398,7 +406,7 @@ public class ClientRegistrationService {
                             return Mono.just(e);
                         }),
 
-                (tup, prop, client, userTuple, token, res) -> {
+                (tup, prop, client, userTuple, token, filesAccessCreated, res) -> {
 
                     if (tup.getT1().isBlank())
                         return Mono.just(res);
@@ -407,10 +415,38 @@ public class ClientRegistrationService {
                             .createForRegistration(new ClientUrl().setAppCode(tup.getT2().getUrlAppCode())
                                     .setUrlPattern(tup.getT1()).setClientId(client.getId()))
                             .map(e -> res.setRedirectURL(tup.getT1()));
-                }
-
-        );
+                });
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
+    }
+
+    private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.appService.getAppByCode(ca.getUrlAppCode()),
+
+                app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
+
+                (app, levelType) -> this.appRegistrationDAO.getFileAccessForRegistration(app.getId(), app.getClientId(),
+                        ULong.valueOf(ca.getLoggedInFromClientId()), client.getTypeCode(), levelType,
+                        client.getBusinessType()),
+
+                (app, levelType, filesAccess) -> Flux.fromIterable(filesAccess)
+                        .map(e -> {
+                            IFeignFilesService.FilesAccessPath accessPath = new IFeignFilesService.FilesAccessPath();
+                            accessPath.setClientCode(client.getCode());
+                            accessPath.setAccessName(e.getAccessName());
+                            accessPath.setWriteAccess(e.isWriteAccess());
+                            accessPath.setPath(e.getPath());
+                            accessPath.setAllowSubPathAccess(e.isAllowSubPathAccess());
+                            accessPath.setResourceType(e.getResourceType());
+                            return accessPath;
+                        })
+                        .flatMap(filesService::createInternalAccessPath)
+                        .collectList().map(e -> true)
+
+        )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.addFilesAccessPath"));
     }
 
     private Mono<Tuple2<User, String>> registerUser(String appCode, ULong urlClientId,
