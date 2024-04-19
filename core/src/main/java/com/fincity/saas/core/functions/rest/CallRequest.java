@@ -177,23 +177,27 @@ public class CallRequest extends AbstractReactiveFunction {
 
 		Gson gson = new Gson();
 		return restService.doCall(appCode, clientCode, connectionName, request)
-				.map(obj -> new FunctionOutput(
-						List.of(EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
-								gson.toJsonTree(obj.getHeaders()), STATUS_CODE, gson.toJsonTree(obj.getStatus()))))))
-				.onErrorResume((e) -> {
-					Gson gson1 = new Gson();
+				.map(obj -> {
+					if (obj.getStatus() >= 400 && obj.getStatus() <= 600)
+						return new FunctionOutput(List.of(
+								EventResult.of(Event.ERROR,
+										Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
+												gson.toJsonTree(obj.getHeaders()), STATUS_CODE,
+												gson.toJsonTree(obj.getStatus()))),
+								EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
+										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of())))));
 
-					JsonElement eventDataJson = gson1.toJsonTree(e.getMessage());
-					JsonElement eventHeadersJson = gson1.toJsonTree(headers);
-					JsonElement statusCodeJson = gson1.toJsonTree(HttpStatus.INTERNAL_SERVER_ERROR);
-
-					EventResult errorResult = EventResult.of(Event.ERROR, Map.of(EVENT_DATA, eventDataJson,
-							EVENT_HEADERS, eventHeadersJson, STATUS_CODE, statusCodeJson));
-
-					List<EventResult> errorResultList = Collections.singletonList(errorResult);
-
-					return Mono.just(new FunctionOutput(errorResultList));
-				});
+					return new FunctionOutput(
+							List.of(EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
+									gson.toJsonTree(obj.getHeaders()), STATUS_CODE, gson.toJsonTree(obj.getStatus())))));
+				})
+				.onErrorContinue(Exception.class,
+						(ex, o) -> new FunctionOutput(List.of(
+								EventResult.of(Event.ERROR,
+										Map.of(EVENT_DATA, gson.toJsonTree(ex.getMessage()), EVENT_HEADERS,
+												gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))),
+								EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
+										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))))));
 
 	}
 }
