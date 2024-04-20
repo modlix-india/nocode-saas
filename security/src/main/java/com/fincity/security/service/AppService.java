@@ -63,6 +63,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_BY_APPID = "byAppId";
 	private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
 	private static final String CACHE_NAME_APP_DEPENDENCIES = "appDependencies";
+	private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
 
 	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
 	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE";
@@ -812,6 +813,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	public Mono<AppDependency> addAppDependency(String appCode, String dependentAppCode) {
 
+		if (appCode.equals(dependentAppCode) || StringUtil.safeIsBlank(appCode)
+				|| StringUtil.safeIsBlank(dependentAppCode))
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.APP_DEPENDENCY_SAME_APP_CODE);
+
 		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
@@ -835,6 +841,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				(ca, app, depApp, hasAccess) -> this.dao.addAppDependency(app.getId(), depApp.getId()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addAppDependency"))
 				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEPENDENCIES, appCode))
+				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEP_LIST, appCode))
 				.switchIfEmpty(
 						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								SecurityMessageResourceService.FORBIDDEN_CREATE, "App Dependency"));
@@ -864,6 +871,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 				(ca, app, depApp, hasAccess) -> this.dao.removeAppDependency(app.getId(), depApp.getId()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removeAppDependency"))
+				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEP_LIST, appCode))
 				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEPENDENCIES, appCode))
 				.switchIfEmpty(
 						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),

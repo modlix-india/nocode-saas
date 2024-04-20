@@ -201,6 +201,13 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
+	@GetMapping("/internal/dependencies")
+	public Mono<List<String>> getInternalAppDependencies(@RequestParam String appCode) {
+		return this.service.getAppDependencies(appCode)
+				.map(dependencies -> dependencies.stream().map(AppDependency::getDependentAppCode)
+						.toList());
+	}
+
 	@GetMapping("/dependencies")
 	public Mono<ResponseEntity<List<AppDependency>>> getAppDependencies(@RequestParam String appCode) {
 		return this.service.getAppDependencies(appCode)
@@ -210,7 +217,7 @@ public class AppController
 	@PostMapping("/dependency")
 	public Mono<ResponseEntity<AppDependency>> addDependency(@RequestBody AppDependency dependency) {
 
-		return this.service.addAppDependency(dependency.getAppCode(), dependency.getAppCode())
+		return this.service.addAppDependency(dependency.getAppCode(), dependency.getDependentAppCode())
 				.map(ResponseEntity::ok);
 	}
 
