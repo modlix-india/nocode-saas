@@ -14,14 +14,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.security.dto.AppRegistrationAccess;
 import com.fincity.security.dto.AppRegistrationFile;
 import com.fincity.security.dto.AppRegistrationPackage;
 import com.fincity.security.dto.AppRegistrationRole;
-import com.fincity.security.enums.ClientLevelType;
+import com.fincity.security.model.AppRegistrationQuery;
 import com.fincity.security.service.appregistration.AppRegistrationService;
 
 import reactor.core.publisher.Mono;
@@ -54,16 +53,14 @@ public class AppRegistrationController {
         return service.createAccess(appCode, access).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/{appCode}/access")
+    @PostMapping("/{appCode}/access/query")
     public Mono<ResponseEntity<Page<AppRegistrationAccess>>> getAccess(@PathVariable("appCode") String appCode,
-            @RequestParam(required = false) String clientCode,
-            @RequestParam(required = false) ULong clientId,
-            @RequestParam(required = false) String clientType,
-            @RequestParam(required = false) ClientLevelType level,
-            @RequestParam(required = false) String businessType,
+            @RequestBody AppRegistrationQuery query,
             Pageable pageable) {
 
-        return service.getAccess(appCode, clientCode, clientId, clientType, level, businessType, pageable)
+        return service
+                .getAccess(appCode, query.getClientCode(), query.getClientId(), query.getClientType(), query.getLevel(),
+                        query.getBusinessType(), pageable)
                 .map(ResponseEntity::ok);
     }
 
@@ -85,16 +82,13 @@ public class AppRegistrationController {
         return service.createFile(appCode, file).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/{appCode}/file")
+    @PostMapping("/{appCode}/file/query")
     public Mono<ResponseEntity<Page<AppRegistrationFile>>> getFile(@PathVariable("appCode") String appCode,
-            @RequestParam(required = false) String clientCode,
-            @RequestParam(required = false) ULong clientId,
-            @RequestParam(required = false) String clientType,
-            @RequestParam(required = false) ClientLevelType level,
-            @RequestParam(required = false) String businessType,
-            Pageable pageable) {
+            @RequestBody AppRegistrationQuery query, Pageable pageable) {
 
-        return service.getFile(appCode, clientCode, clientId, clientType, level, businessType, pageable)
+        return service
+                .getFile(appCode, query.getClientCode(), query.getClientId(), query.getClientType(), query.getLevel(),
+                        query.getBusinessType(), pageable)
                 .map(ResponseEntity::ok);
     }
 
@@ -114,17 +108,13 @@ public class AppRegistrationController {
         return service.createPackage(appCode, regPackage).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/{appCode}/package")
+    @PostMapping("/{appCode}/package/query")
     public Mono<ResponseEntity<Page<AppRegistrationPackage>>> getPackage(@PathVariable("appCode") String appCode,
-            @RequestParam(required = false) String packageName,
-            @RequestParam(required = false) String clientCode,
-            @RequestParam(required = false) ULong clientId,
-            @RequestParam(required = false) String clientType,
-            @RequestParam(required = false) ClientLevelType level,
-            @RequestParam(required = false) String businessType,
-            Pageable pageable) {
+            @RequestBody AppRegistrationQuery query, Pageable pageable) {
 
-        return service.getPackage(appCode, packageName, clientCode, clientId, clientType, level, businessType, pageable)
+        return service
+                .getPackage(appCode, null, query.getClientCode(), query.getClientId(), query.getClientType(),
+                        query.getLevel(), query.getBusinessType(), pageable)
                 .map(ResponseEntity::ok);
     }
 
@@ -144,17 +134,14 @@ public class AppRegistrationController {
         return service.createRole(appCode, role).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/{appCode}/role")
+    @PostMapping("/{appCode}/role/query")
     public Mono<ResponseEntity<Page<AppRegistrationRole>>> getRole(@PathVariable("appCode") String appCode,
-            @RequestParam(required = false) String roleName,
-            @RequestParam(required = false) String clientCode,
-            @RequestParam(required = false) ULong clientId,
-            @RequestParam(required = false) String clientType,
-            @RequestParam(required = false) ClientLevelType level,
-            @RequestParam(required = false) String businessType,
+            @RequestBody AppRegistrationQuery query,
             Pageable pageable) {
 
-        return service.getRole(appCode, roleName, clientCode, clientId, clientType, level, businessType, pageable)
+        return service
+                .getRole(appCode, null, query.getClientCode(), query.getClientId(), query.getClientType(),
+                        query.getLevel(), query.getBusinessType(), pageable)
                 .map(ResponseEntity::ok);
     }
 
