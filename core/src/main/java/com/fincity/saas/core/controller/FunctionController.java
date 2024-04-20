@@ -71,13 +71,14 @@ public class FunctionController
 				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
 						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
 
-				(ca, tup) -> {
+				(ca, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
+
+				(ca, tup, appFunctionRepo) -> {
 
 					ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
 							? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
-									this.coreFunRepo, this.service.getFunctionRepository(tup.getT1(), tup.getT2()))
-							: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo,
-									this.service.getFunctionRepository(tup.getT1(), tup.getT2())));
+									this.coreFunRepo, appFunctionRepo)
+							: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo, appFunctionRepo));
 
 					return fRepo.find(namespace, name)
 							.map(e -> {
@@ -90,7 +91,8 @@ public class FunctionController
 							});
 				},
 
-				(ca, tup, signature) -> Mono.just((new Gson()).toJson(Map.of("definition", signature))))
+				(ca, tup, appFunctionRepo, signature) -> Mono
+						.just((new Gson()).toJson(Map.of("definition", signature))))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
 				.map(str -> ResponseEntity.ok()
 						.contentType(MediaType.APPLICATION_JSON)
@@ -108,19 +110,17 @@ public class FunctionController
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
-						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode())))
+						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
 
-		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
-				.flatMapMany(tup ->
+				(context, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
 
-				(includeKIRunRepos
+				(context, tup, appFunctionRepo) -> Mono.just(includeKIRunRepos
 						? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
-								this.coreFunRepo, this.service.getFunctionRepository(tup.getT1(), tup.getT2()))
-						: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo,
-								this.service.getFunctionRepository(tup.getT1(), tup.getT2())))
-						.filter(filter))
-				.collectList()
+								this.coreFunRepo, appFunctionRepo)
+						: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo, appFunctionRepo)),
+
+				(context, tup, appFunctionRepo, fRepo) -> fRepo.filter(filter).collectList())
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
 				.map(ResponseEntity::ok);
 	}
 }

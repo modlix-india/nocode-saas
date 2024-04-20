@@ -129,7 +129,10 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 	public Mono<Storage> validate(Storage storage) {
 
 		return FlatMapUtil.flatMapMono(
-				() -> {
+				() -> this.coreSchemaService
+						.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+
+				appSchemaRepo -> {
 
 					Schema schema = gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class);
 
@@ -138,12 +141,11 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 					return ReactiveSchemaUtil.getSchemaFromRef(schema,
 							new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-									new CoreSchemaRepository(), this.coreSchemaService
-											.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+									new CoreSchemaRepository(), appSchemaRepo),
 							schema.getRef()).defaultIfEmpty(schema);
 				},
 
-				schema -> {
+				(appSchemaRepo, schema) -> {
 
 					if (schema.getType().getAllowedSchemaTypes().size() != 1
 							|| !schema.getType().getAllowedSchemaTypes().contains(SchemaType.OBJECT)) {
