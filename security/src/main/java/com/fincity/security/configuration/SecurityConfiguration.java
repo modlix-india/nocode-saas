@@ -67,7 +67,9 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/ssl/token/**",
 
-				"/api/security/applications/dependencies");
+				"/api/security/applications/dependencies",
+
+				"/api/security/applications/internal/dependencies");
 	}
 
 }
