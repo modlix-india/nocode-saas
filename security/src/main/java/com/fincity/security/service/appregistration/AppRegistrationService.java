@@ -87,7 +87,7 @@ public class AppRegistrationService {
                 (ca, app) -> this.appService.hasWriteAccess(appCode, ca.getClientCode())
                         .filter(e -> e),
 
-                (ca, app, hasWriteAccess) -> this.appService.getAppById(access.getAppId()),
+                (ca, app, hasWriteAccess) -> this.appService.getAppById(access.getAllowAppId()),
 
                 (ca, app, hasWriteAccess, allowedApp) -> this.appService
                         .hasWriteAccess(allowedApp.getAppCode(), ca.getClientCode())
@@ -173,7 +173,7 @@ public class AppRegistrationService {
 
                 (ca, app, hasWriteAccess) -> {
 
-                    if (ca.isSystemClient() || (clientId == null && clientCode == null))
+                    if (!ca.isSystemClient() || (clientId == null && clientCode == null))
                         return Mono.just(ULong.valueOf(ca.getUser().getClientId()));
 
                     return (clientCode != null ? this.clientService.getClientBy(clientCode).map(e -> e.getId())
@@ -202,7 +202,7 @@ public class AppRegistrationService {
 
                 app -> this.appService.getAppById(access.getAllowAppId()),
 
-                (app, allowedApp) -> this.clientService.getClientInfoById(app.getClientId()),
+                (app, allowedApp) -> this.clientService.getClientInfoById(access.getClientId()),
 
                 (app, allowedApp, client) -> Mono
                         .just((AppRegistrationAccess) access.setAllowApp(allowedApp).setApp(app)
@@ -323,7 +323,7 @@ public class AppRegistrationService {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppById(file.getAppId()),
 
-                app -> this.clientService.getClientInfoById(app.getClientId()),
+                app -> this.clientService.getClientInfoById(file.getClientId()),
 
                 (app, client) -> Mono
                         .just((AppRegistrationFile) file.setApp(app).setClient(client))
@@ -447,7 +447,7 @@ public class AppRegistrationService {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppById(pack.getAppId()),
 
-                app -> this.clientService.getClientInfoById(app.getClientId()),
+                app -> this.clientService.getClientInfoById(pack.getClientId()),
 
                 (app, client) -> this.packageService.read(pack.getPackageId()),
 
@@ -571,7 +571,7 @@ public class AppRegistrationService {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppById(role.getAppId()),
 
-                app -> this.clientService.getClientInfoById(app.getClientId()),
+                app -> this.clientService.getClientInfoById(role.getClientId()),
 
                 (app, client) -> this.roleService.read(role.getRoleId()),
 

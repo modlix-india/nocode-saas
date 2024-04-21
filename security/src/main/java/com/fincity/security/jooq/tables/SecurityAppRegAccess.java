@@ -16,12 +16,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function9;
+import org.jooq.Function10;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row9;
+import org.jooq.Row10;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -82,6 +82,11 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
      * App ID of the dependent app
      */
     public final TableField<SecurityAppRegAccessRecord, ULong> ALLOW_APP_ID = createField(DSL.name("ALLOW_APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App ID of the dependent app");
+
+    /**
+     * The column <code>security.security_app_reg_access.WRITE_ACCESS</code>.
+     */
+    public final TableField<SecurityAppRegAccessRecord, Byte> WRITE_ACCESS = createField(DSL.name("WRITE_ACCESS"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
 
     /**
      * The column <code>security.security_app_reg_access.LEVEL</code>. Access
@@ -256,18 +261,18 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
     }
 
     // -------------------------------------------------------------------------
-    // Row9 type methods
+    // Row10 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row9<ULong, ULong, String, ULong, ULong, SecurityAppRegAccessLevel, String, ULong, LocalDateTime> fieldsRow() {
-        return (Row9) super.fieldsRow();
+    public Row10<ULong, ULong, String, ULong, ULong, Byte, SecurityAppRegAccessLevel, String, ULong, LocalDateTime> fieldsRow() {
+        return (Row10) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function9<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegAccessLevel, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function10<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super Byte, ? super SecurityAppRegAccessLevel, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -275,7 +280,7 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function9<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super SecurityAppRegAccessLevel, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super ULong, ? super ULong, ? super String, ? super ULong, ? super ULong, ? super Byte, ? super SecurityAppRegAccessLevel, ? super String, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

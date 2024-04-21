@@ -40,6 +40,8 @@ import com.fincity.security.jooq.tables.SecurityRole;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class AppRegistrationDAO {
@@ -81,6 +83,7 @@ public class AppRegistrationDAO {
 
 				ca -> Mono.from(this.dslContext.insertInto(SECURITY_APP_REG_ACCESS)
 						.set(SECURITY_APP_REG_ACCESS.APP_ID, app.getId())
+						.set(SECURITY_APP_REG_ACCESS.WRITE_ACCESS, ByteUtil.toByte(access.isWriteAccess()))
 						.set(SECURITY_APP_REG_ACCESS.CLIENT_ID,
 								CommonsUtil.nonNullValue(access.getClientId(),
 										ULong.valueOf(ca.getUser()
@@ -448,7 +451,8 @@ public class AppRegistrationDAO {
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getRole"));
 	}
 
-	public Mono<List<ULong>> getAppIdsForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
+	public Mono<List<Tuple2<ULong, Boolean>>> getAppIdsForRegistration(ULong appId, ULong appClientId,
+			ULong urlClientId,
 			String clientType,
 			ClientLevelType level, String businessType) {
 
@@ -459,30 +463,46 @@ public class AppRegistrationDAO {
 				SECURITY_APP_REG_ACCESS.BUSINESS_TYPE.eq(businessType));
 
 		return Flux.from(this.dslContext
-				.select(SECURITY_APP_REG_ACCESS.CLIENT_ID, SECURITY_APP_REG_ACCESS.APP_ID)
+				.select(SECURITY_APP_REG_ACCESS.CLIENT_ID, SECURITY_APP_REG_ACCESS.APP_ID,
+						SECURITY_APP_REG_ACCESS.WRITE_ACCESS)
 				.from(SECURITY_APP_REG_ACCESS)
 				.where(condition))
 				.collectList()
 				.map(e -> {
 
 					if (e.isEmpty())
-						return List.of(appId);
+						return List.of(Tuples.of(appId, false));
 
-					Map<ULong, Set<ULong>> map = new HashMap<>();
+					Map<ULong, List<Tuple2<ULong, Boolean>>> map = new HashMap<>();
 
 					for (var r : e) {
 						ULong clientId = r.get(SECURITY_APP_REG_ACCESS.CLIENT_ID);
-						ULong appId1 = r.get(SECURITY_APP_REG_ACCESS.APP_ID);
-
-						Set<ULong> list = map.getOrDefault(clientId, new HashSet<>());
-						list.add(appId1);
-						map.put(clientId, list);
+						Tuple2<ULong, Boolean> tup = Tuples.of(r.get(SECURITY_APP_REG_ACCESS.APP_ID),
+								r.get(SECURITY_APP_REG_ACCESS.WRITE_ACCESS).equals(ByteUtil.ONE));
+						if (!map.containsKey(clientId))
+							map.put(clientId, new ArrayList<>());
+						map.get(clientId).add(tup);
 					}
 
-					Set<ULong> set = map.getOrDefault(urlClientId, map.get(appClientId));
-					set.add(appId);
+					List<Tuple2<ULong, Boolean>> list = map.getOrDefault(urlClientId, map.get(appClientId));
+					if (list == null || list.isEmpty())
+						return List.of(Tuples.of(appId, false));
 
-					return new ArrayList<>(set);
+					Tuple2<ULong, Boolean> found = null;
+					for (var t : list) {
+						if (!t.getT1().equals(appId))
+							continue;
+						found = t;
+						list.remove(t);
+						break;
+					}
+
+					if (found == null)
+						found = Tuples.of(appId, false);
+
+					list.addFirst(found);
+
+					return list;
 				});
 
 	}

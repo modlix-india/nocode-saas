@@ -12,6 +12,7 @@ import lombok.experimental.Accessors;
 public class AppRegistrationAccess extends AbstractAppRegistration {
 
     private ULong allowAppId;
+    private boolean writeAccess;
 
     // Extras required for UI
     private App allowApp;

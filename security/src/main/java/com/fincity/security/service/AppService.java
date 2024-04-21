@@ -495,6 +495,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	}
 
 	public Mono<App> getAppById(ULong appId) {
+		if (appId == null)
+			return Mono.empty();
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> this.read(appId), appId);
 	}
 
@@ -547,10 +549,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				(app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(app.getId(),
 						app.getClientId(), urlClientId, client.getTypeCode(), levelType, client.getBusinessType()),
 
-				(app, levelType, appIds) -> {
+				(app, levelType, appAccessTuples) -> {
 
-					Mono<List<Boolean>> mons = Flux.fromIterable(appIds)
-							.flatMap(appId -> this.dao.addClientAccess(appId, client.getId(), false))
+					Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
+							.flatMap(tup -> this.dao.addClientAccess(tup.getT1(), client.getId(), tup.getT2()))
 							.collectList();
 
 					return mons.map(e -> true);

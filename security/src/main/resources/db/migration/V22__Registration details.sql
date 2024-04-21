@@ -122,3 +122,6 @@ CREATE TABLE `security_app_reg_file_access` (
 ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `security`.`security_app_reg_access` 
+ADD COLUMN `WRITE_ACCESS` TINYINT(1) NOT NULL DEFAULT 0 AFTER `ALLOW_APP_ID`;
