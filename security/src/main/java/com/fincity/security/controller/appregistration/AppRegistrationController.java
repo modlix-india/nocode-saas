@@ -4,6 +4,7 @@ import java.beans.PropertyEditorSupport;
 
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.DataBinder;
@@ -55,8 +56,9 @@ public class AppRegistrationController {
 
     @PostMapping("/{appCode}/access/query")
     public Mono<ResponseEntity<Page<AppRegistrationAccess>>> getAccess(@PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationQuery query,
-            Pageable pageable) {
+            @RequestBody AppRegistrationQuery query) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
 
         return service
                 .getAccess(appCode, query.getClientCode(), query.getClientId(), query.getClientType(), query.getLevel(),
@@ -84,7 +86,9 @@ public class AppRegistrationController {
 
     @PostMapping("/{appCode}/file/query")
     public Mono<ResponseEntity<Page<AppRegistrationFile>>> getFile(@PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationQuery query, Pageable pageable) {
+            @RequestBody AppRegistrationQuery query) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
 
         return service
                 .getFile(appCode, query.getClientCode(), query.getClientId(), query.getClientType(), query.getLevel(),
@@ -110,7 +114,9 @@ public class AppRegistrationController {
 
     @PostMapping("/{appCode}/package/query")
     public Mono<ResponseEntity<Page<AppRegistrationPackage>>> getPackage(@PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationQuery query, Pageable pageable) {
+            @RequestBody AppRegistrationQuery query) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
 
         return service
                 .getPackage(appCode, null, query.getClientCode(), query.getClientId(), query.getClientType(),
@@ -136,8 +142,9 @@ public class AppRegistrationController {
 
     @PostMapping("/{appCode}/role/query")
     public Mono<ResponseEntity<Page<AppRegistrationRole>>> getRole(@PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationQuery query,
-            Pageable pageable) {
+            @RequestBody AppRegistrationQuery query) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
 
         return service
                 .getRole(appCode, null, query.getClientCode(), query.getClientId(), query.getClientType(),
