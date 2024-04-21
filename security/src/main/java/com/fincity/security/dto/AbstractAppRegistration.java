@@ -13,11 +13,12 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public abstract class AbstractAppRegistration implements Serializable {
 
+    private ULong id;
     private ULong clientId;
     private ULong appId;
     private String clientType;
     private ClientLevelType level;
-    private String businessType;
+    private String businessType = "COMMON";
 
     // Extras required for UI
     private Client client;
