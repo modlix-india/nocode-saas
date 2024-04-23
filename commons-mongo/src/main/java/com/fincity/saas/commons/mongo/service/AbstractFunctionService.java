@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,7 @@ import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.mongo.document.AbstractFunction;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
@@ -49,6 +51,9 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 	private static final String NAME = "name";
 
 	private Map<String, ReactiveRepository<ReactiveFunction>> functions = new HashMap<>();
+
+	@Autowired
+	private FeignAuthenticationService feignSecurityService;
 
 	@Override
 	public Mono<D> create(D entity) {
@@ -140,7 +145,30 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 		return names.map(e -> e.name);
 	}
 
-	public ReactiveRepository<ReactiveFunction> getFunctionRepository(String appCode, String clientCode) {
+	public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+
+		ReactiveRepository<ReactiveFunction> appRepo = findFunctionRepository(appCode, clientCode);
+
+		return this.feignSecurityService.getDependencies(appCode)
+				.map(lst -> {
+
+					if (lst.isEmpty())
+						return appRepo;
+
+					@SuppressWarnings("unchecked")
+					ReactiveRepository<ReactiveFunction>[] repos = new ReactiveRepository[lst.size() + 1];
+					repos[0] = appRepo;
+
+					for (int i = 0; i < lst.size(); i++) {
+						repos[i + 1] = findFunctionRepository(lst.get(i), clientCode);
+					}
+
+					return new ReactiveHybridRepository<>(repos);
+				})
+				.defaultIfEmpty(appRepo);
+	}
+
+	public ReactiveRepository<ReactiveFunction> findFunctionRepository(String appCode, String clientCode) {
 
 		return functions.computeIfAbsent(appCode + " - " + clientCode,
 

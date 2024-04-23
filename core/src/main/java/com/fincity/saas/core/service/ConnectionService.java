@@ -105,22 +105,18 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.updatableEntity"));
 	}
 
-	public Mono<Connection> read(String name, String appCode, String clientCode,
-			ConnectionType type) {
+	public Mono<Connection> read(String name, String appCode, String clientCode, ConnectionType type) {
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+				() -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
 
-				ca -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
+				conn -> Mono.<Connection>justOrEmpty(conn.getConnectionType() == type ? conn : null),
 
-				(ca, conn) -> Mono.<Connection>justOrEmpty(conn.getConnectionType() == type ? conn : null),
+				(conn, typedConn) -> Mono.<Connection>justOrEmpty(typedConn.getClientCode().equals(clientCode)
+						|| BooleanUtil.safeValueOf(typedConn.getIsAppLevel()) ? typedConn : null),
 
-				(ca, conn,
-						typedConn) -> Mono.<Connection>justOrEmpty(typedConn.getClientCode().equals(ca.getClientCode())
-								|| BooleanUtil.safeValueOf(typedConn.getIsAppLevel()) ? typedConn : null),
-
-				(ca, conn, typedConn, clientCheckedConn) -> {
+				(conn, typedConn, clientCheckedConn) -> {
 
 					if (!BooleanUtil.safeValueOf(clientCheckedConn.getOnlyThruKIRun()))
 						return Mono.just(clientCheckedConn);

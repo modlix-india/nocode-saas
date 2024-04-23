@@ -16,5 +16,6 @@ public class ClientRegistrationResponse implements Serializable {
 	private static final long serialVersionUID = 567874378374L;
 
 	private Boolean created;
+	private String redirectURL;
 	private AuthenticationResponse authentication;
 }

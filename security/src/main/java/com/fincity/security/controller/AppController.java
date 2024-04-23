@@ -34,6 +34,7 @@ import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.service.AppService;
+import com.fincity.security.service.appregistration.AppRegistrationService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -48,6 +49,12 @@ public class AppController
 
 	@Value("${security.resourceCacheAge:604800}")
 	private int cacheAge;
+
+	private AppRegistrationService appRegistrationService;
+
+	public AppController(AppRegistrationService appRegistrationService) {
+		this.appRegistrationService = appRegistrationService;
+	}
 
 	@GetMapping("/applyAppCodeSuffix")
 	public Mono<ResponseEntity<String>> applyAppCodeSuffix(@RequestParam String appCode) {
@@ -90,7 +97,9 @@ public class AppController
 	public Mono<ResponseEntity<Boolean>> deleteByAppId(@PathVariable(PATH_VARIABLE_ID) final ULong id,
 			@RequestParam(required = false) final Boolean forceDelete) {
 
-		return this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+		return this.appRegistrationService.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+				.flatMap(e -> this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+						.map(f -> e.booleanValue() && f.booleanValue()))
 				.map(ResponseEntity::ok);
 	}
 
@@ -137,59 +146,11 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/{id}/packageAccess")
-	public Mono<ResponseEntity<Boolean>> addPackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-			@RequestBody final ApplicationAccessPackageOrRoleRequest appRequest) {
-
-		return this.service.addPackageAccess(appId, appRequest.getClientId(), appRequest.getPackageId())
-				.map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/getPackages/{appCode}")
-	public Mono<Object> fetchPackagesList(@PathVariable String appCode,
-			@RequestParam(required = false) ULong clientId) {
-
-		return this.service.getPackagesAssignedToApp(appCode, clientId)
-				.map(ResponseEntity::ok);
-	}
-
-	@DeleteMapping("/{id}/packageAccess")
-	public Mono<ResponseEntity<Boolean>> removePackageAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-			@RequestParam final ULong clientId, @RequestParam final ULong packageId) {
-
-		return this.service.removePackageAccess(appId, clientId, packageId)
-				.map(ResponseEntity::ok);
-
-	}
-
-	@PostMapping("/{id}/roleAccess")
-	public Mono<ResponseEntity<Boolean>> addRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-			@RequestBody final ApplicationAccessPackageOrRoleRequest roleRequest) {
-
-		return this.service.addRoleAccess(appId, roleRequest.getClientId(), roleRequest.getRoleId())
-				.map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/getRoles/{appCode}")
-	public Mono<Object> fetchRolesList(@PathVariable final String appCode,
-			@RequestParam(required = false) ULong clientId) {
-
-		return this.service.getRolesAssignedToApp(appCode, clientId)
-				.map(ResponseEntity::ok);
-	}
-
-	@DeleteMapping("/{id}/roleAccess")
-	public Mono<ResponseEntity<Boolean>> removeRoleAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-			@RequestParam final ULong clientId, @RequestParam final ULong roleId) {
-
-		return this.service.removeRoleAccess(appId, clientId, roleId)
-				.map(ResponseEntity::ok);
-	}
-
 	@GetMapping("/clients/{appCode}")
-	public Mono<ResponseEntity<List<Client>>> getAppClients(@PathVariable final String appCode,
-			@RequestParam(required = false) Boolean onlyWriteAccess) {
-		return this.service.getAppClients(appCode, onlyWriteAccess)
+	public Mono<ResponseEntity<Page<Client>>> getAppClients(@PathVariable final String appCode,
+			@RequestParam(required = false) Boolean onlyWriteAccess, @RequestParam(required = false) String name,
+			Pageable pageable) {
+		return this.service.getAppClients(appCode, onlyWriteAccess, name, pageable)
 				.map(ResponseEntity::ok);
 	}
 
@@ -219,8 +180,8 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
-	@DeleteMapping("/property/{id}")
-	public Mono<ResponseEntity<Boolean>> deleteProperty(@PathVariable(PATH_VARIABLE_ID) ULong propertyId) {
+	@DeleteMapping("/property/{propertyId}")
+	public Mono<ResponseEntity<Boolean>> deleteProperty(@PathVariable("propertyId") ULong propertyId) {
 
 		return this.service.deletePropertyById(propertyId)
 				.map(ResponseEntity::ok);
@@ -228,7 +189,7 @@ public class AppController
 
 	@GetMapping("/findBaseClientCode/{applicationCode}")
 	public Mono<ResponseEntity<Tuple2<String, Boolean>>> findBaseClientCodeForOverride(
-			@PathVariable("") String applicationCode) {
+			@PathVariable("applicationCode") String applicationCode) {
 		return this.service.findBaseClientCodeForOverride(applicationCode)
 				.map(ResponseEntity::ok);
 	}
@@ -240,10 +201,29 @@ public class AppController
 				.map(ResponseEntity::ok);
 	}
 
+	@GetMapping("/internal/dependencies")
+	public Mono<List<String>> getInternalAppDependencies(@RequestParam String appCode) {
+		return this.service.getAppDependencies(appCode)
+				.map(dependencies -> dependencies.stream().map(AppDependency::getDependentAppCode)
+						.toList());
+	}
+
 	@GetMapping("/dependencies")
 	public Mono<ResponseEntity<List<AppDependency>>> getAppDependencies(@RequestParam String appCode) {
 		return this.service.getAppDependencies(appCode)
 				.map(ResponseEntity::ok);
 	}
 
+	@PostMapping("/dependency")
+	public Mono<ResponseEntity<AppDependency>> addDependency(@RequestBody AppDependency dependency) {
+
+		return this.service.addAppDependency(dependency.getAppCode(), dependency.getDependentAppCode())
+				.map(ResponseEntity::ok);
+	}
+
+	@DeleteMapping("/dependency")
+	public Mono<ResponseEntity<Boolean>> removeDependency(@RequestParam String appCode,
+			@RequestParam String dependencyCode) {
+		return this.service.removeAppDependency(appCode, dependencyCode).map(ResponseEntity::ok);
+	}
 }
