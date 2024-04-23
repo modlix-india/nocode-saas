@@ -155,7 +155,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				ca -> storageService.getSchema(storage),
 
-				(ca, schema) -> {
+				(ca, schema) -> schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+
+				(ca, schema, appSchemaRepo) -> {
 
 					JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
 							.getAsJsonObject();
@@ -175,8 +177,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							.validate(null, schema,
 									new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
 											new CoreSchemaRepository(),
-											schemaService.getSchemaRepository(storage.getAppCode(),
-													storage.getClientCode())),
+											appSchemaRepo),
 									job)
 							.map(JsonElement::getAsJsonObject)
 							.map(je -> {
@@ -187,18 +188,19 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							});
 				},
 
-				(ca, schema, je) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
+				(ca, schema, appSchemaRepo, je) -> Mono.from(this
+						.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 						.insertOne(BJsonUtil.from(
 								storage.getRelations() != null ? storage.getRelations().keySet() : Set.of(), je))),
 
-				(ca, schema, je,
+				(ca, schema, appSchemaRepo, je,
 						result) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
 								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 								.find(Filters.eq(ID, result.getInsertedId()))
 								.first()),
 
-				(ca, schema, je, result, doc) -> {
+				(ca, schema, appSchemaRepo, je, result, doc) -> {
 
 					if (!storage.getIsAudited()
 							.booleanValue()
@@ -222,7 +224,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 					return Mono.from(this.getVersionCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
 							.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 							.insertOne(versionDocument));
-				}, (ca, scheme, je, result, doc, versionResult) -> {
+				},
+
+				(ca, schema, appSchemaRepo, je, result, doc, versionResult) -> {
 					doc.remove(ID);
 					doc.append(ID, result.getInsertedId()
 							.asObjectId()
@@ -255,7 +259,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				ca -> storageService.getSchema(storage),
 
-				(ca, schema) -> {
+				(ca, schema) -> schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+
+				(ca, schema, appSchemaRepo) -> {
 
 					Map<String, Object> overridableObject = dataObject.getData();
 					overridableObject.remove(ID);
@@ -283,7 +289,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
 				},
 
-				(ca, schema, overridableObject) -> {
+				(ca, schema, appSchemaRepo, overridableObject) -> {
 
 					JsonObject job = (gson).toJsonTree(overridableObject)
 							.getAsJsonObject();
@@ -302,9 +308,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 					return ReactiveSchemaValidator
 							.validate(null, schema,
 									new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-											new CoreSchemaRepository(),
-											schemaService.getSchemaRepository(storage.getAppCode(),
-													storage.getClientCode())),
+											new CoreSchemaRepository(), appSchemaRepo),
 									job)
 							.map(JsonElement::getAsJsonObject)
 							.map(je -> {
@@ -315,20 +319,20 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							});
 				},
 
-				(ca, schema, overridableObject,
+				(ca, schema, appSchemaRepo, overridableObject,
 						je) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
 								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 								.replaceOne(Filters.eq(ID, objectId),
 										BJsonUtil.from(storage.getRelations() != null ? storage.getRelations().keySet()
 												: Set.of(), je))),
 
-				(ca, schema, overridableObject, je,
+				(ca, schema, appSchemaRepo, overridableObject, je,
 						result) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
 								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
 								.find(Filters.eq(ID, objectId))
 								.first()),
 
-				(ca, scheme, overridableObject, je, result, doc) -> {
+				(ca, scheme, appSchemaRepo, overridableObject, je, result, doc) -> {
 
 					if (!storage.getIsAudited()
 							.booleanValue()
@@ -339,7 +343,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 					return addVersion(conn, storage, dataObject, objectId, ca, doc);
 				},
 
-				(ca, scheme, overridableObject, je, result, doc, versionResult) -> {
+				(ca, scheme, appSchemaRepo, overridableObject, je, result, doc, versionResult) -> {
 					doc.append(ID, key);
 					return Mono.just((Map<String, Object>) doc);
 				})

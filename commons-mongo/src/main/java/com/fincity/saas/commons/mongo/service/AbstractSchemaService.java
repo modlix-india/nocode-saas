@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
@@ -27,6 +29,7 @@ import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.mongo.service.AbstractFunctionService.NameOnly;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
@@ -45,6 +48,9 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 	private Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
 
 	private Gson gson;
+
+	@Autowired
+	private FeignAuthenticationService feignSecurityService;
 
 	protected AbstractSchemaService(Class<D> pojoClass) {
 		super(pojoClass);
@@ -119,8 +125,30 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractSchemaService.updatableEntity"));
 	}
 
-	public ReactiveRepository<Schema> getSchemaRepository(String appCode, String clientCode) {
+	public Mono<ReactiveRepository<Schema>> getSchemaRepository(String appCode, String clientCode) {
 
+		ReactiveRepository<Schema> appRepo = findSchemaRepository(appCode, clientCode);
+
+		return this.feignSecurityService.getDependencies(appCode)
+				.map(lst -> {
+
+					if (lst.isEmpty())
+						return appRepo;
+
+					@SuppressWarnings("unchecked")
+					ReactiveRepository<Schema>[] repos = new ReactiveRepository[lst.size() + 1];
+					repos[0] = appRepo;
+
+					for (int i = 0; i < lst.size(); i++) {
+						repos[i + 1] = findSchemaRepository(lst.get(i), clientCode);
+					}
+
+					return new ReactiveHybridRepository<>(repos);
+				})
+				.defaultIfEmpty(appRepo);
+	}
+
+	private ReactiveRepository<Schema> findSchemaRepository(String appCode, String clientCode) {
 		return schemas.computeIfAbsent(appCode + " - " + clientCode, key -> new ReactiveRepository<Schema>() {
 
 			@Override

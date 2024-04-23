@@ -16,12 +16,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function11;
+import org.jooq.Function12;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row11;
+import org.jooq.Row12;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -94,6 +94,13 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      * the client
      */
     public final TableField<SecurityClientRecord, SecurityClientStatusCode> STATUS_CODE = createField(DSL.name("STATUS_CODE"), SQLDataType.VARCHAR(8).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.security.jooq.enums.SecurityClientStatusCode.class), this, "Status of the client");
+
+    /**
+     * The column <code>security.security_client.BUSINESS_TYPE</code>. At each
+     * llevel of business client, customer and consumer there can be different
+     * business types.
+     */
+    public final TableField<SecurityClientRecord, String> BUSINESS_TYPE = createField(DSL.name("BUSINESS_TYPE"), SQLDataType.CHAR(10).nullable(false).defaultValue(DSL.inline("COMMON", SQLDataType.CHAR)), this, "At each llevel of business client, customer and consumer there can be different business types.");
 
     /**
      * The column <code>security.security_client.CREATED_BY</code>. ID of the
@@ -230,18 +237,18 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row11 type methods
+    // Row12 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row11<ULong, String, String, String, UInteger, String, SecurityClientStatusCode, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row11) super.fieldsRow();
+    public Row12<ULong, String, String, String, UInteger, String, SecurityClientStatusCode, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row12) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function11<? super ULong, ? super String, ? super String, ? super String, ? super UInteger, ? super String, ? super SecurityClientStatusCode, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function12<? super ULong, ? super String, ? super String, ? super String, ? super UInteger, ? super String, ? super SecurityClientStatusCode, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -249,7 +256,7 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super String, ? super String, ? super String, ? super UInteger, ? super String, ? super SecurityClientStatusCode, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super ULong, ? super String, ? super String, ? super String, ? super UInteger, ? super String, ? super SecurityClientStatusCode, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

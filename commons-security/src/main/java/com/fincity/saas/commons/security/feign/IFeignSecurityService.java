@@ -104,4 +104,7 @@ public interface IFeignSecurityService {
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader("appCode") String headerAppCode,
 			@PathVariable("applicationCode") String applicationCode);
+
+	@GetMapping("${security.feign.dependencies:/api/security/applications/internal/dependencies}")
+	public Mono<List<String>> getDependencies(@RequestParam String appCode);
 }

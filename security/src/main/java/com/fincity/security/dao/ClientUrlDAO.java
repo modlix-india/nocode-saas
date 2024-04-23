@@ -63,4 +63,13 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 				this.dslContext.select(SECURITY_CLIENT_URL.URL_PATTERN).from(SECURITY_CLIENT_URL).where(DSL.and(conds)))
 				.map(Record1::value1).collectList();
 	}
+
+	public Mono<Boolean> checkSubDomainAvailability(String subDomain) {
+
+		return Mono.from(this.dslContext.selectCount()
+				.from(SECURITY_CLIENT_URL)
+				.where(SECURITY_CLIENT_URL.URL_PATTERN.eq(subDomain))
+				.limit(1))
+				.map(e -> e.value1() == 0);
+	}
 }

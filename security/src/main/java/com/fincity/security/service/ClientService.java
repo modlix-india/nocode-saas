@@ -18,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +32,6 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -44,28 +42,24 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.CodeAccessDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
-import com.fincity.security.dto.TokenObject;
-import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
+import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
-import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationRequest;
-import com.fincity.security.model.ClientRegistrationRequest;
-import com.fincity.security.model.ClientRegistrationResponse;
-import com.fincity.security.util.PasswordUtil;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Service
 public class ClientService
@@ -89,8 +83,6 @@ public class ClientService
 	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
 
 	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
-
-	private static final int VALIDITY_MINUTES = 30;
 
 	@Autowired
 	private CacheService cacheService;
@@ -119,6 +111,9 @@ public class ClientService
 
 	@Autowired
 	private CodeAccessDAO codeAccessDAO;
+
+	@Autowired
+	private AppRegistrationDAO appRegistrationDAO;
 
 	@Autowired
 	@Lazy
@@ -204,8 +199,7 @@ public class ClientService
 			return Mono.empty();
 
 		return this.appService.getAppByCode(code)
-				.flatMap(app -> this.getClientInfoById(app.getClientId()
-						.toBigInteger())
+				.flatMap(app -> this.getClientInfoById(app.getClientId())
 						.map(client -> new ClientUrlPattern("", client.getCode(), uriHost, app.getAppCode())));
 	}
 
@@ -359,10 +353,14 @@ public class ClientService
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_INFO, () -> this.read(ULong.valueOf(id)), id);
 	}
 
+	public Mono<Client> getClientInfoById(ULong id) {
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_INFO, () -> this.read(id), id);
+	}
+
 	public Mono<Client> getManagedClientOfClientById(ULong clientId) {
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_MANAGED_CLIENT_INFO,
 				() -> this.dao.getManagingClientId(clientId)
-						.flatMap(e -> this.getClientInfoById(e.toBigInteger())),
+						.flatMap(this::getClientInfoById),
 				clientId);
 	}
 
@@ -413,6 +411,51 @@ public class ClientService
 
 				);
 
+	}
+
+	public Mono<Boolean> hasPackageAccess(ULong clientId, ULong packageId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.getPackage(packageId),
+
+				(ca, pack) -> {
+
+					if (pack.isBase())
+						return Mono.just(true);
+
+					if (CommonsUtil.safeEquals(clientId, pack.getClientId()))
+						return Mono.just(true);
+
+					return this.dao.checkPackageAssignedForClient(clientId, packageId)
+							.flatMap(e -> e.booleanValue() ? Mono.just(true)
+									: this.isBeingManagedBy(clientId, pack.getClientId()));
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasPackageAccess"));
+	}
+
+	public Mono<Boolean> hasRoleAccess(ULong clientId, ULong roleId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.getRole(roleId),
+
+				(ca, role) -> {
+
+					if (CommonsUtil.safeEquals(clientId, role.getClientId()))
+						return Mono.just(true);
+
+					return this.dao.checkRoleAssignedForClient(clientId, roleId)
+							.flatMap(e -> e.booleanValue() ? Mono.just(true)
+									: this.isBeingManagedBy(clientId, role.getClientId()));
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasRoleAccess"));
 	}
 
 	private Mono<Boolean> checkClientAndPackageManaged(ULong loggedInClientId, ULong clientId, ULong packageClientId) {
@@ -635,151 +678,6 @@ public class ClientService
 						SecurityMessageResourceService.USER_ALREADY_CREATED));
 	}
 
-	public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
-			ServerHttpRequest request, ServerHttpResponse response) {
-
-		Mono<ContextAuthentication> checkEmailExistsInIndividualClients = FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> {
-					if (registrationRequest.isBusinessClient())
-						return Mono.just(ca);
-
-					return this.userService
-							.checkUserExists(ca.getUrlAppCode(), ca.getUrlClientCode(), registrationRequest)
-							.flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? null : ca));
-				}
-
-		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"))
-				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.CONFLICT, msg),
-						SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
-
-		Mono<ClientRegistrationResponse> mono = FlatMapUtil.flatMapMono(
-
-				() -> checkEmailExistsInIndividualClients,
-
-				ca -> {
-
-					ULong clientId = ULong.valueOf(ca.getLoggedInFromClientId());
-
-					return this.appService
-							.getProperties(clientId, null, ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE)
-							.map(e -> e.get(clientId) == null ? ""
-									: e.get(clientId)
-											.get(AppService.APP_PROP_REG_TYPE)
-											.getValue());
-				},
-
-				(ca, prop) -> this.registerClient(registrationRequest, ca, prop),
-
-				(ca, prop, client) -> this.dao.addManageRecord(ca.getUrlClientCode(), client.getId()),
-
-				(ca, prop, client, manageId) -> this.dao.addDefaultPackages(client.getId(), ca.getUrlClientCode(),
-						ca.getUrlAppCode()),
-
-				(ca, prop, client, manageId, added) -> registerUser(registrationRequest, client, prop),
-
-				(ca, prop, client, manageId, added, userTuple) -> this.getClientBy(ca.getUrlClientCode())
-						.map(Client::getId),
-
-				(ca, prop, client, manageId, added, userTuple, loggedInClientCode) -> {
-
-					if (!StringUtil.safeIsBlank(registrationRequest.getPassword())) {
-
-						return this.userService.makeOneTimeToken(request, ca, userTuple.getT1(), loggedInClientCode)
-								.map(TokenObject::getToken);
-					}
-
-					return Mono.just("");
-				},
-
-				(ca, prop, client, manageId, added, userTuple, loggedInClientCode, token) -> ecService
-						.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
-								.setClientCode(ca.getUrlClientCode())
-								.setEventName(EventNames.CLIENT_REGISTERED)
-								.setData(Map.of("client", client)))
-						.flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
-								.setClientCode(ca.getUrlClientCode())
-								.setEventName(EventNames.USER_REGISTERED)
-								.setData(Map.of("client", client, "user", userTuple.getT1(), "token", token,
-										"passwordUsed", userTuple.getT2()))))
-						.flatMap(e -> {
-							if (AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop)
-									|| prop.endsWith("_LOGIN_IMMEDIATE")) {
-
-								return this.authenticationService
-										.authenticate(
-												new AuthenticationRequest()
-														.setUserName(CommonsUtil.nonNullValue(
-																registrationRequest.getUserName(),
-																registrationRequest.getEmailId()))
-														.setPassword(registrationRequest.getPassword()),
-												request, response)
-										.map(x -> new ClientRegistrationResponse(true, x));
-							}
-
-							return Mono.just(new ClientRegistrationResponse(true, null));
-						})
-						.flatMap(e -> {
-							if (prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
-									|| prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
-									|| prop.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST)
-									|| prop.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE))
-
-								this.codeAccessDAO
-										.deleteRecordAfterRegistration(ca.getUrlAppCode(),
-												ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-												registrationRequest.getEmailId(), registrationRequest.getCode())
-										.subscribe();
-
-							return Mono.just(e);
-						})
-
-		);
-		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
-	}
-
-	private Mono<Tuple2<User, String>> registerUser(ClientRegistrationRequest request, Client client, String regType) {
-		User user = new User();
-		user.setClientId(client.getId());
-		user.setEmailId(request.getEmailId());
-		user.setFirstName(request.getFirstName());
-		user.setLastName(request.getLastName());
-		user.setLocaleCode(request.getLocaleCode());
-		user.setUserName(request.getUserName());
-
-		String password = "";
-		if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)) {
-
-			password = PasswordUtil.generatePassword(8);
-			user.setPassword(password);
-			user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-		} else if (StringUtil.safeIsBlank(request.getPassword())) {
-
-			return this.securityMessageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.MISSING_PASSWORD);
-
-		} else if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
-			user.setPassword(request.getPassword());
-			user.setStatusCode(SecurityUserStatusCode.INACTIVE);
-		} else {
-			// In all other cases we make the user active as the user will already be
-			// authenticated by a code or no verification required.
-
-			user.setPassword(request.getPassword());
-			user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-		}
-
-		final String finPassword = password;
-
-		return this.userService.createForRegistration(user)
-				.map(e -> Tuples.of(e, finPassword));
-	}
-
 	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
 
@@ -802,93 +700,113 @@ public class ClientService
 
 	}
 
-	private String getValidClientName(ClientRegistrationRequest request) {
-
-		if (!StringUtil.safeIsBlank(request.getClientName()))
-			return request.getClientName();
-		if (!StringUtil.safeIsBlank(request.getFirstName()) || !StringUtil.safeIsBlank(request.getLastName()))
-			return (StringUtil.safeValueOf(request.getFirstName(), "")
-					+ StringUtil.safeValueOf(request.getLastName(), ""));
-		if (!StringUtil.safeIsBlank(request.getEmailId()))
-			return request.getEmailId();
-		if (!StringUtil.safeIsBlank(request.getUserName()))
-			return request.getUserName();
-
-		return "";
-	}
-
-	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca, String regType) {
-
-		if ("".equals(regType)) {
-			return this.securityMessageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
-		}
-
-		if (ca.isAuthenticated())
-			return this.securityMessageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Signout to register");
-
-		Client client = new Client();
-
-		String clientName = getValidClientName(request);
-
-		if (StringUtil.safeIsBlank(clientName))
-			return this.securityMessageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.FIELDS_MISSING);
-
-		client.setName(clientName);
-		client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
-		client.setLocaleCode(request.getLocaleCode());
-		client.setTokenValidityMinutes(VALIDITY_MINUTES);
-
-		if (StringUtil.safeIsBlank(client.getName()))
-			return this.securityMessageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, "Client name cannot be blank");
-
-		return flatMapMono(
-
-				() -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-				app -> {
-
-					if (regType.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
-							|| regType.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
-							|| regType.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST)
-							|| regType.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE))
-
-						return this.codeAccessDAO
-								.checkClientAccessCode(
-										app.getId(), ULongUtil.valueOf(ca.getLoggedInFromClientId()), request
-												.getEmailId(),
-										request.getCode())
-								.flatMap(e -> Mono.justOrEmpty(e.booleanValue() ? true : null));
-
-					return Mono.just(true);
-
-				},
-
-				(app, validReg) -> this.dao.getValidClientCode(client.getName())
-						.map(client::setCode),
-
-				(app, validReg, c) -> super.create(c),
-
-				(app, validReg, c, clnt) -> this.appService.addClientAccessAfterRegistration(ca.getUrlAppCode(),
-						clnt.getId(), false),
-
-				(app, validReg, c, clnt, created) -> Mono.just(clnt))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.registerClient"))
-				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-						SecurityMessageResourceService.ACCESS_CODE_INCORRECT));
-
-	}
-
 	public Mono<ULong> getSystemClientId() {
 		return this.cacheService.cacheValueOrGet("CACHE_SYSTEM_CLIENT_ID", () -> this.dao.getSystemClientId(),
 				"SYSTEM");
+	}
+
+	public Mono<ClientLevelType> getClientLevelType(ULong clientId, String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppByCode(appCode),
+
+				app -> this.getClientLevelType(clientId, app.getId()))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientLevelType(ULong,String)"));
+	}
+
+	public static record LevelTypeReturnRecord(ClientLevelType type, Client client) {
+		public LevelTypeReturnRecord(ClientLevelType type) {
+			this(type, null);
+		}
+
+		public LevelTypeReturnRecord(Client client) {
+			this(null, client);
+		}
+	}
+
+	// Only four levels of the client type is fixed and any further will lead to
+	// confusion.
+	public Mono<ClientLevelType> getClientLevelType(ULong clientId, ULong appId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppById(appId),
+
+				app -> this.getClientInfoById(app.getClientId()),
+
+				(app, appClient) -> {
+					if (appClient.getId()
+							.equals(clientId))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.OWNER));
+
+					return this.getManagedClientOfClientById(clientId).map(LevelTypeReturnRecord::new);
+				},
+
+				(app, appClient, first) -> {
+
+					if (first.type() != null)
+						return Mono.just(first);
+
+					if (first.client()
+							.getId()
+							.equals(appClient.getId()))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.CLIENT));
+
+					return this.getManagedClientOfClientById(first.client.getId())
+							.map(LevelTypeReturnRecord::new);
+				},
+
+				(app, appClient, first, second) -> {
+
+					if (second.type() != null)
+						return Mono.just(second);
+
+					if (second.client()
+							.getId()
+							.equals(appClient.getId()))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.CUSTOMER));
+
+					return this.getManagedClientOfClientById(second.client.getId())
+							.map(LevelTypeReturnRecord::new);
+				},
+
+				(app, appClient, first, second, third) -> {
+
+					if (third.type() != null)
+						return Mono.just(third);
+
+					if (third.client()
+							.getId()
+							.equals(appClient.getId()))
+						return Mono.just(new LevelTypeReturnRecord(ClientLevelType.CONSUMER));
+
+					return Mono.empty();
+				})
+				.map(LevelTypeReturnRecord::type)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientLevelType(ULong,ULong)"));
+	}
+
+	public Mono<Client> createForRegistration(Client client) {
+		return super.create(client);
+	}
+
+	public Mono<Boolean> addClientPackagesAfterRegistration(ULong appId, ULong appClientId, ULong urlClientId,
+			Client client) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.getClientLevelType(client.getId(), appId),
+
+				levelType -> this.appRegistrationDAO.getPackageIdsForRegistration(appId, appClientId, urlClientId,
+						client.getTypeCode(), levelType, client.getBusinessType()),
+
+				(levelType, packageIds) -> Flux.fromIterable(packageIds)
+						.flatMap(e -> this.dao.addPackageToClient(client.getId(), e))
+						.collectList(),
+
+				(levelType, packageIds, results) -> Mono.just(true)
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"));
 	}
 }

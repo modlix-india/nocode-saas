@@ -54,13 +54,15 @@ public class SchemaController
 				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
 						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
 
-				(ca, tup) -> {
+				(ca, tup) -> this.service.getSchemaRepository(tup.getT1(), tup.getT2()),
+
+				(ca, tup, appSchemaRepo) -> {
 
 					ReactiveRepository<Schema> fRepo = (includeKIRunRepos
 							? new ReactiveHybridRepository<Schema>(new KIRunReactiveSchemaRepository(),
-									this.coreSchemaRepo, this.service.getSchemaRepository(tup.getT1(), tup.getT2()))
+									this.coreSchemaRepo, appSchemaRepo)
 							: new ReactiveHybridRepository<Schema>(this.coreSchemaRepo,
-									this.service.getSchemaRepository(tup.getT1(), tup.getT2())));
+									appSchemaRepo));
 
 					return fRepo.find(namespace, name);
 				})
@@ -78,19 +80,19 @@ public class SchemaController
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
-						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode())))
+						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
+
+				(ca, tup) -> this.service.getSchemaRepository(tup.getT1(), tup.getT2()),
+
+				(ca, tup, appSchemaRepo) -> Mono.just(includeKIRunRepos
+						? new ReactiveHybridRepository<Schema>(new KIRunReactiveSchemaRepository(),
+								this.coreSchemaRepo, appSchemaRepo)
+						: new ReactiveHybridRepository<Schema>(this.coreSchemaRepo, appSchemaRepo)),
+
+				(ca, tup, appSchemaRepo, repo) -> repo.filter(filter).collectList()
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
-				.flatMapMany(tup ->
-
-				(includeKIRunRepos
-						? new ReactiveHybridRepository<Schema>(new KIRunReactiveSchemaRepository(), this.coreSchemaRepo,
-								this.service.getSchemaRepository(tup.getT1(), tup.getT2()))
-						: new ReactiveHybridRepository<Schema>(this.coreSchemaRepo,
-								this.service.getSchemaRepository(tup.getT1(), tup.getT2())))
-						.filter(filter))
-				.collectList()
 				.map(ResponseEntity::ok);
 	}
 
