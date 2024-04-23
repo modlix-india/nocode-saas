@@ -119,8 +119,10 @@ public class ClientRegistrationService {
 
                 ca -> appMono,
 
-                (ca, app) -> this.clientService.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()),
-                        app.getId()));
+                (ca, app) -> {
+                    return this.clientService.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()),
+                            app.getId());
+                });
 
         Mono<Boolean> checkIfUserExists = FlatMapUtil.flatMapMono(
 
@@ -132,7 +134,7 @@ public class ClientRegistrationService {
 
                     return this.userService
                             .checkUserExists(ca.getUrlAppCode(), ca.getLoggedInFromClientCode(), registrationRequest)
-                            .filter(e -> e);
+                            .filter(e -> !e.booleanValue());
                 }).switchIfEmpty(this.securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.CONFLICT, msg),
                         SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
@@ -159,7 +161,8 @@ public class ClientRegistrationService {
                                 e.get(app.getClientId()), this.subDomainEndings))
                         .defaultIfEmpty(this.subDomainEndings),
 
-                (ca, exists, app, client, levelType, usageType, suffix) -> this.checkSubDomainAvailability("",
+                (ca, exists, app, client, levelType, usageType, suffix) -> this.checkSubDomainAvailability(
+                        this.subDomainEndings,
                         registrationRequest.getSubDomain(), registrationRequest.isBusinessClient()),
 
                 (ca, exists, app, client, levelType, usageType, suffix, subDomain) -> Mono
@@ -281,13 +284,13 @@ public class ClientRegistrationService {
                     return this.securityMessageResourceService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                             SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR,
-                            "Only Applications owner can register for B2B2C Applications");
+                            "Only Applications owner can register for B2B2X Applications");
 
                 if (levelType == ClientLevelType.OWNER && !isBusinessClient)
                     return this.securityMessageResourceService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                             SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR,
-                            "Business clients are required for B2B2C Applications at owner level");
+                            "Business clients are required for B2B2X Applications at owner level");
 
                 break;
 
@@ -337,10 +340,20 @@ public class ClientRegistrationService {
 
                     return this.appService
                             .getProperties(clientId, null, tup.getT2().getUrlAppCode(), AppService.APP_PROP_REG_TYPE)
-                            .map(e -> e.get(clientId) == null ? ""
-                                    : e.get(clientId)
-                                            .get(AppService.APP_PROP_REG_TYPE)
-                                            .getValue());
+                            .map(e -> {
+                                if (e.isEmpty())
+                                    return "";
+
+                                if (e.containsKey(clientId)
+                                        && e.get(clientId).containsKey(AppService.APP_PROP_REG_TYPE))
+                                    return e.get(clientId).get(AppService.APP_PROP_REG_TYPE).getValue();
+
+                                var m = e.values().stream().findFirst();
+                                if (!m.isPresent())
+                                    return "";
+
+                                return m.get().get(AppService.APP_PROP_REG_TYPE).getValue();
+                            });
                 },
 
                 (tup, prop) -> this.registerClient(registrationRequest, tup.getT2(), prop),
@@ -565,7 +578,7 @@ public class ClientRegistrationService {
                 (app, validReg, c) -> this.clientService.createForRegistration(c),
 
                 (app, validReg, c, clnt) -> this.dao.addManageRecord(ca.getLoggedInFromClientCode(),
-                        client.getId()),
+                        clnt.getId()),
 
                 (app, validReg, c, clnt, num) -> this.clientService.addClientPackagesAfterRegistration(
                         app.getId(),
