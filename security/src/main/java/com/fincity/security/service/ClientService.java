@@ -731,7 +731,7 @@ public class ClientService
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.appService.read(appId),
+				() -> this.appService.getAppById(appId),
 
 				app -> this.getClientInfoById(app.getClientId()),
 
