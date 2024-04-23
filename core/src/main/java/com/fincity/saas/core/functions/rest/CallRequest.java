@@ -1,9 +1,11 @@
 package com.fincity.saas.core.functions.rest;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -175,9 +177,27 @@ public class CallRequest extends AbstractReactiveFunction {
 
 		Gson gson = new Gson();
 		return restService.doCall(appCode, clientCode, connectionName, request)
-				.map(obj -> new FunctionOutput(
-						List.of(EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
-								gson.toJsonTree(obj.getHeaders()), STATUS_CODE, gson.toJsonTree(obj.getStatus()))))));
+				.map(obj -> {
+					if (obj.getStatus() >= 400 && obj.getStatus() <= 600)
+						return new FunctionOutput(List.of(
+								EventResult.of(Event.ERROR,
+										Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
+												gson.toJsonTree(obj.getHeaders()), STATUS_CODE,
+												gson.toJsonTree(obj.getStatus()))),
+								EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
+										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of())))));
+
+					return new FunctionOutput(
+							List.of(EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
+									gson.toJsonTree(obj.getHeaders()), STATUS_CODE, gson.toJsonTree(obj.getStatus())))));
+				})
+				.onErrorContinue(Exception.class,
+						(ex, o) -> new FunctionOutput(List.of(
+								EventResult.of(Event.ERROR,
+										Map.of(EVENT_DATA, gson.toJsonTree(ex.getMessage()), EVENT_HEADERS,
+												gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))),
+								EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
+										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))))));
 
 	}
 }
