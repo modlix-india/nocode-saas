@@ -8,6 +8,7 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
+import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import java.time.LocalDateTime;
@@ -17,12 +18,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function11;
+import org.jooq.Function12;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row11;
+import org.jooq.Row12;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -92,6 +93,13 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * The column <code>security.security_app.THUMB_URL</code>.
      */
     public final TableField<SecurityAppRecord, String> THUMB_URL = createField(DSL.name("THUMB_URL"), SQLDataType.VARCHAR(1024), this, "");
+
+    /**
+     * The column <code>security.security_app.APP_USAGE_TYPE</code>. S -
+     * Standalone (Mostly for sites), B - Business only, B to C Consumer, B
+     * Business, X Any, and so on so forth.
+     */
+    public final TableField<SecurityAppRecord, SecurityAppAppUsageType> APP_USAGE_TYPE = createField(DSL.name("APP_USAGE_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("S", SQLDataType.VARCHAR)).asEnumDataType(com.fincity.security.jooq.enums.SecurityAppAppUsageType.class), this, "S - Standalone (Mostly for sites), B - Business only, B to C Consumer, B Business, X Any, and so on so forth.");
 
     /**
      * The column <code>security.security_app.CREATED_BY</code>. ID of the user
@@ -228,18 +236,18 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row11 type methods
+    // Row12 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row11<ULong, ULong, String, String, SecurityAppAppType, SecurityAppAppAccessType, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row11) super.fieldsRow();
+    public Row12<ULong, ULong, String, String, SecurityAppAppType, SecurityAppAppAccessType, String, SecurityAppAppUsageType, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row12) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function11<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function12<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super String, ? super SecurityAppAppUsageType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -247,7 +255,7 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super ULong, ? super ULong, ? super String, ? super String, ? super SecurityAppAppType, ? super SecurityAppAppAccessType, ? super String, ? super SecurityAppAppUsageType, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

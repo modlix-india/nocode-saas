@@ -1183,20 +1183,22 @@ public class AppDataService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> {
+				() -> this.schemaService
+						.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+
+				appSchemaRepo -> {
 
 					if (schema.getRef() == null)
 						return Mono.just(schema);
 
 					return ReactiveSchemaUtil.getSchemaFromRef(schema,
 							new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-									new CoreSchemaRepository(), this.schemaService
-											.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+									new CoreSchemaRepository(), appSchemaRepo),
 							schema.getRef());
 
 				},
 
-				rSchema -> {
+				(appSchemaRepo, rSchema) -> {
 
 					if (rSchema.getType()
 							.contains(SchemaType.OBJECT)) {

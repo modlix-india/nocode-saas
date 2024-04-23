@@ -154,21 +154,15 @@ public class RoleDAO extends AbstractClientCheckDAO<SecurityRoleRecord, ULong, R
 		return SecurityContextUtil.getUsersContextAuthentication()
 				.map(ca -> {
 
-					var cAlias = SECURITY_CLIENT.as("codeClient");
-
 					SelectJoinStep<Record> mainQuery = dslContext.select(Arrays.asList(table.fields()))
 							.select(DSL
 									.replace(DSL.concat("Authorities.", DSL.concat(
 											DSL.if_(SECURITY_APP.APP_CODE.isNull(), "",
 													DSL.concat(DSL.upper(SECURITY_APP.APP_CODE), ".")),
-											DSL.if_(cAlias.CODE.eq("SYSTEM"), DSL.concat("ROLE_", SECURITY_ROLE.NAME),
-													DSL.concat(DSL.concat(cAlias.CODE, "_ROLE_"),
-															SECURITY_ROLE.NAME)))),
+											DSL.concat("ROLE_", SECURITY_ROLE.NAME))),
 											" ", "_")
 									.as("AUTHORITY"))
 							.from(table)
-							.leftJoin(cAlias)
-							.on(cAlias.ID.eq(SECURITY_ROLE.CLIENT_ID))
 							.leftJoin(SECURITY_APP)
 							.on(SECURITY_APP.ID.eq(SECURITY_ROLE.APP_ID));
 

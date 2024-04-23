@@ -80,6 +80,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 						var newPayload = getFormDataFromJson(request.getPayload());
 						return doRequestWithFormData(newPayload, requestBuilder, tup.getT3());
 					}
+					
 					if (headers.getContentType() != null
 							&& headers.getContentType().isCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED)) {
 						var newPayload = getURLFormDataFromJson(request.getPayload());
@@ -88,7 +89,10 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
 					Gson gson = new Gson();
 					return requestBuilder.bodyValue(gson.fromJson(request.getPayload(), Object.class))
-							.exchangeToMono(clientResponse -> handleResponse(clientResponse, tup.getT3()));
+							.exchangeToMono(clientResponse -> {
+								return handleResponse(clientResponse, tup.getT3());
+							}).onErrorReturn(new RestResponse().setStatus(HttpStatus.BAD_REQUEST.value())
+									.setData("Url not found with the given connection"));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "BasicRestService.call"));
 
 	}

@@ -64,7 +64,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@Autowired
 	@Lazy
 	private AppDataService appDataService;
-	
+
 	@Autowired
 	@Lazy
 	private RestService restService;
@@ -95,19 +95,20 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
-						this.getFunctionRepository(appCode,
-								clientCode))
-						.find(namespace, name),
+				ca -> this.getFunctionRepository(appCode, clientCode)
+						.map(appFunctionRepo -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
+								appFunctionRepo)),
 
-				(ca, fun) -> Mono.just(new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-						new CoreSchemaRepository(), schemaService.getSchemaRepository(appCode,
-								clientCode))),
+				(ca, funRepo) -> funRepo.find(namespace, name),
 
-				(ca, fun, schRepo) -> job == null ? getRequestParamsToArguments(fun.getSignature()
+				(ca, funRepo, fun) -> schemaService.getSchemaRepository(appCode, clientCode)
+						.map(appSchemaRepo -> new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
+								new CoreSchemaRepository(), appSchemaRepo)),
+
+				(ca, funRepo, fun, schRepo) -> job == null ? getRequestParamsToArguments(fun.getSignature()
 						.getParameters(), request, schRepo) : Mono.just(job),
 
-				(ca, fun, schRepo, args) -> {
+				(ca, funRepo, fun, schRepo, args) -> {
 					if (fun instanceof DefinitionFunction df &&
 							!StringUtil.safeIsBlank(df.getExecutionAuthorization())
 							&& !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(),
@@ -123,11 +124,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 									new ReactiveFunctionExecutionParameters(
 											new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
 													this.coreFunctionRepository,
-													getFunctionRepository(appCode, clientCode)),
+													funRepo),
 											schRepo).setArguments(args));
 
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "CoreFunctionService.execute"));
-
 	}
 
 	private Mono<Map<String, JsonElement>> getRequestParamsToArguments(Map<String, Parameter> parameters,

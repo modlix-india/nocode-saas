@@ -54,20 +54,18 @@ public class FilesAccessPathService
 	@Override
 	public Mono<FilesAccessPath> create(FilesAccessPath entity) {
 
-		if (entity.getAccessName() == null) {
-			entity.setUserId(entity.getUserId());
-			entity.setAccessName(null);
-		} else if (entity.getUserId() == null) {
-			entity.setAccessName(entity.getAccessName());
+		if (entity.getAccessName() != null) {
 			entity.setUserId(null);
+		} else if (entity.getUserId() != null) {
+			entity.setAccessName(null);
 		} else {
 			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-			        FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+					FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
 		}
 
 		if (entity.getResourceType() == null)
 			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-			        FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+					FilesMessageResourceService.MISSING_FIELD, "Resource Type");
 
 		entity.setPath(entity.getPath() == null || entity.getPath()
 				.isBlank() ? "/"
@@ -111,8 +109,8 @@ public class FilesAccessPathService
 						e.setAccessName(entity.getAccessName());
 						e.setUserId(null);
 					} else {
-				        msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-				                FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+						msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
 					}
 
 					e.setAllowSubPathAccess(entity.isAllowSubPathAccess());
@@ -192,7 +190,7 @@ public class FilesAccessPathService
 						.getClientId())) {
 
 			return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-			        FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
+					FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
 		}
 
 		boolean hasStatic = SecurityContextUtil
@@ -216,12 +214,12 @@ public class FilesAccessPathService
 
 			if (rtype.contains(FilesAccessPathResourceType.STATIC.toString()) && !hasStatic) {
 				return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-				        FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH");
+						FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH");
 			}
 
 			if (rtype.contains(FilesAccessPathResourceType.SECURED.toString()) && !hasSecured) {
 				return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-				        FilesMessageResourceService.FORBIDDEN_PERMISSION, "SECURED Files PATH");
+						FilesMessageResourceService.FORBIDDEN_PERMISSION, "SECURED Files PATH");
 			}
 		}
 
@@ -232,7 +230,7 @@ public class FilesAccessPathService
 			boolean hasStatic, boolean hasSecured) {
 		if (!hasSecured && !hasStatic)
 			return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-			        FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH / SECURED Files PATH");
+					FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH / SECURED Files PATH");
 
 		if (hasSecured && hasStatic)
 			return Mono.just(condition);
@@ -275,17 +273,16 @@ public class FilesAccessPathService
 							.getId(), clientCode);
 				},
 
-		        (ca, managed) ->
-				{
+				(ca, managed) -> {
 
-			        if (!managed.booleanValue() || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
-			                ca.getAuthorities())) {
-				        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-				                FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
-			        }
+					if (!managed.booleanValue() || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
+							ca.getAuthorities())) {
+						return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
+					}
 
-			        return Mono.just(ca.getLoggedInFromClientCode());
-		        }
+					return Mono.just(ca.getLoggedInFromClientCode());
+				}
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));
@@ -345,8 +342,8 @@ public class FilesAccessPathService
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> ca.isSystemClient() ? this.securityService.isValidClientCode(clientCode)
-		                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+				ca -> ca.isSystemClient() ? this.securityService.isValidClientCode(clientCode)
+						: this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
 
 				(ca, managed) -> {
 					if (!managed.booleanValue())
@@ -359,8 +356,31 @@ public class FilesAccessPathService
 									.toList());
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasWriteAccess"))
-		        .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-		                AbstractMessageService.OBJECT_NOT_FOUND, "Client", clientCode))
+				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+						AbstractMessageService.OBJECT_NOT_FOUND, "Client", clientCode))
 				.defaultIfEmpty(false);
+	}
+
+	public Mono<FilesAccessPath> createInternalAccessPath(FilesAccessPath accessPath) {
+
+		if (accessPath.getAccessName() != null) {
+			accessPath.setUserId(null);
+		} else if (accessPath.getUserId() != null) {
+			accessPath.setAccessName(null);
+		} else {
+			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+		}
+
+		if (accessPath.getResourceType() == null)
+			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					FilesMessageResourceService.MISSING_FIELD, "Resource Type");
+
+		accessPath.setPath(accessPath.getPath() == null || accessPath.getPath()
+				.isBlank() ? "/"
+						: accessPath.getPath()
+								.trim());
+
+		return super.create(accessPath);
 	}
 }

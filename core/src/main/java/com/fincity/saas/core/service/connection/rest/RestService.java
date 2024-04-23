@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.dto.RestRequest;
@@ -18,7 +17,6 @@ import com.fincity.saas.core.dto.RestResponse;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.service.ConnectionService;
-import com.fincity.saas.core.service.CoreMessageResourceService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -28,9 +26,6 @@ import reactor.util.function.Tuples;
 public class RestService {
 	@Autowired
 	private ConnectionService connectionService;
-
-	@Autowired
-	private CoreMessageResourceService msgService;
 
 	@Autowired
 	private BasicRestService basicRestService;
@@ -48,7 +43,7 @@ public class RestService {
 
 	public Mono<RestResponse> doCall(String appCode, String clientCode, String connectionName, RestRequest request) {
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMono(
 
 				() -> {
 					if (!StringUtil.isNullOrBlank(appCode) && !StringUtil.isNullOrBlank(clientCode))
@@ -58,15 +53,14 @@ public class RestService {
 				},
 
 				codeTuple -> connectionService
-						.read(connectionName, codeTuple.getT1(), codeTuple.getT2(), ConnectionType.REST_API)
-						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								CoreMessageResourceService.CONNECTION_DETAILS_MISSING, connectionName)),
+						.read(connectionName, codeTuple.getT1(), codeTuple.getT2(), ConnectionType.REST_API),
 				(codeTuple, connection) -> {
 					return Mono.just(this.services.get(
 							connection != null ? connection.getConnectionSubType() : ConnectionSubType.REST_API_BASIC));
 				}, (codeTuple, connection, service) -> service.call(connection, request)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RestService.doCall"));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RestService.doCall"))
+				.switchIfEmpty(Mono.defer(() -> Mono.just(new RestResponse().setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value()).setData("Connection Not found"))));
 
 	}
 
