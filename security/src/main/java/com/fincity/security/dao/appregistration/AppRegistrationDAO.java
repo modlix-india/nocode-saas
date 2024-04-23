@@ -15,6 +15,8 @@ import java.util.Set;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record1;
+import org.jooq.Record3;
+import org.jooq.SelectConditionStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -462,11 +464,13 @@ public class AppRegistrationDAO {
 				SECURITY_APP_REG_ACCESS.LEVEL.eq(level.toAppAccessLevel()),
 				SECURITY_APP_REG_ACCESS.BUSINESS_TYPE.eq(businessType));
 
-		return Flux.from(this.dslContext
-				.select(SECURITY_APP_REG_ACCESS.CLIENT_ID, SECURITY_APP_REG_ACCESS.APP_ID,
+		SelectConditionStep<Record3<ULong, ULong, Byte>> query = this.dslContext
+				.select(SECURITY_APP_REG_ACCESS.CLIENT_ID, SECURITY_APP_REG_ACCESS.ALLOW_APP_ID,
 						SECURITY_APP_REG_ACCESS.WRITE_ACCESS)
 				.from(SECURITY_APP_REG_ACCESS)
-				.where(condition))
+				.where(condition);
+
+		return Flux.from(query)
 				.collectList()
 				.map(e -> {
 
@@ -477,7 +481,7 @@ public class AppRegistrationDAO {
 
 					for (var r : e) {
 						ULong clientId = r.get(SECURITY_APP_REG_ACCESS.CLIENT_ID);
-						Tuple2<ULong, Boolean> tup = Tuples.of(r.get(SECURITY_APP_REG_ACCESS.APP_ID),
+						Tuple2<ULong, Boolean> tup = Tuples.of(r.get(SECURITY_APP_REG_ACCESS.ALLOW_APP_ID),
 								r.get(SECURITY_APP_REG_ACCESS.WRITE_ACCESS).equals(ByteUtil.ONE));
 						if (!map.containsKey(clientId))
 							map.put(clientId, new ArrayList<>());
