@@ -504,7 +504,7 @@ public class AppRegistrationDAO {
 					if (found == null)
 						found = Tuples.of(appId, false);
 
-					list.addFirst(found);
+					list.add(0, found);
 
 					return list;
 				});
