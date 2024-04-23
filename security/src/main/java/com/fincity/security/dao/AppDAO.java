@@ -346,8 +346,10 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 					else if (!ca.isSystemClient())
 						conditions.add(SECURITY_APP_PROPERTY.CLIENT_ID.eq(app.getClientId()));
 
-					return Flux.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
-							.where(DSL.and(conditions)))
+					var query = this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
+							.where(DSL.and(conditions));
+
+					return Flux.from(query)
 							.map(e -> e.into(AppProperty.class)).collectList()
 							.<Map<ULong, Map<String, AppProperty>>>map(
 									lst -> this.convertAttributesToMap(app.getClientId(), clientIds, lst));
@@ -397,8 +399,11 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 			}
 		}
 
-		if (clientIds != null && !clientIds.contains(appClientId)) {
-			appClientProps.remove(appClientId);
+		Map<String, AppProperty> defaultProps = appClientProps.get(appClientId);
+		appClientProps.remove(appClientId);
+
+		if (appClientProps.isEmpty()) {
+			appClientProps.put(appClientId, defaultProps);
 		}
 
 		return appClientProps;
