@@ -269,6 +269,10 @@ public class ClientUrlService
 
 		entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
 
-		return super.create(entity);
+		return super.create(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 }
