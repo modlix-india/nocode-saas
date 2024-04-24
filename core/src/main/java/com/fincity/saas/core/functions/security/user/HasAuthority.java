@@ -21,8 +21,7 @@ public class HasAuthority extends AbstractUserContextFunction<Boolean> {
 	}
 
 	@Override
-	protected BiFunction<UserContextService, ReactiveFunctionExecutionParameters, Mono<Boolean>>
-	getServiceCallFunctionWithContext() {
+	protected BiFunction<UserContextService, ReactiveFunctionExecutionParameters, Mono<Boolean>> getServiceCallFunctionWithContext() {
 		return (service, context) -> {
 			String authority = context.getArguments().get(AUTHORITY_PARAM).getAsString();
 			return service.hasAuthority(authority);
