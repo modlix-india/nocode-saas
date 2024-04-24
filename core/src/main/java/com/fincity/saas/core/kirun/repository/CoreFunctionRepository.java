@@ -26,11 +26,11 @@ import reactor.core.publisher.Mono;
 
 public class CoreFunctionRepository implements ReactiveRepository<ReactiveFunction> {
 
-	private Map<String, ReactiveFunction> repoMap = new HashMap<>();
+	private final Map<String, ReactiveFunction> repoMap = new HashMap<>();
 
-	private List<String> filterableNames;
+	private final List<String> filterableNames;
 
-    public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService, UserContextService userContextService) {
+	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService, UserContextService userContextService) {
 
 		ReactiveFunction createStorage = new CreateStorageObject(appDataService);
 
@@ -49,9 +49,9 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction deleteRequest = new CallRequest(restService, "DeleteRequest", "DELETE", false);
 		ReactiveFunction callRequest = new CallRequest(restService, "CallRequest", "", true);
 
-        ReactiveFunction contextUser = new GetUsersContextUser(userContextService);
-        ReactiveFunction userContextAuthentication = new GetUsersContextAuthentication(userContextService);
-        ReactiveFunction hasAuthority = new HasAuthority(userContextService);
+		ReactiveFunction contextUser = new GetUsersContextUser(userContextService);
+		ReactiveFunction userContextAuthentication = new GetUsersContextAuthentication(userContextService);
+		ReactiveFunction hasAuthority = new HasAuthority(userContextService);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
 
@@ -75,11 +75,11 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 		repoMap.put(callRequest.getSignature().getFullName(), callRequest);
 
-        repoMap.put(contextUser.getSignature().getFullName(), contextUser);
+		repoMap.put(contextUser.getSignature().getFullName(), contextUser);
 
-        repoMap.put(userContextAuthentication.getSignature().getFullName(), userContextAuthentication);
+		repoMap.put(userContextAuthentication.getSignature().getFullName(), userContextAuthentication);
 
-        repoMap.put(hasAuthority.getSignature().getFullName(), hasAuthority);
+		repoMap.put(hasAuthority.getSignature().getFullName(), hasAuthority);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
