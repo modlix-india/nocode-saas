@@ -9,6 +9,9 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.core.functions.rest.CallRequest;
+import com.fincity.saas.core.functions.security.user.GetUsersContextAuthentication;
+import com.fincity.saas.core.functions.security.user.GetUsersContextUser;
+import com.fincity.saas.core.functions.security.user.HasAuthority;
 import com.fincity.saas.core.functions.storage.CreateStorageObject;
 import com.fincity.saas.core.functions.storage.DeleteStorageObject;
 import com.fincity.saas.core.functions.storage.ReadPageStorageObject;
@@ -16,6 +19,7 @@ import com.fincity.saas.core.functions.storage.ReadStorageObject;
 import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.user.UserContextService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -26,7 +30,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 	private List<String> filterableNames;
 
-	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService) {
+    public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService, UserContextService userContextService) {
 
 		ReactiveFunction createStorage = new CreateStorageObject(appDataService);
 
@@ -45,6 +49,9 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction deleteRequest = new CallRequest(restService, "DeleteRequest", "DELETE", false);
 		ReactiveFunction callRequest = new CallRequest(restService, "CallRequest", "", true);
 
+        ReactiveFunction contextUser = new GetUsersContextUser(userContextService);
+        ReactiveFunction userContextAuthentication = new GetUsersContextAuthentication(userContextService);
+        ReactiveFunction hasAuthority = new HasAuthority(userContextService);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
 
@@ -65,8 +72,14 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(patchRequest.getSignature().getFullName(), patchRequest);
 
 		repoMap.put(deleteRequest.getSignature().getFullName(), deleteRequest);
-		
+
 		repoMap.put(callRequest.getSignature().getFullName(), callRequest);
+
+        repoMap.put(contextUser.getSignature().getFullName(), contextUser);
+
+        repoMap.put(userContextAuthentication.getSignature().getFullName(), userContextAuthentication);
+
+        repoMap.put(hasAuthority.getSignature().getFullName(), hasAuthority);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -76,7 +89,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 	public Flux<String> filter(String name) {
 		final String filterName = name == null ? "" : name;
 		return Flux.fromStream(filterableNames.stream())
-				.filter(e -> e.toLowerCase().indexOf(filterName.toLowerCase()) != -1);
+				.filter(e -> e.toLowerCase().contains(filterName.toLowerCase()));
 	}
 
 	@Override

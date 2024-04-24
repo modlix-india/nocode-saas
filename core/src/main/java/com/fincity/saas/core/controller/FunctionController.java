@@ -5,6 +5,7 @@ import java.util.Map;
 
 import javax.annotation.PostConstruct;
 
+import com.fincity.saas.core.service.security.user.UserContextService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -50,12 +51,15 @@ public class FunctionController
 	@Autowired
 	private RestService restService;
 
+	@Autowired
+	private UserContextService userContextService;
+
 	private CoreFunctionRepository coreFunRepo;
 
 	@PostConstruct
 	public void init() {
 
-		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService);
+		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService);
 	}
 
 	@GetMapping("/repositoryFind")

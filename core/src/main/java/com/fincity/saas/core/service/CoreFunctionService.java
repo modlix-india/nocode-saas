@@ -42,6 +42,7 @@ import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.user.UserContextService;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -71,12 +72,16 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
 	@Autowired
 	@Lazy
+	private UserContextService userContextService;
+
+	@Autowired
+	@Lazy
 	private CoreSchemaService schemaService;
 
 	@PostConstruct
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-				new CoreFunctionRepository(appDataService, objectMapper, restService));
+				new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService));
 	}
 
 	protected CoreFunctionService() {
