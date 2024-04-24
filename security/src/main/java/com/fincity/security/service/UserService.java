@@ -121,8 +121,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				user -> this.clientService.getClientInfoById(user.getClientId()),
 
-				(user, client) -> this.clientService.getManagedClientOfClientById(user.getClientId())
-						.defaultIfEmpty(client),
+				(user, client) -> {
+					if (client.getCode().equals(clientCode))
+						return Mono.just(client);
+
+					return this.clientService.getClientBy(clientCode);
+				},
 
 				(user, client, mClient) -> Mono.just(Tuples.<Client, Client, User>of(mClient, client, user)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.findUserNClient"));
