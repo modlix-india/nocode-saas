@@ -18,26 +18,26 @@ public class UserContextService {
 
 	public Mono<BigInteger> getUsersClientId() {
 		return SecurityContextUtil.getUsersClientId()
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSecurityService.getUsersClientId"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserContextService.getUsersClientId"));
 	}
 
 	public Mono<Locale> getUsersLocale() {
 		return SecurityContextUtil.getUsersLocale()
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSecurityService.getUsersLocale"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserContextService.getUsersLocale"));
 	}
 
 	public Mono<ContextAuthentication> getUsersContextAuthentication() {
 		return SecurityContextUtil.getUsersContextAuthentication()
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSecurityService.getUsersContextAuthentication"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserContextService.getUsersContextAuthentication"));
 	}
 
 	public Mono<ContextUser> getUsersContextUser() {
 		return SecurityContextUtil.getUsersContextUser()
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSecurityService.getUsersContextUser"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserContextService.getUsersContextUser"));
 	}
 
 	public Mono<Boolean> hasAuthority(String authority) {
 		return SecurityContextUtil.hasAuthority(authority)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSecurityService.hasAuthority"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserContextService.hasAuthority"));
 	}
 }
