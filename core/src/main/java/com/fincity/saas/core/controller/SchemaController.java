@@ -84,8 +84,7 @@ public class SchemaController
 
 				(ca, tup) -> this.service.getSchemaRepository(tup.getT1(), tup.getT2()),
 
-				(ca, tup, appSchemaRepo) -> Mono.just(includeKIRunRepos
-						? new ReactiveHybridRepository<Schema>(new KIRunReactiveSchemaRepository(),
+				(ca, tup, appSchemaRepo) -> Mono.just(includeKIRunRepos ? new ReactiveHybridRepository<Schema>(new KIRunReactiveSchemaRepository(),
 								this.coreSchemaRepo, appSchemaRepo)
 						: new ReactiveHybridRepository<Schema>(this.coreSchemaRepo, appSchemaRepo)),
 

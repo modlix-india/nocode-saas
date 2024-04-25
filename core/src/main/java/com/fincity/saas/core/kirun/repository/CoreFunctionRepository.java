@@ -49,8 +49,12 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction deleteRequest = new CallRequest(restService, "DeleteRequest", "DELETE", false);
 		ReactiveFunction callRequest = new CallRequest(restService, "CallRequest", "", true);
 
-		ReactiveFunction contextUser = new GetUsersContextUser(userContextService);
-		ReactiveFunction userContextAuthentication = new GetUsersContextAuthentication(userContextService);
+		ReactiveFunction contextUser = new GetUsersContextUser(userContextService,
+				CoreSchemaRepository.CONTEXT_USER_NAMESPACE, CoreSchemaRepository.CONTEXT_USER);
+
+		ReactiveFunction userContextAuthentication = new GetUsersContextAuthentication(userContextService,
+				CoreSchemaRepository.CONTEXT_USER_NAMESPACE, CoreSchemaRepository.CONTEXT_AUTHENTICATION);
+
 		ReactiveFunction hasAuthority = new HasAuthority(userContextService);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
