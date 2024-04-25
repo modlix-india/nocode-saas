@@ -8,6 +8,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -556,7 +557,12 @@ public class AppDataService {
 								(updatedDataObject, e) -> this.generateEvent(ca, appCode, clientCode,
 										storage, "Update",
 										e.getT1(), e.getT2().orElse(null))),
-						Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE));
+						Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE),
+
+				(ca, ac, cc, conn, dataService, storage, updated) -> this.fillRelatedObjects(ac, cc, storage, updated,
+						dataService, conn,
+						BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
+								: eagerFields));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.update"));
 	}
@@ -603,12 +609,12 @@ public class AppDataService {
 							if (!override.booleanValue())
 								continue;
 
-							Set<Tuple2<String, String>> allIds = Set.of();
+							Set<Tuple2<String, String>> allIds = new HashSet<>();
 							if (existing.get(e.getKey()) instanceof List<?> lst) {
 								allIds = lst.stream().map(id -> Tuples.of(relation.getStorageName(), id.toString()))
-										.collect(Collectors.toSet());
+										.collect(Collectors.toCollection(HashSet::new));
 							} else if (existing.get(e.getKey()) instanceof String id) {
-								allIds = Set.of(Tuples.of(relation.getStorageName(), id));
+								allIds.add(Tuples.of(relation.getStorageName(), id));
 							}
 
 							if (dob.get(e.getKey()) instanceof List<?> lst) {
@@ -619,7 +625,7 @@ public class AppDataService {
 									}
 								}
 							} else if (dob.get(e.getKey()) instanceof String id) {
-								Tuple2<String, String> tup = Tuples.of(relation.getStorageName(), id.toString());
+								Tuple2<String, String> tup = Tuples.of(relation.getStorageName(), id);
 								if (allIds.contains(tup)) {
 									allIds.remove(tup);
 								}
@@ -697,18 +703,18 @@ public class AppDataService {
 
 				(existing, beforeUpdate) -> dataService.update(conn, storage, dataObject, override),
 
-				(existing, beforeUpdate, created) -> {
+				(existing, beforeUpdate, updated) -> {
 
 					if (noAfterUpdate)
-						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created,
+						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(updated,
 								Optional.of(existing)));
 
-					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(created),
+					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(updated),
 							EXISTING_DATA_OBJECT_KEY,
 							new Gson().toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_UPDATE, args)
-							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created,
+							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(updated,
 									Optional.of(existing)));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.updateWithTriggers"));
 	}
