@@ -3,10 +3,6 @@ package com.fincity.saas.core.controller;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
-import com.fincity.saas.core.service.security.user.UserContextService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +18,7 @@ import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunction
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -31,6 +28,7 @@ import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
@@ -42,24 +40,13 @@ import reactor.util.function.Tuples;
 public class FunctionController
 		extends AbstractOverridableDataController<CoreFunction, CoreFunctionDocumentRepository, CoreFunctionService> {
 
-	@Autowired
-	private AppDataService appDataService;
-
-	@Autowired
-	private ObjectMapper objectMapper;
-
-	@Autowired
-	private RestService restService;
-
-	@Autowired
-	private UserContextService userContextService;
-
 	private CoreFunctionRepository coreFunRepo;
 
-	@PostConstruct
-	public void init() {
+	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
+			ContextService userContextService, IFeignSecurityService securityService) {
 
-		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService);
+		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
+				securityService);
 	}
 
 	@GetMapping("/repositoryFind")

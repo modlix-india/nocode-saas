@@ -33,6 +33,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractFunctionService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -42,7 +43,7 @@ import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.rest.RestService;
-import com.fincity.saas.core.service.security.user.UserContextService;
+import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -72,16 +73,21 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
 	@Autowired
 	@Lazy
-	private UserContextService userContextService;
+	private ContextService userContextService;
 
 	@Autowired
 	@Lazy
 	private CoreSchemaService schemaService;
 
+	@Autowired
+	@Lazy
+	private IFeignSecurityService feignSecurityService;
+
 	@PostConstruct
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-				new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService));
+				new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
+						feignSecurityService));
 	}
 
 	protected CoreFunctionService() {

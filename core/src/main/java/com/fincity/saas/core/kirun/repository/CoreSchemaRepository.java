@@ -17,11 +17,11 @@ import reactor.core.publisher.Mono;
 
 public class CoreSchemaRepository extends ReactiveHybridRepository<Schema> {
 
-	public static final String CONTEXT_USER_NAMESPACE = "Security.Context.Users";
+	public static final String SCHEMA_NAMESPACE_SECURITY_CONTEXT = "Security.Context";
 
-	public static final String CONTEXT_USER = "ContextUser";
+	public static final String SCHEMA_NAME_CONTEXT_USER = "ContextUser";
 
-	public static final String CONTEXT_AUTHENTICATION = "ContextAuthentication";
+	public static final String SCHEMA_NAME_CONTEXT_AUTHENTICATION = "ContextAuthentication";
 
 	private final Map<String, Schema> repoMap = new HashMap<>();
 
@@ -29,10 +29,10 @@ public class CoreSchemaRepository extends ReactiveHybridRepository<Schema> {
 
 	public CoreSchemaRepository() {
 
-		repoMap.put(CONTEXT_USER_NAMESPACE + "." + CONTEXT_USER,
+		repoMap.put(SCHEMA_NAMESPACE_SECURITY_CONTEXT + "." + SCHEMA_NAME_CONTEXT_USER,
 				new Schema()
-						.setNamespace(CONTEXT_USER_NAMESPACE)
-						.setName(CONTEXT_USER)
+						.setNamespace(SCHEMA_NAMESPACE_SECURITY_CONTEXT)
+						.setName(SCHEMA_NAME_CONTEXT_USER)
 						.setType(Type.of(SchemaType.OBJECT))
 						.setProperties(Map.ofEntries(
 								entry("id", Schema.ofLong("id")),
@@ -53,26 +53,25 @@ public class CoreSchemaRepository extends ReactiveHybridRepository<Schema> {
 								entry("credentialsNonExpired", Schema.ofBoolean("credentialsNonExpired")),
 								entry("noFailedAttempt", Schema.ofInteger("noFailedAttempt")),
 								entry("statusCode", Schema.ofString("statusCode")),
-								entry("stringAuthorities", Schema.ofArray("stringAuthorities", Schema.ofString("authority")))
-						))
-						.setRequired(List.of("id", "clientId", "userName", "emailId")));
+								entry("stringAuthorities",
+										Schema.ofArray("stringAuthorities", Schema.ofString("authority"))))));
 
-		repoMap.put(CONTEXT_USER_NAMESPACE + "." + CONTEXT_AUTHENTICATION,
+		repoMap.put(SCHEMA_NAMESPACE_SECURITY_CONTEXT + "." + SCHEMA_NAME_CONTEXT_AUTHENTICATION,
 				new Schema()
-						.setNamespace(CONTEXT_USER_NAMESPACE)
-						.setName(CONTEXT_AUTHENTICATION)
+						.setNamespace(SCHEMA_NAMESPACE_SECURITY_CONTEXT)
+						.setName(SCHEMA_NAME_CONTEXT_AUTHENTICATION)
 						.setType(Type.of(SchemaType.OBJECT))
 						.setProperties(Map.ofEntries(
-								entry("user", Schema.ofRef(CONTEXT_USER_NAMESPACE + "." + CONTEXT_USER)),
+								entry("user",
+										Schema.ofRef(
+												SCHEMA_NAMESPACE_SECURITY_CONTEXT + "." + SCHEMA_NAME_CONTEXT_USER)),
 								entry("isAuthenticated", Schema.ofBoolean("isAuthenticated")),
 								entry("loggedInFromClientId", Schema.ofLong("loggedInFromClientId")),
 								entry("loggedInFromClientCode", Schema.ofString("loggedInFromClientCode")),
 								entry("clientTypeCode", Schema.ofString("clientTypeCode")),
 								entry("clientCode", Schema.ofString("clientCode")),
 								entry("urlClientCode", Schema.ofString("urlClientCode")),
-								entry("urlAppCode", Schema.ofString("urlAppCode"))
-						))
-						.setRequired(List.of("user", "isAuthenticated", "clientTypeCode", "clientCode")));
+								entry("urlAppCode", Schema.ofString("urlAppCode")))));
 
 		this.filterableNames = repoMap.values().stream().map(Schema::getFullName).toList();
 	}

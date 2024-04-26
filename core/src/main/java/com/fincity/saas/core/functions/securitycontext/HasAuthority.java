@@ -1,4 +1,4 @@
-package com.fincity.saas.core.functions.security.user;
+package com.fincity.saas.core.functions.securitycontext;
 
 import java.util.List;
 import java.util.Map;
@@ -11,7 +11,7 @@ import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
-import com.fincity.saas.core.service.security.user.UserContextService;
+import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
@@ -22,13 +22,13 @@ public class HasAuthority extends AbstractReactiveFunction {
 
 	private static final String FUNCTION_NAME = "HasAuthority";
 
-	private static final String NAME_SPACE = "CoreServices.Security.User.Context";
+	private static final String NAME_SPACE = "CoreServices.SecurityContext";
 
-	private static final String EVENT_DATA = "data";
+	private static final String EVENT_DATA_RESULT = "result";
 
-	private final UserContextService userContextService;
+	private final ContextService userContextService;
 
-	public HasAuthority(UserContextService userContextService) {
+	public HasAuthority(ContextService userContextService) {
 		this.userContextService = userContextService;
 	}
 
@@ -36,15 +36,12 @@ public class HasAuthority extends AbstractReactiveFunction {
 	public FunctionSignature getSignature() {
 
 		Event event = new Event().setName(Event.OUTPUT)
-				.setParameters(Map.of(EVENT_DATA, Schema.ofBoolean(EVENT_DATA)));
-
-		Event errorEvent = new Event().setName(Event.ERROR)
-				.setParameters(Map.of(EVENT_DATA, Schema.ofBoolean(EVENT_DATA)));
+				.setParameters(Map.of(EVENT_DATA_RESULT, Schema.ofBoolean(EVENT_DATA_RESULT)));
 
 		return new FunctionSignature().setNamespace(NAME_SPACE).setName(FUNCTION_NAME)
 				.setParameters(Map.of(
 						AUTHORITY_PARAM, Parameter.of(AUTHORITY_PARAM, Schema.ofString(AUTHORITY_PARAM))))
-				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
+				.setEvents(Map.of(event.getName(), event));
 	}
 
 	@Override
@@ -54,6 +51,6 @@ public class HasAuthority extends AbstractReactiveFunction {
 
 		return userContextService.hasAuthority(authority)
 				.map(hasAuthority -> new FunctionOutput(List.of(EventResult.outputOf(
-						Map.of(EVENT_DATA, new JsonPrimitive(hasAuthority))))));
+						Map.of(EVENT_DATA_RESULT, new JsonPrimitive(hasAuthority))))));
 	}
 }

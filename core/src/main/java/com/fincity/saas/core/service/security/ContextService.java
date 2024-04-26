@@ -1,4 +1,4 @@
-package com.fincity.saas.core.service.security.user;
+package com.fincity.saas.core.service.security;
 
 import java.math.BigInteger;
 import java.util.Locale;
@@ -12,7 +12,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import reactor.core.publisher.Mono;
 
 @Service
-public class UserContextService {
+public class ContextService {
 
 	public Mono<BigInteger> getUsersClientId() {
 		return SecurityContextUtil.getUsersClientId();

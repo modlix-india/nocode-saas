@@ -1,4 +1,4 @@
-package com.fincity.saas.core.functions.security.user;
+package com.fincity.saas.core.functions.securitycontext;
 
 import java.util.List;
 import java.util.Map;
@@ -11,48 +11,43 @@ import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.core.service.security.user.UserContextService;
+import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
+import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
 
-public class GetUsersContextAuthentication extends AbstractReactiveFunction {
+public class GetAuthentication extends AbstractReactiveFunction {
 
-	private static final String FUNCTION_NAME = "GetUsersContextAuthentication";
+	private static final String FUNCTION_NAME = "GetAuthentication";
 
-	private static final String NAME_SPACE = "CoreServices.Security.User.Context";
+	private static final String NAME_SPACE = "CoreServices.SecurityContext";
 
-	private static final String EVENT_DATA = "data";
+	private static final String EVENT_DATA_AUTHENTICATION = "auth";
 
-	private final UserContextService userContextService;
-	private final String objectNameSpace;
-	private final String objectName;
+	private final ContextService userContextService;
 
-	public GetUsersContextAuthentication(UserContextService userContextService, String objectNameSpace,
-	                                     String objectName) {
+	public GetAuthentication(ContextService userContextService) {
 		this.userContextService = userContextService;
-		this.objectNameSpace = objectNameSpace;
-		this.objectName = objectName;
 	}
 
 	@Override
 	public FunctionSignature getSignature() {
 
 		Event event = new Event().setName(Event.OUTPUT)
-				.setParameters(Map.of(EVENT_DATA, Schema.ofRef(objectNameSpace + "." + objectName)));
-
-		Event errorEvent = new Event().setName(Event.ERROR)
-				.setParameters(Map.of(EVENT_DATA, Schema.ofRef(objectNameSpace + "." + objectName)));
+				.setParameters(Map.of(EVENT_DATA_AUTHENTICATION,
+						Schema.ofRef(CoreSchemaRepository.SCHEMA_NAMESPACE_SECURITY_CONTEXT
+								+ "." + CoreSchemaRepository.SCHEMA_NAME_CONTEXT_AUTHENTICATION)));
 
 		return new FunctionSignature().setNamespace(NAME_SPACE).setName(FUNCTION_NAME)
-				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
+				.setEvents(Map.of(event.getName(), event));
 	}
 
 	@Override
 	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
 		return userContextService.getUsersContextAuthentication()
 				.map(contextAuthentication -> new FunctionOutput(List.of(EventResult.outputOf(
-						Map.of(EVENT_DATA,
+						Map.of(EVENT_DATA_AUTHENTICATION,
 								new Gson().toJsonTree(contextAuthentication, ContextAuthentication.class))))));
 	}
 }
