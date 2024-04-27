@@ -43,10 +43,12 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
 	private static final String EAGER_FIELDS = "eagerFields";
 
-	private AppDataService appDataService;
+	private final AppDataService appDataService;
+	private final Gson gson;
 
-	public CreateStorageObject(AppDataService appDataService) {
+	public CreateStorageObject(AppDataService appDataService, Gson gson) {
 		this.appDataService = appDataService;
+		this.gson = gson;
 	}
 
 	public AppDataService getAppDataService() {
@@ -113,7 +115,6 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
 			return Mono.just(new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonObject())))));
 
-		Gson gson = new Gson();
 		Map<String, Object> dataObj = gson.fromJson(dataObject, new TypeToken<Map<String, Object>>() {
 		}.getType());
 

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.fincity.saas.commons.security.dto.App;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
@@ -32,6 +33,16 @@ public interface IFeignSecurityService {
 
 	@GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
 	public Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
+
+	@GetMapping("${security.feign.isBeingManagedById:/api/security/clients/internal/isBeingManagedById}")
+	public Mono<Boolean> isBeingManagedById(@RequestParam BigInteger managingClientId,
+			@RequestParam BigInteger clientId);
+
+	@GetMapping("${security.feign.getClientById:/api/security/clients/internal/getClientById}")
+	public Mono<Client> getClientById(@RequestParam BigInteger clientId);
+
+	@GetMapping("${security.feign.getClientByCode:/api/security/clients/internal/getClientByCode}")
+	public Mono<Client> getClientByCode(@RequestParam String clientCode);
 
 	@GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
 	public Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
