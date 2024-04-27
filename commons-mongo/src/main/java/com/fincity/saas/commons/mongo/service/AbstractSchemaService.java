@@ -47,22 +47,15 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 
 	private Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
 
-	private Gson gson;
+	private final FeignAuthenticationService feignSecurityService;
+	protected final Gson gson;
 
-	@Autowired
-	private FeignAuthenticationService feignSecurityService;
-
-	protected AbstractSchemaService(Class<D> pojoClass) {
+	protected AbstractSchemaService(Class<D> pojoClass, FeignAuthenticationService feignAuthenticationService,
+			Gson gson) {
 		super(pojoClass);
-		AdditionalTypeAdapter at = new AdditionalTypeAdapter();
-		ArraySchemaTypeAdapter ast = new ArraySchemaTypeAdapter();
-		gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-				.registerTypeAdapter(AdditionalType.class, at)
-				.registerTypeAdapter(ArraySchemaType.class, ast)
-				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.create();
-		at.setGson(this.gson);
-		ast.setGson(this.gson);
+
+		this.feignSecurityService = feignAuthenticationService;
+		this.gson = gson;
 	}
 
 	@Override

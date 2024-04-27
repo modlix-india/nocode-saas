@@ -107,15 +107,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	private static final String TEXT_INDEX_NAME = "_textIndex";
 
-	private static final Gson gson = new GsonBuilder().registerTypeAdapter(ObjectId.class, new ObjectIdTypeAdapter())
-			.create();
-
-	@Autowired
-	private MongoClient defaultClient;
-
-	@Autowired
-	private CoreMessageResourceService msgService;
-
 	private Map<String, MongoClient> mongoClients = new HashMap<>();
 
 	@Autowired(required = false)
@@ -128,14 +119,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Value("${redis.connection.eviction.channel:connectionChannel}")
 	private String channel;
 
-	@Autowired
-	private StorageService storageService;
-
-	@Autowired
-	private CoreSchemaService schemaService;
-
-	@Autowired
-	private CacheService cacheService;
+	private final StorageService storageService;
+	private final CoreSchemaService schemaService;
+	private final CacheService cacheService;
+	private final MongoClient defaultClient;
+	private final CoreMessageResourceService msgService;
+	private final Gson gson;
 
 	private static final Map<FilterConditionOperator, String> FILTER_MATCH_OPERATOR = Map.of(
 			FilterConditionOperator.EQUALS, "$eq",
@@ -145,6 +134,17 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			FilterConditionOperator.LESS_THAN_EQUAL, "$lte",
 			FilterConditionOperator.LIKE, "$regex",
 			FilterConditionOperator.STRING_LOOSE_EQUAL, "$regex");
+
+	public MongoAppDataService(StorageService storageService, CoreSchemaService schemaService,
+			CacheService cacheService,
+			CoreMessageResourceService msgService, Gson gson, MongoClient defaultClient) {
+		this.storageService = storageService;
+		this.schemaService = schemaService;
+		this.cacheService = cacheService;
+		this.msgService = msgService;
+		this.gson = gson;
+		this.defaultClient = defaultClient;
+	}
 
 	@PostConstruct
 	private void init() {
@@ -169,7 +169,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				(ca, schema, appSchemaRepo) -> {
 
-					JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
+					JsonObject job = this.gson.toJsonTree(dataObject.getData())
 							.getAsJsonObject();
 
 					Map<String, JsonElement> map = new HashMap<>();

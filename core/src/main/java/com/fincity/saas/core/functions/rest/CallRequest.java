@@ -1,11 +1,9 @@
 package com.fincity.saas.core.functions.rest;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -29,6 +27,8 @@ import com.google.gson.JsonPrimitive;
 import reactor.core.publisher.Mono;
 
 public class CallRequest extends AbstractReactiveFunction {
+
+	private static final String STRING_VALUE = "stringValue";
 
 	private static final String URL = "url";
 
@@ -68,15 +68,15 @@ public class CallRequest extends AbstractReactiveFunction {
 
 	private boolean hasPayload;
 
-	public CallRequest(RestService restService, String name, String methodName, boolean hasPayload) {
+	private final Gson gson;
+
+	public CallRequest(RestService restService, String name, String methodName, boolean hasPayload, Gson gson) {
 
 		this.restService = restService;
-
 		this.name = name;
-
 		this.methodName = methodName;
-
 		this.hasPayload = hasPayload;
+		this.gson = gson;
 	}
 
 	public RestService getRestService() {
@@ -101,15 +101,18 @@ public class CallRequest extends AbstractReactiveFunction {
 				Parameter.ofEntry(CLIENT_CODE, Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive(""))),
 				Parameter.ofEntry(HEADERS,
 						Schema.ofObject(HEADERS).setAdditionalProperties(
-								new AdditionalType().setSchemaValue(Schema.ofString("stringValue"))).setDefaultValue(new JsonObject())),
+								new AdditionalType().setSchemaValue(Schema.ofString(STRING_VALUE)))
+								.setDefaultValue(new JsonObject())),
 
 				Parameter.ofEntry(QUERY_PARAMS,
 						Schema.ofObject(QUERY_PARAMS).setAdditionalProperties(
-								new AdditionalType().setSchemaValue(Schema.ofString("stringValue"))).setDefaultValue(new JsonObject())),
+								new AdditionalType().setSchemaValue(Schema.ofString(STRING_VALUE)))
+								.setDefaultValue(new JsonObject())),
 
 				Parameter.ofEntry(PATH_PARAMS,
 						Schema.ofObject(PATH_PARAMS).setAdditionalProperties(
-								new AdditionalType().setSchemaValue(Schema.ofString("stringValue"))).setDefaultValue(new JsonObject())),
+								new AdditionalType().setSchemaValue(Schema.ofString(STRING_VALUE)))
+								.setDefaultValue(new JsonObject())),
 
 				Parameter.ofEntry(IGNORE_DEFAULT_HEADERS,
 						Schema.ofBoolean(IGNORE_DEFAULT_HEADERS).setDefaultValue(new JsonPrimitive(false))),
@@ -147,35 +150,31 @@ public class CallRequest extends AbstractReactiveFunction {
 				: this.methodName;
 		String connectionName = context.getArguments().get(CONNECTION_NAME).getAsString();
 		int timeout = context.getArguments().get(TIMEOUT).getAsInt();
-		
+
 		JsonObject headers = context.getArguments().get(HEADERS).getAsJsonObject();
 		JsonObject pathParams = context.getArguments().get(PATH_PARAMS).getAsJsonObject();
 		JsonObject queryParams = context.getArguments().get(QUERY_PARAMS).getAsJsonObject();
-		
-		
-		
+
 		boolean ignoreConnectionHeaders = context.getArguments().get(IGNORE_DEFAULT_HEADERS).getAsJsonPrimitive()
 				.getAsBoolean();
 		MultiValueMap<String, String> headerMap = new LinkedMultiValueMap<>();
-		for(var x : headers.entrySet()) {
+		for (var x : headers.entrySet()) {
 			headerMap.add(x.getKey(), x.getValue().getAsString());
 		}
 		Map<String, String> pathParamsMap = new HashMap<>();
-		for(var x : pathParams.entrySet()) {
+		for (var x : pathParams.entrySet()) {
 			pathParamsMap.put(x.getKey(), x.getValue().getAsString());
 		}
 		Map<String, String> queryParamsMap = new HashMap<>();
-		for(var x : queryParams.entrySet()) {
+		for (var x : queryParams.entrySet()) {
 			queryParamsMap.put(x.getKey(), x.getValue().getAsString());
 		}
-		
 
 		RestRequest request = new RestRequest().setHeaders(headerMap.size() > 0 ? headerMap : null)
 				.setIgnoreDefaultHeaders(ignoreConnectionHeaders).setMethod(method).setPathParameters(pathParamsMap)
 				.setQueryParameters(queryParamsMap.size() > 0 ? queryParamsMap : null).setTimeout(timeout)
 				.setPayload(payload).setUrl(url);
 
-		Gson gson = new Gson();
 		return restService.doCall(appCode, clientCode, connectionName, request)
 				.map(obj -> {
 					if (obj.getStatus() >= 400 && obj.getStatus() <= 600)
@@ -188,8 +187,10 @@ public class CallRequest extends AbstractReactiveFunction {
 										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of())))));
 
 					return new FunctionOutput(
-							List.of(EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
-									gson.toJsonTree(obj.getHeaders()), STATUS_CODE, gson.toJsonTree(obj.getStatus())))));
+							List.of(EventResult
+									.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
+											gson.toJsonTree(obj.getHeaders()), STATUS_CODE,
+											gson.toJsonTree(obj.getStatus())))));
 				})
 				.onErrorContinue(Exception.class,
 						(ex, o) -> new FunctionOutput(List.of(

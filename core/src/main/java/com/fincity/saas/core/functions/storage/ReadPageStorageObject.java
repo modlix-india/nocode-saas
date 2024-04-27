@@ -51,14 +51,15 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 	private static final String EAGER_FIELDS = "eagerFields";
 
-	private AppDataService appDataService;
+	private final AppDataService appDataService;
+	private final ObjectMapper mapper;
+	private final Gson gson;
 
-	private ObjectMapper mapper;
-
-	public ReadPageStorageObject(AppDataService appDataService, ObjectMapper mapper) {
+	public ReadPageStorageObject(AppDataService appDataService, ObjectMapper mapper, Gson gson) {
 
 		this.appDataService = appDataService;
 		this.mapper = mapper;
+		this.gson = gson;
 	}
 
 	public AppDataService getAppDataService() {
@@ -139,8 +140,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
 		JsonElement clientCodeJSON = context.getArguments().get(CLIENT_CODE);
 		String clientCode = clientCodeJSON == null || clientCodeJSON.isJsonNull() ? null : clientCodeJSON.getAsString();
-
-		Gson gson = new GsonBuilder().create();
 
 		AbstractCondition absc = null;
 

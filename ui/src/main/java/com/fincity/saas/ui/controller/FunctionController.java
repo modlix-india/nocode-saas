@@ -31,6 +31,14 @@ import reactor.util.function.Tuples;
 @RequestMapping("api/ui/functions")
 public class FunctionController
 		extends AbstractOverridableDataController<UIFunction, UIFunctionDocumentRepository, UIFunctionService> {
+
+	private final Gson gson;
+
+	public FunctionController(Gson gson) {
+
+		this.gson = gson;
+	}
+
 	@GetMapping("/repositoryFind")
 
 	public Mono<ResponseEntity<String>> find(@RequestParam(required = false) String appCode,
@@ -57,7 +65,7 @@ public class FunctionController
 					return fRepo.find(namespace, name);
 				},
 
-				(ca, tup, appFunctionRepo, fun) -> Mono.just((new Gson()).toJson(fun)))
+				(ca, tup, appFunctionRepo, fun) -> Mono.just((this.gson).toJson(fun)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
 				.map(str -> ResponseEntity.ok()
 						.contentType(MediaType.APPLICATION_JSON)

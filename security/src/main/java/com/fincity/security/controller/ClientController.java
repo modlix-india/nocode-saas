@@ -50,6 +50,28 @@ public class ClientController
 				.map(ResponseEntity::ok);
 	}
 
+	@GetMapping("/internal/isBeingManagedById")
+	public Mono<ResponseEntity<Boolean>> isBeingManagedById(@RequestParam ULong managingClientId,
+			@RequestParam ULong clientId) {
+
+		return this.service.isBeingManagedBy(managingClientId, clientId)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/getClientById")
+	public Mono<ResponseEntity<Client>> getClientById(@RequestParam ULong clientId) {
+
+		return this.service.getClientInfoById(clientId)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/getClientByCode")
+	public Mono<ResponseEntity<Client>> getClientByCode(@RequestParam String clientCode) {
+
+		return this.service.getClientBy(clientCode)
+				.map(ResponseEntity::ok);
+	}
+
 	@GetMapping("/internal/isUserBeingManaged")
 	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
 			@RequestParam String clientCode) {
