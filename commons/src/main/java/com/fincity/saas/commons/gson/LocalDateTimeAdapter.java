@@ -1,8 +1,9 @@
 package com.fincity.saas.commons.gson;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
@@ -17,7 +18,7 @@ public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
             out.nullValue();
             return;
         }
-        out.value(value.format(DateTimeFormatter.ISO_DATE_TIME));
+        out.value(value.toEpochSecond(ZoneOffset.UTC));
     }
 
     @Override
@@ -30,6 +31,6 @@ public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
         }
 
         String date = in.nextString();
-        return LocalDateTime.parse(date, DateTimeFormatter.ISO_DATE_TIME);
+        return Instant.ofEpochSecond(0, Long.parseLong(date)).atZone(ZoneOffset.UTC).toLocalDateTime();
     }
 }
