@@ -24,6 +24,7 @@ import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.rest.RestService;
 import com.fincity.saas.core.service.security.ContextService;
+import com.google.gson.Gson;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -35,46 +36,46 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 	private final List<String> filterableNames;
 
 	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
-			ContextService userContextService, IFeignSecurityService securityService) {
+			ContextService userContextService, IFeignSecurityService securityService, Gson gson) {
 
-		this.makeStorageFunctions(appDataService, objectMapper);
-		this.makeRESTFunctions(restService);
-		this.makeSecurityContextFunctions(userContextService);
-		this.makeSecurityFunctions(securityService);
+		this.makeStorageFunctions(appDataService, objectMapper, gson);
+		this.makeRESTFunctions(restService, gson);
+		this.makeSecurityContextFunctions(userContextService, gson);
+		this.makeSecurityFunctions(securityService, gson);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
 	}
 
-	private void makeSecurityFunctions(IFeignSecurityService securityService) {
+	private void makeSecurityFunctions(IFeignSecurityService securityService, Gson gson) {
 
 		ReactiveFunction isBeingManagedByCode = new IsBeingManagedByCode(securityService);
 		ReactiveFunction isBeingManagedById = new IsBeingManagedById(securityService);
-		ReactiveFunction getClient = new GetClient(securityService);
+		ReactiveFunction getClient = new GetClient(securityService, gson);
 
 		repoMap.put(isBeingManagedByCode.getSignature().getFullName(), isBeingManagedByCode);
 		repoMap.put(isBeingManagedById.getSignature().getFullName(), isBeingManagedById);
 		repoMap.put(getClient.getSignature().getFullName(), getClient);
 	}
 
-	private void makeSecurityContextFunctions(ContextService userContextService) {
+	private void makeSecurityContextFunctions(ContextService userContextService, Gson gson) {
 
 		ReactiveFunction hasAuthority = new HasAuthority(userContextService);
-		ReactiveFunction getAuthentication = new GetAuthentication(userContextService);
-		ReactiveFunction getUser = new GetUser(userContextService);
+		ReactiveFunction getAuthentication = new GetAuthentication(userContextService, gson);
+		ReactiveFunction getUser = new GetUser(userContextService, gson);
 
 		repoMap.put(hasAuthority.getSignature().getFullName(), hasAuthority);
 		repoMap.put(getAuthentication.getSignature().getFullName(), getAuthentication);
 		repoMap.put(getUser.getSignature().getFullName(), getUser);
 	}
 
-	private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper) {
+	private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper, Gson gson) {
 
-		ReactiveFunction createStorage = new CreateStorageObject(appDataService);
+		ReactiveFunction createStorage = new CreateStorageObject(appDataService, gson);
 		ReactiveFunction deleteStorage = new DeleteStorageObject(appDataService);
-		ReactiveFunction updateStorage = new UpdateStorageObject(appDataService);
-		ReactiveFunction readStorage = new ReadStorageObject(appDataService);
-		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper);
+		ReactiveFunction updateStorage = new UpdateStorageObject(appDataService, gson);
+		ReactiveFunction readStorage = new ReadStorageObject(appDataService, gson);
+		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper, gson);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
 		repoMap.put(deleteStorage.getSignature().getFullName(), deleteStorage);
@@ -83,14 +84,14 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(readPageStorage.getSignature().getFullName(), readPageStorage);
 	}
 
-	private void makeRESTFunctions(RestService restService) {
+	private void makeRESTFunctions(RestService restService, Gson gson) {
 
-		ReactiveFunction getRequest = new CallRequest(restService, "GetRequest", "GET", false);
-		ReactiveFunction postRequest = new CallRequest(restService, "PostRequest", "POST", true);
-		ReactiveFunction putRequest = new CallRequest(restService, "PutRequest", "PUT", true);
-		ReactiveFunction patchRequest = new CallRequest(restService, "PatchRequest", "PATCH", true);
-		ReactiveFunction deleteRequest = new CallRequest(restService, "DeleteRequest", "DELETE", false);
-		ReactiveFunction callRequest = new CallRequest(restService, "CallRequest", "", true);
+		ReactiveFunction getRequest = new CallRequest(restService, "GetRequest", "GET", false, gson);
+		ReactiveFunction postRequest = new CallRequest(restService, "PostRequest", "POST", true, gson);
+		ReactiveFunction putRequest = new CallRequest(restService, "PutRequest", "PUT", true, gson);
+		ReactiveFunction patchRequest = new CallRequest(restService, "PatchRequest", "PATCH", true, gson);
+		ReactiveFunction deleteRequest = new CallRequest(restService, "DeleteRequest", "DELETE", false, gson);
+		ReactiveFunction callRequest = new CallRequest(restService, "CallRequest", "", true, gson);
 
 		repoMap.put(getRequest.getSignature().getFullName(), getRequest);
 		repoMap.put(postRequest.getSignature().getFullName(), postRequest);
