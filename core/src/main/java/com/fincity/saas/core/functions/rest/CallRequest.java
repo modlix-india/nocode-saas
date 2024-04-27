@@ -68,15 +68,15 @@ public class CallRequest extends AbstractReactiveFunction {
 
 	private boolean hasPayload;
 
-	public CallRequest(RestService restService, String name, String methodName, boolean hasPayload) {
+	private final Gson gson;
+
+	public CallRequest(RestService restService, String name, String methodName, boolean hasPayload, Gson gson) {
 
 		this.restService = restService;
-
 		this.name = name;
-
 		this.methodName = methodName;
-
 		this.hasPayload = hasPayload;
+		this.gson = gson;
 	}
 
 	public RestService getRestService() {
@@ -175,7 +175,6 @@ public class CallRequest extends AbstractReactiveFunction {
 				.setQueryParameters(queryParamsMap.size() > 0 ? queryParamsMap : null).setTimeout(timeout)
 				.setPayload(payload).setUrl(url);
 
-		Gson gson = new Gson();
 		return restService.doCall(appCode, clientCode, connectionName, request)
 				.map(obj -> {
 					if (obj.getStatus() >= 400 && obj.getStatus() <= 600)

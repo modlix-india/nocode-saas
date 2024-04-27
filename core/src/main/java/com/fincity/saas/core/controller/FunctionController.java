@@ -41,12 +41,14 @@ public class FunctionController
 		extends AbstractOverridableDataController<CoreFunction, CoreFunctionDocumentRepository, CoreFunctionService> {
 
 	private CoreFunctionRepository coreFunRepo;
+	private final Gson gson;
 
 	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
-			ContextService userContextService, IFeignSecurityService securityService) {
+			ContextService userContextService, IFeignSecurityService securityService, Gson gson) {
 
 		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-				securityService);
+				securityService, gson);
+		this.gson = gson;
 	}
 
 	@GetMapping("/repositoryFind")
@@ -83,7 +85,7 @@ public class FunctionController
 				},
 
 				(ca, tup, appFunctionRepo, signature) -> Mono
-						.just((new Gson()).toJson(Map.of("definition", signature))))
+						.just((this.gson).toJson(Map.of("definition", signature))))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
 				.map(str -> ResponseEntity.ok()
 						.contentType(MediaType.APPLICATION_JSON)

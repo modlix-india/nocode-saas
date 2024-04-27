@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -42,8 +41,14 @@ import reactor.util.function.Tuples;
 @Service
 public class BasicRestService extends AbstractRestService implements IRestService {
 
-	@Autowired
-	private CoreMessageResourceService msgService;
+	private final CoreMessageResourceService msgService;
+	private final Gson gson;
+
+	public BasicRestService(CoreMessageResourceService msgService, Gson gson) {
+
+		this.msgService = msgService;
+		this.gson = gson;
+	}
 
 	@Override
 	public Mono<RestResponse> call(Connection connection, RestRequest request) {
@@ -80,14 +85,13 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 						var newPayload = getFormDataFromJson(request.getPayload());
 						return doRequestWithFormData(newPayload, requestBuilder, tup.getT3());
 					}
-					
+
 					if (headers.getContentType() != null
 							&& headers.getContentType().isCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED)) {
 						var newPayload = getURLFormDataFromJson(request.getPayload());
 						return doRequestWithFormData(newPayload, requestBuilder, tup.getT3());
 					}
 
-					Gson gson = new Gson();
 					return requestBuilder.bodyValue(gson.fromJson(request.getPayload(), Object.class))
 							.exchangeToMono(clientResponse -> {
 								return handleResponse(clientResponse, tup.getT3());
@@ -239,7 +243,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 	}
 
 	private Object processJsonResponse(String jsonData) {
-		Gson gson = new Gson();
+
 		JsonElement jsonElement = gson.fromJson(jsonData, JsonElement.class);
 		if (jsonElement.isJsonPrimitive()) {
 

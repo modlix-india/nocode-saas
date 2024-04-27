@@ -128,6 +128,9 @@ public class AppDataService {
 	@Lazy
 	private EventCreationService ecService;
 
+	@Autowired
+	private Gson gson;
+
 	private EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
 
 	private static final Logger logger = LoggerFactory.getLogger(AppDataService.class);
@@ -339,7 +342,7 @@ public class AppDataService {
 						return Mono.just(true);
 
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_CREATE, Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(dataObject.getData())));
+							this.gson.toJsonTree(dataObject.getData())));
 				},
 
 				beforeCreate -> dataService.create(conn, storage, dataObject),
@@ -350,7 +353,7 @@ public class AppDataService {
 						return Mono.just(created);
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_CREATE, Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(created)))
+							this.gson.toJsonTree(created)))
 							.map(e -> created);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericCreate"));
 	}
@@ -694,9 +697,9 @@ public class AppDataService {
 					if (noBeforeUpdate)
 						return Mono.just(true);
 
-					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(dataObject.getData()),
+					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, this.gson.toJsonTree(dataObject.getData()),
 							EXISTING_DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_UPDATE, args);
 				},
@@ -709,9 +712,9 @@ public class AppDataService {
 						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(updated,
 								Optional.of(existing)));
 
-					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(updated),
+					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, this.gson.toJsonTree(updated),
 							EXISTING_DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_UPDATE, args)
 							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(updated,
@@ -947,7 +950,7 @@ public class AppDataService {
 						return Mono.just(true);
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_DELETE, args);
 				},
@@ -961,7 +964,7 @@ public class AppDataService {
 								Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted, Optional.of(existing)));
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_DELETE, args)
 							.map(e -> Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted,
@@ -1014,7 +1017,7 @@ public class AppDataService {
 								StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
 
 						ObjectValueSetterExtractor ovs = new ObjectValueSetterExtractor(new JsonObject(), "Data.");
-						Gson gson = new Gson();
+						Gson gson = this.gson;
 
 						return fluxToFile(dataFlux, fileType, dataHeaders, dfw, ovs, gson)
 								.flatMap(e -> flieToResponse(fileType, response, file, fPath, dfw));

@@ -54,24 +54,13 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 	private final CoreSchemaService coreSchemaService;
 	private final CoreFunctionService coreFunctionService;
 
-	private Gson gson;
+	private final Gson gson;
 
 	protected StorageService(CoreMessageResourceService coreMsgService, CoreSchemaService coreSchemaService,
-			CoreFunctionService coreFunctionService) {
+			CoreFunctionService coreFunctionService, Gson gson) {
 		super(Storage.class);
 
-		AdditionalTypeAdapter at = new AdditionalTypeAdapter();
-		ArraySchemaTypeAdapter ast = new ArraySchemaTypeAdapter();
-
-		this.gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-				.registerTypeAdapter(AdditionalType.class, at)
-				.registerTypeAdapter(ArraySchemaType.class, ast)
-				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.create();
-
-		at.setGson(this.gson);
-		ast.setGson(this.gson);
-
+		this.gson = gson;
 		this.coreMsgService = coreMsgService;
 		this.coreSchemaService = coreSchemaService;
 		this.coreFunctionService = coreFunctionService;

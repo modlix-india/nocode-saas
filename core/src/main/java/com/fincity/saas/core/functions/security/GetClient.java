@@ -33,9 +33,11 @@ public class GetClient extends AbstractReactiveFunction {
     private static final String ID_CODE_PARAM = "idOrCode";
 
     private final IFeignSecurityService securityService;
+    private final Gson gson;
 
-    public GetClient(IFeignSecurityService securityService) {
+    public GetClient(IFeignSecurityService securityService, Gson gson) {
         this.securityService = securityService;
+        this.gson = gson;
     }
 
     @Override
@@ -78,7 +80,7 @@ public class GetClient extends AbstractReactiveFunction {
                     : this.securityService.getClientById(BigInteger.valueOf(param.getAsLong()));
 
             return client.map(c -> new FunctionOutput(List.of(EventResult.outputOf(
-                    Map.of(EVENT_DATA_CLIENT, new Gson().toJsonTree(c, Client.class))))));
+                    Map.of(EVENT_DATA_CLIENT, this.gson.toJsonTree(c, Client.class))))));
         });
     }
 }

@@ -24,9 +24,11 @@ public class GetUser extends AbstractReactiveFunction {
 	private static final String EVENT_DATA_USER = "user";
 
 	private final ContextService userContextService;
+	private final Gson gson;
 
-	public GetUser(ContextService userContextService) {
+	public GetUser(ContextService userContextService, Gson gson) {
 		this.userContextService = userContextService;
+		this.gson = gson;
 	}
 
 	@Override
@@ -46,6 +48,6 @@ public class GetUser extends AbstractReactiveFunction {
 		return userContextService.getUsersContextUser()
 				.map(contextUser -> new FunctionOutput(List.of(EventResult.outputOf(
 						Map.of(EVENT_DATA_USER,
-								new Gson().toJsonTree(contextUser, ContextUser.class))))));
+								this.gson.toJsonTree(contextUser, ContextUser.class))))));
 	}
 }

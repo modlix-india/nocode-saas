@@ -26,9 +26,11 @@ public class GetAuthentication extends AbstractReactiveFunction {
 	private static final String EVENT_DATA_AUTHENTICATION = "auth";
 
 	private final ContextService userContextService;
+	private final Gson gson;
 
-	public GetAuthentication(ContextService userContextService) {
+	public GetAuthentication(ContextService userContextService, Gson gson) {
 		this.userContextService = userContextService;
+		this.gson = gson;
 	}
 
 	@Override
@@ -48,6 +50,6 @@ public class GetAuthentication extends AbstractReactiveFunction {
 		return userContextService.getUsersContextAuthentication()
 				.map(contextAuthentication -> new FunctionOutput(List.of(EventResult.outputOf(
 						Map.of(EVENT_DATA_AUTHENTICATION,
-								new Gson().toJsonTree(contextAuthentication, ContextAuthentication.class))))));
+								this.gson.toJsonTree(contextAuthentication, ContextAuthentication.class))))));
 	}
 }

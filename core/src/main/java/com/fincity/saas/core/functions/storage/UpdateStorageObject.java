@@ -49,10 +49,12 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 	private static final String EAGER_FIELDS = "eagerFields";
 
-	private AppDataService appDataService;
+	private final AppDataService appDataService;
+	private final Gson gson;
 
-	public UpdateStorageObject(AppDataService appDataService) {
+	public UpdateStorageObject(AppDataService appDataService, Gson gson) {
 		this.appDataService = appDataService;
+		this.gson = gson;
 	}
 
 	public AppDataService getAppDataService() {
@@ -135,8 +137,6 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 		if (dataObjectId == null || updatableObject == null)
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR, Map.of(Event.ERROR,
 					new JsonPrimitive("Please provide the id for which delete needs to be performed."))))));
-
-		Gson gson = new Gson();
 
 		Map<String, Object> updatableDataObject = gson.fromJson(updatableObject, new TypeToken<Map<String, Object>>() {
 		}.getType());
