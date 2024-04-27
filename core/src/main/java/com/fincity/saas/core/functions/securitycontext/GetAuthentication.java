@@ -14,6 +14,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Mono;
 
@@ -48,8 +49,16 @@ public class GetAuthentication extends AbstractReactiveFunction {
 	@Override
 	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
 		return userContextService.getUsersContextAuthentication()
-				.map(contextAuthentication -> new FunctionOutput(List.of(EventResult.outputOf(
-						Map.of(EVENT_DATA_AUTHENTICATION,
-								this.gson.toJsonTree(contextAuthentication, ContextAuthentication.class))))));
+				.map(contextAuthentication -> {
+
+					JsonObject authJob = this.gson.toJsonTree(contextAuthentication, ContextAuthentication.class)
+							.getAsJsonObject();
+
+					authJob.remove("accessTokenExpiryAt");
+					authJob.remove("accessToken");
+
+					return new FunctionOutput(List.of(EventResult.outputOf(
+							Map.of(EVENT_DATA_AUTHENTICATION, authJob))));
+				});
 	}
 }
