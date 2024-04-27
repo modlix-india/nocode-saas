@@ -43,9 +43,9 @@ public class IsBeingManagedById extends AbstractReactiveFunction {
                 .setParameters(Map.of(EVENT_DATA_RESULT, Schema.ofBoolean(EVENT_DATA_RESULT)));
 
         return new FunctionSignature().setNamespace(NAME_SPACE).setName(FUNCTION_NAME)
-                .setParameters(Map.of(CLIENT_ID, Parameter.of(CLIENT_ID, Schema.ofString(CLIENT_ID)),
+                .setParameters(Map.of(CLIENT_ID, Parameter.of(CLIENT_ID, Schema.ofLong(CLIENT_ID)),
                         MANAGING_CLIENT_ID,
-                        Parameter.of(MANAGING_CLIENT_ID, Schema.ofString(MANAGING_CLIENT_ID))))
+                        Parameter.of(MANAGING_CLIENT_ID, Schema.ofLong(MANAGING_CLIENT_ID))))
                 .setEvents(Map.of(event.getName(), event));
     }
 
