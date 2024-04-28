@@ -3,6 +3,7 @@ package com.fincity.saas.commons.configuration;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,12 +26,21 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.saas.commons.codec.RedisJSONCodec;
 import com.fincity.saas.commons.codec.RedisObjectCodec;
+import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.jackson.CommonsSerializationModule;
 import com.fincity.saas.commons.jackson.SortSerializationModule;
 import com.fincity.saas.commons.jackson.TupleSerializationModule;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -63,6 +73,24 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 		this.objectMapper.registerModule(new SortSerializationModule());
 
 		this.objectCodec = "object".equals(codecType) ? new RedisObjectCodec() : new RedisJSONCodec(this.objectMapper);
+	}
+
+	@Bean
+	public Gson makeGson() {
+		ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaTypeAdapter();
+
+		AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
+
+		Gson gson = new GsonBuilder()
+				.registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+				.registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+				.registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
+				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+				.create();
+
+		arraySchemaTypeAdapter.setGson(gson);
+		additionalTypeAdapter.setGson(gson);
+		return gson;
 	}
 
 	@Override

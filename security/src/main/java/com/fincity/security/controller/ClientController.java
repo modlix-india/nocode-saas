@@ -3,7 +3,6 @@ package com.fincity.security.controller;
 import java.util.List;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +25,7 @@ import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.appregistration.ClientRegistrationService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -36,14 +36,39 @@ import reactor.util.function.Tuples;
 public class ClientController
 		extends AbstractJOOQUpdatableDataController<SecurityClientRecord, ULong, Client, ClientDAO, ClientService> {
 
-	@Autowired
-	private ClientService clientService;
+	private final ClientRegistrationService clientRegistrationService;
+
+	public ClientController(ClientRegistrationService clientRegistrationService) {
+		this.clientRegistrationService = clientRegistrationService;
+	}
 
 	@GetMapping("/internal/isBeingManaged")
 	public Mono<ResponseEntity<Boolean>> isBeingManaged(@RequestParam String managingClientCode,
 			@RequestParam String clientCode) {
 
 		return this.service.isBeingManagedBy(managingClientCode, clientCode)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/isBeingManagedById")
+	public Mono<ResponseEntity<Boolean>> isBeingManagedById(@RequestParam ULong managingClientId,
+			@RequestParam ULong clientId) {
+
+		return this.service.isBeingManagedBy(managingClientId, clientId)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/getClientById")
+	public Mono<ResponseEntity<Client>> getClientById(@RequestParam ULong clientId) {
+
+		return this.service.getClientInfoById(clientId)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/internal/getClientByCode")
+	public Mono<ResponseEntity<Client>> getClientByCode(@RequestParam String clientCode) {
+
+		return this.service.getClientBy(clientCode)
 				.map(ResponseEntity::ok);
 	}
 
@@ -74,19 +99,19 @@ public class ClientController
 
 	@GetMapping("/{clientId}/assignPackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> assignPackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
-		return clientService.assignPackageToClient(clientId, packageId)
+		return this.service.assignPackageToClient(clientId, packageId)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/{clientId}/removePackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> removePackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
-		return clientService.removePackageFromClient(clientId, packageId)
+		return this.service.removePackageFromClient(clientId, packageId)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/availablePackages/{clientId}")
 	public Mono<ResponseEntity<List<Package>>> fetchPackagesForClient(@PathVariable ULong clientId) {
-		return this.clientService.fetchPackages(clientId)
+		return this.service.fetchPackages(clientId)
 				.map(ResponseEntity::ok);
 	}
 
@@ -95,29 +120,29 @@ public class ClientController
 			ServerHttpResponse response,
 			@RequestBody ClientRegistrationRequest registrationRequest) {
 
-		return this.clientService.register(registrationRequest, request, response)
+		return this.clientRegistrationService.register(registrationRequest, request, response)
 				.map(ResponseEntity::ok);
 	}
-	
+
 	@GetMapping("/generateCode")
 	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId) {
 
-		return this.clientService.generateCodeAndTriggerMail(emailId)
-		        .map(ResponseEntity::ok);
+		return this.service.generateCodeAndTriggerMail(emailId)
+				.map(ResponseEntity::ok);
 	}
-	
+
 	@GetMapping("/triggerCodeOnRequest/{accessId}")
 	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId) {
 
-		return this.clientService.tiggerMailOnRequest(accessId)
-		        .map(ResponseEntity::ok);
+		return this.service.tiggerMailOnRequest(accessId)
+				.map(ResponseEntity::ok);
 	}
-	
+
 	@GetMapping("/fetchCodes")
 	public Mono<ResponseEntity<Page<CodeAccess>>> fetchCodes(Pageable pageable,
-	        @RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
+			@RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
 
-		return this.clientService.fetchCodesBasedOnClient(pageable, clientCode, emailId)
-		        .map(ResponseEntity::ok);
+		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId)
+				.map(ResponseEntity::ok);
 	}
 }

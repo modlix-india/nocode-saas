@@ -41,11 +41,13 @@ public class ReadStorageObject extends AbstractReactiveFunction {
 
 	private static final String EAGER_FIELDS = "eagerFields";
 
-	private AppDataService appDataService;
+	private final AppDataService appDataService;
+	private final Gson gson;
 
-	public ReadStorageObject(AppDataService appDataService) {
+	public ReadStorageObject(AppDataService appDataService, Gson gson) {
 
 		this.appDataService = appDataService;
+		this.gson = gson;
 	}
 
 	public AppDataService getAppDataService() {
@@ -117,8 +119,6 @@ public class ReadStorageObject extends AbstractReactiveFunction {
 
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
 					Map.of(Event.ERROR, new JsonPrimitive("Please provide the data object id."))))));
-
-		Gson gson = new GsonBuilder().create();
 
 		return this.appDataService.read(StringUtil.isNullOrBlank(appCode) ? null : appCode,
 				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObjectId, eager, eagerFields)

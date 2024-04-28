@@ -3,9 +3,6 @@ package com.fincity.saas.core.controller;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +18,7 @@ import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunction
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -30,6 +28,7 @@ import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
@@ -41,21 +40,15 @@ import reactor.util.function.Tuples;
 public class FunctionController
 		extends AbstractOverridableDataController<CoreFunction, CoreFunctionDocumentRepository, CoreFunctionService> {
 
-	@Autowired
-	private AppDataService appDataService;
-
-	@Autowired
-	private ObjectMapper objectMapper;
-
-	@Autowired
-	private RestService restService;
-
 	private CoreFunctionRepository coreFunRepo;
+	private final Gson gson;
 
-	@PostConstruct
-	public void init() {
+	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
+			ContextService userContextService, IFeignSecurityService securityService, Gson gson) {
 
-		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService);
+		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
+				securityService, gson);
+		this.gson = gson;
 	}
 
 	@GetMapping("/repositoryFind")
@@ -71,13 +64,14 @@ public class FunctionController
 				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
 						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
 
-				(ca, tup) -> {
+				(ca, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
+
+				(ca, tup, appFunctionRepo) -> {
 
 					ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
 							? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
-									this.coreFunRepo, this.service.getFunctionRepository(tup.getT1(), tup.getT2()))
-							: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo,
-									this.service.getFunctionRepository(tup.getT1(), tup.getT2())));
+									this.coreFunRepo, appFunctionRepo)
+							: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo, appFunctionRepo));
 
 					return fRepo.find(namespace, name)
 							.map(e -> {
@@ -90,7 +84,8 @@ public class FunctionController
 							});
 				},
 
-				(ca, tup, signature) -> Mono.just((new Gson()).toJson(Map.of("definition", signature))))
+				(ca, tup, appFunctionRepo, signature) -> Mono
+						.just((this.gson).toJson(Map.of("definition", signature))))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
 				.map(str -> ResponseEntity.ok()
 						.contentType(MediaType.APPLICATION_JSON)
@@ -108,19 +103,17 @@ public class FunctionController
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
-						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode())))
+						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
 
-		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
-				.flatMapMany(tup ->
+				(context, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
 
-				(includeKIRunRepos
+				(context, tup, appFunctionRepo) -> Mono.just(includeKIRunRepos
 						? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
-								this.coreFunRepo, this.service.getFunctionRepository(tup.getT1(), tup.getT2()))
-						: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo,
-								this.service.getFunctionRepository(tup.getT1(), tup.getT2())))
-						.filter(filter))
-				.collectList()
+								this.coreFunRepo, appFunctionRepo)
+						: new ReactiveHybridRepository<ReactiveFunction>(this.coreFunRepo, appFunctionRepo)),
+
+				(context, tup, appFunctionRepo, fRepo) -> fRepo.filter(filter).collectList())
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
 				.map(ResponseEntity::ok);
 	}
 }

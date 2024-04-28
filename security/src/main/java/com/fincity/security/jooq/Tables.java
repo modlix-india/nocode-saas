@@ -4,12 +4,17 @@
 package com.fincity.security.jooq;
 
 
+import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
-import com.fincity.security.jooq.tables.SecurityAppPackage;
+import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
-import com.fincity.security.jooq.tables.SecurityAppUserRole;
+import com.fincity.security.jooq.tables.SecurityAppRegAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegPackage;
+import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
+import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
@@ -28,6 +33,7 @@ import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityUserAddress;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 
@@ -37,6 +43,11 @@ import com.fincity.security.jooq.tables.SecurityUserToken;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Tables {
+
+    /**
+     * The table <code>security.security_address</code>.
+     */
+    public static final SecurityAddress SECURITY_ADDRESS = SecurityAddress.SECURITY_ADDRESS;
 
     /**
      * The table <code>security.security_app</code>.
@@ -49,9 +60,9 @@ public class Tables {
     public static final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
 
     /**
-     * The table <code>security.security_app_package</code>.
+     * The table <code>security.security_app_dependency</code>.
      */
-    public static final SecurityAppPackage SECURITY_APP_PACKAGE = SecurityAppPackage.SECURITY_APP_PACKAGE;
+    public static final SecurityAppDependency SECURITY_APP_DEPENDENCY = SecurityAppDependency.SECURITY_APP_DEPENDENCY;
 
     /**
      * The table <code>security.security_app_property</code>.
@@ -59,14 +70,34 @@ public class Tables {
     public static final SecurityAppProperty SECURITY_APP_PROPERTY = SecurityAppProperty.SECURITY_APP_PROPERTY;
 
     /**
-     * The table <code>security.security_app_user_role</code>.
+     * The table <code>security.security_app_reg_access</code>.
      */
-    public static final SecurityAppUserRole SECURITY_APP_USER_ROLE = SecurityAppUserRole.SECURITY_APP_USER_ROLE;
+    public static final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
+
+    /**
+     * The table <code>security.security_app_reg_file_access</code>.
+     */
+    public static final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
+
+    /**
+     * The table <code>security.security_app_reg_package</code>.
+     */
+    public static final SecurityAppRegPackage SECURITY_APP_REG_PACKAGE = SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
+
+    /**
+     * The table <code>security.security_app_reg_user_role</code>.
+     */
+    public static final SecurityAppRegUserRole SECURITY_APP_REG_USER_ROLE = SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE;
 
     /**
      * The table <code>security.security_client</code>.
      */
     public static final SecurityClient SECURITY_CLIENT = SecurityClient.SECURITY_CLIENT;
+
+    /**
+     * The table <code>security.security_client_address</code>.
+     */
+    public static final SecurityClientAddress SECURITY_CLIENT_ADDRESS = SecurityClientAddress.SECURITY_CLIENT_ADDRESS;
 
     /**
      * The table <code>security.security_client_manage</code>.
@@ -157,6 +188,11 @@ public class Tables {
      * The table <code>security.security_user</code>.
      */
     public static final SecurityUser SECURITY_USER = SecurityUser.SECURITY_USER;
+
+    /**
+     * The table <code>security.security_user_address</code>.
+     */
+    public static final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
 
     /**
      * The table <code>security.security_user_role_permission</code>.

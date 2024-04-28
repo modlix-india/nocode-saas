@@ -39,7 +39,10 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/files/static/file/**");
+		return this.springSecurityFilterChain(http, authService, this.objectMapper,
+
+				"/api/files/static/file/**",
+				"/api/files/internal/accesspath");
 	}
 
 	@Bean
@@ -50,7 +53,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 				String key = ctxView.get(LogUtil.DEBUG_KEY);
 
 				request.headers()
-				        .put(LogUtil.DEBUG_KEY, List.of(key));
+						.put(LogUtil.DEBUG_KEY, List.of(key));
 			}
 
 			return Mono.just(request);

@@ -4,12 +4,17 @@
 package com.fincity.security.jooq;
 
 
+import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
-import com.fincity.security.jooq.tables.SecurityAppPackage;
+import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
-import com.fincity.security.jooq.tables.SecurityAppUserRole;
+import com.fincity.security.jooq.tables.SecurityAppRegAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegPackage;
+import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
+import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
@@ -28,6 +33,7 @@ import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityUserAddress;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 
@@ -53,6 +59,11 @@ public class Security extends SchemaImpl {
     public static final Security SECURITY = new Security();
 
     /**
+     * The table <code>security.security_address</code>.
+     */
+    public final SecurityAddress SECURITY_ADDRESS = SecurityAddress.SECURITY_ADDRESS;
+
+    /**
      * The table <code>security.security_app</code>.
      */
     public final SecurityApp SECURITY_APP = SecurityApp.SECURITY_APP;
@@ -63,9 +74,9 @@ public class Security extends SchemaImpl {
     public final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
 
     /**
-     * The table <code>security.security_app_package</code>.
+     * The table <code>security.security_app_dependency</code>.
      */
-    public final SecurityAppPackage SECURITY_APP_PACKAGE = SecurityAppPackage.SECURITY_APP_PACKAGE;
+    public final SecurityAppDependency SECURITY_APP_DEPENDENCY = SecurityAppDependency.SECURITY_APP_DEPENDENCY;
 
     /**
      * The table <code>security.security_app_property</code>.
@@ -73,14 +84,34 @@ public class Security extends SchemaImpl {
     public final SecurityAppProperty SECURITY_APP_PROPERTY = SecurityAppProperty.SECURITY_APP_PROPERTY;
 
     /**
-     * The table <code>security.security_app_user_role</code>.
+     * The table <code>security.security_app_reg_access</code>.
      */
-    public final SecurityAppUserRole SECURITY_APP_USER_ROLE = SecurityAppUserRole.SECURITY_APP_USER_ROLE;
+    public final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
+
+    /**
+     * The table <code>security.security_app_reg_file_access</code>.
+     */
+    public final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
+
+    /**
+     * The table <code>security.security_app_reg_package</code>.
+     */
+    public final SecurityAppRegPackage SECURITY_APP_REG_PACKAGE = SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
+
+    /**
+     * The table <code>security.security_app_reg_user_role</code>.
+     */
+    public final SecurityAppRegUserRole SECURITY_APP_REG_USER_ROLE = SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE;
 
     /**
      * The table <code>security.security_client</code>.
      */
     public final SecurityClient SECURITY_CLIENT = SecurityClient.SECURITY_CLIENT;
+
+    /**
+     * The table <code>security.security_client_address</code>.
+     */
+    public final SecurityClientAddress SECURITY_CLIENT_ADDRESS = SecurityClientAddress.SECURITY_CLIENT_ADDRESS;
 
     /**
      * The table <code>security.security_client_manage</code>.
@@ -173,6 +204,11 @@ public class Security extends SchemaImpl {
     public final SecurityUser SECURITY_USER = SecurityUser.SECURITY_USER;
 
     /**
+     * The table <code>security.security_user_address</code>.
+     */
+    public final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
+
+    /**
      * The table <code>security.security_user_role_permission</code>.
      */
     public final SecurityUserRolePermission SECURITY_USER_ROLE_PERMISSION = SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
@@ -198,12 +234,17 @@ public class Security extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            SecurityAddress.SECURITY_ADDRESS,
             SecurityApp.SECURITY_APP,
             SecurityAppAccess.SECURITY_APP_ACCESS,
-            SecurityAppPackage.SECURITY_APP_PACKAGE,
+            SecurityAppDependency.SECURITY_APP_DEPENDENCY,
             SecurityAppProperty.SECURITY_APP_PROPERTY,
-            SecurityAppUserRole.SECURITY_APP_USER_ROLE,
+            SecurityAppRegAccess.SECURITY_APP_REG_ACCESS,
+            SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS,
+            SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE,
+            SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE,
             SecurityClient.SECURITY_CLIENT,
+            SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientManage.SECURITY_CLIENT_MANAGE,
             SecurityClientPackage.SECURITY_CLIENT_PACKAGE,
             SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY,
@@ -222,6 +263,7 @@ public class Security extends SchemaImpl {
             SecuritySslChallenge.SECURITY_SSL_CHALLENGE,
             SecuritySslRequest.SECURITY_SSL_REQUEST,
             SecurityUser.SECURITY_USER,
+            SecurityUserAddress.SECURITY_USER_ADDRESS,
             SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION,
             SecurityUserToken.SECURITY_USER_TOKEN
         );

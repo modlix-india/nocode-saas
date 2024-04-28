@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -31,7 +30,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.RoleDAO;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
-import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityRoleRecord;
 import com.fincity.security.model.TransportPOJO.AppTransportRole;

@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.security.dto;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 
 import lombok.Data;
@@ -7,7 +8,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class App {
+public class App implements Serializable {
 
 	private BigInteger id;
 	private BigInteger clientId;
