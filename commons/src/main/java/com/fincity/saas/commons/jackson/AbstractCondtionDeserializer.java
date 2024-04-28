@@ -32,7 +32,13 @@ public class AbstractCondtionDeserializer extends StdDeserializer<AbstractCondit
 
 		TreeNode operatorNode = node.get("operator");
 		if (StringUtil.safeIsBlank(operatorNode) || !(operatorNode instanceof TextNode)) {
-			throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid/No condition operator.");
+			TreeNode fieldNode = node.get("field");
+			if (StringUtil.safeIsBlank(fieldNode) || !(fieldNode instanceof TextNode)) {
+				throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid condition");
+			} else {
+				return p.getCodec()
+						.treeToValue(node, FilterCondition.class);
+			}
 		}
 
 		String operator = ((TextNode) operatorNode).asText();
