@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +36,7 @@ import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.repository.StorageRepository;
+import com.fincity.saas.core.service.connection.appdata.IAppDataService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -50,31 +50,20 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 	public static final String CACHE_NAME_STORAGE_SCHEMA = "storageSchema";
 
-	@Autowired
-	private CoreMessageResourceService coreMsgService;
+	private final CoreMessageResourceService coreMsgService;
+	private final CoreSchemaService coreSchemaService;
+	private final CoreFunctionService coreFunctionService;
 
-	@Autowired
-	private CoreSchemaService coreSchemaService;
+	private final Gson gson;
 
-	@Autowired
-	private CoreFunctionService coreFunctionService;
-
-	private Gson gson;
-
-	protected StorageService() {
+	protected StorageService(CoreMessageResourceService coreMsgService, CoreSchemaService coreSchemaService,
+			CoreFunctionService coreFunctionService, Gson gson) {
 		super(Storage.class);
 
-		AdditionalTypeAdapter at = new AdditionalTypeAdapter();
-		ArraySchemaTypeAdapter ast = new ArraySchemaTypeAdapter();
-
-		this.gson = new GsonBuilder().registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-				.registerTypeAdapter(AdditionalType.class, at)
-				.registerTypeAdapter(ArraySchemaType.class, ast)
-				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.create();
-
-		at.setGson(this.gson);
-		ast.setGson(this.gson);
+		this.gson = gson;
+		this.coreMsgService = coreMsgService;
+		this.coreSchemaService = coreSchemaService;
+		this.coreFunctionService = coreFunctionService;
 	}
 
 	@Override
@@ -82,9 +71,11 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 		entity.setUniqueName(UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(), entity.getName()));
 
+		Mono<Storage> creationMono;
+
 		if (entity.getBaseClientCode() != null) {
 
-			return FlatMapUtil.flatMapMono(
+			creationMono = FlatMapUtil.flatMapMono(
 
 					SecurityContextUtil::getUsersContextAuthentication,
 
@@ -111,9 +102,11 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 			)
 					.contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.create"));
-		}
+		} else
+			creationMono = this.localCreate(entity);
 
-		return this.localCreate(entity);
+		return creationMono.flatMap(e -> this.cacheService
+				.evictAll(e.getUniqueName() + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION).map(x -> e));
 	}
 
 	private Mono<Storage> localCreate(Storage entity) {
@@ -239,7 +232,11 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
 				(storage, existing, beforeExecuted, created, afterExecuted) -> this.cacheService
 						.evict(CACHE_NAME_STORAGE_SCHEMA, created.getId())
-						.map(e -> created).map(Storage.class::cast))
+						.flatMap(x -> this.cacheService
+								.evictAll(created.getUniqueName() + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION))
+						.map(e -> created).map(Storage.class::cast)
+
+		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.update"));
 	}
 
@@ -319,7 +316,9 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 							.setTriggers(entity.getTriggers())
 							.setRelations(entity.getRelations())
 							.setFieldDefinitionMap(entity.getFieldDefinitionMap())
-							.setOnlyThruKIRun(entity.getOnlyThruKIRun());
+							.setOnlyThruKIRun(entity.getOnlyThruKIRun())
+							.setIndexes(entity.getIndexes())
+							.setTextIndexFields(entity.getTextIndexFields());
 
 					existing.setVersion(existing.getVersion() + 1);
 

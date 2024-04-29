@@ -10,8 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 import javax.annotation.PostConstruct;
@@ -49,12 +49,14 @@ import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
+import com.fincity.saas.core.document.Storage.StorageIndex;
 import com.fincity.saas.core.gson.ObjectIdTypeAdapter;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
@@ -68,6 +70,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.result.InsertOneResult;
@@ -75,6 +79,7 @@ import com.mongodb.reactivestreams.client.FindPublisher;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
+import com.mongodb.reactivestreams.client.MongoDatabase;
 
 import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -100,14 +105,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	private static final String OPERATION = "operation";
 
-	private static final Gson gson = new GsonBuilder().registerTypeAdapter(ObjectId.class, new ObjectIdTypeAdapter())
-			.create();
-
-	@Autowired
-	private MongoClient defaultClient;
-
-	@Autowired
-	private CoreMessageResourceService msgService;
+	private static final String TEXT_INDEX_NAME = "_textIndex";
 
 	private Map<String, MongoClient> mongoClients = new HashMap<>();
 
@@ -121,11 +119,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Value("${redis.connection.eviction.channel:connectionChannel}")
 	private String channel;
 
-	@Autowired
-	private StorageService storageService;
-
-	@Autowired
-	private CoreSchemaService schemaService;
+	private final StorageService storageService;
+	private final CoreSchemaService schemaService;
+	private final CacheService cacheService;
+	private final MongoClient defaultClient;
+	private final CoreMessageResourceService msgService;
+	private final Gson gson;
 
 	private static final Map<FilterConditionOperator, String> FILTER_MATCH_OPERATOR = Map.of(
 			FilterConditionOperator.EQUALS, "$eq",
@@ -135,6 +134,17 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			FilterConditionOperator.LESS_THAN_EQUAL, "$lte",
 			FilterConditionOperator.LIKE, "$regex",
 			FilterConditionOperator.STRING_LOOSE_EQUAL, "$regex");
+
+	public MongoAppDataService(StorageService storageService, CoreSchemaService schemaService,
+			CacheService cacheService,
+			CoreMessageResourceService msgService, Gson gson, MongoClient defaultClient) {
+		this.storageService = storageService;
+		this.schemaService = schemaService;
+		this.cacheService = cacheService;
+		this.msgService = msgService;
+		this.gson = gson;
+		this.defaultClient = defaultClient;
+	}
 
 	@PostConstruct
 	private void init() {
@@ -159,7 +169,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				(ca, schema, appSchemaRepo) -> {
 
-					JsonObject job = (new Gson()).toJsonTree(dataObject.getData())
+					JsonObject job = this.gson.toJsonTree(dataObject.getData())
 							.getAsJsonObject();
 
 					Map<String, JsonElement> map = new HashMap<>();
@@ -188,17 +198,20 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							});
 				},
 
-				(ca, schema, appSchemaRepo, je) -> Mono.from(this
+				(ca, schema, appSchemaRepo, je) -> this
 						.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-						.insertOne(BJsonUtil.from(
-								storage.getRelations() != null ? storage.getRelations().keySet() : Set.of(), je))),
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+								storage.getIndexes(), storage.getTextIndexFields())
+						.flatMap(collection -> Mono.from(collection.insertOne(BJsonUtil.from(
+								storage.getRelations() != null ? storage.getRelations().keySet() : Set.of(), je)))),
 
 				(ca, schema, appSchemaRepo, je,
-						result) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-								.find(Filters.eq(ID, result.getInsertedId()))
-								.first()),
+						result) -> this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+								storage.getIndexes(), storage.getTextIndexFields())
+								.<Document>flatMap(collection -> Mono
+										.from(collection.find(Filters.eq(ID, result.getInsertedId()))
+												.first())),
 
 				(ca, schema, appSchemaRepo, je, result, doc) -> {
 
@@ -274,12 +287,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 					return FlatMapUtil.flatMapMono(
 
-							() -> Mono
-									.from(this
-											.getCollection(conn, storage.getAppCode(), clientCodeOrURLClientCode,
-													storage.getUniqueName())
-											.find(Filters.eq(ID, objectId))
-											.first())
+							() -> this
+									.getCollection(conn, storage.getAppCode(), clientCodeOrURLClientCode,
+											storage.getUniqueName(), storage.getIndexes(), storage.getTextIndexFields())
+									.flatMap(collection -> Mono.from(
+											collection.find(Filters.eq(ID, objectId))
+													.first()))
 									.map(orgDoc -> {
 										orgDoc.remove(ID);
 										return orgDoc;
@@ -320,17 +333,22 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				},
 
 				(ca, schema, appSchemaRepo, overridableObject,
-						je) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-								.replaceOne(Filters.eq(ID, objectId),
-										BJsonUtil.from(storage.getRelations() != null ? storage.getRelations().keySet()
-												: Set.of(), je))),
+						je) -> this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+								storage.getIndexes(), storage.getTextIndexFields())
+								.flatMap(collection -> Mono.from(collection
+										.replaceOne(Filters.eq(ID, objectId),
+												BJsonUtil.from(
+														storage.getRelations() != null ? storage.getRelations().keySet()
+																: Set.of(),
+														je)))),
 
 				(ca, schema, appSchemaRepo, overridableObject, je,
-						result) -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-								.find(Filters.eq(ID, objectId))
-								.first()),
+						result) -> this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+								storage.getIndexes(), storage.getTextIndexFields())
+								.flatMap(collection -> Mono.from(collection.find(Filters.eq(ID, objectId))
+										.first())),
 
 				(ca, scheme, appSchemaRepo, overridableObject, je, result, doc) -> {
 
@@ -345,6 +363,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				(ca, scheme, appSchemaRepo, overridableObject, je, result, doc, versionResult) -> {
 					doc.append(ID, key);
+					updateDocWithIds(storage, doc);
 					return Mono.just((Map<String, Object>) doc);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
@@ -383,10 +402,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-						.find(Filters.eq(ID, objectId))
-						.first()),
+				ca -> this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+						storage.getIndexes(), storage.getTextIndexFields())
+						.flatMap(collection -> Mono.from(collection.find(Filters.eq(ID, objectId)).first())),
 
 				(ca, doc) -> {
 					doc.remove(ID);
@@ -472,10 +491,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-						.findOneAndDelete(Filters.eq(ID, objectId)))
-						.map(e -> true))
+				ca -> this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+						storage.getIndexes(), storage.getTextIndexFields())
+						.flatMap(collection -> Mono.from(collection
+								.findOneAndDelete(Filters.eq(ID, objectId)))
+								.map(e -> true))
+
+		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.delete"))
 				.switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 						AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id));
@@ -492,10 +515,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				.flatMapMany(ca -> this.filter(storage, condition)
 						.flatMapMany(bsonCondition -> {
 
-							Flux<Document> findFlux = applyQueryOnElements(this.getCollection(conn,
+							Flux<Document> findFlux = this.getCollection(conn,
 									storage.getAppCode(), storage.getIsAppLevel()
 											.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
-									storage.getUniqueName()), query, bsonCondition, page);
+									storage.getUniqueName(), storage.getIndexes(), storage.getTextIndexFields())
+									.flatMapMany(
+											collection -> applyQueryOnElements(collection, query, bsonCondition, page));
 
 							return findFlux.map(doc -> {
 								String id = doc.getObjectId(ID)
@@ -520,10 +545,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-						.countDocuments(Filters.eq(ID, objectId)))
-						.map(e -> e > 0))
+				ca -> this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+						storage.getIndexes(), storage.getTextIndexFields())
+						.flatMap(collection -> Mono.from(collection.countDocuments(Filters.eq(ID, objectId))))
+						.map(e -> e > 0)
+
+		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.checkifExists"));
 	}
 
@@ -542,10 +570,11 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				(ca, bsonCondition) -> {
 
-					Flux<Document> findFlux = applyQueryOnElements(this.getCollection(conn, storage.getAppCode(),
+					Flux<Document> findFlux = this.getCollection(conn, storage.getAppCode(),
 							storage.getIsAppLevel()
 									.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(),
-							storage.getUniqueName()), query, bsonCondition, page);
+							storage.getUniqueName(), storage.getIndexes(), storage.getTextIndexFields())
+							.flatMapMany(collection -> applyQueryOnElements(collection, query, bsonCondition, page));
 
 					return findFlux.map(doc -> {
 						String id = doc.getObjectId(ID)
@@ -563,9 +592,11 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				(ca, bsonCondition, list) -> {
 
 					if (count.booleanValue())
-						return Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-								.countDocuments(bsonCondition));
+						return this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+								storage.getIndexes(), storage.getTextIndexFields())
+								.flatMap(collection -> Mono.from(collection
+										.countDocuments(bsonCondition)));
 
 					return Mono.just(page.getOffset() + list.size());
 				},
@@ -645,9 +676,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.from(this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
-						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName())
-						.drop()).then(Mono.just(true)),
+				ca -> this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+						.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+						storage.getIndexes(), storage.getTextIndexFields())
+						.flatMap(collection -> Mono.from(
+								collection.drop()))
+						.map(e -> true),
 
 				(ca, result) -> {
 					if (BooleanUtil.safeValueOf(storage.getIsVersioned())
@@ -751,7 +785,19 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	private Mono<Bson> filterConditionFilter(Storage storage, FilterCondition fc) { // NOSONAR
 		// in order to cover all operators this kind of check is essential
 
-		if (fc == null || fc.getField() == null)
+		if (fc == null)
+			return Mono.empty();
+
+		if (fc.getOperator() == FilterConditionOperator.TEXT_SEARCH) {
+
+			if (fc.getValue() == null)
+				return Mono.empty();
+
+			Document doc = new Document(Map.of("$text", Map.of("$search", fc.getValue().toString())));
+			return Mono.just(doc);
+		}
+
+		if (fc.getField() == null)
 			return Mono.empty();
 
 		if (fc.getOperator() == IS_FALSE || fc.getOperator() == IS_TRUE)
@@ -917,8 +963,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		this.mongoClients.remove(message);
 	}
 
-	private MongoCollection<Document> getCollection(Connection conn, String appCode, String clientCode,
-			String uniqueName) {
+	private Mono<MongoCollection<Document>> getCollection(Connection conn, String appCode, String clientCode,
+			String uniqueName, Map<String, StorageIndex> indexes, List<String> textIndexFields) {
 		MongoClient client = conn == null ? defaultClient
 				: mongoClients.computeIfAbsent(getConnectionString(conn), key -> this.getMongoClient(conn));
 
@@ -926,8 +972,85 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 			throw msgService.nonReactiveMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 					CoreMessageResourceService.CONNECTION_DETAILS_MISSING, "url");
 
-		return client.getDatabase(clientCode + "_" + appCode)
-				.getCollection(uniqueName);
+		final MongoDatabase database = client.getDatabase(clientCode + "_" + appCode);
+
+		final MongoCollection<Document> collection = database.getCollection(uniqueName);
+
+		return cacheService
+				.cacheValueOrGet(uniqueName + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION,
+						() -> this.manageIndexes(collection, indexes, textIndexFields), appCode, clientCode)
+				.map(e -> collection);
+	}
+
+	private Mono<Boolean> manageIndexes(MongoCollection<Document> collection, Map<String, StorageIndex> indexes,
+			List<String> textIndexFields) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+				() -> this.dropRemovedIndexes(collection, indexes, textIndexFields),
+
+				x -> {
+
+					if (indexes == null || indexes.isEmpty())
+						return Mono.empty();
+
+					return Flux.fromIterable(indexes.entrySet())
+							.flatMap(e -> {
+								StorageIndex ins = e.getValue();
+
+								if (ins.getFields().isEmpty())
+									return Mono.just(true);
+
+								var bdocs = ins.getFields().stream()
+										.map(si -> si.getDirection() == Direction.ASC
+												? Indexes.ascending(si.getFieldName())
+												: Indexes.descending(si.getFieldName()))
+										.toList();
+
+								var ind = bdocs.size() == 1 ? bdocs.get(0) : Indexes.compoundIndex(bdocs);
+
+								IndexOptions options = new IndexOptions().name(e.getKey()).unique(ins.isUnique());
+								return Mono.from(collection.createIndex(ind, options)).map(y -> true);
+							}).collectList().map(e -> true);
+				},
+
+				(x, ins) -> {
+					if (textIndexFields == null || textIndexFields.isEmpty())
+						return Mono.empty();
+
+					Document textIndexDoc = new Document();
+					for (String fieldName : textIndexFields)
+						textIndexDoc.put(fieldName, "text");
+					return Mono.from(collection.createIndex(textIndexDoc, new IndexOptions().name(TEXT_INDEX_NAME)))
+							.map(e -> true);
+				}
+
+		)
+				.defaultIfEmpty(true)
+				.contextWrite(
+						Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.getCollection (Cache Supplier)"));
+
+	}
+
+	private Mono<Boolean> dropRemovedIndexes(MongoCollection<Document> collection, Map<String, StorageIndex> indexes,
+			List<String> textIndexFields) {
+
+		return Flux.from(collection.listIndexes())
+				.filter(e -> {
+
+					String indexName = e.getString("name");
+					if (indexName.equals("_id_"))
+						return false;
+
+					if (indexName.equals(TEXT_INDEX_NAME))
+						return textIndexFields == null || textIndexFields.isEmpty();
+
+					if (indexes == null || indexes.isEmpty())
+						return true;
+
+					return !indexes.containsKey(indexName);
+				})
+				.flatMap(e -> Mono.from(collection.dropIndex(e.getString("name"))))
+				.then(Mono.just(true));
 	}
 
 	private MongoCollection<Document> getVersionCollection(Connection conn, String appCode, String clientCode,

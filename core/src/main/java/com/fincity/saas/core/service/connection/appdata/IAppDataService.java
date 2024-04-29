@@ -14,6 +14,8 @@ import reactor.core.publisher.Mono;
 
 public interface IAppDataService {
 
+	public static final String CACHE_SUFFIX_FOR_INDEX_CREATION = "_index_creation";
+
 	public Mono<Map<String, Object>> create(Connection conn, Storage storage, DataObject dataObject);
 
 	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override);

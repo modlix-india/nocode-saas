@@ -352,7 +352,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 					return Flux.from(query)
 							.map(e -> e.into(AppProperty.class)).collectList()
 							.<Map<ULong, Map<String, AppProperty>>>map(
-									lst -> this.convertAttributesToMap(app.getClientId(), clientIds, lst));
+									lst -> this.convertAttributesToMap(app.getClientId(), lst));
 				}
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getProperties"));
@@ -373,7 +373,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.map(e -> e == 1);
 	}
 
-	public Map<ULong, Map<String, AppProperty>> convertAttributesToMap(ULong appClientId, List<ULong> clientIds,
+	public Map<ULong, Map<String, AppProperty>> convertAttributesToMap(ULong appClientId,
 			List<AppProperty> lst) {
 
 		Map<String, AppProperty> appDefaultProps = new HashMap<>();
@@ -402,7 +402,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 		Map<String, AppProperty> defaultProps = appClientProps.get(appClientId);
 		appClientProps.remove(appClientId);
 
-		if (appClientProps.isEmpty()) {
+		if (appClientProps.isEmpty() && defaultProps != null && !defaultProps.isEmpty()) {
 			appClientProps.put(appClientId, defaultProps);
 		}
 

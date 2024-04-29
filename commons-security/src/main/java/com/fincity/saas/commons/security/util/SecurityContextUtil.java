@@ -16,6 +16,7 @@ import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenValueExtractor;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
@@ -92,6 +93,16 @@ public class SecurityContextUtil {
 		@Override
 		public String getPrefix() {
 			return "Authorities.";
+		}
+
+		@Override
+		public JsonElement getStore() {
+
+			JsonArray arr = new JsonArray();
+			authorities.stream()
+					.map(GrantedAuthority::getAuthority)
+					.forEach(arr::add);
+			return arr;
 		}
 	}
 }

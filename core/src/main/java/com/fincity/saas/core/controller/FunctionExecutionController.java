@@ -1,12 +1,12 @@
 package com.fincity.saas.core.controller;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,17 +19,25 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -47,11 +55,18 @@ public class FunctionExecutionController {
 	private static final String PATH_VARIABLE_NAMESPACE = "namespace";
 	private static final String PATH_VARIABLE_NAME = "name";
 
-	@Autowired
 	private CoreFunctionService functionService;
-
-	@Autowired
 	private CoreMessageResourceService msgService;
+
+	private final Gson gson;
+
+	public FunctionExecutionController(CoreFunctionService functionService, CoreMessageResourceService msgService,
+			Gson gson) {
+
+		this.functionService = functionService;
+		this.msgService = msgService;
+		this.gson = gson;
+	}
 
 	@GetMapping(PATH)
 	public Mono<ResponseEntity<String>> executeWith(@RequestHeader String appCode, @RequestHeader String clientCode,
@@ -76,7 +91,7 @@ public class FunctionExecutionController {
 			@RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
-				: new Gson().fromJson(jsonString, JsonObject.class);
+				: this.gson.fromJson(jsonString, JsonObject.class);
 
 		return this.execute(namespace, name, appCode, clientCode, job.entrySet()
 				.stream()
@@ -88,7 +103,7 @@ public class FunctionExecutionController {
 			@PathVariable(PATH_VARIABLE_NAME) String fullName, @RequestBody String jsonString) {
 
 		JsonObject job = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
-				: new Gson().fromJson(jsonString, JsonObject.class);
+				: this.gson.fromJson(jsonString, JsonObject.class);
 
 		Tuple2<String, String> tup = this.splitName(fullName);
 
@@ -138,7 +153,7 @@ public class FunctionExecutionController {
 				break;
 		}
 
-		return Mono.just((new Gson()).toJson(list))
+		return Mono.just((this.gson).toJson(list))
 				.map(objString -> ResponseEntity.ok()
 						.contentType(MediaType.APPLICATION_JSON)
 						.body(objString));
