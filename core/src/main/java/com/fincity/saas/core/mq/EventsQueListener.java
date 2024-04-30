@@ -8,7 +8,6 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
@@ -32,16 +31,18 @@ public class EventsQueListener {
 
 	private static final Logger logger = org.slf4j.LoggerFactory.getLogger(EventsQueListener.class);
 
-	@Autowired
-	private EventActionService eventActionService;
-
-	@Autowired
-	private EventCallFunctionService functionService;
-
-	@Autowired
-	private EventEmailService emailService;
+	private final EventActionService eventActionService;
+	private final EventCallFunctionService functionService;
+	private final EventEmailService emailService;
 
 	private Map<EventActionTaskType, IEventActionService> actionServices = new EnumMap<>(EventActionTaskType.class);
+
+	public EventsQueListener(EventActionService eventActionService, EventCallFunctionService functionService,
+			EventEmailService emailService) {
+		this.eventActionService = eventActionService;
+		this.functionService = functionService;
+		this.emailService = emailService;
+	}
 
 	@PostConstruct
 	protected void init() {
@@ -51,14 +52,17 @@ public class EventsQueListener {
 	}
 
 	@RabbitListener(queues = "#{'${events.mq.queues:events1,events2,events3}'.split(',')}", containerFactory = "directMesageListener", messageConverter = "jsonMessageConverter")
-	public Mono<Void> receive(@Payload EventQueObject message, Channel channel,
+	public Mono<Void> receive(@Payload EventQueObject qob, Channel channel,
 			@Header(AmqpHeaders.DELIVERY_TAG) long tag) {
 
 		Mono<Boolean> receivedMono = FlatMapUtil.flatMapMono(
 
-				() -> eventActionService.read(message.getEventName(), message.getAppCode(), message.getClientCode()),
+				() -> Mono.just(qob),
 
-				eventActionObject -> {
+				message -> eventActionService.read(message.getEventName(), message.getAppCode(),
+						message.getClientCode()),
+
+				(message, eventActionObject) -> {
 					var eventAction = eventActionObject.getObject();
 
 					if (eventAction.getTasks() == null || eventAction.getTasks()
@@ -79,9 +83,10 @@ public class EventsQueListener {
 
 		);
 
-		if (message.getXDebug() != null) {
-			receivedMono = receivedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, message.getXDebug()));
+		if (qob.getXDebug() != null) {
+			receivedMono = receivedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, qob.getXDebug()));
 		}
+
 		return receivedMono.contextWrite(Context.of(LogUtil.METHOD_NAME, "EventsQueListener.receive"))
 				.then();
 

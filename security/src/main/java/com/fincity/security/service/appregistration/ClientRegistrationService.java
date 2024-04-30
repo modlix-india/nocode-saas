@@ -330,6 +330,13 @@ public class ClientRegistrationService {
     public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
             ServerHttpRequest request, ServerHttpResponse response) {
 
+        String host = request.getHeaders().getFirst("X-Forwarded-Host");
+        String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
+        String port = request.getHeaders().getFirst("X-Forwarded-Port");
+
+        String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
+                : "http://" + host + ":" + port;
+
         Mono<ClientRegistrationResponse> mono = FlatMapUtil.flatMapMono(
 
                 () -> this.preRegisterCheck(registrationRequest),
@@ -380,11 +387,12 @@ public class ClientRegistrationService {
                         .createEvent(new EventQueObject().setAppCode(tup.getT2().getUrlAppCode())
                                 .setClientCode(tup.getT2().getLoggedInFromClientCode())
                                 .setEventName(EventNames.CLIENT_REGISTERED)
-                                .setData(Map.of("client", client, "subDomain", tup.getT1())))
+                                .setData(Map.of("client", client, "subDomain", tup.getT1(), "urlPrefix", urlPrefix)))
                         .flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(tup.getT2().getUrlAppCode())
                                 .setClientCode(tup.getT2().getLoggedInFromClientCode())
                                 .setEventName(EventNames.USER_REGISTERED)
                                 .setData(Map.of("client", client, "subDomain", tup.getT1(), "user", userTuple.getT1(),
+                                        "urlPrefix", urlPrefix,
                                         "token", token,
                                         "passwordUsed", userTuple.getT2()))))
                         .flatMap(e -> {
