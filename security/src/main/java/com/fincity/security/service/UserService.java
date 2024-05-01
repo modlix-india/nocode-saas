@@ -870,6 +870,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		LogUtil.logIfDebugKey(logger, "Requesting reset password.");
 
+		String host = request.getHeaders().getFirst("X-Forwarded-Host");
+		String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
+		String port = request.getHeaders().getFirst("X-Forwarded-Port");
+
+		String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
+				: "http://" + host + ":" + port;
+
 		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
@@ -895,7 +902,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						token) -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
 								.setClientCode(ca.getUrlClientCode())
 								.setEventName(EventNames.USER_RESET_PASSWORD_REQUEST)
-								.setData(Map.of("user", cu.getT3(), "token", token.getToken())))
+								.setData(Map.of("user", cu.getT3(), "token", token.getToken(), "urlPrefix", urlPrefix)))
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.resetPasswordRequest"))
