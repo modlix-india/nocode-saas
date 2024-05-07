@@ -3,14 +3,16 @@ package com.fincity.saas.ui.service;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractFunctionService;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.ui.document.UIFunction;
 import com.fincity.saas.ui.repository.UIFunctionDocumentRepository;
+import com.google.gson.Gson;
 
 @Service
 public class UIFunctionService extends AbstractFunctionService<UIFunction, UIFunctionDocumentRepository> {
 
-	protected UIFunctionService() {
-		super(UIFunction.class);
+	protected UIFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
+		super(UIFunction.class, feignAuthenticationService, gson);
 	}
 
 	@Override

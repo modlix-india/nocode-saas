@@ -8,6 +8,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -126,6 +127,9 @@ public class AppDataService {
 	@Autowired
 	@Lazy
 	private EventCreationService ecService;
+
+	@Autowired
+	private Gson gson;
 
 	private EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
 
@@ -338,7 +342,7 @@ public class AppDataService {
 						return Mono.just(true);
 
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_CREATE, Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(dataObject.getData())));
+							this.gson.toJsonTree(dataObject.getData())));
 				},
 
 				beforeCreate -> dataService.create(conn, storage, dataObject),
@@ -349,7 +353,7 @@ public class AppDataService {
 						return Mono.just(created);
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_CREATE, Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(created)))
+							this.gson.toJsonTree(created)))
 							.map(e -> created);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericCreate"));
 	}
@@ -556,7 +560,12 @@ public class AppDataService {
 								(updatedDataObject, e) -> this.generateEvent(ca, appCode, clientCode,
 										storage, "Update",
 										e.getT1(), e.getT2().orElse(null))),
-						Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE));
+						Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE),
+
+				(ca, ac, cc, conn, dataService, storage, updated) -> this.fillRelatedObjects(ac, cc, storage, updated,
+						dataService, conn,
+						BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
+								: eagerFields));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.update"));
 	}
@@ -603,12 +612,12 @@ public class AppDataService {
 							if (!override.booleanValue())
 								continue;
 
-							Set<Tuple2<String, String>> allIds = Set.of();
+							Set<Tuple2<String, String>> allIds = new HashSet<>();
 							if (existing.get(e.getKey()) instanceof List<?> lst) {
 								allIds = lst.stream().map(id -> Tuples.of(relation.getStorageName(), id.toString()))
-										.collect(Collectors.toSet());
+										.collect(Collectors.toCollection(HashSet::new));
 							} else if (existing.get(e.getKey()) instanceof String id) {
-								allIds = Set.of(Tuples.of(relation.getStorageName(), id));
+								allIds.add(Tuples.of(relation.getStorageName(), id));
 							}
 
 							if (dob.get(e.getKey()) instanceof List<?> lst) {
@@ -619,7 +628,7 @@ public class AppDataService {
 									}
 								}
 							} else if (dob.get(e.getKey()) instanceof String id) {
-								Tuple2<String, String> tup = Tuples.of(relation.getStorageName(), id.toString());
+								Tuple2<String, String> tup = Tuples.of(relation.getStorageName(), id);
 								if (allIds.contains(tup)) {
 									allIds.remove(tup);
 								}
@@ -688,27 +697,27 @@ public class AppDataService {
 					if (noBeforeUpdate)
 						return Mono.just(true);
 
-					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(dataObject.getData()),
+					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, this.gson.toJsonTree(dataObject.getData()),
 							EXISTING_DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_UPDATE, args);
 				},
 
 				(existing, beforeUpdate) -> dataService.update(conn, storage, dataObject, override),
 
-				(existing, beforeUpdate, created) -> {
+				(existing, beforeUpdate, updated) -> {
 
 					if (noAfterUpdate)
-						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created,
+						return Mono.just(Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(updated,
 								Optional.of(existing)));
 
-					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, new Gson().toJsonTree(created),
+					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, this.gson.toJsonTree(updated),
 							EXISTING_DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_UPDATE, args)
-							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(created,
+							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(updated,
 									Optional.of(existing)));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.updateWithTriggers"));
 	}
@@ -941,7 +950,7 @@ public class AppDataService {
 						return Mono.just(true);
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_DELETE, args);
 				},
@@ -955,7 +964,7 @@ public class AppDataService {
 								Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted, Optional.of(existing)));
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY,
-							new Gson().toJsonTree(existing));
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_DELETE, args)
 							.map(e -> Tuples.<Boolean, Optional<Map<String, Object>>>of(deleted,
@@ -1008,7 +1017,7 @@ public class AppDataService {
 								StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
 
 						ObjectValueSetterExtractor ovs = new ObjectValueSetterExtractor(new JsonObject(), "Data.");
-						Gson gson = new Gson();
+						Gson gson = this.gson;
 
 						return fluxToFile(dataFlux, fileType, dataHeaders, dfw, ovs, gson)
 								.flatMap(e -> flieToResponse(fileType, response, file, fPath, dfw));
@@ -1183,20 +1192,22 @@ public class AppDataService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> {
+				() -> this.schemaService
+						.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
+
+				appSchemaRepo -> {
 
 					if (schema.getRef() == null)
 						return Mono.just(schema);
 
 					return ReactiveSchemaUtil.getSchemaFromRef(schema,
 							new ReactiveHybridRepository<>(new KIRunReactiveSchemaRepository(),
-									new CoreSchemaRepository(), this.schemaService
-											.getSchemaRepository(storage.getAppCode(), storage.getClientCode())),
+									new CoreSchemaRepository(), appSchemaRepo),
 							schema.getRef());
 
 				},
 
-				rSchema -> {
+				(appSchemaRepo, rSchema) -> {
 
 					if (rSchema.getType()
 							.contains(SchemaType.OBJECT)) {

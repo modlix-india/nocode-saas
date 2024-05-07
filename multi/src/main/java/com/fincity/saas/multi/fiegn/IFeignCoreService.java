@@ -2,7 +2,6 @@ package com.fincity.saas.multi.fiegn;
 
 import java.util.Map;
 
-import org.jooq.types.ULong;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;

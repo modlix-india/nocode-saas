@@ -1,8 +1,10 @@
 package com.fincity.saas.core.document;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -49,6 +51,8 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 	private Boolean generateEvents;
 	private Map<StorageTriggerType, List<String>> triggers;
 	private Map<String, Object> fieldDefinitionMap; // NOSONAR
+	private Map<String, StorageIndex> indexes;
+	private List<String> textIndexFields;
 
 	public Storage(Storage store) {
 
@@ -70,6 +74,9 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		this.fieldDefinitionMap = CloneUtil.cloneMapObject(store.fieldDefinitionMap);
 
 		this.triggers = CloneUtil.cloneMapObject(store.triggers);
+
+		this.indexes = CloneUtil.cloneMapObject(store.indexes);
+		this.textIndexFields = CloneUtil.cloneMapList(store.textIndexFields);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -88,11 +95,17 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 					(s, r, t) -> DifferenceApplicator.apply(this.fieldDefinitionMap, base.fieldDefinitionMap),
 
-					(s, r, t, f) -> {
+					(s, r, t, f) -> DifferenceApplicator.apply(this.indexes, base.indexes),
+
+					(s, r, t, f, i) -> DifferenceApplicator.apply(this.textIndexFields, base.textIndexFields),
+
+					(s, r, t, f, i, tif) -> {
 						this.schema = (Map<String, Object>) s;
 						this.relations = (Map<String, StorageRelation>) r;
 						this.triggers = (Map<StorageTriggerType, List<String>>) t;
 						this.fieldDefinitionMap = (Map<String, Object>) f;
+						this.indexes = (Map<String, StorageIndex>) i;
+						this.textIndexFields = (List<String>) tif;
 
 						this.subApplyOverride(base);
 
@@ -152,11 +165,17 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 				(obj, sch, rel, t) -> DifferenceExtractor.extract(obj.fieldDefinitionMap, base.fieldDefinitionMap),
 
-				(obj, sch, rel, t, f) -> {
+				(obj, sch, rel, t, f) -> DifferenceExtractor.extract(obj.indexes, base.indexes),
+
+				(obj, sch, rel, t, f, i) -> DifferenceExtractor.extract(obj.textIndexFields, base.textIndexFields),
+
+				(obj, sch, rel, t, f, i, tif) -> {
 					obj.setSchema((Map<String, Object>) sch);
 					obj.setRelations((Map<String, StorageRelation>) rel);
 					obj.setTriggers((Map<StorageTriggerType, List<String>>) t);
 					obj.setFieldDefinitionMap((Map<String, Object>) f);
+					obj.setIndexes((Map<String, StorageIndex>) i);
+					obj.setTextIndexFields((List<String>) tif);
 
 					this.subMakeOverride(base, obj);
 
@@ -197,4 +216,33 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 		if (EqualsUtil.safeEquals(obj.generateEvents, base.generateEvents))
 			obj.generateEvents = null;
 	}
+
+	@Data
+	@Accessors(chain = true)
+	@NoArgsConstructor
+	public static class StorageIndex implements Serializable {
+
+		private List<StorageIndexField> fields;
+		private boolean unique = false;
+
+		public StorageIndex(StorageIndex sIndex) {
+			this.fields = CloneUtil.cloneMapList(sIndex.fields);
+			this.unique = sIndex.unique;
+		}
+	}
+
+	@Data
+	@Accessors(chain = true)
+	@NoArgsConstructor
+	public static class StorageIndexField implements Serializable {
+
+		private String fieldName;
+		private Sort.Direction direction = Sort.Direction.ASC;
+
+		public StorageIndexField(StorageIndexField sIndex) {
+			this.fieldName = sIndex.fieldName;
+			this.direction = sIndex.direction;
+		}
+	}
+
 }

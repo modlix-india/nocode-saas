@@ -21,5 +21,7 @@ public class ClientRegistrationRequest implements Serializable {
 	private String middleName;
 	private String password;
 	private boolean businessClient;
+	private String businessType;
 	private String code;
+	private String subDomain;
 }
