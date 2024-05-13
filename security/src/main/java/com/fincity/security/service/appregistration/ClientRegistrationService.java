@@ -437,7 +437,7 @@ public class ClientRegistrationService {
                                     .setUrlPattern(tup.getT1()).setClientId(client.getId()))
                             .map(e -> res.setRedirectURL(tup.getT1()));
                 });
-        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
+        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.register"));
     }
 
     private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client) {

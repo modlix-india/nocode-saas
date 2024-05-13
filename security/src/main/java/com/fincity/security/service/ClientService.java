@@ -297,15 +297,7 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
-		return this.read(id)
-				.map(e -> {
-					e.setStatusCode(SecurityClientStatusCode.DELETED);
-					return e;
-				})
-				.flatMap(this::update)
-				.flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id)
-						.flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, id)))
-
+		return deleteClientAndSubClients(id)
 				.map(e -> 1);
 	}
 
@@ -679,7 +671,7 @@ public class ClientService
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
-	public Mono<List<Package>> fetchPackages(ULong clientId) {
+	public Mono<List<Package>> fetchAssignedPackages(ULong clientId) {
 
 		return flatMapMono(
 
@@ -691,12 +683,27 @@ public class ClientService
 						: this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
 								.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				(ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId)
+				(ca, sysOrManaged) -> this.dao.getAssignedPackagesForClient(clientId)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchPackages"))
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchAssignedPackages"))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
+
+	}
+
+	public Mono<List<Package>> fetchAssignablePackages() {
+
+		return flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.getAssignablePackagesForClient(ULong.valueOf(ca.getUser().getClientId()))
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchAssignablePackages"))
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.FETCH_PACKAGE_ERROR));
 
 	}
 
@@ -809,4 +816,21 @@ public class ClientService
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"));
 	}
+
+	protected Mono<Boolean> deleteClientAndSubClients(ULong clientId) {
+		return this.dao.getSubClientIds(clientId)
+				.flatMapMany(Flux::fromIterable)
+				.flatMap(this::deleteClientAndSubClients)
+				.then(this.read(clientId)
+						.flatMap(client -> {
+							client.setStatusCode(SecurityClientStatusCode.DELETED);
+							return this.update(client)
+									.then(this.cacheService.evict(CACHE_NAME_CLIENT_INFO, clientId))
+									.then(this.cacheService.evict(CACHE_NAME_CLIENT_ID, clientId))
+									.thenReturn(true);
+						}) 
+						.defaultIfEmpty(false)
+				);
+	}
+	
 }

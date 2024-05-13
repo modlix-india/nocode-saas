@@ -109,9 +109,9 @@ public class ClientController
 				.map(ResponseEntity::ok);
 	}
 
-	@GetMapping("/availablePackages/{clientId}")
+	@GetMapping("/assignedPackages/{clientId}")
 	public Mono<ResponseEntity<List<Package>>> fetchPackagesForClient(@PathVariable ULong clientId) {
-		return this.service.fetchPackages(clientId)
+		return this.service.fetchAssignedPackages(clientId)
 				.map(ResponseEntity::ok);
 	}
 
@@ -145,4 +145,10 @@ public class ClientController
 		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId)
 				.map(ResponseEntity::ok);
 	}
+
+	@GetMapping("/assignablePackages")
+	public Mono<ResponseEntity<List<Package>>> getClientAssignablePackages() {
+		return this.service.fetchAssignablePackages().map(ResponseEntity::ok);
+	}
+	
 }

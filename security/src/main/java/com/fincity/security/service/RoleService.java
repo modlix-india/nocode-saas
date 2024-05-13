@@ -222,7 +222,7 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 							(ca, roleRecord, permissionRecord) ->
 
 							ca.isSystemClient() ? Mono.just(true)
-									: this.checkPermissionAndRoleClientsAreManaged(ULong.valueOf(ca.getUser()
+									: this.verifyPermissionAndRoleForClient(ULong.valueOf(ca.getUser()
 											.getClientId()), roleRecord.getClientId(), permissionRecord.getClientId()),
 
 							(ca, roleRecord, permissionRecord, sysOrManaged) ->
@@ -257,18 +257,17 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 
 	}
 
-	private Mono<Boolean> checkPermissionAndRoleClientsAreManaged(ULong loggedInClientId, ULong roleClientId,
-			ULong permissionClientId) {
+	private Mono<Boolean> verifyPermissionAndRoleForClient(ULong loggedInClientId, ULong roleId, ULong PermissionId) {
 
 		return flatMapMono(
-
-				() -> clientService.isBeingManagedBy(loggedInClientId, roleClientId)
+				() -> clientService.checkRoleExistsOrCreatedForClient(loggedInClientId, roleId)
 						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				roleManaged -> clientService.isBeingManagedBy(loggedInClientId, permissionClientId)
+				(roleExistForClient) -> clientService
+						.checkPermissionExistsOrCreatedForClient(loggedInClientId, PermissionId)
 						.flatMap(BooleanUtil::safeValueOfWithEmpty)
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.checkPermissionAndRoleClientsAreManaged"));
+						
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleService.verifyPermissionAndRoleForClient"));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_Role')")

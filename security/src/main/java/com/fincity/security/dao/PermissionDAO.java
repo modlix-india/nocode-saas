@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
@@ -39,7 +40,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionRecord, ULong, Permission> {
+public class PermissionDAO extends AbstractUpdatableDAO<SecurityPermissionRecord, ULong, Permission> {
 
 	protected PermissionDAO() {
 		super(Permission.class, SECURITY_PERMISSION, SECURITY_PERMISSION.ID);
@@ -61,7 +62,14 @@ public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionReco
 						joinStep = this.getSelectJointStep();
 					} else {
 
-						SelectJoinStep<Record> queryJoinStep = this.dslContext.select(SECURITY_PERMISSION.fields())
+						SelectJoinStep<Record> queryJoinStep = this.dslContext.select(Arrays.asList(table.fields()))
+								.select(DSL
+										.replace(DSL.concat("Authorities.",
+												DSL.concat(
+														DSL.concat(DSL.upper(ca.getUrlAppCode()), "."),
+														SECURITY_PERMISSION.NAME)),
+												" ", "_")
+										.as("AUTHORITY"))
 								.from(SECURITY_PERMISSION)
 								.leftJoin(SECURITY_ROLE_PERMISSION)
 								.on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
@@ -145,14 +153,11 @@ public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionReco
 
 					SelectJoinStep<Record> mainQuery = dslContext.select(Arrays.asList(table.fields()))
 							.select(DSL
-									.replace(DSL.concat("Authorities.",
-											DSL.concat(
-													DSL.if_(SECURITY_APP.APP_CODE.isNull(), "",
-															DSL.concat(DSL.upper(SECURITY_APP.APP_CODE), ".")),
-													DSL.if_(cAlias.CODE.eq("SYSTEM"), SECURITY_PERMISSION.NAME,
-															DSL.concat(DSL.concat(cAlias.CODE, "_"),
-																	SECURITY_PERMISSION.NAME)))),
-											" ", "_")
+							.replace(DSL.concat("Authorities.",
+									DSL.concat(
+											DSL.concat(DSL.upper(SECURITY_APP.APP_CODE), "."),
+											SECURITY_PERMISSION.NAME)),
+									" ", "_")
 									.as("AUTHORITY"))
 							.from(table)
 							.leftJoin(cAlias)
@@ -163,17 +168,10 @@ public class PermissionDAO extends AbstractClientCheckDAO<SecurityPermissionReco
 					SelectJoinStep<Record1<Integer>> countQuery = dslContext.select(DSL.count())
 							.from(table);
 
-					if (ca.getClientTypeCode()
-							.equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
-						return Tuples.of(mainQuery, countQuery);
+					
+					return Tuples.of(mainQuery, countQuery);
 
-					return this.addJoinCondition(mainQuery, countQuery, this.getClientIDField());
 				});
-	}
-
-	@Override
-	protected Field<ULong> getClientIDField() {
-		return SECURITY_PERMISSION.CLIENT_ID;
 	}
 
 	public Mono<List<Permission>> getPermissionsByNamesAndAppId(List<String> names, ULong appId) {
