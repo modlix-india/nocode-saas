@@ -88,7 +88,7 @@ public abstract class AbstractFilesResourceService {
 	private static final String STATIC_TYPE = "static";
 
 	private static final String SECURED_TYPE = "secured";
-	
+
 	private static final String TRANSFORM_TYPE = "transform";
 
 	private static final String GENERIC_URI_PART_STATIC = GENERIC_URI_PART + STATIC_TYPE;
@@ -203,19 +203,20 @@ public abstract class AbstractFilesResourceService {
 
 	private Predicate<FileDetail> getPredicateForFileTypes(FileType[] fileType) {
 
-		final Set<String> fileTypeFilter = this.getFileExtensionFilter(fileType);
-		final boolean directoryFilter = fileType != null && Stream.of(fileType)
-				.anyMatch(e -> e == FileType.DIRECTORIES);
+		if (fileType == null)
+			return e -> true;
 
-		Predicate<FileDetail> filterFunction = e -> true;
+		final Set<String> fileTypesSet = this.getFileExtensionsToFilter(fileType);
 
-		if (fileTypeFilter.isEmpty() && directoryFilter)
-			filterFunction = e -> e.isDirectory();
-		else if (!fileTypeFilter.isEmpty() && !directoryFilter)
-			filterFunction = e -> fileTypeFilter.contains(e.getType());
-		else if (!fileTypeFilter.isEmpty() && directoryFilter)
-			filterFunction = e -> fileTypeFilter.contains(e.getType()) || e.isDirectory();
-		return filterFunction;
+		Predicate<FileDetail> pr = fileTypesSet.isEmpty() ? null : e -> fileTypesSet.contains(e.getType());
+		for (FileType ft : fileType) {
+			if (ft == FileType.DIRECTORIES)
+				pr = pr == null ? FileDetail::isDirectory : pr.or(FileDetail::isDirectory);
+			else if (ft == FileType.FILES)
+				pr = pr == null ? e -> !e.isDirectory() : pr.or(e -> !e.isDirectory());
+		}
+
+		return pr == null ? e -> true : pr;
 	}
 
 	private Comparator<File> getComparator(Pageable page) {
@@ -254,7 +255,7 @@ public abstract class AbstractFilesResourceService {
 
 	}
 
-	private Set<String> getFileExtensionFilter(FileType[] fileType) {
+	private Set<String> getFileExtensionsToFilter(FileType[] fileType) {
 
 		if (fileType == null || fileType.length == 0)
 			return Set.of();
@@ -280,11 +281,9 @@ public abstract class AbstractFilesResourceService {
 					.setDirectory(true);
 
 		} else {
-			damFile.setFilePath(resourcePath + "/" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
-					.replace("+", "%20"))
+			damFile.setFilePath(resourcePath + "/" + file.getName())
 					.setUrl(resourceType + ("/file/" + clientCode) + resourcePath + "/"
-							+ URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
-									.replace("+", "%20"));
+							+ URLEncoder.encode(file.getName(), StandardCharsets.UTF_8));
 		}
 		try {
 			BasicFileAttributes basicAttrributes = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
@@ -309,11 +308,9 @@ public abstract class AbstractFilesResourceService {
 		String resourceType = this.getResourceFileType();
 
 		FileDetail damFile = new FileDetail().setName(file.getName())
-				.setFilePath(resourcePath + "/" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
-						.replace("+", "%20"))
+				.setFilePath(resourcePath + "/" + file.getName())
 				.setUrl(resourceType + (file.isDirectory() ? "" : "/file/" + clientCode) + resourcePath + "/"
-						+ URLEncoder.encode(file.getName(), StandardCharsets.UTF_8)
-								.replace("+", "%20"))
+						+ URLEncoder.encode(file.getName(), StandardCharsets.UTF_8))
 				.setDirectory(file.isDirectory())
 				.setSize(file.length());
 		try {
@@ -735,7 +732,7 @@ public abstract class AbstractFilesResourceService {
 					if (fp == null)
 						return Mono.just(
 								this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
-					
+
 					return FlatMapUtil
 							.flatMapMonoWithNull(() -> fp.transferTo(file),
 									x -> Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
@@ -748,17 +745,17 @@ public abstract class AbstractFilesResourceService {
 	public Mono<FileDetail> imageUpload(String clientCode, String uri, FilePart fp, String fileName, Boolean override,
 			ImageDetails imageDetails, String filePath) {
 		boolean ovr = override == null || override.booleanValue();
-		
+
 		// just removing the TRANSFORM_TYPE from the uri
 		if (uri.indexOf(TRANSFORM_TYPE) != -1) {
 			int ind = uri.indexOf(TRANSFORM_TYPE);
 			uri = uri.substring(0, ind) + uri.substring(ind + TRANSFORM_TYPE.length() + 1);
 		}
-		
+
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
 		String resourcePath = tup.getT1();
 		String urlResourcePath = tup.getT2();
-		
+
 		return FlatMapUtil.flatMapMonoWithNull(
 
 				() -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode, this.getResourceType()),
@@ -774,7 +771,8 @@ public abstract class AbstractFilesResourceService {
 				},
 
 				(hasPermission, relativePath) -> {
-					// taking as an array so can update the path in future because Path data types behave as final
+					// taking as an array so can update the path in future because Path data types
+					// behave as final
 					Path[] targetPath = new Path[1];
 					targetPath[0] = relativePath;
 
@@ -783,7 +781,8 @@ public abstract class AbstractFilesResourceService {
 								this.resolvePathWithClientCode(filePath).getT1());
 					}
 
-					// just checking the fileTpe if it is an image or not. if not work here then put in fp==null && ovr
+					// just checking the fileTpe if it is an image or not. if not work here then put
+					// in fp==null && ovr
 					String fileType = null;
 					try {
 						fileType = Files.probeContentType(targetPath[0]);
@@ -793,7 +792,7 @@ public abstract class AbstractFilesResourceService {
 
 					if (fileType == null || !fileType.startsWith("image/"))
 						return Mono.empty();
-					
+
 					return processImage(fp, targetPath, fileName, ovr, imageDetails, urlResourcePath, clientCode);
 
 				})
@@ -803,7 +802,7 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	private Mono<FileDetail> processImage(FilePart fp, Path[] targetPath, String fileName, boolean ovr,
-                                      ImageDetails imageDetails, String urlResourcePath, String clientCode){
+			ImageDetails imageDetails, String urlResourcePath, String clientCode) {
 		return FlatMapUtil.flatMapMonoWithNull(
 
 				() -> {
@@ -856,32 +855,33 @@ public abstract class AbstractFilesResourceService {
 			return Mono.empty();
 		}
 	}
-	
+
 	private Mono<FileDetail> renameAndRewriteImage(FilePart fp, File actualFile, String fileName, boolean ovr,
 			BufferedImage resizedImage, Path[] targetPath, String urlResourcePath, String clientCode) {
 		try {
 			File updatedFileWithNewName = actualFile;
-			
+
 			String imageName = actualFile.getName();
 			int lastDotIndex = imageName.lastIndexOf('.');
 			String imageExtension = imageName.substring(lastDotIndex + 1).toLowerCase();
-			
-			if(fp==null) {
-				// just updating the file name if given any. Otherwise just writing the resized image.
+
+			if (fp == null) {
+				// just updating the file name if given any. Otherwise just writing the resized
+				// image.
 				String newImageName = fileName + "." + imageExtension;
-			
+
 				if (!ovr) {
 					for (int i = 1; i <= 10; i++) {
 						newImageName = fileName + "" + i + "." + imageExtension;
-			
+
 						boolean fileExists = checkIfNameExistsInFileSystem(newImageName, actualFile.getParentFile());
-			
+
 						if (!fileExists) {
 							break;
 						}
 					}
 				}
-			
+
 				updatedFileWithNewName = new File(actualFile.getParent(), newImageName);
 			}
 
@@ -897,105 +897,105 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	private boolean checkIfNameExistsInFileSystem(String newImageName, File directory) {
-	    Path filePath = Paths.get(directory.getAbsolutePath(), newImageName);
-	    return Files.exists(filePath);
+		Path filePath = Paths.get(directory.getAbsolutePath(), newImageName);
+		return Files.exists(filePath);
 	}
 
-    public BufferedImage rotateImage(BufferedImage originalImage, double angle, String backgroundColor, File file) {
-    	int width = originalImage.getWidth();
-        int height = originalImage.getHeight();
-        
-        double radians = Math.toRadians(angle);
-        double rotatedWidth = Math.abs(Math.sin(radians) * height) + Math.abs(Math.cos(radians) * width);
-        double rotatedHeight = Math.abs(Math.sin(radians) * width) + Math.abs(Math.cos(radians) * height);
-        
-        String fileExtension = getFileExtension(file);
-        BufferedImage rotatedImage;
-        
-        if(fileExtension.equals("png")) {
-        	rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, BufferedImage.TYPE_INT_ARGB);
-        } else {
-        	rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, originalImage.getType());
-        }
+	public BufferedImage rotateImage(BufferedImage originalImage, double angle, String backgroundColor, File file) {
+		int width = originalImage.getWidth();
+		int height = originalImage.getHeight();
 
-        Graphics2D g2d = rotatedImage.createGraphics();
-        
-        Color color = getColorFromString(backgroundColor);
-        g2d.setColor(color);
-        g2d.fillRect(0, 0, rotatedImage.getWidth(), rotatedImage.getHeight());
+		double radians = Math.toRadians(angle);
+		double rotatedWidth = Math.abs(Math.sin(radians) * height) + Math.abs(Math.cos(radians) * width);
+		double rotatedHeight = Math.abs(Math.sin(radians) * width) + Math.abs(Math.cos(radians) * height);
 
-        AffineTransform transform = new AffineTransform();
-        transform.rotate(radians, rotatedWidth / 2, rotatedHeight / 2);
+		String fileExtension = getFileExtension(file);
+		BufferedImage rotatedImage;
 
-        g2d.setTransform(transform);
-        int x = (int) ((rotatedWidth - width) / 2);
-        int y = (int) ((rotatedHeight - height) / 2);
-        g2d.drawImage(originalImage, x, y, null);
-        g2d.dispose();
+		if (fileExtension.equals("png")) {
+			rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, BufferedImage.TYPE_INT_ARGB);
+		} else {
+			rotatedImage = new BufferedImage((int) rotatedWidth, (int) rotatedHeight, originalImage.getType());
+		}
 
-        return rotatedImage;
-    }
-	
+		Graphics2D g2d = rotatedImage.createGraphics();
+
+		Color color = getColorFromString(backgroundColor);
+		g2d.setColor(color);
+		g2d.fillRect(0, 0, rotatedImage.getWidth(), rotatedImage.getHeight());
+
+		AffineTransform transform = new AffineTransform();
+		transform.rotate(radians, rotatedWidth / 2, rotatedHeight / 2);
+
+		g2d.setTransform(transform);
+		int x = (int) ((rotatedWidth - width) / 2);
+		int y = (int) ((rotatedHeight - height) / 2);
+		g2d.drawImage(originalImage, x, y, null);
+		g2d.dispose();
+
+		return rotatedImage;
+	}
+
 	public BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) {
 		Image resultingImage = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
 		BufferedImage outputImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
 		outputImage.getGraphics().drawImage(resultingImage, 0, 0, null);
 		return outputImage;
 	}
-	
-    public BufferedImage cropImage(BufferedImage originalImage, int xAxis, int yAxis, int width, int height) {
-        return originalImage.getSubimage(xAxis, yAxis, width, height);
-    }
-    
-    public BufferedImage flipHorizontal(BufferedImage originalImage) {
-        AffineTransform tx = AffineTransform.getScaleInstance(-1, 1);
-        tx.translate(-originalImage.getWidth(null), 0);
 
-        AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
-        return op.filter(originalImage, null);
-    }
+	public BufferedImage cropImage(BufferedImage originalImage, int xAxis, int yAxis, int width, int height) {
+		return originalImage.getSubimage(xAxis, yAxis, width, height);
+	}
 
-    public BufferedImage flipVertical(BufferedImage originalImage) {
-        AffineTransform tx = AffineTransform.getScaleInstance(1, -1);
-        tx.translate(0, -originalImage.getHeight(null));
+	public BufferedImage flipHorizontal(BufferedImage originalImage) {
+		AffineTransform tx = AffineTransform.getScaleInstance(-1, 1);
+		tx.translate(-originalImage.getWidth(null), 0);
 
-        AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
-        return op.filter(originalImage, null);
-    }
-    
-    private static String getFileExtension(File file) {
-        String fileName = file.getName();
-        int lastDotIndex = fileName.lastIndexOf('.');
-        
-        if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
-            return fileName.substring(lastDotIndex + 1).toLowerCase();
-        } else {
-            return "";
-        }
-    }
-    
-    public static Color getColorFromString(String colorString) {
-        if (colorString == null || colorString.trim().length()<=3 || colorString.trim().isEmpty()) {
-            return new Color(0, 0, 0, 0);
-        }
-        if (colorString.startsWith("#")) {
-            colorString = colorString.substring(1);
-        }
-        
-        if(colorString.length()<=6) {
-          int rgbValue = Integer.parseInt(colorString, 16);
-          return new Color(rgbValue);
-        }
-        
-        int rgbValue = Integer.parseInt(colorString.substring(0, 6), 16);
-        int alphaValue = Integer.parseInt(colorString.substring(6), 16);
-        
-        int r = (rgbValue >> 16) & 0xFF;
-        int g = (rgbValue >> 8) & 0xFF;
-        int b = rgbValue & 0xFF;
+		AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
+		return op.filter(originalImage, null);
+	}
 
-        return new Color(r, g, b, alphaValue);
-    }
+	public BufferedImage flipVertical(BufferedImage originalImage) {
+		AffineTransform tx = AffineTransform.getScaleInstance(1, -1);
+		tx.translate(0, -originalImage.getHeight(null));
+
+		AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
+		return op.filter(originalImage, null);
+	}
+
+	private static String getFileExtension(File file) {
+		String fileName = file.getName();
+		int lastDotIndex = fileName.lastIndexOf('.');
+
+		if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+			return fileName.substring(lastDotIndex + 1).toLowerCase();
+		} else {
+			return "";
+		}
+	}
+
+	public static Color getColorFromString(String colorString) {
+		if (colorString == null || colorString.trim().length() <= 3 || colorString.trim().isEmpty()) {
+			return new Color(0, 0, 0, 0);
+		}
+		if (colorString.startsWith("#")) {
+			colorString = colorString.substring(1);
+		}
+
+		if (colorString.length() <= 6) {
+			int rgbValue = Integer.parseInt(colorString, 16);
+			return new Color(rgbValue);
+		}
+
+		int rgbValue = Integer.parseInt(colorString.substring(0, 6), 16);
+		int alphaValue = Integer.parseInt(colorString.substring(6), 16);
+
+		int r = (rgbValue >> 16) & 0xFF;
+		int g = (rgbValue >> 8) & 0xFF;
+		int b = rgbValue & 0xFF;
+
+		return new Color(r, g, b, alphaValue);
+	}
 
 	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
 
@@ -1104,8 +1104,7 @@ public abstract class AbstractFilesResourceService {
 		String path = uri.substring(uri.indexOf(this.uriPartFile) + this.uriPartFile.length());
 		String origPath = path;
 
-		path = URLDecoder.decode(path, StandardCharsets.UTF_8)
-				.replace('+', ' ');
+		path = URLDecoder.decode(path.replace('+', ' '), StandardCharsets.UTF_8);
 
 		int index = path.indexOf('?');
 		if (index != -1)
@@ -1122,8 +1121,7 @@ public abstract class AbstractFilesResourceService {
 		String path = uri.substring(uri.indexOf(part) + part.length(), uri.length() - (uri.endsWith("/") ? 1 : 0));
 		String origPath = path;
 
-		path = URLDecoder.decode(path, StandardCharsets.UTF_8)
-				.replace('+', ' ');
+		path = URLDecoder.decode(path.replace('+', ' '), StandardCharsets.UTF_8);
 
 		int index = path.indexOf('?');
 		if (index != -1)
@@ -1135,7 +1133,8 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	private Mono<Path> createOrGetPath(Path path, String resourcePath, FilePart fp, String fileName, boolean ovr, boolean isResizingImg) {
+	private Mono<Path> createOrGetPath(Path path, String resourcePath, FilePart fp, String fileName, boolean ovr,
+			boolean isResizingImg) {
 
 		if (!Files.exists(path))
 			try {
