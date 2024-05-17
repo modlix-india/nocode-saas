@@ -544,14 +544,4 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.collectList();
 	}
 
-	public Mono<List<ULong>> getSubClientIds(ULong clientId) {
-		
-		return Flux.from(
-
-				this.dslContext.select(SECURITY_CLIENT_MANAGE.CLIENT_ID)
-						.from(SECURITY_CLIENT_MANAGE)
-						.where(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)))
-				.map(Record1::value1).collectList();
-	}
-
 }

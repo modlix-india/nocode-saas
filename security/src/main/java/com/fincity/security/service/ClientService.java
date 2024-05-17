@@ -305,6 +305,7 @@ public class ClientService
 				.flatMap(this::update)
 				.flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id)
 						.flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, id)))
+
 				.map(e -> 1);
 	}
 
