@@ -479,6 +479,7 @@ public class ClientRegistrationService {
         user.setLastName(request.getLastName());
         user.setLocaleCode(request.getLocaleCode());
         user.setUserName(request.getUserName());
+        user.setPhoneNumber(request.getPhoneNumber());
 
         String password = "";
         if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)) {
