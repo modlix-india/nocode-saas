@@ -119,7 +119,8 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 				(ca, props) -> {
 
-					if (!SecurityContextUtil.hasAuthority(page.getPermission(), ca.getAuthorities())) {
+					if (ca.isAuthenticated()
+							&& !SecurityContextUtil.hasAuthority(page.getPermission(), ca.getAuthorities())) {
 
 						if (StringUtil.safeIsBlank(props.get("forbiddenPage")))
 							return this.messageResourceService.throwMessage(
