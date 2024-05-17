@@ -297,7 +297,14 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
-		return deleteClientAndSubClients(id)
+		return this.read(id)
+				.map(e -> {
+					e.setStatusCode(SecurityClientStatusCode.DELETED);
+					return e;
+				})
+				.flatMap(this::update)
+				.flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_INFO, id)
+						.flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, id)))
 				.map(e -> 1);
 	}
 
@@ -817,20 +824,22 @@ public class ClientService
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"));
 	}
 
-	protected Mono<Boolean> deleteClientAndSubClients(ULong clientId) {
-		return this.dao.getSubClientIds(clientId)
-				.flatMapMany(Flux::fromIterable)
-				.flatMap(this::deleteClientAndSubClients)
-				.then(this.read(clientId)
-						.flatMap(client -> {
-							client.setStatusCode(SecurityClientStatusCode.DELETED);
-							return this.update(client)
-									.then(this.cacheService.evict(CACHE_NAME_CLIENT_INFO, clientId))
-									.then(this.cacheService.evict(CACHE_NAME_CLIENT_ID, clientId))
-									.thenReturn(true);
-						}) 
-						.defaultIfEmpty(false)
-				);
+	public Mono<Boolean> isClientActive(ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.getClientInfoById(clientId),
+
+				c -> c.getStatusCode() != SecurityClientStatusCode.ACTIVE ? Mono.empty() : Mono.just(true),
+
+				(c, active) -> {
+
+					if ("SYS".equals(c.getTypeCode()))
+						return Mono.just(true);
+
+					return this.getManagedClientOfClientById(clientId).map(Client::getId).flatMap(this::isClientActive)
+							.defaultIfEmpty(true);
+				}).defaultIfEmpty(false);
 	}
-	
+
 }

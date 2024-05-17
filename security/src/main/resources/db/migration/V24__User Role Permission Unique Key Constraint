@@ -1,5 +1,32 @@
 use security;
 
-ALTER TABLE `security`.`security_user_role_permission` 
+-- Disable safe update mode
+SET SQL_SAFE_UPDATES = 0;
+
+-- Delete duplicates based on USER_ID and ROLE_ID
+DELETE t1 FROM `security`.`security_user_role_permission` t1
+INNER JOIN (
+    SELECT USER_ID, ROLE_ID, MIN(ID) as min_id
+    FROM `security`.`security_user_role_permission`
+    WHERE ROLE_ID IS NOT NULL
+    GROUP BY USER_ID, ROLE_ID
+    HAVING COUNT(*) > 1
+) t2 ON t1.USER_ID = t2.USER_ID AND t1.ROLE_ID = t2.ROLE_ID AND t1.ID > t2.min_id;
+
+-- Delete duplicates based on USER_ID and PERMISSION_ID
+DELETE t1 FROM `security`.`security_user_role_permission` t1
+INNER JOIN (
+    SELECT USER_ID, PERMISSION_ID, MIN(ID) as min_id
+    FROM `security`.`security_user_role_permission`
+    WHERE PERMISSION_ID IS NOT NULL
+    GROUP BY USER_ID, PERMISSION_ID
+    HAVING COUNT(*) > 1
+) t2 ON t1.USER_ID = t2.USER_ID AND t1.PERMISSION_ID = t2.PERMISSION_ID AND t1.ID > t2.min_id;
+
+-- Now add the unique constraints
+ALTER TABLE `security`.`security_user_role_permission`
     ADD CONSTRAINT UNQ1_USER_ROLE_PERMISSION_USER_ID_ROLE_ID UNIQUE KEY (USER_ID, ROLE_ID),
     ADD CONSTRAINT UNQ2_USER_ROLE_PERMISSION_USER_ID_PERMISSION_ID UNIQUE KEY (USER_ID, PERMISSION_ID);
+
+-- Re-enable safe update mode
+SET SQL_SAFE_UPDATES = 1;

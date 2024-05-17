@@ -1571,6 +1571,9 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+ALTER TABLE `security`.`security_app_reg_access` 
+ADD COLUMN `WRITE_ACCESS` TINYINT(1) NOT NULL DEFAULT 0 AFTER `ALLOW_APP_ID`;
+
 -- V23__Address (SECUITY)
 
 use security;
@@ -1644,9 +1647,36 @@ COLLATE utf8mb4_unicode_ci;
 
 use security;
 
-ALTER TABLE `security`.`security_user_role_permission` 
+-- Disable safe update mode
+SET SQL_SAFE_UPDATES = 0;
+
+-- Delete duplicates based on USER_ID and ROLE_ID
+DELETE t1 FROM `security`.`security_user_role_permission` t1
+INNER JOIN (
+    SELECT USER_ID, ROLE_ID, MIN(ID) as min_id
+    FROM `security`.`security_user_role_permission`
+    WHERE ROLE_ID IS NOT NULL
+    GROUP BY USER_ID, ROLE_ID
+    HAVING COUNT(*) > 1
+) t2 ON t1.USER_ID = t2.USER_ID AND t1.ROLE_ID = t2.ROLE_ID AND t1.ID > t2.min_id;
+
+-- Delete duplicates based on USER_ID and PERMISSION_ID
+DELETE t1 FROM `security`.`security_user_role_permission` t1
+INNER JOIN (
+    SELECT USER_ID, PERMISSION_ID, MIN(ID) as min_id
+    FROM `security`.`security_user_role_permission`
+    WHERE PERMISSION_ID IS NOT NULL
+    GROUP BY USER_ID, PERMISSION_ID
+    HAVING COUNT(*) > 1
+) t2 ON t1.USER_ID = t2.USER_ID AND t1.PERMISSION_ID = t2.PERMISSION_ID AND t1.ID > t2.min_id;
+
+-- Now add the unique constraints
+ALTER TABLE `security`.`security_user_role_permission`
     ADD CONSTRAINT UNQ1_USER_ROLE_PERMISSION_USER_ID_ROLE_ID UNIQUE KEY (USER_ID, ROLE_ID),
     ADD CONSTRAINT UNQ2_USER_ROLE_PERMISSION_USER_ID_PERMISSION_ID UNIQUE KEY (USER_ID, PERMISSION_ID);
+
+-- Re-enable safe update mode
+SET SQL_SAFE_UPDATES = 1;
 
 
 
@@ -1784,6 +1814,200 @@ SELECT ID FROM security.security_app where APP_CODE = 'appbuilder' limit 1 into 
 INSERT INTO `security`.`security_app_access` (client_id, app_id, EDIT_ACCESS) VALUES 
 			(@v_client_fin1, @v_app_appbuilder, 0),
 			(@v_client_fin2, @v_app_appbuilder, 0);
+
+-- adding apps
+
+INSERT INTO `security`.`security_app` (`CLIENT_ID`, `APP_NAME`, `APP_CODE`, `APP_TYPE`, `APP_ACCESS_TYPE`, `APP_USAGE_TYPE`) VALUES 
+    (@v_client_system, 'HRMS', 'hrms', 'APP', 'OWN', 'S'),
+    (@v_client_system, 'KYC', 'kyc', 'APP', 'OWN', 'S'),
+    (@v_client_system, 'Sign', 'sign', 'APP', 'OWN', 'S'),
+    (@v_client_system, 'Real estate inventory management', 'rim', 'APP', 'OWN', 'S'),
+    (@v_client_system, 'Customer Management App', 'cmapp', 'APP', 'OWN', 'S'),
+    (@v_client_system, 'cx app landingpage', 'cxlanding', 'APP', 'OWN', 'S'),
+    (@v_client_system, 'CX Application', 'cxapp', 'APP', 'OWN', 'B2B2C');
+
+-- adding clients
+
+INSERT INTO `security`.`security_client` (`CODE`, `NAME`, `TYPE_CODE`, `TOKEN_VALIDITY_MINUTES`) VALUES 
+	('F2Sub1', 'fin2 sub1', 'BUS', '30'),
+	('F2S1S1', 'fin2S1S1', 'BUS', '30'),
+    ('F2Sub2', 'fin2 sub2', 'BUS', '30'),
+	('F2S2S1', 'fin2s2 s1', 'BUS', '30');
+
+SELECT ID FROM `security`.`security_client` WHERE `CODE` = 'F2Sub1' LIMIT 1 INTO @v_client_fin2sub1;
+SELECT ID FROM `security`.`security_client` WHERE `CODE` = 'F2Sub2' LIMIT 1 INTO @v_client_fin2sub2;
+
+-- adding security app access
+
+INSERT INTO `security`.`security_app_access` (`CLIENT_ID`, `APP_ID`, `EDIT_ACCESS`) VALUES 
+    (@v_client_fin2sub1, @v_app_appbuilder, 0),
+    (@v_client_fin2sub2, @v_app_appbuilder, 0);
+
+
+SELECT ID FROM `security`.`security_app` WHERE `APP_CODE` = 'cxapp' LIMIT 1 INTO @v_app_cxapp;
+SELECT ID FROM `security`.`security_app` WHERE `APP_CODE` = 'hrms' LIMIT 1 INTO @v_app_hrms;
+SELECT ID FROM `security`.`security_app` WHERE `APP_CODE` = 'sign' LIMIT 1 INTO @v_app_sign;
+SELECT ID FROM `security`.`security_app` WHERE `APP_CODE` = 'kyc' LIMIT 1 INTO @v_app_kyc;
+SELECT ID FROM `security`.`security_app` WHERE `APP_CODE` = 'rim' LIMIT 1 INTO @v_app_rim;
+SELECT ID FROM `security`.`security_app` WHERE `APP_CODE` = 'cmapp' LIMIT 1 INTO @v_app_cmapp;
+
+-- adding security app dependency
+
+INSERT INTO `security`.`security_app_dependency` (`APP_ID`, `DEP_APP_ID`) VALUES
+    (@v_app_cxapp, @v_app_hrms),
+    (@v_app_cxapp, @v_app_sign),
+    (@v_app_cxapp, @v_app_kyc),
+    (@v_app_cxapp, @v_app_rim),
+    (@v_app_cxapp, @v_app_cmapp);
+
+-- adding security app property
+
+INSERT INTO `security`.`security_app_property` (`APP_ID`, `CLIENT_ID`, `NAME`, `VALUE`) VALUES
+    (@v_app_cxapp, @v_client_system, 'REGISTRATION_TYPE', 'REGISTRATION_TYPE_NO_VERIFICATION');
+
+-- adding security app registration access 
+
+INSERT INTO `security`.`security_app_reg_access` (`CLIENT_ID`, `CLIENT_TYPE`, `APP_ID`, `ALLOW_APP_ID`, `WRITE_ACCESS`, `LEVEL`) VALUES
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_app_cxapp, 1, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_app_hrms, 0, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_app_sign, 0, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_app_rim, 0, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_app_cmapp, 0, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_app_kyc, 0, 'CLIENT'),
+    (@v_client_system, 'INDV', @v_app_cxapp, @v_app_sign, 0, 'CUSTOMER'),
+    (@v_client_system, 'INDV', @v_app_cxapp, @v_app_kyc, 0, 'CUSTOMER'),
+    (@v_client_system, 'INDV', @v_app_cxapp, @v_app_cxapp, 0, 'CUSTOMER');
+
+-- adding security app registration file access
+
+INSERT INTO `security`.`security_app_reg_file_access` ( `CLIENT_ID`, `CLIENT_TYPE`, `APP_ID`, `LEVEL`, `RESOURCE_TYPE`, `ACCESS_NAME`, `WRITE_ACCESS`, `PATH`, `ALLOW_SUB_PATH_ACCESS` ) VALUES
+    (@v_client_system, 'INDV', @v_app_cxapp, 'CUSTOMER', 'SECURED', 'Authorities.Logged_IN', 1, '/', 1),
+    (@v_client_system, 'BUS', @v_app_cxapp, 'CLIENT', 'SECURED', 'Authorities.Logged_IN', 1, '/', 1);
+
+-- adding new Package CX Application Package for CX Application 
+
+INSERT INTO `security`.`security_package` ( `CLIENT_ID`, `APP_ID`, `CODE`, `NAME`, `DESCRIPTION`, `BASE`) VALUES
+    (@v_client_system, @v_app_cxapp, 'CXAPP', 'CX Application Package', 'CX Application Package', 0);
+
+-- adding new Role Super Admin for CX Application
+
+INSERT INTO security.security_role ( `CLIENT_ID`, `NAME`, `APP_ID`, `DESCRIPTION`) VALUES
+    (@v_client_system, 'Super Admin', @v_app_cxapp, 'CX Application Super Admin');
+
+SELECT ID FROM `security`.`security_package` WHERE `CODE` = 'CXAPP' LIMIT 1 INTO @v_package_cxapp;
+
+-- adding security app registration package
+
+INSERT INTO `security`.`security_app_reg_package` ( `CLIENT_ID`, `CLIENT_TYPE`, `APP_ID`, `PACKAGE_ID`, `LEVEL`) VALUES
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_client, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_package, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_permission, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_app, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_funct, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_page, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_theme, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_person, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_files, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_data, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_templates, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_style, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_event_def, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_event_action, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_schema, 'CLIENT'),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_package_cxapp, 'CLIENT');
+
+SELECT ID FROM security.security_role WHERE NAME = 'Super Admin' LIMIT 1 INTO @v_role_super_cxapp;
+
+-- adding security app registration User Role
+
+INSERT INTO `security`.`security_app_reg_user_role` ( `CLIENT_ID`, `CLIENT_TYPE`, `APP_ID`, `ROLE_ID`) VALUES
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_client),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_user),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_package),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_role),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_permission),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_application),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_function),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_page),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_theme),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_personalization),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_files),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_data),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_connection),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_schema),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_template),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_style),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_event_def),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_event_action),
+    (@v_client_system, 'BUS', @v_app_cxapp, @v_role_super_cxapp);
+
+-- adding security client manage 
+
+SELECT ID FROM `security`.`security_client` WHERE CODE = 'F2S1S1' LIMIT 1 INTO @v_client_fin2sub1sub1;
+
+SELECT ID FROM `security`.`security_client` WHERE CODE = 'F2S2S1' LIMIT 1 INTO @v_client_fin2sub2sub1;
+
+INSERT INTO `security`.`security_client_manage` (`CLIENT_ID`, `MANAGE_CLIENT_ID`) VALUES
+    (@v_client_fin2sub1, @v_client_fin2),
+    (@v_client_fin2sub2, @v_client_fin2),
+    (@v_client_fin2sub1sub1, @v_client_fin2sub1),
+    (@v_client_fin2sub2sub1, @v_client_fin2sub2);
+
+-- adding packages for clients 
+
+INSERT INTO `security`.`security_client_package` (`CLIENT_ID`, `PACKAGE_ID`)
+    (SELECT @v_client_fin2sub1, ID FROM `security`.`security_package` WHERE CODE NOT IN ('CLITYP', 'APPSYS', 'CXAPP'));
+
+INSERT INTO `security`.`security_client_package` (`CLIENT_ID`, `PACKAGE_ID`)
+    (SELECT @v_client_fin2sub2, ID FROM `security`.`security_package` WHERE CODE NOT IN ('CLITYP', 'APPSYS', 'CXAPP'));
+
+INSERT INTO `security`.`security_client_package` (`CLIENT_ID`, `PACKAGE_ID`)
+    (SELECT @v_client_fin2sub1sub1, ID FROM `security`.`security_package` WHERE CODE NOT IN ('CLITYP', 'APPSYS', 'CXAPP'));
+
+INSERT INTO `security`.`security_client_package` (`CLIENT_ID`, `PACKAGE_ID`)
+    (SELECT @v_client_fin2sub2sub1, ID FROM `security`.`security_package` WHERE CODE NOT IN ('CLITYP', 'APPSYS', 'CXAPP'));
+
+-- adding mapping in security package role 
+
+INSERT INTO `security`.`security_package_role` (`PACKAGE_ID`, `ROLE_ID`) VALUES
+    (@v_package_cxapp, @v_role_super_cxapp);
+
+-- adding users in security user
+
+INSERT INTO `security`.`security_user` (`CLIENT_ID`, `USER_NAME`, `EMAIL_ID`, `PHONE_NUMBER`, `FIRST_NAME`, `LAST_NAME`, `LOCALE_CODE`, `PASSWORD`, `PASSWORD_HASHED`, `ACCOUNT_NON_EXPIRED`, `ACCOUNT_NON_LOCKED`, `CREDENTIALS_NON_EXPIRED`, `NO_FAILED_ATTEMPT`, `STATUS_CODE`) VALUES 
+    (@v_client_fin2sub1, 'fin2sub1user', 'fin2.sub1@gmail.com', 'NONE', 'fin2', 'sub1', 'en-US', 'Fincity@123', '0', '1', '1', '1', '0', 'ACTIVE'),
+    (@v_client_fin2sub2, 'fin2sub2user', 'fin2.sub2@gmail.com', 'NONE', 'fin2', 'sub2', 'en-US', 'Fincity@123', '0', '1', '1', '1', '0', 'ACTIVE'),
+    (@v_client_fin2sub1, 'fin2sub1sub1user', 'fin2sub1.sub1@gmail.com', 'NONE', 'fin2sub1', 'sub1', 'en-US', 'Fincity@123', '0', '1', '1', '1', '0', 'ACTIVE'),
+    (@v_client_fin2sub1, 'fin2sub2sub1user', 'fin2sub2.sub1@gmail.com', 'NONE', 'fin2sub2', 'sub1', 'en-US', 'Fincity@123', '0', '1', '1', '1', '0', 'ACTIVE');
+
+-- why are we using username to find the user here its not a unique key so should we make it unique key or make email unique key
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'fin2sub1user' LIMIT 1 INTO @v_user_fin2sub1;
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'fin2sub2user' LIMIT 1 INTO @v_user_fin2sub2;
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'fin2sub1sub1user' LIMIT 1 INTO @v_user_fin2sub1sub1;
+SELECT ID FROM `security`.`security_user` WHERE USER_NAME = 'fin2sub2sub1user' LIMIT 1 INTO @v_user_fin2sub2sub1;
+
+-- adding mapping in security user role permission
+
+INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`) 
+    (SELECT @v_user_fin2sub1, pr.ROLE_ID as ROLE_ID FROM `security`.`security_package_role` pr
+        LEFT JOIN `security`.`security_client_package` cp ON cp.PACKAGE_ID = pr.PACKAGE_ID
+        WHERE cp.CLIENT_ID = @v_client_fin2sub1);
+
+INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`) 
+    (SELECT @v_user_fin2sub2, pr.ROLE_ID as ROLE_ID FROM `security`.`security_package_role` pr
+        LEFT JOIN `security`.`security_client_package` cp ON cp.PACKAGE_ID = pr.PACKAGE_ID
+        WHERE cp.CLIENT_ID = @v_client_fin2sub2);
+    
+INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`) 
+    (SELECT @v_user_fin2sub1sub1, pr.ROLE_ID as ROLE_ID FROM `security`.`security_package_role` pr
+        LEFT JOIN `security`.`security_client_package` cp ON cp.PACKAGE_ID = pr.PACKAGE_ID
+        WHERE cp.CLIENT_ID = @v_client_fin2sub1sub1);
+
+INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`) 
+    (SELECT @v_user_fin2sub2sub1, pr.ROLE_ID as ROLE_ID FROM `security`.`security_package_role` pr
+        LEFT JOIN `security`.`security_client_package` cp ON cp.PACKAGE_ID = pr.PACKAGE_ID
+        WHERE cp.CLIENT_ID = @v_client_fin2sub2sub1);
+
 
 -- INSERT INTO security.security_app_package (client_id, app_id, package_id)
 --	select 1, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
