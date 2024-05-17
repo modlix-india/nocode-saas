@@ -149,7 +149,7 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObject, !isPartial, eager,
 				eagerFields)
 				.map(updatedObject -> new FunctionOutput(
-						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatableObject))))));
+						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatedObject))))));
 	}
 
 }

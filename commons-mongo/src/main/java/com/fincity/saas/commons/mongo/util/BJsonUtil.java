@@ -92,8 +92,10 @@ public class BJsonUtil {
 				} else if (bd.doubleValue() == bd.longValue()) {
 					return new BsonInt64(bd.longValue());
 				} else if (bd.doubleValue() == bd.floatValue()) {
-					return new BsonDouble(bd);
-				}
+					return new BsonDouble(bd.floatValue()); // float value type
+				} 
+
+				return new BsonDouble(bd); // returing as double value
 			}
 
 			return new BsonString(jp.getAsString());
