@@ -7,6 +7,9 @@ import com.fincity.saas.files.service.StaticFileResourceService;
 
 @RestController
 @RequestMapping("api/files/static")
-public class StaticResourceFileController extends AbstractResourceFileController<StaticFileResourceService>{
+public class StaticResourceFileController extends AbstractResourceFileController<StaticFileResourceService> {
 
+    public StaticResourceFileController(StaticFileResourceService service) {
+        super(service);
+    }
 }

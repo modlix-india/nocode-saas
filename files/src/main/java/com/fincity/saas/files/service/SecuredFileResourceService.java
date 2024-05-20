@@ -14,7 +14,6 @@ import javax.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.FilePart;
@@ -56,13 +55,15 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	@Value("${files.secureKeyURI:api/files/secured/downloadFileByKey/}")
 	private String secureAccessPathUri;
 
-	@Autowired
 	private FilesSecuredAccessService fileSecuredAccessService;
 
-	@Autowired
-	private FilesMessageResourceService filesMessageResourceService;
-
 	private static Logger logger = LoggerFactory.getLogger(SecuredFileResourceService.class);
+
+	public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
+			FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService) {
+		super(filesAccessPathService, msgService);
+		this.fileSecuredAccessService = fileSecuredAccessService;
+	}
 
 	@PostConstruct
 	private void initializeStatic() {
@@ -114,90 +115,89 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.checkReadAccessWithClientCode(tup.getT2())
-		                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+				() -> this.checkReadAccessWithClientCode(tup.getT2())
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-		        hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
+				hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
 
-		        (hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
+				(hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
 
 		)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
-		        .switchIfEmpty(this.filesMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                FilesMessageResourceService.SECURED_KEY_CREATION_ERROR));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
+				.switchIfEmpty(this.msgService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						FilesMessageResourceService.SECURED_KEY_CREATION_ERROR));
 	}
 
 	public Mono<Void> downloadFileByKey(String key, DownloadOptions downloadOptions, ServerHttpRequest request,
-	        ServerHttpResponse response) {
+			ServerHttpResponse response) {
 
 		if (safeIsBlank(key))
 			return null;
 
 		return this.fileSecuredAccessService.getAccessPathByKey(key)
-		        .flatMap(accessPath ->
-				{
+				.flatMap(accessPath -> {
 
-			        if (safeIsBlank(accessPath))
-				        return null;
+					if (safeIsBlank(accessPath))
+						return null;
 
-			        Path file = Paths.get(this.securedResourceLocation + accessPath);
+					Path file = Paths.get(this.securedResourceLocation + accessPath);
 
-			        if (!Files.exists(file))
-				        return this.filesMessageResourceService.throwMessage(
-				                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-				                FilesMessageResourceService.PATH_NOT_FOUND, accessPath);
+					if (!Files.exists(file))
+						return this.msgService.throwMessage(
+								msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+								FilesMessageResourceService.PATH_NOT_FOUND, accessPath);
 
-			        long fileMillis = -1;
-			        try {
+					long fileMillis = -1;
+					try {
 
-				        BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
-				        fileMillis = attr.lastModifiedTime()
-				                .toMillis();
-			        } catch (IOException e) {
+						BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
+						fileMillis = attr.lastModifiedTime()
+								.toMillis();
+					} catch (IOException e) {
 
-				        logger.debug("Unable to read attributes of file {} ", file, e);
-			        }
+						logger.debug("Unable to read attributes of file {} ", file, e);
+					}
 
-			        String fileETag = new StringBuilder().append('"')
-			                .append(file.hashCode())
-			                .append('-')
-			                .append(fileMillis)
-			                .append('-')
-			                .append(downloadOptions.eTagCode())
-			                .append('"')
-			                .toString();
+					String fileETag = new StringBuilder().append('"')
+							.append(file.hashCode())
+							.append('-')
+							.append(fileMillis)
+							.append('-')
+							.append(downloadOptions.eTagCode())
+							.append('"')
+							.toString();
 
-			        return super.makeMatchesStartDownload(downloadOptions, request, response, file, fileMillis,
-			                fileETag);
-		        });
+					return super.makeMatchesStartDownload(downloadOptions, request, response, file, fileMillis,
+							fileETag);
+				});
 
 	}
 
 	private Mono<String> createAccessKey(Long time, ChronoUnit unit, Long limit, String path) {
 
 		if (unit == null && time != null)
-			return filesMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-			        FilesMessageResourceService.TIME_UNIT_ERROR);
+			return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					FilesMessageResourceService.TIME_UNIT_ERROR);
 
 		if (time == null && limit != null)
-			return filesMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-			        FilesMessageResourceService.TIME_SPAN_ERROR);
+			return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					FilesMessageResourceService.TIME_SPAN_ERROR);
 
 		time = time == null || time.toString()
-		        .isBlank() ? defaultAccessTimeLimit : time;
+				.isBlank() ? defaultAccessTimeLimit : time;
 		unit = safeIsBlank(unit) ? defaultChronoUnit : unit;
 		int pathIndex = path.indexOf('?');
 		path = pathIndex != -1 ? path.substring(0, pathIndex) : path;
 
 		FilesSecuredAccessKey fileSecuredAccessKey = new FilesSecuredAccessKey().setPath(path)
-		        .setAccessKey(UniqueUtil.base36UUID())
-		        .setAccessLimit(ULongUtil.valueOf(limit))
-		        .setAccessTill(LocalDateTime.now()
-		                .plus(time, unit));
+				.setAccessKey(UniqueUtil.base36UUID())
+				.setAccessLimit(ULongUtil.valueOf(limit))
+				.setAccessTill(LocalDateTime.now()
+						.plus(time, unit));
 
 		return fileSecuredAccessService.create(fileSecuredAccessKey)
-		        .map(FilesSecuredAccessKey::getAccessKey);
+				.map(FilesSecuredAccessKey::getAccessKey);
 	}
 
 }
