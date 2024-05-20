@@ -1571,6 +1571,9 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+ALTER TABLE `security`.`security_app_reg_access` 
+ADD COLUMN `WRITE_ACCESS` TINYINT(1) NOT NULL DEFAULT 0 AFTER `ALLOW_APP_ID`;
+
 -- V23__Address (SECUITY)
 
 use security;
@@ -1640,6 +1643,11 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+-- V3__Path defaults.sql(FILES)
+use files;
+
+ALTER TABLE `files`.`files_access_path` 
+CHANGE COLUMN `PATH` `PATH` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT 'Path to the resource' ;
 
 
 
