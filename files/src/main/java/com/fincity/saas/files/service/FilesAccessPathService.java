@@ -376,8 +376,8 @@ public class FilesAccessPathService
 			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					FilesMessageResourceService.MISSING_FIELD, "Resource Type");
 
-		accessPath.setPath(accessPath.getPath() == null || accessPath.getPath()
-				.isBlank() ? "/"
+		accessPath.setPath(accessPath.getPath() == null || accessPath.getPath().trim()
+				.isBlank() ? ""
 						: accessPath.getPath()
 								.trim());
 
