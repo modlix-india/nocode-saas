@@ -1643,6 +1643,11 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+-- V3__Path defaults.sql(FILES)
+use files;
+
+ALTER TABLE `files`.`files_access_path` 
+CHANGE COLUMN `PATH` `PATH` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT 'Path to the resource' ;
 -- V24__User Role Permission Unique Key Constraint (SECURITY)
 
 use security;

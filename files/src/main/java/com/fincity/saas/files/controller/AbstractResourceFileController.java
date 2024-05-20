@@ -28,8 +28,11 @@ import reactor.util.context.Context;
 
 public abstract class AbstractResourceFileController<T extends AbstractFilesResourceService> {
 
-	@Autowired
-	private T service;
+	protected T service;
+
+	protected AbstractResourceFileController(T service) {
+		this.service = service;
+	}
 
 	@GetMapping("/**")
 	public Mono<ResponseEntity<Page<FileDetail>>> list(Pageable page, @RequestParam(required = false) String filter,
@@ -40,12 +43,12 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.service.list(
-		                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-		                request.getPath()
-		                        .toString(),
-		                fileType, filter,
-		                page),
+				ca -> this.service.list(
+						CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+						request.getPath()
+								.toString(),
+						fileType, filter,
+						page),
 
 				(ca, pg) -> Mono.just(ResponseEntity.<Page<FileDetail>>ok(pg)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.list"));
@@ -59,10 +62,10 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> this.service.delete(
-		                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-		                request.getPath()
-		                        .toString()),
+				ca -> this.service.delete(
+						CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+						request.getPath()
+								.toString()),
 
 				(ca, deleted) -> Mono.just(ResponseEntity.<Boolean>ok(deleted)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.delete"));
@@ -81,12 +84,12 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
 				ca -> filePart,
 
-		        (ca, fp) -> this.service.create(
-		                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-		                request.getPath()
-		                        .toString(),
-		                fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
-		                        : null))
+				(ca, fp) -> this.service.create(
+						CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+						request.getPath()
+								.toString(),
+						fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
+								: null))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.create"));
 	}
@@ -116,7 +119,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 			@RequestPart(name = "file", required = true) Mono<FilePart> filePart,
 			@RequestParam(required = false) String clientCode,
 			@RequestPart(required = false, name = "override") String override, ServerHttpRequest request) {
-		
+
 		return FlatMapUtil.flatMapMonoWithNull(
 
 				SecurityContextUtil::getUsersContextAuthentication,
@@ -124,13 +127,13 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 				ca -> filePart,
 
 				(ca, fp) -> this.service
-		                .createFromZipFile(
-		                        CommonsUtil.nonNullValue(clientCode, ca.getClientCode(),
-		                                ca.getLoggedInFromClientCode()),
-		                        request.getPath()
-		                                .toString(),
-		                        fp, override != null ? BooleanUtil.safeValueOf(override)
-		                                : null))
+						.createFromZipFile(
+								CommonsUtil.nonNullValue(clientCode, ca.getClientCode(),
+										ca.getLoggedInFromClientCode()),
+								request.getPath()
+										.toString(),
+								fp, override != null ? BooleanUtil.safeValueOf(override)
+										: null))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.createWithZip"));
 	}

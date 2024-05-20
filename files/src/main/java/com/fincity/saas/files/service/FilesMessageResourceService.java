@@ -43,6 +43,9 @@ public class FilesMessageResourceService extends AbstractMessageService {
 	public static final String UNABLE_CREATE_DOWNLOAD_FILE = "unable_create_download_file";
 	public static final String WRONG_FILE_TYPE = "wrong_file_type";
 	public static final String MISSING_FIELD = "missing_field";
+	public static final String IMAGE_FILE_REQUIRED = "image_file_required";
+	public static final String IMAGE_TRANSFORM_ERROR = "image_transform_error";
+	public static final String UNABLE_TO_COPY_THE_IMAGE_FILE = "unable_to_copy_the_image_file";
 
 	public FilesMessageResourceService() {
 

@@ -10,6 +10,11 @@ import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 @Service
 public class StaticFileResourceService extends AbstractFilesResourceService {
 
+	public StaticFileResourceService(
+			FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService) {
+		super(filesAccessPathService, msgService);
+	}
+
 	@Value("${files.resources.location.static}")
 	private String location;
 
