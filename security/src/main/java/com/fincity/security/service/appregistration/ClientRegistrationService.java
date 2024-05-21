@@ -396,8 +396,8 @@ public class ClientRegistrationService {
                                         "token", token,
                                         "passwordUsed", userTuple.getT2()))))
                         .flatMap(e -> {
-                            if (AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop)
-                                    || prop.endsWith("_LOGIN_IMMEDIATE")) {
+                                if ((AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop) && !StringUtil.safeIsBlank(
+                                         registrationRequest.getPassword())) || prop.endsWith("_LOGIN_IMMEDIATE")) {
 
                                 return this.authenticationService
                                         .authenticate(
@@ -482,17 +482,12 @@ public class ClientRegistrationService {
         user.setPhoneNumber(request.getPhoneNumber());
 
         String password = "";
-        if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)) {
+        if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)
+                        || StringUtil.safeIsBlank(request.getPassword())) {
 
             password = PasswordUtil.generatePassword(8);
             user.setPassword(password);
             user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-        } else if (StringUtil.safeIsBlank(request.getPassword())) {
-
-            return this.securityMessageResourceService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    SecurityMessageResourceService.MISSING_PASSWORD);
-
         } else if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
             user.setPassword(request.getPassword());
             user.setStatusCode(SecurityUserStatusCode.INACTIVE);
