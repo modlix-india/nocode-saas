@@ -71,7 +71,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 
 							if (outputResult.getName().equals(ERROR_EVENT)) {
 								return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-										CoreMessageResourceService.NOT_ABLE_TO_CREATE_TOKEN, connection.getName());
+										CoreMessageResourceService.NOT_ABLE_TO_CREATE_TOKEN, connection.getName(), outputResult);
 							}
 
 							Map<String, JsonElement> eventMap = outputResult.getResult();
