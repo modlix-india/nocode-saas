@@ -27,7 +27,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 
 	private static final String AUTH_TOKEN_FUNCTION_NAME = "authTokenFunctionName";
 	private static final String AUTH_TOKEN_FUNCTION_NAMESPACE = "authTokenFunctionNamespace";
-	private static final String AUTH_TOKEN = "authToken";
+	private static final String AUTH_TOKEN = "accessToken";
 	private static final String EXPIRES_IN = "expiresIn";
 
 	private final CoreMessageResourceService msgService;
@@ -56,7 +56,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 					String authTokenFunctionName = (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAME);
 					String authTokenFunctionNameSpace = (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAMESPACE);
 
-					return coreFunctionService.execute(authTokenFunctionName, authTokenFunctionNameSpace,
+					return coreFunctionService.execute(authTokenFunctionNameSpace, authTokenFunctionName,
 							connection.getAppCode(), connection.getClientCode(), null, null);
 				},
 
@@ -87,9 +87,12 @@ public class RestAuthService extends AbstractRestService implements IRestService
 
 		HttpHeaders headers = new HttpHeaders();
 
-		String tokenPrefix = (String) connection.getConnectionDetails().getOrDefault("header_prefix", "Bearer");
+		Object tokenPrefix = connection.getConnectionDetails().get("headerPrefix");
 
-		headers.setBearerAuth(tokenPrefix + " " + accessToken);
+		String authorizationHeader = (tokenPrefix != null) ? tokenPrefix + " " + accessToken : "Bearer " + accessToken;
+
+		headers.set("Authorization", authorizationHeader);
+
 		request.setHeaders(headers);
 
 		return basicRestService.call(connection, request);
