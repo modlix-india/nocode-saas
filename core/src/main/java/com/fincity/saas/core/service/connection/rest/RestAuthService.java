@@ -96,10 +96,9 @@ public class RestAuthService extends AbstractRestService implements IRestService
 
 		Object tokenPrefix = connection.getConnectionDetails().get("headerPrefix");
 
-		String authorizationHeader = (tokenPrefix != null) ? tokenPrefix + " " + accessToken : "Bearer " + accessToken;
+		String authorizationHeader = (tokenPrefix != null) ? tokenPrefix + " " + accessToken : accessToken;
 
-		MultiValueMap<String, String> headers = Optional.ofNullable(request.getHeaders())
-				.orElseGet(HttpHeaders::new);
+		MultiValueMap<String, String> headers = request.getHeaders() != null ? request.getHeaders() : new HttpHeaders();
 
 		headers.add("Authorization", authorizationHeader);
 		request.setHeaders(headers);
