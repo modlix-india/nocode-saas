@@ -30,6 +30,7 @@ import com.fincity.saas.core.dto.RestResponse;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.reflect.TypeToken;
 
@@ -40,6 +41,10 @@ import reactor.util.function.Tuples;
 
 @Service
 public class BasicRestService extends AbstractRestService implements IRestService {
+
+	private static final String ENCODED_TEXT_TAG_DATA = "data:";
+	private static final String ENCODED_TEXT_TAG_NAME = "name:";
+	private static final String ENCODED_TEXT_TAG_BASE = "base64,";
 
 	private final CoreMessageResourceService msgService;
 	private final Gson gson;
@@ -65,39 +70,50 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
 					HttpHeaders headers = tup.getT2();
 
-					if (request.getHeaders() != null && !request.getHeaders().isEmpty())
+					if (request.getHeaders() != null && !request.getHeaders()
+							.isEmpty())
 						headers.addAll(request.getHeaders());
 
 					WebClient.Builder webClientBuilder = WebClient.builder();
-					WebClient webClient = webClientBuilder.baseUrl(tup.getT1()).build();
+					WebClient webClient = webClientBuilder.baseUrl(tup.getT1())
+							.build();
 					WebClient.RequestBodySpec requestBuilder = webClient.method(HttpMethod.resolve(request.getMethod()))
 							.uri(uriBuilder -> {
 								uriBuilder = applyQueryParameters(uriBuilder, request.getQueryParameters());
 								return uriBuilder.build(request.getPathParameters());
-							}).headers(h -> h.addAll(headers));
+							})
+							.headers(h -> h.addAll(headers));
 
-					if (request.getPayload() == null)
+					if (request.getPayload() == null && (request.getMethod()
+							.equalsIgnoreCase("GET")
+							|| request.getMethod()
+									.equalsIgnoreCase("DELETE")))
+
 						return requestBuilder
 								.exchangeToMono(clientResponse -> handleResponse(clientResponse, tup.getT3()));
 
-					if (headers.getContentType() != null
-							&& headers.getContentType().isCompatibleWith(MediaType.MULTIPART_FORM_DATA)) {
+					if (headers.getContentType() != null && headers.getContentType()
+							.isCompatibleWith(MediaType.MULTIPART_FORM_DATA)) {
 						var newPayload = getFormDataFromJson(request.getPayload());
 						return doRequestWithFormData(newPayload, requestBuilder, tup.getT3());
 					}
 
-					if (headers.getContentType() != null
-							&& headers.getContentType().isCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED)) {
+					if (headers.getContentType() != null && headers.getContentType()
+							.isCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED)) {
 						var newPayload = getURLFormDataFromJson(request.getPayload());
 						return doRequestWithFormData(newPayload, requestBuilder, tup.getT3());
 					}
 
-					return requestBuilder.bodyValue(gson.fromJson(request.getPayload(), Object.class))
-							.exchangeToMono(clientResponse -> {
-								return handleResponse(clientResponse, tup.getT3());
-							}).onErrorReturn(new RestResponse().setStatus(HttpStatus.BAD_REQUEST.value())
+					return requestBuilder
+							.bodyValue(gson.fromJson(
+									!request.getPayload().isJsonNull() ? request.getPayload() : new JsonObject(),
+									Object.class))
+							.exchangeToMono(clientResponse -> handleResponse(clientResponse, tup
+									.getT3()))
+							.onErrorReturn(new RestResponse().setStatus(HttpStatus.BAD_REQUEST.value())
 									.setData("Url not found with the given connection"));
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "BasicRestService.call"));
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "BasicRestService.call"));
 
 	}
 
@@ -106,45 +122,68 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 		MultipartBodyBuilder builder = new MultipartBodyBuilder();
 		if (!payload.isJsonObject())
 			return builder;
-		for (var x : payload.getAsJsonObject().entrySet()) {
-			if (x.getValue().isJsonArray()) {
-				var array = x.getValue().getAsJsonArray();
-				byte[][] byteArrayArray = new byte[array.size()][];
-				for (var y = 0; y < array.size(); y++) {
-					byteArrayArray[y] = decodeToFile(array.get(y).getAsString());
-				}
 
-				builder.part(x.getKey(), byteArrayArray);
-			} else {
-				builder.part(x.getKey(), decodeToFile(x.getValue().getAsString()));
-			}
+		for (var x : payload.getAsJsonObject().entrySet()) {
+
+			if (x.getValue().isJsonArray()) {
+
+				for (var y : x.getValue().getAsJsonArray()) {
+
+					String str = y.getAsString();
+					this.addFormData(builder, x.getKey(), str);
+				}
+			} else
+				this.addFormData(builder, x.getKey(), x.getValue().getAsString());
 		}
 
 		return builder;
 	}
 
-	private MultiValueMap<String, String> getURLFormDataFromJson(JsonElement payload) {
-		if (!payload.isJsonObject())
-			return null;
-		MultiValueMap<String, String> builder = new LinkedMultiValueMap<>();
-		for (var x : payload.getAsJsonObject().entrySet()) {
+	private void addFormData(MultipartBodyBuilder builder, String key, String value) {
 
-			builder.add(x.getKey(), x.getValue().getAsString());
+		if (value.startsWith(ENCODED_TEXT_TAG_DATA)) {
+
+			String[] parts = value.split(";");
+			if (parts.length < 3) {
+				builder.part(key, value);
+				return;
+			}
+
+			if (parts[0].startsWith(ENCODED_TEXT_TAG_DATA) && parts[1].startsWith(ENCODED_TEXT_TAG_NAME)
+					&& parts[2].startsWith(ENCODED_TEXT_TAG_BASE)) {
+				String type = parts[0].substring(ENCODED_TEXT_TAG_DATA.length());
+				String name = parts[1].substring(ENCODED_TEXT_TAG_NAME.length());
+				String base64 = parts[2].substring(ENCODED_TEXT_TAG_BASE.length());
+
+				builder.part(key, decodeToFile(base64)).contentType(MediaType.valueOf(type)).filename(name);
+				return;
+			}
 
 		}
+		builder.part(key, value);
+	}
 
-		return builder;
+	private MultiValueMap<String, String> getURLFormDataFromJson(JsonElement payload) {
+
+		MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+
+		if (!payload.isJsonObject())
+			return map;
+
+		for (var x : payload.getAsJsonObject().entrySet())
+			map.add(x.getKey(), x.getValue().toString());
+
+		return map;
 	}
 
 	private static byte[] decodeToFile(String base64EncodedFile) {
 
 		try {
-			byte[] fileData = Base64.getDecoder().decode(base64EncodedFile);
-			return fileData;
-		} catch (Exception e) {
-			System.err.println("Error decoding file: " + e.getMessage());
+			return Base64.getDecoder()
+					.decode(base64EncodedFile);
+		} catch (IllegalArgumentException e) {
+			throw new GenericException(HttpStatus.BAD_REQUEST, "Not a base64 encoded string", e);
 		}
-		return new byte[0];
 	}
 
 	private Mono<RestResponse> doRequestWithFormData(MultipartBodyBuilder builder,
@@ -178,8 +217,8 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 		if (connectionDetails.containsKey("userName") && connectionDetails.containsKey("password")) {
 			String userName = (String) connectionDetails.get("userName");
 			String password = (String) connectionDetails.get("password");
-			String basicAuth = "Basic "
-					+ java.util.Base64.getEncoder().encodeToString((userName + ":" + password).getBytes());
+			String basicAuth = "Basic " + java.util.Base64.getEncoder()
+					.encodeToString((userName + ":" + password).getBytes());
 			headers.set("Authorization", basicAuth);
 		}
 
@@ -188,15 +227,21 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
 			for (Entry<?, ?> header : dHeaders.entrySet())
 				if (header.getValue() != null)
-					headers.set(header.getKey().toString(), header.getValue().toString());
+					headers.set(header.getKey()
+							.toString(),
+							header.getValue()
+									.toString());
 		}
 
 		if (connectionDetails.containsKey("baseUrl")) {
 
-			String baseUrl = connectionDetails.get("baseUrl").toString();
-			if (baseUrl.trim().endsWith("/"))
+			String baseUrl = connectionDetails.get("baseUrl")
+					.toString();
+			if (baseUrl.trim()
+					.endsWith("/"))
 				baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
-			if (url.trim().startsWith("/")) {
+			if (url.trim()
+					.startsWith("/")) {
 				url = url.substring(1, url.length());
 			}
 			url = baseUrl + '/' + url;
@@ -215,30 +260,41 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 	}
 
 	private Mono<RestResponse> handleResponse(ClientResponse clientResponse, Duration timeout) {
-		HttpHeaders headers = clientResponse.headers().asHttpHeaders();
+		HttpHeaders headers = clientResponse.headers()
+				.asHttpHeaders();
 		MediaType contentType = headers.getContentType();
 
 		RestResponse restResponse = new RestResponse();
-		restResponse.setHeaders(clientResponse.headers().asHttpHeaders().toSingleValueMap());
-		restResponse.setStatus(clientResponse.statusCode().value());
+		restResponse.setHeaders(clientResponse.headers()
+				.asHttpHeaders()
+				.toSingleValueMap());
+		restResponse.setStatus(clientResponse.statusCode()
+				.value());
 
 		if (contentType == null)
-			return clientResponse.bodyToMono(String.class).map(textData -> restResponse.setData(textData))
-					.timeout(timeout).onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
+			return clientResponse.bodyToMono(String.class)
+					.map(restResponse::setData)
+					.timeout(timeout)
+					.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 
 		if (contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
 
 			return clientResponse.bodyToMono(String.class)
-					.map(jsonData -> restResponse.setData(processJsonResponse(jsonData))).timeout(timeout)
+					.map(jsonData -> restResponse.setData(processJsonResponse(jsonData)))
+					.timeout(timeout)
 					.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
-		} else if (contentType.getType().equals(MimeTypeUtils.APPLICATION_OCTET_STREAM.getType())) {
+		} else if (contentType.getType()
+				.equals(MimeTypeUtils.APPLICATION_OCTET_STREAM.getType())) {
 
 			return clientResponse.bodyToMono(Resource.class)
-					.map(binaryData -> processBinaryResponse(binaryData, restResponse)).timeout(timeout)
+					.map(binaryData -> processBinaryResponse(binaryData, restResponse))
+					.timeout(timeout)
 					.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 		}
 
-		return clientResponse.bodyToMono(String.class).map(textData -> restResponse.setData(textData)).timeout(timeout)
+		return clientResponse.bodyToMono(String.class)
+				.map(restResponse::setData)
+				.timeout(timeout)
 				.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 	}
 
