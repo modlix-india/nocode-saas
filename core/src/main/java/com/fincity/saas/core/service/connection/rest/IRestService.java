@@ -8,5 +8,5 @@ import reactor.core.publisher.Mono;
 
 public interface IRestService {
 	
-	public Mono<RestResponse> call(Connection connection, RestRequest request);
+	Mono<RestResponse> call(Connection connection, RestRequest request);
 }
