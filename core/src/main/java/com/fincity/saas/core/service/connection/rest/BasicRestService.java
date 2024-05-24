@@ -151,8 +151,8 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
 			if (parts[0].startsWith(ENCODED_TEXT_TAG_DATA) && parts[1].startsWith(ENCODED_TEXT_TAG_NAME)
 					&& parts[2].startsWith(ENCODED_TEXT_TAG_BASE)) {
-				String type = parts[0].substring(ENCODED_TEXT_TAG_DATA.length() + 1);
-				String name = parts[1].substring(ENCODED_TEXT_TAG_NAME.length() + 1);
+				String type = parts[0].substring(ENCODED_TEXT_TAG_DATA.length());
+				String name = parts[1].substring(ENCODED_TEXT_TAG_NAME.length());
 				String base64 = parts[2].substring(ENCODED_TEXT_TAG_BASE.length());
 
 				builder.part(key, decodeToFile(base64)).contentType(MediaType.valueOf(type)).filename(name);
