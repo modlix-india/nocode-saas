@@ -51,8 +51,11 @@ public class RestService {
 		return FlatMapUtil.flatMapMono(
 
 				() -> SecurityContextUtil.getUsersContextAuthentication()
-						.map(e -> Tuples.of(CommonsUtil.nonNullValue(appCode, e.getUrlAppCode()),
-								CommonsUtil.nonNullValue(clientCode, e.getUrlClientCode()))),
+						.map(e -> Tuples.of(
+								CommonsUtil.nonNullValue(appCode.trim().length() == 0 ? null : appCode,
+										e.getUrlAppCode()),
+								CommonsUtil.nonNullValue(clientCode.trim().length() == 0 ? null : clientCode,
+										e.getUrlClientCode()))),
 
 				codeTuple -> connectionService
 						.read(connectionName, codeTuple.getT1(), codeTuple.getT2(), ConnectionType.REST_API),
