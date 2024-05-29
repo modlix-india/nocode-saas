@@ -1,4 +1,4 @@
-package com.fincity.saas.core.functions.connection.email;
+package com.fincity.saas.core.functions.email;
 
 import java.util.HashMap;
 import java.util.List;
@@ -6,7 +6,6 @@ import java.util.Map;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
 import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
@@ -18,14 +17,13 @@ import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
 
 public class SendEmail extends AbstractReactiveFunction {
 
-	private static final String EVENT_DATA = "data";
+	private static final String EVENT_DATA = "sent";
 
 	private static final String FUNCTION_NAME = "SendEmail";
 
@@ -40,8 +38,6 @@ public class SendEmail extends AbstractReactiveFunction {
 	private static final String TEMPLATE_NAME = "templateName";
 
 	private static final String TEMPLATE_DATA = "templateData";
-
-	private static final String TEMPLATE_DATA_VALUE = "templateDataValue";
 
 	private static final String ADDRESSES = "addresses";
 
@@ -71,10 +67,8 @@ public class SendEmail extends AbstractReactiveFunction {
 				Parameter.ofEntry(ADDRESSES, Schema.ofArray(ADDRESSES,
 						Schema.ofString(ADDRESS).setFormat(StringFormat.EMAIL)).setDefaultValue(new JsonArray(0))),
 
-				Parameter.ofEntry(TEMPLATE_DATA, Schema.ofObject(TEMPLATE_DATA).setAdditionalProperties(
-								new AdditionalType().setSchemaValue(Schema.ofAny(TEMPLATE_DATA_VALUE)))
-						.setDefaultValue(new JsonObject()))
-		));
+				Parameter.ofEntry(TEMPLATE_DATA, Schema.ofObject(TEMPLATE_DATA)
+				)));
 
 		return new FunctionSignature().setNamespace(NAMESPACE).setName(FUNCTION_NAME).setParameters(parameters)
 				.setEvents(Map.of(event.getName(), event));

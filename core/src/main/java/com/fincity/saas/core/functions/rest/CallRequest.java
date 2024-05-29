@@ -1,4 +1,4 @@
-package com.fincity.saas.core.functions.connection.rest;
+package com.fincity.saas.core.functions.rest;
 
 import java.util.HashMap;
 import java.util.List;

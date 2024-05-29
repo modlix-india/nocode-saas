@@ -10,11 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
@@ -63,34 +63,31 @@ public class EmailService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> {
-					if (!StringUtil.isNullOrBlank(appCode) && !StringUtil.isNullOrBlank(clientCode))
-						return Mono.just(Tuples.of(appCode, clientCode));
+						() -> SecurityContextUtil.getUsersContextAuthentication()
+								.map(e -> Tuples.of(
+										CommonsUtil.nonNullValue(appCode.trim().isEmpty() ? null : appCode, e.getUrlAppCode()),
+										CommonsUtil.nonNullValue(clientCode.trim().isEmpty() ? null : clientCode, e.getUrlAppCode()))),
 
-					return SecurityContextUtil.getUsersContextAuthentication()
-							.map(e -> Tuples.of(e.getUrlAppCode(), e.getClientCode()));
-				},
-
-				actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
-						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-								templateName)),
-
-				(actup, conn) -> Mono.justOrEmpty(this.services.get(conn.getConnectionSubType()))
-						.switchIfEmpty(
-								msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+						actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
+								.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 										CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-										conn.getConnectionSubType())),
+										templateName)),
 
-				(actup, conn, mailService) -> templateService.read(templateName, actup.getT1(), actup.getT2())
-						.map(ObjectWithUniqueID::getObject)
-						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								CoreMessageResourceService.TEMPLATE_DETAILS_MISSING,
-								templateName)),
+						(actup, conn) -> Mono.justOrEmpty(this.services.get(conn.getConnectionSubType()))
+								.switchIfEmpty(
+										msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+												CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
+												conn.getConnectionSubType())),
 
-				(actup, conn, mailService, template) -> mailService.sendMail(addresses, template, templateData, conn)
+						(actup, conn, mailService) -> templateService.read(templateName, actup.getT1(), actup.getT2())
+								.map(ObjectWithUniqueID::getObject)
+								.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+										CoreMessageResourceService.TEMPLATE_DETAILS_MISSING,
+										templateName)),
 
-		)
+						(actup, conn, mailService, template) -> mailService.sendMail(addresses, template, templateData, conn)
+
+				)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "EmailService.sendEmail"));
 	}
 }
