@@ -66,7 +66,7 @@ public class EmailService {
 						() -> SecurityContextUtil.getUsersContextAuthentication()
 								.map(e -> Tuples.of(
 										CommonsUtil.nonNullValue(appCode.trim().isEmpty() ? null : appCode, e.getUrlAppCode()),
-										CommonsUtil.nonNullValue(clientCode.trim().isEmpty() ? null : clientCode, e.getUrlAppCode()))),
+										CommonsUtil.nonNullValue(clientCode.trim().isEmpty() ? null : clientCode, e.getClientCode()))),
 
 						actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
 								.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),

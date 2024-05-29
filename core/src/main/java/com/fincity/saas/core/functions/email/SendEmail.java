@@ -6,7 +6,6 @@ import java.util.Map;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
@@ -16,7 +15,6 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutio
 import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.core.service.connection.email.EmailService;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
@@ -38,8 +36,6 @@ public class SendEmail extends AbstractReactiveFunction {
 	private static final String TEMPLATE_NAME = "templateName";
 
 	private static final String TEMPLATE_DATA = "templateData";
-
-	private static final String ADDRESSES = "addresses";
 
 	private static final String ADDRESS = "address";
 
@@ -64,8 +60,7 @@ public class SendEmail extends AbstractReactiveFunction {
 
 				Parameter.ofEntry(TEMPLATE_NAME, Schema.ofString(TEMPLATE_NAME)),
 
-				Parameter.ofEntry(ADDRESSES, Schema.ofArray(ADDRESSES,
-						Schema.ofString(ADDRESS).setFormat(StringFormat.EMAIL)).setDefaultValue(new JsonArray(0))),
+				Parameter.ofEntry(ADDRESS, Schema.ofString(ADDRESS), true),
 
 				Parameter.ofEntry(TEMPLATE_DATA, Schema.ofObject(TEMPLATE_DATA)
 				)));
@@ -82,7 +77,7 @@ public class SendEmail extends AbstractReactiveFunction {
 		String connectionName = context.getArguments().get(CONNECTION_NAME).getAsString();
 		String templateName = context.getArguments().get(TEMPLATE_NAME).getAsString();
 
-		List<String> addressesList = JsonUtil.toList(context.getArguments().get(ADDRESSES).getAsJsonArray())
+		List<String> addressesList = JsonUtil.toList(context.getArguments().get(ADDRESS).getAsJsonArray())
 				.stream().map(Object::toString).toList();
 
 		Map<String, Object> templateData = JsonUtil.toMap(context.getArguments().get(TEMPLATE_DATA).getAsJsonObject());
