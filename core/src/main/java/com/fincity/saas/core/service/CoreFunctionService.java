@@ -43,6 +43,7 @@ import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
@@ -85,6 +86,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@Lazy
 	private IFeignSecurityService feignSecurityService;
 
+	@Autowired
+	@Lazy
+	private EmailService emailService;
+
 	public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
 		super(CoreFunction.class, feignAuthenticationService, gson);
 	}
@@ -93,7 +98,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
 				new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-						feignSecurityService, this.gson));
+						feignSecurityService, emailService, this.gson));
 	}
 
 	@Override
