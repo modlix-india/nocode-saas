@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
@@ -43,7 +44,7 @@ public class EmailService {
 	@Autowired
 	private TemplateService templateService;
 
-	private EnumMap<ConnectionSubType, IAppEmailService> services = new EnumMap<>(ConnectionSubType.class);
+	private final EnumMap<ConnectionSubType, IAppEmailService> services = new EnumMap<>(ConnectionSubType.class);
 
 	@PostConstruct
 	public void init() {
@@ -63,7 +64,7 @@ public class EmailService {
 		return FlatMapUtil.flatMapMono(
 
 				() -> {
-					if (appCode != null && clientCode != null)
+					if (!StringUtil.isNullOrBlank(appCode) && !StringUtil.isNullOrBlank(clientCode))
 						return Mono.just(Tuples.of(appCode, clientCode));
 
 					return SecurityContextUtil.getUsersContextAuthentication()
