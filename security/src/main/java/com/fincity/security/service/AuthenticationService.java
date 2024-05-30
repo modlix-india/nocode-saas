@@ -3,10 +3,12 @@ package com.fincity.security.service;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +30,7 @@ import com.fincity.saas.commons.security.jwt.JWTClaims;
 import com.fincity.saas.commons.security.jwt.JWTUtil;
 import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -49,26 +52,31 @@ import reactor.util.function.Tuple2;
 @Service
 public class AuthenticationService implements IAuthenticationService {
 
-	@Autowired
-	private UserService userService;
+	private final UserService userService;
 
-	@Autowired
-	private ClientService clientService;
+	private final ClientService clientService;
 
-	@Autowired
-	private TokenService tokenService;
+	private final TokenService tokenService;
 
-	@Autowired
-	private SecurityMessageResourceService resourceService;
+	private final SecurityMessageResourceService resourceService;
 
-	@Autowired
-	private SoxLogService soxLogService;
+	private final SoxLogService soxLogService;
 
-	@Autowired
-	private PasswordEncoder pwdEncoder;
+	private final PasswordEncoder pwdEncoder;
 
-	@Autowired
-	private CacheService cacheService;
+	private final CacheService cacheService;
+
+	public AuthenticationService(UserService userService, ClientService clientService, TokenService tokenService,
+			SecurityMessageResourceService resourceService, SoxLogService soxLogService, PasswordEncoder pwdEncoder,
+			CacheService cacheService) {
+		this.userService = userService;
+		this.clientService = clientService;
+		this.tokenService = tokenService;
+		this.resourceService = resourceService;
+		this.soxLogService = soxLogService;
+		this.pwdEncoder = pwdEncoder;
+		this.cacheService = cacheService;
+	}
 
 	@Value("${jwt.key}")
 	private String tokenKey;
@@ -78,6 +86,9 @@ public class AuthenticationService implements IAuthenticationService {
 
 	@Value("${jwt.token.default.expiry}")
 	private Integer defaultExpiryInMinutes;
+
+	@Value("${jwt.token.default.refresh:10}")
+	private Integer defaultRefreshInMinutes;
 
 	public Mono<Integer> revoke(ServerHttpRequest request) {
 
@@ -437,6 +448,95 @@ public class AuthenticationService implements IAuthenticationService {
 		}
 
 		return Mono.just(jwtClaims);
+	}
+
+	public Mono<AuthenticationResponse> refreshToken(ServerHttpRequest request) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> {
+
+					if (!ca.isAuthenticated()) {
+						return Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+					}
+
+					return this.clientService.getClientInfoById(ca.getUser()
+							.getClientId());
+				},
+
+				(ca, client) -> {
+
+					if (LocalDateTime
+							.ofInstant(Instant.now().plus(Duration.ofMinutes(this.defaultRefreshInMinutes)),
+									ZoneOffset.UTC)
+							.isAfter(ca.getAccessTokenExpiryAt()))
+						return this.revoke(request).map(e -> true);
+
+					return Mono.just(false);
+				},
+
+				(ca, client, revoked) -> {
+
+					if (revoked.booleanValue())
+						return this.generateNewToken(ca, request, client);
+
+					return Mono.just(new AuthenticationResponse().setUser(ca.getUser())
+							.setClient(client)
+							.setLoggedInClientCode(ca.getLoggedInFromClientCode())
+							.setLoggedInClientId(ca.getLoggedInFromClientId())
+							.setAccessToken(ca.getAccessToken())
+							.setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt()));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
+	}
+
+	private Mono<AuthenticationResponse> generateNewToken(ContextAuthentication ca, ServerHttpRequest request,
+			Client client) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> {
+					JWTClaims claims = JWTUtil.getClaimsFromToken(tokenKey, ca.getAccessToken());
+
+					JWTGenerateTokenParameters params = JWTGenerateTokenParameters.builder()
+							.userId(ca.getUser()
+									.getId())
+							.secretKey(tokenKey)
+							.expiryInMin(
+									client.getTokenValidityMinutes() <= 0 ? this.defaultExpiryInMinutes
+											: client.getTokenValidityMinutes())
+							.host(claims.getHostName())
+							.port(claims.getPort())
+							.loggedInClientId(claims.getLoggedInClientId())
+							.loggedInClientCode(claims.getLoggedInClientCode())
+							.build();
+
+					return Mono.just(JWTUtil.generateToken(params));
+				},
+
+				token -> {
+					InetSocketAddress inetAddress = request.getRemoteAddress();
+					final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
+
+					return tokenService.create(new TokenObject().setUserId(ULong.valueOf(ca.getUser().getId()))
+							.setToken(token.getT1())
+							.setPartToken(token.getT1()
+									.length() < 50 ? token.getT1()
+											: token.getT1()
+													.substring(token.getT1()
+															.length() - 50))
+							.setExpiresAt(token.getT2())
+							.setIpAddress(hostAddress));
+				},
+
+				(token, t) -> Mono.just(new AuthenticationResponse().setUser(ca.getUser())
+						.setClient(client)
+						.setLoggedInClientCode(ca.getLoggedInFromClientCode())
+						.setLoggedInClientId(ca.getLoggedInFromClientId())
+						.setAccessToken(token.getT1())
+						.setAccessTokenExpiryAt(token.getT2()))
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.generateNewToken"));
 	}
 
 }
