@@ -29,6 +29,7 @@ import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 
@@ -38,18 +39,18 @@ import reactor.util.function.Tuples;
 
 @RestController
 @RequestMapping("api/core/functions")
-public class FunctionController
-		extends AbstractOverridableDataController<CoreFunction, CoreFunctionDocumentRepository, CoreFunctionService> {
+public class FunctionController extends AbstractOverridableDataController<CoreFunction, CoreFunctionDocumentRepository,
+		CoreFunctionService> {
 
-	private CoreFunctionRepository coreFunRepo;
+	private final CoreFunctionRepository coreFunRepo;
 	private final Gson gson;
 
 	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
-	                          ContextService userContextService, IFeignSecurityService securityService, EmailService emailService,
-	                          Gson gson) {
+	                          ContextService userContextService, IFeignSecurityService securityService, ClientUrlService clientUrlService,
+	                          EmailService emailService, Gson gson) {
 
 		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-				securityService, emailService, gson);
+				securityService, clientUrlService, emailService, gson);
 		this.gson = gson;
 	}
 

@@ -25,8 +25,8 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.ClientUrlDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
@@ -41,6 +41,8 @@ public class ClientUrlService
 	private static final String URL_PATTERN = "urlPattern";
 
 	private static final String CLIENT_URL = "Client URL";
+
+	public static final String APP_PROP_URL = "URL";
 
 	@Autowired
 	private CacheService cacheService;
@@ -72,23 +74,23 @@ public class ClientUrlService
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+						SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> super.read(id),
+						ca -> super.read(id),
 
-				(ca, cu) -> {
+						(ca, cu) -> {
 
-					if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
-						return Mono.just(true);
+							if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
+								return Mono.just(true);
 
-					return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), cu.getClientId());
-				},
+							return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), cu.getClientId());
+						},
 
-				(ca, cu, hasAccess) -> {
-					if (hasAccess.booleanValue())
-						return Mono.just(cu);
-					return Mono.empty();
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+						(ca, cu, hasAccess) -> {
+							if (hasAccess.booleanValue())
+								return Mono.just(cu);
+							return Mono.empty();
+						}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
 				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 						SecurityMessageResourceService.OBJECT_NOT_FOUND, CLIENT_URL, id));
 	}
@@ -129,29 +131,29 @@ public class ClientUrlService
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+						SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> {
+						ca -> {
 
-					if (ca.isSystemClient() || entity.getClientId() == null
-							|| ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
-						return Mono.just(true);
+							if (ca.isSystemClient() || entity.getClientId() == null
+									|| ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
+								return Mono.just(true);
 
-					return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-							entity.getClientId());
-				},
+							return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
+									entity.getClientId());
+						},
 
-				(ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty(),
+						(ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty(),
 
-				(ca, hasAccess, ent) -> {
+						(ca, hasAccess, ent) -> {
 
-					ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+							ULong clientId = ULong.valueOf(ca.getUser().getClientId());
 
-					if (ent.getClientId() == null)
-						ent.setClientId(clientId);
+							if (ent.getClientId() == null)
+								ent.setClientId(clientId);
 
-					return super.create(ent);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+							return super.create(ent);
+						}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -255,6 +257,47 @@ public class ClientUrlService
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getUrlsBasedOnApp"));
 
+	}
+
+	public Mono<String> getAppUrl(String appCode, String clientCode) {
+
+		if (StringUtil.safeIsBlank(appCode))
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.MANDATORY_APP_CODE);
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> appService.getAppByCode(appCode),
+
+				(ca, app) -> {
+					if (StringUtil.safeIsBlank(clientCode)) {
+						return Mono.just(ca.getUrlClientCode() != null ? ca.getUrlClientCode() : ca.getLoggedInFromClientCode());
+					}
+					return Mono.just(clientCode);
+				},
+
+				(ca, app, cc) -> clientService.getClientBy(cc).map(Client::getId),
+
+				(ca, app, cc, clientId) -> appService.getProperties(clientId, app.getId(), appCode, APP_PROP_URL),
+
+
+				(ca, app, cc, cId, prop) -> prop == null || prop.isEmpty() ?
+						this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId) :
+						Mono.just(prop.get(cId).get(APP_PROP_URL).toString()),
+
+				(ca, app, cc, cId, prop, url) -> {
+					if (url.endsWith(SLASH)) {
+						url = url.substring(0, url.length() - 1);
+					}
+					if (!url.startsWith(HTTPS)) {
+						url = HTTPS + url;
+					}
+					return Mono.just(url);
+				}
+
+		).defaultIfEmpty("").contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrl"));
 	}
 
 	public Mono<Boolean> checkSubDomainAvailability(String subDomain) {

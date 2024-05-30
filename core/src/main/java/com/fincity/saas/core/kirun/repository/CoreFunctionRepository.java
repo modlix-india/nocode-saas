@@ -11,6 +11,7 @@ import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.core.functions.email.SendEmail;
 import com.fincity.saas.core.functions.rest.CallRequest;
+import com.fincity.saas.core.functions.security.GetAppUrl;
 import com.fincity.saas.core.functions.security.GetClient;
 import com.fincity.saas.core.functions.security.IsBeingManagedByCode;
 import com.fincity.saas.core.functions.security.IsBeingManagedById;
@@ -25,6 +26,7 @@ import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 
@@ -39,11 +41,11 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
 	                              ContextService userContextService, IFeignSecurityService securityService,
-	                              EmailService emailService, Gson gson) {
+	                              ClientUrlService clientUrlService, EmailService emailService, Gson gson) {
 
 		this.makeStorageFunctions(appDataService, objectMapper, gson);
 		this.makeRESTFunctions(restService, gson);
-		this.makeSecurityContextFunctions(userContextService, gson);
+		this.makeSecurityContextFunctions(userContextService, clientUrlService, gson);
 		this.makeSecurityFunctions(securityService, gson);
 		this.makeEmailFunctions(emailService);
 
@@ -62,15 +64,17 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(getClient.getSignature().getFullName(), getClient);
 	}
 
-	private void makeSecurityContextFunctions(ContextService userContextService, Gson gson) {
+	private void makeSecurityContextFunctions(ContextService userContextService, ClientUrlService clientUrlService, Gson gson) {
 
 		ReactiveFunction hasAuthority = new HasAuthority(userContextService);
 		ReactiveFunction getAuthentication = new GetAuthentication(userContextService, gson);
 		ReactiveFunction getUser = new GetUser(userContextService, gson);
+		ReactiveFunction getAppUrl = new GetAppUrl(clientUrlService);
 
 		repoMap.put(hasAuthority.getSignature().getFullName(), hasAuthority);
 		repoMap.put(getAuthentication.getSignature().getFullName(), getAuthentication);
 		repoMap.put(getUser.getSignature().getFullName(), getUser);
+		repoMap.put(getAppUrl.getSignature().getFullName(), getAppUrl);
 	}
 
 	private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper, Gson gson) {
