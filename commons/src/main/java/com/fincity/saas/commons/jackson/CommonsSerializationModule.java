@@ -20,7 +20,7 @@ public class CommonsSerializationModule extends SimpleModule {
 	private static final long serialVersionUID = 6242981337057158018L;
 
 	public CommonsSerializationModule() {
-		
+
 		super();
 
 		this.addDeserializer(LocalDateTime.class, new StdDeserializer<LocalDateTime>((Class<?>) null) {
@@ -31,7 +31,7 @@ public class CommonsSerializationModule extends SimpleModule {
 			public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 
 				long inst = p.getValueAsLong();
-				return LocalDateTime.ofInstant(Instant.ofEpochMilli(inst), ZoneId.of("UTC"));
+				return LocalDateTime.ofEpochSecond(inst, 0, ZoneOffset.UTC);
 			}
 		});
 
@@ -41,7 +41,7 @@ public class CommonsSerializationModule extends SimpleModule {
 
 			@Override
 			public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
-			        throws IOException {
+					throws IOException {
 
 				gen.writeNumber(value.toEpochSecond(ZoneOffset.UTC));
 			}
