@@ -14,7 +14,7 @@ public enum ConnectionType {
 
 	TEXTMESSAGE,
 
-	REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_OAUTH2),
+	REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2),
 
 	;
 

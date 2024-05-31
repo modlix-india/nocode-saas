@@ -27,6 +27,7 @@ import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
@@ -44,10 +45,11 @@ public class FunctionController
 	private final Gson gson;
 
 	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
-			ContextService userContextService, IFeignSecurityService securityService, Gson gson) {
+	                          ContextService userContextService, IFeignSecurityService securityService, EmailService emailService,
+	                          Gson gson) {
 
 		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-				securityService, gson);
+				securityService, emailService, gson);
 		this.gson = gson;
 	}
 
