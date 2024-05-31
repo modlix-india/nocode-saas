@@ -282,20 +282,11 @@ public class ClientUrlService
 
 				(ca, app, cc, clientId) -> appService.getProperties(clientId, app.getId(), appCode, APP_PROP_URL),
 
-
 				(ca, app, cc, cId, prop) -> prop == null || prop.isEmpty() ?
 						this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId) :
 						Mono.just(prop.get(cId).get(APP_PROP_URL).toString()),
 
-				(ca, app, cc, cId, prop, url) -> {
-					if (url.endsWith(SLASH)) {
-						url = url.substring(0, url.length() - 1);
-					}
-					if (!url.startsWith(HTTPS)) {
-						url = HTTPS + url;
-					}
-					return Mono.just(url);
-				}
+				(ca, app, cc, cId, prop, url) -> checkUrl(url)
 
 		).defaultIfEmpty("").contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrl"));
 	}
@@ -317,5 +308,17 @@ public class ClientUrlService
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+	}
+
+	private Mono<String> checkUrl(String url) {
+
+		if (url.endsWith(SLASH)) {
+			url = url.substring(0, url.length() - 1);
+		}
+		if (!url.startsWith(HTTPS)) {
+			url = HTTPS + url;
+		}
+
+		return Mono.just(url);
 	}
 }
