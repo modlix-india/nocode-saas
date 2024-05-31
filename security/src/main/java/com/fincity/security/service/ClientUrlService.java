@@ -1,5 +1,6 @@
 package com.fincity.security.service;
 
+import static com.fincity.security.service.AppService.APP_PROP_URL;
 import static com.fincity.security.service.ClientService.CACHE_NAME_CLIENT_URL;
 
 import java.util.HashMap;
@@ -25,8 +26,8 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.ClientUrlDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
@@ -72,23 +73,23 @@ public class ClientUrlService
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+						SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> super.read(id),
+						ca -> super.read(id),
 
-				(ca, cu) -> {
+						(ca, cu) -> {
 
-					if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
-						return Mono.just(true);
+							if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
+								return Mono.just(true);
 
-					return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), cu.getClientId());
-				},
+							return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), cu.getClientId());
+						},
 
-				(ca, cu, hasAccess) -> {
-					if (hasAccess.booleanValue())
-						return Mono.just(cu);
-					return Mono.empty();
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+						(ca, cu, hasAccess) -> {
+							if (hasAccess.booleanValue())
+								return Mono.just(cu);
+							return Mono.empty();
+						}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
 				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 						SecurityMessageResourceService.OBJECT_NOT_FOUND, CLIENT_URL, id));
 	}
@@ -100,27 +101,6 @@ public class ClientUrlService
 		return super.readPageFilter(pageable, condition);
 	}
 
-	private String trimBackSlash(String str) {
-
-		if (StringUtil.safeIsBlank(str))
-			return str;
-
-		String nStr = str.trim();
-
-		if (!nStr.endsWith("/"))
-			return nStr;
-
-		StringBuilder sb = new StringBuilder(nStr);
-
-		char x = sb.charAt(sb.length() - 1);
-
-		while (x == '/' || x == ' ') {
-			sb.delete(sb.length() - 1, sb.length());
-		}
-
-		return sb.toString();
-	}
-
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> create(ClientUrl entity) {
@@ -129,29 +109,29 @@ public class ClientUrlService
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+						SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> {
+						ca -> {
 
-					if (ca.isSystemClient() || entity.getClientId() == null
-							|| ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
-						return Mono.just(true);
+							if (ca.isSystemClient() || entity.getClientId() == null
+									|| ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
+								return Mono.just(true);
 
-					return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-							entity.getClientId());
-				},
+							return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
+									entity.getClientId());
+						},
 
-				(ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty(),
+						(ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty(),
 
-				(ca, hasAccess, ent) -> {
+						(ca, hasAccess, ent) -> {
 
-					ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+							ULong clientId = ULong.valueOf(ca.getUser().getClientId());
 
-					if (ent.getClientId() == null)
-						ent.setClientId(clientId);
+							if (ent.getClientId() == null)
+								ent.setClientId(clientId);
 
-					return super.create(ent);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+							return super.create(ent);
+						}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -176,8 +156,7 @@ public class ClientUrlService
 	@Override
 	public Mono<ClientUrl> update(ULong key, Map<String, Object> updateFields) {
 
-		if (updateFields.get(URL_PATTERN) != null)
-			updateFields.put(URL_PATTERN, trimBackSlash(updateFields.get(URL_PATTERN).toString()));
+		updateFields.computeIfPresent(URL_PATTERN, (k, v) -> trimBackSlash(v.toString()));
 
 		return super.update(key, updateFields).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
@@ -198,6 +177,12 @@ public class ClientUrlService
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+	@Override
+	protected Mono<ClientUrl> updatableEntity(ClientUrl entity) {
+		return this.read(entity.getId()).map(e -> e.setUrlPattern(entity.getUrlPattern()));
+	}
+
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
@@ -208,12 +193,6 @@ public class ClientUrlService
 		map.put(URL_PATTERN, fields.get(URL_PATTERN));
 
 		return Mono.just(map);
-	}
-
-	@Override
-	protected Mono<ClientUrl> updatableEntity(ClientUrl entity) {
-
-		return this.read(entity.getId()).map(e -> e.setUrlPattern(entity.getUrlPattern()));
 	}
 
 	@Override
@@ -257,6 +236,38 @@ public class ClientUrlService
 
 	}
 
+	public Mono<String> getAppUrl(String appCode, String clientCode) {
+
+		if (StringUtil.safeIsBlank(appCode))
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.MANDATORY_APP_CODE);
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> appService.getAppByCode(appCode),
+
+				(ca, app) -> {
+					if (StringUtil.safeIsBlank(clientCode)) {
+						return Mono.just(ca.getUrlClientCode() != null ? ca.getUrlClientCode() : ca.getLoggedInFromClientCode());
+					}
+					return Mono.just(clientCode);
+				},
+
+				(ca, app, cc) -> clientService.getClientBy(cc).map(Client::getId),
+
+				(ca, app, cc, clientId) -> appService.getProperties(clientId, app.getId(), appCode, APP_PROP_URL),
+
+				(ca, app, cc, cId, prop) -> prop == null || prop.isEmpty() ?
+						this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId) :
+						Mono.just(prop.get(cId).get(APP_PROP_URL).toString()),
+
+				(ca, app, cc, cId, prop, url) -> Mono.just(checkUrl(url))
+
+		).defaultIfEmpty("").contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrl"));
+	}
+
 	public Mono<Boolean> checkSubDomainAvailability(String subDomain) {
 
 		if (StringUtil.safeIsBlank(subDomain))
@@ -274,5 +285,33 @@ public class ClientUrlService
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+	}
+
+	private String trimBackSlash(String str) {
+
+		if (StringUtil.safeIsBlank(str))
+			return str;
+
+		String nStr = str.trim();
+
+		if (!nStr.endsWith("/"))
+			return nStr;
+
+		int endIndex = str.length() - 1;
+
+		while (endIndex >= 0 && str.charAt(endIndex) == '/')
+			endIndex--;
+
+		return nStr.substring(0, endIndex + 1);
+	}
+
+	private String checkUrl(String url) {
+
+		if (StringUtil.safeIsBlank(url))
+			return url;
+
+		String nStr = trimBackSlash(url);
+
+		return !nStr.startsWith(HTTPS) ? HTTPS + nStr : nStr;
 	}
 }

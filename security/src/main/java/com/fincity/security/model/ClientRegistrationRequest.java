@@ -2,6 +2,8 @@ package com.fincity.security.model;
 
 import java.io.Serializable;
 
+import org.jooq.types.ULong;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -13,6 +15,7 @@ public class ClientRegistrationRequest implements Serializable {
 
 	private String clientName;
 	private String localeCode;
+	private ULong userId;
 	private String userName;
 	private String emailId;
 	private String phoneNumber;
