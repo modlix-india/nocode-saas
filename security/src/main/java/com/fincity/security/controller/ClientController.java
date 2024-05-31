@@ -22,6 +22,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.service.ClientService;
@@ -145,4 +146,13 @@ public class ClientController
 		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId)
 				.map(ResponseEntity::ok);
 	}
+
+	@GetMapping("/register/events")
+	public Mono<ResponseEntity<Boolean>> evokeRegistrationEvents(ServerHttpRequest request,
+			ServerHttpResponse response,
+			@RequestBody AuthenticationRequest authRequest) {
+		return this.clientRegistrationService.evokeRegistrationEvents(authRequest, request, response)
+				.map(ResponseEntity::ok);
+	}
+	
 }

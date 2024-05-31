@@ -20,6 +20,7 @@ import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -407,11 +408,12 @@ public class ClientRegistrationService {
                                                                 registrationRequest.getEmailId()))
                                                         .setPassword(registrationRequest.getPassword()),
                                                 request, response)
-                                        .map(x -> new ClientRegistrationResponse(true, "", x));
+                                        .map(x -> new ClientRegistrationResponse(true, userTuple.getT1().getId(), "", x));
                             }
 
-                            return Mono.just(new ClientRegistrationResponse(true, "", null));
-                        })
+                                        return Mono.just(new ClientRegistrationResponse(true,
+                                                        userTuple.getT1().getId(), "", null));
+                                        })
                         .flatMap(e -> {
                             if (prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
                                     || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
@@ -602,4 +604,64 @@ public class ClientRegistrationService {
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         SecurityMessageResourceService.ACCESS_CODE_INCORRECT));
     }
+
+    public Mono<Boolean> evokeRegistrationEvents(AuthenticationRequest authRequest, ServerHttpRequest request,
+                    ServerHttpResponse response) {
+
+            String host = request.getHeaders().getFirst("X-Forwarded-Host");
+            String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
+            String port = request.getHeaders().getFirst("X-Forwarded-Port");
+
+            String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
+                            : "http://" + host + ":" + port;
+
+            return FlatMapUtil.flatMapMono(
+
+                            SecurityContextUtil::getUsersContextAuthentication,
+
+                            ca -> this.userService.getUserForContext(authRequest.getUserId()),
+
+                            (ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
+
+                            (ca, user, client) -> this.authenticationService
+                                            .authenticate(
+                                                            new AuthenticationRequest()
+                                                                            .setUserName(CommonsUtil.nonNullValue(
+                                                                                            user.getUserName(),
+                                                                                            user.getEmailId()))
+                                                                            .setPassword(authRequest.getPassword()),
+                                                            request, response),
+
+                            (ca, user, client, auth) -> this.clientUrlService.getSubDomain(client.getId(),
+                                            ca.getUrlAppCode()),
+
+                            (ca, user, client, auth, subDomain) -> this.ecService.createEvent(
+                                            new EventQueObject()
+                                                            .setAppCode(ca.getUrlAppCode())
+                                                            .setClientCode(client.getCode())
+                                                            .setEventName(EventNames.CLIENT_REGISTERED)
+                                                            .setData(Map.of(
+                                                                            "client", client,
+                                                                            "subDomain", subDomain.getUrlPattern(),
+                                                                            "urlPrefix", urlPrefix)))
+                                            .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                            (ca, user, client, auth, subDomain, userevent) -> this.ecService.createEvent(
+                                            new EventQueObject()
+                                                            .setAppCode(ca.getUrlAppCode())
+                                                            .setClientCode(client.getCode())
+                                                            .setEventName(EventNames.USER_REGISTERED)
+                                                            .setData(Map.of(
+                                                                            "client", client,
+                                                                            "subDomain", subDomain.getUrlPattern(),
+                                                                            "user", user,
+                                                                            "urlPrefix", urlPrefix,
+                                                                            "token", auth.getAccessToken(),
+                                                                            "passwordUsed", authRequest.getPassword())))
+                                            .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                            (ca, user, client, auth, subDomain, userEvent, clientEvent) -> Mono.just(true))
+                            .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents"));
+
+    }	
 }

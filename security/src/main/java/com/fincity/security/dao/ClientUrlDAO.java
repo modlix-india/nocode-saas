@@ -72,4 +72,13 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 				.limit(1))
 				.map(e -> e.value1() == 0);
 	}
+
+	public Mono<ClientUrl> getClientUrl(ULong clientId, String appcode) {
+
+		return Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT_URL)
+			.where(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId))
+			.and(SECURITY_CLIENT_URL.APP_CODE.eq(appcode))
+			.limit(1))
+			.map(e -> e.into(ClientUrl.class));
+	}
 }

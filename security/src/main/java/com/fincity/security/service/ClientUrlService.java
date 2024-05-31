@@ -275,4 +275,9 @@ public class ClientUrlService
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
+
+	public Mono<ClientUrl> getSubDomain(ULong clientId, String appcode){
+
+		return this.dao.getClientUrl(clientId, appcode);
+	}
 }
