@@ -1,5 +1,6 @@
 package com.fincity.security.service;
 
+import static com.fincity.security.service.AppService.APP_PROP_URL;
 import static com.fincity.security.service.ClientService.CACHE_NAME_CLIENT_URL;
 
 import java.util.HashMap;
@@ -41,8 +42,6 @@ public class ClientUrlService
 	private static final String URL_PATTERN = "urlPattern";
 
 	private static final String CLIENT_URL = "Client URL";
-
-	public static final String APP_PROP_URL = "URL";
 
 	@Autowired
 	private CacheService cacheService;
@@ -102,27 +101,6 @@ public class ClientUrlService
 		return super.readPageFilter(pageable, condition);
 	}
 
-	private String trimBackSlash(String str) {
-
-		if (StringUtil.safeIsBlank(str))
-			return str;
-
-		String nStr = str.trim();
-
-		if (!nStr.endsWith("/"))
-			return nStr;
-
-		StringBuilder sb = new StringBuilder(nStr);
-
-		char x = sb.charAt(sb.length() - 1);
-
-		while (x == '/' || x == ' ') {
-			sb.delete(sb.length() - 1, sb.length());
-		}
-
-		return sb.toString();
-	}
-
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<ClientUrl> create(ClientUrl entity) {
@@ -178,8 +156,7 @@ public class ClientUrlService
 	@Override
 	public Mono<ClientUrl> update(ULong key, Map<String, Object> updateFields) {
 
-		if (updateFields.get(URL_PATTERN) != null)
-			updateFields.put(URL_PATTERN, trimBackSlash(updateFields.get(URL_PATTERN).toString()));
+		updateFields.computeIfPresent(URL_PATTERN, (k, v) -> trimBackSlash(v.toString()));
 
 		return super.update(key, updateFields).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
 				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
@@ -200,6 +177,12 @@ public class ClientUrlService
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+	@Override
+	protected Mono<ClientUrl> updatableEntity(ClientUrl entity) {
+		return this.read(entity.getId()).map(e -> e.setUrlPattern(entity.getUrlPattern()));
+	}
+
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
@@ -210,12 +193,6 @@ public class ClientUrlService
 		map.put(URL_PATTERN, fields.get(URL_PATTERN));
 
 		return Mono.just(map);
-	}
-
-	@Override
-	protected Mono<ClientUrl> updatableEntity(ClientUrl entity) {
-
-		return this.read(entity.getId()).map(e -> e.setUrlPattern(entity.getUrlPattern()));
 	}
 
 	@Override
@@ -286,7 +263,7 @@ public class ClientUrlService
 						this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId) :
 						Mono.just(prop.get(cId).get(APP_PROP_URL).toString()),
 
-				(ca, app, cc, cId, prop, url) -> checkUrl(url)
+				(ca, app, cc, cId, prop, url) -> Mono.just(checkUrl(url))
 
 		).defaultIfEmpty("").contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrl"));
 	}
@@ -310,15 +287,31 @@ public class ClientUrlService
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
-	private Mono<String> checkUrl(String url) {
+	private String trimBackSlash(String str) {
 
-		if (url.endsWith(SLASH)) {
-			url = url.substring(0, url.length() - 1);
-		}
-		if (!url.startsWith(HTTPS)) {
-			url = HTTPS + url;
-		}
+		if (StringUtil.safeIsBlank(str))
+			return str;
 
-		return Mono.just(url);
+		String nStr = str.trim();
+
+		if (!nStr.endsWith("/"))
+			return nStr;
+
+		int endIndex = str.length() - 1;
+
+		while (endIndex >= 0 && str.charAt(endIndex) == '/')
+			endIndex--;
+
+		return nStr.substring(0, endIndex + 1);
+	}
+
+	private String checkUrl(String url) {
+
+		if (StringUtil.safeIsBlank(url))
+			return url;
+
+		String nStr = trimBackSlash(url);
+
+		return !nStr.startsWith(HTTPS) ? HTTPS + nStr : nStr;
 	}
 }
