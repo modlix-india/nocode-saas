@@ -92,4 +92,5 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 						.limit(1))
 				.map(e -> e.value1() == 0);
 	}
+
 }
