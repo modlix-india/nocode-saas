@@ -150,8 +150,8 @@ public class ClientController
 	@GetMapping("/register/events")
 	public Mono<ResponseEntity<Boolean>> evokeRegistrationEvents(ServerHttpRequest request,
 			ServerHttpResponse response,
-			@RequestBody AuthenticationRequest authRequest) {
-		return this.clientRegistrationService.evokeRegistrationEvents(authRequest, request, response)
+			@RequestBody ClientRegistrationRequest registrationRequest) {
+		return this.clientRegistrationService.evokeRegistrationEvents(registrationRequest, request, response)
 				.map(ResponseEntity::ok);
 	}
 	

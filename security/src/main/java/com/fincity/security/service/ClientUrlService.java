@@ -287,11 +287,6 @@ public class ClientUrlService
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
 	}
 
-	public Mono<ClientUrl> getSubDomain(ULong clientId, String appcode){
-
-		return this.dao.getClientUrl(clientId, appcode);
-	}
-
 	private String trimBackSlash(String str) {
 
 		if (StringUtil.safeIsBlank(str))

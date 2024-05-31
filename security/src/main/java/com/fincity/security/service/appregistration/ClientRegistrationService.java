@@ -575,7 +575,7 @@ public class ClientRegistrationService {
 
                     return Mono.just(true);
 
-                },
+                },              
 
                 (app, validReg) -> this.dao.getValidClientCode(client.getName())
                         .map(client::setCode),
@@ -605,7 +605,7 @@ public class ClientRegistrationService {
                         SecurityMessageResourceService.ACCESS_CODE_INCORRECT));
     }
 
-    public Mono<Boolean> evokeRegistrationEvents(AuthenticationRequest authRequest, ServerHttpRequest request,
+    public Mono<Boolean> evokeRegistrationEvents(ClientRegistrationRequest registrationRequest, ServerHttpRequest request,
                     ServerHttpResponse response) {
 
             String host = request.getHeaders().getFirst("X-Forwarded-Host");
@@ -619,7 +619,7 @@ public class ClientRegistrationService {
 
                             SecurityContextUtil::getUsersContextAuthentication,
 
-                            ca -> this.userService.getUserForContext(authRequest.getUserId()),
+                            ca -> this.userService.getUserForContext(registrationRequest.getUserId()),
 
                             (ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
 
@@ -629,10 +629,10 @@ public class ClientRegistrationService {
                                                                             .setUserName(CommonsUtil.nonNullValue(
                                                                                             user.getUserName(),
                                                                                             user.getEmailId()))
-                                                                            .setPassword(authRequest.getPassword()),
+                                                                            .setPassword(registrationRequest.getPassword()),
                                                             request, response),
 
-                            (ca, user, client, auth) -> this.clientUrlService.getSubDomain(client.getId(),
+                            (ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(),
                                             ca.getUrlAppCode()),
 
                             (ca, user, client, auth, subDomain) -> this.ecService.createEvent(
@@ -642,7 +642,7 @@ public class ClientRegistrationService {
                                                             .setEventName(EventNames.CLIENT_REGISTERED)
                                                             .setData(Map.of(
                                                                             "client", client,
-                                                                            "subDomain", subDomain.getUrlPattern(),
+                                                                            "subDomain", subDomain,
                                                                             "urlPrefix", urlPrefix)))
                                             .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
@@ -653,11 +653,11 @@ public class ClientRegistrationService {
                                                             .setEventName(EventNames.USER_REGISTERED)
                                                             .setData(Map.of(
                                                                             "client", client,
-                                                                            "subDomain", subDomain.getUrlPattern(),
+                                                                            "subDomain", subDomain,
                                                                             "user", user,
                                                                             "urlPrefix", urlPrefix,
                                                                             "token", auth.getAccessToken(),
-                                                                            "passwordUsed", authRequest.getPassword())))
+                                                                            "passwordUsed", registrationRequest.getPassword())))
                                             .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
                             (ca, user, client, auth, subDomain, userEvent, clientEvent) -> Mono.just(true))
