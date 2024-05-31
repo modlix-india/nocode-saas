@@ -15,6 +15,7 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutio
 import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.core.service.connection.email.EmailService;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
@@ -60,10 +61,10 @@ public class SendEmail extends AbstractReactiveFunction {
 
 				Parameter.ofEntry(TEMPLATE_NAME, Schema.ofString(TEMPLATE_NAME)),
 
-				Parameter.ofEntry(ADDRESS, Schema.ofString(ADDRESS), true),
+				Parameter.ofEntry(ADDRESS, Schema.ofString(ADDRESS).setDefaultValue(new JsonPrimitive("")), true),
 
-				Parameter.ofEntry(TEMPLATE_DATA, Schema.ofObject(TEMPLATE_DATA)
-				)));
+				Parameter.ofEntry(TEMPLATE_DATA, Schema.ofObject(TEMPLATE_DATA).setDefaultValue(new JsonObject()))
+		));
 
 		return new FunctionSignature().setNamespace(NAMESPACE).setName(FUNCTION_NAME).setParameters(parameters)
 				.setEvents(Map.of(event.getName(), event));
