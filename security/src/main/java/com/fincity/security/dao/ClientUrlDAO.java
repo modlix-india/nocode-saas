@@ -38,7 +38,7 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 	public Flux<ClientUrl> readAll(AbstractCondition query) {
 
 		return filter(query).flatMapMany(
-				cond -> Mono.from(this.dslContext.select(Arrays.asList(table.fields())).from(table).where(cond))
+				condition -> Mono.from(this.dslContext.select(Arrays.asList(table.fields())).from(table).where(condition))
 						.map(e -> e.into(this.pojoClass)));
 	}
 
@@ -52,24 +52,44 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 
 	public Mono<List<String>> getClientUrlsBasedOnAppAndClient(String appCode, ULong clientId) {
 
-		List<Condition> conds = new ArrayList<>();
+		List<Condition> conditions = new ArrayList<>();
 
-		conds.add(SECURITY_CLIENT_URL.APP_CODE.eq(appCode));
+		conditions.add(SECURITY_CLIENT_URL.APP_CODE.eq(appCode));
 
 		if (clientId != null)
-			conds.add(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId));
+			conditions.add(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId));
 
 		return Flux.from(
-				this.dslContext.select(SECURITY_CLIENT_URL.URL_PATTERN).from(SECURITY_CLIENT_URL).where(DSL.and(conds)))
+						this.dslContext.select(SECURITY_CLIENT_URL.URL_PATTERN)
+								.from(SECURITY_CLIENT_URL)
+								.where(DSL.and(conditions)))
 				.map(Record1::value1).collectList();
+	}
+
+	public Mono<String> getLatestClientUrlBasedOnAppAndClient(String appCode, ULong clientId) {
+
+		List<Condition> conditions = new ArrayList<>();
+
+		conditions.add(SECURITY_CLIENT_URL.APP_CODE.eq(appCode));
+
+		if (clientId != null)
+			conditions.add(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId));
+
+		return Mono.from(
+						this.dslContext.select(SECURITY_CLIENT_URL.URL_PATTERN)
+								.from(SECURITY_CLIENT_URL)
+								.where(DSL.and(conditions))
+								.orderBy(SECURITY_CLIENT_URL.UPDATED_AT.desc())
+								.limit(1))
+				.map(stringRecord1 -> stringRecord1.into(String.class));
 	}
 
 	public Mono<Boolean> checkSubDomainAvailability(String subDomain) {
 
 		return Mono.from(this.dslContext.selectCount()
-				.from(SECURITY_CLIENT_URL)
-				.where(SECURITY_CLIENT_URL.URL_PATTERN.eq(subDomain))
-				.limit(1))
+						.from(SECURITY_CLIENT_URL)
+						.where(SECURITY_CLIENT_URL.URL_PATTERN.eq(subDomain))
+						.limit(1))
 				.map(e -> e.value1() == 0);
 	}
 

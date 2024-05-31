@@ -53,6 +53,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/applications/internal/**",
 
+				"/api/security/clienturls/internal/**",
+
 				"/api/security/internal/securityContextAuthentication",
 
 				"/api/security/users/findUserClients",
