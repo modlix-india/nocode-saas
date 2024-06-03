@@ -168,7 +168,12 @@ public class IndexHTMLService {
 		// Here the preference will be for the style from the style service.
 
 		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
-		str.append("<script>window.cdnPrefix='" + this.cdnHostName + "'</script>");
+		str.append("<script>");
+		if (StringUtil.safeIsBlank(this.cdnHostName))
+			str.append("window.cdnPrefix='" + this.cdnHostName + "';");
+		str.append("window.domainAppCode='" + appCode + "';");
+		str.append("window.domainClientCode='" + clientCode + "';");
+		str.append("</script>");
 		str.append("<script src=\"/js/index.js\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");

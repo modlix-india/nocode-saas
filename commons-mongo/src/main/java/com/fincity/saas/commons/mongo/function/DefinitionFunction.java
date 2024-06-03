@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
+import com.fincity.nocode.kirun.engine.function.reactive.IDefinitionBasedFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
@@ -20,7 +21,7 @@ import reactor.util.context.Context;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class DefinitionFunction extends AbstractReactiveFunction {
+public class DefinitionFunction extends AbstractReactiveFunction implements IDefinitionBasedFunction {
 
 	public static final String CONTEXT_KEY = "KIRun Runtime";
 

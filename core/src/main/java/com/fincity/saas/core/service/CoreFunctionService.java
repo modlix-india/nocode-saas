@@ -43,7 +43,9 @@ import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -85,6 +87,14 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@Lazy
 	private IFeignSecurityService feignSecurityService;
 
+	@Autowired
+	@Lazy
+	private ClientUrlService clientUrlService;
+
+	@Autowired
+	@Lazy
+	private EmailService emailService;
+
 	public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
 		super(CoreFunction.class, feignAuthenticationService, gson);
 	}
@@ -93,7 +103,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
 				new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-						feignSecurityService, this.gson));
+						feignSecurityService, clientUrlService, emailService, this.gson));
 	}
 
 	@Override
@@ -102,7 +112,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	public Mono<FunctionOutput> execute(String namespace, String name, String appCode, String clientCode,
-			Map<String, JsonElement> job, ServerHttpRequest request) {
+	                                    Map<String, JsonElement> job, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -125,7 +135,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 					if (fun instanceof DefinitionFunction df &&
 							!StringUtil.safeIsBlank(df.getExecutionAuthorization())
 							&& !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(),
-									ca.getAuthorities())) {
+							ca.getAuthorities())) {
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
@@ -144,7 +154,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	private Mono<Map<String, JsonElement>> getRequestParamsToArguments(Map<String, Parameter> parameters,
-			ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
+	                                                                   ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
 
 		MultiValueMap<String, String> queryParams = request == null ? new LinkedMultiValueMap<>()
 				: request.getQueryParams();
@@ -198,7 +208,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	private Tuple2<String, JsonElement> jsonElement(Entry<String, Parameter> e, List<String> value, Parameter param,
-			SchemaType type) {
+	                                                SchemaType type) {
 
 		if (!param.isVariableArgument())
 			return Tuples.of(e.getKey(), new JsonPrimitive(CONVERTOR.get(type)
@@ -213,7 +223,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	private Tuple2<String, JsonElement> jsonElementString(Entry<String, Parameter> e, List<String> value,
-			Parameter param) {
+	                                                      Parameter param) {
 
 		if (!param.isVariableArgument())
 			return Tuples.of(e.getKey(), new JsonPrimitive(value.get(0)));

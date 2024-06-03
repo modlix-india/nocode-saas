@@ -20,6 +20,7 @@ import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -330,6 +331,13 @@ public class ClientRegistrationService {
     public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
             ServerHttpRequest request, ServerHttpResponse response) {
 
+        String host = request.getHeaders().getFirst("X-Forwarded-Host");
+        String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
+        String port = request.getHeaders().getFirst("X-Forwarded-Port");
+
+        String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
+                : "http://" + host + ":" + port;
+
         Mono<ClientRegistrationResponse> mono = FlatMapUtil.flatMapMono(
 
                 () -> this.preRegisterCheck(registrationRequest),
@@ -380,16 +388,17 @@ public class ClientRegistrationService {
                         .createEvent(new EventQueObject().setAppCode(tup.getT2().getUrlAppCode())
                                 .setClientCode(tup.getT2().getLoggedInFromClientCode())
                                 .setEventName(EventNames.CLIENT_REGISTERED)
-                                .setData(Map.of("client", client, "subDomain", tup.getT1())))
+                                .setData(Map.of("client", client, "subDomain", tup.getT1(), "urlPrefix", urlPrefix)))
                         .flatMap(e -> ecService.createEvent(new EventQueObject().setAppCode(tup.getT2().getUrlAppCode())
                                 .setClientCode(tup.getT2().getLoggedInFromClientCode())
                                 .setEventName(EventNames.USER_REGISTERED)
                                 .setData(Map.of("client", client, "subDomain", tup.getT1(), "user", userTuple.getT1(),
+                                        "urlPrefix", urlPrefix,
                                         "token", token,
                                         "passwordUsed", userTuple.getT2()))))
                         .flatMap(e -> {
-                            if (AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop)
-                                    || prop.endsWith("_LOGIN_IMMEDIATE")) {
+                            if ((AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop) && !StringUtil.safeIsBlank(
+                                registrationRequest.getPassword())) || prop.endsWith("_LOGIN_IMMEDIATE")) {
 
                                 return this.authenticationService
                                         .authenticate(
@@ -399,11 +408,12 @@ public class ClientRegistrationService {
                                                                 registrationRequest.getEmailId()))
                                                         .setPassword(registrationRequest.getPassword()),
                                                 request, response)
-                                        .map(x -> new ClientRegistrationResponse(true, "", x));
+                                        .map(x -> new ClientRegistrationResponse(true, userTuple.getT1().getId(), "", x));
                             }
 
-                            return Mono.just(new ClientRegistrationResponse(true, "", null));
-                        })
+                                        return Mono.just(new ClientRegistrationResponse(true,
+                                                        userTuple.getT1().getId(), "", null));
+                                        })
                         .flatMap(e -> {
                             if (prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
                                     || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
@@ -471,19 +481,14 @@ public class ClientRegistrationService {
         user.setLastName(request.getLastName());
         user.setLocaleCode(request.getLocaleCode());
         user.setUserName(request.getUserName());
+        user.setPhoneNumber(request.getPhoneNumber());
 
         String password = "";
-        if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)) {
+        if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD) || StringUtil.safeIsBlank(request.getPassword())) {
 
             password = PasswordUtil.generatePassword(8);
             user.setPassword(password);
             user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-        } else if (StringUtil.safeIsBlank(request.getPassword())) {
-
-            return this.securityMessageResourceService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    SecurityMessageResourceService.MISSING_PASSWORD);
-
         } else if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
             user.setPassword(request.getPassword());
             user.setStatusCode(SecurityUserStatusCode.INACTIVE);
@@ -570,7 +575,7 @@ public class ClientRegistrationService {
 
                     return Mono.just(true);
 
-                },
+                },              
 
                 (app, validReg) -> this.dao.getValidClientCode(client.getName())
                         .map(client::setCode),
@@ -599,4 +604,64 @@ public class ClientRegistrationService {
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         SecurityMessageResourceService.ACCESS_CODE_INCORRECT));
     }
+
+    public Mono<Boolean> evokeRegistrationEvents(ClientRegistrationRequest registrationRequest, ServerHttpRequest request,
+                    ServerHttpResponse response) {
+
+            String host = request.getHeaders().getFirst("X-Forwarded-Host");
+            String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
+            String port = request.getHeaders().getFirst("X-Forwarded-Port");
+
+            String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
+                            : "http://" + host + ":" + port;
+
+            return FlatMapUtil.flatMapMono(
+
+                            SecurityContextUtil::getUsersContextAuthentication,
+
+                            ca -> this.userService.getUserForContext(registrationRequest.getUserId()),
+
+                            (ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
+
+                            (ca, user, client) -> this.authenticationService
+                                            .authenticate(
+                                                            new AuthenticationRequest()
+                                                                            .setUserName(CommonsUtil.nonNullValue(
+                                                                                            user.getUserName(),
+                                                                                            user.getEmailId()))
+                                                                            .setPassword(registrationRequest.getPassword()),
+                                                            request, response),
+
+                            (ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(),
+                                            ca.getUrlAppCode()),
+
+                            (ca, user, client, auth, subDomain) -> this.ecService.createEvent(
+                                            new EventQueObject()
+                                                            .setAppCode(ca.getUrlAppCode())
+                                                            .setClientCode(client.getCode())
+                                                            .setEventName(EventNames.CLIENT_REGISTERED)
+                                                            .setData(Map.of(
+                                                                            "client", client,
+                                                                            "subDomain", subDomain,
+                                                                            "urlPrefix", urlPrefix)))
+                                            .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                            (ca, user, client, auth, subDomain, userevent) -> this.ecService.createEvent(
+                                            new EventQueObject()
+                                                            .setAppCode(ca.getUrlAppCode())
+                                                            .setClientCode(client.getCode())
+                                                            .setEventName(EventNames.USER_REGISTERED)
+                                                            .setData(Map.of(
+                                                                            "client", client,
+                                                                            "subDomain", subDomain,
+                                                                            "user", user,
+                                                                            "urlPrefix", urlPrefix,
+                                                                            "token", auth.getAccessToken(),
+                                                                            "passwordUsed", registrationRequest.getPassword())))
+                                            .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                            (ca, user, client, auth, subDomain, userEvent, clientEvent) -> Mono.just(true))
+                            .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents"));
+
+    }	
 }

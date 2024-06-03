@@ -14,6 +14,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
@@ -43,7 +44,7 @@ public class EmailService {
 	@Autowired
 	private TemplateService templateService;
 
-	private EnumMap<ConnectionSubType, IAppEmailService> services = new EnumMap<>(ConnectionSubType.class);
+	private final EnumMap<ConnectionSubType, IAppEmailService> services = new EnumMap<>(ConnectionSubType.class);
 
 	@PostConstruct
 	public void init() {
@@ -63,11 +64,15 @@ public class EmailService {
 		return FlatMapUtil.flatMapMono(
 
 				() -> {
-					if (appCode != null && clientCode != null)
-						return Mono.just(Tuples.of(appCode, clientCode));
+
+					String inAppCode = appCode.trim().isEmpty() ? null : appCode;
+					String inClientCode = clientCode.trim().isEmpty() ? null : clientCode;
 
 					return SecurityContextUtil.getUsersContextAuthentication()
-							.map(e -> Tuples.of(e.getUrlAppCode(), e.getClientCode()));
+							.map(e -> Tuples.of(
+									CommonsUtil.nonNullValue(inAppCode, e.getUrlAppCode()),
+									CommonsUtil.nonNullValue(inClientCode, e.getClientCode())))
+							.defaultIfEmpty(Tuples.of(inAppCode, inClientCode));
 				},
 
 				actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)

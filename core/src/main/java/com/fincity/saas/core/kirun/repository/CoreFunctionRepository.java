@@ -9,7 +9,9 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.core.functions.email.SendEmail;
 import com.fincity.saas.core.functions.rest.CallRequest;
+import com.fincity.saas.core.functions.security.GetAppUrl;
 import com.fincity.saas.core.functions.security.GetClient;
 import com.fincity.saas.core.functions.security.IsBeingManagedByCode;
 import com.fincity.saas.core.functions.security.IsBeingManagedById;
@@ -22,7 +24,9 @@ import com.fincity.saas.core.functions.storage.ReadPageStorageObject;
 import com.fincity.saas.core.functions.storage.ReadStorageObject;
 import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 
@@ -36,12 +40,14 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 	private final List<String> filterableNames;
 
 	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
-			ContextService userContextService, IFeignSecurityService securityService, Gson gson) {
+	                              ContextService userContextService, IFeignSecurityService securityService,
+	                              ClientUrlService clientUrlService, EmailService emailService, Gson gson) {
 
 		this.makeStorageFunctions(appDataService, objectMapper, gson);
 		this.makeRESTFunctions(restService, gson);
-		this.makeSecurityContextFunctions(userContextService, gson);
+		this.makeSecurityContextFunctions(userContextService, clientUrlService, gson);
 		this.makeSecurityFunctions(securityService, gson);
+		this.makeEmailFunctions(emailService);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -58,15 +64,17 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(getClient.getSignature().getFullName(), getClient);
 	}
 
-	private void makeSecurityContextFunctions(ContextService userContextService, Gson gson) {
+	private void makeSecurityContextFunctions(ContextService userContextService, ClientUrlService clientUrlService, Gson gson) {
 
 		ReactiveFunction hasAuthority = new HasAuthority(userContextService);
 		ReactiveFunction getAuthentication = new GetAuthentication(userContextService, gson);
 		ReactiveFunction getUser = new GetUser(userContextService, gson);
+		ReactiveFunction getAppUrl = new GetAppUrl(clientUrlService);
 
 		repoMap.put(hasAuthority.getSignature().getFullName(), hasAuthority);
 		repoMap.put(getAuthentication.getSignature().getFullName(), getAuthentication);
 		repoMap.put(getUser.getSignature().getFullName(), getUser);
+		repoMap.put(getAppUrl.getSignature().getFullName(), getAppUrl);
 	}
 
 	private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper, Gson gson) {
@@ -100,6 +108,13 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(deleteRequest.getSignature().getFullName(), deleteRequest);
 		repoMap.put(callRequest.getSignature().getFullName(), callRequest);
 
+	}
+
+	private void makeEmailFunctions(EmailService emailService) {
+
+		ReactiveFunction sendEmail = new SendEmail(emailService);
+
+		repoMap.put(sendEmail.getSignature().getFullName(), sendEmail);
 	}
 
 	@Override
