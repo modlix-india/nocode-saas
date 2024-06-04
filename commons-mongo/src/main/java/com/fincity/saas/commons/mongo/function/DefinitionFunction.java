@@ -13,7 +13,8 @@ import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveKIRuntime;
-
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import reactor.core.publisher.Mono;
@@ -41,7 +42,22 @@ public class DefinitionFunction extends AbstractReactiveFunction implements IDef
 
 	@Override
 	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-		return new ReactiveKIRuntime(definition).execute(context).contextWrite(Context.of(CONTEXT_KEY, "true"));
+		return Mono.deferContextual(ctx -> {
+
+			boolean isDebug = ctx.hasKey(LogUtil.DEBUG_KEY);
+
+			ReactiveKIRuntime runtime = new ReactiveKIRuntime(definition, isDebug);
+
+			return runtime.execute(context).contextWrite(Context.of(CONTEXT_KEY, "true")).map(e -> {
+
+				if (isDebug) {
+					FlatMapUtil.logValue("Definition Function : Executing Function : " + definition.getFullName());
+					FlatMapUtil.logValue(runtime.getDebugString());
+				}
+
+				return e;
+			});
+		});
 	}
 
 	@JsonIgnore

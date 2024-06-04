@@ -19,46 +19,48 @@ import com.fincity.saas.core.service.CoreMessageResourceService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuples;
 
 @Service
 public class SendGridService extends AbstractEmailService implements IAppEmailService {
 
 	@Override
 	public Mono<Boolean> sendMail(List<String> toAddresses, Template template, Map<String, Object> templateData,
-	        Connection connection) {
+			Connection connection) {
 
 		if (connection.getConnectionDetails() == null || StringUtil.safeIsBlank(connection.getConnectionDetails()
-		        .get("apiKey")))
+				.get("apiKey")))
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-			        CoreMessageResourceService.MAIL_SEND_ERROR, "SENDGRID api key is not found");
+					CoreMessageResourceService.MAIL_SEND_ERROR, "SENDGRID api key is not found");
 
 		String apiKey = connection.getConnectionDetails()
-		        .get("apiKey")
-		        .toString();
+				.get("apiKey")
+				.toString();
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.getProcessedEmailDetails(toAddresses, template, templateData),
+				() -> Mono.just(Tuples.of(toAddresses == null ? List.of() : toAddresses, template, templateData)),
 
-		        details -> WebClient.create()
-		                .post()
-		                .uri("https://api.sendgrid.com/v3/mail/send")
-		                .header("Authorization", "Bearer " + apiKey)
-		                .header("Content-Type", "application/json")
-		                .bodyValue(this.getSendGridBody(details))
-		                .retrieve()
-		                .bodyToMono(String.class)
-		                .onErrorResume(WebClientResponseException.class, e ->
-						{
-			                logger.error("Error while sending it to send grid : {}", e.getResponseBodyAsString(), e);
+				tup -> this.getProcessedEmailDetails(toAddresses, template, templateData),
 
-			                return this.msgService.throwMessage(
-			                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-			                        CoreMessageResourceService.MAIL_SEND_ERROR,
-			                        "Error with body : " + e.getResponseBodyAsString(), e);
-		                })
-		                .map(e -> true))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
+				(tup, details) -> WebClient.create()
+						.post()
+						.uri("https://api.sendgrid.com/v3/mail/send")
+						.header("Authorization", "Bearer " + apiKey)
+						.header("Content-Type", "application/json")
+						.bodyValue(this.getSendGridBody(details))
+						.retrieve()
+						.bodyToMono(String.class)
+						.onErrorResume(WebClientResponseException.class, e -> {
+							logger.error("Error while sending it to send grid : {}", e.getResponseBodyAsString(), e);
+
+							return this.msgService.throwMessage(
+									msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+									CoreMessageResourceService.MAIL_SEND_ERROR,
+									"Error with body : " + e.getResponseBodyAsString(), e);
+						})
+						.map(e -> true))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
 
 	}
 
@@ -66,16 +68,16 @@ public class SendGridService extends AbstractEmailService implements IAppEmailSe
 
 		return Map.of(
 
-		        "personalizations", List.of(Map.of("to", details.getTo()
-		                .stream()
-		                .map(e -> Map.of("email", e))
-		                .toList())),
+				"personalizations", List.of(Map.of("to", details.getTo()
+						.stream()
+						.map(e -> Map.of("email", e))
+						.toList())),
 
-		        "from", Map.of("email", details.getFrom()),
+				"from", Map.of("email", details.getFrom()),
 
-		        "subject", details.getSubject(),
+				"subject", details.getSubject(),
 
-		        "content", List.of(Map.of("type", "text/html", "value", details.getBody()))
+				"content", List.of(Map.of("type", "text/html", "value", details.getBody()))
 
 		);
 	}

@@ -1,12 +1,5 @@
 package com.fincity.saas.core.service.connection.email;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -14,15 +7,20 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Template;
 import com.fincity.saas.core.service.CoreMessageResourceService;
-
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuples;
 
 @Service
 public class SMTPService extends AbstractEmailService implements IAppEmailService {
@@ -30,78 +28,78 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
 	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<Boolean> sendMail(List<String> toAddresses, Template template, Map<String, Object> templateData,
-	        Connection connection) {
+			Connection connection) {
 
 		if (connection.getConnectionDetails() == null)
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-			        CoreMessageResourceService.MAIL_SEND_ERROR, "Connection details are missing");
+					CoreMessageResourceService.MAIL_SEND_ERROR, "Connection details are missing");
 
 		Map<String, Object> connProps = (Map<String, Object>) connection.getConnectionDetails()
-		        .get("mailProps");
+				.get("mailProps");
 
 		if (connProps == null || connProps.isEmpty())
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-			        CoreMessageResourceService.MAIL_SEND_ERROR, "Connection Properties with 'mail.' are missing");
+					CoreMessageResourceService.MAIL_SEND_ERROR, "Connection Properties with 'mail.' are missing");
 
 		if (StringUtil.safeIsBlank(connection.getConnectionDetails()
-		        .get("username")) || StringUtil.safeIsBlank(
-		                connection.getConnectionDetails()
-		                        .get("password")))
+				.get("username")) || StringUtil.safeIsBlank(
+						connection.getConnectionDetails()
+								.get("password")))
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-			        CoreMessageResourceService.MAIL_SEND_ERROR, "Connection username/password is missing");
+					CoreMessageResourceService.MAIL_SEND_ERROR, "Connection username/password is missing");
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.getProcessedEmailDetails(toAddresses, template, templateData),
+				() -> Mono.just(Tuples.of(toAddresses == null ? List.of() : toAddresses, template, templateData)),
 
-		        details ->
-				{
+				tup -> this.getProcessedEmailDetails(toAddresses, template, templateData),
 
-			        try {
-				        Properties props = System.getProperties();
-				        for (var entry : connProps.entrySet())
-					        props.put(entry.getKey(), entry.getValue());
+				(tup, details) -> {
 
-				        Session session = Session.getDefaultInstance(props);
+					try {
+						Properties props = System.getProperties();
+						for (var entry : connProps.entrySet())
+							props.put(entry.getKey(), entry.getValue());
 
-				        MimeMessage message = new MimeMessage(session);
+						Session session = Session.getDefaultInstance(props);
 
-				        message.setFrom(new InternetAddress(details.getFrom()));
+						MimeMessage message = new MimeMessage(session);
 
-				        details.getTo()
-				                .forEach(e ->
-								{
-					                try {
-						                message.addRecipient(Message.RecipientType.TO, new InternetAddress(e));
-					                } catch (Exception e1) {
-						                logger.error("Error while adding : {}", e, e1);
-					                }
-				                });
-				        message.setSubject(details.getSubject());
-				        message.setContent(details.getBody(), "text/html");
+						message.setFrom(new InternetAddress(details.getFrom()));
 
-				        Transport transport = session.getTransport();
-				        String user = StringUtil.safeValueOf(connection.getConnectionDetails()
-				                .get("username"));
-				        String password = StringUtil.safeValueOf(connection.getConnectionDetails()
-				                .get("password"));
+						details.getTo()
+								.forEach(e -> {
+									try {
+										message.addRecipient(Message.RecipientType.TO, new InternetAddress(e));
+									} catch (Exception e1) {
+										logger.error("Error while adding : {}", e, e1);
+									}
+								});
+						message.setSubject(details.getSubject());
+						message.setContent(details.getBody(), "text/html");
 
-				        transport.connect(user, password);
-				        transport.sendMessage(message, message.getAllRecipients());
+						Transport transport = session.getTransport();
+						String user = StringUtil.safeValueOf(connection.getConnectionDetails()
+								.get("username"));
+						String password = StringUtil.safeValueOf(connection.getConnectionDetails()
+								.get("password"));
 
-				        return Mono.just(true);
+						transport.connect(user, password);
+						transport.sendMessage(message, message.getAllRecipients());
 
-			        } catch (MessagingException mex) {
+						return Mono.just(true);
 
-				        logger.error("Error while sending : {}", mex.getMessage(), mex);
+					} catch (MessagingException mex) {
 
-				        return this.msgService.throwMessage(
-				                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-				                CoreMessageResourceService.MAIL_SEND_ERROR, mex.getMessage(), mex);
-			        }
-		        })
-		        .map(e -> true)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
+						logger.error("Error while sending : {}", mex.getMessage(), mex);
+
+						return this.msgService.throwMessage(
+								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+								CoreMessageResourceService.MAIL_SEND_ERROR, mex.getMessage(), mex);
+					}
+				})
+				.map(e -> true)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
 
 	}
 
