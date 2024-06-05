@@ -1,12 +1,5 @@
 package com.fincity.saas.core.functions.rest;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
@@ -16,15 +9,34 @@ import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.dto.RestRequest;
+import com.fincity.saas.core.dto.RestResponse;
+import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.service.connection.rest.RestService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-
+import feign.FeignException;
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.apache.commons.io.IOUtils;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public class CallRequest extends AbstractReactiveFunction {
 
@@ -60,6 +72,18 @@ public class CallRequest extends AbstractReactiveFunction {
 
 	private static final String IGNORE_DEFAULT_HEADERS = "ignoreConnectionHeaders";
 
+	private static final String DOWNLOAD_AS_A_FILE = "downloadAsAFile";
+
+	private static final String FILE_NAME = "fileName";
+
+	private static final String FILE_LOCATION = "fileLocation";
+
+	private static final String FILE_CLIENT_CODE = "fileClientCode";
+
+	private static final String FILE_TYPE = "fileType";
+
+	private static final String FILE_OVERRIDE = "fileOverride";
+
 	private RestService restService;
 
 	private String name;
@@ -70,13 +94,21 @@ public class CallRequest extends AbstractReactiveFunction {
 
 	private final Gson gson;
 
-	public CallRequest(RestService restService, String name, String methodName, boolean hasPayload, Gson gson) {
+	private final IFeignFilesService fileService;
+
+	private final IFeignSecurityService securityService;
+
+	public CallRequest(RestService restService, IFeignFilesService fileService, IFeignSecurityService securityService,
+			String name, String methodName,
+			boolean hasPayload, Gson gson) {
 
 		this.restService = restService;
 		this.name = name;
 		this.methodName = methodName;
 		this.hasPayload = hasPayload;
 		this.gson = gson;
+		this.fileService = fileService;
+		this.securityService = securityService;
 	}
 
 	public RestService getRestService() {
@@ -93,6 +125,8 @@ public class CallRequest extends AbstractReactiveFunction {
 				EVENT_HEADERS, Schema.ofAny(EVENT_HEADERS), STATUS_CODE, Schema.ofNumber(STATUS_CODE)));
 
 		Map<String, Parameter> params = new HashMap<>(Map.ofEntries(
+				Parameter.ofEntry(CONNECTION_NAME,
+						Schema.ofString(CONNECTION_NAME)),
 
 				Parameter.ofEntry(URL, Schema.ofString(URL)),
 
@@ -119,8 +153,22 @@ public class CallRequest extends AbstractReactiveFunction {
 
 				Parameter.ofEntry(TIMEOUT, Schema.ofInteger(TIMEOUT).setDefaultValue(new JsonPrimitive(0))),
 
-				Parameter.ofEntry(CONNECTION_NAME,
-						Schema.ofString(CONNECTION_NAME))
+				Parameter.ofEntry(DOWNLOAD_AS_A_FILE,
+						Schema.ofBoolean(DOWNLOAD_AS_A_FILE).setDefaultValue(new JsonPrimitive(false))),
+
+				Parameter.ofEntry(FILE_NAME, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
+
+				Parameter.ofEntry(FILE_LOCATION, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive("/"))),
+
+				Parameter.ofEntry(FILE_CLIENT_CODE, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
+
+				Parameter.ofEntry(FILE_TYPE,
+						Schema.ofString(APP_CODE)
+								.setEnums(List.of(new JsonPrimitive("static"), new JsonPrimitive("secured")))
+								.setDefaultValue(new JsonPrimitive("static"))),
+
+				Parameter.ofEntry(FILE_OVERRIDE,
+						Schema.ofBoolean(FILE_OVERRIDE).setDefaultValue(new JsonPrimitive(false)))
 
 		));
 
@@ -151,6 +199,8 @@ public class CallRequest extends AbstractReactiveFunction {
 		String connectionName = context.getArguments().get(CONNECTION_NAME).getAsString();
 		int timeout = context.getArguments().get(TIMEOUT).getAsInt();
 
+		boolean downloadAsAFile = context.getArguments().get(DOWNLOAD_AS_A_FILE).getAsBoolean();
+
 		JsonObject headers = context.getArguments().get(HEADERS).getAsJsonObject();
 		JsonObject pathParams = context.getArguments().get(PATH_PARAMS).getAsJsonObject();
 		JsonObject queryParams = context.getArguments().get(QUERY_PARAMS).getAsJsonObject();
@@ -175,30 +225,144 @@ public class CallRequest extends AbstractReactiveFunction {
 				.setQueryParameters(queryParamsMap.size() > 0 ? queryParamsMap : null).setTimeout(timeout)
 				.setPayload(payload).setUrl(url);
 
-		return restService.doCall(appCode, clientCode, connectionName, request)
-				.map(obj -> {
+		return FlatMapUtil.flatMapMono(
+
+				() -> restService.doCall(appCode, clientCode, connectionName, request),
+
+				obj -> {
 					if (obj.getStatus() >= 400 && obj.getStatus() <= 600)
-						return new FunctionOutput(List.of(
-								EventResult.of(Event.ERROR,
-										Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
-												gson.toJsonTree(obj.getHeaders()), STATUS_CODE,
-												gson.toJsonTree(obj.getStatus()))),
-								EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
-										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of())))));
+						return this.makeErrorResponseFunctionOutput(obj);
 
-					return new FunctionOutput(
-							List.of(EventResult
-									.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
-											gson.toJsonTree(obj.getHeaders()), STATUS_CODE,
-											gson.toJsonTree(obj.getStatus())))));
+					if (downloadAsAFile) {
+						return this.processDownload(obj, context.getArguments().get(FILE_NAME).getAsString(),
+								context.getArguments().get(FILE_LOCATION).getAsString(),
+								context.getArguments().get(FILE_OVERRIDE).getAsBoolean(),
+								context.getArguments().get(FILE_CLIENT_CODE).getAsString(),
+								context.getArguments().get(FILE_TYPE).getAsString());
+					}
+
+					return this.processOutput(obj);
 				})
-				.onErrorContinue(Exception.class,
-						(ex, o) -> new FunctionOutput(List.of(
-								EventResult.of(Event.ERROR,
-										Map.of(EVENT_DATA, gson.toJsonTree(ex.getMessage()), EVENT_HEADERS,
-												gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))),
-								EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
-										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))))));
+				.contextWrite(Context.of(LogUtil.DEBUG_KEY, "CallRequest.internalExecute"))
+				.onErrorResume(this::makeExceptionResponseFunctionOutput);
+	}
 
+	private Mono<FunctionOutput> processDownload(RestResponse obj, String fileName, String fileLocation,
+			boolean override,
+			String fileClientCode, String fileType) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> {
+					if (!ca.isAuthenticated())
+						return Mono.empty();
+
+					if (StringUtil.safeIsBlank(fileClientCode))
+						return Mono.just(ca.getClientCode());
+
+					if (ca.getClientCode().equals(fileClientCode))
+						return Mono.just(ca.getClientCode());
+
+					return this.securityService.isBeingManaged(ca.getUrlClientCode(), fileClientCode)
+							.map(e -> e.booleanValue() ? fileClientCode : "");
+				},
+
+				(ca, cc) -> {
+
+					if (StringUtil.safeIsBlank(cc))
+						return Mono.error(new Exception("Client code is invalid"));
+
+					if (!(obj.getData() instanceof Resource))
+						return Mono.error(new Exception("Data is not a file"));
+
+					return this.makeFileInFiles(obj, fileName, fileLocation, override, cc, fileType);
+				},
+
+				(ca, cc, fileObj) -> this.processOutput(obj.setData(fileObj))
+
+		);
+	}
+
+	private Mono<Map<String, Object>> makeFileInFiles(RestResponse obj, String fileName, String fileLocation,
+			boolean override,
+			String cc, String fileType) {
+		try {
+			ByteBuffer buffer = ByteBuffer
+					.wrap(IOUtils.toByteArray(((Resource) obj.getData()).getInputStream()));
+
+			String finalFileName = fileName;
+			if (StringUtil.safeIsBlank(finalFileName)) {
+				String cd = obj.getHeaders().get("Content-Disposition");
+				if (cd != null) {
+					finalFileName = ContentDisposition.parse(cd).getFilename();
+				}
+			}
+			return this.fileService.create(fileType, cc, override, fileLocation, finalFileName, buffer);
+		} catch (Exception e) {
+			return Mono.error(e);
+		}
+	}
+
+	private Mono<FunctionOutput> processOutput(RestResponse obj) {
+
+		return Mono.just(new FunctionOutput(
+				List.of(EventResult
+						.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
+								gson.toJsonTree(obj.getHeaders()), STATUS_CODE,
+								gson.toJsonTree(obj.getStatus()))))));
+	}
+
+	private Mono<FunctionOutput> makeErrorResponseFunctionOutput(RestResponse obj) {
+
+		return Mono.just(new FunctionOutput(List.of(
+				EventResult.of(Event.ERROR,
+						Map.of(EVENT_DATA, gson.toJsonTree(obj.getData()), EVENT_HEADERS,
+								gson.toJsonTree(obj.getHeaders()), STATUS_CODE,
+								gson.toJsonTree(obj.getStatus()))),
+				EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
+						gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))))));
+	}
+
+	private JsonElement processsFeignException(FeignException fe) {
+
+		Optional<ByteBuffer> op = fe.responseBody();
+		ByteBuffer byteBuffer = op.isPresent() ? op.get() : null;
+
+		if (byteBuffer == null || !byteBuffer.hasArray())
+			return null;
+		Collection<String> ctype = fe.responseHeaders().get(HttpHeaders.CONTENT_TYPE);
+		if (ctype == null || !ctype.contains("application/json"))
+			return null;
+
+		try {
+			return this.gson.fromJson(new String(byteBuffer.array()), JsonElement.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private Mono<FunctionOutput> makeExceptionResponseFunctionOutput(Throwable ex) {
+
+		if (ex instanceof FeignException) {
+			JsonElement je = this.processsFeignException((FeignException) ex);
+			if (je != null) {
+				return Mono.just(new FunctionOutput(List.of(
+						EventResult.of(Event.ERROR,
+								Map.of(EVENT_DATA, je, EVENT_HEADERS,
+										gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))),
+						EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
+								gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))))));
+			}
+		}
+
+		return Mono.just(new FunctionOutput(List.of(
+				EventResult.of(Event.ERROR,
+						Map.of(EVENT_DATA, gson.toJsonTree(ex.getMessage()), EVENT_HEADERS,
+								gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))),
+				EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(Map.of()), EVENT_HEADERS,
+						gson.toJsonTree(Map.of()), STATUS_CODE, gson.toJsonTree(Map.of()))))));
 	}
 }
