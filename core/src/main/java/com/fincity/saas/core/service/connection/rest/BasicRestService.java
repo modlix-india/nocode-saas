@@ -283,7 +283,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 					.map(jsonData -> restResponse.setData(processJsonResponse(jsonData)))
 					.timeout(timeout)
 					.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
-		} else if (contentType.getType()
+		} else if (headers.getContentDisposition().getFilename() != null || contentType.getType()
 				.equals(MimeTypeUtils.APPLICATION_OCTET_STREAM.getType())) {
 
 			return clientResponse.bodyToMono(Resource.class)
