@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
-
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -39,7 +39,9 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.CoreFunction;
+import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
+import com.fincity.saas.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
@@ -95,6 +97,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@Lazy
 	private EmailService emailService;
 
+	@Autowired
+	@Lazy
+	private IFeignFilesService filesService;
+
 	public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
 		super(CoreFunction.class, feignAuthenticationService, gson);
 	}
@@ -102,8 +108,16 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@PostConstruct
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-				new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-						feignSecurityService, clientUrlService, emailService, this.gson));
+				new CoreFunctionRepository(new CoreFunctionRepositoryBuilder()
+						.setAppDataService(appDataService)
+						.setRestService(restService)
+						.setUserContextService(userContextService)
+						.setSecurityService(feignSecurityService)
+						.setClientUrlService(clientUrlService)
+						.setEmailService(emailService)
+						.setFilesService(filesService)
+						.setGson(gson)
+						.setObjectMapper(objectMapper)));
 	}
 
 	@Override
@@ -112,7 +126,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	public Mono<FunctionOutput> execute(String namespace, String name, String appCode, String clientCode,
-	                                    Map<String, JsonElement> job, ServerHttpRequest request) {
+			Map<String, JsonElement> job, ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -135,7 +149,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 					if (fun instanceof DefinitionFunction df &&
 							!StringUtil.safeIsBlank(df.getExecutionAuthorization())
 							&& !SecurityContextUtil.hasAuthority(df.getExecutionAuthorization(),
-							ca.getAuthorities())) {
+									ca.getAuthorities())) {
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
@@ -154,7 +168,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	private Mono<Map<String, JsonElement>> getRequestParamsToArguments(Map<String, Parameter> parameters,
-	                                                                   ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
+			ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
 
 		MultiValueMap<String, String> queryParams = request == null ? new LinkedMultiValueMap<>()
 				: request.getQueryParams();
@@ -208,7 +222,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	private Tuple2<String, JsonElement> jsonElement(Entry<String, Parameter> e, List<String> value, Parameter param,
-	                                                SchemaType type) {
+			SchemaType type) {
 
 		if (!param.isVariableArgument())
 			return Tuples.of(e.getKey(), new JsonPrimitive(CONVERTOR.get(type)
@@ -223,7 +237,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	}
 
 	private Tuple2<String, JsonElement> jsonElementString(Entry<String, Parameter> e, List<String> value,
-	                                                      Parameter param) {
+			Parameter param) {
 
 		if (!param.isVariableArgument())
 			return Tuples.of(e.getKey(), new JsonPrimitive(value.get(0)));

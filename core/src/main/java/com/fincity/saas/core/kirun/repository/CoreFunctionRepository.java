@@ -3,12 +3,14 @@ package com.fincity.saas.core.kirun.repository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import lombok.Data;
+import lombok.experimental.Accessors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.functions.email.SendEmail;
 import com.fincity.saas.core.functions.rest.CallRequest;
 import com.fincity.saas.core.functions.security.GetAppUrl;
@@ -39,15 +41,26 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 	private final List<String> filterableNames;
 
-	public CoreFunctionRepository(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
-	                              ContextService userContextService, IFeignSecurityService securityService,
-	                              ClientUrlService clientUrlService, EmailService emailService, Gson gson) {
+	@Data
+	@Accessors(chain = true)
+	public static class CoreFunctionRepositoryBuilder {
+		private AppDataService appDataService;
+		private ObjectMapper objectMapper;
+		private RestService restService;
+		private ContextService userContextService;
+		private IFeignSecurityService securityService;
+		private ClientUrlService clientUrlService;
+		private EmailService emailService;
+		private IFeignFilesService filesService;
+		private Gson gson;
+	}
 
-		this.makeStorageFunctions(appDataService, objectMapper, gson);
-		this.makeRESTFunctions(restService, gson);
-		this.makeSecurityContextFunctions(userContextService, clientUrlService, gson);
-		this.makeSecurityFunctions(securityService, gson);
-		this.makeEmailFunctions(emailService);
+	public CoreFunctionRepository(CoreFunctionRepositoryBuilder builder) {
+		this.makeStorageFunctions(builder.appDataService, builder.objectMapper, builder.gson);
+		this.makeRESTFunctions(builder.restService, builder.filesService, builder.securityService, builder.gson);
+		this.makeSecurityContextFunctions(builder.userContextService, builder.clientUrlService, builder.gson);
+		this.makeSecurityFunctions(builder.securityService, builder.gson);
+		this.makeEmailFunctions(builder.emailService);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -64,7 +77,8 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(getClient.getSignature().getFullName(), getClient);
 	}
 
-	private void makeSecurityContextFunctions(ContextService userContextService, ClientUrlService clientUrlService, Gson gson) {
+	private void makeSecurityContextFunctions(ContextService userContextService, ClientUrlService clientUrlService,
+			Gson gson) {
 
 		ReactiveFunction hasAuthority = new HasAuthority(userContextService);
 		ReactiveFunction getAuthentication = new GetAuthentication(userContextService, gson);
@@ -92,14 +106,22 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(readPageStorage.getSignature().getFullName(), readPageStorage);
 	}
 
-	private void makeRESTFunctions(RestService restService, Gson gson) {
+	private void makeRESTFunctions(RestService restService, IFeignFilesService filesService,
+			IFeignSecurityService securityService, Gson gson) {
 
-		ReactiveFunction getRequest = new CallRequest(restService, "GetRequest", "GET", false, gson);
-		ReactiveFunction postRequest = new CallRequest(restService, "PostRequest", "POST", true, gson);
-		ReactiveFunction putRequest = new CallRequest(restService, "PutRequest", "PUT", true, gson);
-		ReactiveFunction patchRequest = new CallRequest(restService, "PatchRequest", "PATCH", true, gson);
-		ReactiveFunction deleteRequest = new CallRequest(restService, "DeleteRequest", "DELETE", false, gson);
-		ReactiveFunction callRequest = new CallRequest(restService, "CallRequest", "", true, gson);
+		ReactiveFunction getRequest = new CallRequest(restService, filesService, securityService, "GetRequest", "GET",
+				false, gson);
+		ReactiveFunction postRequest = new CallRequest(restService, filesService, securityService, "PostRequest",
+				"POST", true, gson);
+		ReactiveFunction putRequest = new CallRequest(restService, filesService, securityService, "PutRequest", "PUT",
+				true, gson);
+		ReactiveFunction patchRequest = new CallRequest(restService, filesService, securityService, "PatchRequest",
+				"PATCH", true, gson);
+		ReactiveFunction deleteRequest = new CallRequest(restService, filesService, securityService, "DeleteRequest",
+				"DELETE", false,
+				gson);
+		ReactiveFunction callRequest = new CallRequest(restService, filesService, securityService, "CallRequest", "",
+				true, gson);
 
 		repoMap.put(getRequest.getSignature().getFullName(), getRequest);
 		repoMap.put(postRequest.getSignature().getFullName(), postRequest);
