@@ -12,9 +12,14 @@ import reactor.core.publisher.Mono;
 public class OAuthRestService extends AbstractRestService implements IRestService {
 
 	@Override
-	public Mono<RestResponse> call(Connection connection, RestRequest request) {
+	public Mono<RestResponse> call(Connection connection, RestRequest request, boolean fileDownload) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public Mono<RestResponse> call(Connection connection, RestRequest request) {
+		return this.call(connection, request, false);
 	}
 
 }
