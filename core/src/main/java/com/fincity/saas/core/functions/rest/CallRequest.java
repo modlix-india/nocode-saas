@@ -300,6 +300,8 @@ public class CallRequest extends AbstractReactiveFunction {
 					finalFileName = ContentDisposition.parse(cd).getFilename();
 				} else {
 					finalFileName = url.substring(url.lastIndexOf("/") + 1);
+					int index = finalFileName.indexOf('?');
+					finalFileName = index != -1 ? finalFileName.substring(0, index) : finalFileName;
 				}
 			}
 

@@ -30,7 +30,7 @@ public class FilesInternalController {
     public Mono<ResponseEntity<FileDetail>> create(
             @PathVariable String resourceType, @RequestParam String clientCode,
             @RequestParam(required = false, name = "override", defaultValue = "false") boolean override,
-            @RequestParam(required = false, name = "path", defaultValue = "/") String filePath,
+            @RequestParam(required = false, defaultValue = "/") String filePath,
             @RequestParam String fileName, ServerHttpRequest request) {
 
         return ("secured".equals(resourceType) ? this.securedService : this.staticService).createInternal(
