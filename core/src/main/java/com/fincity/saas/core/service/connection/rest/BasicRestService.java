@@ -78,7 +78,8 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
 					WebClient.Builder webClientBuilder = WebClient.builder();
 					WebClient webClient = webClientBuilder.baseUrl(tup.getT1())
-							.build();
+							.codecs(c -> c.defaultCodecs().maxInMemorySize(50 * 1024 * 1024)).build();
+
 					WebClient.RequestBodySpec requestBuilder = webClient.method(HttpMethod.resolve(request.getMethod()))
 							.uri(uriBuilder -> {
 								uriBuilder = applyQueryParameters(uriBuilder, request.getQueryParameters());
