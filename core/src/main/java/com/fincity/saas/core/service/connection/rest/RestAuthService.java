@@ -49,7 +49,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 	private final CoreFunctionService coreFunctionService;
 
 	public RestAuthService(CoreMessageResourceService msgService, CoreTokenDAO coreTokenDAO,
-	                       BasicRestService basicRestService, CoreFunctionService coreFunctionService) {
+			BasicRestService basicRestService, CoreFunctionService coreFunctionService) {
 
 		this.msgService = msgService;
 		this.coreTokenDAO = coreTokenDAO;
@@ -59,12 +59,18 @@ public class RestAuthService extends AbstractRestService implements IRestService
 	}
 
 	@Override
-	public Mono<RestResponse> call(Connection connection, RestRequest request) {
+	public Mono<RestResponse> call(Connection connection, RestRequest request, boolean fileDownload) {
 
 		return FlatMapUtil.flatMapMono(
-						() -> getAccessToken(connection),
-						accessToken -> makeRestCall(connection, request, accessToken))
+				() -> getAccessToken(connection),
+				accessToken -> makeRestCall(connection, request, accessToken))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "RestAuthService.call"));
+	}
+
+	@Override
+	public Mono<RestResponse> call(Connection connection, RestRequest request) {
+
+		return this.call(connection, request, false);
 	}
 
 	private Mono<String> getAccessToken(Connection connection) {
@@ -74,7 +80,8 @@ public class RestAuthService extends AbstractRestService implements IRestService
 				() -> getExistingAccessToken(connection),
 
 				existingAccessToken -> existingAccessToken.getT2().isAfter(LocalDateTime.now())
-						? Mono.just(existingAccessToken.getT1()) : Mono.empty()
+						? Mono.just(existingAccessToken.getT1())
+						: Mono.empty()
 
 		).switchIfEmpty(createNewAccessToken(connection).map(Tuple2::getT1));
 	}
@@ -106,7 +113,8 @@ public class RestAuthService extends AbstractRestService implements IRestService
 
 					if (outputResult.getName().equals(ERROR_EVENT)) {
 						return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								CoreMessageResourceService.NOT_ABLE_TO_CREATE_TOKEN, connection.getName(), outputResult);
+								CoreMessageResourceService.NOT_ABLE_TO_CREATE_TOKEN, connection.getName(),
+								outputResult);
 					}
 
 					Map<String, JsonElement> eventMap = outputResult.getResult();
@@ -135,7 +143,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 	}
 
 	private Object[] getCacheKeys(Connection connection) {
-		return new Object[]{connection.getClientCode(), ":", connection.getAppCode(), ":", connection.getName()};
+		return new Object[] { connection.getClientCode(), ":", connection.getAppCode(), ":", connection.getName() };
 	}
 
 }
