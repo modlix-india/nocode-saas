@@ -48,6 +48,13 @@ public class RestService {
 
 	public Mono<RestResponse> doCall(String appCode, String clientCode, String connectionName, RestRequest request) {
 
+		return this.doCall(appCode, clientCode, connectionName, request, false);
+
+	}
+
+	public Mono<RestResponse> doCall(String appCode, String clientCode, String connectionName, RestRequest request,
+			boolean fileDownload) {
+
 		return FlatMapUtil.flatMapMono(
 
 				() -> SecurityContextUtil.getUsersContextAuthentication()
@@ -62,7 +69,7 @@ public class RestService {
 				(codeTuple, connection) -> Mono.just(
 						this.services.get(connection != null ? connection.getConnectionSubType()
 								: ConnectionSubType.REST_API_BASIC)),
-				(codeTuple, connection, service) -> service.call(connection, request)
+				(codeTuple, connection, service) -> service.call(connection, request, fileDownload)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "RestService.doCall"))
 				.switchIfEmpty(Mono.defer(() -> Mono.just(
