@@ -227,14 +227,14 @@ public class CallRequest extends AbstractReactiveFunction {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> restService.doCall(appCode, clientCode, connectionName, request),
+				() -> restService.doCall(appCode, clientCode, connectionName, request, downloadAsAFile),
 
 				obj -> {
 					if (obj.getStatus() >= 400 && obj.getStatus() <= 600)
 						return this.makeErrorResponseFunctionOutput(obj);
 
 					if (downloadAsAFile) {
-						return this.processDownload(obj, context.getArguments().get(FILE_NAME).getAsString(),
+						return this.processDownload(url, obj, context.getArguments().get(FILE_NAME).getAsString(),
 								context.getArguments().get(FILE_LOCATION).getAsString(),
 								context.getArguments().get(FILE_OVERRIDE).getAsBoolean(),
 								context.getArguments().get(FILE_CLIENT_CODE).getAsString(),
@@ -247,7 +247,7 @@ public class CallRequest extends AbstractReactiveFunction {
 				.onErrorResume(this::makeExceptionResponseFunctionOutput);
 	}
 
-	private Mono<FunctionOutput> processDownload(RestResponse obj, String fileName, String fileLocation,
+	private Mono<FunctionOutput> processDownload(String url, RestResponse obj, String fileName, String fileLocation,
 			boolean override,
 			String fileClientCode, String fileType) {
 
@@ -277,7 +277,7 @@ public class CallRequest extends AbstractReactiveFunction {
 					if (!(obj.getData() instanceof Resource))
 						return Mono.error(new Exception("Data is not a file"));
 
-					return this.makeFileInFiles(obj, fileName, fileLocation, override, cc, fileType);
+					return this.makeFileInFiles(url, obj, fileName, fileLocation, override, cc, fileType);
 				},
 
 				(ca, cc, fileObj) -> this.processOutput(obj.setData(fileObj))
@@ -285,7 +285,8 @@ public class CallRequest extends AbstractReactiveFunction {
 		);
 	}
 
-	private Mono<Map<String, Object>> makeFileInFiles(RestResponse obj, String fileName, String fileLocation,
+	private Mono<Map<String, Object>> makeFileInFiles(String url, RestResponse obj, String fileName,
+			String fileLocation,
 			boolean override,
 			String cc, String fileType) {
 		try {
@@ -297,7 +298,13 @@ public class CallRequest extends AbstractReactiveFunction {
 				String cd = obj.getHeaders().get("Content-Disposition");
 				if (cd != null) {
 					finalFileName = ContentDisposition.parse(cd).getFilename();
+				} else {
+					finalFileName = url.substring(url.lastIndexOf("/") + 1);
 				}
+			}
+
+			if (StringUtil.safeIsBlank(finalFileName)) {
+				finalFileName = "file";
 			}
 			return this.fileService.create(fileType, cc, override, fileLocation, finalFileName, buffer);
 		} catch (Exception e) {
