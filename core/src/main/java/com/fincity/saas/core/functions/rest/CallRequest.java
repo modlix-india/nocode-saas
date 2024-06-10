@@ -24,14 +24,17 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import feign.FeignException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -83,6 +86,10 @@ public class CallRequest extends AbstractReactiveFunction {
 	private static final String FILE_TYPE = "fileType";
 
 	private static final String FILE_OVERRIDE = "fileOverride";
+
+	private static final String CD_FILE_NAME = "filename";
+
+	private static final Logger logger = LoggerFactory.getLogger(CallRequest.class);
 
 	private RestService restService;
 
@@ -234,7 +241,7 @@ public class CallRequest extends AbstractReactiveFunction {
 						return this.makeErrorResponseFunctionOutput(obj);
 
 					if (downloadAsAFile) {
-						return this.processDownload(url, obj, context.getArguments().get(FILE_NAME).getAsString(),
+						return this.processDownload(obj, context.getArguments().get(FILE_NAME).getAsString(),
 								context.getArguments().get(FILE_LOCATION).getAsString(),
 								context.getArguments().get(FILE_OVERRIDE).getAsBoolean(),
 								context.getArguments().get(FILE_CLIENT_CODE).getAsString(),
@@ -247,7 +254,7 @@ public class CallRequest extends AbstractReactiveFunction {
 				.onErrorResume(this::makeExceptionResponseFunctionOutput);
 	}
 
-	private Mono<FunctionOutput> processDownload(String url, RestResponse obj, String fileName, String fileLocation,
+	private Mono<FunctionOutput> processDownload(RestResponse obj, String fileName, String fileLocation,
 			boolean override,
 			String fileClientCode, String fileType) {
 
@@ -277,7 +284,7 @@ public class CallRequest extends AbstractReactiveFunction {
 					if (!(obj.getData() instanceof Resource))
 						return Mono.error(new Exception("Data is not a file"));
 
-					return this.makeFileInFiles(url, obj, fileName, fileLocation, override, cc, fileType);
+					return this.makeFileInFiles(obj, fileName, fileLocation, override, cc, fileType);
 				},
 
 				(ca, cc, fileObj) -> this.processOutput(obj.setData(fileObj))
@@ -285,7 +292,7 @@ public class CallRequest extends AbstractReactiveFunction {
 		);
 	}
 
-	private Mono<Map<String, Object>> makeFileInFiles(String url, RestResponse obj, String fileName,
+	private Mono<Map<String, Object>> makeFileInFiles(RestResponse obj, String fileName,
 			String fileLocation,
 			boolean override,
 			String cc, String fileType) {
@@ -296,13 +303,7 @@ public class CallRequest extends AbstractReactiveFunction {
 			String finalFileName = fileName;
 			if (StringUtil.safeIsBlank(finalFileName)) {
 				String cd = obj.getHeaders().get("Content-Disposition");
-				if (cd != null) {
-					finalFileName = ContentDisposition.parse(cd).getFilename();
-				} else {
-					finalFileName = url.substring(url.lastIndexOf("/") + 1);
-					int index = finalFileName.indexOf('?');
-					finalFileName = index != -1 ? finalFileName.substring(0, index) : finalFileName;
-				}
+				finalFileName = this.parseContentDispositionForFileName(cd);
 			}
 
 			if (StringUtil.safeIsBlank(finalFileName)) {
@@ -311,6 +312,53 @@ public class CallRequest extends AbstractReactiveFunction {
 			return this.fileService.create(fileType, cc, override, fileLocation, finalFileName, buffer);
 		} catch (Exception e) {
 			return Mono.error(e);
+		}
+	}
+
+	public String parseContentDispositionForFileName(String cd) {
+
+		int index = cd.indexOf(CD_FILE_NAME);
+
+		if (index == -1)
+			return null;
+
+		index = index + CD_FILE_NAME.length();
+
+		if (cd.charAt(index) == '=') {
+			return extractFilenameWithoutCharset(cd, index);
+		} else if (cd.charAt(index) == '*') {
+			return extractFilenameWithCharset(cd, index);
+		}
+
+		return null;
+	}
+
+	private String extractFilenameWithCharset(String cd, int index) {
+		index = index + 2;
+		int doub = cd.indexOf('"', index);
+		String charset = cd.substring(index, doub);
+		Charset cs = StandardCharsets.UTF_8;
+		if (charset != null) {
+			try {
+				cs = Charset.forName(charset);
+			} catch (Exception e) {
+				logger.error("Charset not found: {}", charset, e);
+			}
+		}
+		index = doub + 1;
+		int end = cd.indexOf('"', index);
+		return new String(cd.substring(index, end).getBytes(), cs);
+	}
+
+	private String extractFilenameWithoutCharset(String cd, int index) {
+		index++;
+		if (cd.charAt(index) == '"') {
+			index++;
+			int end = cd.indexOf('"', index);
+			return cd.substring(index, end == -1 ? cd.length() : end);
+		} else {
+			int end = cd.indexOf(';', index);
+			return cd.substring(index, end == -1 ? cd.length() : end);
 		}
 	}
 
