@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
+import com.fincity.nocode.kirun.engine.function.reactive.IDefinitionBasedFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
@@ -12,7 +13,8 @@ import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveKIRuntime;
-
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import reactor.core.publisher.Mono;
@@ -20,7 +22,7 @@ import reactor.util.context.Context;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class DefinitionFunction extends AbstractReactiveFunction {
+public class DefinitionFunction extends AbstractReactiveFunction implements IDefinitionBasedFunction {
 
 	public static final String CONTEXT_KEY = "KIRun Runtime";
 
@@ -40,7 +42,22 @@ public class DefinitionFunction extends AbstractReactiveFunction {
 
 	@Override
 	protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-		return new ReactiveKIRuntime(definition).execute(context).contextWrite(Context.of(CONTEXT_KEY, "true"));
+		return Mono.deferContextual(ctx -> {
+
+			boolean isDebug = ctx.hasKey(LogUtil.DEBUG_KEY);
+
+			ReactiveKIRuntime runtime = new ReactiveKIRuntime(definition, isDebug);
+
+			return runtime.execute(context).contextWrite(Context.of(CONTEXT_KEY, "true")).map(e -> {
+
+				if (isDebug) {
+					FlatMapUtil.logValue("Definition Function : Executing Function : " + definition.getFullName());
+					FlatMapUtil.logValue(runtime.getDebugString());
+				}
+
+				return e;
+			});
+		});
 	}
 
 	@JsonIgnore

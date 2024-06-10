@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
-
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -39,11 +39,15 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.CoreFunction;
+import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
+import com.fincity.saas.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -85,6 +89,18 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@Lazy
 	private IFeignSecurityService feignSecurityService;
 
+	@Autowired
+	@Lazy
+	private ClientUrlService clientUrlService;
+
+	@Autowired
+	@Lazy
+	private EmailService emailService;
+
+	@Autowired
+	@Lazy
+	private IFeignFilesService filesService;
+
 	public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
 		super(CoreFunction.class, feignAuthenticationService, gson);
 	}
@@ -92,8 +108,16 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 	@PostConstruct
 	public void init() {
 		this.coreFunctionRepository = new ReactiveHybridRepository<>(new KIRunReactiveFunctionRepository(),
-				new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-						feignSecurityService, this.gson));
+				new CoreFunctionRepository(new CoreFunctionRepositoryBuilder()
+						.setAppDataService(appDataService)
+						.setRestService(restService)
+						.setUserContextService(userContextService)
+						.setSecurityService(feignSecurityService)
+						.setClientUrlService(clientUrlService)
+						.setEmailService(emailService)
+						.setFilesService(filesService)
+						.setGson(gson)
+						.setObjectMapper(objectMapper)));
 	}
 
 	@Override

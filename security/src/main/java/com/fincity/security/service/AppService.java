@@ -77,6 +77,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public static final String APP_PROP_REG_TYPE_NO_REGISTRATION = "REGISTRATION_TYPE_NO_REGISTRATION";
 
 	public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
+	public static final String APP_PROP_URL = "URL";
 
 	public AppService(ClientService clientService, PackageService packageService, RoleService roleService,
 			SecurityMessageResourceService messageResourceService, CacheService cacheService,

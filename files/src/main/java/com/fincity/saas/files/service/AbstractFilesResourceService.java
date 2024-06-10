@@ -1,5 +1,17 @@
 package com.fincity.saas.files.service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.FileType;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
+import com.fincity.saas.files.model.DownloadOptions;
+import com.fincity.saas.files.model.FileDetail;
+import com.fincity.saas.files.model.ImageDetails;
+import com.fincity.saas.files.util.FileExtensionUtil;
+import com.fincity.saas.files.util.ImageTransformUtil;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -19,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -34,13 +47,10 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
-
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
-import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.stream.ImageInputStream;
-
 import org.imgscalr.Scalr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,20 +73,6 @@ import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.FileSystemUtils;
-
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.CommonsUtil;
-import com.fincity.saas.commons.util.FileType;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
-import com.fincity.saas.files.model.DownloadOptions;
-import com.fincity.saas.files.model.FileDetail;
-import com.fincity.saas.files.model.ImageDetails;
-import com.fincity.saas.files.util.FileExtensionUtil;
-import com.fincity.saas.files.util.ImageTransformUtil;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -481,8 +477,8 @@ public abstract class AbstractFilesResourceService {
 		respHeaders.set("x-cache", "MISS");
 		respHeaders.setLastModified(fileMillis);
 		respHeaders.setETag(eTag);
-		if (!downloadOptions.getNoCache()
-				.booleanValue())
+		if (!downloadOptions.getNoCache().booleanValue()
+				&& this.getResourceType().equals(FilesAccessPathResourceType.STATIC))
 			respHeaders.setCacheControl("public, max-age=3600");
 		respHeaders.setContentDisposition((downloadOptions.getDownload()
 				.booleanValue() ? ContentDisposition.attachment() : ContentDisposition.inline())
@@ -757,7 +753,7 @@ public abstract class AbstractFilesResourceService {
 
 	private PathParts extractPathClientCodeFileName(String uri, FilePart fp, String filePath,
 			String clientCode, String fileName) {
-		String resourcePath = uri;
+		String resourcePath;
 
 		if (fp != null) {
 			resourcePath = this.resolvePathWithoutClientCode(this.uriPart, uri).getT1();
@@ -837,33 +833,36 @@ public abstract class AbstractFilesResourceService {
 							.subscribeOn(Schedulers.boundedElastic());
 				},
 
-				(hasPermission, relativePath, sourceTuple, transformedTuple) -> {
-
-					Path path = relativePath
-							.resolve(CommonsUtil.nonNullValue(StringUtil.safeIsBlank(fileName) ? null : fileName,
-									fp != null ? fp.filename() : null, pathParts.fileName));
-
-					try {
-						ImageIO.write(transformedTuple.getT1(), path.getFileName()
-								.toString()
-								.toLowerCase()
-								.endsWith("png") ? "png" : "jpeg", path.toFile());
-					} catch (IOException e) {
-						return this.msgService.throwMessage(
-								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
-								FilesMessageResourceService.IMAGE_TRANSFORM_ERROR);
-					}
-
-					return Mono.just(
-							this.convertToFileDetailWhileCreation(pathParts.resourcePath,
-									pathParts.clientCode,
-									path.toFile()));
-				}
+				(hasPermission, relativePath, sourceTuple, transformedTuple) -> finalFileWrite(fp, fileName, pathParts,
+						relativePath, transformedTuple)
 
 		).switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 				FilesMessageResourceService.IMAGE_TRANSFORM_ERROR))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
 						"AbstractFilesResourceService.imageUpload"));
+	}
+
+	private Mono<FileDetail> finalFileWrite(FilePart fp, String fileName, PathParts pathParts, Path relativePath,
+			Tuple2<BufferedImage, Integer> transformedTuple) {
+		Path path = relativePath
+				.resolve(CommonsUtil.nonNullValue(StringUtil.safeIsBlank(fileName) ? null : fileName,
+						fp != null ? fp.filename() : null, pathParts.fileName));
+
+		try {
+			ImageIO.write(transformedTuple.getT1(), path.getFileName()
+					.toString()
+					.toLowerCase()
+					.endsWith("png") ? "png" : "jpeg", path.toFile());
+		} catch (IOException e) {
+			return this.msgService.throwMessage(
+					msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+					FilesMessageResourceService.IMAGE_TRANSFORM_ERROR);
+		}
+
+		return Mono.just(
+				this.convertToFileDetailWhileCreation(pathParts.resourcePath,
+						pathParts.clientCode,
+						path.toFile()));
 	}
 
 	private Mono<Tuple2<BufferedImage, Integer>> makeSourceImage(FilePart fp,
@@ -1086,7 +1085,59 @@ public abstract class AbstractFilesResourceService {
 		return Mono.just(path);
 	}
 
+	public Mono<FileDetail> createInternal(String clientCode, boolean override, String filePath,
+			String fileName, ServerHttpRequest request) {
+
+		Mono<FileDetail> fd = FlatMapUtil.flatMapMono(
+
+				() -> Mono.just(Paths.get(this.getBaseLocation(), clientCode,
+						StringUtil.safeIsBlank(filePath) ? "/" : filePath)),
+
+				path -> {
+
+					if (!Files.exists(path))
+						try {
+							Files.createDirectories(path);
+						} catch (IOException e) {
+							return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+									FilesMessageResourceService.PATH_NOT_FOUND, filePath);
+						}
+
+					if (!Files.isDirectory(path))
+						return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								FilesMessageResourceService.NOT_A_DIRECTORY, filePath);
+
+					Path file = path.resolve(fileName);
+
+					if (Files.exists(file) && !override)
+						return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								FilesMessageResourceService.ALREADY_EXISTS, "File", file.getFileName());
+
+					return Mono.just(file);
+				},
+
+				(path, filePathPath) -> DataBufferUtils
+						.write(request.getBody(), filePathPath, StandardOpenOption.CREATE,
+								StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+						.then(Mono.just(filePathPath))
+						.flatMap(x -> {
+							try {
+								return Mono.just(this.convertToFileDetailWhileCreation(filePath, clientCode,
+										filePathPath.toFile()));
+							} catch (Exception e) {
+								return this.msgService.throwMessage(
+										msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+										FilesMessageResourceService.UNKNOWN_ERROR);
+							}
+						})
+
+		);
+
+		return fd.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createInternal"));
+	}
+
 	public abstract String getBaseLocation();
 
 	public abstract FilesAccessPathResourceType getResourceType();
+
 }

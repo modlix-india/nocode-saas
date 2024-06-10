@@ -1,15 +1,5 @@
 package com.fincity.saas.core.controller;
 
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
@@ -23,14 +13,25 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.CoreFunction;
+import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
+import com.fincity.saas.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
-
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuples;
@@ -40,14 +41,23 @@ import reactor.util.function.Tuples;
 public class FunctionController
 		extends AbstractOverridableDataController<CoreFunction, CoreFunctionDocumentRepository, CoreFunctionService> {
 
-	private CoreFunctionRepository coreFunRepo;
+	private final CoreFunctionRepository coreFunRepo;
 	private final Gson gson;
 
-	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService,
-			ContextService userContextService, IFeignSecurityService securityService, Gson gson) {
+	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService, // NOSONAR
+			ContextService userContextService, IFeignSecurityService securityService, IFeignFilesService fileService,
+			ClientUrlService clientUrlService, EmailService emailService, Gson gson) {
 
-		this.coreFunRepo = new CoreFunctionRepository(appDataService, objectMapper, restService, userContextService,
-				securityService, gson);
+		this.coreFunRepo = new CoreFunctionRepository(new CoreFunctionRepositoryBuilder()
+				.setAppDataService(appDataService)
+				.setObjectMapper(objectMapper)
+				.setRestService(restService)
+				.setUserContextService(userContextService)
+				.setSecurityService(securityService)
+				.setFilesService(fileService)
+				.setClientUrlService(clientUrlService)
+				.setEmailService(emailService)
+				.setGson(gson));
 		this.gson = gson;
 	}
 

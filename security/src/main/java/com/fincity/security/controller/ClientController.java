@@ -22,6 +22,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.service.ClientService;
@@ -125,16 +126,16 @@ public class ClientController
 	}
 
 	@GetMapping("/generateCode")
-	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId) {
+	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId, ServerHttpRequest request) {
 
-		return this.service.generateCodeAndTriggerMail(emailId)
+		return this.service.generateCodeAndTriggerMail(emailId, request)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/triggerCodeOnRequest/{accessId}")
-	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId) {
+	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId, ServerHttpRequest request) {
 
-		return this.service.tiggerMailOnRequest(accessId)
+		return this.service.tiggerMailOnRequest(accessId, request)
 				.map(ResponseEntity::ok);
 	}
 
@@ -145,6 +146,15 @@ public class ClientController
 		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId)
 				.map(ResponseEntity::ok);
 	}
+
+	@GetMapping("/register/events")
+	public Mono<ResponseEntity<Boolean>> evokeRegistrationEvents(ServerHttpRequest request,
+			ServerHttpResponse response,
+			@RequestBody ClientRegistrationRequest registrationRequest) {
+		return this.clientRegistrationService.evokeRegistrationEvents(registrationRequest, request, response)
+				.map(ResponseEntity::ok);
+	}
+
 
 	@GetMapping("/assignablePackages")
 	public Mono<ResponseEntity<List<Package>>> getClientAssignablePackages() {

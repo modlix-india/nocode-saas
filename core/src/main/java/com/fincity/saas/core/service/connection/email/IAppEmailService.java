@@ -10,5 +10,5 @@ import reactor.core.publisher.Mono;
 
 public interface IAppEmailService {
 
-	public Mono<Boolean> sendMail(List<String> toAddresses, Template template, Map<String, Object> templateData, Connection connection);
+	Mono<Boolean> sendMail(List<String> toAddresses, Template template, Map<String, Object> templateData, Connection connection);
 }

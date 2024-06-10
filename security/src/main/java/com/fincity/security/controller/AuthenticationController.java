@@ -53,6 +53,13 @@ public class AuthenticationController {
 						.build());
 	}
 
+	@GetMapping(value = "refreshToken")
+	public Mono<ResponseEntity<AuthenticationResponse>> refreshToken(ServerHttpRequest request) {
+
+		return this.service.refreshToken(request)
+				.map(ResponseEntity::ok);
+	}
+
 	@GetMapping(value = "verifyToken")
 	public Mono<ResponseEntity<AuthenticationResponse>> verifyToken(ServerHttpRequest request) {
 
