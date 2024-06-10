@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -580,7 +581,14 @@ public class ClientService
 
 	}
 
-	public Mono<Boolean> tiggerMailOnRequest(ULong accessCodeId) {
+	public Mono<Boolean> tiggerMailOnRequest(ULong accessCodeId, ServerHttpRequest request) {
+
+		String host = request.getHeaders().getFirst("X-Forwarded-Host");
+		String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
+		String port = request.getHeaders().getFirst("X-Forwarded-Port");
+
+		String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
+				: "http://" + host + ":" + port;
 
 		return FlatMapUtil.flatMapMono(
 
@@ -596,14 +604,22 @@ public class ClientService
 				(ca, accessCode, hasAccess) -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
 						.setClientCode(ca.getClientCode())
 						.setEventName(EventNames.USER_CODE_GENERATION)
-						.setData(Map.of("emailId", accessCode.getEmailId(), "accessCode", accessCode.getCode()))))
+						.setData(Map.of("emailId", accessCode.getEmailId(), "accessCode", accessCode.getCode(),
+								"urlPrefix", urlPrefix))))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.tiggerMailOnRequest"))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
 						SecurityMessageResourceService.MAIL_CANNOT_BE_TRIGGERED));
 	}
 
-	public Mono<Boolean> generateCodeAndTriggerMail(String emailId) { // NOSONAR
+	public Mono<Boolean> generateCodeAndTriggerMail(String emailId, ServerHttpRequest request) { // NOSONAR
+
+		String host = request.getHeaders().getFirst("X-Forwarded-Host");
+		String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
+		String port = request.getHeaders().getFirst("X-Forwarded-Port");
+
+		String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
+				: "http://" + host + ":" + port;
 
 		return FlatMapUtil.flatMapMono(
 
@@ -667,7 +683,8 @@ public class ClientService
 						return ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
 								.setClientCode(client.getCode())
 								.setEventName(EventNames.USER_CODE_GENERATION)
-								.setData(Map.of("emailId", x.getEmailId(), "accessCode", x.getCode())));
+								.setData(Map.of("emailId", x.getEmailId(), "accessCode", x.getCode(), "urlPrefix",
+										urlPrefix)));
 
 					return Mono.just(true);
 
