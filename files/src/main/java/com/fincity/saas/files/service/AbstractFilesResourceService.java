@@ -477,8 +477,8 @@ public abstract class AbstractFilesResourceService {
 		respHeaders.set("x-cache", "MISS");
 		respHeaders.setLastModified(fileMillis);
 		respHeaders.setETag(eTag);
-		if (!downloadOptions.getNoCache()
-				.booleanValue())
+		if (!downloadOptions.getNoCache().booleanValue()
+				&& this.getResourceType().equals(FilesAccessPathResourceType.STATIC))
 			respHeaders.setCacheControl("public, max-age=3600");
 		respHeaders.setContentDisposition((downloadOptions.getDownload()
 				.booleanValue() ? ContentDisposition.attachment() : ContentDisposition.inline())
