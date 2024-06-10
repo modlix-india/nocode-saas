@@ -126,16 +126,16 @@ public class ClientController
 	}
 
 	@GetMapping("/generateCode")
-	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId) {
+	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId, ServerHttpRequest request) {
 
-		return this.service.generateCodeAndTriggerMail(emailId)
+		return this.service.generateCodeAndTriggerMail(emailId, request)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/triggerCodeOnRequest/{accessId}")
-	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId) {
+	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId, ServerHttpRequest request) {
 
-		return this.service.tiggerMailOnRequest(accessId)
+		return this.service.tiggerMailOnRequest(accessId, request)
 				.map(ResponseEntity::ok);
 	}
 
@@ -154,5 +154,5 @@ public class ClientController
 		return this.clientRegistrationService.evokeRegistrationEvents(registrationRequest, request, response)
 				.map(ResponseEntity::ok);
 	}
-	
+
 }
