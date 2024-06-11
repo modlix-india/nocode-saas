@@ -290,7 +290,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 		} else if (fileDownload || headers.getContentDisposition().getFilename() != null || contentType.getType()
 				.equals(MimeTypeUtils.APPLICATION_OCTET_STREAM.getType())) {
 
-			return clientResponse.bodyToMono(Resource.class)
+			return clientResponse.bodyToMono(byte[].class)
 					.map(binaryData -> processBinaryResponse(binaryData, restResponse))
 					.timeout(timeout)
 					.onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
@@ -330,7 +330,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 		return null;
 	}
 
-	private RestResponse processBinaryResponse(Resource binaryData, RestResponse restResponse) {
+	private RestResponse processBinaryResponse(byte[] binaryData, RestResponse restResponse) {
 		restResponse.setData(binaryData);
 		return restResponse;
 	}
