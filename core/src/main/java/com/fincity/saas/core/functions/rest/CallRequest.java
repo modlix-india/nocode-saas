@@ -23,6 +23,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import feign.FeignException;
+import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -34,7 +35,6 @@ import java.util.Optional;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -281,7 +281,7 @@ public class CallRequest extends AbstractReactiveFunction {
 					if (StringUtil.safeIsBlank(cc))
 						return Mono.error(new Exception("Client code is invalid"));
 
-					if (!(obj.getData() instanceof Resource))
+					if (!(obj.getData() instanceof byte[]))
 						return Mono.error(new Exception("Data is not a file"));
 
 					return this.makeFileInFiles(obj, fileName, fileLocation, override, cc, fileType);
@@ -298,7 +298,7 @@ public class CallRequest extends AbstractReactiveFunction {
 			String cc, String fileType) {
 		try {
 			ByteBuffer buffer = ByteBuffer
-					.wrap(IOUtils.toByteArray(((Resource) obj.getData()).getInputStream()));
+					.wrap((byte[]) obj.getData());
 
 			String finalFileName = fileName;
 			if (StringUtil.safeIsBlank(finalFileName)) {
@@ -335,7 +335,7 @@ public class CallRequest extends AbstractReactiveFunction {
 
 	private String extractFilenameWithCharset(String cd, int index) {
 		index = index + 2;
-		int doub = cd.indexOf('"', index);
+		int doub = cd.indexOf('\'', index);
 		String charset = cd.substring(index, doub);
 		Charset cs = StandardCharsets.UTF_8;
 		if (charset != null) {
@@ -343,11 +343,14 @@ public class CallRequest extends AbstractReactiveFunction {
 				cs = Charset.forName(charset);
 			} catch (Exception e) {
 				logger.error("Charset not found: {}", charset, e);
+
 			}
 		}
 		index = doub + 1;
-		int end = cd.indexOf('"', index);
-		return new String(cd.substring(index, end).getBytes(), cs);
+		int end = cd.indexOf('\'', index);
+		if (end == -1 || end >= cd.length())
+			return null;
+		return URLDecoder.decode(cd.substring(end + 1), cs);
 	}
 
 	private String extractFilenameWithoutCharset(String cd, int index) {
