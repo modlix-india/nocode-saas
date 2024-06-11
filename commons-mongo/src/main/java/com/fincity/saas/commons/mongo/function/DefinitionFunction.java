@@ -1,8 +1,5 @@
 package com.fincity.saas.commons.mongo.function;
 
-import java.util.List;
-import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.function.reactive.IDefinitionBasedFunction;
@@ -14,10 +11,16 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveKIRuntime;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
 @Data
@@ -56,7 +59,11 @@ public class DefinitionFunction extends AbstractReactiveFunction implements IDef
 				}
 
 				return e;
-			});
+			}).subscribeOn(Schedulers.boundedElastic())
+					.timeout(Duration.ofMinutes(5),
+							Mono.defer(() -> Mono.error(new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+									"Function execution timed out : " + definition.getFullName()
+											+ ". Please try again later."))));
 		});
 	}
 
