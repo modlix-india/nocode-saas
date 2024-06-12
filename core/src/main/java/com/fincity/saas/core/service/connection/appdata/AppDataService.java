@@ -54,6 +54,7 @@ import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mq.events.EventCreationService;
@@ -261,7 +262,7 @@ public class AppDataService {
 			relationList.add(
 					FlatMapUtil.flatMapMono(
 
-							() -> this.storageService.read(relation.getStorageName(), appCode, clientCode)
+							() -> this.getStorageWithKIRunValidation(relation.getStorageName(), appCode, clientCode)
 									.map(ObjectWithUniqueID::getObject),
 
 							storageObj -> dataService.readPageAsFlux(conn, storageObj, query).collectList()
@@ -362,7 +363,7 @@ public class AppDataService {
 			IAppDataService dataService, Connection conn, String storageName, Map<String, Object> map) {
 
 		return FlatMapUtil.flatMapMono(
-				() -> this.storageService.read(storageName, appCode, clientCode)
+				() -> this.getStorageWithKIRunValidation(storageName, appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject),
 				storage -> {
 
@@ -441,7 +442,7 @@ public class AppDataService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.storageService.read(storageName, appCode, clientCode)
+				() -> this.getStorageWithKIRunValidation(storageName, appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject),
 
 				storage -> dataService.delete(conn, storage, id))
@@ -544,7 +545,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
@@ -738,7 +739,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.<Map<String, Object>>genericOperation(storage,
@@ -769,7 +770,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.<Page<Map<String, Object>>>genericOperation(storage,
@@ -812,7 +813,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
@@ -988,7 +989,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
@@ -1088,7 +1089,7 @@ public class AppDataService {
 				conn -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(conn, dataService) -> storageService.read(storageName, appCode, clientCode)
+				(conn, dataService) -> getStorageWithKIRunValidation(storageName, appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject),
 
 				(conn, dataService, storage) -> this
@@ -1118,7 +1119,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
@@ -1418,7 +1419,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
@@ -1444,7 +1445,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
@@ -1469,7 +1470,7 @@ public class AppDataService {
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> storageService.read(storageName, ac, cc)
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
@@ -1477,5 +1478,20 @@ public class AppDataService {
 						CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteStorage"));
 
+	}
+
+	private Mono<ObjectWithUniqueID<Storage>> getStorageWithKIRunValidation(String name, String appCode, String clientCode) {
+
+		return storageService.read(name, appCode, clientCode)
+				.flatMap(e -> {
+					if (!BooleanUtil.safeValueOf(e.getObject().getOnlyThruKIRun()))
+						return Mono.just(e);
+
+					return Mono.deferContextual(cv -> {
+						if ("true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
+							return Mono.just(e);
+						return Mono.empty();
+					});
+				});
 	}
 }
