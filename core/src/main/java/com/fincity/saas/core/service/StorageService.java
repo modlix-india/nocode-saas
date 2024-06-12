@@ -332,19 +332,4 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 				() -> Mono.just(gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class)), storage.getId());
 	}
 
-	@Override
-	public Mono<ObjectWithUniqueID<Storage>> read(String name, String appCode, String clientCode) {
-
-		return super.read(name, appCode, clientCode)
-				.flatMap(e -> {
-					if (!BooleanUtil.safeValueOf(e.getObject().getOnlyThruKIRun()))
-						return Mono.just(e);
-
-					return Mono.deferContextual(cv -> {
-						if ("true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
-							return Mono.just(e);
-						return Mono.empty();
-					});
-				});
-	}
 }
