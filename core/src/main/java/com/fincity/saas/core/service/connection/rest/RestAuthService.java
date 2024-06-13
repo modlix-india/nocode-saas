@@ -40,22 +40,20 @@ public class RestAuthService extends AbstractRestService implements IRestService
 
 	private static final String CACHE_NAME_REST_AUTH = "RestAuthToken";
 
-	@Autowired
-	private CacheService cacheService;
-
+	private final CacheService cacheService;
 	private final CoreMessageResourceService msgService;
 	private final CoreTokenDAO coreTokenDAO;
 	private final BasicRestService basicRestService;
 	private final CoreFunctionService coreFunctionService;
 
 	public RestAuthService(CoreMessageResourceService msgService, CoreTokenDAO coreTokenDAO,
-			BasicRestService basicRestService, CoreFunctionService coreFunctionService) {
+			BasicRestService basicRestService, CoreFunctionService coreFunctionService, CacheService cacheService) {
 
 		this.msgService = msgService;
 		this.coreTokenDAO = coreTokenDAO;
 		this.basicRestService = basicRestService;
 		this.coreFunctionService = coreFunctionService;
-
+		this.cacheService = cacheService;
 	}
 
 	@Override
@@ -63,7 +61,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 
 		return FlatMapUtil.flatMapMono(
 				() -> getAccessToken(connection),
-				accessToken -> makeRestCall(connection, request, accessToken))
+				accessToken -> makeRestCall(connection, request, accessToken, fileDownload))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "RestAuthService.call"));
 	}
 
@@ -128,7 +126,8 @@ public class RestAuthService extends AbstractRestService implements IRestService
 				}).map(coreToken -> Tuples.of(coreToken.getToken(), coreToken.getExpiresAt()));
 	}
 
-	private Mono<RestResponse> makeRestCall(Connection connection, RestRequest request, String accessToken) {
+	private Mono<RestResponse> makeRestCall(Connection connection, RestRequest request, String accessToken,
+			boolean fileDownload) {
 
 		Object tokenPrefix = connection.getConnectionDetails().get("headerPrefix");
 
@@ -139,7 +138,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 		headers.add("Authorization", authorizationHeader);
 		request.setHeaders(headers);
 
-		return basicRestService.call(connection, request);
+		return basicRestService.call(connection, request, fileDownload);
 	}
 
 	private Object[] getCacheKeys(Connection connection) {
