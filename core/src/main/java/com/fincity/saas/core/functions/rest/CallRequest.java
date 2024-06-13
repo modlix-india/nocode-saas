@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -250,7 +249,7 @@ public class CallRequest extends AbstractReactiveFunction {
 
 					return this.processOutput(obj);
 				})
-				.contextWrite(Context.of(LogUtil.DEBUG_KEY, "CallRequest.internalExecute"))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "CallRequest.internalExecute"))
 				.onErrorResume(this::makeExceptionResponseFunctionOutput);
 	}
 
@@ -289,7 +288,7 @@ public class CallRequest extends AbstractReactiveFunction {
 
 				(ca, cc, fileObj) -> this.processOutput(obj.setData(fileObj))
 
-		);
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "CallRequest.processDownload"));
 	}
 
 	private Mono<Map<String, Object>> makeFileInFiles(RestResponse obj, String fileName,
