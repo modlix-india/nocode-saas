@@ -9,6 +9,9 @@ import org.springframework.security.config.web.server.ServerHttpSecurity.Authori
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.server.ServerWebExchange;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,44 +22,51 @@ import reactor.core.publisher.Mono;
 
 public interface ISecurityConfiguration {
 	default SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
-	        IAuthenticationService authService, ObjectMapper om, String... exclusionList) {
+			IAuthenticationService authService, ObjectMapper om, String... exclusionList) {
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		CorsConfiguration config = new CorsConfiguration();
+		config.addAllowedOrigin("*");
+		config.addAllowedHeader("*");
+		config.addAllowedMethod("*");
+		source.registerCorsConfiguration("/**", config);
+
 		AuthorizeExchangeSpec permits = http.csrf()
-		        .disable()
-		        .cors()
-		        .disable()
-		        .authorizeExchange()
-		        .pathMatchers(HttpMethod.OPTIONS)
-		        .permitAll()
-		        .pathMatchers("**/internal/**")
-		        .permitAll()
-		        .pathMatchers("/actuator/**")
-		        .permitAll();
+				.disable()
+				.cors(x -> x.configurationSource(source))
+				.authorizeExchange()
+				.pathMatchers(HttpMethod.OPTIONS)
+				.permitAll()
+				.pathMatchers("**/internal/**")
+				.permitAll()
+				.pathMatchers("/actuator/**")
+				.permitAll();
 
 		if (exclusionList != null && exclusionList.length != 0)
 			permits = permits.pathMatchers(exclusionList)
-			        .permitAll();
+					.permitAll();
 
 		permits.anyExchange()
-		        .authenticated()
-		        .and()
-		        .addFilterAt(new JWTTokenFilter(authService, om), SecurityWebFiltersOrder.HTTP_BASIC)
-		        .httpBasic()
-		        .authenticationEntryPoint(new HttpBasicServerAuthenticationEntryPoint() {
-			        @Override
-			        public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
-				        return Mono.fromRunnable(() -> {
-					        ServerHttpResponse response = exchange.getResponse();
-					        response.setStatusCode(HttpStatus.UNAUTHORIZED);
-					        response.getHeaders()
-					                .remove("WWW-Authenticate");
-				        });
-			        }
-		        })
-		        .and()
-		        .formLogin()
-		        .disable()
-		        .logout()
-		        .disable();
+				.authenticated()
+				.and()
+				.addFilterAt(new JWTTokenFilter(authService, om), SecurityWebFiltersOrder.HTTP_BASIC)
+				.httpBasic()
+				.authenticationEntryPoint(new HttpBasicServerAuthenticationEntryPoint() {
+					@Override
+					public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
+						return Mono.fromRunnable(() -> {
+							ServerHttpResponse response = exchange.getResponse();
+							response.setStatusCode(HttpStatus.UNAUTHORIZED);
+							response.getHeaders()
+									.remove("WWW-Authenticate");
+						});
+					}
+				})
+				.and()
+				.formLogin()
+				.disable()
+				.logout()
+				.disable();
 		return http.build();
 	}
 }
