@@ -948,31 +948,38 @@ public abstract class AbstractFilesResourceService {
 							.then(Mono.just(Tuples.of(tmpFile, tmpFolder)));
 				},
 
-				tmpTup -> FlatMapUtil.flatMapFlux(
+		        tmpTup -> FlatMapUtil.flatMapFlux(
 
-						() -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
+		                () -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
 
-						eFile -> Flux.from(this.fileAccessService.hasWriteAccess(
-								this.parentOf(resourcePath + eFile.getT1()), clientCode, this.getResourceType())),
+		                eFile ->
+						{
+			                return !Files.isDirectory(eFile.getT2()) ? Flux.just(true)
+			                        : Flux.from(this.fileAccessService.hasWriteAccess(
+			                                this.parentOf(resourcePath + eFile.getT1()), clientCode,
+			                                this.getResourceType()));
 
-						(eFile, hasPermission) -> {
-							if (!hasPermission.booleanValue())
-								return Flux.empty();
+		                },
 
-							Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, eFile.getT1());
-							try {
+		                (eFile, hasPermission) ->
+						{
+			                if (!hasPermission.booleanValue())
+				                return Flux.empty();
 
-								Files.createDirectories(path.getParent());
-								if (ovr)
-									Files.move(eFile.getT2(), path, StandardCopyOption.REPLACE_EXISTING);
-								else
-									Files.move(eFile.getT2(), path);
-							} catch (IOException ex) {
-								logger.debug("Ignoring exception while moving files after extracting.", ex);
-							}
+			                Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, eFile.getT1());
+			                try {
 
-							return Flux.just(true);
-						})
+				                Files.createDirectories(path.getParent());
+				                if (ovr)
+					                Files.move(eFile.getT2(), path, StandardCopyOption.REPLACE_EXISTING);
+				                else
+					                Files.move(eFile.getT2(), path);
+			                } catch (IOException ex) {
+				                logger.debug("Ignoring exception while moving files after extracting.", ex);
+			                }
+
+			                return Flux.just(true);
+		                })
 						.collectList()
 						.map(e -> true))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
