@@ -681,4 +681,41 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	}
 
+	public Mono<Boolean> copyRolesNPermissionsFromUser(ULong userId, ULong referenceUserId) {
+
+		var userAuth = this.dslContext
+				.select(SECURITY_USER_ROLE_PERMISSION.ROLE_ID, SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+				.from(SECURITY_USER_ROLE_PERMISSION)
+				.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId))
+				.asTable("existingAuthTable");
+
+		Field<ULong> userAuthRoleId = userAuth.field(SECURITY_USER_ROLE_PERMISSION.ROLE_ID);
+		Field<ULong> userAuthPermissionId = userAuth.field(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID);
+
+		return Mono.from(
+
+				this.dslContext
+						.insertInto(SECURITY_USER_ROLE_PERMISSION,
+								SECURITY_USER_ROLE_PERMISSION.USER_ID,
+								SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
+								SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+						.select(
+								this.dslContext.select(
+										DSL.val(userId),
+										SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
+										SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+										.from(SECURITY_USER_ROLE_PERMISSION)
+										.leftJoin(userAuth)
+										.on(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(userAuthRoleId)
+												.or(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.isNull()
+														.and(userAuthRoleId.isNull())))
+										.and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(userAuthPermissionId)
+												.or(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.isNull()
+														.and(userAuthPermissionId.isNull())))
+										.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(referenceUserId)
+												.and(userAuthRoleId.isNull())
+												.and(userAuthPermissionId.isNull()))))
+				.map(rowsInserted -> rowsInserted > 0);
+	}
+
 }
