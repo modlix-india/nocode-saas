@@ -93,6 +93,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String FORBIDDEN_APP_REG_OBJECTS = "forbidden_app_reg_objects";
 	public static final String SUBDOMAIN_ALREADY_EXISTS = "subdomain_already_exists";
 	public static final String APP_DEPENDENCY_SAME_APP_CODE = "app_dependency_same_app_code";
+	public static final String FORBIDDEN_COPY_ROLE_PERMISSION = "forbidden_copying_role_permission";
 
 	public SecurityMessageResourceService() {
 

@@ -972,13 +972,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				(ca, user, rUser, isSameClient) -> ca.isSystemClient() ? Mono.just(true) :
 
-						clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), 
+						clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
 
-						user.getClientId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
+								user.getClientId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(ca, user, rUser, isSameClient, sysOrManaged) -> this.dao.copyRolesNPermissionsFromUser(userId,
 						referenceUserId)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.copyUserRolesNPermissions"));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.copyUserRolesNPermissions"))
+				.switchIfEmpty(Mono.defer(() -> securityMessageResourceService
+						.getMessage(SecurityMessageResourceService.FORBIDDEN_COPY_ROLE_PERMISSION)
+						.flatMap(msg -> Mono.error(
+								new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User"))))));
 	}
 }
