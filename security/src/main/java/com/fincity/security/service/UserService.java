@@ -955,4 +955,34 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.setExpiresAt(token.getT2())
 				.setIpAddress(hostAddress));
 	}
+
+	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User') and hasAuthority('Authorities.ASSIGN_Permission_To_User')")
+	public Mono<Boolean> copyUserRolesNPermissions(ULong userId, ULong referenceUserId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.readById(userId),
+
+				(ca, user) -> this.dao.readById(referenceUserId),
+
+				(ca, user, rUser) -> Mono.just(user.getClientId().equals(rUser.getClientId()))
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+				(ca, user, rUser, isSameClient) -> ca.isSystemClient() ? Mono.just(true) :
+
+						clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
+
+								user.getClientId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+				(ca, user, rUser, isSameClient, sysOrManaged) -> this.dao.copyRolesNPermissionsFromUser(userId,
+						referenceUserId)
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.copyUserRolesNPermissions"))
+				.switchIfEmpty(Mono.defer(() -> securityMessageResourceService
+						.getMessage(SecurityMessageResourceService.FORBIDDEN_COPY_ROLE_PERMISSION)
+						.flatMap(msg -> Mono.error(
+								new GenericException(HttpStatus.FORBIDDEN, StringFormatter.format(msg, "User"))))));
+	}
 }
