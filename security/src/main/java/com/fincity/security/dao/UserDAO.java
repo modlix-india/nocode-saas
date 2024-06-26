@@ -673,4 +673,23 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	}
 
+	public Mono<Boolean> copyRolesNPermissionsFromUser(ULong userId, ULong referenceUserId) {
+
+		return Mono.from(
+				this.dslContext
+						.insertInto(SECURITY_USER_ROLE_PERMISSION,
+								SECURITY_USER_ROLE_PERMISSION.USER_ID,
+								SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
+								SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+						.select(
+								this.dslContext.select(
+										DSL.val(userId),
+										SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
+										SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+										.from(SECURITY_USER_ROLE_PERMISSION)
+										.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(referenceUserId)))
+						.onDuplicateKeyIgnore())
+				.map(rowsInserted -> rowsInserted > 0);
+	}	
+
 }
