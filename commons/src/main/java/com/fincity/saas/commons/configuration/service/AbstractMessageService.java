@@ -6,7 +6,6 @@ import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -24,6 +23,8 @@ public class AbstractMessageService {
     public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
 
     public static final String OBJECT_NOT_FOUND = "object_not_found";
+    public static final String FIELD_NOT_AVAILABLE = "Provided field(s)/value(s) are not applicable to the selected model"; 
+    
 
     protected Map<Locale, ResourceBundle> bundleMap;
 
