@@ -18,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -546,6 +545,41 @@ public class ClientService
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
 
+	}
+
+	public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+		                .getClientId()))),
+
+		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
+		                : this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), id),
+
+		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientActiveIfInActive(clientId)
+		                : Mono.just(false));
+
+	}
+
+	public Mono<Boolean> makeClientInActive(ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+		                .getClientId()))),
+
+		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
+		                : this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
+		                        .getClientId()), id),
+
+		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientInActive(clientId)
+		                : Mono.just(false));
 	}
 
 	public Mono<Page<CodeAccess>> fetchCodesBasedOnClient(Pageable page, String clientCode, String emailId) {
