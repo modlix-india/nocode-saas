@@ -826,4 +826,22 @@ public class ClientService
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"));
 	}
+
+	public Mono<Boolean> isClientActive(ULong clientId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.getClientInfoById(clientId),
+
+				c -> c.getStatusCode() != SecurityClientStatusCode.ACTIVE ? Mono.empty() : Mono.just(true),
+
+				(c, active) -> {
+
+					if ("SYS".equals(c.getTypeCode()))
+						return Mono.just(true);
+
+					return this.getManagedClientOfClientById(clientId).map(Client::getId).flatMap(this::isClientActive)
+							.defaultIfEmpty(true);
+				}).defaultIfEmpty(false);
+	}
 }

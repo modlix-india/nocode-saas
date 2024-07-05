@@ -438,7 +438,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
 		var query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
-				onlyActiveUsers, SECURITY_USER.fields());
+				onlyActiveUsers, SECURITY_USER.fields());	
 
 		var limitQuery = query.limit(2);
 
@@ -463,10 +463,13 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		List<Condition> conditions = new ArrayList<>();
 
 		conditions.add(userIdentificationField.eq(userName));
-		if (onlyActiveUsers)
+		if (onlyActiveUsers) {
 			conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
-		else
+			conditions.add(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE));
+		} else {
 			conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+			conditions.add(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED));
+		}
 
 		if (userId != null)
 			conditions.add(SECURITY_USER.ID.eq(userId));
@@ -497,6 +500,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		var outQuery = this.dslContext.selectDistinct(SECURITY_USER.ID)
 				.from(SECURITY_USER)
+				.leftJoin(SECURITY_CLIENT)
+				.on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
 				.leftJoin(SECURITY_APP_ACCESS)
 				.on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
 				.leftJoin(SECURITY_APP)
@@ -525,6 +530,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		SelectOnConditionStep<Record1<ULong>> query = this.dslContext.select(SECURITY_USER.ID)
 				.from(SECURITY_USER)
+
+				.leftJoin(SECURITY_CLIENT)
+				.on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
 
 				.leftJoin(accAA)
 				.on(accAA.field(CLIENT_ID, ULong.class)
