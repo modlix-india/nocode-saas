@@ -710,7 +710,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			return Mono.just(passwordEncoder.matches(u.getId() + reqPassword.getOldPassword(), u.getPassword())
 			        && !passwordEncoder.matches(u.getId() + reqPassword.getNewPassword(), u.getPassword()));
 
-		return Mono.just(StringUtil.safeEquals(reqPassword.getNewPassword(), u.getPassword())
+		return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), u.getPassword())
 		        && StringUtil.safeEquals(reqPassword.getOldPassword(), u.getPassword()));
 	}
 
