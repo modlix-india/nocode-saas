@@ -23,7 +23,7 @@ public class AbstractMessageService {
     public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
 
     public static final String OBJECT_NOT_FOUND = "object_not_found";
-    public static final String FIELD_NOT_AVAILABLE = "Provided field(s)/value(s) are not applicable to the selected model"; 
+    public static final String FIELD_NOT_AVAILABLE = " field cannot be updated, it might not be available or unmodifiable"; 
     
 
     protected Map<Locale, ResourceBundle> bundleMap;

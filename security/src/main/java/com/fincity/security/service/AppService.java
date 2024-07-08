@@ -31,7 +31,6 @@ import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
-import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.AppDependency;
 import com.fincity.security.model.PropertiesResponse;
@@ -314,29 +313,27 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-		return this.read(key)
-		        .flatMap(existing -> validateFields(fields).flatMap(
+		return FlatMapUtil.flatMapMono(
 
-		                newMap -> SecurityContextUtil.getUsersContextAuthentication()
-		                        .flatMap(ca ->
-								{
-			                        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				                        return Mono.just(newMap);
+		        () -> this.read(key),
 
-			                        return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-			                                .getClientId()), existing.getClientId())
-			                                .flatMap(managed ->
-											{
-				                                if (managed.booleanValue())
-					                                return Mono.just(newMap);
+		        app -> validateFields(fields),
 
-				                                return messageResourceService
-				                                        .getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-				                                        .flatMap(msg -> Mono.error(() -> new GenericException(
-				                                                HttpStatus.NOT_FOUND,
-				                                                StringFormatter.format(msg, APPLICATION, key))));
-			                                });
-		                        })));
+		        (app, updatableFields) -> SecurityContextUtil.getUsersContextAuthentication(),
+
+		        (app, updatableFields, ca) ->
+				{
+
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        return Mono.just(updatableFields);
+
+			        return messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+			                .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+			                        StringFormatter.format(msg, APPLICATION, key))));
+
+		        }
+
+		);
 
 	}
 	

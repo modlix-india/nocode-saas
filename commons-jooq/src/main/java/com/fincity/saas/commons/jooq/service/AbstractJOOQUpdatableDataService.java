@@ -4,9 +4,7 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +20,10 @@ import reactor.core.publisher.Mono;
 
 public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>, O extends AbstractUpdatableDAO<R, I, D>>
         extends AbstractJOOQDataService<R, I, D, O> {
-    
+
     @Autowired
     private ObjectMapper objectMapper;
-
+    
     public Mono<D> update(I key, Map<String, Object> fields) {
 
         return this.read(key)
@@ -40,30 +38,31 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
 
                                     String field = entry.getKey();
 
+                                    String methodName = "set" + field.substring(0, 1).toUpperCase()
+                                            + field.substring(1);
+
                                     try {
 
-                                        Stream<Method> methods = Arrays.stream(e.getDeclaredMethods());
+                                        for (Method method : e.getDeclaredMethods()) {
 
-                                        Method method = methods.filter(met -> met.getName()
-                                                .contains("set" + field.substring(0, 1).toUpperCase()
-                                                        + field.substring(1)))
-                                                .findFirst()
-                                                .orElseThrow(() -> new GenericException(
-                                                        HttpStatus.BAD_REQUEST,
-                                                        AbstractMessageService.FIELD_NOT_AVAILABLE));
+                                            if (method.getName().equals(methodName)) {
 
-                                        Parameter[] params = method.getParameters();
+                                                Parameter[] params = method.getParameters();
 
-                                        Object converted = this.objectMapper.convertValue(entry.getValue(),
-                                                params[0].getType());
+                                                method.invoke(retrievedObject,
+                                                        this.objectMapper.convertValue(entry.getValue(),
+                                                                params[0].getType()));
+                                            }
 
-                                        method.invoke(retrievedObject, converted);
+                                        }
 
                                     } catch (SecurityException
                                             | IllegalAccessException
                                             | InvocationTargetException | IllegalArgumentException exception) {
+
                                         throw new GenericException(HttpStatus.BAD_REQUEST,
-                                                AbstractMessageService.FIELD_NOT_AVAILABLE);
+                                                field + AbstractMessageService.FIELD_NOT_AVAILABLE);
+
                                     }
 
                                 });
