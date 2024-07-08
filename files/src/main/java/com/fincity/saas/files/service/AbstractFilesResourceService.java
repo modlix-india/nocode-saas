@@ -160,7 +160,7 @@ public abstract class AbstractFilesResourceService {
 					Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
 					if (!Files.exists(path))
-                    	return Mono.just(List.of());
+						return Mono.just(List.of());
 
 					if (!Files.isDirectory(path))
 						return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
