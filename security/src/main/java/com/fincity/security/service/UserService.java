@@ -843,11 +843,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		                        .flatMap(e -> this.clientService.isBeingManagedBy(
 		                                ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
 
-		        (ca, id, sysOrManaged) -> !sysOrManaged.booleanValue() ? Mono.just(sysOrManaged)
-		                : this.dao.makeUserActiveIfInActive(
-		                        id))
-
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"));
+		        (ca, id, sysOrManaged) -> !sysOrManaged.booleanValue() ? Mono.empty()
+		                : this.dao.makeUserActiveIfInActive(id))
+				
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"))
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
 
 	}
 	
@@ -866,10 +868,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		                        .flatMap(e -> this.clientService.isBeingManagedBy(
 		                                ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
 
-		        (ca, id, sysOrManaged) -> !sysOrManaged.booleanValue() ? Mono.just(sysOrManaged)
-		                : this.dao.makeUserInActive(id))
+		        (ca, id, sysOrManaged) -> !sysOrManaged.booleanValue() ? Mono.empty() : this.dao.makeUserInActive(id))
 
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserInActive"));
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserInActive"))
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
 
 	}
 	

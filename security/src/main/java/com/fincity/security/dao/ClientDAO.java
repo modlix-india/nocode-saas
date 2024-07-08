@@ -284,7 +284,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 		return Mono.from(this.dslContext.update(SECURITY_CLIENT)
 		        .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.INACTIVE)
 		        .where(SECURITY_CLIENT.ID.eq(clientId)
-		                .and(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.INACTIVE))))
+		                .and(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED))))
 		        .map(e -> e > 0);
 	}
 

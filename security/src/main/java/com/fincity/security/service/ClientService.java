@@ -561,7 +561,12 @@ public class ClientService
 		                        .getClientId()), id),
 
 		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientActiveIfInActive(clientId)
-		                : Mono.just(false));
+		                : Mono.empty())
+
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 
 	}
 
@@ -579,7 +584,11 @@ public class ClientService
 		                        .getClientId()), id),
 
 		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientInActive(clientId)
-		                : Mono.just(false));
+		                : Mono.empty())
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 	}
 
 	public Mono<Page<CodeAccess>> fetchCodesBasedOnClient(Pageable page, String clientCode, String emailId) {

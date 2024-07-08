@@ -567,7 +567,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(this.dslContext.update(SECURITY_USER)
 		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.INACTIVE)
 		        .where(SECURITY_USER.ID.eq(id)
-		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.INACTIVE))))
+		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
 		        .map(e -> e > 0);
 
 	}
