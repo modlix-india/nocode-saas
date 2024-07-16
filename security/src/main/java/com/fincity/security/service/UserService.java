@@ -35,6 +35,7 @@ import com.fincity.saas.commons.security.jwt.JWTUtil;
 import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
@@ -835,17 +836,56 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
 	}
 
-	public Mono<Boolean> makeUserActive() {
+	
+	@PreAuthorize("hasAuthority('Authorities.User_UPDATE')")
+	public Mono<Boolean> makeUserActive(ULong userId) {
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+		        SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.dao.makeUserActiveIfInActive(ca.getUser()
-						.getId()))
+		        ca -> Mono.just(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
+		                .getId()))),
 
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"));
+		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
+		                : this.dao.readById(id)
+		                        .flatMap(e -> this.clientService.isBeingManagedBy(
+		                                ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
+
+		        (ca, id, sysOrManaged) -> !sysOrManaged.booleanValue() ? Mono.empty()
+		                : this.dao.makeUserActiveIfInActive(id))
+				
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"))
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
+
 	}
+	
+	@PreAuthorize("hasAuthority('Authorities.User_UPDATE')")
+	public Mono<Boolean> makeUserInActive(ULong userId) {
+
+		return FlatMapUtil.flatMapMono(
+
+		        SecurityContextUtil::getUsersContextAuthentication,
+
+		        ca -> Mono.just(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
+		                .getId()))),
+
+		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
+		                : this.dao.readById(id)
+		                        .flatMap(e -> this.clientService.isBeingManagedBy(
+		                                ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
+
+		        (ca, id, sysOrManaged) -> !sysOrManaged.booleanValue() ? Mono.empty() : this.dao.makeUserInActive(id))
+
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserInActive"))
+		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
+
+	}
+	
 
 	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
 
