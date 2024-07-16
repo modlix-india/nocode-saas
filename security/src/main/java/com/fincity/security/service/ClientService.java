@@ -547,6 +547,8 @@ public class ClientService
 
 	}
 
+	
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 
 		return FlatMapUtil.flatMapMono(
@@ -570,6 +572,8 @@ public class ClientService
 
 	}
 
+	
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> makeClientInActive(ULong clientId) {
 
 		return FlatMapUtil.flatMapMono(
