@@ -13,7 +13,6 @@ import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_R
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -553,15 +552,24 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
 
-	public Mono<Boolean> makeUserActiveIfInActive(BigInteger id) {
-
-		ULong uid = ULong.valueOf(id);
+	public Mono<Boolean> makeUserActiveIfInActive(ULong uid) {
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
-				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-				.where(SECURITY_USER.ID.eq(uid)
-						.and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
-				.map(e -> e > 0);
+		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+		        .where(SECURITY_USER.ID.eq(uid)
+		                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
+		        .map(e -> e > 0);
+
+	}
+
+	public Mono<Boolean> makeUserInActive(ULong id) {
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.INACTIVE)
+		        .where(SECURITY_USER.ID.eq(id)
+		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+		        .map(e -> e > 0);
+
 	}
 
 	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
