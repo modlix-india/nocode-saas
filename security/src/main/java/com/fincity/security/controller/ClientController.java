@@ -22,7 +22,6 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.service.ClientService;
@@ -114,6 +113,20 @@ public class ClientController
 	public Mono<ResponseEntity<List<Package>>> fetchPackagesForClient(@PathVariable ULong clientId) {
 		return this.service.fetchPackages(clientId)
 				.map(ResponseEntity::ok);
+	}
+	
+	@GetMapping("/makeClientActive")
+	public Mono<ResponseEntity<Boolean>> makeClientActive(@RequestParam(required = false) ULong clientId) {
+
+		return this.service.makeClientActiveIfInActive(clientId)
+		        .map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/makeClientInActive")
+	public Mono<ResponseEntity<Boolean>> makeClientInActive(@RequestParam(required = false) ULong clientId) {
+
+		return this.service.makeClientInActive(clientId)
+		        .map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/register")

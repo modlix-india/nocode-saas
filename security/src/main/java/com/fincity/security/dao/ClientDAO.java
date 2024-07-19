@@ -1,7 +1,6 @@
 package com.fincity.security.dao;
 
 import static com.fincity.saas.commons.util.StringUtil.removeSpecialCharacters;
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
@@ -38,11 +37,11 @@ import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
-import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -268,6 +267,25 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.limit(1))
 				.map(Record1::value1)
 				.map(e -> e == 1);
+	}
+
+	public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
+
+		return Mono.from(this.dslContext.update(SECURITY_CLIENT)
+		        .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.ACTIVE)
+		        .where(SECURITY_CLIENT.ID.eq(clientId)
+		                .and(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.INACTIVE))))
+		        .map(e -> e > 0);
+
+	}
+
+	public Mono<Boolean> makeClientInActive(ULong clientId) {
+
+		return Mono.from(this.dslContext.update(SECURITY_CLIENT)
+		        .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.INACTIVE)
+		        .where(SECURITY_CLIENT.ID.eq(clientId)
+		                .and(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED))))
+		        .map(e -> e > 0);
 	}
 
 	public Mono<Client> getClientBy(String clientCode) {
