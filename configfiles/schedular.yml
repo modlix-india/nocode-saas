@@ -29,7 +29,7 @@ spring:
         - id: schedular
           uri: lb://schedular
           predicates:
-            - Path=/api/schedular/**, /*/api/schedular/**, /*/*/api/schedular/**, /*/*/*/api/schedular/**, /*/*/*/*/api/schedular/**, /*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/*/api/schedular/**,
+            - Path=/api/schedular/**, /*/api/schedular/**, /*/*/api/schedular/**, /*/*/*/api/schedular/**, /*/*/*/*/api/schedular/**, /*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/*/*/api/schedular/**, /*/*/*/*/*/*/*/*/*/api/schedular/**,
 
 management:
   endpoint:
