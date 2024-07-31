@@ -29,7 +29,7 @@ spring:
         - id: files
           uri: lb://files
           predicates:
-            - Path=/api/files/**, /*/api/files/**, /*/*/api/files/**, /*/*/*/api/files/**, /*/*/*/*/api/files/**, /*/*/*/*/*/api/files/**, /*/*/*/*/*/*/api/files/**, /*/*/*/*/*/*/*/api/files/**,
+            - Path=/api/files/**, /*/api/files/**, /*/*/api/files/**, /*/*/*/api/files/**, /*/*/*/*/api/files/**, /*/*/*/*/*/api/files/**, /*/*/*/*/*/*/api/files/**, /*/*/*/*/*/*/*/api/files/**, /*/*/*/*/*/*/*/*/api/files/**, /*/*/*/*/*/*/*/*/*/api/files/**,
 
 management:
   endpoint:
