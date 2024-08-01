@@ -120,16 +120,20 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0)))
 						.flatMap(this.dao::setPermissions),
 
-				user -> this.clientService.getClientInfoById(user.getClientId()),
+				user -> this.clientService.isClientActive(user.getClientId())
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				(user, client) -> {
+				(user, managerActive) -> this.clientService.getClientInfoById(user.getClientId()),
+
+				(user, managerActive, client) -> {
 					if (client.getCode().equals(clientCode))
 						return Mono.just(client);
 
 					return this.clientService.getClientBy(clientCode);
 				},
 
-				(user, client, mClient) -> Mono.just(Tuples.<Client, Client, User>of(mClient, client, user)))
+				(user, managerActive, client, mClient) -> Mono
+						.just(Tuples.<Client, Client, User>of(mClient, client, user)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.findUserNClient"));
 	}
 
