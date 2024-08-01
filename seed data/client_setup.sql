@@ -1675,6 +1675,18 @@ use files;
 ALTER TABLE `files`.`files_access_path` 
 CHANGE COLUMN `PATH` `PATH` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT 'Path to the resource' ;
 
+-- V24__Update Packages and Roles Constraints
+
+use security;
+
+ALTER TABLE `security`.`security_package` DROP CONSTRAINT `UK2_PACKAGE_NAME`;
+
+ALTER TABLE `security`.`security_package` ADD CONSTRAINT `UK2_PACKAGE_NAME_APP_ID` UNIQUE (`NAME`, `APP_ID`);
+
+ALTER TABLE `security`.`security_role` DROP CONSTRAINT `UK1_ROLE_NAME`;
+
+ALTER TABLE `security`.`security_role` ADD CONSTRAINT  `UK1_ROLE_NAME_APP_ID` UNIQUE (`NAME`, `APP_ID`);
+
 
 
 -- Add scripts from the project above this line and seed data below this line.

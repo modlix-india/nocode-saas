@@ -80,6 +80,11 @@ public class RoleService extends AbstractSecurityUpdatableDataService<SecurityRo
 					ULong userClientId = ULongUtil.valueOf(ca.getUser()
 							.getClientId());
 
+					if (entity.getAppId() == null)
+						return this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
+
 					if (entity.getClientId() == null || userClientId.equals(entity.getClientId())) {
 						entity.setClientId(userClientId);
 						return super.create(entity);
