@@ -1,7 +1,6 @@
 package com.fincity.security.controller;
 
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +29,6 @@ import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.AppDependency;
-import com.fincity.security.model.ApplicationAccessPackageOrRoleRequest;
 import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.service.AppService;

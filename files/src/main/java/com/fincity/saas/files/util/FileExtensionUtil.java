@@ -2,7 +2,7 @@ package com.fincity.saas.files.util;
 
 public class FileExtensionUtil {
 
-	public static String get(String name) {
+	public static String getExtension(String name) {
 
 		if (name == null || name.isBlank())
 			return "";
@@ -19,7 +19,13 @@ public class FileExtensionUtil {
 		if (fileName == null || fileName.isBlank())
 			return "";
 
-		return fileName + "." + get(actualFile);
+		String acutalExt = getExtension(actualFile);
+		String ext = getExtension(fileName);
+
+		if (ext.isBlank() || !ext.equals(acutalExt))
+			return fileName + "." + acutalExt;
+
+		return fileName;
 	}
 
 	private FileExtensionUtil() {
