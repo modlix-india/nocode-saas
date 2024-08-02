@@ -132,7 +132,7 @@ public abstract class AbstractFilesResourceService {
 	private static final Map<String, Comparator<File>> COMPARATORS = new HashMap<>(Map.of(
 
 			"TYPE",
-			Comparator.<File, String>comparing(e -> e.isDirectory() ? " " : FileExtensionUtil.get(e.getName()),
+			Comparator.<File, String>comparing(e -> e.isDirectory() ? " " : FileExtensionUtil.getExtension(e.getName()),
 					String.CASE_INSENSITIVE_ORDER),
 
 			"SIZE", Comparator.comparingLong(File::length),
@@ -738,10 +738,12 @@ public abstract class AbstractFilesResourceService {
 						return Mono.just(
 								this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
 
+					String fn = fileName == null ? fp.filename()
+							: FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName);
 					return FlatMapUtil
-							.flatMapMonoWithNull(() -> fp.transferTo(file.resolve(fp.filename())),
+							.flatMapMonoWithNull(() -> fp.transferTo(file.resolve(fn)),
 									x -> Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-											file.toFile())))
+											file.resolve(fn).toFile())))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
