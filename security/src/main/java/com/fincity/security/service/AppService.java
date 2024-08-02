@@ -78,6 +78,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
 	public static final String APP_PROP_URL = "URL";
+	
+	public static final String APP_ACCESS_TYPE = "appAccessType";
+	public static final String APP_USAGE_TYPE = "appUsageType";
+	public static final String APP_NAME = "appName";
+	public static final String THUMB_URL = "thumbUrl";
 
 	public AppService(ClientService clientService, PackageService packageService, RoleService roleService,
 			SecurityMessageResourceService messageResourceService, CacheService cacheService,
@@ -308,33 +313,48 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	@Override
 	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-		return this.read(key)
-				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-						.flatMap(ca -> {
+		return FlatMapUtil.flatMapMono(
 
-							Map<String, Object> newMap = new HashMap<>();
-							newMap.put("appName", fields.get("appName"));
-							newMap.put("appAccessType", fields.get("appAccessType"));
-							newMap.put("thumbUrl", fields.get("thumbUrl"));
-							newMap.put("appUsageType", fields.get("appUsageType"));
+		        () -> this.read(key),
 
-							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-								return Mono.just(newMap);
+		        app -> validateFields(fields),
 
-							return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-									.getClientId()), existing.getClientId())
-									.flatMap(managed -> {
-										if (managed.booleanValue())
-											return Mono.just(newMap);
+		        (app, updatableFields) -> SecurityContextUtil.getUsersContextAuthentication(),
 
-										return messageResourceService
-												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-												.flatMap(msg -> Mono
-														.error(() -> new GenericException(HttpStatus.NOT_FOUND,
-																StringFormatter.format(msg, APPLICATION, key))));
-									});
+		        (app, updatableFields, ca) ->
+				{
 
-						}));
+			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+				        return Mono.just(updatableFields);
+
+			        return messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+			                .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+			                        StringFormatter.format(msg, APPLICATION, key))));
+
+		        }
+
+		);
+
+	}
+	
+	private Mono<Map<String, Object>> validateFields(Map<String, Object> fields) {
+
+		Map<String, Object> updatableFields = new HashMap<>();
+
+		if (fields.containsKey(APP_NAME))
+			updatableFields.put(APP_NAME, fields.get(APP_NAME));
+
+		if (fields.containsKey(THUMB_URL))
+			updatableFields.put(THUMB_URL, fields.get(THUMB_URL));
+
+		if (fields.containsKey(APP_ACCESS_TYPE))
+			updatableFields.put(APP_ACCESS_TYPE, fields.get(APP_ACCESS_TYPE));
+		
+		if (fields.containsKey(APP_USAGE_TYPE))
+			updatableFields.put(APP_USAGE_TYPE, fields.get(APP_USAGE_TYPE));
+
+		return Mono.just(updatableFields);
+
 	}
 
 	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
