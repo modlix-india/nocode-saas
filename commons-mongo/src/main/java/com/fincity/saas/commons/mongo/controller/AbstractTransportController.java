@@ -182,7 +182,7 @@ public abstract class AbstractTransportController
 					}
 				},
 
-				(fp, file) -> handleTransportData(isJson, applicationCode, file),
+				(fp, file) -> handleTransportData(isJson, fp.filename(), file),
 
 				(fp, file, transport) -> this.service.applyTransport(forwardedHost, forwardedPort, transport.getId(),
 						applicationCode, isForBaseApp),
