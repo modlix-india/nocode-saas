@@ -5,13 +5,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.mongo.controller.AbstractTransportController;
+import com.fincity.saas.core.service.CoreMessageResourceService;
 
 @RestController
 @RequestMapping("api/core/transports")
 public class TransportController extends AbstractTransportController {
 
-    protected TransportController(ObjectMapper objectMapper) {
-        super(objectMapper);
+    public TransportController(ObjectMapper objectMapper, CoreMessageResourceService messageService) {
+        super(objectMapper, messageService);
     }
 
 }
