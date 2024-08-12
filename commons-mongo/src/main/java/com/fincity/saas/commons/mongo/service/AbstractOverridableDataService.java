@@ -689,9 +689,14 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> Mono.just(clientCode),
+				() -> {
+					System.err.println("name: " + name + " appCode: " + appCode + " clientCode: " + clientCode);
+					return Mono.just(clientCode);
+				},
 
-				key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
+				key -> {
+					return cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key);
+				},
 
 				(key, cApp) -> {
 
@@ -803,12 +808,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				this.objectMapper.convertValue(this.pojoClass.cast(entity), TYPE_REFERENCE_MAP));
 	}
 
-	public D makeEntity(TransportObject transportObject) {
+	public D makeEntity(String objectType, Map<String, Object> transportObject) {
 
-		if (!StringUtil.safeEquals(this.getObjectName(), transportObject.getObjectType()))
+		if (!StringUtil.safeEquals(this.getObjectName(), objectType))
 			return null;
 
-		return this.objectMapper.convertValue(transportObject.getData(), this.pojoClass);
+		return this.objectMapper.convertValue(transportObject, this.pojoClass);
 	}
 
 	public Class<D> getPojoClass() {

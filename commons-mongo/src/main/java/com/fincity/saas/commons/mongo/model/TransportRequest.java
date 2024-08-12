@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.mongo.model;
 
+import com.fincity.saas.commons.mongo.enums.TransportFileType;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -17,4 +18,5 @@ public class TransportRequest implements Serializable {
 	private String appCode;
 	private String name;
 	private Map<String, List<String>> objectList;
+	private TransportFileType fileType = TransportFileType.ZIP;
 }

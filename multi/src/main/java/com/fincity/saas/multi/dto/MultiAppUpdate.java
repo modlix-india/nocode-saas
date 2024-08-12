@@ -14,5 +14,6 @@ public class MultiAppUpdate implements Serializable {
     private Boolean isBaseUpdate;
 
     private Map<String, Object> transportDefinition; // NOSONAR
+    private String encodedModl;
     private String transportDefinitionURL;
 }
