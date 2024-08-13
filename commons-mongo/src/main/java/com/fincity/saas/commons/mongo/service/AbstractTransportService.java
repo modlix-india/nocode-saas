@@ -3,7 +3,6 @@ package com.fincity.saas.commons.mongo.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.mongo.document.Transport;
@@ -238,25 +237,21 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
         tentity.setMessage("From transport : " + transport.getName());
         tentity.setVersion(1);
 
-        return service
-                .read(
-                        tentity.getName(), tentity.getAppCode(),
-                        tentity.getClientCode())
-                .map(e -> ((ObjectWithUniqueID<? extends AbstractOverridableDTO>) e)
-                        .getObject())
-                .flatMap(entity -> {
+        return FlatMapUtil.flatMapMonoWithNull(
 
-                    AbstractOverridableDTO sentity = (AbstractOverridableDTO) entity;
+                () -> service.readToTransport(tentity.getName(), tentity.getAppCode(), tentity.getClientCode()),
 
-                    if (sentity != null
-                            && (isBaseApp || StringUtil.safeEquals(ca.getClientCode(),
-                                    sentity.getClientCode()))) {
-                        tentity.setVersion(sentity.getVersion());
-                        tentity.setId(sentity.getId());
-                        return service.update(tentity);
-                    }
-                    return service.create(tentity);
-                }).switchIfEmpty(Mono.defer(() -> service.create(tentity))).map(e -> true);
+                tup -> {
+                    if (tup == null)
+                        return service.create(tentity);
+
+                    tentity.setVersion(((Tuple2<Integer, String>) tup).getT1());
+                    tentity.setId(((Tuple2<Integer, String>) tup).getT2());
+                    return service.update(tentity);
+                },
+
+                (tup, entity) -> Mono.just(true))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.addObjectToService"));
     }
 
     @Override
