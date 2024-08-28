@@ -806,7 +806,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 		if (fc.getOperator() == IS_NULL) {
 			if (fc.isNegate())
-				Mono.just(Filters.ne(fc.getField(), null));
+				return Mono.just(Filters.ne(fc.getField(), null));
 			else
 				return Mono.just(Filters.or(Filters.eq(fc.getField(), null), Filters.exists(fc.getField(), false)));
 		}
