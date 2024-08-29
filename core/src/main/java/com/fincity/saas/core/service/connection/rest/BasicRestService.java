@@ -342,4 +342,12 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 		return errorResponse;
 	}
 
+	private Object getJsonPayload(JsonElement payload) {
+		if (payload == null || payload.isJsonNull()) {
+			return "";
+		}
+
+		return gson.fromJson(payload, Object.class);
+	}
+
 }
