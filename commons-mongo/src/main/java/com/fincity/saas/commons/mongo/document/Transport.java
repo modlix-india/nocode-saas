@@ -1,16 +1,13 @@
 package com.fincity.saas.commons.mongo.document;
 
-import java.util.List;
-
-import org.springframework.data.mongodb.core.index.CompoundIndex;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.model.TransportObject;
-
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
 import reactor.core.publisher.Mono;
 
 @Data
@@ -25,6 +22,7 @@ public class Transport extends AbstractOverridableDTO<Transport> {
 	private String uniqueTransportCode;
 	private List<TransportObject> objects;
 	private String type;
+	private String encodedModl;
 
 	@Override
 	public Mono<Transport> applyOverride(Transport base) {

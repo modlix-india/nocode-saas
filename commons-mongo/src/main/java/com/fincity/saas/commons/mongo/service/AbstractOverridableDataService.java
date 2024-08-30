@@ -421,6 +421,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				.map(Object::toString);
 	}
 
+	// While making the transport object, we are converting the entity to a map
 	public Flux<D> readForTransport(String appCode, String clientCode, List<String> names) {
 
 		if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank((clientCode)))
@@ -685,13 +686,40 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 						"AbstractOverridableService (" + this.getObjectName() + "Service).paramToConditionLRO"));
 	}
 
+	// While transporting the object to find the actual object.
+	public Mono<Tuple2<Integer, String>> readToTransport(String name, String appCode, String clientCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.accessCheck(ca, CREATE, appCode, clientCode, true),
+
+				(ca, hasAccess) -> {
+
+					if (!hasAccess.booleanValue())
+						return Mono.empty();
+
+					return this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode);
+				},
+
+				(ca, hasAccess, entity) -> Mono.just(Tuples.of(entity.getVersion(), entity.getId())))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"AbstractOverridableService (" + this.getObjectName() + "Service).readToTrasnport"));
+	}
+
 	public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> Mono.just(clientCode),
+				() -> {
+					System.err.println("name: " + name + " appCode: " + appCode + " clientCode: " + clientCode);
+					return Mono.just(clientCode);
+				},
 
-				key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
+				key -> {
+					return cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key);
+				},
 
 				(key, cApp) -> {
 
@@ -803,12 +831,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 				this.objectMapper.convertValue(this.pojoClass.cast(entity), TYPE_REFERENCE_MAP));
 	}
 
-	public D makeEntity(TransportObject transportObject) {
+	public D makeEntity(String objectType, Map<String, Object> transportObject) {
 
-		if (!StringUtil.safeEquals(this.getObjectName(), transportObject.getObjectType()))
+		if (!StringUtil.safeEquals(this.getObjectName(), objectType))
 			return null;
 
-		return this.objectMapper.convertValue(transportObject.getData(), this.pojoClass);
+		return this.objectMapper.convertValue(transportObject, this.pojoClass);
 	}
 
 	public Class<D> getPojoClass() {
