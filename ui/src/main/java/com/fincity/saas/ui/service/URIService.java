@@ -241,7 +241,7 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 		uri.setUserInfo(jUri.getUserInfo());
 		uri.setHost(jUri.getHost());
 		uri.setPort(jUri.getPort());
-		uri.setPath(jUri.getPath());
+		uri.setPath(getValidPath(jUri.getPath()));
 		uri.setQuery(jUri.getQuery());
 		uri.setQueryParams(jUri.getQuery() != null ? getQueryParams(jUri.getQuery()) : null);
 
@@ -254,5 +254,9 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 				.collect(Collectors.toMap(
 						pair -> pair[0],
 						pair -> pair.length > 1 ? pair[1] : ""));
+	}
+
+	private static String getValidPath(String path) {
+		return path.startsWith("/") ? path : "/" + path;
 	}
 }
