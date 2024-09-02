@@ -1,7 +1,11 @@
 package com.fincity.saas.ui.service;
 
-import javax.inject.Inject;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
@@ -26,19 +30,67 @@ import reactor.util.context.Context;
 @Service
 public class URIService extends AbstractOverridableDataService<URI, URIRepository> {
 
-	@Inject
+	private static final String CACHE_NAME_URI = "URICache";
+
+	private static final String URI_READ_ACTION = "_URI_READ";
+
 	private IFeignCoreService iFeignCoreService;
+
+	@Autowired
+	public URIService(IFeignCoreService iFeignCoreService) {
+		super(URI.class);
+		this.iFeignCoreService = iFeignCoreService;
+	}
 
 	protected URIService() {
 		super(URI.class);
 	}
 
-	public void setURIService(IFeignCoreService iFeignCoreService) {
-		this.iFeignCoreService = iFeignCoreService;
+	@Override
+	public String getAccessCheckName() {
+		return "Application";
+	}
+
+	@Override
+	public String getCacheName(String appCode, String cacheAction) {
+		return super.getCacheName(appCode + "_" + CACHE_NAME_URI, appCode) + cacheAction;
+	}
+
+	@Override
+	public Mono<URI> update(URI entity) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> getValidURI(entity),
+
+				vuri -> super.update(entity).flatMap(this.cacheService
+						.evictAllFunction(this.getCacheName(entity.getAppCode(), URI_READ_ACTION))));
+	}
+
+	@Override
+	public Mono<URI> create(URI entity) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> getValidURI(entity),
+
+				(ca, vuri) -> {
+					if (StringUtil.safeIsBlank(vuri.getClientCode())) {
+						vuri.setClientCode(ca.getClientCode());
+					}
+
+					if (StringUtil.safeIsBlank(vuri.getAppCode())) {
+						vuri.setAppCode(ca.getUrlAppCode());
+					}
+					return super.create(vuri);
+				});
 	}
 
 	@Override
 	protected Mono<URI> updatableEntity(URI entity) {
+
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.read(entity.getId()),
@@ -79,35 +131,38 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 	public Mono<ObjectWithUniqueID<String>> getResponse(ServerHttpRequest request, JsonObject jsonObject,
 			String appCode, String clientCode) {
 
-		String uriString = request.getURI().toString();
+		String uriPath = request.getURI().getPath();
 
 		return FlatMapUtil.flatMapMono(
-				() -> this.readByUrlString(uriString, appCode, clientCode),
-				uriObjectWithUniqueID -> {
-					URI uri = uriObjectWithUniqueID.getObject();
+
+				() -> this.readByUrlString(uriPath, appCode, clientCode),
+
+				ouri -> {
+					URI uri = ouri.getObject();
 					switch (uri.getUrlType()) {
 						case KIRUN_FUNCTION -> {
 							return executeKIRunFunction(request, jsonObject, uri.getKiRunFxDefinition(),
-									uri.getAppCode(),
-									uri.getClientCode());
+									uri.getAppCode(), uri.getClientCode());
 						}
-						case REDIRECTION -> {
+						case REDIRECTION, SHORTENED_URL -> {
 							// TODO
+							return Mono.empty();
 						}
-						case SHORTENED_URL -> {
-							// TODO
+						default -> {
+							return Mono.empty();
 						}
 					}
-					return Mono.empty();
 				}).switchIfEmpty(Mono.empty());
 
 	}
 
-	private Mono<ObjectWithUniqueID<URI>> readByUrlString(String uriString, String appCode, String clientCode) {
+	private Mono<ObjectWithUniqueID<URI>> readByUrlString(String uriPath, String appCode, String clientCode) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.repo.findByUriStringAndAppCodeAndClientCode(uriString, appCode, clientCode),
+				() -> cacheService.cacheValueOrGet(this.getCacheName(appCode, URI_READ_ACTION),
+						() -> this.repo.findByPathAndAppCodeAndClientCode(uriPath, appCode, clientCode),
+						getCacheKeys(uriPath, appCode, clientCode)),
 
 				uri -> {
 
@@ -136,13 +191,12 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 				() -> {
 					switch (request.getMethod()) {
 						case GET, HEAD -> {
-							return iFeignCoreService.executeWith(appCode, clientCode,
-									kiRunFxDefinition.getNamespace(), kiRunFxDefinition.getName(), request);
+							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
+									kiRunFxDefinition.getName(), request);
 						}
 						case POST, PUT, PATCH, DELETE -> {
-							return iFeignCoreService.executeWith(appCode, clientCode,
-									kiRunFxDefinition.getNamespace(), kiRunFxDefinition.getName(),
-									jsonObject.toString());
+							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
+									kiRunFxDefinition.getName(), jsonObject.toString());
 						}
 						default -> {
 							return Mono.empty();
@@ -154,7 +208,51 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 
 		).switchIfEmpty(this.messageResourceService.throwMessage(
 				msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-				"{} : Unable to execute KIRunFunction: {} ", "URIService.executeKIRunFunction",
-				kiRunFxDefinition.getNamespace() + kiRunFxDefinition.getName()));
+				"URIService.getResponse.executeKIRunFunction : Unable to execute KIRunFunction : {} ",
+				kiRunFxDefinition.getNamespace() + "." + kiRunFxDefinition.getName()));
+	}
+
+	private Object[] getCacheKeys(String uriString, String appCode, String clientCode) {
+		return new Object[] { appCode, ":", clientCode, ":", uriString };
+	}
+
+	private Mono<URI> getValidURI(URI uri) {
+
+		if (StringUtil.safeIsBlank(uri.getUriString()))
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					UIMessageResourceService.URI_STRING_NULL);
+
+		try {
+			return Mono.just(fillURIInfo(uri));
+		} catch (URISyntaxException e) {
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					UIMessageResourceService.URI_STRING_INVALID);
+		}
+	}
+
+	private URI fillURIInfo(URI uri) throws URISyntaxException {
+
+		java.net.URI jUri = new java.net.URI(uri.getUriString());
+
+		uri.setUriString(jUri.toString());
+		uri.setScheme(jUri.getScheme());
+		uri.setFragment(jUri.getFragment());
+		uri.setAuthority(jUri.getAuthority());
+		uri.setUserInfo(jUri.getUserInfo());
+		uri.setHost(jUri.getHost());
+		uri.setPort(jUri.getPort());
+		uri.setPath(jUri.getPath());
+		uri.setQuery(jUri.getQuery());
+		uri.setQueryParams(jUri.getQuery() != null ? getQueryParams(jUri.getQuery()) : null);
+
+		return uri;
+	}
+
+	private static Map<String, String> getQueryParams(String queryParams) {
+		return Arrays.stream(queryParams.split("&"))
+				.map(param -> param.split("=", 2))
+				.collect(Collectors.toMap(
+						pair -> pair[0],
+						pair -> pair.length > 1 ? pair[1] : ""));
 	}
 }

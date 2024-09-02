@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 
 public interface URIRepository extends IOverridableDataRepository<URI> {
 
-	Mono<URI> findByUriStringAndAppCodeAndClientCode(String uriString, String appCode, String clientCode);
+	Mono<URI> findByPathAndAppCodeAndClientCode(String uriString, String appCode, String clientCode);
 }

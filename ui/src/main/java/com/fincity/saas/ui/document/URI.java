@@ -1,11 +1,8 @@
 package com.fincity.saas.ui.document;
 
 import java.io.Serial;
-import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -16,7 +13,6 @@ import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.enums.URLType;
 import com.fincity.saas.ui.model.KIRunFxDefinition;
 import com.fincity.saas.ui.model.RedirectionDefinition;
@@ -31,7 +27,7 @@ import reactor.util.context.Context;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Document
+@Document(collection = "uri")
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "uriFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
@@ -75,19 +71,22 @@ public class URI extends AbstractOverridableDTO<URI> {
 		super(uri);
 
 		this.uriString = uri.uriString;
-
-		if (!StringUtil.safeIsBlank(this.uriString)) {
-			this.updateURI(this.uriString, this);
-		}
-
+		this.scheme = uri.scheme;
+		this.fragment = uri.fragment;
+		this.authority = uri.authority;
+		this.userInfo = uri.userInfo;
+		this.host = uri.host;
+		this.port = uri.port;
+		this.path = uri.path;
+		this.query = uri.query;
+		this.queryParams = CloneUtil.cloneMapObject(uri.queryParams);
 		this.urlType = uri.urlType;
-		this.accessLimit = uri.accessLimit;
-		this.accessCount = uri.accessCount;
-		this.kiRunFxDefinition = uri.kiRunFxDefinition;
 		this.whitelist = CloneUtil.cloneMapList(uri.whitelist);
 		this.blacklist = CloneUtil.cloneMapList(uri.blacklist);
+		this.accessLimit = uri.accessLimit;
+		this.accessCount = uri.accessCount;
+		this.kiRunFxDefinition = CloneUtil.cloneObject(uri.kiRunFxDefinition);
 		this.redirectionDefinitions = CloneUtil.cloneMapObject(uri.redirectionDefinitions);
-
 	}
 
 	@SuppressWarnings("unchecked")
@@ -202,33 +201,4 @@ public class URI extends AbstractOverridableDTO<URI> {
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URI.makeOverride"));
 	}
 
-	public void updateURI(String uriString, URI base) {
-
-		java.net.URI javaURI;
-
-		try {
-			javaURI = new java.net.URI(uriString);
-		} catch (URISyntaxException uriSyntaxException) {
-			throw new IllegalArgumentException("Invalid URI string", uriSyntaxException);
-		}
-
-		base.uriString = uriString;
-		base.scheme = javaURI.getScheme();
-		base.fragment = javaURI.getFragment();
-		base.authority = javaURI.getAuthority();
-		base.userInfo = javaURI.getUserInfo();
-		base.host = javaURI.getHost();
-		base.port = javaURI.getPort();
-		base.path = javaURI.getPath();
-		base.query = javaURI.getQuery();
-		base.queryParams = javaURI.getQuery() != null ? getQueryParams(javaURI.getQuery()) : null;
-	}
-
-	private static Map<String, String> getQueryParams(String queryParams) {
-		return Arrays.stream(queryParams.split("&"))
-				.map(param -> param.split("=", 2))
-				.collect(Collectors.toMap(
-						pair -> pair[0],
-						pair -> pair.length > 1 ? pair[1] : ""));
-	}
 }
