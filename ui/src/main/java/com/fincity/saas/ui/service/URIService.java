@@ -64,7 +64,8 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 				() -> getValidURI(entity),
 
 				vuri -> super.update(entity).flatMap(this.cacheService
-						.evictAllFunction(this.getCacheName(entity.getAppCode(), URI_READ_ACTION))));
+						.evictAllFunction(this.getCacheName(entity.getAppCode(), URI_READ_ACTION)))
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.update"));
 	}
 
 	@Override
@@ -85,7 +86,7 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 						vuri.setAppCode(ca.getUrlAppCode());
 					}
 					return super.create(vuri);
-				});
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.create"));
 	}
 
 	@Override
@@ -116,8 +117,6 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 					existing.setUrlType(entity.getUrlType());
 					existing.setWhitelist(entity.getWhitelist());
 					existing.setBlacklist(entity.getBlacklist());
-					existing.setAccessLimit(entity.getAccessLimit());
-					existing.setAccessCount(entity.getAccessCount());
 					existing.setKiRunFxDefinition(entity.getKiRunFxDefinition());
 					existing.setRedirectionDefinitions(entity.getRedirectionDefinitions());
 					existing.setPermission(entity.getPermission());
@@ -168,7 +167,7 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 
 					if (StringUtil.safeIsBlank(uri.getPermission())) {
 						return Mono.just(new ObjectWithUniqueID<>(uri))
-								.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.read [open Url Read]"));
+								.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.read [Open Url Read]"));
 					}
 
 					return FlatMapUtil.flatMapMono(
@@ -205,6 +204,7 @@ public class URIService extends AbstractOverridableDataService<URI, URIRepositor
 				},
 
 				response -> Mono.just(new ObjectWithUniqueID<>(response))
+						.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.getResponse [KIRun Function Response]"))
 
 		).switchIfEmpty(this.messageResourceService.throwMessage(
 				msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),

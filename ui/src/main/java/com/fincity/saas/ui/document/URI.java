@@ -59,8 +59,6 @@ public class URI extends AbstractOverridableDTO<URI> {
 
 	private List<String> whitelist;
 	private List<String> blacklist;
-	private Integer accessLimit;
-	private Integer accessCount;
 
 	private KIRunFxDefinition kiRunFxDefinition;
 
@@ -83,8 +81,6 @@ public class URI extends AbstractOverridableDTO<URI> {
 		this.urlType = uri.urlType;
 		this.whitelist = CloneUtil.cloneMapList(uri.whitelist);
 		this.blacklist = CloneUtil.cloneMapList(uri.blacklist);
-		this.accessLimit = uri.accessLimit;
-		this.accessCount = uri.accessCount;
 		this.kiRunFxDefinition = CloneUtil.cloneObject(uri.kiRunFxDefinition);
 		this.redirectionDefinitions = CloneUtil.cloneMapObject(uri.redirectionDefinitions);
 	}
@@ -130,10 +126,6 @@ public class URI extends AbstractOverridableDTO<URI> {
 									this.query = base.query;
 								if (this.urlType == null)
 									this.urlType = base.urlType;
-								if (this.accessLimit == null)
-									this.accessLimit = base.accessLimit;
-								if (this.accessCount == null)
-									this.accessCount = base.accessCount;
 								if (this.kiRunFxDefinition == null)
 									this.kiRunFxDefinition = base.kiRunFxDefinition;
 
@@ -190,10 +182,6 @@ public class URI extends AbstractOverridableDTO<URI> {
 						obj.query = null;
 					if (obj.urlType != null && obj.urlType.equals(base.urlType))
 						obj.urlType = null;
-					if (obj.accessLimit != null && obj.accessLimit.equals(base.accessLimit))
-						obj.accessLimit = null;
-					if (obj.accessCount != null && obj.accessCount.equals(base.accessCount))
-						obj.accessCount = null;
 					if (obj.kiRunFxDefinition != null && obj.kiRunFxDefinition.equals(base.kiRunFxDefinition))
 						obj.kiRunFxDefinition = null;
 
