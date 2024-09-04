@@ -60,8 +60,6 @@ public final class URIPathParser {
 		}
 
 		public QueryParser extractQuery() {
-			// Query is already extracted in the constructor, so this method
-			// is just for consistency with the fluent interface
 			return this;
 		}
 
@@ -105,7 +103,7 @@ public final class URIPathParser {
 			return "/";
 
 		StringBuilder sb = new StringBuilder(path.length());
-		int start = 1; // Skip the initial '/'
+		int start = 1;
 		sb.append('/');
 
 		while (start < path.length()) {
@@ -131,7 +129,7 @@ public final class URIPathParser {
 			return "/";
 
 		StringBuilder sb = new StringBuilder(path.length());
-		int start = 1; // Skip the initial '/'
+		int start = 1;
 		sb.append('/');
 
 		while (start < path.length()) {
