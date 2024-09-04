@@ -17,7 +17,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.service.IndexHTMLService;
 import com.fincity.saas.ui.service.JSService;
 import com.fincity.saas.ui.service.ManifestService;
-import com.fincity.saas.ui.service.URIService;
+import com.fincity.saas.ui.service.URIPathService;
 import com.fincity.saas.ui.utils.ResponseEntityUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -33,7 +33,7 @@ public class UniversalController {
 
 	private final ManifestService manifestService;
 
-	private final URIService uriService;
+	private final URIPathService uriPathService;
 
 	private final IFeignSecurityService securityService;
 
@@ -50,11 +50,11 @@ public class UniversalController {
 			.build();
 
 	public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
-			URIService uriService, IFeignSecurityService securityService, Gson gson) {
+	                           URIPathService uriPathService, IFeignSecurityService securityService, Gson gson) {
 		this.jsService = jsService;
 		this.indexHTMLService = indexHTMLService;
 		this.manifestService = manifestService;
-		this.uriService = uriService;
+		this.uriPathService = uriPathService;
 		this.securityService = securityService;
 		this.gson = gson;
 	}
@@ -91,7 +91,7 @@ public class UniversalController {
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
 			ServerHttpRequest request) {
 
-		return uriService.getResponse(request, null, appCode, clientCode)
+		return uriPathService.getResponse(request, null, appCode, clientCode)
 				.switchIfEmpty(indexHTMLService.getIndexHTML(appCode, clientCode))
 				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);
@@ -107,7 +107,7 @@ public class UniversalController {
 		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 				: this.gson.fromJson(jsonString, JsonObject.class);
 
-		return uriService.getResponse(request, jsonObject, appCode, clientCode)
+		return uriPathService.getResponse(request, jsonObject, appCode, clientCode)
 				.switchIfEmpty(indexHTMLService.getIndexHTML(appCode, clientCode))
 				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);
@@ -123,7 +123,7 @@ public class UniversalController {
 		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 				: this.gson.fromJson(jsonString, JsonObject.class);
 
-		return uriService.getResponse(request, jsonObject, appCode, clientCode)
+		return uriPathService.getResponse(request, jsonObject, appCode, clientCode)
 				.switchIfEmpty(indexHTMLService.getIndexHTML(appCode, clientCode))
 				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);

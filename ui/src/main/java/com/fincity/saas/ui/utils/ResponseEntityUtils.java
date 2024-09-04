@@ -13,7 +13,6 @@ public class ResponseEntityUtils {
 
 	}
 
-
 	public static <T> Mono<ResponseEntity<T>> makeResponseEntity(
 			ObjectWithUniqueID<T> obj, String eTag, int cacheAge) {
 
