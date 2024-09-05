@@ -72,7 +72,8 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	@Override
 	public Mono<Boolean> delete(String id) {
 		return this.read(id).flatMap(entity -> super.delete(id).flatMap(this.cacheService
-				.evictAllFunction(this.getCacheName(entity.getAppCode(), URI_READ_ACTION))));
+				.evictAllFunction(this.getCacheName(entity.getAppCode(), URI_READ_ACTION))))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.delete"));
 	}
 
 	@Override
@@ -308,14 +309,15 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 			return URIPathBuilder.buildURI(pathDefinition.getJustPath());
 		}
 
+		Map<String, String> iHeaders = request.getHeaders().toSingleValueMap();
+
 		Map<String, String> iQueryParams = request.getQueryParams().toSingleValueMap();
 
 		Map<String, String> iPathParams = pathDefinition.extractPathParameters(request.getURI().getPath());
 
-		// TODO Add Headers params
-
 		return URIPathBuilder.buildURI(pathDefinition.getJustPath())
 				.addQueryParams(iQueryParams, kiRunFxDefinition.getQueryParamMapping())
-				.addQueryParams(iPathParams, kiRunFxDefinition.getPathParamMapping());
+				.addQueryParams(iPathParams, kiRunFxDefinition.getPathParamMapping())
+				.addQueryParams(iHeaders, kiRunFxDefinition.getHeadersMapping());
 	}
 }
