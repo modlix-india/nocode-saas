@@ -1,6 +1,6 @@
 package com.fincity.saas.ui.enums;
 
-public enum URLType {
+public enum URIType {
 
 	KIRUN_FUNCTION,
 	REDIRECTION,

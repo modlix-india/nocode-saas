@@ -17,6 +17,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.URIPath;
+import com.fincity.saas.ui.enums.URIType;
 import com.fincity.saas.ui.feign.IFeignCoreService;
 import com.fincity.saas.ui.model.KIRunFxDefinition;
 import com.fincity.saas.ui.model.PathDefinition;
@@ -117,7 +118,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 					existing.setName(entity.getName());
 					existing.setPathDefinition(entity.getPathDefinition());
-					existing.setUrlType(entity.getUrlType());
+					existing.setUriType(entity.getUriType());
 					existing.setWhitelist(entity.getWhitelist());
 					existing.setBlacklist(entity.getBlacklist());
 					existing.setKiRunFxDefinition(entity.getKiRunFxDefinition());
@@ -141,7 +142,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				ouri -> {
 					URIPath uri = ouri.getObject();
-					switch (uri.getUrlType()) {
+					switch (uri.getUriType()) {
 						case KIRUN_FUNCTION -> {
 							return executeKIRunFunction(request, jsonObject, uri.getKiRunFxDefinition(),
 									uri.getPathDefinition(), uri.getAppCode(), uri.getClientCode());
@@ -271,6 +272,11 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	}
 
 	private Boolean checkKIRunFxParameters(URIPath uriPath) {
+
+		if (uriPath.getUriType().equals(URIType.KIRUN_FUNCTION) && uriPath.getKiRunFxDefinition() == null) {
+			return false;
+		}
+
 		KIRunFxDefinition kiRunFxDefinition = uriPath.getKiRunFxDefinition();
 
 		if (kiRunFxDefinition != null) {

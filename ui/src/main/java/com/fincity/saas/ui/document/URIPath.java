@@ -13,7 +13,7 @@ import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.ui.enums.URLType;
+import com.fincity.saas.ui.enums.URIType;
 import com.fincity.saas.ui.model.KIRunFxDefinition;
 import com.fincity.saas.ui.model.PathDefinition;
 import com.fincity.saas.ui.model.RedirectionDefinition;
@@ -38,7 +38,7 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 	@Serial
 	private static final long serialVersionUID = 2627066085463822531L;
 
-	private URLType urlType;
+	private URIType uriType;
 
 	private PathDefinition pathDefinition;
 
@@ -54,7 +54,7 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 
 		super(uriPath);
 
-		this.urlType = uriPath.urlType;
+		this.uriType = uriPath.uriType;
 		this.pathDefinition = CloneUtil.cloneObject(uriPath.pathDefinition);
 		this.headers = CloneUtil.cloneMapList(uriPath.headers);
 		this.whitelist = CloneUtil.cloneMapList(uriPath.whitelist);
@@ -84,8 +84,8 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 						this.kiRunFxDefinition = (KIRunFxDefinition) kr;
 						this.redirectionDefinitions = (Map<String, RedirectionDefinition>) re;
 
-						if (this.urlType == null)
-							this.urlType = base.urlType;
+						if (this.uriType == null)
+							this.uriType = base.uriType;
 
 						return Mono.just(this);
 					}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
@@ -110,8 +110,8 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 					obj.setBlacklist((List<String>) b);
 					obj.setRedirectionDefinitions((Map<String, RedirectionDefinition>) r);
 
-					if (obj.urlType != null && obj.urlType.equals(base.urlType))
-						obj.urlType = null;
+					if (obj.uriType != null && obj.uriType.equals(base.uriType))
+						obj.uriType = null;
 					if (obj.headers != null && obj.headers.equals(base.headers))
 						obj.headers = null;
 					if (obj.kiRunFxDefinition != null && obj.kiRunFxDefinition.equals(base.kiRunFxDefinition))
