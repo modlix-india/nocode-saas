@@ -21,6 +21,7 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 
 	private String name;
 	private String namespace;
+	private String functionAppCode;
 
 	private Map<String, String> headersMapping;
 	private Map<String, String> pathParamMapping;
@@ -29,6 +30,7 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 	public KIRunFxDefinition(KIRunFxDefinition kinRunFxDefinition) {
 		this.name = kinRunFxDefinition.name;
 		this.namespace = kinRunFxDefinition.namespace;
+		this.functionAppCode = kinRunFxDefinition.functionAppCode;
 		this.headersMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.headersMapping);
 		this.pathParamMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.pathParamMapping);
 		this.queryParamMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.queryParamMapping);
@@ -37,65 +39,53 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<KIRunFxDefinition> extractDifference(KIRunFxDefinition inc) {
-
 		if (inc == null)
 			return Mono.just(this);
 
 		return FlatMapUtil.flatMapMono(
-
-				() -> DifferenceExtractor.extract(inc.getHeadersMapping(), this.getHeadersMapping())
-						.defaultIfEmpty(Map.of()),
-
-				headersDiff -> DifferenceExtractor.extract(inc.getPathParamMapping(), this.getPathParamMapping())
-						.defaultIfEmpty(Map.of()),
-
-				(headersDiff, pathParamDiff) -> DifferenceExtractor.extract(inc.getQueryParamMapping(), this.getQueryParamMapping())
-						.defaultIfEmpty(Map.of()),
-
-				(headersDiff, pathParamDiff, queryParamDiff) -> {
-
+				() -> DifferenceExtractor.extract(this.headersMapping, inc.headersMapping),
+				hm -> DifferenceExtractor.extract(this.pathParamMapping, inc.pathParamMapping),
+				(hm, pp) -> DifferenceExtractor.extract(this.queryParamMapping, inc.queryParamMapping),
+				(hm, pp, qp) -> {
 					KIRunFxDefinition diff = new KIRunFxDefinition();
+					diff.setHeadersMapping((Map<String, String>) hm);
+					diff.setPathParamMapping((Map<String, String>) pp);
+					diff.setQueryParamMapping((Map<String, String>) qp);
 
-					diff.setName(inc.getName().equals(this.getName()) ? null : this.getName());
-					diff.setNamespace(inc.getNamespace().equals(this.getNamespace()) ? null : this.getNamespace());
-
-					diff.setHeadersMapping((Map<String, String>) headersDiff);
-					diff.setPathParamMapping((Map<String, String>) pathParamDiff);
-					diff.setQueryParamMapping((Map<String, String>) queryParamDiff);
+					if (!this.name.equals(inc.name))
+						diff.setName(inc.name);
+					if (!this.namespace.equals(inc.namespace))
+						diff.setNamespace(inc.namespace);
+					if (!this.functionAppCode.equals(inc.functionAppCode))
+						diff.setFunctionAppCode(inc.functionAppCode);
 
 					return Mono.just(diff);
-				}
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.extractDifference"));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.extractDifference"));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<KIRunFxDefinition> applyOverride(KIRunFxDefinition base) {
-
-		if (base == null)
+	public Mono<KIRunFxDefinition> applyOverride(KIRunFxDefinition override) {
+		if (override == null)
 			return Mono.just(this);
 
 		return FlatMapUtil.flatMapMono(
+				() -> DifferenceApplicator.apply(this.headersMapping, override.headersMapping),
+				hm -> DifferenceApplicator.apply(this.pathParamMapping, override.pathParamMapping),
+				(hm, pp) -> DifferenceApplicator.apply(this.queryParamMapping, override.queryParamMapping),
+				(hm, pp, qp) -> {
+					this.setHeadersMapping((Map<String, String>) hm);
+					this.setPathParamMapping((Map<String, String>) pp);
+					this.setQueryParamMapping((Map<String, String>) qp);
 
-				() -> DifferenceApplicator.apply(this.getHeadersMapping(), base.getHeadersMapping()),
-
-				headersMap -> DifferenceApplicator.apply(this.getPathParamMapping(), base.getPathParamMapping()),
-
-				(headersMap, pathParamMap) -> DifferenceApplicator.apply(this.getQueryParamMapping(), base.getQueryParamMapping()),
-
-				(headersMap, pathParamMap, queryParamMap) -> {
-
-					this.setHeadersMapping((Map<String, String>) headersMap);
-					this.setPathParamMapping((Map<String, String>) pathParamMap);
-					this.setQueryParamMapping((Map<String, String>) queryParamMap);
-
-					if (this.getName() == null)
-						this.setName(base.getName());
-					if (this.getNamespace() == null)
-						this.setNamespace(base.getNamespace());
+					if (override.getName() != null)
+						this.setName(override.getName());
+					if (override.getNamespace() != null)
+						this.setNamespace(override.getNamespace());
+					if (override.getFunctionAppCode() != null)
+						this.setFunctionAppCode(override.getFunctionAppCode());
 
 					return Mono.just(this);
-				}
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.applyOverride"));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.applyOverride"));
 	}
 }

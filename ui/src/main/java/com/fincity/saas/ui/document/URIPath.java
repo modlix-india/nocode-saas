@@ -2,10 +2,10 @@ package com.fincity.saas.ui.document;
 
 import java.io.Serial;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.http.HttpMethod;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
@@ -15,7 +15,6 @@ import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.enums.URIType;
 import com.fincity.saas.ui.model.KIRunFxDefinition;
-import com.fincity.saas.ui.model.PathDefinition;
 import com.fincity.saas.ui.model.RedirectionDefinition;
 
 import lombok.Data;
@@ -38,84 +37,101 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 	@Serial
 	private static final long serialVersionUID = 2627066085463822531L;
 
+	private String pathString;
 	private URIType uriType;
+	private Boolean isAuthenticated;
 
-	private PathDefinition pathDefinition;
-
+	private List<HttpMethod> httpMethods;
 	private List<String> headers;
+	private List<String> queryParams;
 	private List<String> whitelist;
 	private List<String> blacklist;
 
 	private KIRunFxDefinition kiRunFxDefinition;
-
-	private Map<String, RedirectionDefinition> redirectionDefinitions; // NOSONAR
+	private RedirectionDefinition redirectionDefinition;
 
 	public URIPath(URIPath uriPath) {
 
 		super(uriPath);
 
+		this.pathString = uriPath.pathString;
 		this.uriType = uriPath.uriType;
-		this.pathDefinition = CloneUtil.cloneObject(uriPath.pathDefinition);
+		this.isAuthenticated = uriPath.isAuthenticated;
+		this.httpMethods = CloneUtil.cloneMapList(uriPath.httpMethods);
 		this.headers = CloneUtil.cloneMapList(uriPath.headers);
+		this.queryParams = CloneUtil.cloneMapList(uriPath.queryParams);
 		this.whitelist = CloneUtil.cloneMapList(uriPath.whitelist);
 		this.blacklist = CloneUtil.cloneMapList(uriPath.blacklist);
 		this.kiRunFxDefinition = CloneUtil.cloneObject(uriPath.kiRunFxDefinition);
-		this.redirectionDefinitions = CloneUtil.cloneMapObject(uriPath.redirectionDefinitions);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<URIPath> applyOverride(URIPath base) {
-		if (base != null) {
-			return FlatMapUtil.flatMapMonoWithNull(
-					() -> DifferenceApplicator.apply(this.pathDefinition, base.pathDefinition),
-					ph -> DifferenceApplicator.apply(this.headers, base.headers),
-					(ph, he) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
-					(ph, he, wh) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
-					(ph, he, wh, bl) -> DifferenceApplicator.apply(this.kiRunFxDefinition, base.kiRunFxDefinition),
-					(ph, he, wh, bl, kr) -> DifferenceApplicator.apply(this.redirectionDefinitions,
-							base.redirectionDefinitions),
-					(ph, he, wh, bl, kr, re) -> {
-
-						this.pathDefinition = (PathDefinition) ph;
-						this.headers = (List<String>) he;
-						this.whitelist = (List<String>) wh;
-						this.blacklist = (List<String>) bl;
-						this.kiRunFxDefinition = (KIRunFxDefinition) kr;
-						this.redirectionDefinitions = (Map<String, RedirectionDefinition>) re;
-
-						if (this.uriType == null)
-							this.uriType = base.uriType;
-
-						return Mono.just(this);
-					}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
+		if (base == null) {
+			return Mono.just(this);
 		}
-		return Mono.just(this);
+
+		return FlatMapUtil.flatMapMonoWithNull(
+				() -> DifferenceApplicator.apply(this.httpMethods, base.httpMethods),
+				hm -> DifferenceApplicator.apply(this.headers, base.headers),
+				(hm, h) -> DifferenceApplicator.apply(this.queryParams, base.queryParams),
+				(hm, h, qp) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
+				(hm, h, qp, w) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
+				(hm, h, qp, w, b) -> {
+					this.httpMethods = (List<HttpMethod>) hm;
+					this.headers = (List<String>) h;
+					this.queryParams = (List<String>) qp;
+					this.whitelist = (List<String>) w;
+					this.blacklist = (List<String>) b;
+
+					if (this.pathString == null)
+						this.pathString = base.pathString;
+					if (this.uriType == null)
+						this.uriType = base.uriType;
+					if (this.isAuthenticated == null)
+						this.isAuthenticated = base.isAuthenticated;
+					if (this.kiRunFxDefinition == null)
+						this.kiRunFxDefinition = CloneUtil.cloneObject(base.kiRunFxDefinition);
+					if (this.redirectionDefinition == null)
+						this.redirectionDefinition = CloneUtil.cloneObject(base.redirectionDefinition);
+
+					return Mono.just(this);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<URIPath> makeOverride(URIPath base) {
-		Mono<URIPath> starting = Mono.just(this);
-		if (base == null)
-			return starting;
+		if (base == null) {
+			return Mono.just(this);
+		}
 
 		return FlatMapUtil.flatMapMonoWithNull(
-				() -> starting,
-				obj -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
-				(obj, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
-				(obj, w, b) -> DifferenceExtractor.extract(obj.redirectionDefinitions, base.redirectionDefinitions),
-				(obj, w, b, r) -> {
+				() -> Mono.just(this),
+				obj -> DifferenceExtractor.extract(obj.httpMethods, base.httpMethods),
+				(obj, hm) -> DifferenceExtractor.extract(obj.headers, base.headers),
+				(obj, hm, h) -> DifferenceExtractor.extract(obj.queryParams, base.queryParams),
+				(obj, hm, h, qp) -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
+				(obj, hm, h, qp, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
+				(obj, hm, h, qp, w, b) -> {
+					obj.setHttpMethods((List<HttpMethod>) hm);
+					obj.setHeaders((List<String>) h);
+					obj.setQueryParams((List<String>) qp);
 					obj.setWhitelist((List<String>) w);
 					obj.setBlacklist((List<String>) b);
-					obj.setRedirectionDefinitions((Map<String, RedirectionDefinition>) r);
 
+					if (obj.pathString != null && obj.pathString.equals(base.pathString))
+						obj.pathString = null;
 					if (obj.uriType != null && obj.uriType.equals(base.uriType))
 						obj.uriType = null;
-					if (obj.headers != null && obj.headers.equals(base.headers))
-						obj.headers = null;
+					if (obj.isAuthenticated != null && obj.isAuthenticated.equals(base.isAuthenticated))
+						obj.isAuthenticated = null;
 					if (obj.kiRunFxDefinition != null && obj.kiRunFxDefinition.equals(base.kiRunFxDefinition))
 						obj.kiRunFxDefinition = null;
+					if (obj.redirectionDefinition != null
+							&& obj.redirectionDefinition.equals(base.redirectionDefinition))
+						obj.redirectionDefinition = null;
 
 					return Mono.just(obj);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));

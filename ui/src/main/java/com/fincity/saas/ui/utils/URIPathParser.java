@@ -33,47 +33,10 @@ public final class URIPathParser {
 		public String build() {
 			return this.path;
 		}
-
-		public String extractPathPattern() {
-			return URIPathParser.extractPathPattern(this.path);
-		}
-
-		public String extractJustPath() {
-			return URIPathParser.extractJustPath(this.path);
-		}
-
-		public List<String> extractPathParams() {
-			return URIPathParser.extractPathParams(this.path);
-		}
 	}
 
-	public static PathParser pathParser(String path) {
+	public static PathParser parse(String path) {
 		return new PathParser(path);
-	}
-
-	public static class QueryParser {
-
-		private final String query;
-
-		private QueryParser(String path) {
-			this.query = URIPathParser.extractQuery(path);
-		}
-
-		public QueryParser extractQuery() {
-			return this;
-		}
-
-		public List<String> extractQueryParams() {
-			return URIPathParser.extractQueryParams(this.query);
-		}
-
-		public String build() {
-			return this.query;
-		}
-	}
-
-	public static QueryParser queryParser(String path) {
-		return new QueryParser(path);
 	}
 
 	private static String extractPath(String path) {
@@ -81,13 +44,6 @@ public final class URIPathParser {
 		int queryIndex = path.indexOf('?');
 
 		return queryIndex == -1 ? path : path.substring(0, queryIndex);
-	}
-
-	private static String extractQuery(String path) {
-
-		int queryIndex = path.indexOf('?');
-
-		return queryIndex == -1 ? "" : path.substring(queryIndex + 1);
 	}
 
 	private static String normalizeAndValidatePath(String path) {
@@ -98,33 +54,7 @@ public final class URIPathParser {
 		return path.replaceAll("/{2,}", "/");
 	}
 
-	private static String extractPathPattern(String path) {
-		if (path.isEmpty())
-			return "/";
-
-		StringBuilder sb = new StringBuilder(path.length());
-		int start = 1;
-		sb.append('/');
-
-		while (start < path.length()) {
-			int end = path.indexOf('/', start);
-			if (end == -1)
-				end = path.length();
-
-			if (start < end) {
-				String segment = path.substring(start, end);
-				sb.append(isPathVariable(segment) ? '*' : segment);
-				if (end < path.length())
-					sb.append('/');
-			}
-
-			start = end + 1;
-		}
-
-		return sb.toString();
-	}
-
-	private static String extractJustPath(String path) {
+	public static String extractJustPath(String path) {
 		if (path.isEmpty())
 			return "/";
 
@@ -154,7 +84,7 @@ public final class URIPathParser {
 		return sb.toString();
 	}
 
-	private static List<String> extractPathParams(String path) {
+	public static List<String> extractPathParams(String path) {
 		if (path.isEmpty())
 			return Collections.emptyList();
 
@@ -171,30 +101,6 @@ public final class URIPathParser {
 				if (isPathVariable(segment)) {
 					params.add(extractVariableName(segment));
 				}
-			}
-
-			start = end + 1;
-		}
-
-		return params;
-	}
-
-	private static List<String> extractQueryParams(String query) {
-		if (query.isEmpty())
-			return Collections.emptyList();
-
-		List<String> params = new ArrayList<>();
-		int start = 0;
-
-		while (start < query.length()) {
-			int end = query.indexOf('&', start);
-			if (end == -1)
-				end = query.length();
-
-			int equalIndex = query.indexOf('=', start);
-			if (equalIndex != -1 && equalIndex < end) {
-				String key = query.substring(start, equalIndex);
-				params.add(isPathVariable(key) ? extractVariableName(key) : key);
 			}
 
 			start = end + 1;

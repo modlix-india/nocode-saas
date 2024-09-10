@@ -4,6 +4,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+import org.springframework.http.HttpMethod;
+
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.ui.enums.RedirectionType;
 
@@ -19,12 +21,12 @@ public class RedirectionDefinition implements Serializable, IDifferentiable<Redi
     private static final long serialVersionUID = 7335074228662664368L;
 
     private RedirectionType redirectionType;
+    private HttpMethod targetHttpMethod;
     private String targetUrl;
     private String shortCode;
-    private boolean isShortUrl;
+
     private LocalDateTime validFrom;
     private LocalDateTime validUntil;
-    private boolean override;
 
     @Override
     public Mono<RedirectionDefinition> extractDifference(RedirectionDefinition inc) {

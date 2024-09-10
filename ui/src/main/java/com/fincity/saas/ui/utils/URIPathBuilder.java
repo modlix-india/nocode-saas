@@ -54,7 +54,7 @@ public class URIPathBuilder {
 		return pathBuilder + queryBuilder.toString();
 	}
 
-	public static URIPathBuilder buildURI(String path) {
+	public static URIPathBuilder buildPath(String path) {
 		return new URIPathBuilder(path);
 	}
 
