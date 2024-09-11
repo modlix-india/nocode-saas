@@ -56,8 +56,9 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 	SecurityWebFilterChain securedAndStaticHeadersFilterChain(ServerHttpSecurity http) {
 
 		ServerWebExchangeMatcher matcher = new OrServerWebExchangeMatcher(
-				new PathPatternParserServerWebExchangeMatcher("/api/files/static/**"),
-				new PathPatternParserServerWebExchangeMatcher("/api/files/secured/**"));
+				new PathPatternParserServerWebExchangeMatcher("/api/files/static/file/**"),
+				new PathPatternParserServerWebExchangeMatcher("/api/files/secured/file/**"),
+				new PathPatternParserServerWebExchangeMatcher("/api/files/secured/downloadFileByKey/*"));
 
 		return http
 				.securityMatcher(matcher)
