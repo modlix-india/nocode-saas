@@ -13,14 +13,14 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FilesSecuredAccessKeyDao;
 import com.fincity.saas.files.dto.FilesSecuredAccessKey;
-import com.fincity.saas.files.jooq.tables.records.FilesSecuredAccessKeyRecord;
+import com.fincity.saas.files.jooq.tables.records.FilesSecuredAccessKeysRecord;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class FilesSecuredAccessService extends
-        AbstractJOOQDataService<FilesSecuredAccessKeyRecord, ULong, FilesSecuredAccessKey, FilesSecuredAccessKeyDao> {
+        AbstractJOOQDataService<FilesSecuredAccessKeysRecord, ULong, FilesSecuredAccessKey, FilesSecuredAccessKeyDao> {
 
 	public Mono<FilesSecuredAccessKey> getAccessRecordByPath(String key) {
 		return this.dao.getAccessByKey(key);
