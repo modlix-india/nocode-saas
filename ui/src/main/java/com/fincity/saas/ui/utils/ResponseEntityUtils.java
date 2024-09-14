@@ -27,11 +27,9 @@ public class ResponseEntityUtils {
 				.header("x-frame-options", "SAMEORIGIN")
 				.header("X-Frame-Options", "SAMEORIGIN");
 
-		if (obj.getHeaders() != null)
-			obj.getHeaders()
-					.entrySet()
-					.stream()
-					.forEach(x -> rp.header(x.getKey(), x.getValue()));
+		if (obj.getHeaders() != null) {
+			obj.getHeaders().forEach(rp::header);
+		}
 
 		return Mono.just(rp.body(obj.getObject()));
 	}
