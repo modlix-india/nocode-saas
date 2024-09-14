@@ -250,7 +250,7 @@ public class CallRequest extends AbstractReactiveFunction {
 					return this.processOutput(obj);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "CallRequest.internalExecute"))
-				.onErrorResume(ex -> makeExceptionResponseFunctionOutput(ex));
+				.onErrorResume(this::makeExceptionResponseFunctionOutput);
 	}
 
 	private Mono<FunctionOutput> processDownload(RestResponse obj, String fileName, String fileLocation,

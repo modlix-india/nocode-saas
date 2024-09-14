@@ -9,7 +9,7 @@ import com.fincity.saas.ui.repository.URIPathRepository;
 import com.fincity.saas.ui.service.URIPathService;
 
 @RestController
-@RequestMapping("api/ui/uris/paths")
+@RequestMapping("api/ui/uripaths")
 public class URIPathController extends AbstractOverridableDataController<URIPath, URIPathRepository, URIPathService> {
 
 }

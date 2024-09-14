@@ -78,12 +78,17 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 				(hm, h) -> DifferenceApplicator.apply(this.queryParams, base.queryParams),
 				(hm, h, qp) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
 				(hm, h, qp, w) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
-				(hm, h, qp, w, b) -> {
+				(hm, h, qp, w, b) -> DifferenceApplicator.apply(this.kiRunFxDefinition, base.kiRunFxDefinition),
+				(hm, h, qp, w, b, k) -> DifferenceApplicator.apply(this.redirectionDefinition,
+						base.redirectionDefinition),
+				(hm, h, qp, w, b, k, r) -> {
 					this.httpMethods = (List<HttpMethod>) hm;
 					this.headers = (List<String>) h;
 					this.queryParams = (List<String>) qp;
 					this.whitelist = (List<String>) w;
 					this.blacklist = (List<String>) b;
+					this.kiRunFxDefinition = (KIRunFxDefinition) k;
+					this.redirectionDefinition = (RedirectionDefinition) r;
 
 					if (this.pathString == null)
 						this.pathString = base.pathString;
@@ -91,10 +96,6 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 						this.uriType = base.uriType;
 					if (this.isAuthenticated == null)
 						this.isAuthenticated = base.isAuthenticated;
-					if (this.kiRunFxDefinition == null)
-						this.kiRunFxDefinition = CloneUtil.cloneObject(base.kiRunFxDefinition);
-					if (this.redirectionDefinition == null)
-						this.redirectionDefinition = CloneUtil.cloneObject(base.redirectionDefinition);
 
 					return Mono.just(this);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
@@ -114,12 +115,17 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 				(obj, hm, h) -> DifferenceExtractor.extract(obj.queryParams, base.queryParams),
 				(obj, hm, h, qp) -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
 				(obj, hm, h, qp, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
-				(obj, hm, h, qp, w, b) -> {
+				(obj, hm, h, qp, w, b) -> DifferenceExtractor.extract(obj.kiRunFxDefinition, base.kiRunFxDefinition),
+				(obj, hm, h, qp, w, b, k) -> DifferenceExtractor.extract(obj.redirectionDefinition,
+						base.redirectionDefinition),
+				(obj, hm, h, qp, w, b, k, r) -> {
 					obj.setHttpMethods((List<HttpMethod>) hm);
 					obj.setHeaders((List<String>) h);
 					obj.setQueryParams((List<String>) qp);
 					obj.setWhitelist((List<String>) w);
 					obj.setBlacklist((List<String>) b);
+					obj.setKiRunFxDefinition((KIRunFxDefinition) k);
+					obj.setRedirectionDefinition((RedirectionDefinition) r);
 
 					if (obj.pathString != null && obj.pathString.equals(base.pathString))
 						obj.pathString = null;
@@ -127,11 +133,6 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 						obj.uriType = null;
 					if (obj.isAuthenticated != null && obj.isAuthenticated.equals(base.isAuthenticated))
 						obj.isAuthenticated = null;
-					if (obj.kiRunFxDefinition != null && obj.kiRunFxDefinition.equals(base.kiRunFxDefinition))
-						obj.kiRunFxDefinition = null;
-					if (obj.redirectionDefinition != null
-							&& obj.redirectionDefinition.equals(base.redirectionDefinition))
-						obj.redirectionDefinition = null;
 
 					return Mono.just(obj);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));
