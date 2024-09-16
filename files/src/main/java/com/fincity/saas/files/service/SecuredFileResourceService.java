@@ -33,6 +33,7 @@ import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
@@ -55,12 +56,12 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	@Value("${files.secureKeyURI:api/files/secured/downloadFileByKey/}")
 	private String secureAccessPathUri;
 
-	private FilesSecuredAccessService fileSecuredAccessService;
+	private final FilesSecuredAccessService fileSecuredAccessService;
 
-	private static Logger logger = LoggerFactory.getLogger(SecuredFileResourceService.class);
+	private static final Logger logger = LoggerFactory.getLogger(SecuredFileResourceService.class);
 
 	public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
-			FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService) {
+	                                  FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService) {
 		super(filesAccessPathService, msgService);
 		this.fileSecuredAccessService = fileSecuredAccessService;
 	}
@@ -115,14 +116,14 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.checkReadAccessWithClientCode(tup.getT2())
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
+						() -> this.checkReadAccessWithClientCode(tup.getT2())
+								.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
+						hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
 
-				(hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
+						(hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
 
-		)
+				)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
 				.switchIfEmpty(this.msgService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -130,48 +131,42 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	}
 
 	public Mono<Void> downloadFileByKey(String key, DownloadOptions downloadOptions, ServerHttpRequest request,
-			ServerHttpResponse response) {
+	                                    ServerHttpResponse response) {
 
-		if (safeIsBlank(key))
+		if (safeIsBlank(key)) {
 			return null;
+		}
 
-		return this.fileSecuredAccessService.getAccessPathByKey(key)
-				.flatMap(accessPath -> {
+		return FlatMapUtil.flatMapMono(
 
-					if (safeIsBlank(accessPath))
-						return null;
+				() -> this.fileSecuredAccessService.getAccessPathByKey(key),
 
-					Path file = Paths.get(this.securedResourceLocation + accessPath);
+				accessPath -> {
+					if (safeIsBlank(accessPath)) {
+						return Mono.empty();
+					}
 
-					if (!Files.exists(file))
+					accessPath = super.resolvePathWithoutClientCode("", accessPath).getT1();
+
+					Path file = Paths.get(this.securedResourceLocation, accessPath);
+
+					if (!Files.exists(file)) {
 						return this.msgService.throwMessage(
 								msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 								FilesMessageResourceService.PATH_NOT_FOUND, accessPath);
-
-					long fileMillis = -1;
-					try {
-
-						BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
-						fileMillis = attr.lastModifiedTime()
-								.toMillis();
-					} catch (IOException e) {
-
-						logger.debug("Unable to read attributes of file {} ", file, e);
 					}
 
-					String fileETag = new StringBuilder().append('"')
-							.append(file.hashCode())
-							.append('-')
-							.append(fileMillis)
-							.append('-')
-							.append(downloadOptions.eTagCode())
-							.append('"')
-							.toString();
+					return Mono.just(file);
+				},
 
+				(accessPath, file) -> getFileAttributes(file),
+
+				(accessPath, file, attr) -> {
+					long fileMillis = attr.lastModifiedTime().toMillis();
+					String fileETag = generateFileETag(file, fileMillis, downloadOptions);
 					return super.makeMatchesStartDownload(downloadOptions, request, response, file, fileMillis,
 							fileETag);
-				});
-
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.downloadFileByKey"));
 	}
 
 	private Mono<String> createAccessKey(Long time, ChronoUnit unit, Long limit, String path) {
@@ -184,8 +179,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 			return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					FilesMessageResourceService.TIME_SPAN_ERROR);
 
-		time = time == null || time.toString()
-				.isBlank() ? defaultAccessTimeLimit : time;
+		time = time == null || time.toString().isBlank() ? defaultAccessTimeLimit : time;
 		unit = safeIsBlank(unit) ? defaultChronoUnit : unit;
 		int pathIndex = path.indexOf('?');
 		path = pathIndex != -1 ? path.substring(0, pathIndex) : path;
@@ -196,8 +190,21 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 				.setAccessTill(LocalDateTime.now()
 						.plus(time, unit));
 
-		return fileSecuredAccessService.create(fileSecuredAccessKey)
-				.map(FilesSecuredAccessKey::getAccessKey);
+		return fileSecuredAccessService.create(fileSecuredAccessKey).map(FilesSecuredAccessKey::getAccessKey);
+	}
+
+	private Mono<BasicFileAttributes> getFileAttributes(Path file) {
+
+		return Mono.fromCallable(() -> Files.readAttributes(file, BasicFileAttributes.class))
+				.subscribeOn(Schedulers.boundedElastic())
+				.onErrorResume(IOException.class, e -> {
+					logger.debug("ERROR: Unable to read attributes of file {} ", file, e);
+					return Mono.empty();
+				});
+	}
+
+	private String generateFileETag(Path file, long fileMillis, DownloadOptions downloadOptions) {
+		return String.format("\"%d-%d-%s\"", file.hashCode(), fileMillis, downloadOptions.eTagCode());
 	}
 
 }

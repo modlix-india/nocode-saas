@@ -5,7 +5,7 @@ package com.fincity.saas.files.jooq;
 
 
 import com.fincity.saas.files.jooq.tables.FilesAccessPath;
-import com.fincity.saas.files.jooq.tables.FilesSecuredAccessKey;
+import com.fincity.saas.files.jooq.tables.FilesSecuredAccessKeys;
 
 
 /**
@@ -20,7 +20,7 @@ public class Tables {
     public static final FilesAccessPath FILES_ACCESS_PATH = FilesAccessPath.FILES_ACCESS_PATH;
 
     /**
-     * The table <code>files.files_secured_access_key</code>.
+     * The table <code>files.files_secured_access_keys</code>.
      */
-    public static final FilesSecuredAccessKey FILES_SECURED_ACCESS_KEY = FilesSecuredAccessKey.FILES_SECURED_ACCESS_KEY;
+    public static final FilesSecuredAccessKeys FILES_SECURED_ACCESS_KEYS = FilesSecuredAccessKeys.FILES_SECURED_ACCESS_KEYS;
 }
