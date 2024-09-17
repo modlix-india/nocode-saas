@@ -49,7 +49,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -1031,7 +1030,7 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	private Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
+	protected Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
 
 		String path = uri.substring(uri.indexOf(part) + part.length(), uri.length() - (uri.endsWith("/") ? 1 : 0));
 		String origPath = path;
