@@ -47,6 +47,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/authenticate",
 
+				"/api/security/authenticate/social",
+
 				"/api/security/verifyToken",
 
 				"/api/security/clients/internal/**",
@@ -61,6 +63,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/clients/register",
 
+				"/api/security/clients/social-register",
+
 				"/api/security/clients/generateCode",
 
 				"/api/security/users/requestResetPassword",
@@ -72,7 +76,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 				"/api/security/applications/dependencies",
 
 				"/api/security/applications/internal/dependencies",
-				
+
 				"/api/security/clients/register/events");
 	}
 

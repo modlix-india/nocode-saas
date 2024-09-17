@@ -13,6 +13,10 @@ public class AuthenticationRequest {
 	private String password;
 	private ULong userId;
 
+	private String socialToken;
+	private String socialRefreshToken;
+	private ULong socialIntegrationId;
+
 	private AuthenticationIdentifierType identifierType;
 	private boolean rememberMe = false;
 	private boolean cookie = false;

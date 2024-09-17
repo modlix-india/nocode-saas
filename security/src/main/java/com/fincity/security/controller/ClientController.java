@@ -46,123 +46,110 @@ public class ClientController
 	public Mono<ResponseEntity<Boolean>> isBeingManaged(@RequestParam String managingClientCode,
 			@RequestParam String clientCode) {
 
-		return this.service.isBeingManagedBy(managingClientCode, clientCode)
-				.map(ResponseEntity::ok);
+		return this.service.isBeingManagedBy(managingClientCode, clientCode).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/isBeingManagedById")
 	public Mono<ResponseEntity<Boolean>> isBeingManagedById(@RequestParam ULong managingClientId,
 			@RequestParam ULong clientId) {
 
-		return this.service.isBeingManagedBy(managingClientId, clientId)
-				.map(ResponseEntity::ok);
+		return this.service.isBeingManagedBy(managingClientId, clientId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/getClientById")
 	public Mono<ResponseEntity<Client>> getClientById(@RequestParam ULong clientId) {
 
-		return this.service.getClientInfoById(clientId)
-				.map(ResponseEntity::ok);
+		return this.service.getClientInfoById(clientId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/getClientByCode")
 	public Mono<ResponseEntity<Client>> getClientByCode(@RequestParam String clientCode) {
 
-		return this.service.getClientBy(clientCode)
-				.map(ResponseEntity::ok);
+		return this.service.getClientBy(clientCode).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/isUserBeingManaged")
-	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
-			@RequestParam String clientCode) {
+	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId, @RequestParam String clientCode) {
 
-		return this.service.isUserBeingManaged(userId, clientCode)
-				.map(ResponseEntity::ok);
+		return this.service.isUserBeingManaged(userId, clientCode).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/validateClientCode")
 	public Mono<ResponseEntity<Boolean>> validateClientCode(@RequestParam String clientCode) {
 
-		return this.service.getClientBy(clientCode)
-				.flatMap(e -> Mono.just(e != null))
-				.map(ResponseEntity::ok);
+		return this.service.getClientBy(clientCode).flatMap(e -> Mono.just(e != null)).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/getClientNAppCode")
 	public Mono<ResponseEntity<Tuple2<String, String>>> getClientNAppCode(@RequestParam String scheme,
 			@RequestParam String host, @RequestParam String port) {
-		return this.service.getClientPattern(scheme, host, port)
-				.map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
-				.defaultIfEmpty(Tuples.of("SYSTEM", "nothing"))
-				.map(ResponseEntity::ok);
+		return this.service.getClientPattern(scheme, host, port).map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
+				.defaultIfEmpty(Tuples.of("SYSTEM", "nothing")).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/{clientId}/assignPackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> assignPackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
-		return this.service.assignPackageToClient(clientId, packageId)
-				.map(ResponseEntity::ok);
+		return this.service.assignPackageToClient(clientId, packageId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/{clientId}/removePackage/{packageId}")
 	public Mono<ResponseEntity<Boolean>> removePackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
-		return this.service.removePackageFromClient(clientId, packageId)
-				.map(ResponseEntity::ok);
+		return this.service.removePackageFromClient(clientId, packageId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/availablePackages/{clientId}")
 	public Mono<ResponseEntity<List<Package>>> fetchPackagesForClient(@PathVariable ULong clientId) {
-		return this.service.fetchPackages(clientId)
-				.map(ResponseEntity::ok);
+		return this.service.fetchPackages(clientId).map(ResponseEntity::ok);
 	}
-	
+
 	@GetMapping("/makeClientActive")
 	public Mono<ResponseEntity<Boolean>> makeClientActive(@RequestParam(required = false) ULong clientId) {
 
-		return this.service.makeClientActiveIfInActive(clientId)
-		        .map(ResponseEntity::ok);
+		return this.service.makeClientActiveIfInActive(clientId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/makeClientInActive")
 	public Mono<ResponseEntity<Boolean>> makeClientInActive(@RequestParam(required = false) ULong clientId) {
 
-		return this.service.makeClientInActive(clientId)
-		        .map(ResponseEntity::ok);
+		return this.service.makeClientInActive(clientId).map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/register")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> register(ServerHttpRequest request,
-			ServerHttpResponse response,
-			@RequestBody ClientRegistrationRequest registrationRequest) {
+			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
 
-		return this.clientRegistrationService.register(registrationRequest, request, response)
+		return this.clientRegistrationService.register(registrationRequest, request, response).map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/social-register")
+	public Mono<ResponseEntity<ClientRegistrationResponse>> socialRegister(ServerHttpRequest request,
+			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
+
+		return this.clientRegistrationService.registerWSocial(registrationRequest, request, response)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/generateCode")
 	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId, ServerHttpRequest request) {
 
-		return this.service.generateCodeAndTriggerMail(emailId, request)
-				.map(ResponseEntity::ok);
+		return this.service.generateCodeAndTriggerMail(emailId, request).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/triggerCodeOnRequest/{accessId}")
 	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId, ServerHttpRequest request) {
 
-		return this.service.tiggerMailOnRequest(accessId, request)
-				.map(ResponseEntity::ok);
+		return this.service.tiggerMailOnRequest(accessId, request).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/fetchCodes")
 	public Mono<ResponseEntity<Page<CodeAccess>>> fetchCodes(Pageable pageable,
 			@RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
 
-		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId)
-				.map(ResponseEntity::ok);
+		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/register/events")
-	public Mono<ResponseEntity<Boolean>> evokeRegistrationEvents(ServerHttpRequest request,
-			ServerHttpResponse response,
+	public Mono<ResponseEntity<Boolean>> evokeRegistrationEvents(ServerHttpRequest request, ServerHttpResponse response,
 			@RequestBody ClientRegistrationRequest registrationRequest) {
 		return this.clientRegistrationService.evokeRegistrationEvents(registrationRequest, request, response)
 				.map(ResponseEntity::ok);

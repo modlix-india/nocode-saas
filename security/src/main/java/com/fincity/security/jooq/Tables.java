@@ -11,6 +11,8 @@ import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
+import com.fincity.security.jooq.tables.SecurityAppRegIntegrationScopes;
 import com.fincity.security.jooq.tables.SecurityAppRegPackage;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
@@ -21,6 +23,9 @@ import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityCodeAccess;
+import com.fincity.security.jooq.tables.SecurityIntegration;
+import com.fincity.security.jooq.tables.SecurityIntegrationScopes;
+import com.fincity.security.jooq.tables.SecurityIntegrationTokens;
 import com.fincity.security.jooq.tables.SecurityOrgStructure;
 import com.fincity.security.jooq.tables.SecurityPackage;
 import com.fincity.security.jooq.tables.SecurityPackageRole;
@@ -80,6 +85,16 @@ public class Tables {
     public static final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
 
     /**
+     * The table <code>security.security_app_reg_integration</code>.
+     */
+    public static final SecurityAppRegIntegration SECURITY_APP_REG_INTEGRATION = SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION;
+
+    /**
+     * The table <code>security.security_app_reg_integration_scopes</code>.
+     */
+    public static final SecurityAppRegIntegrationScopes SECURITY_APP_REG_INTEGRATION_SCOPES = SecurityAppRegIntegrationScopes.SECURITY_APP_REG_INTEGRATION_SCOPES;
+
+    /**
      * The table <code>security.security_app_reg_package</code>.
      */
     public static final SecurityAppRegPackage SECURITY_APP_REG_PACKAGE = SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
@@ -128,6 +143,21 @@ public class Tables {
      * The table <code>security.security_code_access</code>.
      */
     public static final SecurityCodeAccess SECURITY_CODE_ACCESS = SecurityCodeAccess.SECURITY_CODE_ACCESS;
+
+    /**
+     * The table <code>security.security_integration</code>.
+     */
+    public static final SecurityIntegration SECURITY_INTEGRATION = SecurityIntegration.SECURITY_INTEGRATION;
+
+    /**
+     * The table <code>security.security_integration_scopes</code>.
+     */
+    public static final SecurityIntegrationScopes SECURITY_INTEGRATION_SCOPES = SecurityIntegrationScopes.SECURITY_INTEGRATION_SCOPES;
+
+    /**
+     * The table <code>security.security_integration_tokens</code>.
+     */
+    public static final SecurityIntegrationTokens SECURITY_INTEGRATION_TOKENS = SecurityIntegrationTokens.SECURITY_INTEGRATION_TOKENS;
 
     /**
      * The table <code>security.security_org_structure</code>.

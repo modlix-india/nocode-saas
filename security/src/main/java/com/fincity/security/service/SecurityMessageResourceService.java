@@ -89,6 +89,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String MISSING_PASSWORD = "missing_password";
 	public static final String FIELDS_MISSING = "fields_missing";
 	public static final String MANDATORY_APP_CODE = "mandatory_app_code";
+	public static final String MANDATORY_CLIENT_CODE = "mandatory_client_code";
 	public static final String CLIENT_CODE_OR_ID_ONLY_ONE = "client_code_or_id_only_one";
 	public static final String FORBIDDEN_APP_REG_OBJECTS = "forbidden_app_reg_objects";
 	public static final String SUBDOMAIN_ALREADY_EXISTS = "subdomain_already_exists";
@@ -114,8 +115,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 				x = this.bundleMap.get(Locale.forLanguageTag(l.getLanguage()));
 
 			return x == null ? Mono.empty() : Mono.just(x);
-		})
-				.defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
+		}).defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
 				.map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
 
 	}

@@ -6,6 +6,8 @@ import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLI
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
+import static com.fincity.security.jooq.tables.SecurityIntegration.SECURITY_INTEGRATION;
+import static com.fincity.security.jooq.tables.SecurityIntegrationScopes.SECURITY_INTEGRATION_SCOPES;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import com.fincity.security.model.IntegrationScope;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Record;
@@ -45,6 +48,7 @@ import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
+import com.fincity.security.model.Integration;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -272,20 +276,20 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 	public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 
 		return Mono.from(this.dslContext.update(SECURITY_CLIENT)
-		        .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.ACTIVE)
-		        .where(SECURITY_CLIENT.ID.eq(clientId)
-		                .and(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.INACTIVE))))
-		        .map(e -> e > 0);
+				.set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.ACTIVE)
+				.where(SECURITY_CLIENT.ID.eq(clientId)
+						.and(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.INACTIVE))))
+				.map(e -> e > 0);
 
 	}
 
 	public Mono<Boolean> makeClientInActive(ULong clientId) {
 
 		return Mono.from(this.dslContext.update(SECURITY_CLIENT)
-		        .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.INACTIVE)
-		        .where(SECURITY_CLIENT.ID.eq(clientId)
-		                .and(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED))))
-		        .map(e -> e > 0);
+				.set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.INACTIVE)
+				.where(SECURITY_CLIENT.ID.eq(clientId)
+						.and(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED))))
+				.map(e -> e > 0);
 	}
 
 	public Mono<Client> getClientBy(String clientCode) {
@@ -544,6 +548,26 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.where(SECURITY_CLIENT.TYPE_CODE.eq("SYS"))
 				.limit(1))
 				.map(Record1::value1);
+	}
+
+	public Mono<Integration> getIntegration(ULong integrationId) {
+
+		return Mono.from(this.dslContext.select(SECURITY_INTEGRATION.fields())
+				.from(SECURITY_INTEGRATION)
+				.where(SECURITY_INTEGRATION.ID.eq(integrationId))
+				.limit(1))
+				.filter(Objects::nonNull)
+				.map(e -> e.into(Integration.class));
+	}
+
+	public Mono<IntegrationScope> getIntegrationScope(ULong integrationScopeId) {
+
+		return Mono.from(this.dslContext.select(SECURITY_INTEGRATION_SCOPES.fields())
+				.from(SECURITY_INTEGRATION_SCOPES)
+				.where(SECURITY_INTEGRATION_SCOPES.ID.eq(integrationScopeId))
+				.limit(1))
+				.filter(Objects::nonNull)
+				.map(e -> e.into(IntegrationScope.class));
 	}
 
 }
