@@ -172,7 +172,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 						case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getKiRunFxDefinition(),
 								uriPath, uriPath.getAppCode(), uriPath.getClientCode());
 
-						case REDIRECTION, SHORTENED_URL -> // TODO
+						case REDIRECTION -> // TODO
 							Mono.empty();
 					};
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.getResponse"))
