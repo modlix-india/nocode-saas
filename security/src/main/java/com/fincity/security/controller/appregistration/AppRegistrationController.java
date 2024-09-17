@@ -205,15 +205,16 @@ public class AppRegistrationController {
         return service.getRegIntegrationScopeById(id).map(ResponseEntity::ok);
     }
 
-    @PostMapping("/{appCode}/integration-scope/{integrationId}/query")
+    @PostMapping("/{appCode}/integration-scope/query")
     public Mono<ResponseEntity<Page<AppRegistrationIntegrationScope>>> getIntegrationScope(
             @PathVariable("appCode") String appCode,
-            @PathVariable("integrationId") ULong integrationId,
             @RequestBody AppRegistrationQuery query) {
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
 
-        return service.getIntegrationScope(appCode, query.getClientId(), query.getClientCode(), integrationId, pageable)
+        return service
+                .getIntegrationScope(appCode, query.getClientId(), query.getClientCode(), query.getIntegrationId(),
+                        pageable)
                 .map(ResponseEntity::ok);
     }
 

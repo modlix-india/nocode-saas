@@ -577,8 +577,6 @@ public class AppRegistrationDAO {
 
 				() -> Flux
 						.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION.fields()).from(SECURITY_APP_REG_INTEGRATION)
-								.leftJoin(SecurityIntegration.SECURITY_INTEGRATION)
-								.on(SecurityIntegration.SECURITY_INTEGRATION.ID.eq(SECURITY_APP_REG_INTEGRATION.INTEGRATION_ID))
 								.where(condition)
 
 								.orderBy(SECURITY_APP_REG_INTEGRATION.CREATED_AT.desc()).limit(pageable.getPageSize())
@@ -646,30 +644,24 @@ public class AppRegistrationDAO {
 		List<Condition> conditions = new ArrayList<>();
 
 		if (appId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION.APP_ID.eq(appId));
+			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID.eq(appId));
 
 		if (clientId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION.CLIENT_ID.eq(clientId));
+			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID.eq(clientId));
 
 		if (integrationId != null)
-			conditions.add(SecurityIntegration.SECURITY_INTEGRATION.ID.eq(integrationId));
+			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID.eq(integrationId));
 
 		Condition condition = DSL.and(conditions);
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> Flux
-						.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION_SCOPES.fields())
-								.from(SECURITY_APP_REG_INTEGRATION_SCOPES)
-								.leftJoin(SecurityIntegrationScopes.SECURITY_INTEGRATION_SCOPES)
-								.on(SecurityIntegrationScopes.SECURITY_INTEGRATION_SCOPES.ID
-										.eq(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_SCOPE_ID))
-								.leftJoin(SecurityIntegration.SECURITY_INTEGRATION)
-								.on(SecurityIntegration.SECURITY_INTEGRATION.ID.eq(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID))
-								.where(condition)
+				() -> Flux.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION_SCOPES.fields())
+						.from(SECURITY_APP_REG_INTEGRATION_SCOPES)
+						.where(condition)
 
-								.orderBy(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_AT.desc()).limit(pageable.getPageSize())
-								.offset(pageable.getOffset()))
+						.orderBy(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_AT.desc()).limit(pageable.getPageSize())
+						.offset(pageable.getOffset()))
 
 						.map(e -> e.into(AppRegistrationIntegrationScope.class)).collectList(),
 
@@ -691,23 +683,18 @@ public class AppRegistrationDAO {
 		List<Condition> conditions = new ArrayList<>();
 
 		if (appId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION.APP_ID.eq(appId));
+			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID.eq(appId));
 
 		if (clientId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION.CLIENT_ID.eq(clientId));
+			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID.eq(clientId));
 
 		if (integrationId != null)
-			conditions.add(SecurityIntegration.SECURITY_INTEGRATION.ID.eq(integrationId));
+			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID.eq(integrationId));
 
 		Condition condition = DSL.and(conditions);
 
 		return Flux.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION_SCOPES.fields())
 				.from(SECURITY_APP_REG_INTEGRATION_SCOPES)
-				.leftJoin(SecurityIntegrationScopes.SECURITY_INTEGRATION_SCOPES)
-				.on(SecurityIntegrationScopes.SECURITY_INTEGRATION_SCOPES.ID
-						.eq(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_SCOPE_ID))
-				.leftJoin(SecurityIntegration.SECURITY_INTEGRATION)
-				.on(SecurityIntegration.SECURITY_INTEGRATION.ID.eq(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID))
 				.where(condition)
 
 				.orderBy(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_AT.desc()))
