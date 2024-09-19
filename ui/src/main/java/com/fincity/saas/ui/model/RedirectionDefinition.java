@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.util.CommonsUtil;
@@ -24,6 +25,7 @@ public class RedirectionDefinition implements Serializable, IDifferentiable<Redi
 	private static final long serialVersionUID = 7335074228662664368L;
 
 	private RedirectionType redirectionType;
+	private HttpStatus redirectionStatus;
 	private HttpMethod targetHttpMethod;
 	private String targetUrl;
 	private String shortCode;
@@ -42,6 +44,9 @@ public class RedirectionDefinition implements Serializable, IDifferentiable<Redi
 
 		if (!CommonsUtil.safeEquals(this.redirectionType, inc.redirectionType)) {
 			diff.setRedirectionType(inc.redirectionType);
+		}
+		if (!CommonsUtil.safeEquals(this.redirectionStatus, inc.redirectionStatus)) {
+			diff.setRedirectionStatus(inc.redirectionStatus);
 		}
 		if (!CommonsUtil.safeEquals(this.targetHttpMethod, inc.targetHttpMethod)) {
 			diff.setTargetHttpMethod(inc.targetHttpMethod);
@@ -71,6 +76,9 @@ public class RedirectionDefinition implements Serializable, IDifferentiable<Redi
 
 		if (override.getRedirectionType() != null) {
 			this.setRedirectionType(override.getRedirectionType());
+		}
+		if (override.getRedirectionStatus() != null) {
+			this.setRedirectionStatus(override.getRedirectionStatus());
 		}
 		if (override.getTargetHttpMethod() != null) {
 			this.setTargetHttpMethod(override.getTargetHttpMethod());

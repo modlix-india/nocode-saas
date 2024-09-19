@@ -24,7 +24,6 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.URIPath;
-import com.fincity.saas.ui.enums.RedirectionType;
 import com.fincity.saas.ui.enums.URIType;
 import com.fincity.saas.ui.feign.IFeignCoreService;
 import com.fincity.saas.ui.model.KIRunFxDefinition;
@@ -156,6 +155,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 					existing.setWhitelist(entity.getWhitelist());
 					existing.setBlacklist(entity.getBlacklist());
 					existing.setKiRunFxDefinition(entity.getKiRunFxDefinition());
+					existing.setRedirectionDefinition(entity.getRedirectionDefinition());
 					existing.setPermission(entity.getPermission());
 
 					existing.setVersion(existing.getVersion() + 1);
@@ -324,20 +324,32 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 			ServerHttpResponse response, URIPath uriPath) {
 
 		return FlatMapUtil.flatMapMono(
-				() -> validateRedirectionDefinition(uriPath.getRedirectionDefinition()),
+				() -> Mono.just(uriPath.getRedirectionDefinition()),
 
-				validDef -> {
-					String targetUrl = buildTargetUrl(request, validDef);
-					HttpStatus statusCode = getRedirectionStatusCode(validDef.getRedirectionType());
+				redirectionDef ->{
+
+					URI targetUri = URI.create(redirectionDef.getTargetUrl());
+
+					URI incomingUri = request.getURI();
+
+					return Mono.fromCallable(() -> new URI(targetUri.getScheme(), targetUri.getUserInfo(), targetUri.getHost(),
+									targetUri.getPort(), incomingUri.getPath(), incomingUri.getQuery(), targetUri.getFragment()))
+							.onErrorResume(e -> this.messageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+									UIMessageResourceService.REDIRECTION_NOT_VALID, redirectionDef.getTargetUrl()));
+				},
+
+				(redirectionDef, targetUrl) -> {
 
 					HttpHeaders headers = new HttpHeaders();
-					headers.setLocation(URI.create(targetUrl));
+					headers.setLocation(targetUrl);
 
 					ObjectWithUniqueID<String> reObject = new ObjectWithUniqueID<>(
-							URIType.REDIRECTION + " : " + validDef.getRedirectionType())
+							URIType.REDIRECTION + " : " + redirectionDef.getRedirectionType())
 							.setHeaders(headers.toSingleValueMap());
 
-					return response.setComplete().then(Mono.just(Tuples.of(statusCode, reObject)));
+					return response.setComplete()
+							.then(Mono.just(Tuples.of(redirectionDef.getRedirectionStatus(), reObject)));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.handleRedirection"));
 	}
 
@@ -351,25 +363,27 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 		uriPath.setPathString(
 				URIPathParser.parse(uriPath.getPathString()).extractPath().normalizeAndValidate().build());
 
-		if (Boolean.FALSE.equals(checkKIRunFxParameters(uriPath))) {
+		if (uriPath.getKiRunFxDefinition() != null && Boolean.FALSE.equals(validateKIRunFxParameters(uriPath))) {
 			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					UIMessageResourceService.URI_STRING_PARAMETERS_INVALID);
+		}
+
+		if (uriPath.getRedirectionDefinition() != null
+				&& Boolean.FALSE.equals(validateRedirectionDefinition(uriPath))) {
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					UIMessageResourceService.INVALID_REDIRECTION_DEFINITION);
 		}
 
 		return Mono.just(uriPath);
 	}
 
-	private Boolean checkKIRunFxParameters(URIPath uriPath) {
+	private Boolean validateKIRunFxParameters(URIPath uriPath) {
 
 		if (!URIType.KIRUN_FUNCTION.equals(uriPath.getUriType())) {
-			return true;
+			return false;
 		}
 
 		KIRunFxDefinition kiRunFxDefinition = uriPath.getKiRunFxDefinition();
-
-		if (kiRunFxDefinition == null) {
-			return false;
-		}
 
 		if (kiRunFxDefinition.getHeadersMapping() != null &&
 				!uriPath.getHeaders().containsAll(kiRunFxDefinition.getHeadersMapping().keySet())) {
@@ -386,21 +400,36 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				uriPath.getQueryParams().containsAll(kiRunFxDefinition.getQueryParamMapping().keySet());
 	}
 
-	private Mono<RedirectionDefinition> validateRedirectionDefinition(RedirectionDefinition redirectionDef) {
-		if (redirectionDef == null || redirectionDef.getTargetUrl() == null) {
-			return this.messageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-					UIMessageResourceService.INVALID_REDIRECTION_DEFINITION);
+	private Boolean validateRedirectionDefinition(URIPath uriPath) {
+
+		if (!URIType.KIRUN_FUNCTION.equals(uriPath.getUriType())) {
+			return false;
+		}
+
+		RedirectionDefinition redirectionDef = uriPath.getRedirectionDefinition();
+
+		if (redirectionDef.getTargetUrl() == null) {
+			return false;
 		}
 
 		LocalDateTime now = LocalDateTime.now();
+
 		if ((redirectionDef.getValidFrom() != null && now.isBefore(redirectionDef.getValidFrom())) ||
 				(redirectionDef.getValidUntil() != null && now.isAfter(redirectionDef.getValidUntil()))) {
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.GONE, msg),
-					UIMessageResourceService.REDIRECTION_NOT_VALID);
+			return false;
 		}
 
-		return Mono.just(redirectionDef);
+		HttpStatus redirectionStatus = redirectionDef.getRedirectionStatus() != null
+				? redirectionDef.getRedirectionStatus()
+				: redirectionDef.getRedirectionType().getDefaultStatus();
+
+		if (!redirectionDef.getRedirectionType().containsStatus(redirectionStatus)) {
+			return false;
+		}
+
+		redirectionDef.setRedirectionStatus(redirectionStatus);
+
+		return true;
 	}
 
 	private URIPathBuilder getURIPathForKIRunFx(ServerHttpRequest request, URIPath uriPath) {
@@ -419,25 +448,5 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				.addQueryParams(iPathParams, kiRunFxDefinition.getPathParamMapping())
 				.addQueryParams(iQueryParams, kiRunFxDefinition.getQueryParamMapping())
 				.addQueryParams(iHeaders, kiRunFxDefinition.getHeadersMapping());
-	}
-
-	private String buildTargetUrl(ServerHttpRequest request, RedirectionDefinition redirectionDef) {
-
-		StringBuilder targetUrl = new StringBuilder(redirectionDef.getTargetUrl());
-
-		if (!request.getQueryParams().isEmpty()) {
-			targetUrl.append(targetUrl.toString().contains("?") ? "&" : "?")
-					.append(request.getURI().getQuery());
-		}
-
-		return targetUrl.toString();
-	}
-
-	private HttpStatus getRedirectionStatusCode(RedirectionType redirectionType) {
-		return switch (redirectionType) {
-			case TEMPORARY -> HttpStatus.TEMPORARY_REDIRECT;
-			case PERMANENT -> HttpStatus.PERMANENT_REDIRECT;
-			case FORWARD -> HttpStatus.FOUND;
-		};
 	}
 }
