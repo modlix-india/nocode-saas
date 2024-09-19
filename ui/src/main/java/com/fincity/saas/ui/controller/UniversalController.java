@@ -3,6 +3,7 @@ package com.fincity.saas.ui.controller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -92,11 +93,12 @@ public class UniversalController {
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request) {
+			ServerHttpRequest request,
+			ServerHttpResponse response) {
 
-		return uriPathService.getResponse(request, null, appCode, clientCode)
+		return uriPathService.getResponse(request, response, null, appCode, clientCode)
 				.switchIfEmpty(indexHTMLService.getIndexHTML(appCode, clientCode))
-				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e.getT2(), eTag, cacheAge))
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);
 	}
 
@@ -106,9 +108,10 @@ public class UniversalController {
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
 			ServerHttpRequest request,
+			ServerHttpResponse response,
 			@RequestBody String jsonString) {
 
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, jsonString);
+		return defaultNonGetRequest(request, response, jsonString, eTag, appCode, clientCode);
 	}
 
 	@PutMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
@@ -117,9 +120,10 @@ public class UniversalController {
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
 			ServerHttpRequest request,
+			ServerHttpResponse response,
 			@RequestBody String jsonString) {
 
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, jsonString);
+		return defaultNonGetRequest(request, response, jsonString, eTag, appCode, clientCode);
 	}
 
 	@DeleteMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
@@ -127,9 +131,10 @@ public class UniversalController {
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request) {
+			ServerHttpRequest request,
+			ServerHttpResponse response) {
 
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, null);
+		return defaultNonGetRequest(request, response, null, eTag, appCode, clientCode);
 	}
 
 	@PatchMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
@@ -138,9 +143,10 @@ public class UniversalController {
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
 			ServerHttpRequest request,
+			ServerHttpResponse response,
 			@RequestBody String jsonString) {
 
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, jsonString);
+		return defaultNonGetRequest(request, response, jsonString, eTag, appCode, clientCode);
 	}
 
 	@GetMapping("/.well-known/acme-challenge/{token}")
@@ -149,14 +155,14 @@ public class UniversalController {
 		return this.securityService.token(token).map(ResponseEntity::ok);
 	}
 
-	private Mono<ResponseEntity<String>> defaultNonGetRequest(String appCode, String clientCode, String eTag,
-			ServerHttpRequest request, String jsonString) {
+	private Mono<ResponseEntity<String>> defaultNonGetRequest(ServerHttpRequest request, ServerHttpResponse response,
+			String jsonString, String eTag, String appCode, String clientCode) {
 
 		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 				: this.gson.fromJson(jsonString, JsonObject.class);
 
-		return uriPathService.getResponse(request, jsonObject, appCode, clientCode)
-				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+		return uriPathService.getResponse(request, response, jsonObject, appCode, clientCode)
+				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e.getT2(), eTag, cacheAge))
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);
 	}
 }

@@ -1,12 +1,16 @@
 package com.fincity.saas.ui.service;
 
+import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
@@ -20,9 +24,11 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.URIPath;
+import com.fincity.saas.ui.enums.RedirectionType;
 import com.fincity.saas.ui.enums.URIType;
 import com.fincity.saas.ui.feign.IFeignCoreService;
 import com.fincity.saas.ui.model.KIRunFxDefinition;
+import com.fincity.saas.ui.model.RedirectionDefinition;
 import com.fincity.saas.ui.repository.URIPathRepository;
 import com.fincity.saas.ui.utils.URIPathBuilder;
 import com.fincity.saas.ui.utils.URIPathParser;
@@ -31,6 +37,7 @@ import com.google.gson.JsonObject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Service
@@ -157,8 +164,8 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.updatableEntity"));
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getResponse(ServerHttpRequest request, JsonObject jsonObject,
-			String appCode, String clientCode) {
+	public Mono<Tuple2<HttpStatus, ObjectWithUniqueID<String>>> getResponse(ServerHttpRequest request,
+			ServerHttpResponse response, JsonObject jsonObject, String appCode, String clientCode) {
 
 		String uriPathString = request.getURI().getPath();
 
@@ -169,11 +176,9 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				uqUriPath -> {
 					URIPath uriPath = uqUriPath.getObject();
 					return switch (uriPath.getUriType()) {
-						case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getKiRunFxDefinition(),
-								uriPath, uriPath.getAppCode(), uriPath.getClientCode());
+						case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath);
 
-						case REDIRECTION -> // TODO
-							Mono.empty();
+						case REDIRECTION -> handleRedirection(request, response, uriPath);
 					};
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.getResponse"))
 				.switchIfEmpty(Mono.empty());
@@ -241,7 +246,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 						code -> getURIPathPatternString(appCode, code)
 								.flatMapMany(paths -> Flux.fromIterable(paths)
-										.filter(pattern -> matchesPattern(uriPath, pattern))
+										.filter(pattern -> matchPattern(uriPath, pattern))
 										.map(pattern -> Tuples.of(code, pattern))))
 						.next(),
 
@@ -258,7 +263,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				getUriPatternCacheKey(appCode, clientCode));
 	}
 
-	private boolean matchesPattern(String uriPath, String pattern) {
+	private boolean matchPattern(String uriPath, String pattern) {
 
 		if (uriPath == null || pattern == null) {
 			return false;
@@ -267,8 +272,8 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 		return pathMatcher.match(pattern, uriPath);
 	}
 
-	private Mono<ObjectWithUniqueID<String>> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject,
-			KIRunFxDefinition kiRunFxDefinition, URIPath uriPath, String appCode, String clientCode) {
+	private Mono<Tuple2<HttpStatus, ObjectWithUniqueID<String>>> executeKIRunFunction(ServerHttpRequest request,
+			JsonObject jsonObject, URIPath uriPath) {
 
 		return FlatMapUtil.flatMapMono(
 				() -> {
@@ -285,31 +290,55 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				httpMethod -> {
 					switch (httpMethod) {
 						case GET -> {
-							URIPathBuilder uriPathBuilder = getURIPathForKIRunFx(request, kiRunFxDefinition, uriPath);
-							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
-									kiRunFxDefinition.getName(), uriPathBuilder.extractAllParams())
-									.map(ObjectWithUniqueID::new);
+							URIPathBuilder uriPathBuilder = getURIPathForKIRunFx(request, uriPath);
+							KIRunFxDefinition kiRunFxDefinition = uriPath.getKiRunFxDefinition();
+							return iFeignCoreService
+									.executeWith(uriPath.getAppCode(), uriPath.getClientCode(),
+											kiRunFxDefinition.getNamespace(), kiRunFxDefinition.getName(),
+											uriPathBuilder.extractAllParams())
+									.map(result -> Tuples.of(HttpStatus.OK, new ObjectWithUniqueID<>(result)));
 						}
 						case HEAD -> {
-							URIPathBuilder uriPathBuilder = getURIPathForKIRunFx(request, kiRunFxDefinition, uriPath);
-							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
-									kiRunFxDefinition.getName(), uriPathBuilder.extractAllParams())
-									.map(response -> new ObjectWithUniqueID<>(""));
+							return Mono.just(Tuples.of(HttpStatus.OK, new ObjectWithUniqueID<>("")));
 						}
 						case POST, PUT, PATCH, DELETE -> {
-							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
-									kiRunFxDefinition.getName(), jsonObject.toString())
-									.map(ObjectWithUniqueID::new);
+							KIRunFxDefinition kiRunFxDefinition = uriPath.getKiRunFxDefinition();
+							return iFeignCoreService
+									.executeWith(uriPath.getAppCode(), uriPath.getClientCode(),
+											kiRunFxDefinition.getNamespace(), kiRunFxDefinition.getName(),
+											jsonObject.toString())
+									.map(result -> Tuples.of(HttpStatus.OK, new ObjectWithUniqueID<>(result)));
 						}
 						default -> {
 							return Mono.empty();
 						}
 					}
-				}
-		).switchIfEmpty(this.messageResourceService.throwMessage(
-				msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-				UIMessageResourceService.UNABLE_TO_RUN_KIRUN_FX,
-				kiRunFxDefinition.getNamespace() + "." + kiRunFxDefinition.getName()));
+				}).switchIfEmpty(this.messageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+						UIMessageResourceService.UNABLE_TO_RUN_KIRUN_FX,
+						uriPath.getKiRunFxDefinition().getNamespace() + "."
+								+ uriPath.getKiRunFxDefinition().getName()));
+	}
+
+	private Mono<Tuple2<HttpStatus, ObjectWithUniqueID<String>>> handleRedirection(ServerHttpRequest request,
+			ServerHttpResponse response, URIPath uriPath) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> validateRedirectionDefinition(uriPath.getRedirectionDefinition()),
+
+				validDef -> {
+					String targetUrl = buildTargetUrl(request, validDef);
+					HttpStatus statusCode = getRedirectionStatusCode(validDef.getRedirectionType());
+
+					HttpHeaders headers = new HttpHeaders();
+					headers.setLocation(URI.create(targetUrl));
+
+					ObjectWithUniqueID<String> reObject = new ObjectWithUniqueID<>(
+							URIType.REDIRECTION + " : " + validDef.getRedirectionType())
+							.setHeaders(headers.toSingleValueMap());
+
+					return response.setComplete().then(Mono.just(Tuples.of(statusCode, reObject)));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.handleRedirection"));
 	}
 
 	private Mono<URIPath> getValidURI(URIPath uriPath) {
@@ -357,10 +386,28 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				uriPath.getQueryParams().containsAll(kiRunFxDefinition.getQueryParamMapping().keySet());
 	}
 
-	private URIPathBuilder getURIPathForKIRunFx(ServerHttpRequest request, KIRunFxDefinition kiRunFxDefinition,
-			URIPath uriPath) {
+	private Mono<RedirectionDefinition> validateRedirectionDefinition(RedirectionDefinition redirectionDef) {
+		if (redirectionDef == null || redirectionDef.getTargetUrl() == null) {
+			return this.messageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+					UIMessageResourceService.INVALID_REDIRECTION_DEFINITION);
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+		if ((redirectionDef.getValidFrom() != null && now.isBefore(redirectionDef.getValidFrom())) ||
+				(redirectionDef.getValidUntil() != null && now.isAfter(redirectionDef.getValidUntil()))) {
+			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.GONE, msg),
+					UIMessageResourceService.REDIRECTION_NOT_VALID);
+		}
+
+		return Mono.just(redirectionDef);
+	}
+
+	private URIPathBuilder getURIPathForKIRunFx(ServerHttpRequest request, URIPath uriPath) {
 
 		String requestPath = request.getURI().getPath();
+
+		KIRunFxDefinition kiRunFxDefinition = uriPath.getKiRunFxDefinition();
 
 		Map<String, String> iHeaders = request.getHeaders().toSingleValueMap();
 
@@ -372,5 +419,25 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				.addQueryParams(iPathParams, kiRunFxDefinition.getPathParamMapping())
 				.addQueryParams(iQueryParams, kiRunFxDefinition.getQueryParamMapping())
 				.addQueryParams(iHeaders, kiRunFxDefinition.getHeadersMapping());
+	}
+
+	private String buildTargetUrl(ServerHttpRequest request, RedirectionDefinition redirectionDef) {
+
+		StringBuilder targetUrl = new StringBuilder(redirectionDef.getTargetUrl());
+
+		if (!request.getQueryParams().isEmpty()) {
+			targetUrl.append(targetUrl.toString().contains("?") ? "&" : "?")
+					.append(request.getURI().getQuery());
+		}
+
+		return targetUrl.toString();
+	}
+
+	private HttpStatus getRedirectionStatusCode(RedirectionType redirectionType) {
+		return switch (redirectionType) {
+			case TEMPORARY -> HttpStatus.TEMPORARY_REDIRECT;
+			case PERMANENT -> HttpStatus.PERMANENT_REDIRECT;
+			case FORWARD -> HttpStatus.FOUND;
+		};
 	}
 }
