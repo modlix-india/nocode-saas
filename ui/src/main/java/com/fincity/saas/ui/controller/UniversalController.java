@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
@@ -87,76 +90,47 @@ public class UniversalController {
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);
 	}
 
-	@GetMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
+	@GetMapping(value = "/apiDocs", produces = MimeTypeUtils.TEXT_HTML_VALUE)
+	public Mono<ResponseEntity<String>> apiDocs(@RequestHeader("appCode") String appCode,
+			@RequestHeader("clientCode") String clientCode,
+			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
+
+		return uriPathService.generateApiDocs(appCode, clientCode)
+				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+				.defaultIfEmpty(RESPONSE_NOT_FOUND);
+	}
+
+	@GetMapping(value = "**")
 	public Mono<ResponseEntity<String>> defaultGetRequest(
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
 			ServerHttpRequest request) {
 
-		return uriPathService.getResponse(request, null, appCode, clientCode)
-				.switchIfEmpty(indexHTMLService.getIndexHTML(appCode, clientCode))
-				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
-				.defaultIfEmpty(RESPONSE_NOT_FOUND);
+		return uriPathService.getResponse(request, null, appCode, clientCode).map(ResponseEntity::ok)
+				.switchIfEmpty(Mono.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode)
+						.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge,
+								MimeTypeUtils.TEXT_HTML_VALUE))));
 	}
 
-	@PostMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
-	public Mono<ResponseEntity<String>> defaultPostRequest(
+	@RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = { RequestMethod.POST,
+			RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE })
+	public Mono<ResponseEntity<String>> deafultRequests(
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
 			ServerHttpRequest request,
 			@RequestBody String jsonString) {
 
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, jsonString);
-	}
+		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
+				: this.gson.fromJson(jsonString, JsonObject.class);
 
-	@PutMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
-	public Mono<ResponseEntity<String>> defaultPutRequest(
-			@RequestHeader("appCode") String appCode,
-			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request,
-			@RequestBody String jsonString) {
-
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, jsonString);
-	}
-
-	@DeleteMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
-	public Mono<ResponseEntity<String>> defaultDeleteRequest(
-			@RequestHeader("appCode") String appCode,
-			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request) {
-
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, null);
-	}
-
-	@PatchMapping(value = "**", produces = MimeTypeUtils.TEXT_HTML_VALUE)
-	public Mono<ResponseEntity<String>> defaultPatchRequest(
-			@RequestHeader("appCode") String appCode,
-			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request,
-			@RequestBody String jsonString) {
-
-		return defaultNonGetRequest(appCode, clientCode, eTag, request, jsonString);
+		return uriPathService.getResponse(request, jsonObject, appCode, clientCode).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/.well-known/acme-challenge/{token}")
 	public Mono<ResponseEntity<String>> tokenCheck(@PathVariable String token) {
 
 		return this.securityService.token(token).map(ResponseEntity::ok);
-	}
-
-	private Mono<ResponseEntity<String>> defaultNonGetRequest(String appCode, String clientCode, String eTag,
-			ServerHttpRequest request, String jsonString) {
-
-		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
-				: this.gson.fromJson(jsonString, JsonObject.class);
-
-		return uriPathService.getResponse(request, jsonObject, appCode, clientCode)
-				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
-				.defaultIfEmpty(RESPONSE_NOT_FOUND);
 	}
 }

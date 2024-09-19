@@ -1,16 +1,5 @@
 package com.fincity.saas.ui.service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.util.AntPathMatcher;
-import org.springframework.util.PathMatcher;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
@@ -19,40 +8,45 @@ import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.ui.document.URIPath;
 import com.fincity.saas.ui.enums.URIType;
 import com.fincity.saas.ui.feign.IFeignCoreService;
 import com.fincity.saas.ui.model.KIRunFxDefinition;
+import com.fincity.saas.ui.model.RedirectionDefinition;
 import com.fincity.saas.ui.repository.URIPathRepository;
-import com.fincity.saas.ui.utils.URIPathBuilder;
-import com.fincity.saas.ui.utils.URIPathParser;
 import com.google.gson.JsonObject;
-
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.PathContainer;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.util.PathMatcher;
+import org.springframework.web.util.pattern.PathPatternParser;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuples;
 
 @Service
 public class URIPathService extends AbstractOverridableDataService<URIPath, URIPathRepository> {
 
 	private static final String CACHE_NAME_URI = "URICache";
 
-	private static final String URI_PATTERN_READ_ACTION = "_URI_PATTERN_READ";
+	private static final String CACHE_NAME_PATTERN = "URIPatternCache";
 
-	private IFeignCoreService iFeignCoreService;
+	private final IFeignCoreService iFeignCoreService;
 
-	private PathMatcher pathMatcher;
+	private final PathMatcher pathMatcher;
 
-	@Autowired
 	public URIPathService(IFeignCoreService iFeignCoreService) {
 		super(URIPath.class);
 		this.iFeignCoreService = iFeignCoreService;
 		this.pathMatcher = new AntPathMatcher();
-	}
-
-	protected URIPathService() {
-		super(URIPath.class);
 	}
 
 	@Override
@@ -70,10 +64,13 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> getValidURI(entity),
+				() -> this.validateURIPath(entity),
 
-				uriPath -> super.update(entity).flatMap(this.cacheService
-						.evictAllFunction(super.getCacheName(entity.getAppCode(), entity.getName())))
+				valid -> super.update(entity),
+
+				(valid, updatable) -> cacheService
+						.evict(CACHE_NAME, updatable.getAppCode(), "-", updatable.getClientCode())
+						.thenReturn(updatable)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.update"));
 	}
@@ -85,10 +82,10 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				() -> this.read(id),
 
-				uriPath -> super.delete(id).flatMap(this.cacheService
-						.evictAllFunction(super.getCacheName(uriPath.getAppCode(), uriPath.getName()))),
+				uriPath -> super.delete(id),
 
-				(uriPath, deleted) -> evictCacheUriPathPattern(uriPath)
+				(uriPath, deleted) -> cacheService.evict(CACHE_NAME, uriPath.getAppCode(), "-", uriPath.getClientCode())
+						.thenReturn(deleted)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.delete"));
 	}
@@ -96,33 +93,88 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	@Override
 	public Mono<URIPath> create(URIPath entity) {
 
+		if (entity.getUriType() == URIType.REDIRECTION) {
+			if (entity.getRedirectionDefinition() == null)
+				entity.setRedirectionDefinition(new RedirectionDefinition());
+
+			entity.setKiRunFxDefinition(null);
+			RedirectionDefinition rd = entity.getRedirectionDefinition();
+
+			if (StringUtil.safeIsBlank(entity.getName())) {
+
+				if (StringUtil.safeIsBlank(rd.getShortCode()))
+					rd.setShortCode(UniqueUtil.shortUUID());
+
+				entity.setName("/" + rd.getShortCode());
+			}
+		} else {
+			entity.setRedirectionDefinition(null);
+		}
+
+		if (StringUtil.safeIsBlank(entity.getName()))
+			return this.messageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					UIMessageResourceService.URI_STRING_NULL);
+
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+				() -> this.validateURIPath(entity),
 
-				ca -> {
+				valid -> super.create(entity),
+
+				(valid, created) -> cacheService.evict(CACHE_NAME, created.getAppCode(), "-", created.getClientCode())
+						.thenReturn(created)
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.create"));
+	}
+
+	private Mono<Boolean> validateURIPath(URIPath entity) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> {
+
+					if (StringUtil.safeIsBlank(entity.getPathString()))
+						return Mono.just(true);
+
+					boolean isValid = PathPatternParser.defaultInstance.parse(entity.getName())
+							.matches(PathContainer.parsePath(entity.getPathString()));
+
+					if (!isValid)
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								UIMessageResourceService.URI_PATTERN_PATH_MISMATCH);
+
+					return Mono.just(true);
+				},
+
+				valid -> {
+
+					if (entity.getHttpMethods() == null || entity.getHttpMethods().isEmpty())
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								UIMessageResourceService.URI_ATLEAST_ONE_METHOD);
+
+					if (entity.getHttpMethods().stream().anyMatch(e -> e != HttpMethod.GET && e != HttpMethod.POST
+							&& e != HttpMethod.PUT && e != HttpMethod.PATCH && e != HttpMethod.DELETE))
+						return this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								UIMessageResourceService.URI_INVALID_METHOD);
+
+					return Mono.just(true);
+				},
+
+				(valid, valid2) -> {
 
 					if (StringUtil.safeIsBlank(entity.getName()))
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								UIMessageResourceService.URI_STRING_NULL);
+								AbstractMongoMessageResourceService.NAME_MISSING);
 
-					return getValidURI(entity);
-				},
+					return Mono.just(true);
+				}
 
-				(ca, uriPath) -> {
-					if (StringUtil.safeIsBlank(uriPath.getClientCode())) {
-						uriPath.setClientCode(ca.getClientCode());
-					}
-
-					if (StringUtil.safeIsBlank(uriPath.getAppCode())) {
-						uriPath.setAppCode(ca.getUrlAppCode());
-					}
-
-					return super.create(uriPath).flatMap(this.cacheService
-							.evictFunction(getCacheName(uriPath.getAppCode(), URI_PATTERN_READ_ACTION),
-									getUriPatternCacheKey(uriPath.getAppCode(), uriPath.getClientCode())));
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.create"));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.validateURIPath"));
 	}
 
 	@Override
@@ -142,14 +194,22 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 					existing.setPathString(entity.getPathString());
 					existing.setUriType(entity.getUriType());
-					existing.setIsAuthenticated(entity.getIsAuthenticated());
 					existing.setHttpMethods(entity.getHttpMethods());
 					existing.setHeaders(entity.getHeaders());
-					existing.setQueryParams(entity.getQueryParams());
 					existing.setWhitelist(entity.getWhitelist());
 					existing.setBlacklist(entity.getBlacklist());
 					existing.setKiRunFxDefinition(entity.getKiRunFxDefinition());
-					existing.setPermission(entity.getPermission());
+
+					RedirectionDefinition rd = existing.getRedirectionDefinition();
+					if (rd != null && entity.getRedirectionDefinition() != null) {
+
+						RedirectionDefinition erd = entity.getRedirectionDefinition();
+						rd.setRedirectionType(erd.getRedirectionType());
+						rd.setTargetHttpMethod(erd.getTargetHttpMethod());
+						rd.setTargetUrl(erd.getTargetUrl());
+						rd.setValidFrom(erd.getValidFrom());
+						rd.setValidUntil(erd.getValidUntil());
+					}
 
 					existing.setVersion(existing.getVersion() + 1);
 
@@ -157,17 +217,24 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.updatableEntity"));
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getResponse(ServerHttpRequest request, JsonObject jsonObject,
+	public Mono<ObjectWithUniqueID<String>> generateApiDocs(String appCode, String clientCode) {
+
+		return Mono.just("Coming soon...").map(ObjectWithUniqueID::new);
+	}
+
+	public Mono<String> getResponse(ServerHttpRequest request, JsonObject jsonObject,
 			String appCode, String clientCode) {
 
 		String uriPathString = request.getURI().getPath();
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.readByUriPathString(uriPathString, appCode, clientCode),
+				() -> this.findMatchingURIPath(uriPathString, appCode, clientCode),
 
-				uqUriPath -> {
-					URIPath uriPath = uqUriPath.getObject();
+				this::uriPathAccessCheck,
+
+				(uriPath, hasAccess) -> {
+
 					return switch (uriPath.getUriType()) {
 						case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getKiRunFxDefinition(),
 								uriPath, uriPath.getAppCode(), uriPath.getClientCode());
@@ -179,198 +246,102 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				.switchIfEmpty(Mono.empty());
 	}
 
-	private Object[] getUriPatternCacheKey(String appCode, String clientCode) {
-		return new Object[] { clientCode, ":", appCode };
+	public Mono<Boolean> uriPathAccessCheck(URIPath uriPath) {
+
+		if (StringUtil.safeIsBlank(uriPath.getPermission()))
+			return Mono.just(true);
+
+		return SecurityContextUtil.hasAuthority(uriPath.getPermission())
+				.filter(Boolean::booleanValue).switchIfEmpty(
+						this.messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION, uriPath.getPermission()));
 	}
 
-	private Mono<Boolean> evictCacheUriPathPattern(URIPath uriPath) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> cacheService.<List<String>>get(getCacheName(uriPath.getAppCode(), URI_PATTERN_READ_ACTION),
-						getUriPatternCacheKey(uriPath.getAppCode(), uriPath.getClientCode())),
-
-				cacheUriPaths -> {
-					if (cacheUriPaths == null || !cacheUriPaths.contains(uriPath.getName())) {
-						return Mono.just(true);
-					}
-
-					cacheUriPaths.remove(uriPath.getName());
-					return cacheService
-							.put(getCacheName(uriPath.getAppCode(), URI_PATTERN_READ_ACTION), cacheUriPaths,
-									getUriPatternCacheKey(uriPath.getAppCode(), uriPath.getClientCode()))
-							.thenReturn(true);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.evictCacheUriPathPattern"));
-	}
-
-	private Mono<ObjectWithUniqueID<URIPath>> readByUriPathString(String uriPathString, String appCode,
-			String clientCode) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> findMatchingURIPath(uriPathString, appCode, clientCode),
-
-				uqUriPath -> {
-					if (StringUtil.safeIsBlank(uqUriPath.getObject().getPermission())) {
-						return Mono.just(uqUriPath)
-								.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.read [Open Url Read]"));
-					}
-
-					return FlatMapUtil.flatMapMono(
-
-							SecurityContextUtil::getUsersContextAuthentication,
-
-							ca -> Mono.just(ca.isAuthenticated()),
-
-							(ca, isAuthenticated) -> Boolean.TRUE.equals(isAuthenticated)
-									? Mono.just(uqUriPath)
-									: Mono.empty())
-							.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.read [Authenticated Url read]"));
-				}).switchIfEmpty(Mono.empty());
-	}
-
-	private Mono<ObjectWithUniqueID<URIPath>> findMatchingURIPath(String uriPath, String appCode, String clientCode) {
+	private Mono<URIPath> findMatchingURIPath(String uriPath, String appCode, String clientCode) {
 
 		return FlatMapUtil.flatMapMono(
 
 				() -> inheritanceService.order(appCode, clientCode, clientCode),
 
-				clientCodes -> FlatMapUtil.flatMapFlux(
-						() -> Flux.fromIterable(clientCodes),
+				clientCodes -> Flux.fromIterable(clientCodes)
+						.flatMap(cc -> getURIPathPatternString(appCode, cc).flatMapMany(Flux::fromIterable))
+						.filter(pattern -> pathMatcher.match(pattern, uriPath)).next(),
 
-						code -> getURIPathPatternString(appCode, code)
-								.flatMapMany(paths -> Flux.fromIterable(paths)
-										.filter(pattern -> matchesPattern(uriPath, pattern))
-										.map(pattern -> Tuples.of(code, pattern))))
-						.next(),
-
-				(clientCodes, matchingPattern) -> Optional.ofNullable(matchingPattern)
-						.map(pattern -> super.read(pattern.getT2(), appCode, pattern.getT1()))
-						.orElse(Mono.empty()))
-				.switchIfEmpty(Mono.empty());
+				(clientCodes, matchingPattern) -> super.read(matchingPattern, appCode, clientCode)
+						.map(ObjectWithUniqueID::getObject))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.findMatchingURIPath"));
 	}
 
 	private Mono<List<String>> getURIPathPatternString(String appCode, String clientCode) {
 
-		return cacheService.cacheEmptyValueOrGet(this.getCacheName(appCode, URI_PATTERN_READ_ACTION),
+		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_PATTERN,
 				() -> this.repo.findAllNamesByAppCodeAndClientCode(appCode, clientCode).collectList(),
-				getUriPatternCacheKey(appCode, clientCode));
+				appCode, "-", clientCode);
 	}
 
-	private boolean matchesPattern(String uriPath, String pattern) {
-
-		if (uriPath == null || pattern == null) {
-			return false;
-		}
-
-		return pathMatcher.match(pattern, uriPath);
-	}
-
-	private Mono<ObjectWithUniqueID<String>> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject,
+	private Mono<String> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject,
 			KIRunFxDefinition kiRunFxDefinition, URIPath uriPath, String appCode, String clientCode) {
 
-		return FlatMapUtil.flatMapMono(
-				() -> {
-					if (request.getMethod() == null) {
-						return Mono.empty();
-					}
+		if (request.getMethod() == null || !uriPath.getHttpMethods().contains(request.getMethod())) {
+			return Mono.empty();
+		}
 
-					if (!uriPath.getHttpMethods().contains(request.getMethod())) {
-						return Mono.empty();
-					}
+		switch (request.getMethod()) {
+			case GET -> {
 
-					return Mono.just(request.getMethod());
-				},
-				httpMethod -> {
-					switch (httpMethod) {
-						case GET -> {
-							URIPathBuilder uriPathBuilder = getURIPathForKIRunFx(request, kiRunFxDefinition, uriPath);
-							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
-									kiRunFxDefinition.getName(), uriPathBuilder.extractAllParams())
-									.map(ObjectWithUniqueID::new);
-						}
-						case HEAD -> {
-							URIPathBuilder uriPathBuilder = getURIPathForKIRunFx(request, kiRunFxDefinition, uriPath);
-							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
-									kiRunFxDefinition.getName(), uriPathBuilder.extractAllParams())
-									.map(response -> new ObjectWithUniqueID<>(""));
-						}
-						case POST, PUT, PATCH, DELETE -> {
-							return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
-									kiRunFxDefinition.getName(), jsonObject.toString())
-									.map(ObjectWithUniqueID::new);
-						}
-						default -> {
-							return Mono.empty();
-						}
-					}
+				return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
+						kiRunFxDefinition.getName(),
+						getParamsFromHeadersPathRequest(request, kiRunFxDefinition, uriPath));
+			}
+			case POST, PUT, PATCH, DELETE -> {
+				return iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDefinition.getNamespace(),
+						kiRunFxDefinition.getName(), jsonObject.toString());
+			}
+			default -> {
+				return Mono.<String>empty();
+			}
+		}
+	}
+
+	private MultiValueMap<String, String> getParamsFromHeadersPathRequest(ServerHttpRequest request,
+			KIRunFxDefinition kiRunFxDefinition, URIPath uriPath) {
+
+		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+
+		this.addToParams(params, kiRunFxDefinition.getQueryParamMapping(), request.getQueryParams());
+
+		if (!StringUtil.safeIsBlank(uriPath.getPathString())) {
+
+			Map<String, String> iPathParams = PathPatternParser.defaultInstance.parse(uriPath.getPathString())
+					.matchAndExtract(PathContainer.parsePath(request.getURI().getPath())).getUriVariables();
+
+			if (kiRunFxDefinition.getPathParamMapping() == null || kiRunFxDefinition.getPathParamMapping().isEmpty()) {
+				for (Map.Entry<String, String> entry : iPathParams.entrySet()) {
+					params.add(entry.getKey(), entry.getValue());
 				}
-		).switchIfEmpty(this.messageResourceService.throwMessage(
-				msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-				UIMessageResourceService.UNABLE_TO_RUN_KIRUN_FX,
-				kiRunFxDefinition.getNamespace() + "." + kiRunFxDefinition.getName()));
+			} else {
+				for (Map.Entry<String, String> entry : kiRunFxDefinition.getPathParamMapping().entrySet()) {
+					params.add(entry.getValue(), iPathParams.get(entry.getKey()));
+				}
+			}
+		}
+
+		this.addToParams(params, kiRunFxDefinition.getHeadersMapping(), request.getHeaders());
+
+		return params;
 	}
 
-	private Mono<URIPath> getValidURI(URIPath uriPath) {
+	private void addToParams(MultiValueMap<String, String> params, Map<String, String> map,
+			MultiValueMap<String, String> sourceMap) {
 
-		if (!pathMatcher.match(uriPath.getName(), uriPath.getPathString())) {
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					UIMessageResourceService.URI_PATTERN_PATH_MISMATCH, uriPath.getName(), uriPath.getPathString());
+		if (map == null || map.isEmpty()) {
+			params.addAll(sourceMap);
+			return;
 		}
 
-		uriPath.setPathString(
-				URIPathParser.parse(uriPath.getPathString()).extractPath().normalizeAndValidate().build());
-
-		if (Boolean.FALSE.equals(checkKIRunFxParameters(uriPath))) {
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					UIMessageResourceService.URI_STRING_PARAMETERS_INVALID);
+		for (Map.Entry<String, String> entry : map.entrySet()) {
+			params.add(entry.getValue(), sourceMap.getFirst(entry.getKey()));
 		}
-
-		return Mono.just(uriPath);
-	}
-
-	private Boolean checkKIRunFxParameters(URIPath uriPath) {
-
-		if (!URIType.KIRUN_FUNCTION.equals(uriPath.getUriType())) {
-			return true;
-		}
-
-		KIRunFxDefinition kiRunFxDefinition = uriPath.getKiRunFxDefinition();
-
-		if (kiRunFxDefinition == null) {
-			return false;
-		}
-
-		if (kiRunFxDefinition.getHeadersMapping() != null &&
-				!uriPath.getHeaders().containsAll(kiRunFxDefinition.getHeadersMapping().keySet())) {
-			return false;
-		}
-
-		if (kiRunFxDefinition.getPathParamMapping() != null &&
-				!URIPathParser.extractPathParams(uriPath.getPathString())
-						.containsAll(kiRunFxDefinition.getPathParamMapping().keySet())) {
-			return false;
-		}
-
-		return kiRunFxDefinition.getQueryParamMapping() == null ||
-				uriPath.getQueryParams().containsAll(kiRunFxDefinition.getQueryParamMapping().keySet());
-	}
-
-	private URIPathBuilder getURIPathForKIRunFx(ServerHttpRequest request, KIRunFxDefinition kiRunFxDefinition,
-			URIPath uriPath) {
-
-		String requestPath = request.getURI().getPath();
-
-		Map<String, String> iHeaders = request.getHeaders().toSingleValueMap();
-
-		Map<String, String> iQueryParams = request.getQueryParams().toSingleValueMap();
-
-		Map<String, String> iPathParams = pathMatcher.extractUriTemplateVariables(uriPath.getPathString(), requestPath);
-
-		return URIPathBuilder.buildPath(URIPathParser.extractJustPath(uriPath.getPathString()))
-				.addQueryParams(iPathParams, kiRunFxDefinition.getPathParamMapping())
-				.addQueryParams(iQueryParams, kiRunFxDefinition.getQueryParamMapping())
-				.addQueryParams(iHeaders, kiRunFxDefinition.getHeadersMapping());
 	}
 }
