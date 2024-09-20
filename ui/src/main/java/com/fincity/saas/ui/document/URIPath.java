@@ -39,13 +39,14 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 
 	private String pathString;
 	private URIType uriType;
-	private Boolean isAuthenticated;
 
 	private List<HttpMethod> httpMethods;
 	private List<String> headers;
-	private List<String> queryParams;
+
 	private List<String> whitelist;
 	private List<String> blacklist;
+
+	private List<String> referrer;
 
 	private KIRunFxDefinition kiRunFxDefinition;
 	private RedirectionDefinition redirectionDefinition;
@@ -56,10 +57,9 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 
 		this.pathString = uriPath.pathString;
 		this.uriType = uriPath.uriType;
-		this.isAuthenticated = uriPath.isAuthenticated;
 		this.httpMethods = CloneUtil.cloneMapList(uriPath.httpMethods);
 		this.headers = CloneUtil.cloneMapList(uriPath.headers);
-		this.queryParams = CloneUtil.cloneMapList(uriPath.queryParams);
+		this.referrer = CloneUtil.cloneMapList(uriPath.referrer);
 		this.whitelist = CloneUtil.cloneMapList(uriPath.whitelist);
 		this.blacklist = CloneUtil.cloneMapList(uriPath.blacklist);
 		this.kiRunFxDefinition = CloneUtil.cloneObject(uriPath.kiRunFxDefinition);
@@ -75,18 +75,18 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 		return FlatMapUtil.flatMapMonoWithNull(
 				() -> DifferenceApplicator.apply(this.httpMethods, base.httpMethods),
 				hm -> DifferenceApplicator.apply(this.headers, base.headers),
-				(hm, h) -> DifferenceApplicator.apply(this.queryParams, base.queryParams),
-				(hm, h, qp) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
-				(hm, h, qp, w) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
-				(hm, h, qp, w, b) -> DifferenceApplicator.apply(this.kiRunFxDefinition, base.kiRunFxDefinition),
-				(hm, h, qp, w, b, k) -> DifferenceApplicator.apply(this.redirectionDefinition,
+				(hm, h) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
+				(hm, h, w) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
+				(hm, h, w, b) -> DifferenceApplicator.apply(this.kiRunFxDefinition, base.kiRunFxDefinition),
+				(hm, h, w, b, k) -> DifferenceApplicator.apply(this.redirectionDefinition,
 						base.redirectionDefinition),
-				(hm, h, qp, w, b, k, r) -> {
+				(hm, h, w, b, k, r) -> DifferenceApplicator.apply(this.referrer, base.referrer),
+				(hm, h, w, b, k, r, ref) -> {
 					this.httpMethods = (List<HttpMethod>) hm;
 					this.headers = (List<String>) h;
-					this.queryParams = (List<String>) qp;
 					this.whitelist = (List<String>) w;
 					this.blacklist = (List<String>) b;
+					this.referrer = (List<String>) ref;
 					this.kiRunFxDefinition = (KIRunFxDefinition) k;
 					this.redirectionDefinition = (RedirectionDefinition) r;
 
@@ -94,8 +94,6 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 						this.pathString = base.pathString;
 					if (this.uriType == null)
 						this.uriType = base.uriType;
-					if (this.isAuthenticated == null)
-						this.isAuthenticated = base.isAuthenticated;
 
 					return Mono.just(this);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
@@ -112,27 +110,26 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 				() -> Mono.just(this),
 				obj -> DifferenceExtractor.extract(obj.httpMethods, base.httpMethods),
 				(obj, hm) -> DifferenceExtractor.extract(obj.headers, base.headers),
-				(obj, hm, h) -> DifferenceExtractor.extract(obj.queryParams, base.queryParams),
-				(obj, hm, h, qp) -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
-				(obj, hm, h, qp, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
-				(obj, hm, h, qp, w, b) -> DifferenceExtractor.extract(obj.kiRunFxDefinition, base.kiRunFxDefinition),
-				(obj, hm, h, qp, w, b, k) -> DifferenceExtractor.extract(obj.redirectionDefinition,
+
+				(obj, hm, h) -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
+				(obj, hm, h, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
+				(obj, hm, h, w, b) -> DifferenceExtractor.extract(obj.kiRunFxDefinition, base.kiRunFxDefinition),
+				(obj, hm, h, w, b, k) -> DifferenceExtractor.extract(obj.redirectionDefinition,
 						base.redirectionDefinition),
-				(obj, hm, h, qp, w, b, k, r) -> {
+				(obj, hm, h, w, b, k, r) -> DifferenceExtractor.extract(obj.referrer, base.referrer),
+				(obj, hm, h, w, b, k, r, ref) -> {
 					obj.setHttpMethods((List<HttpMethod>) hm);
 					obj.setHeaders((List<String>) h);
-					obj.setQueryParams((List<String>) qp);
 					obj.setWhitelist((List<String>) w);
 					obj.setBlacklist((List<String>) b);
 					obj.setKiRunFxDefinition((KIRunFxDefinition) k);
 					obj.setRedirectionDefinition((RedirectionDefinition) r);
+					obj.setReferrer((List<String>) ref);
 
 					if (obj.pathString != null && obj.pathString.equals(base.pathString))
 						obj.pathString = null;
 					if (obj.uriType != null && obj.uriType.equals(base.uriType))
 						obj.uriType = null;
-					if (obj.isAuthenticated != null && obj.isAuthenticated.equals(base.isAuthenticated))
-						obj.isAuthenticated = null;
 
 					return Mono.just(obj);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));

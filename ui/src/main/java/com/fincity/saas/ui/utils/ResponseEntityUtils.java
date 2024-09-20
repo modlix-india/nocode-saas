@@ -35,6 +35,12 @@ public class ResponseEntityUtils {
 
 	public static <T> Mono<ResponseEntity<T>> makeResponseEntity(ObjectWithUniqueID<T> obj, HttpStatus httpStatus, String eTag, int cacheAge) {
 
+		return makeResponseEntity(obj, eTag, cacheAge, null);
+	}
+
+	public static <T> Mono<ResponseEntity<T>> makeResponseEntity(
+			ObjectWithUniqueID<T> obj, String eTag, int cacheAge, String contentType) {
+
 		if (eTag != null && (eTag.contains(obj.getUniqueId()) || obj.getUniqueId()
 				.contains(eTag)))
 			return Mono.just(ResponseEntity.status(HttpStatus.NOT_MODIFIED)
@@ -46,10 +52,14 @@ public class ResponseEntityUtils {
 				.header("x-frame-options", "SAMEORIGIN")
 				.header("X-Frame-Options", "SAMEORIGIN");
 
+		if (contentType != null)
+			rp.contentType(org.springframework.http.MediaType.valueOf(contentType));
+
 		if (obj.getHeaders() != null) {
 			obj.getHeaders().forEach(rp::header);
 		}
 
 		return Mono.just(rp.body(obj.getObject()));
 	}
+
 }
