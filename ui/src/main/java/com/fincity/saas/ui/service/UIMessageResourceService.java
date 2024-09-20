@@ -17,7 +17,7 @@ public class UIMessageResourceService extends AbstractMongoMessageResourceServic
 
 	public static final String UNABLE_TO_RUN_KIRUN_FX = "uri_unable_to_execute_kirun_fx";
 
-	public static final String URI_ATLEAST_ONE_METHOD = "uri_atleast_one_method";
+	public static final String URI_INVALID_TYPE = "uri_invalid_type";
 
 	public static final String URI_INVALID_METHOD = "uri_invalid_method";
 }

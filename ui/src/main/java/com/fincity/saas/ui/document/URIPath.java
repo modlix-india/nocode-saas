@@ -2,6 +2,7 @@ package com.fincity.saas.ui.document;
 
 import java.io.Serial;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -40,7 +41,6 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 	private String pathString;
 	private URIType uriType;
 
-	private List<HttpMethod> httpMethods;
 	private List<String> headers;
 
 	private List<String> whitelist;
@@ -48,7 +48,7 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 
 	private List<String> referrer;
 
-	private KIRunFxDefinition kiRunFxDefinition;
+	private Map<HttpMethod, KIRunFxDefinition> kiRunFxDefinitions;
 	private RedirectionDefinition redirectionDefinition;
 
 	public URIPath(URIPath uriPath) {
@@ -57,12 +57,11 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 
 		this.pathString = uriPath.pathString;
 		this.uriType = uriPath.uriType;
-		this.httpMethods = CloneUtil.cloneMapList(uriPath.httpMethods);
 		this.headers = CloneUtil.cloneMapList(uriPath.headers);
 		this.referrer = CloneUtil.cloneMapList(uriPath.referrer);
 		this.whitelist = CloneUtil.cloneMapList(uriPath.whitelist);
 		this.blacklist = CloneUtil.cloneMapList(uriPath.blacklist);
-		this.kiRunFxDefinition = CloneUtil.cloneObject(uriPath.kiRunFxDefinition);
+		this.kiRunFxDefinitions = CloneUtil.cloneMapObject(uriPath.kiRunFxDefinitions);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -73,21 +72,19 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 		}
 
 		return FlatMapUtil.flatMapMonoWithNull(
-				() -> DifferenceApplicator.apply(this.httpMethods, base.httpMethods),
-				hm -> DifferenceApplicator.apply(this.headers, base.headers),
-				(hm, h) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
-				(hm, h, w) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
-				(hm, h, w, b) -> DifferenceApplicator.apply(this.kiRunFxDefinition, base.kiRunFxDefinition),
-				(hm, h, w, b, k) -> DifferenceApplicator.apply(this.redirectionDefinition,
+				() -> DifferenceApplicator.apply(this.headers, base.headers),
+				(h) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
+				(h, w) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
+				(h, w, b) -> DifferenceApplicator.apply(this.kiRunFxDefinitions, base.kiRunFxDefinitions),
+				(h, w, b, k) -> DifferenceApplicator.apply(this.redirectionDefinition,
 						base.redirectionDefinition),
-				(hm, h, w, b, k, r) -> DifferenceApplicator.apply(this.referrer, base.referrer),
-				(hm, h, w, b, k, r, ref) -> {
-					this.httpMethods = (List<HttpMethod>) hm;
+				(h, w, b, k, r) -> DifferenceApplicator.apply(this.referrer, base.referrer),
+				(h, w, b, k, r, ref) -> {
 					this.headers = (List<String>) h;
 					this.whitelist = (List<String>) w;
 					this.blacklist = (List<String>) b;
 					this.referrer = (List<String>) ref;
-					this.kiRunFxDefinition = (KIRunFxDefinition) k;
+					this.kiRunFxDefinitions = (Map<HttpMethod, KIRunFxDefinition>) k;
 					this.redirectionDefinition = (RedirectionDefinition) r;
 
 					if (this.pathString == null)
@@ -108,21 +105,18 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 				() -> Mono.just(this),
-				obj -> DifferenceExtractor.extract(obj.httpMethods, base.httpMethods),
-				(obj, hm) -> DifferenceExtractor.extract(obj.headers, base.headers),
-
-				(obj, hm, h) -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
-				(obj, hm, h, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
-				(obj, hm, h, w, b) -> DifferenceExtractor.extract(obj.kiRunFxDefinition, base.kiRunFxDefinition),
-				(obj, hm, h, w, b, k) -> DifferenceExtractor.extract(obj.redirectionDefinition,
+				(obj) -> DifferenceExtractor.extract(obj.headers, base.headers),
+				(obj, h) -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
+				(obj, h, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
+				(obj, h, w, b) -> DifferenceExtractor.extract(obj.kiRunFxDefinitions, base.kiRunFxDefinitions),
+				(obj, h, w, b, k) -> DifferenceExtractor.extract(obj.redirectionDefinition,
 						base.redirectionDefinition),
-				(obj, hm, h, w, b, k, r) -> DifferenceExtractor.extract(obj.referrer, base.referrer),
-				(obj, hm, h, w, b, k, r, ref) -> {
-					obj.setHttpMethods((List<HttpMethod>) hm);
+				(obj, h, w, b, k, r) -> DifferenceExtractor.extract(obj.referrer, base.referrer),
+				(obj, h, w, b, k, r, ref) -> {
 					obj.setHeaders((List<String>) h);
 					obj.setWhitelist((List<String>) w);
 					obj.setBlacklist((List<String>) b);
-					obj.setKiRunFxDefinition((KIRunFxDefinition) k);
+					obj.setKiRunFxDefinitions((Map<HttpMethod, KIRunFxDefinition>) k);
 					obj.setRedirectionDefinition((RedirectionDefinition) r);
 					obj.setReferrer((List<String>) ref);
 
