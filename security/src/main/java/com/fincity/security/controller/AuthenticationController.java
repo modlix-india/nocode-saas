@@ -91,8 +91,10 @@ public class AuthenticationController {
 
 				(ca, ca2,
 						client) -> Mono.just(new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
-								.setLoggedInClientCode(ca.getLoggedInFromClientCode()).setLoggedInClientId(ca.getLoggedInFromClientId())
-								.setAccessToken(ca.getAccessToken()).setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
+								.setLoggedInClientCode(ca.getLoggedInFromClientCode())
+								.setLoggedInClientId(ca.getLoggedInFromClientId())
+								.setAccessToken(ca.getAccessToken())
+								.setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
 
 				(ca, ca2, client, vr) -> Mono.just(ResponseEntity.<AuthenticationResponse>ok(vr)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
