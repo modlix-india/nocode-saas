@@ -53,11 +53,11 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 					diff.setQueryParamMapping((Map<String, String>) qp);
 
 					if (!this.name.equals(inc.name))
-						diff.setName(inc.name);
+						diff.setName(this.name);
 					if (!this.namespace.equals(inc.namespace))
-						diff.setNamespace(inc.namespace);
+						diff.setNamespace(this.namespace);
 					if (!this.functionAppCode.equals(inc.functionAppCode))
-						diff.setFunctionAppCode(inc.functionAppCode);
+						diff.setFunctionAppCode(this.functionAppCode);
 
 					return Mono.just(diff);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.extractDifference"));

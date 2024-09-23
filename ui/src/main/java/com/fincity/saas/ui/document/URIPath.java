@@ -1,7 +1,6 @@
 package com.fincity.saas.ui.document;
 
 import java.io.Serial;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
@@ -14,9 +13,7 @@ import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.ui.enums.URIType;
-import com.fincity.saas.ui.model.KIRunFxDefinition;
-import com.fincity.saas.ui.model.RedirectionDefinition;
+import com.fincity.saas.ui.model.PathDefinition;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -39,29 +36,17 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 	private static final long serialVersionUID = 2627066085463822531L;
 
 	private String pathString;
-	private URIType uriType;
+	private String shortCode;
 
-	private List<String> headers;
-
-	private List<String> whitelist;
-	private List<String> blacklist;
-
-	private List<String> referrer;
-
-	private Map<HttpMethod, KIRunFxDefinition> kiRunFxDefinitions;
-	private RedirectionDefinition redirectionDefinition;
+	private Map<HttpMethod, PathDefinition> pathDefinitions;
 
 	public URIPath(URIPath uriPath) {
 
 		super(uriPath);
 
 		this.pathString = uriPath.pathString;
-		this.uriType = uriPath.uriType;
-		this.headers = CloneUtil.cloneMapList(uriPath.headers);
-		this.referrer = CloneUtil.cloneMapList(uriPath.referrer);
-		this.whitelist = CloneUtil.cloneMapList(uriPath.whitelist);
-		this.blacklist = CloneUtil.cloneMapList(uriPath.blacklist);
-		this.kiRunFxDefinitions = CloneUtil.cloneMapObject(uriPath.kiRunFxDefinitions);
+		this.shortCode = uriPath.shortCode;
+		this.pathDefinitions = CloneUtil.cloneMapObject(uriPath.pathDefinitions);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -72,25 +57,16 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 		}
 
 		return FlatMapUtil.flatMapMonoWithNull(
-				() -> DifferenceApplicator.apply(this.headers, base.headers),
-				(h) -> DifferenceApplicator.apply(this.whitelist, base.whitelist),
-				(h, w) -> DifferenceApplicator.apply(this.blacklist, base.blacklist),
-				(h, w, b) -> DifferenceApplicator.apply(this.kiRunFxDefinitions, base.kiRunFxDefinitions),
-				(h, w, b, k) -> DifferenceApplicator.apply(this.redirectionDefinition,
-						base.redirectionDefinition),
-				(h, w, b, k, r) -> DifferenceApplicator.apply(this.referrer, base.referrer),
-				(h, w, b, k, r, ref) -> {
-					this.headers = (List<String>) h;
-					this.whitelist = (List<String>) w;
-					this.blacklist = (List<String>) b;
-					this.referrer = (List<String>) ref;
-					this.kiRunFxDefinitions = (Map<HttpMethod, KIRunFxDefinition>) k;
-					this.redirectionDefinition = (RedirectionDefinition) r;
+				() -> DifferenceApplicator.apply(this.pathDefinitions, base.pathDefinitions),
+				pDef -> {
+
+					this.pathDefinitions = (Map<HttpMethod, PathDefinition>) pDef;
 
 					if (this.pathString == null)
 						this.pathString = base.pathString;
-					if (this.uriType == null)
-						this.uriType = base.uriType;
+
+					if (this.shortCode == null)
+						this.shortCode = base.shortCode;
 
 					return Mono.just(this);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
@@ -105,25 +81,15 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 				() -> Mono.just(this),
-				(obj) -> DifferenceExtractor.extract(obj.headers, base.headers),
-				(obj, h) -> DifferenceExtractor.extract(obj.whitelist, base.whitelist),
-				(obj, h, w) -> DifferenceExtractor.extract(obj.blacklist, base.blacklist),
-				(obj, h, w, b) -> DifferenceExtractor.extract(obj.kiRunFxDefinitions, base.kiRunFxDefinitions),
-				(obj, h, w, b, k) -> DifferenceExtractor.extract(obj.redirectionDefinition,
-						base.redirectionDefinition),
-				(obj, h, w, b, k, r) -> DifferenceExtractor.extract(obj.referrer, base.referrer),
-				(obj, h, w, b, k, r, ref) -> {
-					obj.setHeaders((List<String>) h);
-					obj.setWhitelist((List<String>) w);
-					obj.setBlacklist((List<String>) b);
-					obj.setKiRunFxDefinitions((Map<HttpMethod, KIRunFxDefinition>) k);
-					obj.setRedirectionDefinition((RedirectionDefinition) r);
-					obj.setReferrer((List<String>) ref);
+				(obj) -> DifferenceExtractor.extract(obj.pathDefinitions, base.pathDefinitions),
+				(obj, pDef) -> {
+					obj.setPathDefinitions((Map<HttpMethod, PathDefinition>) pDef);
 
 					if (obj.pathString != null && obj.pathString.equals(base.pathString))
 						obj.pathString = null;
-					if (obj.uriType != null && obj.uriType.equals(base.uriType))
-						obj.uriType = null;
+
+					if (obj.shortCode != null && obj.shortCode.equals(base.shortCode))
+						obj.shortCode = null;
 
 					return Mono.just(obj);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));
