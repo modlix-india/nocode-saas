@@ -63,7 +63,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/clients/register",
 
-				"/api/security/clients/social-register",
+				"/api/security/clients/socialRegister",
 
 				"/api/security/clients/generateCode",
 

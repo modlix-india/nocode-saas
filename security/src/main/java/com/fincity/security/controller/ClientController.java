@@ -69,7 +69,8 @@ public class ClientController
 	}
 
 	@GetMapping("/internal/isUserBeingManaged")
-	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId, @RequestParam String clientCode) {
+	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
+			@RequestParam String clientCode) {
 
 		return this.service.isUserBeingManaged(userId, clientCode).map(ResponseEntity::ok);
 	}
@@ -121,7 +122,7 @@ public class ClientController
 		return this.clientRegistrationService.register(registrationRequest, request, response).map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/social-register")
+	@PostMapping("/socialRegister")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> socialRegister(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
 
