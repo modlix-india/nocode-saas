@@ -105,7 +105,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 			entity.setName("/" + entity.getShortCode());
 		}
 
-		if (StringUtil.safeIsBlank(entity.getName()))
+		if (StringUtil.safeIsBlank(entity.getName()) || StringUtil.safeIsBlank(entity.getPathString()))
 			return this.messageResourceService.throwMessage(
 					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					UIMessageResourceService.URI_STRING_NULL);
@@ -282,9 +282,8 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 			KIRunFxDefinition kiRunFxDef, String appCode, String clientCode) {
 
 		return switch (request.getMethod()) {
-			case GET ->
-				iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
-						kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
+			case GET -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+					kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
 
 			case POST, PUT, PATCH, DELETE ->
 				iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
