@@ -4,27 +4,6 @@ import static com.fincity.security.jooq.tables.SecurityAppRegAccess.SECURITY_APP
 import static com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE;
-import static com.fincity.security.jooq.tables.SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION;
-import static com.fincity.security.jooq.tables.SecurityAppRegIntegrationScopes.SECURITY_APP_REG_INTEGRATION_SCOPES;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.jooq.Condition;
-import org.jooq.DSLContext;
-import org.jooq.Record1;
-import org.jooq.Record3;
-import org.jooq.SelectConditionStep;
-import org.jooq.impl.DSL;
-import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.support.PageableExecutionUtils;
-import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -42,9 +21,23 @@ import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityAppRegFileAccessResourceType;
 import com.fincity.security.jooq.tables.SecurityPackage;
 import com.fincity.security.jooq.tables.SecurityRole;
-import com.fincity.security.jooq.tables.SecurityIntegration;
-import com.fincity.security.jooq.tables.SecurityIntegrationScopes;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.jooq.Condition;
+import org.jooq.DSLContext;
+import org.jooq.Record1;
+import org.jooq.Record3;
+import org.jooq.SelectConditionStep;
+import org.jooq.impl.DSL;
+import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -65,16 +58,20 @@ public class AppRegistrationDAO {
 		return FlatMapUtil.flatMapMono(
 
 				() -> Mono
-						.from(this.dslContext.deleteFrom(SECURITY_APP_REG_ACCESS).where(SECURITY_APP_REG_ACCESS.APP_ID.eq(id))),
+						.from(this.dslContext.deleteFrom(SECURITY_APP_REG_ACCESS)
+								.where(SECURITY_APP_REG_ACCESS.APP_ID.eq(id))),
 
 				acc -> Mono
-						.from(this.dslContext.deleteFrom(SECURITY_APP_REG_PACKAGE).where(SECURITY_APP_REG_PACKAGE.APP_ID.eq(id))),
+						.from(this.dslContext.deleteFrom(SECURITY_APP_REG_PACKAGE)
+								.where(SECURITY_APP_REG_PACKAGE.APP_ID.eq(id))),
 
 				(acc, pack) -> Mono.from(
-						this.dslContext.deleteFrom(SECURITY_APP_REG_USER_ROLE).where(SECURITY_APP_REG_USER_ROLE.APP_ID.eq(id))),
+						this.dslContext.deleteFrom(SECURITY_APP_REG_USER_ROLE)
+								.where(SECURITY_APP_REG_USER_ROLE.APP_ID.eq(id))),
 
 				(acc, pack, role) -> Mono.from(
-						this.dslContext.deleteFrom(SECURITY_APP_REG_FILE_ACCESS).where(SECURITY_APP_REG_FILE_ACCESS.APP_ID.eq(id)))
+						this.dslContext.deleteFrom(SECURITY_APP_REG_FILE_ACCESS)
+								.where(SECURITY_APP_REG_FILE_ACCESS.APP_ID.eq(id)))
 						.map(e -> true)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.deleteEverythingRelated"));
@@ -87,10 +84,12 @@ public class AppRegistrationDAO {
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> Mono
-						.from(this.dslContext.insertInto(SECURITY_APP_REG_ACCESS).set(SECURITY_APP_REG_ACCESS.APP_ID, app.getId())
+						.from(this.dslContext.insertInto(SECURITY_APP_REG_ACCESS)
+								.set(SECURITY_APP_REG_ACCESS.APP_ID, app.getId())
 								.set(SECURITY_APP_REG_ACCESS.WRITE_ACCESS, ByteUtil.toByte(access.isWriteAccess()))
 								.set(SECURITY_APP_REG_ACCESS.CLIENT_ID,
-										CommonsUtil.nonNullValue(access.getClientId(), ULong.valueOf(ca.getUser().getClientId())))
+										CommonsUtil.nonNullValue(access.getClientId(),
+												ULong.valueOf(ca.getUser().getClientId())))
 								.set(SECURITY_APP_REG_ACCESS.BUSINESS_TYPE, access.getBusinessType())
 								.set(SECURITY_APP_REG_ACCESS.CLIENT_TYPE, access.getClientType())
 								.set(SECURITY_APP_REG_ACCESS.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
@@ -176,7 +175,8 @@ public class AppRegistrationDAO {
 						.set(SECURITY_APP_REG_FILE_ACCESS.ACCESS_NAME, file.getAccessName())
 						.set(SECURITY_APP_REG_FILE_ACCESS.WRITE_ACCESS, ByteUtil.toByte(file.isWriteAccess()))
 						.set(SECURITY_APP_REG_FILE_ACCESS.PATH, file.getPath())
-						.set(SECURITY_APP_REG_FILE_ACCESS.ALLOW_SUB_PATH_ACCESS, ByteUtil.toByte(file.isAllowSubPathAccess()))
+						.set(SECURITY_APP_REG_FILE_ACCESS.ALLOW_SUB_PATH_ACCESS,
+								ByteUtil.toByte(file.isAllowSubPathAccess()))
 
 						.returningResult(SECURITY_APP_REG_FILE_ACCESS.ID)).map(Record1::value1),
 
@@ -188,18 +188,21 @@ public class AppRegistrationDAO {
 	public Mono<AppRegistrationFile> getFileById(ULong id) {
 
 		return Mono
-				.from(this.dslContext.selectFrom(SECURITY_APP_REG_FILE_ACCESS).where(SECURITY_APP_REG_FILE_ACCESS.ID.eq(id)))
+				.from(this.dslContext.selectFrom(SECURITY_APP_REG_FILE_ACCESS)
+						.where(SECURITY_APP_REG_FILE_ACCESS.ID.eq(id)))
 				.map(e -> e.into(AppRegistrationFile.class));
 	}
 
 	public Mono<Boolean> deleteFile(ULong id) {
 
 		return Mono
-				.from(this.dslContext.deleteFrom(SECURITY_APP_REG_FILE_ACCESS).where(SECURITY_APP_REG_FILE_ACCESS.ID.eq(id)))
+				.from(this.dslContext.deleteFrom(SECURITY_APP_REG_FILE_ACCESS)
+						.where(SECURITY_APP_REG_FILE_ACCESS.ID.eq(id)))
 				.map(e -> e > 0);
 	}
 
-	public Mono<Page<AppRegistrationFile>> getFile(ULong appId, ULong clientId, String clientType, ClientLevelType level,
+	public Mono<Page<AppRegistrationFile>> getFile(ULong appId, ULong clientId, String clientType,
+			ClientLevelType level,
 			String businessType, Pageable pageable) {
 
 		List<Condition> conditions = new ArrayList<>();
@@ -245,9 +248,11 @@ public class AppRegistrationDAO {
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> Mono
-						.from(this.dslContext.insertInto(SECURITY_APP_REG_PACKAGE).set(SECURITY_APP_REG_PACKAGE.APP_ID, app.getId())
+						.from(this.dslContext.insertInto(SECURITY_APP_REG_PACKAGE)
+								.set(SECURITY_APP_REG_PACKAGE.APP_ID, app.getId())
 								.set(SECURITY_APP_REG_PACKAGE.CLIENT_ID,
-										CommonsUtil.nonNullValue(regPackage.getClientId(), ULong.valueOf(ca.getUser().getClientId())))
+										CommonsUtil.nonNullValue(regPackage.getClientId(),
+												ULong.valueOf(ca.getUser().getClientId())))
 								.set(SECURITY_APP_REG_PACKAGE.BUSINESS_TYPE, regPackage.getBusinessType())
 								.set(SECURITY_APP_REG_PACKAGE.CLIENT_TYPE, regPackage.getClientType())
 								.set(SECURITY_APP_REG_PACKAGE.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
@@ -304,7 +309,8 @@ public class AppRegistrationDAO {
 				() -> Flux
 						.from(this.dslContext.select(SECURITY_APP_REG_PACKAGE.fields()).from(SECURITY_APP_REG_PACKAGE)
 								.leftJoin(SecurityPackage.SECURITY_PACKAGE)
-								.on(SecurityPackage.SECURITY_PACKAGE.ID.eq(SECURITY_APP_REG_PACKAGE.PACKAGE_ID)).where(condition)
+								.on(SecurityPackage.SECURITY_PACKAGE.ID.eq(SECURITY_APP_REG_PACKAGE.PACKAGE_ID))
+								.where(condition)
 
 								.orderBy(SECURITY_APP_REG_PACKAGE.CREATED_AT.desc()).limit(pageable.getPageSize())
 								.offset(pageable.getOffset()))
@@ -318,7 +324,8 @@ public class AppRegistrationDAO {
 					if (lst.isEmpty())
 						return Mono.just(Page.<AppRegistrationPackage>empty(pageable));
 
-					return Mono.just(PageableExecutionUtils.<AppRegistrationPackage>getPage(lst, pageable, () -> count));
+					return Mono
+							.just(PageableExecutionUtils.<AppRegistrationPackage>getPage(lst, pageable, () -> count));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getPackage"));
 	}
 
@@ -337,7 +344,8 @@ public class AppRegistrationDAO {
 						.set(SECURITY_APP_REG_USER_ROLE.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
 						.set(SECURITY_APP_REG_USER_ROLE.LEVEL, role.getLevel().toUserRoleLevel())
 
-						.set(SECURITY_APP_REG_USER_ROLE.ROLE_ID, role.getRoleId()).returningResult(SECURITY_APP_REG_USER_ROLE.ID))
+						.set(SECURITY_APP_REG_USER_ROLE.ROLE_ID, role.getRoleId())
+						.returningResult(SECURITY_APP_REG_USER_ROLE.ID))
 						.map(Record1::value1),
 
 				(ca, id) -> this.getRoleById(id)
@@ -347,13 +355,17 @@ public class AppRegistrationDAO {
 
 	public Mono<AppRegistrationRole> getRoleById(ULong id) {
 
-		return Mono.from(this.dslContext.selectFrom(SECURITY_APP_REG_USER_ROLE).where(SECURITY_APP_REG_USER_ROLE.ID.eq(id)))
+		return Mono
+				.from(this.dslContext.selectFrom(SECURITY_APP_REG_USER_ROLE)
+						.where(SECURITY_APP_REG_USER_ROLE.ID.eq(id)))
 				.map(e -> e.into(AppRegistrationRole.class));
 	}
 
 	public Mono<Boolean> deleteRole(ULong id) {
 
-		return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_REG_USER_ROLE).where(SECURITY_APP_REG_USER_ROLE.ID.eq(id)))
+		return Mono
+				.from(this.dslContext.deleteFrom(SECURITY_APP_REG_USER_ROLE)
+						.where(SECURITY_APP_REG_USER_ROLE.ID.eq(id)))
 				.map(e -> e > 0);
 	}
 
@@ -385,9 +397,11 @@ public class AppRegistrationDAO {
 		return FlatMapUtil.flatMapMono(
 
 				() -> Flux
-						.from(this.dslContext.select(SECURITY_APP_REG_USER_ROLE.fields()).from(SECURITY_APP_REG_USER_ROLE)
+						.from(this.dslContext.select(SECURITY_APP_REG_USER_ROLE.fields())
+								.from(SECURITY_APP_REG_USER_ROLE)
 								.leftJoin(SecurityRole.SECURITY_ROLE)
-								.on(SecurityRole.SECURITY_ROLE.ID.eq(SECURITY_APP_REG_USER_ROLE.ROLE_ID)).where(condition)
+								.on(SecurityRole.SECURITY_ROLE.ID.eq(SECURITY_APP_REG_USER_ROLE.ROLE_ID))
+								.where(condition)
 
 								.orderBy(SECURITY_APP_REG_USER_ROLE.CREATED_AT.desc()).limit(pageable.getPageSize())
 								.offset(pageable.getOffset()))
@@ -405,16 +419,20 @@ public class AppRegistrationDAO {
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getRole"));
 	}
 
-	public Mono<List<Tuple2<ULong, Boolean>>> getAppIdsForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
+	public Mono<List<Tuple2<ULong, Boolean>>> getAppIdsForRegistration(ULong appId, ULong appClientId,
+			ULong urlClientId,
 			String clientType, ClientLevelType level, String businessType) {
 
 		Condition condition = DSL.and(SECURITY_APP_REG_ACCESS.APP_ID.eq(appId),
 				SECURITY_APP_REG_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
-				SECURITY_APP_REG_ACCESS.CLIENT_TYPE.eq(clientType), SECURITY_APP_REG_ACCESS.LEVEL.eq(level.toAppAccessLevel()),
+				SECURITY_APP_REG_ACCESS.CLIENT_TYPE.eq(clientType),
+				SECURITY_APP_REG_ACCESS.LEVEL.eq(level.toAppAccessLevel()),
 				SECURITY_APP_REG_ACCESS.BUSINESS_TYPE.eq(businessType));
 
-		SelectConditionStep<Record3<ULong, ULong, Byte>> query = this.dslContext.select(SECURITY_APP_REG_ACCESS.CLIENT_ID,
-				SECURITY_APP_REG_ACCESS.ALLOW_APP_ID, SECURITY_APP_REG_ACCESS.WRITE_ACCESS).from(SECURITY_APP_REG_ACCESS)
+		SelectConditionStep<Record3<ULong, ULong, Byte>> query = this.dslContext
+				.select(SECURITY_APP_REG_ACCESS.CLIENT_ID,
+						SECURITY_APP_REG_ACCESS.ALLOW_APP_ID, SECURITY_APP_REG_ACCESS.WRITE_ACCESS)
+				.from(SECURITY_APP_REG_ACCESS)
 				.where(condition);
 
 		return Flux.from(query).collectList().map(e -> {
@@ -461,7 +479,8 @@ public class AppRegistrationDAO {
 
 		Condition condition = DSL.and(SECURITY_APP_REG_PACKAGE.APP_ID.eq(appId),
 				SECURITY_APP_REG_PACKAGE.CLIENT_ID.in(appClientId, urlClientId),
-				SECURITY_APP_REG_PACKAGE.CLIENT_TYPE.eq(clientType), SECURITY_APP_REG_PACKAGE.LEVEL.eq(level.toPackageLevel()),
+				SECURITY_APP_REG_PACKAGE.CLIENT_TYPE.eq(clientType),
+				SECURITY_APP_REG_PACKAGE.LEVEL.eq(level.toPackageLevel()),
 				SECURITY_APP_REG_PACKAGE.BUSINESS_TYPE.eq(businessType));
 
 		return Flux.from(this.dslContext.select(SECURITY_APP_REG_PACKAGE.CLIENT_ID, SECURITY_APP_REG_PACKAGE.PACKAGE_ID)
@@ -494,8 +513,10 @@ public class AppRegistrationDAO {
 				SECURITY_APP_REG_USER_ROLE.LEVEL.eq(level.toUserRoleLevel()),
 				SECURITY_APP_REG_USER_ROLE.BUSINESS_TYPE.eq(businessType));
 
-		return Flux.from(this.dslContext.select(SECURITY_APP_REG_USER_ROLE.CLIENT_ID, SECURITY_APP_REG_USER_ROLE.ROLE_ID)
-				.from(SECURITY_APP_REG_USER_ROLE).where(condition)).collectList().map(e -> {
+		return Flux
+				.from(this.dslContext.select(SECURITY_APP_REG_USER_ROLE.CLIENT_ID, SECURITY_APP_REG_USER_ROLE.ROLE_ID)
+						.from(SECURITY_APP_REG_USER_ROLE).where(condition))
+				.collectList().map(e -> {
 
 					if (e.isEmpty())
 						return List.of();
@@ -515,7 +536,8 @@ public class AppRegistrationDAO {
 				});
 	}
 
-	public Mono<List<AppRegistrationFile>> getFileAccessForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
+	public Mono<List<AppRegistrationFile>> getFileAccessForRegistration(ULong appId, ULong appClientId,
+			ULong urlClientId,
 			String clientType, ClientLevelType level, String businessType) {
 
 		Condition condition = DSL.and(SECURITY_APP_REG_FILE_ACCESS.APP_ID.eq(appId),
@@ -576,7 +598,8 @@ public class AppRegistrationDAO {
 		return FlatMapUtil.flatMapMono(
 
 				() -> Flux
-						.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION.fields()).from(SECURITY_APP_REG_INTEGRATION)
+						.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION.fields())
+								.from(SECURITY_APP_REG_INTEGRATION)
 								.where(condition)
 
 								.orderBy(SECURITY_APP_REG_INTEGRATION.CREATED_AT.desc()).limit(pageable.getPageSize())
@@ -591,7 +614,8 @@ public class AppRegistrationDAO {
 					if (lst.isEmpty())
 						return Mono.just(Page.<AppRegistrationIntegration>empty(pageable));
 
-					return Mono.just(PageableExecutionUtils.<AppRegistrationIntegration>getPage(lst, pageable, () -> count));
+					return Mono.just(
+							PageableExecutionUtils.<AppRegistrationIntegration>getPage(lst, pageable, () -> count));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getRegIntegration"));
 
 	}
@@ -599,14 +623,16 @@ public class AppRegistrationDAO {
 	public Mono<AppRegistrationIntegration> getRegIntegrationById(ULong id) {
 
 		return Mono
-				.from(this.dslContext.selectFrom(SECURITY_APP_REG_INTEGRATION).where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
+				.from(this.dslContext.selectFrom(SECURITY_APP_REG_INTEGRATION)
+						.where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
 				.map(e -> e.into(AppRegistrationIntegration.class));
 	}
 
 	public Mono<Boolean> deleteRegIntegration(ULong id) {
 
 		return Mono
-				.from(this.dslContext.deleteFrom(SECURITY_APP_REG_INTEGRATION).where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
+				.from(this.dslContext.deleteFrom(SECURITY_APP_REG_INTEGRATION)
+						.where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
 				.map(e -> e > 0);
 	}
 
@@ -621,7 +647,8 @@ public class AppRegistrationDAO {
 						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID, app.getId())
 						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID, regIntegrationScope.getClientId())
 						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID, regIntegrationScope.getIntegrationId())
-						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_SCOPE_ID, regIntegrationScope.getIntegrationScopeId())
+						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_SCOPE_ID,
+								regIntegrationScope.getIntegrationScopeId())
 						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
 						.returningResult(SECURITY_APP_REG_INTEGRATION_SCOPES.ID)).map(Record1::value1),
 
@@ -665,14 +692,16 @@ public class AppRegistrationDAO {
 
 						.map(e -> e.into(AppRegistrationIntegrationScope.class)).collectList(),
 
-				lst -> Mono.from(this.dslContext.selectCount().from(SECURITY_APP_REG_INTEGRATION_SCOPES).where(condition))
+				lst -> Mono
+						.from(this.dslContext.selectCount().from(SECURITY_APP_REG_INTEGRATION_SCOPES).where(condition))
 						.map(Record1::value1).map(e -> (long) e),
 
 				(lst, count) -> {
 					if (lst.isEmpty())
 						return Mono.just(Page.<AppRegistrationIntegrationScope>empty(pageable));
 
-					return Mono.just(PageableExecutionUtils.<AppRegistrationIntegrationScope>getPage(lst, pageable, () -> count));
+					return Mono.just(PageableExecutionUtils.<AppRegistrationIntegrationScope>getPage(lst, pageable,
+							() -> count));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getRegIntegrationScope"));
 
 	}

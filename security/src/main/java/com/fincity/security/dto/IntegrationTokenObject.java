@@ -1,4 +1,4 @@
-package com.fincity.security.dto.appintegration;
+package com.fincity.security.dto;
 
 import java.time.LocalDateTime;
 
@@ -19,10 +19,7 @@ public class IntegrationTokenObject extends AbstractDTO<ULong, ULong> {
 
   private static final long serialVersionUID = -8765432109876543210L;
 
-  private ULong id;
   private ULong integrationId;
-  private ULong userId;
-  private ULong clientId;
   private String token;
   private String refreshToken;
   private LocalDateTime expiresAt;

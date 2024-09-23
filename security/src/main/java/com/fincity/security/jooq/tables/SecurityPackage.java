@@ -167,7 +167,7 @@ public class SecurityPackage extends TableImpl<SecurityPackageRecord> {
 
     @Override
     public List<UniqueKey<SecurityPackageRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_PACKAGE_UK2_PACKAGE_NAME_APP_ID, Keys.KEY_SECURITY_PACKAGE_UK1_PACKAGE_CODE);
+        return Arrays.asList(Keys.KEY_SECURITY_PACKAGE_UK1_PACKAGE_CODE, Keys.KEY_SECURITY_PACKAGE_UK2_PACKAGE_NAME);
     }
 
     @Override

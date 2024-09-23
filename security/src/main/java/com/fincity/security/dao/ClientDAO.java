@@ -6,8 +6,6 @@ import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLI
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
-import static com.fincity.security.jooq.tables.SecurityIntegration.SECURITY_INTEGRATION;
-import static com.fincity.security.jooq.tables.SecurityIntegrationScopes.SECURITY_INTEGRATION_SCOPES;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
@@ -15,22 +13,6 @@ import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-
-import com.fincity.security.model.IntegrationScope;
-import org.jooq.Condition;
-import org.jooq.DeleteQuery;
-import org.jooq.Record;
-import org.jooq.Record1;
-import org.jooq.SelectJoinStep;
-import org.jooq.Table;
-import org.jooq.impl.DSL;
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
@@ -40,16 +22,29 @@ import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.Integration;
-
+import com.fincity.security.model.IntegrationScope;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import org.jooq.Condition;
+import org.jooq.DeleteQuery;
+import org.jooq.Record;
+import org.jooq.Record1;
+import org.jooq.SelectJoinStep;
+import org.jooq.Table;
+import org.jooq.impl.DSL;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -549,25 +544,4 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 				.limit(1))
 				.map(Record1::value1);
 	}
-
-	public Mono<Integration> getIntegration(ULong integrationId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_INTEGRATION.fields())
-				.from(SECURITY_INTEGRATION)
-				.where(SECURITY_INTEGRATION.ID.eq(integrationId))
-				.limit(1))
-				.filter(Objects::nonNull)
-				.map(e -> e.into(Integration.class));
-	}
-
-	public Mono<IntegrationScope> getIntegrationScope(ULong integrationScopeId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_INTEGRATION_SCOPES.fields())
-				.from(SECURITY_INTEGRATION_SCOPES)
-				.where(SECURITY_INTEGRATION_SCOPES.ID.eq(integrationScopeId))
-				.limit(1))
-				.filter(Objects::nonNull)
-				.map(e -> e.into(IntegrationScope.class));
-	}
-
 }

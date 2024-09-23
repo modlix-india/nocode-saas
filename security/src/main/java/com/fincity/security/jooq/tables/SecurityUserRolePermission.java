@@ -138,11 +138,6 @@ public class SecurityUserRolePermission extends TableImpl<SecurityUserRolePermis
     }
 
     @Override
-    public List<UniqueKey<SecurityUserRolePermissionRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_USER_ROLE_PERMISSION_UNQ1_USER_ROLE_PERMISSION_USER_ID_ROLE_ID, Keys.KEY_SECURITY_USER_ROLE_PERMISSION_UNQ2_USER_ROLE_PERMISSION_USER_ID_PERMISSION_ID);
-    }
-
-    @Override
     public List<ForeignKey<SecurityUserRolePermissionRecord, ?>> getReferences() {
         return Arrays.asList(Keys.FK1_USER_ROLE_USER_ID, Keys.FK2_USER_ROLE_ROLE_ID, Keys.FK3_USER_ROLE_PERMISSION_ID);
     }

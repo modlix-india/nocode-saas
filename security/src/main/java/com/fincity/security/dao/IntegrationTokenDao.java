@@ -7,7 +7,7 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.dao.AbstractDAO;
-import com.fincity.security.dto.appintegration.IntegrationTokenObject;
+import com.fincity.security.dto.IntegrationTokenObject;
 import com.fincity.security.jooq.tables.records.SecurityIntegrationTokensRecord;
 
 import reactor.core.publisher.Flux;

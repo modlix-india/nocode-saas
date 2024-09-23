@@ -889,30 +889,4 @@ public class ClientService
 							.defaultIfEmpty(true);
 				}).defaultIfEmpty(false);
 	}
-
-	public Mono<Boolean> hasIntegrationAccess(ULong clientId, ULong integrationId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.dao.getIntegration(integrationId),
-
-				(ca, intg) -> Mono.just(CommonsUtil.safeEquals(clientId, intg.getClientId()))
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasIntegrationAccess"));
-	}
-
-	public Mono<Boolean> hasIntegrationScopeAccess(ULong clientId, ULong integrationScopeId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.dao.getIntegrationScope(integrationScopeId),
-
-				(ca, intScope) -> Mono.just(CommonsUtil.safeEquals(clientId, intScope.getClientId()))
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasIntegrationScopeAccess"));
-	}
 }
