@@ -4,9 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +17,7 @@ import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
 import com.fincity.saas.commons.mongo.util.MergeMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.ui.utils.ResponseEntityUtils;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.document.Page;
 import com.fincity.saas.ui.document.UIFunction;
@@ -36,15 +35,15 @@ import reactor.util.context.Context;
 @RequestMapping("api/ui/")
 public class EngineController {
 
-	private ApplicationService appService;
+	private final ApplicationService appService;
 
-	private PageService pageService;
+	private final PageService pageService;
 
-	private StyleService styleService;
+	private final StyleService styleService;
 
-	private StyleThemeService themeService;
+	private final StyleThemeService themeService;
 
-	private UIFunctionService functionService;
+	private final UIFunctionService functionService;
 
 	public EngineController(ApplicationService appService, PageService pageService, StyleService styleService,
 			StyleThemeService themeService, UIFunctionService functionService) {
@@ -70,36 +69,13 @@ public class EngineController {
 			.notFound()
 			.build();
 
-	public <T> Mono<ResponseEntity<T>> makeResponseEntity(ObjectWithUniqueID<T> obj,
-			String eTag) {
-
-		if (eTag != null && (eTag.contains(obj.getUniqueId()) || obj.getUniqueId()
-				.contains(eTag)))
-			return Mono.just(ResponseEntity.status(HttpStatus.NOT_MODIFIED)
-					.build());
-
-		var rp = ResponseEntity.ok()
-				.header("ETag", "W/" + obj.getUniqueId())
-				.header("Cache-Control", "max-age: " + cacheAge + ", must-revalidate")
-				.header("x-frame-options", "SAMEORIGIN")
-				.header("X-Frame-Options", "SAMEORIGIN");
-
-		if (obj.getHeaders() != null)
-			obj.getHeaders()
-					.entrySet()
-					.stream()
-					.forEach(x -> rp.header(x.getKey(), x.getValue()));
-
-		return Mono.just(rp.body(obj.getObject()));
-	}
-
 	@GetMapping("application")
 	public Mono<ResponseEntity<Application>> application(@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return this.appService.read(appCode, appCode, clientCode)
-				.flatMap(e -> this.makeResponseEntity(e, eTag))
+				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(APPLICATION_NOT_FOUND);
 	}
 
@@ -109,7 +85,7 @@ public class EngineController {
 			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return this.pageService.read(pageName, appCode, clientCode)
-				.flatMap(e -> this.makeResponseEntity(e, eTag))
+				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(PAGE_NOT_FOUND);
 	}
 
@@ -171,7 +147,7 @@ public class EngineController {
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.style inner"));
 				},
 
-				(app, styles, theme) -> this.makeResponseEntity(theme, eTag))
+				(app, styles, theme) -> ResponseEntityUtils.makeResponseEntity(theme, eTag, cacheAge))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.style"));
 	}
 
@@ -234,7 +210,7 @@ public class EngineController {
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.theme inner"));
 				},
 
-				(app, styles, theme) -> this.makeResponseEntity(theme, eTag))
+				(app, styles, theme) -> ResponseEntityUtils.makeResponseEntity(theme, eTag, cacheAge))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.theme outer"));
 	}
 
@@ -258,7 +234,7 @@ public class EngineController {
 			@PathVariable("name") String name, @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
 		return this.functionService.read(namespace + "." + name, appCode, clientCode)
-				.flatMap(e -> this.makeResponseEntity(e, eTag))
+				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(FUNCTION_NOT_FOUND);
 	}
 }

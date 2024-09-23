@@ -8,4 +8,12 @@ import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceServic
 public class UIMessageResourceService extends AbstractMongoMessageResourceService {
 
 	public static final String APP_NAME_MISMATCH = "app_name_mismatch";
+
+	public static final String URI_STRING_NULL = "uri_path_string_null";
+
+	public static final String URI_PATTERN_PATH_MISMATCH = "uri_pattern_path_mismatch";
+
+	public static final String URI_INVALID_TYPE = "uri_invalid_type";
+
+	public static final String URI_INVALID_METHOD = "uri_invalid_method";
 }
