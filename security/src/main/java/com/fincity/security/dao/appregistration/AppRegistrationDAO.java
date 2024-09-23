@@ -13,8 +13,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppRegistrationAccess;
 import com.fincity.security.dto.AppRegistrationFile;
-import com.fincity.security.dto.AppRegistrationIntegration;
-import com.fincity.security.dto.AppRegistrationIntegrationScope;
 import com.fincity.security.dto.AppRegistrationPackage;
 import com.fincity.security.dto.AppRegistrationRole;
 import com.fincity.security.enums.ClientLevelType;
@@ -565,178 +563,200 @@ public class AppRegistrationDAO {
 				});
 	}
 
-	public Mono<AppRegistrationIntegration> createRegIntegration(App app, AppRegistrationIntegration regIntegration) {
+	// public Mono<AppRegistrationIntegration> createRegIntegration(App app,
+	// AppRegistrationIntegration regIntegration) {
 
-		return FlatMapUtil.flatMapMono(
+	// return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+	// SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.from(this.dslContext.insertInto(SECURITY_APP_REG_INTEGRATION)
-						.set(SECURITY_APP_REG_INTEGRATION.APP_ID, app.getId())
-						.set(SECURITY_APP_REG_INTEGRATION.INTEGRATION_ID, regIntegration.getIntegrationId())
-						.set(SECURITY_APP_REG_INTEGRATION.CLIENT_ID, regIntegration.getClientId())
-						.set(SECURITY_APP_REG_INTEGRATION.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
-						.returningResult(SECURITY_APP_REG_INTEGRATION.ID)).map(Record1::value1),
+	// ca -> Mono.from(this.dslContext.insertInto(SECURITY_APP_REG_INTEGRATION)
+	// .set(SECURITY_APP_REG_INTEGRATION.APP_ID, app.getId())
+	// .set(SECURITY_APP_REG_INTEGRATION.INTEGRATION_ID,
+	// regIntegration.getIntegrationId())
+	// .set(SECURITY_APP_REG_INTEGRATION.CLIENT_ID, regIntegration.getClientId())
+	// .set(SECURITY_APP_REG_INTEGRATION.CREATED_BY,
+	// ULong.valueOf(ca.getUser().getId()))
+	// .returningResult(SECURITY_APP_REG_INTEGRATION.ID)).map(Record1::value1),
 
-				(ca, id) -> this.getRegIntegrationById(id)
+	// (ca, id) -> this.getRegIntegrationById(id)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.createPackage"));
-	}
+	// ).contextWrite(Context.of(LogUtil.METHOD_NAME,
+	// "AppRegistrationDAO.createPackage"));
+	// }
 
-	public Mono<Page<AppRegistrationIntegration>> getRegIntegration(ULong appId, ULong clientId, Pageable pageable) {
+	// public Mono<Page<AppRegistrationIntegration>> getRegIntegration(ULong appId,
+	// ULong clientId, Pageable pageable) {
 
-		List<Condition> conditions = new ArrayList<>();
+	// List<Condition> conditions = new ArrayList<>();
 
-		if (appId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION.APP_ID.eq(appId));
+	// if (appId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION.APP_ID.eq(appId));
 
-		if (clientId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION.CLIENT_ID.eq(clientId));
+	// if (clientId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION.CLIENT_ID.eq(clientId));
 
-		Condition condition = DSL.and(conditions);
+	// Condition condition = DSL.and(conditions);
 
-		return FlatMapUtil.flatMapMono(
+	// return FlatMapUtil.flatMapMono(
 
-				() -> Flux
-						.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION.fields())
-								.from(SECURITY_APP_REG_INTEGRATION)
-								.where(condition)
+	// () -> Flux
+	// .from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION.fields())
+	// .from(SECURITY_APP_REG_INTEGRATION)
+	// .where(condition)
 
-								.orderBy(SECURITY_APP_REG_INTEGRATION.CREATED_AT.desc()).limit(pageable.getPageSize())
-								.offset(pageable.getOffset()))
+	// .orderBy(SECURITY_APP_REG_INTEGRATION.CREATED_AT.desc()).limit(pageable.getPageSize())
+	// .offset(pageable.getOffset()))
 
-						.map(e -> e.into(AppRegistrationIntegration.class)).collectList(),
+	// .map(e -> e.into(AppRegistrationIntegration.class)).collectList(),
 
-				lst -> Mono.from(this.dslContext.selectCount().from(SECURITY_APP_REG_INTEGRATION).where(condition))
-						.map(Record1::value1).map(e -> (long) e),
+	// lst ->
+	// Mono.from(this.dslContext.selectCount().from(SECURITY_APP_REG_INTEGRATION).where(condition))
+	// .map(Record1::value1).map(e -> (long) e),
 
-				(lst, count) -> {
-					if (lst.isEmpty())
-						return Mono.just(Page.<AppRegistrationIntegration>empty(pageable));
+	// (lst, count) -> {
+	// if (lst.isEmpty())
+	// return Mono.just(Page.<AppRegistrationIntegration>empty(pageable));
 
-					return Mono.just(
-							PageableExecutionUtils.<AppRegistrationIntegration>getPage(lst, pageable, () -> count));
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getRegIntegration"));
+	// return Mono.just(
+	// PageableExecutionUtils.<AppRegistrationIntegration>getPage(lst, pageable, ()
+	// -> count));
+	// }).contextWrite(Context.of(LogUtil.METHOD_NAME,
+	// "AppRegistrationDAO.getRegIntegration"));
 
-	}
+	// }
 
-	public Mono<AppRegistrationIntegration> getRegIntegrationById(ULong id) {
+	// public Mono<AppRegistrationIntegration> getRegIntegrationById(ULong id) {
 
-		return Mono
-				.from(this.dslContext.selectFrom(SECURITY_APP_REG_INTEGRATION)
-						.where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
-				.map(e -> e.into(AppRegistrationIntegration.class));
-	}
+	// return Mono
+	// .from(this.dslContext.selectFrom(SECURITY_APP_REG_INTEGRATION)
+	// .where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
+	// .map(e -> e.into(AppRegistrationIntegration.class));
+	// }
 
-	public Mono<Boolean> deleteRegIntegration(ULong id) {
+	// public Mono<Boolean> deleteRegIntegration(ULong id) {
 
-		return Mono
-				.from(this.dslContext.deleteFrom(SECURITY_APP_REG_INTEGRATION)
-						.where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
-				.map(e -> e > 0);
-	}
+	// return Mono
+	// .from(this.dslContext.deleteFrom(SECURITY_APP_REG_INTEGRATION)
+	// .where(SECURITY_APP_REG_INTEGRATION.ID.eq(id)))
+	// .map(e -> e > 0);
+	// }
 
-	public Mono<AppRegistrationIntegrationScope> createRegIntegrationScope(App app,
-			AppRegistrationIntegrationScope regIntegrationScope) {
+	// public Mono<AppRegistrationIntegrationScope> createRegIntegrationScope(App
+	// app,
+	// AppRegistrationIntegrationScope regIntegrationScope) {
 
-		return FlatMapUtil.flatMapMono(
+	// return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+	// SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.from(this.dslContext.insertInto(SECURITY_APP_REG_INTEGRATION_SCOPES)
-						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID, app.getId())
-						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID, regIntegrationScope.getClientId())
-						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID, regIntegrationScope.getIntegrationId())
-						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_SCOPE_ID,
-								regIntegrationScope.getIntegrationScopeId())
-						.set(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
-						.returningResult(SECURITY_APP_REG_INTEGRATION_SCOPES.ID)).map(Record1::value1),
+	// ca ->
+	// Mono.from(this.dslContext.insertInto(SECURITY_APP_REG_INTEGRATION_SCOPES)
+	// .set(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID, app.getId())
+	// .set(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID,
+	// regIntegrationScope.getClientId())
+	// .set(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID,
+	// regIntegrationScope.getIntegrationId())
+	// .set(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_SCOPE_ID,
+	// regIntegrationScope.getIntegrationScopeId())
+	// .set(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_BY,
+	// ULong.valueOf(ca.getUser().getId()))
+	// .returningResult(SECURITY_APP_REG_INTEGRATION_SCOPES.ID)).map(Record1::value1),
 
-				(ca, id) -> this.getRegIntegrationScopeById(id)
+	// (ca, id) -> this.getRegIntegrationScopeById(id)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.createPackage"));
-	}
+	// ).contextWrite(Context.of(LogUtil.METHOD_NAME,
+	// "AppRegistrationDAO.createPackage"));
+	// }
 
-	public Mono<AppRegistrationIntegrationScope> getRegIntegrationScopeById(ULong id) {
+	// public Mono<AppRegistrationIntegrationScope> getRegIntegrationScopeById(ULong
+	// id) {
 
-		return Mono
-				.from(this.dslContext.selectFrom(SECURITY_APP_REG_INTEGRATION_SCOPES)
-						.where(SECURITY_APP_REG_INTEGRATION_SCOPES.ID.eq(id)))
-				.map(e -> e.into(AppRegistrationIntegrationScope.class));
-	}
+	// return Mono
+	// .from(this.dslContext.selectFrom(SECURITY_APP_REG_INTEGRATION_SCOPES)
+	// .where(SECURITY_APP_REG_INTEGRATION_SCOPES.ID.eq(id)))
+	// .map(e -> e.into(AppRegistrationIntegrationScope.class));
+	// }
 
-	public Mono<Page<AppRegistrationIntegrationScope>> getRegIntegrationScope(ULong appId, ULong clientId,
-			ULong integrationId, Pageable pageable) {
+	// public Mono<Page<AppRegistrationIntegrationScope>>
+	// getRegIntegrationScope(ULong appId, ULong clientId,
+	// ULong integrationId, Pageable pageable) {
 
-		List<Condition> conditions = new ArrayList<>();
+	// List<Condition> conditions = new ArrayList<>();
 
-		if (appId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID.eq(appId));
+	// if (appId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID.eq(appId));
 
-		if (clientId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID.eq(clientId));
+	// if (clientId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID.eq(clientId));
 
-		if (integrationId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID.eq(integrationId));
+	// if (integrationId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID.eq(integrationId));
 
-		Condition condition = DSL.and(conditions);
+	// Condition condition = DSL.and(conditions);
 
-		return FlatMapUtil.flatMapMono(
+	// return FlatMapUtil.flatMapMono(
 
-				() -> Flux.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION_SCOPES.fields())
-						.from(SECURITY_APP_REG_INTEGRATION_SCOPES)
-						.where(condition)
+	// () ->
+	// Flux.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION_SCOPES.fields())
+	// .from(SECURITY_APP_REG_INTEGRATION_SCOPES)
+	// .where(condition)
 
-						.orderBy(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_AT.desc()).limit(pageable.getPageSize())
-						.offset(pageable.getOffset()))
+	// .orderBy(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_AT.desc()).limit(pageable.getPageSize())
+	// .offset(pageable.getOffset()))
 
-						.map(e -> e.into(AppRegistrationIntegrationScope.class)).collectList(),
+	// .map(e -> e.into(AppRegistrationIntegrationScope.class)).collectList(),
 
-				lst -> Mono
-						.from(this.dslContext.selectCount().from(SECURITY_APP_REG_INTEGRATION_SCOPES).where(condition))
-						.map(Record1::value1).map(e -> (long) e),
+	// lst -> Mono
+	// .from(this.dslContext.selectCount().from(SECURITY_APP_REG_INTEGRATION_SCOPES).where(condition))
+	// .map(Record1::value1).map(e -> (long) e),
 
-				(lst, count) -> {
-					if (lst.isEmpty())
-						return Mono.just(Page.<AppRegistrationIntegrationScope>empty(pageable));
+	// (lst, count) -> {
+	// if (lst.isEmpty())
+	// return Mono.just(Page.<AppRegistrationIntegrationScope>empty(pageable));
 
-					return Mono.just(PageableExecutionUtils.<AppRegistrationIntegrationScope>getPage(lst, pageable,
-							() -> count));
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getRegIntegrationScope"));
+	// return
+	// Mono.just(PageableExecutionUtils.<AppRegistrationIntegrationScope>getPage(lst,
+	// pageable,
+	// () -> count));
+	// }).contextWrite(Context.of(LogUtil.METHOD_NAME,
+	// "AppRegistrationDAO.getRegIntegrationScope"));
 
-	}
+	// }
 
-	public Mono<List<AppRegistrationIntegrationScope>> getRegIntegrationScope(ULong appId, ULong clientId,
-			ULong integrationId) {
+	// public Mono<List<AppRegistrationIntegrationScope>>
+	// getRegIntegrationScope(ULong appId, ULong clientId,
+	// ULong integrationId) {
 
-		List<Condition> conditions = new ArrayList<>();
+	// List<Condition> conditions = new ArrayList<>();
 
-		if (appId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID.eq(appId));
+	// if (appId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.APP_ID.eq(appId));
 
-		if (clientId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID.eq(clientId));
+	// if (clientId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.CLIENT_ID.eq(clientId));
 
-		if (integrationId != null)
-			conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID.eq(integrationId));
+	// if (integrationId != null)
+	// conditions.add(SECURITY_APP_REG_INTEGRATION_SCOPES.INTEGRATION_ID.eq(integrationId));
 
-		Condition condition = DSL.and(conditions);
+	// Condition condition = DSL.and(conditions);
 
-		return Flux.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION_SCOPES.fields())
-				.from(SECURITY_APP_REG_INTEGRATION_SCOPES)
-				.where(condition)
+	// return
+	// Flux.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION_SCOPES.fields())
+	// .from(SECURITY_APP_REG_INTEGRATION_SCOPES)
+	// .where(condition)
 
-				.orderBy(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_AT.desc()))
+	// .orderBy(SECURITY_APP_REG_INTEGRATION_SCOPES.CREATED_AT.desc()))
 
-				.map(e -> e.into(AppRegistrationIntegrationScope.class)).collectList();
+	// .map(e -> e.into(AppRegistrationIntegrationScope.class)).collectList();
 
-	}
+	// }
 
-	public Mono<Boolean> deleteRegIntegrationScope(ULong id) {
-		return Mono
-				.from(this.dslContext.deleteFrom(SECURITY_APP_REG_INTEGRATION_SCOPES)
-						.where(SECURITY_APP_REG_INTEGRATION_SCOPES.ID.eq(id)))
-				.map(e -> e > 0);
-	}
+	// public Mono<Boolean> deleteRegIntegrationScope(ULong id) {
+	// return Mono
+	// .from(this.dslContext.deleteFrom(SECURITY_APP_REG_INTEGRATION_SCOPES)
+	// .where(SECURITY_APP_REG_INTEGRATION_SCOPES.ID.eq(id)))
+	// .map(e -> e > 0);
+	// }
 
 }

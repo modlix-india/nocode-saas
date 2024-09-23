@@ -27,7 +27,6 @@ public class ClientRegistrationRequest implements Serializable {
 	private String businessType;
 	private String code;
 	private String subDomain;
-	private ULong socialIntegrationId;
 	private String socialToken;
 	private String socialRefreshToken;
 }

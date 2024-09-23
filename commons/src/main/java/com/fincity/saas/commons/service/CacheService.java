@@ -1,13 +1,15 @@
 package com.fincity.saas.commons.service;
 
+import io.lettuce.core.api.async.RedisAsyncCommands;
+import io.lettuce.core.pubsub.RedisPubSubAdapter;
+import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
+import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
 import javax.annotation.PostConstruct;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,11 +17,6 @@ import org.springframework.boot.autoconfigure.cache.CacheType;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
-
-import io.lettuce.core.api.async.RedisAsyncCommands;
-import io.lettuce.core.pubsub.RedisPubSubAdapter;
-import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
-import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -75,15 +72,15 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 
 		if (pubAsyncCommand != null) {
 			Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":" + key))
-			        .map(e -> true)
-			        .subscribe();
+					.map(e -> true)
+					.subscribe();
 
 			return Mono.fromCompletionStage(redisAsyncCommand.hdel(cacheName, key))
-			        .map(e -> true);
+					.map(e -> true);
 		}
 
 		return Mono.fromCallable(() -> this.caffineCacheEvict(cacheName, key))
-		        .onErrorResume(t -> Mono.just(false));
+				.onErrorResume(t -> Mono.just(false));
 
 	}
 
@@ -109,9 +106,9 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 			return Mono.just(args[0].toString());
 
 		return Flux.fromArray(args)
-		        .filter(Objects::nonNull)
-		        .map(Object::toString)
-		        .collect(Collectors.joining());
+				.filter(Objects::nonNull)
+				.map(Object::toString)
+				.collect(Collectors.joining());
 	}
 
 	public <T> Mono<T> put(String cName, T value, Object... keys) {
@@ -122,23 +119,22 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		String cacheName = this.redisPrefix + "-" + cName;
 
 		this.makeKey(keys)
-		        .flatMap(key ->
-				{
+				.flatMap(key -> {
 
-			        CacheObject co = new CacheObject(value);
+					CacheObject co = new CacheObject(value);
 
-			        this.cacheManager.getCache(cacheName)
-			                .put(key, co);
+					this.cacheManager.getCache(cacheName)
+							.put(key, co);
 
-			        if (redisAsyncCommand == null)
-				        return Mono.just(true);
+					if (redisAsyncCommand == null)
+						return Mono.just(true);
 
-			        Mono.fromCompletionStage(redisAsyncCommand.hset(cacheName, key, co))
-			                .subscribe();
+					Mono.fromCompletionStage(redisAsyncCommand.hset(cacheName, key, co))
+							.subscribe();
 
-			        return Mono.just(true);
-		        })
-		        .subscribe();
+					return Mono.just(true);
+				})
+				.subscribe();
 
 		return Mono.just(value);
 	}
@@ -152,46 +148,45 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		String cacheName = this.redisPrefix + "-" + cName;
 
 		return this.makeKey(keys)
-		        .flatMap(key ->
-				{
+				.flatMap(key -> {
 
-			        Mono<CacheObject> value = Mono.justOrEmpty(this.cacheManager.getCache(cacheName)
-			                .get(key, CacheObject.class));
+					Mono<CacheObject> value = Mono.justOrEmpty(this.cacheManager.getCache(cacheName)
+							.get(key, CacheObject.class));
 
-			        if (redisAsyncCommand == null)
-				        return value;
+					if (redisAsyncCommand == null)
+						return value;
 
-			        return value.switchIfEmpty(
-			                Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
-			                        .map(CacheObject.class::cast)));
-		        })
-		        .flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
+					return value.switchIfEmpty(
+							Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
+									.map(CacheObject.class::cast)));
+				})
+				.flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
 	}
 
 	@SuppressWarnings("unchecked")
 	public <T> Mono<T> cacheValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
 
 		return this.makeKey(keys)
-		        .flatMap(key -> this.get(cName, key)
-		                .switchIfEmpty(Mono.defer(() -> supplier.get()
-		                        .flatMap(value -> this.put(cName, value, key)))))
-		        .map(e -> (T) e);
+				.flatMap(key -> this.get(cName, key)
+						.switchIfEmpty(Mono.defer(() -> supplier.get()
+								.flatMap(value -> this.put(cName, value, key)))))
+				.map(e -> (T) e);
 	}
 
 	@SuppressWarnings("unchecked")
 	public <T> Mono<T> cacheEmptyValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
 
 		return this.makeKey(keys)
-		        .flatMap(key ->
+				.flatMap(key ->
 
 				this.<CacheObject>get(cName, key)
-				        .switchIfEmpty(Mono.defer(() ->
+						.switchIfEmpty(Mono.defer(() ->
 
 						supplier.get()
-						        .flatMap(value -> this.put(cName, new CacheObject(value), key))
-						        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), key))))))
-		        .flatMap(e -> Mono.justOrEmpty((T) e.getObject()))
-		        .subscribeOn(Schedulers.boundedElastic());
+								.flatMap(value -> this.put(cName, new CacheObject(value), key))
+								.switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), key))))))
+				.flatMap(e -> Mono.justOrEmpty((T) e.getObject()))
+				.subscribeOn(Schedulers.boundedElastic());
 	}
 
 	public Mono<Boolean> evictAll(String cName) {
@@ -203,20 +198,20 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 
 		if (pubAsyncCommand != null) {
 			Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":*"))
-			        .subscribe();
+					.subscribe();
 
 			return Mono.fromCompletionStage(redisAsyncCommand.del(cacheName))
-			        .map(e -> true)
-			        .defaultIfEmpty(true);
+					.map(e -> true)
+					.defaultIfEmpty(true);
 		}
 
 		return Mono.fromCallable(() -> {
 
 			this.cacheManager.getCache(cacheName)
-			        .clear();
+					.clear();
 			return true;
 		})
-		        .onErrorResume(t -> Mono.just(false));
+				.onErrorResume(t -> Mono.just(false));
 	}
 
 	public Mono<Boolean> evictAllCaches() {
@@ -227,36 +222,34 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		if (pubAsyncCommand != null) {
 
 			return Mono.fromCompletionStage(redisAsyncCommand.keys(this.redisPrefix + "-*"))
-			        .flatMapMany(Flux::fromIterable)
-			        .map(e ->
-					{
+					.flatMapMany(Flux::fromIterable)
+					.map(e -> {
 
-				        Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, e + ":*"))
-				                .subscribe();
-				        return Mono.fromCompletionStage(redisAsyncCommand.del(e));
+						Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, e + ":*"))
+								.subscribe();
+						return Mono.fromCompletionStage(redisAsyncCommand.del(e));
 
-			        })
-			        .map(e -> true)
-			        .reduce((a, b) -> a && b);
+					})
+					.map(e -> true)
+					.reduce((a, b) -> a && b);
 		}
 
 		Flux<String> flux = Flux.fromIterable(this.cacheManager.getCacheNames());
 
 		return flux.map(this.cacheManager::getCache)
-		        .map(e ->
-				{
-			        e.clear();
-			        return true;
-		        })
-		        .reduce((a, b) -> a && b);
+				.map(e -> {
+					e.clear();
+					return true;
+				})
+				.reduce((a, b) -> a && b);
 	}
 
 	public Mono<Collection<String>> getCacheNames() {
 
 		return Mono.just(this.cacheManager.getCacheNames()
-		        .stream()
-		        .map(e -> e.substring(this.redisPrefix.length() + 1))
-		        .toList());
+				.stream()
+				.map(e -> e.substring(this.redisPrefix.length() + 1))
+				.toList());
 	}
 
 	@Override
@@ -286,12 +279,12 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 	public <T> Function<T, Mono<T>> evictAllFunction(String cacheName) {
 
 		return v -> this.evictAll(cacheName)
-		        .map(e -> v);
+				.map(e -> v);
 	}
 
 	public <T> Function<T, Mono<T>> evictFunction(String cacheName, Object... keys) {
 		return v -> this.evict(cacheName, keys)
-		        .map(e -> v);
+				.map(e -> v);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -303,6 +296,18 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 			keys[i] = keySuppliers[i].get();
 
 		return v -> this.evict(cacheName, keys)
-		        .map(e -> v);
+				.map(e -> v);
+	}
+
+	public <T> Function<T, Mono<T>> evictFunctionWithFunction(String cacheName, Function<T, Object> keyFunction) {
+		return v -> this.evict(cacheName, keyFunction.apply(v))
+				.map(e -> v);
+	}
+
+	public <T> Function<T, Mono<T>> evictFunctionWithFunctionMultipleKeys(String cacheName,
+			Function<T, Object[]> keyFunction) {
+		return v -> this.makeKey(keyFunction.apply(v))
+				.flatMap(key -> this.evict(cacheName, key))
+				.map(e -> v);
 	}
 }

@@ -17,14 +17,13 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.CodeAccessDAO;
-import com.fincity.security.dao.IntegrationTokenDao;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
-import com.fincity.security.dto.appintegration.IntegrationTokenObject;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.feign.IFeignFilesService;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
@@ -66,7 +65,8 @@ public class ClientRegistrationService {
     private final ClientUrlService clientUrlService;
     private final AppRegistrationDAO appRegistrationDAO;
     private final IFeignFilesService filesService;
-    private final IntegrationTokenDao integrationTokenDao;
+    private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
+    private final AppRegistrationIntegrationService appRegistrationIntegrationService;
 
     private final SecurityMessageResourceService securityMessageResourceService;
 
@@ -80,7 +80,8 @@ public class ClientRegistrationService {
             AuthenticationService authenticationService, CodeAccessDAO codeAccessDAO,
             ClientService clientService, EventCreationService ecService, ClientUrlService clientUrlService,
             AppRegistrationDAO appRegistrationDAO, IFeignFilesService filesService,
-            IntegrationTokenDao integrationTokenDao) {
+            AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
+            AppRegistrationIntegrationService appRegistrationIntegrationService) {
         this.dao = dao;
         this.appService = appService;
         this.userService = userService;
@@ -91,8 +92,8 @@ public class ClientRegistrationService {
         this.clientUrlService = clientUrlService;
         this.appRegistrationDAO = appRegistrationDAO;
         this.filesService = filesService;
-        this.integrationTokenDao = integrationTokenDao;
-
+        this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
+        this.appRegistrationIntegrationService = appRegistrationIntegrationService;
         this.securityMessageResourceService = securityMessageResourceService;
     }
 
@@ -469,90 +470,22 @@ public class ClientRegistrationService {
     public Mono<ClientRegistrationResponse> registerWSocial(ClientRegistrationRequest registrationRequest,
             ServerHttpRequest request, ServerHttpResponse response) {
 
-        String host = request.getHeaders().getFirst("X-Forwarded-Host");
-        String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
-        String port = request.getHeaders().getFirst("X-Forwarded-Port");
+        return FlatMapUtil.flatMapMono(
 
-        String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
-                : "http://" + host + ":" + port;
+                () -> this.register(registrationRequest, request, response),
 
-        Mono<ClientRegistrationResponse> mono = FlatMapUtil.flatMapMono(
+                res -> this.appRegistrationIntegrationService.getIntegrationId(),
 
-                () -> this.preRegisterCheck(registrationRequest),
+                (res, integrationId) -> this.appRegistrationIntegrationTokenService.create(
+                        (AppRegistrationIntegrationToken) new AppRegistrationIntegrationToken()
+                                .setIntegrationId(integrationId)
+                                .setToken(registrationRequest.getSocialToken())
+                                .setRefreshToken(registrationRequest.getSocialRefreshToken())
+                                .setCreatedBy(res.getUserId())),
 
-                tup -> this.registerClient(registrationRequest, tup.getT2(),
-                        AppService.APP_PROP_REG_TYPE_NO_VERIFICATION),
+                (res, integrationId, token) -> Mono.just(res))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
 
-                (tup, client) -> this.registerUser(tup.getT2().getUrlAppCode(),
-                        ULong.valueOf(tup.getT2().getLoggedInFromClientId()),
-                        registrationRequest, client,
-                        AppService.APP_PROP_REG_TYPE_NO_VERIFICATION),
-
-                (tup, client, userTuple) -> this.integrationTokenDao.create(new IntegrationTokenObject()
-                        .setClientId(client.getId())
-                        .setUserId(userTuple.getT1().getId())
-                        .setIntegrationId(registrationRequest.getSocialIntegrationId())
-                        .setToken(registrationRequest.getSocialToken())
-                        .setRefreshToken(registrationRequest.getSocialRefreshToken())
-                        .setExpiresAt(LocalDateTime.now().plusDays(30))),
-
-                (tup, client, userTuple, socialToken) -> this.userService
-                        .makeOneTimeToken(request, tup.getT2(), userTuple.getT1(),
-                                ULong.valueOf(tup.getT2().getLoggedInFromClientId()))
-                        .map(TokenObject::getToken),
-
-                (tup, client, userTuple, socialToken, token) -> this.addFilesAccessPath(tup.getT2(),
-                        client),
-
-                (tup, client, userTuple, socialToken, token, filesAccessCreated) -> this.ecService
-                        .createEvent(new EventQueObject()
-                                .setAppCode(tup.getT2().getUrlAppCode())
-                                .setClientCode(tup.getT2().getLoggedInFromClientCode())
-                                .setEventName(EventNames.CLIENT_REGISTERED)
-                                .setData(Map.of("client", client, "subDomain",
-                                        tup.getT1(), "urlPrefix", urlPrefix)))
-                        .flatMap(e -> ecService.createEvent(new EventQueObject()
-                                .setAppCode(tup.getT2().getUrlAppCode())
-                                .setClientCode(tup.getT2().getLoggedInFromClientCode())
-                                .setEventName(EventNames.USER_REGISTERED)
-                                .setData(Map.of("client", client, "subDomain",
-                                        tup.getT1(), "user", userTuple.getT1(),
-                                        "urlPrefix", urlPrefix, "token",
-                                        token))))
-                        .flatMap(e -> this.authenticationService.authenticateWSocial(
-                                new AuthenticationRequest()
-                                        .setUserId(userTuple.getT1().getId())
-                                        .setUserName(
-                                                CommonsUtil.nonNullValue(
-                                                        registrationRequest
-                                                                .getUserName(),
-                                                        registrationRequest
-                                                                .getEmailId()))
-                                        .setSocialToken(socialToken.getToken())
-                                        .setSocialRefreshToken(socialToken
-                                                .getRefreshToken())
-                                        .setSocialIntegrationId(socialToken
-                                                .getIntegrationId())
-                                        .setRememberMe(true)
-                                        .setCookie(true),
-                                request, response)
-                                .map(x -> new ClientRegistrationResponse(
-                                        true,
-                                        userTuple.getT1()
-                                                .getId(),
-                                        "", x))),
-
-                (tup, client, userTuple, socialToken, token, filesAccessCreated, res) -> {
-
-                    if (tup.getT1().isBlank())
-                        return Mono.just(res);
-
-                    return this.clientUrlService.createForRegistration(new ClientUrl()
-                            .setAppCode(tup.getT2().getUrlAppCode())
-                            .setUrlPattern(tup.getT1()).setClientId(client.getId()))
-                            .map(e -> res.setRedirectURL(tup.getT1()));
-                });
-        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
     }
 
     private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client) {

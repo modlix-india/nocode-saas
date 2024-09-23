@@ -15,7 +15,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @Accessors(chain = true)
-public class IntegrationTokenObject extends AbstractDTO<ULong, ULong> {
+public class AppRegistrationIntegrationToken extends AbstractDTO<ULong, ULong> {
 
   private static final long serialVersionUID = -8765432109876543210L;
 

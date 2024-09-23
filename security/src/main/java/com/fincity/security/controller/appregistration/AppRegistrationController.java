@@ -1,7 +1,12 @@
 package com.fincity.security.controller.appregistration;
 
+import com.fincity.security.dto.AppRegistrationAccess;
+import com.fincity.security.dto.AppRegistrationFile;
+import com.fincity.security.dto.AppRegistrationPackage;
+import com.fincity.security.dto.AppRegistrationRole;
+import com.fincity.security.model.AppRegistrationQuery;
+import com.fincity.security.service.appregistration.AppRegistrationService;
 import java.beans.PropertyEditorSupport;
-
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,16 +21,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fincity.security.dto.AppRegistrationAccess;
-import com.fincity.security.dto.AppRegistrationFile;
-import com.fincity.security.dto.AppRegistrationIntegration;
-import com.fincity.security.dto.AppRegistrationIntegrationScope;
-import com.fincity.security.dto.AppRegistrationPackage;
-import com.fincity.security.dto.AppRegistrationRole;
-import com.fincity.security.model.AppRegistrationQuery;
-import com.fincity.security.service.appregistration.AppRegistrationService;
-
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -163,64 +158,4 @@ public class AppRegistrationController {
     public Mono<ResponseEntity<Boolean>> deleteRole(@PathVariable("id") ULong id) {
         return service.deleteRole(id).map(ResponseEntity::ok);
     }
-
-    @PostMapping("/{appCode}/integration")
-    public Mono<ResponseEntity<AppRegistrationIntegration>> createRegIntegration(
-            @PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationIntegration regPackage) {
-        return service.createRegIntegration(appCode, regPackage).map(ResponseEntity::ok);
-    }
-
-    @PostMapping("/{appCode}/integration/query")
-    public Mono<ResponseEntity<Page<AppRegistrationIntegration>>> getIntegration(
-            @PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationQuery query) {
-
-        Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
-
-        return service.getIntegration(appCode, query.getClientId(), query.getClientCode(), pageable)
-                .map(ResponseEntity::ok);
-    }
-
-    @GetMapping("/integration/{id}")
-    public Mono<ResponseEntity<AppRegistrationIntegration>> getRegIntegrationById(@PathVariable("id") ULong id) {
-        return service.getRegIntegrationById(id).map(ResponseEntity::ok);
-    }
-
-    @DeleteMapping("/integration/{id}")
-    public Mono<ResponseEntity<Boolean>> deleteRegIntegration(@PathVariable("id") ULong id) {
-        return service.deleteRegIntegration(id).map(ResponseEntity::ok);
-    }
-
-    @PostMapping("/{appCode}/integration-scope")
-    public Mono<ResponseEntity<AppRegistrationIntegrationScope>> createRegIntegrationScope(
-            @PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationIntegrationScope regPackage) {
-        return service.createRegIntegrationScope(appCode, regPackage).map(ResponseEntity::ok);
-    }
-
-    @GetMapping("/integration-scope/{id}")
-    public Mono<ResponseEntity<AppRegistrationIntegrationScope>> getRegIntegrationScopeById(
-            @PathVariable("id") ULong id) {
-        return service.getRegIntegrationScopeById(id).map(ResponseEntity::ok);
-    }
-
-    @PostMapping("/{appCode}/integration-scope/query")
-    public Mono<ResponseEntity<Page<AppRegistrationIntegrationScope>>> getIntegrationScope(
-            @PathVariable("appCode") String appCode,
-            @RequestBody AppRegistrationQuery query) {
-
-        Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
-
-        return service
-                .getIntegrationScope(appCode, query.getClientId(), query.getClientCode(), query.getIntegrationId(),
-                        pageable)
-                .map(ResponseEntity::ok);
-    }
-
-    @DeleteMapping("/integration-scope/{id}")
-    public Mono<ResponseEntity<Boolean>> deleteRegIntegrationScope(@PathVariable("id") ULong id) {
-        return service.deleteRegIntegrationScope(id).map(ResponseEntity::ok);
-    }
-
 }
