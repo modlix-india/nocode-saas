@@ -4,12 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -77,8 +76,8 @@ public class IndexHTMLService {
 	@Value("${ui.cdnHostName:}")
 	private String cdnHostName;
 
-	private ApplicationService appService;
-	private CacheService cacheService;
+	private final ApplicationService appService;
+	private final CacheService cacheService;
 
 	public IndexHTMLService(ApplicationService appService, CacheService cacheService) {
 
@@ -96,6 +95,7 @@ public class IndexHTMLService {
 								() -> appService.read(appCode, appCode, clientCode),
 
 								app -> this.indexFromApp(app.getObject(), appCode, clientCode))
+
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
 
 				clientCode);
@@ -135,7 +135,8 @@ public class IndexHTMLService {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode, String clientCode) {
+	private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode,
+			String clientCode) {
 
 		Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
