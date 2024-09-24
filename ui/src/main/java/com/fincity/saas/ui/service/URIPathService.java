@@ -60,6 +60,11 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	}
 
 	@Override
+	protected String getCollectionName() {
+		return "uri_path";
+	}
+
+	@Override
 	public String getCacheName(String appCode, String cacheAction) {
 		return super.getCacheName(appCode + "_" + CACHE_NAME_URI, appCode) + cacheAction;
 	}
