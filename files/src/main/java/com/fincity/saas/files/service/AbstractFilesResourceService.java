@@ -1030,7 +1030,7 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	private Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
+	protected Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
 
 		String path = uri.substring(uri.indexOf(part) + part.length(), uri.length() - (uri.endsWith("/") ? 1 : 0));
 		String origPath = path;

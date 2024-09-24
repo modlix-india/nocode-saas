@@ -90,7 +90,7 @@ public class FilesAccessPath extends TableImpl<FilesAccessPathRecord> {
      * The column <code>files.files_access_path.PATH</code>. Path to the
      * resource
      */
-    public final TableField<FilesAccessPathRecord, String> PATH = createField(DSL.name("PATH"), SQLDataType.VARCHAR(1024).nullable(false), this, "Path to the resource");
+    public final TableField<FilesAccessPathRecord, String> PATH = createField(DSL.name("PATH"), SQLDataType.VARCHAR(1024).nullable(false).defaultValue(DSL.inline("", SQLDataType.VARCHAR)), this, "Path to the resource");
 
     /**
      * The column <code>files.files_access_path.ALLOW_SUB_PATH_ACCESS</code>.
