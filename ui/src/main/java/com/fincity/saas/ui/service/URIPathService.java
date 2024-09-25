@@ -78,7 +78,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				valid -> super.update(entity),
 
-				(valid, updatable) -> cacheService.evict(CACHE_NAME,
+				(valid, updatable) -> cacheService.evict(CACHE_NAME_PATTERN,
 						updatable.getAppCode(), "-", updatable.getClientCode())
 						.thenReturn(updatable)
 
@@ -94,7 +94,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				uriPath -> super.delete(id),
 
-				(uriPath, deleted) -> cacheService.evict(CACHE_NAME,
+				(uriPath, deleted) -> cacheService.evict(CACHE_NAME_PATTERN,
 						uriPath.getAppCode(), "-", uriPath.getClientCode())
 						.thenReturn(deleted)
 
@@ -123,7 +123,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				(pEntity, valid) -> super.create(pEntity),
 
-				(pEntity, valid, created) -> cacheService.evict(CACHE_NAME,
+				(pEntity, valid, created) -> cacheService.evict(CACHE_NAME_PATTERN,
 						created.getAppCode(), "-", created.getClientCode())
 						.thenReturn(created)
 
