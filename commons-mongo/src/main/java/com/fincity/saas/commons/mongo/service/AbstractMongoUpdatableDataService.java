@@ -27,6 +27,8 @@ public abstract class AbstractMongoUpdatableDataService<I extends Serializable, 
 							&& entity instanceof AbstractOverridableDTO<?> evd) {
 						ovd.setTitle(evd.getTitle());
 						ovd.setDescription(evd.getDescription());
+						ovd.setPermission(evd.getPermission());
+						ovd.setMessage(evd.getMessage());
 					}
 
 					return ue;
