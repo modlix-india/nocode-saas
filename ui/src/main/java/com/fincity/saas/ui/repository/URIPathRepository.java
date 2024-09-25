@@ -11,8 +11,7 @@ public interface URIPathRepository extends IOverridableDataRepository<URIPath> {
 
 	@Aggregation(pipeline = {
 			"{ $match: { 'appCode': ?0, 'clientCode': ?1 } }",
-			"{ $group: { _id: null, names: { $push: '$name' } } }",
-			"{ $project: { _id: 0, names: 1 } }"
+			"{ $project: { _id: 0, name: 1 } }"
 	})
 	Flux<String> findAllNamesByAppCodeAndClientCode(String appCode, String clientCode);
 }
