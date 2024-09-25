@@ -1,7 +1,7 @@
 package com.fincity.security.service.appregistration;
 
-import static com.fincity.saas.commons.util.CommonsUtil.nonNullValue;
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+import static com.fincity.saas.commons.util.CommonsUtil.*;
+import static com.fincity.saas.commons.util.StringUtil.*;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -38,7 +38,6 @@ import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.UserService;
 import com.fincity.security.util.PasswordUtil;
-import java.time.LocalDateTime;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,7 +65,6 @@ public class ClientRegistrationService {
     private final AppRegistrationDAO appRegistrationDAO;
     private final IFeignFilesService filesService;
     private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
-    private final AppRegistrationIntegrationService appRegistrationIntegrationService;
 
     private final SecurityMessageResourceService securityMessageResourceService;
 
@@ -80,8 +78,7 @@ public class ClientRegistrationService {
             AuthenticationService authenticationService, CodeAccessDAO codeAccessDAO,
             ClientService clientService, EventCreationService ecService, ClientUrlService clientUrlService,
             AppRegistrationDAO appRegistrationDAO, IFeignFilesService filesService,
-            AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
-            AppRegistrationIntegrationService appRegistrationIntegrationService) {
+            AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
         this.dao = dao;
         this.appService = appService;
         this.userService = userService;
@@ -93,7 +90,6 @@ public class ClientRegistrationService {
         this.appRegistrationDAO = appRegistrationDAO;
         this.filesService = filesService;
         this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
-        this.appRegistrationIntegrationService = appRegistrationIntegrationService;
         this.securityMessageResourceService = securityMessageResourceService;
     }
 
@@ -384,7 +380,8 @@ public class ClientRegistrationService {
 
                 (tup, prop, client, userTuple) -> {
 
-                    if (!StringUtil.safeIsBlank(registrationRequest.getPassword())) {
+                    if (!StringUtil.safeIsBlank(registrationRequest.getPassword()) || 
+                        !StringUtil.safeIsBlank(registrationRequest.getSocialToken())) {
 
                         return this.userService.makeOneTimeToken(request, tup.getT2(),
                                 userTuple.getT1(),
@@ -413,10 +410,10 @@ public class ClientRegistrationService {
                                         "urlPrefix", urlPrefix, "token", token,
                                         "passwordUsed", userTuple.getT2()))))
                         .flatMap(e -> {
-                            if ((AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop)
-                                    && !StringUtil.safeIsBlank(registrationRequest
-                                            .getPassword()))
-                                    || prop.endsWith("_LOGIN_IMMEDIATE")) {
+                            if (StringUtil.safeIsBlank(registrationRequest.getSocialRefreshToken()) && 
+                                ((AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop) && 
+                                !StringUtil.safeIsBlank(registrationRequest.getPassword())) || 
+                                prop.endsWith("_LOGIN_IMMEDIATE"))) {
 
                                 return this.authenticationService.authenticate(
                                         new AuthenticationRequest().setUserName(
@@ -427,6 +424,20 @@ public class ClientRegistrationService {
                                                                 .getEmailId()))
                                                 .setPassword(registrationRequest
                                                         .getPassword()),
+                                        request, response)
+                                        .map(x -> new ClientRegistrationResponse(
+                                                true,
+                                                userTuple.getT1()
+                                                        .getId(),
+                                                "", x));
+                            } else if(!StringUtil.safeIsBlank(registrationRequest.getSocialToken())){
+                                return this.authenticationService.authenticateWSocial(
+                                        new AuthenticationRequest().setUserName(
+                                                CommonsUtil.nonNullValue(
+                                                        registrationRequest
+                                                                .getUserName(),
+                                                        registrationRequest
+                                                                .getEmailId())),
                                         request, response)
                                         .map(x -> new ClientRegistrationResponse(
                                                 true,
@@ -474,16 +485,15 @@ public class ClientRegistrationService {
 
                 () -> this.register(registrationRequest, request, response),
 
-                res -> this.appRegistrationIntegrationService.getIntegrationId(),
-
-                (res, integrationId) -> this.appRegistrationIntegrationTokenService.create(
+                res -> this.appRegistrationIntegrationTokenService.create(
                         (AppRegistrationIntegrationToken) new AppRegistrationIntegrationToken()
-                                .setIntegrationId(integrationId)
+                                .setIntegrationId(registrationRequest.getSocialIntegrationId())
                                 .setToken(registrationRequest.getSocialToken())
                                 .setRefreshToken(registrationRequest.getSocialRefreshToken())
+                                .setExpiresAt(registrationRequest.getSocialTokenExpiresAt())
                                 .setCreatedBy(res.getUserId())),
 
-                (res, integrationId, token) -> Mono.just(res))
+                (res, token) -> Mono.just(res))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
 
     }
@@ -606,11 +616,13 @@ public class ClientRegistrationService {
 
                 app -> {
 
-                    if (regType.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE) || regType
-                            .equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
-                            || regType.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST)
+                    if (StringUtil.safeIsBlank(request.getSocialToken())
+                            && (regType.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
+                                    || regType
+                                            .equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
+                                    || regType.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST)
                             || regType.equals(
-                                    AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE))
+                                    AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE)))
 
                         return this.codeAccessDAO
                                 .checkClientAccessCode(app.getId(), ULongUtil

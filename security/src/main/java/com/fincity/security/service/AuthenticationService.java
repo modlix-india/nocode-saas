@@ -177,8 +177,7 @@ public class AuthenticationService implements IAuthenticationService {
 				.switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
-	public Mono<AuthenticationResponse> authenticateWSocial(AuthenticationRequest authRequest,
-			ServerHttpRequest request,
+	public Mono<AuthenticationResponse> authenticateWSocial(AuthenticationRequest authRequest, ServerHttpRequest request,
 			ServerHttpResponse response) {
 
 		String appCode = request.getHeaders().getFirst("appCode");
@@ -195,8 +194,7 @@ public class AuthenticationService implements IAuthenticationService {
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
-						appCode,
-						authRequest.getIdentifierType(), true),
+						appCode,authRequest.getIdentifierType(), true),
 				tup -> {
 					String linClientCode = tup.getT1().getCode();
 					return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode)
@@ -207,13 +205,14 @@ public class AuthenticationService implements IAuthenticationService {
 
 					User user = tup.getT3();
 
-					this.integrationTokenDao.create(new AppRegistrationIntegrationToken()
-							.setClientId(tup.getT2().getId())
-							.setUserId(user.getId())
+					this.integrationTokenDao.create((AppRegistrationIntegrationToken) new AppRegistrationIntegrationToken()
 							.setIntegrationId(authRequest.getSocialIntegrationId())
 							.setToken(authRequest.getSocialToken())
 							.setRefreshToken(authRequest.getSocialRefreshToken())
-							.setExpiresAt(LocalDateTime.now().plusDays(30)));
+							.setExpiresAt(authRequest.getSocialTokenExpiresAt())
+							.setCreatedBy(user.getId())
+							.setCreatedAt(LocalDateTime.now())
+							);
 
 					soxLogService
 							.create(new SoxLog().setObjectId(user.getId()).setActionName(SecuritySoxLogActionName.LOGIN)
