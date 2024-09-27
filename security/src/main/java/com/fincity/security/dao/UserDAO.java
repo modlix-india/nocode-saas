@@ -1,6 +1,7 @@
 package com.fincity.security.dao;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
@@ -12,6 +13,7 @@ import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
+import static com.fincity.security.jooq.tables.SecurityUserToken.SECURITY_USER_TOKEN;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import org.springframework.stereotype.Component;
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -708,4 +711,22 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(rowsInserted -> rowsInserted > 0);
 	}	
 
+	public Mono<Boolean> validateRegisteredUserAndMakeActive(String emailId, String token) {
+
+		return Mono.from(this.dslContext.select(SECURITY_USER.fields()).from(SECURITY_USER)
+			.leftJoin(SECURITY_USER_TOKEN).on(SECURITY_USER.ID.eq(SECURITY_USER_TOKEN.USER_ID))
+			.where(SECURITY_USER.EMAIL_ID.eq(emailId))
+			.and(SECURITY_USER_TOKEN.TOKEN.eq(token))
+			.limit(1))
+			.map(e -> e.into(User.class))
+			.flatMap(user -> BooleanUtil.safeValueOfWithEmpty(user.getCreatedAt().equals(user.getUpdatedAt())))
+			.flatMap(validUser -> {
+				return  Mono.from(this.dslContext.update(SECURITY_USER)
+							.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+							.where(SECURITY_USER.EMAIL_ID.eq(emailId)))
+							.map(e -> e > 0);
+			})
+			.switchIfEmpty(Mono.just(false));
+
+	}
 }

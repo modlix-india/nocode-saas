@@ -1,7 +1,6 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
@@ -9,7 +8,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -838,6 +836,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				(levelType, roles, addedRoles) -> Mono.just(true)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
+	}
+
+	public Mono<Boolean> makeRegisteredUserActive(String emailId, String token) {
+		return this.dao.validateRegisteredUserAndMakeActive(emailId, token);
 	}
 
 	
