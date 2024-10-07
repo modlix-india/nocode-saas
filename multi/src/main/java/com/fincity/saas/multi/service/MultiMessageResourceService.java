@@ -12,6 +12,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 public class MultiMessageResourceService extends AbstractMessageService {
 
 	public static final String FORBIDDEN_CREATE = "forbidden_create";
+	public static final String MULTI_TRANSPORT_ERROR = "multi_transport_error";
 
 	public MultiMessageResourceService() {
 

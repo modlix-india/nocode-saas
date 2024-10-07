@@ -29,7 +29,7 @@ spring:
         - id: multi
           uri: lb://multi
           predicates:
-            - Path=/api/multi/**, /*/api/multi/**, /*/*/api/multi/**, /*/*/*/api/multi/**, /*/*/*/*/api/multi/**, /*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/api/multi/**,
+            - Path=/api/multi/**, /*/api/multi/**, /*/*/api/multi/**, /*/*/*/api/multi/**, /*/*/*/*/api/multi/**, /*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/*/api/multi/**,
 
 management:
   endpoint:

@@ -1675,7 +1675,49 @@ use files;
 ALTER TABLE `files`.`files_access_path` 
 CHANGE COLUMN `PATH` `PATH` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT 'Path to the resource' ;
 
+-- V24__Update Packages and Roles Constraints
 
+use security;
+
+ALTER TABLE `security`.`security_package` DROP CONSTRAINT `UK2_PACKAGE_NAME`;
+
+ALTER TABLE `security`.`security_package` ADD CONSTRAINT `UK2_PACKAGE_NAME_APP_ID` UNIQUE (`NAME`, `APP_ID`);
+
+ALTER TABLE `security`.`security_role` DROP CONSTRAINT `UK1_ROLE_NAME`;
+
+ALTER TABLE `security`.`security_role` ADD CONSTRAINT  `UK1_ROLE_NAME_APP_ID` UNIQUE (`NAME`, `APP_ID`);
+
+-- V2__secured asset key.sql
+CREATE TABLE `files_secured_access_key` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `path` varchar(1024) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Path which needs to be secured.',
+    `access_key` char(16) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Key used for securing the file.',
+    `access_till` timestamp NOT NULL COMMENT 'Time which the path can be accessed',
+    `access_limit` bigint unsigned DEFAULT NULL COMMENT 'Maximum times in which the file can be accessed',
+    `accessed_count` bigint unsigned NOT NULL DEFAULT '0' COMMENT 'Tracks count of file accessed',
+    `created_by` bigint unsigned DEFAULT NULL COMMENT 'User id who created this row.',
+    `created_at` timestamp NULL DEFAULT NULL COMMENT 'Time at which this row was created',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `access_key_UNIQUE` (`access_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- V4__Secured Asset Key.sql
+DROP TABLE IF EXISTS files.`files_secured_access_key`;
+
+CREATE TABLE files.`files_secured_access_keys`(
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `PATH` VARCHAR(1024) COLLATE `utf8mb4_unicode_ci` NOT NULL COMMENT 'Path which needs to be secured.',
+    `ACCESS_KEY` CHAR(13) COLLATE `utf8mb4_unicode_ci` NOT NULL COMMENT 'Key used for securing the file.',
+    `ACCESS_TILL` TIMESTAMP NOT NULL COMMENT 'Time which the path can be accessed',
+    `ACCESS_LIMIT` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Maximum times in which the file can be accessed',
+    `ACCESSED_COUNT` BIGINT UNSIGNED NOT NULL DEFAULT '0' COMMENT 'Tracks count of file accessed',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_ACCESS_KEY` (`ACCESS_KEY`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
 
 -- Add scripts from the project above this line and seed data below this line.
 

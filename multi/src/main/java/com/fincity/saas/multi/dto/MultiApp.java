@@ -6,8 +6,10 @@ import java.util.Map;
 import org.jooq.types.ULong;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 @Data
+@Accessors(chain = true)
 public class MultiApp implements Serializable {
 
     private static final long serialVersionUID = 0x09876567876acd876L;
@@ -21,5 +23,6 @@ public class MultiApp implements Serializable {
     private String appType;
 
     private Map<String, Object> transportDefinition; // NOSONAR
+    private String encodedModl;
     private String transportDefinitionURL;
 }

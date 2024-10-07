@@ -23,10 +23,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.net.URI;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -46,7 +49,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -132,7 +134,7 @@ public abstract class AbstractFilesResourceService {
 	private static final Map<String, Comparator<File>> COMPARATORS = new HashMap<>(Map.of(
 
 			"TYPE",
-			Comparator.<File, String>comparing(e -> e.isDirectory() ? " " : FileExtensionUtil.get(e.getName()),
+			Comparator.<File, String>comparing(e -> e.isDirectory() ? " " : FileExtensionUtil.getExtension(e.getName()),
 					String.CASE_INSENSITIVE_ORDER),
 
 			"SIZE", Comparator.comparingLong(File::length),
@@ -160,8 +162,7 @@ public abstract class AbstractFilesResourceService {
 					Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath);
 
 					if (!Files.exists(path))
-						this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								FilesMessageResourceService.PATH_NOT_FOUND, resourcePath);
+						return Mono.just(List.of());
 
 					if (!Files.isDirectory(path))
 						return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -509,45 +510,30 @@ public abstract class AbstractFilesResourceService {
 
 	private Path makeArchive(Path file) throws IOException {
 
-		Path tmpDir = Files.createTempDirectory("tmp");
-
-		File tmp = new File(tmpDir.toFile(), file.toFile()
-		        .getName());
-
-		try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(tmp))) {
-			this.zipFile(file.toFile(), tmp.getName(), zipOut);
+		Path tmpFolder = Files.createTempDirectory("tmp");
+		Path tmpFile = tmpFolder.resolve("directory.zip");
+		try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + tmpFile.toUri().toString()),
+				Map.of("create", "true"));) {
+			Files.walk(file)
+					.forEach(e -> {
+						try {
+							System.out.println("Copying file " + e);
+							if (Files.isDirectory(e)) {
+								Files.createDirectories(fs.getPath("/" + file.relativize(e)
+										.toString()));
+								return;
+							}
+							if (Files.isHidden(e))
+								return;
+							Files.copy(e, fs.getPath("/" + file.relativize(e)
+									.toString()), StandardCopyOption.REPLACE_EXISTING);
+						} catch (IOException ex) {
+							logger.debug("Unable to copy file {} to zip file", e, ex);
+						}
+					});
 		}
 
-		return tmp.toPath();
-	}
-
-	private void zipFile(File fileToZip, String fileName, ZipOutputStream zipOut) throws IOException {
-		if (fileToZip.isHidden()) {
-			return;
-		}
-		if (fileToZip.isDirectory()) {
-			if (fileName.endsWith("/")) {
-				zipOut.putNextEntry(new ZipEntry(fileName));
-				zipOut.closeEntry();
-			} else {
-				zipOut.putNextEntry(new ZipEntry(fileName + "/"));
-				zipOut.closeEntry();
-			}
-			File[] children = fileToZip.listFiles();
-			for (File childFile : children) {
-				zipFile(childFile, fileName + "/" + childFile.getName(), zipOut);
-			}
-			return;
-		}
-		try (FileInputStream fis = new FileInputStream(fileToZip)) {
-			ZipEntry zipEntry = new ZipEntry(fileName);
-			zipOut.putNextEntry(zipEntry);
-			byte[] bytes = new byte[1024];
-			int length;
-			while ((length = fis.read(bytes)) >= 0) {
-				zipOut.write(bytes, 0, length);
-			}
-		}
+		return tmpFile;
 	}
 
 	private Mono<Void> sendFileWhenRanges(DownloadOptions downloadOptions, ServerHttpRequest request,
@@ -742,10 +728,12 @@ public abstract class AbstractFilesResourceService {
 						return Mono.just(
 								this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, file.toFile()));
 
+					String fn = fileName == null ? fp.filename()
+							: FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName);
 					return FlatMapUtil
-							.flatMapMonoWithNull(() -> fp.transferTo(file.resolve(fp.filename())),
+							.flatMapMonoWithNull(() -> fp.transferTo(file.resolve(fn)),
 									x -> Mono.just(this.convertToFileDetailWhileCreation(urlResourcePath, clientCode,
-											file.toFile())))
+											file.resolve(fn).toFile())))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
@@ -1064,7 +1052,7 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	private Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
+	protected Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
 
 		String path = uri.substring(uri.indexOf(part) + part.length(), uri.length() - (uri.endsWith("/") ? 1 : 0));
 		String origPath = path;

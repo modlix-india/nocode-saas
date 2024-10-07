@@ -13,7 +13,6 @@ import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_R
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -438,7 +437,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
 		var query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
-				onlyActiveUsers, SECURITY_USER.fields());
+				onlyActiveUsers, SECURITY_USER.fields());	
 
 		var limitQuery = query.limit(2);
 
@@ -463,10 +462,13 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		List<Condition> conditions = new ArrayList<>();
 
 		conditions.add(userIdentificationField.eq(userName));
-		if (onlyActiveUsers)
+		if (onlyActiveUsers) {
 			conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
-		else
+			conditions.add(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE));
+		} else {
 			conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+			conditions.add(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED));
+		}
 
 		if (userId != null)
 			conditions.add(SECURITY_USER.ID.eq(userId));
@@ -497,6 +499,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		var outQuery = this.dslContext.selectDistinct(SECURITY_USER.ID)
 				.from(SECURITY_USER)
+				.leftJoin(SECURITY_CLIENT)
+				.on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
 				.leftJoin(SECURITY_APP_ACCESS)
 				.on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
 				.leftJoin(SECURITY_APP)
@@ -526,6 +530,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		SelectOnConditionStep<Record1<ULong>> query = this.dslContext.select(SECURITY_USER.ID)
 				.from(SECURITY_USER)
 
+				.leftJoin(SECURITY_CLIENT)
+				.on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
+
 				.leftJoin(accAA)
 				.on(accAA.field(CLIENT_ID, ULong.class)
 						.eq(SECURITY_USER.CLIENT_ID))
@@ -553,15 +560,24 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
 
-	public Mono<Boolean> makeUserActiveIfInActive(BigInteger id) {
-
-		ULong uid = ULong.valueOf(id);
+	public Mono<Boolean> makeUserActiveIfInActive(ULong uid) {
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
-				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-				.where(SECURITY_USER.ID.eq(uid)
-						.and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
-				.map(e -> e > 0);
+		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+		        .where(SECURITY_USER.ID.eq(uid)
+		                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
+		        .map(e -> e > 0);
+
+	}
+
+	public Mono<Boolean> makeUserInActive(ULong id) {
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.INACTIVE)
+		        .where(SECURITY_USER.ID.eq(id)
+		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+		        .map(e -> e > 0);
+
 	}
 
 	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
@@ -672,5 +688,24 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.collectList();
 
 	}
+
+	public Mono<Boolean> copyRolesNPermissionsFromUser(ULong userId, ULong referenceUserId) {
+
+		return Mono.from(
+				this.dslContext
+						.insertInto(SECURITY_USER_ROLE_PERMISSION,
+								SECURITY_USER_ROLE_PERMISSION.USER_ID,
+								SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
+								SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+						.select(
+								this.dslContext.select(
+										DSL.val(userId),
+										SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
+										SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
+										.from(SECURITY_USER_ROLE_PERMISSION)
+										.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(referenceUserId)))
+						.onDuplicateKeyIgnore())
+				.map(rowsInserted -> rowsInserted > 0);
+	}	
 
 }

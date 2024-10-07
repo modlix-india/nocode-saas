@@ -91,6 +91,11 @@ public class PackageService extends
 						return super.create(entity);
 					}
 
+					if (entity.getAppId() == null)
+						return this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
+										
 					entity.setBase(false);
 
 					ULong userClientId = ULongUtil.valueOf(ca.getUser()

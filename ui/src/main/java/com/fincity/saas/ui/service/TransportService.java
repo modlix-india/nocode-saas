@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.mongo.service.AbstractTransportService;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 
 @Service
 public class TransportService extends AbstractTransportService {
@@ -32,14 +33,26 @@ public class TransportService extends AbstractTransportService {
 	@Autowired
 	private UIFillerService fillerService;
 
+	@Autowired
+	private URIPathService uriPathService;
+
+	public TransportService(IFeignSecurityService feignSecurityService) {
+		super(feignSecurityService);
+	}
+
 	@SuppressWarnings("rawtypes")
 	@Override
 	public List<AbstractOverridableDataService> getServieMap() {
-		return List.of(appService, pageService, styleService, themeService, funService, schemaService, fillerService);
+		return List.of(appService, pageService, styleService, themeService, funService, schemaService, fillerService, uriPathService);
 	}
 
 	@Override
 	protected String getTransportType() {
 		return "ui";
+	}
+
+	@Override
+	protected String getExtension() {
+		return "umodl";
 	}
 }

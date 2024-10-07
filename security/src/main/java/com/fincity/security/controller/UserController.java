@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
@@ -83,9 +84,15 @@ public class UserController
 	}
 
 	@GetMapping("/makeUserActive")
-	public Mono<ResponseEntity<Boolean>> makeUserActive() {
-		return this.service.makeUserActive()
-				.map(ResponseEntity::ok);
+	public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
+		return this.service.makeUserActive(userId)
+		        .map(ResponseEntity::ok);
+	}
+	
+	@GetMapping("/makeUserInActive")
+	public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
+		return this.service.makeUserInActive(userId)
+		        .map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/availablePermissions/{userId}")
@@ -117,5 +124,12 @@ public class UserController
 
 		return this.userService.resetPasswordRequest(authRequest, request)
 				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/copy/authorities")
+	public Mono<ResponseEntity<Boolean>> copyUserAccess(@RequestParam ULong userId,
+			@RequestParam ULong referenceUserId) {
+
+		return this.userService.copyUserRolesNPermissions(userId, referenceUserId).map(ResponseEntity::ok);
 	}
 }
