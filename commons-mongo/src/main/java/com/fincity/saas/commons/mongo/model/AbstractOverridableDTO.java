@@ -84,4 +84,8 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
 
 		this.notOverridable = obj.getNotOverridable();
 	}
+
+	public String getTransportName() {
+		return this.name;
+	}
 }
