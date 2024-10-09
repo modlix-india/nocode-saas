@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
@@ -100,6 +101,7 @@ public class PathDefinition implements Serializable, IDifferentiable<PathDefinit
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "PathDefinition.applyOverride"));
 	}
 
+	@JsonIgnore
 	public boolean isValidType() {
 
 		if (this.uriType == null) {

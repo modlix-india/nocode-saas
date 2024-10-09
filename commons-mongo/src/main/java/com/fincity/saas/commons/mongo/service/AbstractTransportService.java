@@ -392,7 +392,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                 .readForTransport(request.getAppCode(), request.getClientCode(), list)
                 .map(e -> {
                     try {
-                        Files.write(dirPath.resolve(e.getName() + ".json"), this.objectMapper
+                        Files.write(dirPath.resolve(e.getTransportName() + ".json"), this.objectMapper
                                 .writeValueAsBytes(e));
                     } catch (Exception ex) {
                         throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
