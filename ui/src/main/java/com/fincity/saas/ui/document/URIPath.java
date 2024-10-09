@@ -95,4 +95,8 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));
 	}
 
+	@Override
+	public String getTransportName() {
+		return this.getId();
+	}
 }
