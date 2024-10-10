@@ -41,6 +41,7 @@ public class AppRegistrationIntegrationService
     private static final String INTG_SECRET = "intgSecret";
 
     private static final String CACHE_NAME_INTEGRATION_ID = "integrationId";
+    private static final String CACHE_NAME_INTEGRATION_PLATFORM = "integrationPlatform";
 
     private final AppService appService;
     private final CacheService cacheService;
@@ -141,11 +142,11 @@ public class AppRegistrationIntegrationService
             
             ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-            (ca, app) ->  this.dao.getIntegration(app.getId(), ULong.valueOf(ca.getLoggedInFromClientId()), platform)
-        
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationIntegrationService.getIntegration"));
-   
-    }
+			(ca, app) -> this.cacheService.cacheValueOrGet(CACHE_NAME_INTEGRATION_PLATFORM,
+					() -> this.dao.getIntegration(app.getId(), ULong.valueOf(ca.getLoggedInFromClientId()), platform),
+					app.getId(), "-", ca.getLoggedInFromClientId(), "-", platform)
+			).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationIntegrationService.getIntegration"));
+	}
 
 	public Mono<String> redirectToGoogleAuthConsent(AppRegistrationIntegration appRegIntg, String state,
 			String callBackURL) {
