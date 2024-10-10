@@ -15,8 +15,6 @@ import org.springframework.util.PathMatcher;
 import org.springframework.web.util.pattern.PathPattern;
 import org.springframework.web.util.pattern.PathPatternParser;
 
-import com.fincity.nocode.kirun.engine.function.system.GenerateEvent;
-import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
@@ -48,8 +46,6 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	private static final String CACHE_NAME_URI = "URICache";
 
 	private static final String CACHE_NAME_PATTERN = "URIPatternCache";
-
-	private static final String RESULTS = "results";
 
 	private final IFeignCoreService iFeignCoreService;
 
@@ -310,14 +306,16 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				},
 				responseString -> {
 
-					if (StringUtil.safeIsBlank(responseString) || StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
+					if (StringUtil.safeIsBlank(responseString)
+							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
 							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName())) {
 						return Mono.just(responseString);
 					}
 
 					JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
 
-					return extractOutputEvent(response, kiRunFxDef.getOutputEventName(), kiRunFxDef.getOutputEventParamName());
+					return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
+							kiRunFxDef.getOutputEventParamName());
 				});
 	}
 
