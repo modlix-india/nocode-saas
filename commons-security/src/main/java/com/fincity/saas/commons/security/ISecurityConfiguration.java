@@ -9,8 +9,9 @@ import org.springframework.security.config.web.server.ServerHttpSecurity.Authori
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
+import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.server.ServerWebExchange;
 
@@ -23,6 +24,13 @@ import reactor.core.publisher.Mono;
 public interface ISecurityConfiguration {
 	default SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
 			IAuthenticationService authService, ObjectMapper om, String... exclusionList) {
+
+		return this.springSecurityFilterChain(http, authService, om, (ServerWebExchangeMatcher) null, exclusionList);
+	}
+
+	default SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
+			IAuthenticationService authService, ObjectMapper om, ServerWebExchangeMatcher matcher,
+			String... exclusionList) {
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		CorsConfiguration config = new CorsConfiguration();
@@ -46,7 +54,15 @@ public interface ISecurityConfiguration {
 			permits = permits.pathMatchers(exclusionList)
 					.permitAll();
 
-		permits.anyExchange()
+		if (matcher != null)
+			permits.matchers(matcher)
+					.permitAll()
+					.and()
+					.headers()
+					.frameOptions().mode(XFrameOptionsServerHttpHeadersWriter.Mode.SAMEORIGIN)
+					.contentSecurityPolicy("frame-ancestors 'self'");
+
+		ServerHttpSecurity security = permits.anyExchange()
 				.authenticated()
 				.and()
 				.addFilterAt(new JWTTokenFilter(authService, om), SecurityWebFiltersOrder.HTTP_BASIC)
@@ -62,11 +78,13 @@ public interface ISecurityConfiguration {
 						});
 					}
 				})
-				.and()
-				.formLogin()
+				.and();
+
+		security.formLogin()
 				.disable()
 				.logout()
 				.disable();
+
 		return http.build();
 	}
 }

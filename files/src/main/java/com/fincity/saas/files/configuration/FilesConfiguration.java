@@ -8,11 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
 import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
@@ -27,7 +24,8 @@ import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
 @Configuration
-public class FilesConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
+public class FilesConfiguration extends AbstractJooqBaseConfiguration
+		implements ISecurityConfiguration {
 
 	@Override
 	@PostConstruct
@@ -44,28 +42,17 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 	}
 
 	@Bean
-	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService, this.objectMapper,
-
-				"/api/files/static/file/**",
-				"/api/files/internal/**");
-	}
-
-	@Bean
-	@Order(value = Ordered.HIGHEST_PRECEDENCE)
-	SecurityWebFilterChain securedAndStaticHeadersFilterChain(ServerHttpSecurity http) {
-
+	SecurityWebFilterChain filterChain(ServerHttpSecurity http,
+			FeignAuthenticationService authService) {
 		ServerWebExchangeMatcher matcher = new OrServerWebExchangeMatcher(
 				new PathPatternParserServerWebExchangeMatcher("/api/files/static/file/**"),
 				new PathPatternParserServerWebExchangeMatcher("/api/files/secured/file/**"),
-				new PathPatternParserServerWebExchangeMatcher("/api/files/secured/downloadFileByKey/*"));
+				new PathPatternParserServerWebExchangeMatcher(
+						"/api/files/secured/downloadFileByKey/*"));
 
-		return http
-				.securityMatcher(matcher)
-				.headers()
-				.frameOptions().mode(XFrameOptionsServerHttpHeadersWriter.Mode.SAMEORIGIN)
-				.contentSecurityPolicy("frame-ancestors 'self'")
-				.and().and().build();
+		return this.springSecurityFilterChain(http, authService, this.objectMapper, matcher,
+
+				"/api/files/static/file/**", "/api/files/internal/**");
 	}
 
 	@Bean
@@ -75,8 +62,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
 				String key = ctxView.get(LogUtil.DEBUG_KEY);
 
-				request.headers()
-						.put(LogUtil.DEBUG_KEY, List.of(key));
+				request.headers().put(LogUtil.DEBUG_KEY, List.of(key));
 			}
 
 			return Mono.just(request);
