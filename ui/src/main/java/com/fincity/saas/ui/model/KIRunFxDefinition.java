@@ -3,7 +3,6 @@ package com.fincity.saas.ui.model;
 import java.io.Serializable;
 import java.util.Map;
 
-import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
