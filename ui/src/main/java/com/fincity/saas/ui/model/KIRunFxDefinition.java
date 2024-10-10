@@ -27,6 +27,9 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 	private Map<String, String> pathParamMapping;
 	private Map<String, String> queryParamMapping;
 
+	private String outputEventName;
+	private String outputEventParamName;
+
 	public KIRunFxDefinition(KIRunFxDefinition kinRunFxDefinition) {
 		this.name = kinRunFxDefinition.name;
 		this.namespace = kinRunFxDefinition.namespace;
@@ -34,6 +37,8 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 		this.headersMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.headersMapping);
 		this.pathParamMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.pathParamMapping);
 		this.queryParamMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.queryParamMapping);
+		this.outputEventName = kinRunFxDefinition.outputEventName;
+		this.outputEventParamName = kinRunFxDefinition.outputEventParamName;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -58,6 +63,10 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 						diff.setNamespace(this.namespace);
 					if (!this.functionAppCode.equals(inc.functionAppCode))
 						diff.setFunctionAppCode(this.functionAppCode);
+					if (!this.outputEventName.equals(inc.outputEventName))
+						diff.setOutputEventName(this.outputEventName);
+					if (!this.outputEventParamName.equals(inc.outputEventParamName))
+						diff.setOutputEventParamName(this.outputEventParamName);
 
 					return Mono.just(diff);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.extractDifference"));
@@ -84,6 +93,8 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 						this.setNamespace(override.getNamespace());
 					if (override.getFunctionAppCode() != null)
 						this.setFunctionAppCode(override.getFunctionAppCode());
+					if (override.getOutputEventParamName() != null)
+						this.setOutputEventParamName(override.getOutputEventParamName());
 
 					return Mono.just(this);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.applyOverride"));
