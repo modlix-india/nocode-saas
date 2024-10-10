@@ -1,7 +1,17 @@
 package com.fincity.security.controller;
 
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.security.dao.ClientDAO;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.CodeAccess;
+import com.fincity.security.dto.Package;
+import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
+import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.model.ClientRegistrationRequest;
+import com.fincity.security.model.ClientRegistrationResponse;
+import com.fincity.security.service.ClientService;
+import com.fincity.security.service.appregistration.ClientRegistrationService;
 import java.util.List;
-
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,18 +25,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.security.dao.ClientDAO;
-import com.fincity.security.dto.Client;
-import com.fincity.security.dto.CodeAccess;
-import com.fincity.security.dto.Package;
-import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.model.ClientRegistrationRequest;
-import com.fincity.security.model.ClientRegistrationResponse;
-import com.fincity.security.service.ClientService;
-import com.fincity.security.service.appregistration.ClientRegistrationService;
-
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -126,8 +124,21 @@ public class ClientController
 	public Mono<ResponseEntity<ClientRegistrationResponse>> socialRegister(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
 
-		return this.clientRegistrationService.registerWSocial(registrationRequest, request, response)
+		return this.clientRegistrationService.registerWSocial(request, response, registrationRequest)
 				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/socialRegister/evoke")
+	public Mono<ResponseEntity<String>> evokeSocialRegister(ServerHttpRequest request, ServerHttpResponse response,
+			@RequestParam(required = true) SecurityAppRegIntegrationPlatform platform) {
+
+		return this.clientRegistrationService.evokeRegisterWSocial(platform, request).map(ResponseEntity::ok);
+	}
+
+	@GetMapping("/socialRegister/callback")
+	public Mono<ResponseEntity<Void>> socialRegisterCallback(ServerHttpRequest request, ServerHttpResponse response) {
+
+		return this.clientRegistrationService.registerWSocialCallback(request, response).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/generateCode")

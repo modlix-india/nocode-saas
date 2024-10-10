@@ -1,15 +1,5 @@
 package com.fincity.security.configuration;
 
-import javax.annotation.PostConstruct;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
@@ -17,6 +7,14 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.SecurityMessageResourceService;
+import javax.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
 public class SecurityConfiguration extends AbstractJooqBaseConfiguration
@@ -64,6 +62,10 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 				"/api/security/clients/register",
 
 				"/api/security/clients/socialRegister",
+
+				"/api/security/clients/socialRegister/callback",
+
+				"/api/security/clients/socialRegister/evoke",
 
 				"/api/security/clients/generateCode",
 

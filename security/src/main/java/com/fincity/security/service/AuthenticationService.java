@@ -12,10 +12,10 @@ import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppRegistrationIntegrationTokenDao;
-import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
@@ -26,6 +26,7 @@ import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -67,9 +68,11 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private final AppRegistrationIntegrationTokenDao integrationTokenDao;
 
+	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
+
 	public AuthenticationService(UserService userService, ClientService clientService, TokenService tokenService,
 			SecurityMessageResourceService resourceService, SoxLogService soxLogService, PasswordEncoder pwdEncoder,
-			CacheService cacheService, AppRegistrationIntegrationTokenDao integrationTokenDao) {
+			CacheService cacheService, AppRegistrationIntegrationTokenDao integrationTokenDao, AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
 		this.userService = userService;
 		this.clientService = clientService;
 		this.tokenService = tokenService;
@@ -78,6 +81,7 @@ public class AuthenticationService implements IAuthenticationService {
 		this.pwdEncoder = pwdEncoder;
 		this.cacheService = cacheService;
 		this.integrationTokenDao = integrationTokenDao;
+		this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
 	}
 
 	@Value("${jwt.key}")
@@ -177,42 +181,50 @@ public class AuthenticationService implements IAuthenticationService {
 				.switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
-	public Mono<AuthenticationResponse> authenticateWSocial(AuthenticationRequest authRequest, ServerHttpRequest request,
+	public Mono<AuthenticationResponse> authenticateWSocial(AuthenticationRequest authRequest,
+			ServerHttpRequest request,
 			ServerHttpResponse response) {
+
+		if (authRequest.getSocialRegisterState() == null) {
+			return this.resourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.SOCIAL_LOGIN_FAILED);
+		}
 
 		String appCode = request.getHeaders().getFirst("appCode");
 
 		String clientCode = request.getHeaders().getFirst("clientCode");
 
 		if (authRequest.getIdentifierType() == null) {
-			authRequest.setIdentifierType(
-					StringUtil.safeIsBlank(authRequest.getUserName()) || authRequest.getUserName().indexOf('@') == -1
-							? AuthenticationIdentifierType.USER_NAME
-							: AuthenticationIdentifierType.EMAIL_ID);
+			authRequest.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
 		}
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
-						appCode,authRequest.getIdentifierType(), true),
-				tup -> {
+				() -> this.appRegistrationIntegrationTokenService
+						.verifyIntegrationState(authRequest.getSocialRegisterState()),
+
+				appRegIntgToken -> Mono.just(appRegIntgToken.getUsername().equals(authRequest.getUserName()))
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+				(appRegIntgToken, usernameChecked) -> this.userService.findUserNClient(authRequest.getUserName(),
+						authRequest.getUserId(), clientCode,
+						appCode, authRequest.getIdentifierType(), true),
+
+				(appRegIntgToken, usernameChecked, tup) -> {
 					String linClientCode = tup.getT1().getCode();
 					return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode)
 							|| tup.getT1().getId().equals(tup.getT2().getId()) ? true : null);
 				},
 
-				(tup, linCCheck) -> {
+				(appRegIntgToken, usernameChecked, tup, linCCheck) -> {
 
 					User user = tup.getT3();
 
-					this.integrationTokenDao.create((AppRegistrationIntegrationToken) new AppRegistrationIntegrationToken()
-							.setIntegrationId(authRequest.getSocialIntegrationId())
-							.setToken(authRequest.getSocialToken())
-							.setRefreshToken(authRequest.getSocialRefreshToken())
-							.setExpiresAt(authRequest.getSocialTokenExpiresAt())
-							.setCreatedBy(user.getId())
-							.setCreatedAt(LocalDateTime.now())
-							);
+					appRegIntgToken.setCreatedBy(user.getId());
+					appRegIntgToken.setUpdatedBy(user.getId());
+
+					this.integrationTokenDao.update(appRegIntgToken);
 
 					soxLogService
 							.create(new SoxLog().setObjectId(user.getId()).setActionName(SecuritySoxLogActionName.LOGIN)

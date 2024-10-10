@@ -15,12 +15,13 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function7;
+import org.jooq.Function14;
 import org.jooq.Identity;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row7;
+import org.jooq.Row14;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -70,23 +71,58 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
 
     /**
      * The column
+     * <code>security.security_app_reg_integration_tokens.AUTH_CODE</code>. User
+     * Consent Auth Code
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, String> AUTH_CODE = createField(DSL.name("AUTH_CODE"), SQLDataType.VARCHAR(512), this, "User Consent Auth Code");
+
+    /**
+     * The column
+     * <code>security.security_app_reg_integration_tokens.STATE</code>. Session
+     * id for login
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, String> STATE = createField(DSL.name("STATE"), SQLDataType.VARCHAR(512), this, "Session id for login");
+
+    /**
+     * The column
      * <code>security.security_app_reg_integration_tokens.TOKEN</code>. Token
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, String> TOKEN = createField(DSL.name("TOKEN"), SQLDataType.VARCHAR(512).nullable(false), this, "Token");
+    public final TableField<SecurityAppRegIntegrationTokensRecord, String> TOKEN = createField(DSL.name("TOKEN"), SQLDataType.VARCHAR(512), this, "Token");
 
     /**
      * The column
      * <code>security.security_app_reg_integration_tokens.REFRESH_TOKEN</code>.
      * Refresh Token
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, String> REFRESH_TOKEN = createField(DSL.name("REFRESH_TOKEN"), SQLDataType.VARCHAR(512).nullable(false), this, "Refresh Token");
+    public final TableField<SecurityAppRegIntegrationTokensRecord, String> REFRESH_TOKEN = createField(DSL.name("REFRESH_TOKEN"), SQLDataType.VARCHAR(512), this, "Refresh Token");
 
     /**
      * The column
      * <code>security.security_app_reg_integration_tokens.EXPIRES_AT</code>.
      * Token expiration time
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, LocalDateTime> EXPIRES_AT = createField(DSL.name("EXPIRES_AT"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Token expiration time");
+    public final TableField<SecurityAppRegIntegrationTokensRecord, LocalDateTime> EXPIRES_AT = createField(DSL.name("EXPIRES_AT"), SQLDataType.LOCALDATETIME(0), this, "Token expiration time");
+
+    /**
+     * The column
+     * <code>security.security_app_reg_integration_tokens.TOKEN_METADATA</code>.
+     * Token metadata
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, JSON> TOKEN_METADATA = createField(DSL.name("TOKEN_METADATA"), SQLDataType.JSON, this, "Token metadata");
+
+    /**
+     * The column
+     * <code>security.security_app_reg_integration_tokens.USERNAME</code>.
+     * Username
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, String> USERNAME = createField(DSL.name("USERNAME"), SQLDataType.VARCHAR(512), this, "Username");
+
+    /**
+     * The column
+     * <code>security.security_app_reg_integration_tokens.USER_METADATA</code>.
+     * User metadata
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, JSON> USER_METADATA = createField(DSL.name("USER_METADATA"), SQLDataType.JSON, this, "User metadata");
 
     /**
      * The column
@@ -101,6 +137,20 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
      * of the user who created this row
      */
     public final TableField<SecurityAppRegIntegrationTokensRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
+
+    /**
+     * The column
+     * <code>security.security_app_reg_integration_tokens.UPDATED_BY</code>. ID
+     * of the user who updated this row
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+
+    /**
+     * The column
+     * <code>security.security_app_reg_integration_tokens.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityAppRegIntegrationTokens(Name alias, Table<SecurityAppRegIntegrationTokensRecord> aliased) {
         this(alias, aliased, null);
@@ -216,18 +266,18 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
     }
 
     // -------------------------------------------------------------------------
-    // Row7 type methods
+    // Row14 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row7<ULong, ULong, String, String, LocalDateTime, LocalDateTime, ULong> fieldsRow() {
-        return (Row7) super.fieldsRow();
+    public Row14<ULong, ULong, String, String, String, String, LocalDateTime, JSON, String, JSON, LocalDateTime, ULong, ULong, LocalDateTime> fieldsRow() {
+        return (Row14) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function7<? super ULong, ? super ULong, ? super String, ? super String, ? super LocalDateTime, ? super LocalDateTime, ? super ULong, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function14<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super JSON, ? super String, ? super JSON, ? super LocalDateTime, ? super ULong, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -235,7 +285,7 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function7<? super ULong, ? super ULong, ? super String, ? super String, ? super LocalDateTime, ? super LocalDateTime, ? super ULong, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function14<? super ULong, ? super ULong, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super JSON, ? super String, ? super JSON, ? super LocalDateTime, ? super ULong, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

@@ -1,26 +1,29 @@
 package com.fincity.security.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import java.time.LocalDateTime;
-
-import org.jooq.types.ULong;
-
-import com.fincity.saas.commons.model.dto.AbstractDTO;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @Accessors(chain = true)
-public class AppRegistrationIntegrationToken extends AbstractDTO<ULong, ULong> {
+public class AppRegistrationIntegrationToken extends AbstractUpdatableDTO<ULong, ULong> {
 
   private static final long serialVersionUID = -8765432109876543210L;
 
   private ULong integrationId;
+  private String authCode;
+  private String state;
   private String token;
   private String refreshToken;
   private LocalDateTime expiresAt;
+  private String username;
+  private JsonNode tokenMetadata;
+  private JsonNode userMetadata;
 }

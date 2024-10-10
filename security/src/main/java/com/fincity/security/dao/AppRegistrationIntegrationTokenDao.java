@@ -5,7 +5,7 @@ import static com.fincity.security.jooq.tables.SecurityAppRegIntegration.SECURIT
 import static com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 
-import com.fincity.saas.commons.jooq.dao.AbstractDAO;
+import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.jooq.tables.records.SecurityAppRegIntegrationTokensRecord;
 import org.jooq.Record1;
@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class AppRegistrationIntegrationTokenDao
-    extends AbstractDAO<SecurityAppRegIntegrationTokensRecord, ULong, AppRegistrationIntegrationToken> {
+    extends AbstractUpdatableDAO<SecurityAppRegIntegrationTokensRecord, ULong, AppRegistrationIntegrationToken> {
 
   protected AppRegistrationIntegrationTokenDao() {
     super(AppRegistrationIntegrationToken.class, SECURITY_APP_REG_INTEGRATION_TOKENS,
@@ -38,5 +38,13 @@ public class AppRegistrationIntegrationTokenDao
                     SECURITY_CLIENT.CODE.eq(clientCode))))
         .map(Record1::value1);
   }
+
+	public Mono<AppRegistrationIntegrationToken> findByState(String state) {
+
+		return Mono
+				.from(this.dslContext.selectFrom(SECURITY_APP_REG_INTEGRATION_TOKENS)
+						.where(SECURITY_APP_REG_INTEGRATION_TOKENS.STATE.eq(state)).limit(1))
+				.map(e -> e.into(AppRegistrationIntegrationToken.class));
+	}
 
 }

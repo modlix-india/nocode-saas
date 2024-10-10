@@ -1,7 +1,7 @@
 package com.fincity.security.service.appregistration;
 
-import static com.fincity.saas.commons.util.CommonsUtil.*;
-import static com.fincity.saas.commons.util.StringUtil.*;
+import static com.fincity.saas.commons.util.CommonsUtil.nonNullValue;
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -19,7 +19,6 @@ import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
-import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
@@ -27,6 +26,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.feign.IFeignFilesService;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
+import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
@@ -38,13 +38,17 @@ import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.UserService;
 import com.fincity.security.util.PasswordUtil;
+import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -64,11 +68,14 @@ public class ClientRegistrationService {
     private final ClientUrlService clientUrlService;
     private final AppRegistrationDAO appRegistrationDAO;
     private final IFeignFilesService filesService;
+    private final AppRegistrationIntegrationService appRegistrationIntegrationService;
     private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
     private final SecurityMessageResourceService securityMessageResourceService;
 
     private static final int VALIDITY_MINUTES = 30;
+
+    private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
 
     @Value("${security.subdomain.endings}")
     private String subDomainEndings;
@@ -78,6 +85,7 @@ public class ClientRegistrationService {
             AuthenticationService authenticationService, CodeAccessDAO codeAccessDAO,
             ClientService clientService, EventCreationService ecService, ClientUrlService clientUrlService,
             AppRegistrationDAO appRegistrationDAO, IFeignFilesService filesService,
+            AppRegistrationIntegrationService appRegistrationIntegrationService,
             AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
         this.dao = dao;
         this.appService = appService;
@@ -89,6 +97,7 @@ public class ClientRegistrationService {
         this.clientUrlService = clientUrlService;
         this.appRegistrationDAO = appRegistrationDAO;
         this.filesService = filesService;
+        this.appRegistrationIntegrationService = appRegistrationIntegrationService;
         this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
         this.securityMessageResourceService = securityMessageResourceService;
     }
@@ -380,8 +389,8 @@ public class ClientRegistrationService {
 
                 (tup, prop, client, userTuple) -> {
 
-                    if (!StringUtil.safeIsBlank(registrationRequest.getPassword()) || 
-                        !StringUtil.safeIsBlank(registrationRequest.getSocialToken())) {
+                    if (StringUtil.safeIsBlank(registrationRequest.getSocialRegisterState()) 
+                    && !StringUtil.safeIsBlank(registrationRequest.getPassword())) {
 
                         return this.userService.makeOneTimeToken(request, tup.getT2(),
                                 userTuple.getT1(),
@@ -410,8 +419,7 @@ public class ClientRegistrationService {
                                         "urlPrefix", urlPrefix, "token", token,
                                         "passwordUsed", userTuple.getT2()))))
                         .flatMap(e -> {
-                            if (StringUtil.safeIsBlank(registrationRequest.getSocialRefreshToken()) && 
-                                ((AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop) && 
+                            if (StringUtil.safeIsBlank(registrationRequest.getSocialRegisterState()) && ((AppService.APP_PROP_REG_TYPE_NO_VERIFICATION.equals(prop) && 
                                 !StringUtil.safeIsBlank(registrationRequest.getPassword())) || 
                                 prop.endsWith("_LOGIN_IMMEDIATE"))) {
 
@@ -430,14 +438,16 @@ public class ClientRegistrationService {
                                                 userTuple.getT1()
                                                         .getId(),
                                                 "", x));
-                            } else if(!StringUtil.safeIsBlank(registrationRequest.getSocialToken())){
+                            } 
+                            else if(!StringUtil.safeIsBlank(registrationRequest.getSocialRegisterState())) {
                                 return this.authenticationService.authenticateWSocial(
                                         new AuthenticationRequest().setUserName(
                                                 CommonsUtil.nonNullValue(
                                                         registrationRequest
                                                                 .getUserName(),
                                                         registrationRequest
-                                                                .getEmailId())),
+                                                                .getEmailId()))
+                                                        .setSocialRegisterState(registrationRequest.getSocialRegisterState()),
                                         request, response)
                                         .map(x -> new ClientRegistrationResponse(
                                                 true,
@@ -449,10 +459,11 @@ public class ClientRegistrationService {
                             return Mono.just(new ClientRegistrationResponse(true,
                                     userTuple.getT1().getId(), "", null));
                         }).flatMap(e -> {
-                            if (prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
+                            if ( StringUtil.safeIsBlank(registrationRequest.getSocialRegisterState())
+                             && (prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
                                     || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
                                     || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST)
-                                    || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE))
+                                    || prop.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE)))
 
                                 this.codeAccessDAO.deleteRecordAfterRegistration(
                                         tup.getT2().getUrlAppCode(),
@@ -478,25 +489,140 @@ public class ClientRegistrationService {
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
     }
 
-    public Mono<ClientRegistrationResponse> registerWSocial(ClientRegistrationRequest registrationRequest,
-            ServerHttpRequest request, ServerHttpResponse response) {
+	public Mono<ClientRegistrationResponse> registerWSocial(ServerHttpRequest request, ServerHttpResponse response,
+			ClientRegistrationRequest registrationRequest) {
 
-        return FlatMapUtil.flatMapMono(
+		if (StringUtil.safeIsBlank(registrationRequest.getSocialRegisterState())) {
+			return this.securityMessageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR);
+		}
 
-                () -> this.register(registrationRequest, request, response),
+		return FlatMapUtil.flatMapMono(
 
-                res -> this.appRegistrationIntegrationTokenService.create(
-                        (AppRegistrationIntegrationToken) new AppRegistrationIntegrationToken()
-                                .setIntegrationId(registrationRequest.getSocialIntegrationId())
-                                .setToken(registrationRequest.getSocialToken())
-                                .setRefreshToken(registrationRequest.getSocialRefreshToken())
-                                .setExpiresAt(registrationRequest.getSocialTokenExpiresAt())
-                                .setCreatedBy(res.getUserId())),
+				SecurityContextUtil::getUsersContextAuthentication,
 
-                (res, token) -> Mono.just(res))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
+				ca -> this.appRegistrationIntegrationTokenService
+						.verifyIntegrationState(registrationRequest.getSocialRegisterState()),
 
-    }
+				(ca, appRegIntgToken) -> {
+					if (!appRegIntgToken.getUsername().equals(registrationRequest.getUserName())
+							&& !appRegIntgToken.getUsername().equals(registrationRequest.getEmailId())) {
+						return this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR,
+								"UserName and EmailId should not be changed");
+					}
+
+					return Mono.just(true);
+				}, (ca, appRegIntgToken, emailChecked) -> {
+
+					LocalDateTime twoMinutesAgo = LocalDateTime.now().minusMinutes(2);
+
+					if (appRegIntgToken.getCreatedAt().isBefore(twoMinutesAgo)) {
+						return this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.SESSION_EXPIRED);
+					}
+
+					return this.register(registrationRequest, request, response);
+				});
+	}
+
+	public Mono<String> evokeRegisterWSocial(SecurityAppRegIntegrationPlatform platform, ServerHttpRequest request) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
+
+				(ca, app) -> this.appRegistrationIntegrationService.getIntegration(platform),
+
+				(ca, app, appRegIntg) -> {
+
+					String state = UUID.randomUUID().toString();
+
+					String host = request.getHeaders().getFirst("X-Forwarded-Host");
+
+					String urlPrefix = "https://" + host;
+
+					String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
+
+					switch (appRegIntg.getPlatform()) {
+					case GOOGLE:
+						return this.appRegistrationIntegrationService.redirectToGoogleAuthConsent(appRegIntg, state,
+								callBackURL);
+					// case META:
+					// return
+					// this.appRegistrationIntegrationService.redirectToMetaAuthConsent(appRegIntg,
+					// state, callBackURL);
+					default:
+						return Mono.error(
+								new IllegalArgumentException("Unsupported platform: " + appRegIntg.getPlatform()));
+					}
+
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
+	}
+
+	public Mono<Void> registerWSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
+
+		String host = request.getHeaders().getFirst("X-Forwarded-Host");
+
+		String urlPrefix = "https://" + host;
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
+
+				(ca, app) -> this.appRegistrationIntegrationTokenService
+						.verifyIntegrationState(request.getQueryParams().getFirst("state")),
+
+				(ca, app, appRegIntgToken) -> this.appRegistrationIntegrationService
+						.read(appRegIntgToken.getIntegrationId()),
+
+				(ca, app, appRegIntgToken, appRegIntg) -> {
+
+					String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
+
+					switch (appRegIntg.getPlatform()) {
+					case GOOGLE:
+						return this.appRegistrationIntegrationService.getGoogleUserToken(appRegIntg, appRegIntgToken,
+								callBackURL, request);
+					default:
+						return Mono.error(
+								new IllegalArgumentException("Unsupported platform: " + appRegIntg.getPlatform()));
+					}
+				},
+
+				(ca, app, appRegIntgToken, appRegIntg, registerRequest) ->
+
+				{
+
+					UriComponentsBuilder builder = UriComponentsBuilder
+							.fromUri(URI.create(urlPrefix + appRegIntg.getLoginUri()));
+					builder.queryParam("sessionId", appRegIntgToken.getState());
+					builder.queryParam("userName", registerRequest.getUserName());
+					builder.queryParam("emailId", registerRequest.getEmailId());
+					builder.queryParam("phoneNumber",
+							registerRequest.getPhoneNumber() != null ? registerRequest.getPhoneNumber() : "");
+					builder.queryParam("firstName",
+							registerRequest.getFirstName() != null ? registerRequest.getFirstName() : "");
+					builder.queryParam("lastName",
+							registerRequest.getLastName() != null ? registerRequest.getLastName() : "");
+					builder.queryParam("middleName",
+							registerRequest.getMiddleName() != null ? registerRequest.getMiddleName() : "");
+					builder.queryParam("localeCode",
+							registerRequest.getLocaleCode() != null ? registerRequest.getLocaleCode() : "");
+
+					response.setStatusCode(HttpStatus.FOUND);
+					response.getHeaders().setLocation(builder.build().toUri());
+					return response.setComplete();
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
+	}
 
     private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client) {
 
@@ -536,7 +662,7 @@ public class ClientRegistrationService {
         user.setPhoneNumber(request.getPhoneNumber());
 
         String password = "";
-        if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)
+        if (StringUtil.safeIsBlank(request.getSocialRegisterState()) || regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)
                 || StringUtil.safeIsBlank(request.getPassword())) {
 
             password = PasswordUtil.generatePassword(8);
@@ -616,8 +742,7 @@ public class ClientRegistrationService {
 
                 app -> {
 
-                    if (StringUtil.safeIsBlank(request.getSocialToken())
-                            && (regType.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
+                    if (StringUtil.safeIsBlank(request.getSocialRegisterState()) && (regType.equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE)
                                     || regType
                                             .equals(AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE)
                                     || regType.equals(AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST)

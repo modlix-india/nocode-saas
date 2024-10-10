@@ -1,14 +1,11 @@
 package com.fincity.security.service;
 
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
-
 import org.springframework.stereotype.Service;
-
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-
 import reactor.core.publisher.Mono;
 
 @Service
@@ -97,6 +94,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String FORBIDDEN_COPY_ROLE_PERMISSION = "forbidden_copying_role_permission";
 	public static final String ACTIVE_INACTIVE_ERROR = "active_inactive_error";
 	public static final String HIERARCHY_ERROR = "hierarchy_error";
+	public static final String SESSION_EXPIRED = "session_expired";
+	public static final String SOCIAL_LOGIN_FAILED = "social_login_failed";
 
 	public SecurityMessageResourceService() {
 

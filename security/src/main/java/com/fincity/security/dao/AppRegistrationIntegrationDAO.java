@@ -3,6 +3,7 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION;
 
 import com.fincity.security.dto.AppRegistrationIntegration;
+import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
 import com.fincity.security.jooq.tables.records.SecurityAppRegIntegrationRecord;
 import org.jooq.Field;
@@ -34,4 +35,15 @@ public class AppRegistrationIntegrationDAO
                         .limit(1))
                 .map(Record1::value1);
     }
+
+	public Mono<AppRegistrationIntegration> getIntegration(ULong appId, ULong clientId,
+			SecurityAppRegIntegrationPlatform platform) {
+		return Mono
+				.from(this.dslContext.select(SECURITY_APP_REG_INTEGRATION.fields()).from(SECURITY_APP_REG_INTEGRATION)
+						.where(SECURITY_APP_REG_INTEGRATION.APP_ID.eq(appId)
+								.and(SECURITY_APP_REG_INTEGRATION.CLIENT_ID.eq(clientId))
+								.and(SECURITY_APP_REG_INTEGRATION.PLATFORM.eq(platform)))
+						.limit(1))
+				.map(e -> e.into(AppRegistrationIntegration.class));
+	}
 }

@@ -17,5 +17,7 @@ public class AppRegistrationIntegration extends AbstractUpdatableDTO<ULong, ULon
   private ULong clientId;
   private ULong appId;
   private SecurityAppRegIntegrationPlatform platform;
-  private String scopes;
+  private String intgId;
+  private String intgSecret;
+  private String loginUri;
 }

@@ -16,12 +16,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function9;
+import org.jooq.Function11;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row9;
+import org.jooq.Row11;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -81,10 +81,23 @@ public class SecurityAppRegIntegration extends TableImpl<SecurityAppRegIntegrati
     public final TableField<SecurityAppRegIntegrationRecord, SecurityAppRegIntegrationPlatform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(9).nullable(false).asEnumDataType(com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform.class), this, "Platform");
 
     /**
-     * The column <code>security.security_app_reg_integration.SCOPES</code>.
-     * Scopes
+     * The column <code>security.security_app_reg_integration.INTG_ID</code>.
+     * Integration ID
      */
-    public final TableField<SecurityAppRegIntegrationRecord, String> SCOPES = createField(DSL.name("SCOPES"), SQLDataType.CLOB.nullable(false), this, "Scopes");
+    public final TableField<SecurityAppRegIntegrationRecord, String> INTG_ID = createField(DSL.name("INTG_ID"), SQLDataType.VARCHAR(1024).nullable(false), this, "Integration ID");
+
+    /**
+     * The column
+     * <code>security.security_app_reg_integration.INTG_SECRET</code>.
+     * Integration Secret
+     */
+    public final TableField<SecurityAppRegIntegrationRecord, String> INTG_SECRET = createField(DSL.name("INTG_SECRET"), SQLDataType.VARCHAR(1024).nullable(false), this, "Integration Secret");
+
+    /**
+     * The column <code>security.security_app_reg_integration.LOGIN_URI</code>.
+     * URI for login
+     */
+    public final TableField<SecurityAppRegIntegrationRecord, String> LOGIN_URI = createField(DSL.name("LOGIN_URI"), SQLDataType.VARCHAR(1024).nullable(false), this, "URI for login");
 
     /**
      * The column <code>security.security_app_reg_integration.CREATED_BY</code>.
@@ -236,18 +249,18 @@ public class SecurityAppRegIntegration extends TableImpl<SecurityAppRegIntegrati
     }
 
     // -------------------------------------------------------------------------
-    // Row9 type methods
+    // Row11 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row9<ULong, ULong, ULong, SecurityAppRegIntegrationPlatform, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
-        return (Row9) super.fieldsRow();
+    public Row11<ULong, ULong, ULong, SecurityAppRegIntegrationPlatform, String, String, String, ULong, LocalDateTime, ULong, LocalDateTime> fieldsRow() {
+        return (Row11) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function9<? super ULong, ? super ULong, ? super ULong, ? super SecurityAppRegIntegrationPlatform, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function11<? super ULong, ? super ULong, ? super ULong, ? super SecurityAppRegIntegrationPlatform, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -255,7 +268,7 @@ public class SecurityAppRegIntegration extends TableImpl<SecurityAppRegIntegrati
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function9<? super ULong, ? super ULong, ? super ULong, ? super SecurityAppRegIntegrationPlatform, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super ULong, ? super ULong, ? super ULong, ? super SecurityAppRegIntegrationPlatform, ? super String, ? super String, ? super String, ? super ULong, ? super LocalDateTime, ? super ULong, ? super LocalDateTime, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
