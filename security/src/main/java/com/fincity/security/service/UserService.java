@@ -611,7 +611,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		        () -> this.dao.readById(reqUserId),
 
-		        user -> this.checkHierarchy(user, requestPassword),
+		        user -> this.checkHierarchy(user, requestPassword, isResetPassword),
 
 		        (user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(user.getClientId(),
 		                requestPassword.getNewPassword()),
@@ -656,7 +656,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	// 4.) if no client id matches check logged in user's client id is managing user
 	// id's client id if logged in user has user edit access the update password
 
-	public Mono<Boolean> checkHierarchy(User user, RequestUpdatePassword reqPassword) {
+	public Mono<Boolean> checkHierarchy(User user, RequestUpdatePassword reqPassword, boolean isResetPassword) {
 
 		return flatMapMono(
 
@@ -669,7 +669,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 			        if (ULongUtil.valueOf(ca.getUser()
 			                .getId())
-			                .equals(user.getId())) {
+			                .equals(user.getId()) && !isResetPassword ) {
 
 				        return flatMapMono(
 
