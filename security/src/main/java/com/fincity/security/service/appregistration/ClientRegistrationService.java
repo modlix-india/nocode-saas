@@ -553,10 +553,9 @@ public class ClientRegistrationService {
 					case GOOGLE:
 						return this.appRegistrationIntegrationService.redirectToGoogleAuthConsent(appRegIntg, state,
 								callBackURL);
-					// case META:
-					// return
-					// this.appRegistrationIntegrationService.redirectToMetaAuthConsent(appRegIntg,
-					// state, callBackURL);
+					case META:
+						return this.appRegistrationIntegrationService.redirectToMetaAuthConsent(appRegIntg,
+								state, callBackURL);
 					default:
 						return Mono.error(
 								new IllegalArgumentException("Unsupported platform: " + appRegIntg.getPlatform()));
@@ -589,6 +588,9 @@ public class ClientRegistrationService {
 					switch (appRegIntg.getPlatform()) {
 					case GOOGLE:
 						return this.appRegistrationIntegrationService.getGoogleUserToken(appRegIntg, appRegIntgToken,
+								callBackURL, request);
+					case META:
+						return this.appRegistrationIntegrationService.getMetaUserToken(appRegIntg, appRegIntgToken,
 								callBackURL, request);
 					default:
 						return Mono.error(
