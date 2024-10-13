@@ -16,7 +16,7 @@
     <description>Fincity SAAS security server</description>
     <properties>
         <java.version>21</java.version>
-        <spring-cloud.version>2023.0.2</spring-cloud.version>
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
         <nocode-kirun-version>3.5.0</nocode-kirun-version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
@@ -38,9 +38,8 @@
             <artifactId>r2dbc-pool</artifactId>
         </dependency>
         <dependency>
-            <groupId>dev.miku</groupId>
+            <groupId>io.asyncer</groupId>
             <artifactId>r2dbc-mysql</artifactId>
-            <version>0.8.2.RELEASE</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
