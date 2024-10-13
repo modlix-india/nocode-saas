@@ -63,9 +63,6 @@ jobs:
       - name: Building multi
         working-directory: ./multi
         run: mvn clean install
-      - name: Building schedular
-        working-directory: ./schedular
-        run: mvn clean install
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:

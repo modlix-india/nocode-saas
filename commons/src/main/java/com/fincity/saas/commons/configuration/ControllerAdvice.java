@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.annotation.Priority;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +26,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 
 import feign.FeignException;
+import jakarta.annotation.Priority;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -55,7 +54,7 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 
 		if (ex instanceof GenericException g) {
 			sr = ServerResponse.status(g.getStatusCode())
-			        .bodyValue(g.toExceptionData());
+					.bodyValue(g.toExceptionData());
 		} else if (ex instanceof FeignException fe) {
 
 			sr = handleFeignException(sr, fe);
@@ -77,35 +76,36 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 
 		log.error("Error : {}", eId, ex);
 
-		final HttpStatus status = (ex instanceof ResponseStatusException rse) ? rse.getStatus()
-		        : HttpStatus.INTERNAL_SERVER_ERROR;
+		final HttpStatus status = (ex instanceof ResponseStatusException rse)
+				? HttpStatus.valueOf(rse.getStatusCode().value())
+				: HttpStatus.INTERNAL_SERVER_ERROR;
 
 		sr = msg.map(m -> new GenericException(status, eId, m, ex))
-		        .flatMap(g -> ServerResponse.status(g.getStatusCode())
-		                .bodyValue(g.toExceptionData()));
+				.flatMap(g -> ServerResponse.status(g.getStatusCode())
+						.bodyValue(g.toExceptionData()));
 		return sr;
 	}
 
 	private Mono<ServerResponse> handleFeignException(Mono<ServerResponse> sr, FeignException fe) {
 		Optional<ByteBuffer> byteBuffer = fe.responseBody();
 		if (byteBuffer.isPresent() && byteBuffer.get()
-		        .hasArray()) {
+				.hasArray()) {
 
 			Collection<String> ctype = fe.responseHeaders()
-			        .get(HttpHeaders.CONTENT_TYPE);
+					.get(HttpHeaders.CONTENT_TYPE);
 			if (ctype != null && ctype.contains("application/json")) {
 				try {
 					Map<String, Object> map = this.objectMapper.readValue(byteBuffer.get()
-					        .array(), new TypeReference<Map<String, Object>>() {
-					        });
+							.array(), new TypeReference<Map<String, Object>>() {
+							});
 					sr = Mono
-					        .just(new GenericException(HttpStatus.valueOf(fe.status()),
-					                map.get("message") == null ? ""
-					                        : map.get("message")
-					                                .toString(),
-					                fe))
-					        .flatMap(g -> ServerResponse.status(g.getStatusCode())
-					                .bodyValue(g.toExceptionData()));
+							.just(new GenericException(HttpStatus.valueOf(fe.status()),
+									map.get("message") == null ? ""
+											: map.get("message")
+													.toString(),
+									fe))
+							.flatMap(g -> ServerResponse.status(g.getStatusCode())
+									.bodyValue(g.toExceptionData()));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

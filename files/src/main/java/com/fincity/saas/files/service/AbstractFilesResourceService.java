@@ -1,17 +1,5 @@
 package com.fincity.saas.files.service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.CommonsUtil;
-import com.fincity.saas.commons.util.FileType;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
-import com.fincity.saas.files.model.DownloadOptions;
-import com.fincity.saas.files.model.FileDetail;
-import com.fincity.saas.files.model.ImageDetails;
-import com.fincity.saas.files.util.FileExtensionUtil;
-import com.fincity.saas.files.util.ImageTransformUtil;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -49,10 +37,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import javax.annotation.PostConstruct;
+
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+
 import org.imgscalr.Scalr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +64,21 @@ import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.FileSystemUtils;
+
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.FileType;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
+import com.fincity.saas.files.model.DownloadOptions;
+import com.fincity.saas.files.model.FileDetail;
+import com.fincity.saas.files.model.ImageDetails;
+import com.fincity.saas.files.util.FileExtensionUtil;
+import com.fincity.saas.files.util.ImageTransformUtil;
+
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -917,82 +921,79 @@ public abstract class AbstractFilesResourceService {
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPartImport, uri);
 
 		if (fp == null || (!fp.filename()
-		        .toLowerCase()
-		        .endsWith(".zip"))) {
+				.toLowerCase()
+				.endsWith(".zip"))) {
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-			        FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
+					FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
 		}
 
-	String	resourcePath = this.comparePaths(Tuples.of(tup.getT1(), fp.filename()
-		        .substring(0, fp.filename()
-		                .lastIndexOf('.'))))
-		        .getT1();
+		String resourcePath = this.comparePaths(Tuples.of(tup.getT1(), fp.filename()
+				.substring(0, fp.filename()
+						.lastIndexOf('.'))))
+				.getT1();
 
 		return FlatMapUtil.flatMapMono(
 
-		        () ->
-				{
-			        Path tmpFile;
-			        Path tmpFolder;
-			        try {
-				        tmpFile = Files.createTempFile("tmp", "zip");
-				        tmpFolder = Files.createTempDirectory("tmp");
-			        } catch (IOException e) {
-				        return Mono.error(e);
-			        }
-			        return fp.transferTo(tmpFile)
-			                .then(Mono.just(Tuples.of(tmpFile, tmpFolder)));
-		        },
+				() -> {
+					Path tmpFile;
+					Path tmpFolder;
+					try {
+						tmpFile = Files.createTempFile("tmp", "zip");
+						tmpFolder = Files.createTempDirectory("tmp");
+					} catch (IOException e) {
+						return Mono.error(e);
+					}
+					return fp.transferTo(tmpFile)
+							.then(Mono.just(Tuples.of(tmpFile, tmpFolder)));
+				},
 
-		        tmpTup -> FlatMapUtil.flatMapFlux(
+				tmpTup -> FlatMapUtil.flatMapFlux(
 
-		                () -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
+						() -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
 
-		                eFile ->  !Files.isDirectory(eFile.getT2()) ? Flux.just(true)
-			                        : Flux.from(this.fileAccessService.hasWriteAccess(
-			                                this.parentOf(resourcePath + eFile.getT1()), clientCode,
-			                                this.getResourceType())),
+						eFile -> !Files.isDirectory(eFile.getT2()) ? Flux.just(true)
+								: Flux.from(this.fileAccessService.hasWriteAccess(
+										this.parentOf(resourcePath + eFile.getT1()), clientCode,
+										this.getResourceType())),
 
-		                (eFile, hasPermission) ->
-						{
-			                if (!hasPermission.booleanValue())
-				                return Flux.empty();
+						(eFile, hasPermission) -> {
+							if (!hasPermission.booleanValue())
+								return Flux.empty();
 
+							Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, eFile.getT1());
+							try {
 
-			                Path path = Paths.get(this.getBaseLocation(), clientCode, resourcePath, eFile.getT1());
-			                try {
+								Files.createDirectories(path.getParent());
+								if (ovr)
+									Files.move(eFile.getT2(), path, StandardCopyOption.REPLACE_EXISTING);
+								else
+									Files.move(eFile.getT2(), path);
+							} catch (IOException ex) {
+								logger.debug("Ignoring exception while moving files after extracting.", ex);
+							}
 
-				                Files.createDirectories(path.getParent());
-				                if (ovr)
-					                Files.move(eFile.getT2(), path, StandardCopyOption.REPLACE_EXISTING);
-				                else
-					                Files.move(eFile.getT2(), path);
-			                } catch (IOException ex) {
-				                logger.debug("Ignoring exception while moving files after extracting.", ex);
-			                }
-
-			                return Flux.just(true);
-		                })
-		                .collectList()
-		                .map(e -> true))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
-		        .map(e -> true)
-		        .subscribeOn(Schedulers.boundedElastic());
+							return Flux.just(true);
+						})
+						.collectList()
+						.map(e -> true))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
+				.map(e -> true)
+				.subscribeOn(Schedulers.boundedElastic());
 	}
 
 	private Tuple2<String, String> comparePaths(Tuple2<String, String> tuple) {
 
 		if (tuple.getT1()
-		        .endsWith(tuple.getT2()))
-			
+				.endsWith(tuple.getT2()))
+
 			return Tuples.of(tuple.getT1()
-			        .substring(0, tuple.getT1()
-			                .indexOf(tuple.getT2())),
-			        tuple.getT2());
-		
+					.substring(0, tuple.getT1()
+							.indexOf(tuple.getT2())),
+					tuple.getT2());
+
 		return tuple;
 	}
-	
+
 	private String parentOf(String name) {
 		int ind = name.lastIndexOf('/');
 		if (ind == -1)
