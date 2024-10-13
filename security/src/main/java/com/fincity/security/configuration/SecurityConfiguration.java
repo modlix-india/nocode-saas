@@ -1,7 +1,5 @@
 package com.fincity.security.configuration;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +15,8 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.SecurityMessageResourceService;
+
+import jakarta.annotation.PostConstruct;
 
 @Configuration
 public class SecurityConfiguration extends AbstractJooqBaseConfiguration
@@ -72,7 +72,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 				"/api/security/applications/dependencies",
 
 				"/api/security/applications/internal/dependencies",
-				
+
 				"/api/security/clients/register/events");
 	}
 
