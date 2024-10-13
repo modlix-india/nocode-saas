@@ -80,4 +80,3 @@ jobs:
           aws s3 cp ./files/target/*.jar s3://nclc-deployment/stage/files.jar
           aws s3 cp ./core/target/*.jar s3://nclc-deployment/stage/core.jar
           aws s3 cp ./multi/target/*.jar s3://nclc-deployment/stage/multi.jar
-          aws s3 cp ./schedular/target/*.jar s3://nclc-deployment/stage/schedular.jar
