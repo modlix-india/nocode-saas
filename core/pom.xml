@@ -17,7 +17,7 @@
     <properties>
         <java.version>21</java.version>
         <spring-boot-admin.version>3.0.2</spring-boot-admin.version>
-        <spring-cloud.version>2023.0.2</spring-cloud.version>
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
@@ -47,9 +47,8 @@
             <artifactId>r2dbc-pool</artifactId>
         </dependency>
         <dependency>
-            <groupId>dev.miku</groupId>
+            <groupId>io.asyncer</groupId>
             <artifactId>r2dbc-mysql</artifactId>
-            <version>0.8.2.RELEASE</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
