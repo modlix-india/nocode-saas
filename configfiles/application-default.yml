@@ -18,8 +18,8 @@ files:
       url: jdbc:mysql://localhost:3306/files
   resources:
     location:
-      static: /Users/kirangrandhi/Downloads/files/static
-      secured: /Users/kirangrandhi/Downloads/files/secured
+      static: C:/Users/kiran/Downloads/imp downloads/files/static
+      secured: C:/Users/kiran/Downloads/imp downloads/files/secured
 
 multi:
   db:

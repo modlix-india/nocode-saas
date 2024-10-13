@@ -2,8 +2,6 @@ package com.fincity.saas.ui.configuration;
 
 import java.util.List;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +16,7 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 
+import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
@@ -45,9 +44,9 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
 
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
 				String key = ctxView.get(LogUtil.DEBUG_KEY);
-				
-					request.headers()
-					        .put(LogUtil.DEBUG_KEY, List.of(key));
+
+				request.headers()
+						.put(LogUtil.DEBUG_KEY, List.of(key));
 			}
 
 			return Mono.just(request);
