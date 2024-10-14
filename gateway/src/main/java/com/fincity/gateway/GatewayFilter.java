@@ -49,20 +49,20 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
 
 		Route route = exchange
-		        .getAttribute("org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayRoute");
+				.getAttribute("org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayRoute");
 
 		if (route != null && route.getId() != null && route.getId()
-		        .equals("index"))
+				.equals("index"))
 			return chain.filter(exchange.mutate()
-			        .request(exchange.getRequest()
-			                .mutate()
-			                .path("/index.html")
-			                .build())
-			        .build());
+					.request(exchange.getRequest()
+							.mutate()
+							.path("/index.html")
+							.build())
+					.build());
 
 		String requestPath = exchange.getRequest()
-		        .getPath()
-		        .toString();
+				.getPath()
+				.toString();
 
 		int index = requestPath.indexOf("/api/");
 		String codesPart = "";
@@ -93,10 +93,11 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 			}
 		}
 
-		final String finModifiedPath = modifiedPath;
+		final String finModifiedPath = modifiedPath.endsWith("/") ? modifiedPath.substring(0, modifiedPath.length() - 1)
+				: modifiedPath;
 		return this.getCodesFromURL(codesPart)
-		        .switchIfEmpty(Mono.defer(() -> this.getClientCode(this.getSchemeHostPort(exchange))))
-		        .flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2()));
+				.switchIfEmpty(Mono.defer(() -> this.getClientCode(this.getSchemeHostPort(exchange))))
+				.flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2()));
 	}
 
 	private Mono<Tuple2<String, String>> getCodesFromURL(String appClientCodePart) {
@@ -119,16 +120,16 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 	}
 
 	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
-	        String clientCode, String appCode) {
+			String clientCode, String appCode) {
 
 		Builder req = exchange.getRequest()
-		        .mutate();
+				.mutate();
 
 		logger.debug("{} : clientCode - {}, appCode - {}", exchange.getRequest()
-		        .getPath(), clientCode, appCode);
+				.getPath(), clientCode, appCode);
 
 		HttpHeaders inHeaders = exchange.getRequest()
-		        .getHeaders();
+				.getHeaders();
 		if (StringUtil.safeIsBlank(inHeaders.getFirst("appCode"))) {
 			req.header("appCode", appCode);
 		}
@@ -137,20 +138,20 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		}
 
 		ServerHttpRequest modifiedRequest = req.path(modifiedRequestPath)
-		        .build();
+				.build();
 
 		return chain.filter(exchange.mutate()
-		        .request(modifiedRequest)
-		        .build());
+				.request(modifiedRequest)
+				.build());
 	}
 
 	private Tuple3<String, String, String> getSchemeHostPort(ServerWebExchange exchange) {
 
 		URI uri = exchange.getRequest()
-		        .getURI();
+				.getURI();
 
 		HttpHeaders header = exchange.getRequest()
-		        .getHeaders();
+				.getHeaders();
 		String uriScheme = header.getFirst("X-Forwarded-Proto");
 		String uriHost = header.getFirst("X-Forwarded-Host");
 		String uriPort = header.getFirst("X-Forwarded-Port");
@@ -177,9 +178,9 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE,
 
-		        () -> this.security.getClientCode(uriScheme, uriHost, uriPort)
-		                .defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP)),
+				() -> this.security.getClientCode(uriScheme, uriHost, uriPort)
+						.defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP)),
 
-		        uriScheme, ":", uriHost, ":", uriPort);
+				uriScheme, ":", uriHost, ":", uriPort);
 	}
 }
