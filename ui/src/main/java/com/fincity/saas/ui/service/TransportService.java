@@ -43,7 +43,15 @@ public class TransportService extends AbstractTransportService {
 	@SuppressWarnings("rawtypes")
 	@Override
 	public List<AbstractOverridableDataService> getServieMap() {
-		return List.of(appService, pageService, styleService, themeService, funService, schemaService, fillerService, uriPathService);
+		return List.of(
+				(AbstractOverridableDataService) appService,
+				(AbstractOverridableDataService) pageService,
+				(AbstractOverridableDataService) styleService,
+				(AbstractOverridableDataService) themeService,
+				(AbstractOverridableDataService) funService,
+				(AbstractOverridableDataService) schemaService,
+				(AbstractOverridableDataService) fillerService,
+				(AbstractOverridableDataService) uriPathService);
 	}
 
 	@Override

@@ -31,6 +31,9 @@ import com.fincity.saas.ui.model.KIRunFxDefinition;
 import com.fincity.saas.ui.model.PathDefinition;
 import com.fincity.saas.ui.model.RedirectionDefinition;
 import com.fincity.saas.ui.repository.URIPathRepository;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Flux;
@@ -48,10 +51,13 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 	private final PathMatcher pathMatcher;
 
+	private final Gson gson;
+
 	public URIPathService(IFeignCoreService iFeignCoreService) {
 		super(URIPath.class);
 		this.iFeignCoreService = iFeignCoreService;
 		this.pathMatcher = new AntPathMatcher();
+		gson = new Gson();
 	}
 
 	@Override
@@ -286,16 +292,41 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	private Mono<String> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject, String uriPathString,
 			KIRunFxDefinition kiRunFxDef, String appCode, String clientCode) {
 
-		return switch (request.getMethod()) {
-			case GET -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
-					kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
+		return FlatMapUtil.flatMapMono(
 
-			case POST, PUT, PATCH, DELETE ->
-				iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
-						kiRunFxDef.getName(), jsonObject.toString());
+				() -> switch (request.getMethod().toString()) {
+					case "GET" -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+							kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
 
-			default -> Mono.empty();
-		};
+					case "POST", "PUT", "PATCH", "DELETE" ->
+						iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+								kiRunFxDef.getName(), jsonObject.toString());
+
+					default -> Mono.empty();
+				},
+				responseString -> {
+
+					if (StringUtil.safeIsBlank(responseString)
+							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
+							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName())) {
+						return Mono.just(responseString);
+					}
+
+					JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
+
+					return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
+							kiRunFxDef.getOutputEventParamName());
+				});
+	}
+
+	private Mono<String> extractOutputEvent(JsonArray response, String outputEventName, String outputEventParamName) {
+		return Flux.fromIterable(response)
+				.filter(JsonElement::isJsonObject)
+				.map(JsonElement::getAsJsonObject)
+				.filter(output -> output.get("name").getAsString().equals(outputEventName))
+				.map(output -> output.get(outputEventParamName).toString())
+				.next()
+				.defaultIfEmpty("");
 	}
 
 	private MultiValueMap<String, String> getParamsFromHeadersPathRequest(ServerHttpRequest request,

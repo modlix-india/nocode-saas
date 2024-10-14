@@ -1,24 +1,12 @@
 package com.fincity.saas.core.service.connection.rest;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.core.document.Connection;
-import com.fincity.saas.core.dto.RestRequest;
-import com.fincity.saas.core.dto.RestResponse;
-import com.fincity.saas.core.service.CoreMessageResourceService;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.springframework.core.io.Resource;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -31,6 +19,20 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriBuilder;
+
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.core.document.Connection;
+import com.fincity.saas.core.dto.RestRequest;
+import com.fincity.saas.core.dto.RestResponse;
+import com.fincity.saas.core.service.CoreMessageResourceService;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.reflect.TypeToken;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple3;
@@ -80,7 +82,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 					WebClient webClient = webClientBuilder.baseUrl(tup.getT1())
 							.codecs(c -> c.defaultCodecs().maxInMemorySize(50 * 1024 * 1024)).build();
 
-					WebClient.RequestBodySpec requestBuilder = webClient.method(HttpMethod.resolve(request.getMethod()))
+					WebClient.RequestBodySpec requestBuilder = webClient.method(HttpMethod.valueOf(request.getMethod()))
 							.uri(uriBuilder -> {
 								uriBuilder = applyQueryParameters(uriBuilder, request.getQueryParameters());
 								return uriBuilder.build(request.getPathParameters());

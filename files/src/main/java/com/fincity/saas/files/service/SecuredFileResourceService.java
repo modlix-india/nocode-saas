@@ -1,6 +1,6 @@
 package com.fincity.saas.files.service;
 
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+import static com.fincity.saas.commons.util.StringUtil.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,8 +9,6 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-
-import javax.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +30,7 @@ import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
@@ -61,7 +60,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	private static final Logger logger = LoggerFactory.getLogger(SecuredFileResourceService.class);
 
 	public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
-	                                  FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService) {
+			FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService) {
 		super(filesAccessPathService, msgService);
 		this.fileSecuredAccessService = fileSecuredAccessService;
 	}
@@ -116,14 +115,14 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
 		return FlatMapUtil.flatMapMono(
 
-						() -> this.checkReadAccessWithClientCode(tup.getT2())
-								.flatMap(BooleanUtil::safeValueOfWithEmpty),
+				() -> this.checkReadAccessWithClientCode(tup.getT2())
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-						hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
+				hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
 
-						(hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
+				(hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
 
-				)
+		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
 				.switchIfEmpty(this.msgService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -131,7 +130,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 	}
 
 	public Mono<Void> downloadFileByKey(String key, DownloadOptions downloadOptions, ServerHttpRequest request,
-	                                    ServerHttpResponse response) {
+			ServerHttpResponse response) {
 
 		if (safeIsBlank(key)) {
 			return null;

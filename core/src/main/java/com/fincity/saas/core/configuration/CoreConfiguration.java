@@ -2,8 +2,6 @@ package com.fincity.saas.core.configuration;
 
 import java.util.List;
 
-import javax.annotation.PostConstruct;
-
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
@@ -32,12 +30,13 @@ import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
+import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
 @Configuration
 public class CoreConfiguration extends AbstractMongoConfiguration
-        implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
+		implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
 
 	@Autowired
 	private CoreMessageResourceService messageService;
@@ -58,7 +57,7 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 		super.initialize();
 		this.objectMapper.registerModule(new KIRuntimeSerializationModule());
 		this.objectMapper.registerModule(
-		        new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageService));
+				new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageService));
 		Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
 		FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
@@ -73,20 +72,20 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 	DSLContext context() {
 
 		Builder props = ConnectionFactoryOptions.parse(url)
-		        .mutate();
+				.mutate();
 		ConnectionFactory factory = ConnectionFactories.get(props.option(ConnectionFactoryOptions.DRIVER, "pool")
-		        .option(ConnectionFactoryOptions.PROTOCOL, "mysql")
-		        .option(ConnectionFactoryOptions.USER, username)
-		        .option(ConnectionFactoryOptions.PASSWORD, password)
-		        .build());
+				.option(ConnectionFactoryOptions.PROTOCOL, "mysql")
+				.option(ConnectionFactoryOptions.USER, username)
+				.option(ConnectionFactoryOptions.PASSWORD, password)
+				.build());
 		return DSL.using(new ConnectionPool(ConnectionPoolConfiguration.builder(factory)
-		        .build()));
+				.build()));
 	}
 
 	@Bean
 	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**",
-		        "/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind");
+				"/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind");
 	}
 
 	@Bean
@@ -97,7 +96,7 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 				String key = ctxView.get(LogUtil.DEBUG_KEY);
 
 				request.headers()
-				        .put(LogUtil.DEBUG_KEY, List.of(key));
+						.put(LogUtil.DEBUG_KEY, List.of(key));
 			}
 
 			return Mono.just(request);
@@ -106,7 +105,8 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 
 	@Override
 	public void configureRabbitListeners(RabbitListenerEndpointRegistrar registrar) {
-		//	This is a method in interface which requires an implementation in a concrete class
-		//that is why it is left empty.
+		// This is a method in interface which requires an implementation in a concrete
+		// class
+		// that is why it is left empty.
 	}
 }
