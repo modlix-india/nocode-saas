@@ -93,7 +93,11 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 			}
 		}
 
-		final String finModifiedPath = modifiedPath.endsWith("/") ? modifiedPath.substring(0, modifiedPath.length() - 1)
+		modifiedPath = modifiedPath.trim();
+		int length = modifiedPath.length();
+
+		final String finModifiedPath = length != 1 && modifiedPath.charAt(length - 1) == '/'
+				? modifiedPath.substring(0, modifiedPath.length() - 1)
 				: modifiedPath;
 		return this.getCodesFromURL(codesPart)
 				.switchIfEmpty(Mono.defer(() -> this.getClientCode(this.getSchemeHostPort(exchange))))
