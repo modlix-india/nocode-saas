@@ -294,11 +294,11 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> switch (request.getMethod()) {
-					case GET -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+				() -> switch (request.getMethod().toString()) {
+					case "GET" -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
 							kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
 
-					case POST, PUT, PATCH, DELETE ->
+					case "POST", "PUT", "PATCH", "DELETE" ->
 						iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
 								kiRunFxDef.getName(), jsonObject.toString());
 

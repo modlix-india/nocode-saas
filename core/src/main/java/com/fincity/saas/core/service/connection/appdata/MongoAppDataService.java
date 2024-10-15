@@ -1,10 +1,6 @@
 package com.fincity.saas.core.service.connection.appdata;
 
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.BETWEEN;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IN;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_FALSE;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_NULL;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_TRUE;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,8 +9,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiFunction;
-
-import javax.annotation.PostConstruct;
 
 import org.bson.BsonDateTime;
 import org.bson.BsonInt64;
@@ -57,7 +51,6 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.document.Storage.StorageIndex;
-import com.fincity.saas.core.gson.ObjectIdTypeAdapter;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.model.StorageRelation;
@@ -65,7 +58,6 @@ import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.StorageService;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mongodb.client.model.Aggregates;
@@ -84,6 +76,7 @@ import com.mongodb.reactivestreams.client.MongoDatabase;
 import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;

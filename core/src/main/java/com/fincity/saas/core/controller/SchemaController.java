@@ -2,8 +2,6 @@ package com.fincity.saas.core.controller;
 
 import java.util.List;
 
-import javax.annotation.PostConstruct;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +22,7 @@ import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.repository.CoreSchemaDocumentRepository;
 import com.fincity.saas.core.service.CoreSchemaService;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuples;
@@ -84,9 +83,11 @@ public class SchemaController
 
 				(ca, tup) -> this.service.getSchemaRepository(tup.getT1(), tup.getT2()),
 
-				(ca, tup, appSchemaRepo) -> Mono.just(includeKIRunRepos ? new ReactiveHybridRepository<Schema>(new KIRunReactiveSchemaRepository(),
-								this.coreSchemaRepo, appSchemaRepo)
-						: new ReactiveHybridRepository<Schema>(this.coreSchemaRepo, appSchemaRepo)),
+				(ca, tup,
+						appSchemaRepo) -> Mono.just(includeKIRunRepos
+								? new ReactiveHybridRepository<Schema>(new KIRunReactiveSchemaRepository(),
+										this.coreSchemaRepo, appSchemaRepo)
+								: new ReactiveHybridRepository<Schema>(this.coreSchemaRepo, appSchemaRepo)),
 
 				(ca, tup, appSchemaRepo, repo) -> repo.filter(filter).collectList()
 

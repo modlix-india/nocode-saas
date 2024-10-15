@@ -2,8 +2,6 @@ package com.fincity.saas.core.service.connection.rest;
 
 import java.util.EnumMap;
 
-import javax.annotation.PostConstruct;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +15,7 @@ import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.service.ConnectionService;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuples;
