@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.http.HttpMethod;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
@@ -38,7 +37,7 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 	private String pathString;
 	private String shortCode;
 
-	private Map<HttpMethod, PathDefinition> pathDefinitions;
+	private Map<String, PathDefinition> pathDefinitions;
 
 	public URIPath(URIPath uriPath) {
 
@@ -60,7 +59,7 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 				() -> DifferenceApplicator.apply(this.pathDefinitions, base.pathDefinitions),
 				pDef -> {
 
-					this.pathDefinitions = (Map<HttpMethod, PathDefinition>) pDef;
+					this.pathDefinitions = (Map<String, PathDefinition>) pDef;
 
 					if (this.pathString == null)
 						this.pathString = base.pathString;
@@ -83,7 +82,7 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 				() -> Mono.just(this),
 				(obj) -> DifferenceExtractor.extract(obj.pathDefinitions, base.pathDefinitions),
 				(obj, pDef) -> {
-					obj.setPathDefinitions((Map<HttpMethod, PathDefinition>) pDef);
+					obj.setPathDefinitions((Map<String, PathDefinition>) pDef);
 
 					if (obj.pathString != null && obj.pathString.equals(base.pathString))
 						obj.pathString = null;
