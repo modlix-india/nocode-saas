@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
@@ -95,6 +96,7 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
 	}
 
 	@Override
+	@JsonIgnore
 	public String getTransportName() {
 		return this.getId();
 	}
