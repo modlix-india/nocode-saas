@@ -11,6 +11,8 @@ import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
+import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
 import com.fincity.security.jooq.tables.SecurityAppRegPackage;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
@@ -92,6 +94,16 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_reg_file_access</code>.
      */
     public final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
+
+    /**
+     * The table <code>security.security_app_reg_integration</code>.
+     */
+    public final SecurityAppRegIntegration SECURITY_APP_REG_INTEGRATION = SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION;
+
+    /**
+     * The table <code>security.security_app_reg_integration_tokens</code>.
+     */
+    public final SecurityAppRegIntegrationTokens SECURITY_APP_REG_INTEGRATION_TOKENS = SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS;
 
     /**
      * The table <code>security.security_app_reg_package</code>.
@@ -241,6 +253,8 @@ public class Security extends SchemaImpl {
             SecurityAppProperty.SECURITY_APP_PROPERTY,
             SecurityAppRegAccess.SECURITY_APP_REG_ACCESS,
             SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS,
+            SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION,
+            SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS,
             SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE,
             SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE,
             SecurityClient.SECURITY_CLIENT,
