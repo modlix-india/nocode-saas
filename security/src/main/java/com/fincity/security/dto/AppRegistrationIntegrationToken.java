@@ -1,13 +1,17 @@
 package com.fincity.security.dto;
 
+import java.io.Serial;
+import java.time.LocalDateTime;
+
+import org.jooq.types.ULong;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import java.time.LocalDateTime;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -15,6 +19,7 @@ import org.jooq.types.ULong;
 @Accessors(chain = true)
 public class AppRegistrationIntegrationToken extends AbstractUpdatableDTO<ULong, ULong> {
 
+  @Serial
   private static final long serialVersionUID = -8765432109876543210L;
 
   private ULong integrationId;
