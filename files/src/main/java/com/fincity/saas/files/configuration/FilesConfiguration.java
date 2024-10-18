@@ -51,7 +51,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, matcher,
 
-				"/api/files/static/file/**", "/api/files/internal/**");
+				"/api/files/static/file/**", "/api/files/internal/**", "/api/files/secured/downloadFileByKey/*");
 	}
 
 	@Bean
