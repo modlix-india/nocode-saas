@@ -920,17 +920,14 @@ public abstract class AbstractFilesResourceService {
 		boolean ovr = override == null || override.booleanValue();
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPartImport, uri);
 
+		String resourcePath = tup.getT1();
+
 		if (fp == null || (!fp.filename()
 				.toLowerCase()
 				.endsWith(".zip"))) {
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
 		}
-
-		String resourcePath = this.comparePaths(Tuples.of(tup.getT1(), fp.filename()
-				.substring(0, fp.filename()
-						.lastIndexOf('.'))))
-				.getT1();
 
 		return FlatMapUtil.flatMapMono(
 
@@ -981,18 +978,6 @@ public abstract class AbstractFilesResourceService {
 				.subscribeOn(Schedulers.boundedElastic());
 	}
 
-	private Tuple2<String, String> comparePaths(Tuple2<String, String> tuple) {
-
-		if (tuple.getT1()
-				.endsWith(tuple.getT2()))
-
-			return Tuples.of(tuple.getT1()
-					.substring(0, tuple.getT1()
-							.indexOf(tuple.getT2())),
-					tuple.getT2());
-
-		return tuple;
-	}
 
 	private String parentOf(String name) {
 		int ind = name.lastIndexOf('/');
