@@ -1,9 +1,11 @@
 package com.fincity.saas.files.configuration;
 
+import java.net.URI;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -21,10 +23,23 @@ import com.fincity.saas.commons.util.LogUtil;
 import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 @Configuration
 public class FilesConfiguration extends AbstractJooqBaseConfiguration
 		implements ISecurityConfiguration {
+
+	@Value("${files.resources.endpoint}")
+	private String endpoint;
+
+	@Value("${files.resources.accessKey}")
+	private String accessKey;
+
+	@Value("${files.resources.secretKey}")
+	private String secretKey;
 
 	@Override
 	@PostConstruct
@@ -41,7 +56,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 	}
 
 	@Bean
-	SecurityWebFilterChain filterChain(ServerHttpSecurity http,
+	public SecurityWebFilterChain filterChain(ServerHttpSecurity http,
 			FeignAuthenticationService authService) {
 		ServerWebExchangeMatcher matcher = new OrServerWebExchangeMatcher(
 				new PathPatternParserServerWebExchangeMatcher("/api/files/static/file/**"),
@@ -55,7 +70,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 	}
 
 	@Bean
-	ReactiveHttpRequestInterceptor feignInterceptor() {
+	public ReactiveHttpRequestInterceptor feignInterceptor() {
 		return request -> Mono.deferContextual(ctxView -> {
 
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
@@ -68,4 +83,13 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 		});
 	}
 
+	@Bean
+	public S3AsyncClient s3Client() {
+		return S3AsyncClient.builder()
+				.region(Region.US_EAST_1)
+				.endpointOverride(URI.create(endpoint))
+				.credentialsProvider(StaticCredentialsProvider
+						.create(AwsBasicCredentials.create(accessKey, secretKey)))
+				.build();
+	}
 }

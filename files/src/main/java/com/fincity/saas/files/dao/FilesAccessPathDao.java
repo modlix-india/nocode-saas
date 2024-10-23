@@ -1,6 +1,6 @@
 package com.fincity.saas.files.dao;
 
-import static com.fincity.saas.files.jooq.tables.FilesAccessPath.FILES_ACCESS_PATH;
+import static com.fincity.saas.files.jooq.tables.FilesAccessPath.*;
 
 import java.util.List;
 
@@ -12,6 +12,8 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.files.dto.FilesAccessPath;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.tables.records.FilesAccessPathRecord;
@@ -36,7 +38,7 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 						FILES_ACCESS_PATH.CLIENT_CODE.eq(clientCode), FILES_ACCESS_PATH.RESOURCE_TYPE.eq(resourceType),
 						DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
 						DSL.concat(path)
-								.like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
+								.like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(ByteUtil.ZERO),
 										DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))))
 
 				.limit(1);
@@ -48,7 +50,7 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 				.map(e -> e != 0)
 				.flatMap(access -> {
 
-					if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+					if (BooleanUtil.safeValueOf(access) || resourceType == FilesAccessPathResourceType.SECURED)
 						return Mono.just(access);
 
 					return Mono.from(this.dslContext.selectCount()
@@ -70,7 +72,7 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 						DSL.or(FILES_ACCESS_PATH.USER_ID.eq(userId), FILES_ACCESS_PATH.ACCESS_NAME.in(accessList)),
 
 						DSL.concat(path)
-								.like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(Byte.valueOf((byte) 0)),
+								.like(DSL.if_(FILES_ACCESS_PATH.ALLOW_SUB_PATH_ACCESS.ne(ByteUtil.ZERO),
 										DSL.concat(FILES_ACCESS_PATH.PATH, "%"), FILES_ACCESS_PATH.PATH))));
 		if (logger.isDebugEnabled())
 			logger.debug(query.toString());
@@ -80,12 +82,12 @@ public class FilesAccessPathDao extends AbstractUpdatableDAO<FilesAccessPathReco
 						.compareTo(a.getPath()))
 				.next()
 				.filter(e -> e.getWriteAccess()
-						.equals(Byte.valueOf((byte) 1)))
+						.equals(ByteUtil.ONE))
 				.map(e -> true)
 				.defaultIfEmpty(false)
 				.flatMap(access -> {
 
-					if (access.booleanValue() || resourceType == FilesAccessPathResourceType.SECURED)
+					if (BooleanUtil.safeValueOf(access) || resourceType == FilesAccessPathResourceType.SECURED)
 						return Mono.just(access);
 
 					return Mono.from(this.dslContext.selectCount()

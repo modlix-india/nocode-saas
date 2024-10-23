@@ -5,7 +5,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,7 +36,7 @@ public class FilesutilityApplication {
 	private static final String BUCKET_NAME_SECURED = "local-secured";
 	private static final String ENDPOINT = "https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com";
 	private static final String ACCESS_KEY = "2229a18802734bc30a8419a2e622187c";
-	private static final String SECRET_KEY = "777f222e215a5ae44da12e258f6f93d7d67c38d47801ee3d7c80adfbf06a5ef5";
+	private static final String SECRET_KEY = "aae8d428632690931da6a00a4b3cc1d3a900ac108798f12818291e6289843c9e";
 
 	private static final String LOCAL_STATIC_LOCATION = "C:\\Users\\kiran\\Downloads\\files\\static"; // NOSONAR
 	private static final String LOCAL_SECURED_LOCATION = "C:\\Users\\kiran\\Downloads\\files\\secured"; // NOSONAR
@@ -64,16 +63,30 @@ public class FilesutilityApplication {
 		// uploadFiles(s3Client, BUCKET_NAME_STATIC, LOCAL_STATIC_LOCATION); //NOSONAR
 		// uploadFiles(s3Client, BUCKET_NAME_SECURED, LOCAL_SECURED_LOCATION); //NOSONAR
 
-		try (Connection connection = DriverManager.getConnection(DB_CONNECTION_STRING, DB_USERNAME, DB_PASSWORD)) {
+		// try (Connection connection =
+		// DriverManager.getConnection(DB_CONNECTION_STRING, DB_USERNAME, DB_PASSWORD))
+		// {
 
-			emptyTable(connection);
-			logger.info("Database connection established successfully.");
+		// emptyTable(connection);
+		// logger.info("Database connection established successfully.");
 
-			uploadFilesToDB(s3Client, connection, "STATIC", BUCKET_NAME_STATIC);
-			uploadFilesToDB(s3Client, connection, "SECURED", BUCKET_NAME_SECURED);
+		// uploadFilesToDB(s3Client, connection, "STATIC", BUCKET_NAME_STATIC);
+		// uploadFilesToDB(s3Client, connection, "SECURED", BUCKET_NAME_SECURED);
 
-		} catch (SQLException e) {
-			logger.error("Failed to connect to the database.", e);
+		// } catch (SQLException e) {
+		// logger.error("Failed to connect to the database.", e);
+		// }
+		printObjectsInFolder(s3Client, BUCKET_NAME_STATIC, "SYSTEM/sbrminara");
+	}
+
+	public static void printObjectsInFolder(S3Client s3Client, String bucketName, String path) {
+
+		SdkIterable<S3Object> iterable = s3Client
+				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).prefix(path).build())
+				.contents();
+
+		for (S3Object s3Object : iterable) {
+			logger.info(s3Object.key());
 		}
 	}
 
