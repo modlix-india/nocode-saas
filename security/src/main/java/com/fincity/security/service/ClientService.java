@@ -332,7 +332,7 @@ public class ClientService
 
 		return this.dao.getClientPasswordPolicy(clientId)
 				.map(e -> {// NOSONAR
-							// Need to check the password policy
+					// Need to check the password policy
 					return true;
 				})
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
@@ -343,7 +343,7 @@ public class ClientService
 
 		return this.dao.getClientPasswordPolicy(clientId)
 				.map(e -> { // NOSONAR
-							// Need to check the password policy
+					// Need to check the password policy
 					return true;
 				})
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
@@ -547,52 +547,50 @@ public class ClientService
 
 	}
 
-	
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-		                .getClientId()))),
+				ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+						.getClientId()))),
 
-		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
-		                : this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), id),
+				(ca, id) -> ca.isSystemClient() ? Mono.just(true)
+						: this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
+								.getClientId()), id),
 
-		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientActiveIfInActive(clientId)
-		                : Mono.empty())
+				(ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientActiveIfInActive(clientId)
+						: Mono.empty())
 
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
-		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 
 	}
 
-	
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> makeClientInActive(ULong clientId) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-		                .getClientId()))),
+				ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+						.getClientId()))),
 
-		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
-		                : this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), id),
+				(ca, id) -> ca.isSystemClient() ? Mono.just(true)
+						: this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
+								.getClientId()), id),
 
-		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientInActive(clientId)
-		                : Mono.empty())
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
-		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
+				(ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientInActive(clientId)
+						: Mono.empty())
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 	}
 
 	public Mono<Page<CodeAccess>> fetchCodesBasedOnClient(Pageable page, String clientCode, String emailId) {

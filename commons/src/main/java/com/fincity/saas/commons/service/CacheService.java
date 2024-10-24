@@ -1,11 +1,15 @@
 package com.fincity.saas.commons.service;
 
+import io.lettuce.core.api.async.RedisAsyncCommands;
+import io.lettuce.core.pubsub.RedisPubSubAdapter;
+import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
+import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
+import jakarta.annotation.PostConstruct;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,12 +17,6 @@ import org.springframework.boot.autoconfigure.cache.CacheType;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
-
-import io.lettuce.core.api.async.RedisAsyncCommands;
-import io.lettuce.core.pubsub.RedisPubSubAdapter;
-import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
-import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
-import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -298,6 +296,18 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 			keys[i] = keySuppliers[i].get();
 
 		return v -> this.evict(cacheName, keys)
+				.map(e -> v);
+	}
+
+	public <T> Function<T, Mono<T>> evictFunctionWithFunction(String cacheName, Function<T, Object> keyFunction) {
+		return v -> this.evict(cacheName, keyFunction.apply(v))
+				.map(e -> v);
+	}
+
+	public <T> Function<T, Mono<T>> evictFunctionWithFunctionMultipleKeys(String cacheName,
+			Function<T, Object[]> keyFunction) {
+		return v -> this.makeKey(keyFunction.apply(v))
+				.flatMap(key -> this.evict(cacheName, key))
 				.map(e -> v);
 	}
 }
