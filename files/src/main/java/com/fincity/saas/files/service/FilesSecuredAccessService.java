@@ -5,8 +5,12 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import java.time.LocalDateTime;
 
 import org.jooq.types.ULong;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -21,6 +25,9 @@ import reactor.util.context.Context;
 @Service
 public class FilesSecuredAccessService extends
         AbstractJOOQDataService<FilesSecuredAccessKeysRecord, ULong, FilesSecuredAccessKey, FilesSecuredAccessKeyDao> {
+
+	@Autowired
+	public FilesMessageResourceService messageResourceService;
 
 	public Mono<FilesSecuredAccessKey> getAccessRecordByPath(String key) {
 		return this.dao.getAccessByKey(key);
@@ -53,6 +60,9 @@ public class FilesSecuredAccessService extends
 		                                        "FilesSecuredAccessService.getAccessPathByKey"))
 
 						))
+					.switchIfEmpty(this.messageResourceService.throwMessage(msg -> 
+						new GenericException(HttpStatus.NOT_FOUND, msg), FilesMessageResourceService.INVALID_KEY))
+
 		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesSecuredAccessService.getAccessPathByKey"));
 	}
 

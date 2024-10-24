@@ -27,7 +27,7 @@ public class SecuredResourceFileController extends AbstractResourceFileControlle
 			@RequestParam(required = false) ChronoUnit timeUnit, @RequestParam(required = false) Long accessLimit,
 			ServerHttpRequest request) {
 
-		return this.service.createSecuredAccess(timeSpan, timeUnit, accessLimit, request.getURI()
+		return this.service.createSecuredAccess(timeSpan, timeUnit, accessLimit, request.getPath()
 				.toString())
 				.map(ResponseEntity::ok);
 	}
