@@ -2,6 +2,8 @@ package com.fincity.saas.commons.util;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class UniqueUtil {
@@ -110,6 +112,26 @@ public class UniqueUtil {
 
 		return sb.toString();
 	}
+
+	public static void main(String[] args) {
+
+		Set<String> uuids = new HashSet<>();
+		int iterations = 1000000000; // Number of UUIDs to generate for the test
+
+		for (int i = 0; i < iterations; i++) {
+			String shortUUID = UniqueUtil.shortUUID();
+			if (uuids.contains(shortUUID)) {
+				System.out.println(shortUUID);
+			}
+			uuids.add(shortUUID);
+		}
+
+		System.out.println(uuids.size());
+
+	}
+    public void testShortUUIDUniqueness() {
+
+    }
 
 	private UniqueUtil() {
 	}

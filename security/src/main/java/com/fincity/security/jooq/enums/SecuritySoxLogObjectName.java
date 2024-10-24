@@ -12,7 +12,7 @@ import org.jooq.Schema;
 /**
  * Operation on the object
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum SecuritySoxLogObjectName implements EnumType {
 
     USER("USER"),
@@ -56,7 +56,9 @@ public enum SecuritySoxLogObjectName implements EnumType {
     }
 
     /**
-     * Lookup a value of this EnumType by its literal
+     * Lookup a value of this EnumType by its literal. Returns
+     * <code>null</code>, if no such value could be found, see {@link
+     * EnumType#lookupLiteral(Class, String)}.
      */
     public static SecuritySoxLogObjectName lookupLiteral(String literal) {
         return EnumType.lookupLiteral(SecuritySoxLogObjectName.class, literal);

@@ -22,6 +22,7 @@ import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityCodeAccess;
 import com.fincity.security.jooq.tables.SecurityOrgStructure;
+import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPackage;
 import com.fincity.security.jooq.tables.SecurityPackageRole;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
@@ -54,6 +55,7 @@ import com.fincity.security.jooq.tables.records.SecurityClientTypeRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 import com.fincity.security.jooq.tables.records.SecurityCodeAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityOrgStructureRecord;
+import com.fincity.security.jooq.tables.records.SecurityOtpRecord;
 import com.fincity.security.jooq.tables.records.SecurityPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityPackageRoleRecord;
 import com.fincity.security.jooq.tables.records.SecurityPastPasswordsRecord;
@@ -80,7 +82,7 @@ import org.jooq.impl.Internal;
  * A class modelling foreign key relationships and constraints of tables in
  * security.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Keys {
 
     // -------------------------------------------------------------------------
@@ -120,16 +122,17 @@ public class Keys {
     public static final UniqueKey<SecurityCodeAccessRecord> KEY_SECURITY_CODE_ACCESS_UK1_CODE_ACCESS_EMAIL_APP_CLIENT = Internal.createUniqueKey(SecurityCodeAccess.SECURITY_CODE_ACCESS, DSL.name("KEY_security_code_access_UK1_CODE_ACCESS_EMAIL_APP_CLIENT"), new TableField[] { SecurityCodeAccess.SECURITY_CODE_ACCESS.APP_ID, SecurityCodeAccess.SECURITY_CODE_ACCESS.CLIENT_ID, SecurityCodeAccess.SECURITY_CODE_ACCESS.EMAIL_ID }, true);
     public static final UniqueKey<SecurityOrgStructureRecord> KEY_SECURITY_ORG_STRUCTURE_PRIMARY = Internal.createUniqueKey(SecurityOrgStructure.SECURITY_ORG_STRUCTURE, DSL.name("KEY_security_org_structure_PRIMARY"), new TableField[] { SecurityOrgStructure.SECURITY_ORG_STRUCTURE.ID }, true);
     public static final UniqueKey<SecurityOrgStructureRecord> KEY_SECURITY_ORG_STRUCTURE_UK1_ORG_STRUCTURE = Internal.createUniqueKey(SecurityOrgStructure.SECURITY_ORG_STRUCTURE, DSL.name("KEY_security_org_structure_UK1_ORG_STRUCTURE"), new TableField[] { SecurityOrgStructure.SECURITY_ORG_STRUCTURE.USER_ID, SecurityOrgStructure.SECURITY_ORG_STRUCTURE.MANAGER_ID }, true);
+    public static final UniqueKey<SecurityOtpRecord> KEY_SECURITY_OTP_PRIMARY = Internal.createUniqueKey(SecurityOtp.SECURITY_OTP, DSL.name("KEY_security_otp_PRIMARY"), new TableField[] { SecurityOtp.SECURITY_OTP.ID }, true);
     public static final UniqueKey<SecurityPackageRecord> KEY_SECURITY_PACKAGE_PRIMARY = Internal.createUniqueKey(SecurityPackage.SECURITY_PACKAGE, DSL.name("KEY_security_package_PRIMARY"), new TableField[] { SecurityPackage.SECURITY_PACKAGE.ID }, true);
     public static final UniqueKey<SecurityPackageRecord> KEY_SECURITY_PACKAGE_UK1_PACKAGE_CODE = Internal.createUniqueKey(SecurityPackage.SECURITY_PACKAGE, DSL.name("KEY_security_package_UK1_PACKAGE_CODE"), new TableField[] { SecurityPackage.SECURITY_PACKAGE.CODE }, true);
-    public static final UniqueKey<SecurityPackageRecord> KEY_SECURITY_PACKAGE_UK2_PACKAGE_NAME = Internal.createUniqueKey(SecurityPackage.SECURITY_PACKAGE, DSL.name("KEY_security_package_UK2_PACKAGE_NAME"), new TableField[] { SecurityPackage.SECURITY_PACKAGE.NAME }, true);
+    public static final UniqueKey<SecurityPackageRecord> KEY_SECURITY_PACKAGE_UK2_PACKAGE_NAME_APP_ID = Internal.createUniqueKey(SecurityPackage.SECURITY_PACKAGE, DSL.name("KEY_security_package_UK2_PACKAGE_NAME_APP_ID"), new TableField[] { SecurityPackage.SECURITY_PACKAGE.NAME, SecurityPackage.SECURITY_PACKAGE.APP_ID }, true);
     public static final UniqueKey<SecurityPackageRoleRecord> KEY_SECURITY_PACKAGE_ROLE_PRIMARY = Internal.createUniqueKey(SecurityPackageRole.SECURITY_PACKAGE_ROLE, DSL.name("KEY_security_package_role_PRIMARY"), new TableField[] { SecurityPackageRole.SECURITY_PACKAGE_ROLE.ID }, true);
     public static final UniqueKey<SecurityPackageRoleRecord> KEY_SECURITY_PACKAGE_ROLE_UK1_PACKAGE_ROLE = Internal.createUniqueKey(SecurityPackageRole.SECURITY_PACKAGE_ROLE, DSL.name("KEY_security_package_role_UK1_PACKAGE_ROLE"), new TableField[] { SecurityPackageRole.SECURITY_PACKAGE_ROLE.ROLE_ID, SecurityPackageRole.SECURITY_PACKAGE_ROLE.PACKAGE_ID }, true);
     public static final UniqueKey<SecurityPastPasswordsRecord> KEY_SECURITY_PAST_PASSWORDS_PRIMARY = Internal.createUniqueKey(SecurityPastPasswords.SECURITY_PAST_PASSWORDS, DSL.name("KEY_security_past_passwords_PRIMARY"), new TableField[] { SecurityPastPasswords.SECURITY_PAST_PASSWORDS.ID }, true);
     public static final UniqueKey<SecurityPermissionRecord> KEY_SECURITY_PERMISSION_PRIMARY = Internal.createUniqueKey(SecurityPermission.SECURITY_PERMISSION, DSL.name("KEY_security_permission_PRIMARY"), new TableField[] { SecurityPermission.SECURITY_PERMISSION.ID }, true);
     public static final UniqueKey<SecurityPermissionRecord> KEY_SECURITY_PERMISSION_UK1_PERMISSION_NAME = Internal.createUniqueKey(SecurityPermission.SECURITY_PERMISSION, DSL.name("KEY_security_permission_UK1_PERMISSION_NAME"), new TableField[] { SecurityPermission.SECURITY_PERMISSION.NAME }, true);
     public static final UniqueKey<SecurityRoleRecord> KEY_SECURITY_ROLE_PRIMARY = Internal.createUniqueKey(SecurityRole.SECURITY_ROLE, DSL.name("KEY_security_role_PRIMARY"), new TableField[] { SecurityRole.SECURITY_ROLE.ID }, true);
-    public static final UniqueKey<SecurityRoleRecord> KEY_SECURITY_ROLE_UK1_ROLE_NAME = Internal.createUniqueKey(SecurityRole.SECURITY_ROLE, DSL.name("KEY_security_role_UK1_ROLE_NAME"), new TableField[] { SecurityRole.SECURITY_ROLE.NAME }, true);
+    public static final UniqueKey<SecurityRoleRecord> KEY_SECURITY_ROLE_UK1_ROLE_NAME_APP_ID = Internal.createUniqueKey(SecurityRole.SECURITY_ROLE, DSL.name("KEY_security_role_UK1_ROLE_NAME_APP_ID"), new TableField[] { SecurityRole.SECURITY_ROLE.NAME, SecurityRole.SECURITY_ROLE.APP_ID }, true);
     public static final UniqueKey<SecurityRolePermissionRecord> KEY_SECURITY_ROLE_PERMISSION_PRIMARY = Internal.createUniqueKey(SecurityRolePermission.SECURITY_ROLE_PERMISSION, DSL.name("KEY_security_role_permission_PRIMARY"), new TableField[] { SecurityRolePermission.SECURITY_ROLE_PERMISSION.ID }, true);
     public static final UniqueKey<SecurityRolePermissionRecord> KEY_SECURITY_ROLE_PERMISSION_UK1_ROLE_PERMISSION = Internal.createUniqueKey(SecurityRolePermission.SECURITY_ROLE_PERMISSION, DSL.name("KEY_security_role_permission_UK1_ROLE_PERMISSION"), new TableField[] { SecurityRolePermission.SECURITY_ROLE_PERMISSION.ROLE_ID, SecurityRolePermission.SECURITY_ROLE_PERMISSION.PERMISSION_ID }, true);
     public static final UniqueKey<SecuritySoxLogRecord> KEY_SECURITY_SOX_LOG_PRIMARY = Internal.createUniqueKey(SecuritySoxLog.SECURITY_SOX_LOG, DSL.name("KEY_security_sox_log_PRIMARY"), new TableField[] { SecuritySoxLog.SECURITY_SOX_LOG.ID }, true);
@@ -184,6 +187,8 @@ public class Keys {
     public static final ForeignKey<SecurityOrgStructureRecord, SecurityClientRecord> FK1_ORG_STRUCTURE_CLIENT_ID = Internal.createForeignKey(SecurityOrgStructure.SECURITY_ORG_STRUCTURE, DSL.name("FK1_ORG_STRUCTURE_CLIENT_ID"), new TableField[] { SecurityOrgStructure.SECURITY_ORG_STRUCTURE.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final ForeignKey<SecurityOrgStructureRecord, SecurityUserRecord> FK2_ORG_STRUCTURE_USER_ID = Internal.createForeignKey(SecurityOrgStructure.SECURITY_ORG_STRUCTURE, DSL.name("FK2_ORG_STRUCTURE_USER_ID"), new TableField[] { SecurityOrgStructure.SECURITY_ORG_STRUCTURE.USER_ID }, Keys.KEY_SECURITY_USER_PRIMARY, new TableField[] { SecurityUser.SECURITY_USER.ID }, true);
     public static final ForeignKey<SecurityOrgStructureRecord, SecurityUserRecord> FK3_ORG_STRUCTURE_MANAGER_ID = Internal.createForeignKey(SecurityOrgStructure.SECURITY_ORG_STRUCTURE, DSL.name("FK3_ORG_STRUCTURE_MANAGER_ID"), new TableField[] { SecurityOrgStructure.SECURITY_ORG_STRUCTURE.MANAGER_ID }, Keys.KEY_SECURITY_USER_PRIMARY, new TableField[] { SecurityUser.SECURITY_USER.ID }, true);
+    public static final ForeignKey<SecurityOtpRecord, SecurityAppRecord> FK1_OTP_APP_ID = Internal.createForeignKey(SecurityOtp.SECURITY_OTP, DSL.name("FK1_OTP_APP_ID"), new TableField[] { SecurityOtp.SECURITY_OTP.APP_ID }, Keys.KEY_SECURITY_APP_PRIMARY, new TableField[] { SecurityApp.SECURITY_APP.ID }, true);
+    public static final ForeignKey<SecurityOtpRecord, SecurityUserRecord> FK2_OTP_USER_ID = Internal.createForeignKey(SecurityOtp.SECURITY_OTP, DSL.name("FK2_OTP_USER_ID"), new TableField[] { SecurityOtp.SECURITY_OTP.USER_ID }, Keys.KEY_SECURITY_USER_PRIMARY, new TableField[] { SecurityUser.SECURITY_USER.ID }, true);
     public static final ForeignKey<SecurityPackageRecord, SecurityClientRecord> FK1_PACKAGE_CLIENT_ID = Internal.createForeignKey(SecurityPackage.SECURITY_PACKAGE, DSL.name("FK1_PACKAGE_CLIENT_ID"), new TableField[] { SecurityPackage.SECURITY_PACKAGE.CLIENT_ID }, Keys.KEY_SECURITY_CLIENT_PRIMARY, new TableField[] { SecurityClient.SECURITY_CLIENT.ID }, true);
     public static final ForeignKey<SecurityPackageRecord, SecurityAppRecord> FK2_PACKAGE_APP_ID = Internal.createForeignKey(SecurityPackage.SECURITY_PACKAGE, DSL.name("FK2_PACKAGE_APP_ID"), new TableField[] { SecurityPackage.SECURITY_PACKAGE.APP_ID }, Keys.KEY_SECURITY_APP_PRIMARY, new TableField[] { SecurityApp.SECURITY_APP.ID }, true);
     public static final ForeignKey<SecurityPackageRoleRecord, SecurityRoleRecord> FK1_PACKAGE_ROLE_ROLE_ID = Internal.createForeignKey(SecurityPackageRole.SECURITY_PACKAGE_ROLE, DSL.name("FK1_PACKAGE_ROLE_ROLE_ID"), new TableField[] { SecurityPackageRole.SECURITY_PACKAGE_ROLE.ROLE_ID }, Keys.KEY_SECURITY_ROLE_PRIMARY, new TableField[] { SecurityRole.SECURITY_ROLE.ID }, true);

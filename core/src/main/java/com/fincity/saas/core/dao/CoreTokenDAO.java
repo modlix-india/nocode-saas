@@ -5,7 +5,7 @@ import static com.fincity.saas.core.jooq.tables.CoreTokens.CORE_TOKENS;
 import java.time.LocalDateTime;
 
 import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.saas.core.dto.CoreToken;
@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-@Service
+@Component
 public class CoreTokenDAO extends AbstractDAO<CoreTokensRecord, ULong, CoreToken> {
 
 	protected CoreTokenDAO() {

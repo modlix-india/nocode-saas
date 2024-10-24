@@ -10,24 +10,20 @@ import org.jooq.Schema;
 
 
 /**
- * Status of the user
+ * The target medium for the OTP delivery: EMAIL, PHONE, or BOTH
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityUserStatusCode implements EnumType {
+public enum SecurityOtpTargetType implements EnumType {
 
-    ACTIVE("ACTIVE"),
+    EMAIL("EMAIL"),
 
-    INACTIVE("INACTIVE"),
+    PHONE("PHONE"),
 
-    DELETED("DELETED"),
-
-    LOCKED("LOCKED"),
-
-    PASSWORD_EXPIRED("PASSWORD_EXPIRED");
+    BOTH("BOTH");
 
     private final String literal;
 
-    private SecurityUserStatusCode(String literal) {
+    private SecurityOtpTargetType(String literal) {
         this.literal = literal;
     }
 
@@ -56,7 +52,7 @@ public enum SecurityUserStatusCode implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityUserStatusCode lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityUserStatusCode.class, literal);
+    public static SecurityOtpTargetType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityOtpTargetType.class, literal);
     }
 }

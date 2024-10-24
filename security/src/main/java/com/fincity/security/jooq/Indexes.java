@@ -5,6 +5,7 @@ package com.fincity.security.jooq;
 
 
 import com.fincity.security.jooq.tables.SecurityAppAccess;
+import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission;
@@ -19,7 +20,7 @@ import org.jooq.impl.Internal;
 /**
  * A class modelling indexes of tables in security.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Indexes {
 
     // -------------------------------------------------------------------------
@@ -27,11 +28,14 @@ public class Indexes {
     // -------------------------------------------------------------------------
 
     public static final Index SECURITY_SOX_LOG_CREATED_AT = Internal.createIndex(DSL.name("CREATED_AT"), SecuritySoxLog.SECURITY_SOX_LOG, new OrderField[] { SecuritySoxLog.SECURITY_SOX_LOG.CREATED_AT }, false);
+    public static final Index SECURITY_OTP_EXPIRES_AT = Internal.createIndex(DSL.name("EXPIRES_AT"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.EXPIRES_AT }, false);
     public static final Index SECURITY_APP_ACCESS_FK1_APP_CLIENT_ID = Internal.createIndex(DSL.name("FK1_APP_CLIENT_ID"), SecurityAppAccess.SECURITY_APP_ACCESS, new OrderField[] { SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID }, false);
     public static final Index SECURITY_USER_K1_USER_NAME = Internal.createIndex(DSL.name("K1_USER_NAME"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.USER_NAME }, false);
     public static final Index SECURITY_USER_K2_EMAIL_ID = Internal.createIndex(DSL.name("K2_EMAIL_ID"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.EMAIL_ID }, false);
     public static final Index SECURITY_USER_K3_PHONE_NUMBER = Internal.createIndex(DSL.name("K3_PHONE_NUMBER"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.PHONE_NUMBER }, false);
     public static final Index SECURITY_SOX_LOG_OBJECT_NAME = Internal.createIndex(DSL.name("OBJECT_NAME"), SecuritySoxLog.SECURITY_SOX_LOG, new OrderField[] { SecuritySoxLog.SECURITY_SOX_LOG.OBJECT_NAME, SecuritySoxLog.SECURITY_SOX_LOG.ACTION_NAME }, false);
     public static final Index SECURITY_USER_TOKEN_PART_TOKEN = Internal.createIndex(DSL.name("PART_TOKEN"), SecurityUserToken.SECURITY_USER_TOKEN, new OrderField[] { SecurityUserToken.SECURITY_USER_TOKEN.PART_TOKEN }, false);
+    public static final Index SECURITY_OTP_PURPOSE = Internal.createIndex(DSL.name("PURPOSE"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.PURPOSE, SecurityOtp.SECURITY_OTP.TARGET_TYPE, SecurityOtp.SECURITY_OTP.EMAIL, SecurityOtp.SECURITY_OTP.PHONE_NUMBER }, false);
     public static final Index SECURITY_USER_ROLE_PERMISSION_UK1_USER = Internal.createIndex(DSL.name("UK1_USER"), SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION, new OrderField[] { SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION.USER_ID }, false);
+    public static final Index SECURITY_OTP_UNIQUE_CODE = Internal.createIndex(DSL.name("UNIQUE_CODE"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.UNIQUE_CODE }, false);
 }

@@ -133,7 +133,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				},
 
 				(user, managerActive, client, mClient) -> Mono
-						.just(Tuples.<Client, Client, User>of(mClient, client, user)))
+						.just(Tuples.of(mClient, client, user)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.findUserNClient"));
 	}
 

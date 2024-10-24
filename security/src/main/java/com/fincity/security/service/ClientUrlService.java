@@ -257,11 +257,11 @@ public class ClientUrlService
 
 				(ca, app, cc) -> clientService.getClientBy(cc).map(Client::getId),
 
-				(ca, app, cc, cId) -> appService.getProperties(cId, app.getId(), appCode, APP_PROP_URL),
+				(ca, app, cc, clientId) -> appService.getProperties(clientId, app.getId(), appCode, APP_PROP_URL),
 
 				(ca, app, cc, cId, prop) -> prop == null || prop.isEmpty() ?
 						this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId) :
-						Mono.just(prop.get(cId).get(APP_PROP_URL).getValue()),
+						Mono.just(prop.get(cId).get(APP_PROP_URL).toString()),
 
 				(ca, app, cc, cId, prop, url) -> Mono.just(checkUrl(url))
 

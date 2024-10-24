@@ -30,6 +30,7 @@ import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
+import com.fincity.security.enums.otp.OtpType;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.AppDependency;
@@ -75,10 +76,16 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public static final String APP_PROP_REG_TYPE_EMAIL_PASSWORD = "REGISTRATION_TYPE_EMAIL_PASSWORD";
 	public static final String APP_PROP_REG_TYPE_NO_VERIFICATION = "REGISTRATION_TYPE_NO_VERIFICATION";
 	public static final String APP_PROP_REG_TYPE_NO_REGISTRATION = "REGISTRATION_TYPE_NO_REGISTRATION";
+	public static final String APP_PROP_LOGIN_TYPE = "LOGIN_TYPE";
+	public static final String APP_PROP_LOGIN_TYPE_OTP = "LOGIN_TYPE_OTP";
+	public static final String APP_PROP_LOGIN_TYPE_OTP_PHONE = "LOGIN_TYPE_OTP_PHONE";
+	public static final String APP_PROP_LOGIN_TYPE_OTP_EMAIL = "LOGIN_TYPE_OTP_EMAIL";
+	public static final String APP_PROP_LOGIN_TYPE_OTP_BOTH = "LOGIN_TYPE_OTP_BOTH";
+	public static final String APP_PROP_OTP_TYPE = "OTP_TYPE";
 
 	public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
 	public static final String APP_PROP_URL = "URL";
-	
+
 	public static final String APP_ACCESS_TYPE = "appAccessType";
 	public static final String APP_USAGE_TYPE = "appUsageType";
 	public static final String APP_NAME = "appName";
@@ -336,7 +343,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		);
 
 	}
-	
+
 	private Mono<Map<String, Object>> validateFields(Map<String, Object> fields) {
 
 		Map<String, Object> updatableFields = new HashMap<>();
@@ -349,7 +356,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		if (fields.containsKey(APP_ACCESS_TYPE))
 			updatableFields.put(APP_ACCESS_TYPE, fields.get(APP_ACCESS_TYPE));
-		
+
 		if (fields.containsKey(APP_USAGE_TYPE))
 			updatableFields.put(APP_USAGE_TYPE, fields.get(APP_USAGE_TYPE));
 
