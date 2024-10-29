@@ -243,7 +243,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				(uriPath, hasAccess, pathDef) -> switch (pathDef.getUriType()) {
 					case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getPathString(),
-							pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), uriPath.getClientCode());
+							pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), clientCode);
 
 					case REDIRECTION -> // TODO
 						Mono.empty();
