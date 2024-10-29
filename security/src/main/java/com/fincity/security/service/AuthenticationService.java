@@ -39,6 +39,7 @@ import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
+import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.model.AuthenticationIdentifierType;
@@ -58,6 +59,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private final TokenService tokenService;
 
+	private final OtpService otpService;
+
 	private final SecurityMessageResourceService resourceService;
 
 	private final SoxLogService soxLogService;
@@ -67,11 +70,13 @@ public class AuthenticationService implements IAuthenticationService {
 	private final CacheService cacheService;
 
 	public AuthenticationService(UserService userService, ClientService clientService, TokenService tokenService,
-			SecurityMessageResourceService resourceService, SoxLogService soxLogService, PasswordEncoder pwdEncoder,
+		OtpService otpService,	SecurityMessageResourceService resourceService, SoxLogService soxLogService,
+		                         PasswordEncoder pwdEncoder,
 			CacheService cacheService) {
 		this.userService = userService;
 		this.clientService = clientService;
 		this.tokenService = tokenService;
+		this.otpService = otpService;
 		this.resourceService = resourceService;
 		this.soxLogService = soxLogService;
 		this.pwdEncoder = pwdEncoder;
@@ -162,7 +167,7 @@ public class AuthenticationService implements IAuthenticationService {
 											.getId()) ? true : null);
 				},
 
-				(tup, linCCheck) -> this.checkPassword(authRequest, tup.getT3()),
+				(tup, linCCheck) -> this.checkPassword(authRequest, appCode, tup.getT3()),
 
 				(tup, linCCheck, passwordChecked) -> this.clientService.getClientPasswordPolicy(tup.getT2()
 						.getId())
@@ -270,18 +275,22 @@ public class AuthenticationService implements IAuthenticationService {
 		return Mono.just(1);
 	}
 
-	private Mono<Boolean> checkPassword(AuthenticationRequest authRequest, User u) {
+	private Mono<Boolean> checkPassword(AuthenticationRequest authRequest, String appCode, User user) {
 
-		if (u.isPasswordHashed()) {
-			if (pwdEncoder.matches(u.getId() + authRequest.getPassword(), u.getPassword()))
+		if (authRequest.getOtp() != null) {
+			return otpService.verifyOtp(appCode, user, OtpPurpose.LOGIN.name(), authRequest.getOtp());
+		}
+
+		if (user.isPasswordHashed()) {
+			if (pwdEncoder.matches(user.getId() + authRequest.getPassword(), user.getPassword()))
 				return Mono.just(true);
-		} else if (StringUtil.safeEquals(authRequest.getPassword(), u.getPassword()))
+		} else if (StringUtil.safeEquals(authRequest.getPassword(), user.getPassword()))
 			return Mono.just(true);
 
-		userService.increaseFailedAttempt(u.getId())
+		userService.increaseFailedAttempt(user.getId())
 				.subscribe();
 
-		soxLogService.createLog(u.getId(), SecuritySoxLogActionName.UPDATE, SecuritySoxLogObjectName.USER,
+		soxLogService.createLog(user.getId(), SecuritySoxLogActionName.UPDATE, SecuritySoxLogObjectName.USER,
 				"Given Password is mismatching with existing.");
 
 		return this.credentialError()

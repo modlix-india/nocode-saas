@@ -1,14 +1,9 @@
 package com.fincity.security.util;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.stream.Collectors;
-
-import org.springframework.http.HttpStatus;
-
-import com.fincity.saas.commons.exeception.GenericException;
-
 
 public class HashUtil {
 
@@ -18,15 +13,31 @@ public class HashUtil {
 	}
 
 	public static String hash(String key) {
+		return hash(key, HashAlgorithm.SHA256);
+	}
 
-		try {
-			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			byte[] hash = digest.digest(key.getBytes());
-			return bytesToHex(hash);
-		} catch (NoSuchAlgorithmException exception) {
-			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to find a hashing algorithm.");
+	public static String hash(String key, HashAlgorithm algorithm) {
+		byte[] hash = algorithm.hash(key.getBytes(StandardCharsets.UTF_8));
+		return bytesToHex(hash);
+	}
+
+	public static boolean equal(String hashedString, String nonHashedString) {
+		return equal(hashedString, nonHashedString, HashAlgorithm.SHA256);
+	}
+
+	public static boolean equal(String hashedString, String nonHashedString, HashAlgorithm algorithm) {
+		if (hashedString == null || nonHashedString == null) {
+			return false;
 		}
 
+		if (hashedString.length() != algorithm.getHexLength()) {
+			return false;
+		}
+
+		String newHash = hash(nonHashedString, algorithm);
+		return MessageDigest.isEqual(hashedString.getBytes(StandardCharsets.UTF_8),
+				newHash.getBytes(StandardCharsets.UTF_8)
+		);
 	}
 
 	public static String hashMultiple(String... keys) {
@@ -40,10 +51,6 @@ public class HashUtil {
 		for (final byte b : data) r.append(hexCode[b >> 4 & 15]).append(hexCode[b & 15]);
 
 		return r.toString();
-	}
-
-	public static void main(String[] args) {
-		System.out.println(hashMultiple("asdoiajdoij", "hello world"));
 	}
 
 }

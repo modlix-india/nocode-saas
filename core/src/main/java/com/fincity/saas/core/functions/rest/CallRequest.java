@@ -254,8 +254,7 @@ public class CallRequest extends AbstractReactiveFunction {
 	}
 
 	private Mono<FunctionOutput> processDownload(RestResponse obj, String fileName, String fileLocation,
-			boolean override,
-			String fileClientCode, String fileType) {
+			boolean override, String fileClientCode, String fileType) {
 
 		return FlatMapUtil.flatMapMono(
 

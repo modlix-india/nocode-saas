@@ -25,5 +25,5 @@ CREATE TABLE `security_otp`
     INDEX (`UNIQUE_CODE`),
     INDEX (`EXPIRES_AT`),
     INDEX (`CREATED_AT` DESC),
-    INDEX (`APP_ID`, `USER_ID`, `PURPOSE`, `TARGET_TYPE`)
+    INDEX (`APP_ID`, `USER_ID`, `PURPOSE`)
 );

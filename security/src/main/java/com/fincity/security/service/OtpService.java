@@ -11,7 +11,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
+import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -34,7 +34,7 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 
 @Service
-public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong, Otp, OtpDAO> {
+public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpRecord, ULong, Otp, OtpDAO> {
 
 	@Autowired
 	private AppService appService;
@@ -48,9 +48,22 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 	@Value("${otp.phone.expire.interval:15}")
 	private long otpExpireInterval;
 
+	@Value("${otp.phone.retry.limit:5}")
+	private long otpRetryLimit;
+
 	@Override
 	public Mono<Otp> create(Otp entity) {
 		return this.dao.create(entity);
+	}
+
+	@Override
+	protected Mono<Otp> updatableEntity(Otp entity) {
+		return null;
+	}
+
+	@Override
+	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+		return null;
 	}
 
 	public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
@@ -102,14 +115,15 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 								return e.values().stream().findFirst()
 										.map(prop -> Tuples.of(
 												prop.get(AppService.APP_PROP_LOGIN_TYPE).getValue(),
-												prop.get(AppService.APP_PROP_OTP_TYPE).getValue())
-										).orElseGet(() -> Tuples.of("", ""));
+												prop.get(AppService.APP_PROP_OTP_TYPE).getValue()))
+										.orElseGet(() -> Tuples.of("", ""));
 							});
 				},
 
 				(tup, linCCheck, app, prop) -> {
 
-					if (StringUtil.safeIsBlank(prop.getT1()) || prop.getT1().equals(AppService.APP_PROP_LOGIN_TYPE_OTP)) {
+					if (StringUtil.safeIsBlank(prop.getT1())
+							|| prop.getT1().equals(AppService.APP_PROP_LOGIN_TYPE_OTP)) {
 						return Mono.empty();
 					}
 
@@ -139,11 +153,32 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp"));
 	}
 
-	public Mono<Boolean> verifyOtp(ULong appId, User user, String purpose, SecurityOtpTargetType targetType,
+	public Mono<Boolean> verifyOtp(String appCode, User user, String purpose,
 	                               String uniqueCode) {
 
-		return null;
+		if (StringUtil.safeIsBlank(uniqueCode))
+			return Mono.just(Boolean.FALSE);
 
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppByCode(appCode),
+
+				app -> this.dao.getLatestOtp(app.getId(), user.getId(), purpose),
+				(app, lotp) -> {
+					if (lotp == null)
+						return Mono.just(Boolean.FALSE);
+
+					if (lotp.isExpired()) {
+						return Mono.just(Boolean.FALSE);
+					}
+
+					if (lotp.match(uniqueCode))
+						return Mono.just(Boolean.TRUE);
+
+					return Mono.just(Boolean.FALSE);
+				},
+				(app, lotp, isvalid) -> this.update(lotp),
+				(app, lotp, isValid, uOtp) -> Mono.just(isValid));
 	}
 
 	private Mono<Boolean> sendOtp(SecurityOtpTargetType securityOtpTargetType, String otp, String appCode,
