@@ -17,9 +17,10 @@ files:
     flyway:
       url: jdbc:mysql://localhost:3306/files
   resources:
-    location:
-      static: C:/Users/kiran/Downloads/imp downloads/files/static
-      secured: C:/Users/kiran/Downloads/imp downloads/files/secured
+    endpoint: https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com
+    accessKeyId: 2229a18802734bc30a8419a2e622187c
+    secretAccessKey: aae8d428632690931da6a00a4b3cc1d3a900ac108798f12818291e6289843c9e
+    bucketPrefix: local
 
 multi:
   db:
@@ -56,7 +57,7 @@ spring:
     enabled: false
 
 redis:
-  url: redis://kiran%40123@localhost:6379
+  url: redis://Kiran%40123@localhost:6379
   codec: object
   cache:
     prefix: cmn

@@ -10,18 +10,18 @@ import org.jooq.Schema;
 
 
 /**
- * Static or Secured resource
+ * Type of the file
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum FilesAccessPathResourceType implements EnumType {
+public enum FilesFileSystemFileType implements EnumType {
 
-    STATIC("STATIC"),
+    FILE("FILE"),
 
-    SECURED("SECURED");
+    DIRECTORY("DIRECTORY");
 
     private final String literal;
 
-    private FilesAccessPathResourceType(String literal) {
+    private FilesFileSystemFileType(String literal) {
         this.literal = literal;
     }
 
@@ -50,7 +50,7 @@ public enum FilesAccessPathResourceType implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static FilesAccessPathResourceType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(FilesAccessPathResourceType.class, literal);
+    public static FilesFileSystemFileType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(FilesFileSystemFileType.class, literal);
     }
 }
