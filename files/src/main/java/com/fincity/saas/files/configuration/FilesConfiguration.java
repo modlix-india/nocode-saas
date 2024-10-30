@@ -35,11 +35,11 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 	@Value("${files.resources.endpoint}")
 	private String endpoint;
 
-	@Value("${files.resources.accessKey}")
-	private String accessKey;
+	@Value("${files.resources.accessKeyId}")
+	private String accessKeyId;
 
-	@Value("${files.resources.secretKey}")
-	private String secretKey;
+	@Value("${files.resources.secretAccessKey}")
+	private String secretAccessKey;
 
 	@Override
 	@PostConstruct
@@ -89,7 +89,8 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 				.region(Region.US_EAST_1)
 				.endpointOverride(URI.create(endpoint))
 				.credentialsProvider(StaticCredentialsProvider
-						.create(AwsBasicCredentials.create(accessKey, secretKey)))
+						.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
 				.build();
 	}
+
 }

@@ -1,6 +1,5 @@
 package com.fincity.saas.files.service;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -15,9 +14,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -26,6 +27,7 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
 import org.imgscalr.Scalr;
+import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ResolvableType;
@@ -37,6 +39,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
 import org.springframework.http.codec.ResourceHttpMessageWriter;
@@ -55,6 +58,7 @@ import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.ImageDetails;
+import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 import com.fincity.saas.files.util.FileExtensionUtil;
 import com.fincity.saas.files.util.ImageTransformUtil;
 
@@ -134,10 +138,16 @@ public abstract class AbstractFilesResourceService {
 				},
 
 				(hasPermission, dataPage) -> {
+
+					String folderPath = (resourcePath.startsWith(R2_FILE_SEPARATOR_STRING)
+							|| StringUtil.safeIsBlank(resourcePath)) ? resourcePath
+									: (R2_FILE_SEPARATOR_STRING + resourcePath);
+
 					for (FileDetail fd : dataPage.getContent()) {
-						fd.setFilePath(resourcePath + "/" + fd.getName())
+						fd.setFilePath(folderPath + R2_FILE_SEPARATOR_STRING + fd.getName())
 								.setUrl(this.getResourceFileType() + (fd.isDirectory() ? "" : "/file/" + clientCode)
-										+ resourcePath + "/"
+										+ folderPath
+										+ R2_FILE_SEPARATOR_STRING
 										+ URLEncoder.encode(fd.getName(), StandardCharsets.UTF_8));
 					}
 					return Mono.just(dataPage);
@@ -156,14 +166,17 @@ public abstract class AbstractFilesResourceService {
 
 		String resourceType = this.getResourceFileType();
 
+		if (!resourcePath.startsWith(R2_FILE_SEPARATOR_STRING))
+			resourcePath = R2_FILE_SEPARATOR_STRING + resourcePath;
+
 		if (fileDetail.isDirectory()) {
 			fileDetail.setFilePath(resourcePath)
 					.setUrl(resourceType + resourcePath)
 					.setDirectory(true);
 
 		} else {
-			fileDetail.setFilePath(resourcePath + "/" + fileDetail.getName())
-					.setUrl(resourceType + ("/file/" + clientCode) + resourcePath + "/"
+			fileDetail.setFilePath(resourcePath + R2_FILE_SEPARATOR_STRING + fileDetail.getName())
+					.setUrl(resourceType + ("/file/" + clientCode) + resourcePath + R2_FILE_SEPARATOR_STRING
 							+ URLEncoder.encode(fileDetail.getName(), StandardCharsets.UTF_8));
 		}
 		return fileDetail;
@@ -180,7 +193,7 @@ public abstract class AbstractFilesResourceService {
 				() -> this.checkReadAccessWithClientCode(rp),
 
 				hasAccess -> {
-					if (BooleanUtil.safeValueOf(hasAccess))
+					if (!BooleanUtil.safeValueOf(hasAccess))
 						return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
 
@@ -188,7 +201,7 @@ public abstract class AbstractFilesResourceService {
 				},
 				(hasAccess, fd) -> {
 
-					long fileMillis = fd.getCreatedDate();
+					long fileMillis = fd.getLastModifiedTime();
 					String fileETag = new StringBuilder().append('"')
 							.append(fd.getName().hashCode())
 							.append('-')
@@ -204,10 +217,8 @@ public abstract class AbstractFilesResourceService {
 					return makeMatchesStartDownload(downloadOptions, request, response, false, rp, fileMillis,
 							fileETag);
 				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"))
-				.switchIfEmpty(Mono.defer(
-						() -> this.msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								FilesMessageResourceService.PATH_NOT_FOUND, rp)));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"));
+
 	}
 
 	private Mono<Void> downloadDirectory(DownloadOptions downloadOptions, ServerHttpRequest request,
@@ -271,7 +282,7 @@ public abstract class AbstractFilesResourceService {
 
 		respHeaders.set("x-cache", "HIT");
 		respHeaders.setContentLength(0l);
-		response.setStatusCode(HttpStatus.NOT_MODIFIED);
+		response.setStatusCode(HttpStatusCode.valueOf(304));
 		return response.setComplete();
 	}
 
@@ -444,7 +455,7 @@ public abstract class AbstractFilesResourceService {
 
 			Graphics2D g2d = bImage.createGraphics();
 
-			g2d.setColor(Color.decode(options.getBandColor()
+			g2d.setColor(java.awt.Color.decode(options.getBandColor()
 					.startsWith("#") ? options.getBandColor() : "#" + options.getBandColor()));
 			g2d.fillRect(0, 0, bImage.getWidth(), bImage.getHeight());
 			g2d.drawImage(image,
@@ -470,13 +481,13 @@ public abstract class AbstractFilesResourceService {
 
 				hasPermission -> {
 
-					if (BooleanUtil.safeValueOf(hasPermission)) {
+					if (!BooleanUtil.safeValueOf(hasPermission)) {
 						return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 					}
 
 					return this.getFSService()
-							.deleteFile(clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING + uri);
+							.deleteFile(clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING + resourcePath);
 				}
 
 		)
@@ -501,6 +512,10 @@ public abstract class AbstractFilesResourceService {
 						return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 
+					if (fp == null) {
+						return this.getFSService().createFolder(clientCode, resourcePath);
+					}
+
 					String fn = fileName == null ? fp.filename()
 							: FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName);
 
@@ -519,7 +534,7 @@ public abstract class AbstractFilesResourceService {
 			fileName = fp.filename();
 		} else {
 			resourcePath = this.resolvePathWithClientCode(filePath).getT1();
-			String[] pathParts = resourcePath.split("/");
+			String[] pathParts = resourcePath.split(R2_FILE_SEPARATOR_STRING);
 			for (String pathPart : pathParts) {
 				if (!StringUtil.safeIsBlank(pathPart)) {
 					clientCode = pathPart;
@@ -698,39 +713,59 @@ public abstract class AbstractFilesResourceService {
 							.then(Mono.just(Tuples.of(tmpFile, tmpFolder)));
 				},
 
-				tmpTup -> FlatMapUtil.flatMapFlux(
-
-						() -> this.deflate(tmpTup.getT1(), tmpTup.getT2()),
-
-						eFile -> !Files.isDirectory(eFile.getT2()) ? Flux.just(true)
-								: Flux.from(this.fileAccessService.hasWriteAccess(
-										this.parentOf(resourcePath + eFile.getT1()), clientCode,
-										FilesAccessPathResourceType.valueOf(this.getResourceType()))),
-
-						(eFile, hasPermission) -> {
-							if (!BooleanUtil.safeValueOf(hasPermission))
-								return Flux.empty();
-							return Flux.from(
-									this.getFSService().createFileFromFile(clientCode, tup.getT1(), null, eFile.getT2(),
-											ovr).map(x -> true));
-						})
-						.collectList()
-						.map(e -> true))
+				tmpTup -> this.deflateAndProcess(tmpTup, resourcePath, clientCode, ovr))
+				.flatMap(this.getFSService().evictCache(clientCode))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
-				.map(e -> true)
 				.subscribeOn(Schedulers.boundedElastic());
 	}
 
-	private String parentOf(String name) {
-		int ind = name.lastIndexOf('/');
-		if (ind == -1)
-			return name;
-		return name.substring(0, ind);
+	private Mono<Boolean> deflateAndProcess(Tuple2<Path, Path> tmpTup, String resourcePath, String clientCode,
+			boolean override) {
+		boolean isRoot = StringUtil.safeIsBlank(resourcePath);
+		return FlatMapUtil.flatMapMono(
+				() -> Mono.just(this.deflateFilesFolders(tmpTup.getT1(), tmpTup.getT2())),
+
+				filesFoldersTuple -> {
+					List<String> folderList = new ArrayList<>();
+
+					if (!isRoot)
+						folderList.add(resourcePath);
+
+					for (String folder : filesFoldersTuple.getT2())
+						folderList.add(isRoot ? folder : (resourcePath + R2_FILE_SEPARATOR_STRING + folder));
+
+					return this.getFSService().createFolders(clientCode, folderList);
+				},
+
+				(filesFoldersTuple, folderMap) -> Flux.fromIterable(filesFoldersTuple.getT1())
+						.flatMapSequential(tup -> {
+							String parentPath = tup.getT1();
+							int index = parentPath.lastIndexOf(R2_FILE_SEPARATOR_STRING);
+							String folderPath = index == -1 ? "" : parentPath.substring(0, index);
+							if (!isRoot)
+								folderPath = StringUtil.safeIsBlank(folderPath) ? resourcePath
+										: (resourcePath + R2_FILE_SEPARATOR_STRING + folderPath);
+
+							ULong folderId = folderMap.get(folderPath);
+							if (!folderPath.isEmpty() && folderId == null)
+								return Mono.defer(() -> this.msgService.throwMessage(
+										msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+										FilesMessageResourceService.UNABLE_TO_UPLOAD_ZIP_FILE));
+
+							return this.getFSService().createFileForZipUpload(clientCode, folderId,
+									folderPath.isEmpty() ? tup.getT1()
+											: (folderPath + R2_FILE_SEPARATOR_STRING
+													+ tup.getT1()),
+									tup.getT2(), override);
+						})
+						.collectList()
+						.map(e -> true));
 	}
 
-	private Flux<Tuple2<String, Path>> deflate(Path tmpFile, Path tmpFolder) {
+	private Tuple2<List<Tuple2<String, Path>>, List<String>> deflateFilesFolders(Path tmpFile, Path tmpFolder) {
 
 		List<Tuple2<String, Path>> files = new ArrayList<>();
+		Set<String> folders = new HashSet<>();
 
 		try (ZipInputStream zis = new ZipInputStream(new FileInputStream(tmpFile.toFile()))) {
 
@@ -740,9 +775,14 @@ public abstract class AbstractFilesResourceService {
 
 				if (ze.isDirectory()) {
 					Files.createDirectories(tmpFolder.resolve(ze.getName()));
+					folders.add(ze.getName().endsWith(R2_FILE_SEPARATOR_STRING) ? ze.getName().substring(0,
+							ze.getName().length() - 1) : ze.getName());
 				} else {
 					var file = tmpFolder.resolve(ze.getName());
-					files.add(Tuples.of(ze.getName(), file));
+					String path = ze.getName();
+					int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
+					if (index != -1)
+						folders.add(path.substring(0, index));
 					Files.createDirectories(file.getParent());
 					try (FileOutputStream fos = new FileOutputStream(file.toFile())) {
 						int len;
@@ -750,22 +790,27 @@ public abstract class AbstractFilesResourceService {
 						while ((len = zis.read(buffer)) > 0) {
 							fos.write(buffer, 0, len);
 						}
+						files.add(Tuples.of(ze.getName(), file));
 					}
 				}
 
 			}
 		} catch (IOException e) {
 
-			return this.msgService.throwFluxMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg, e),
-					FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
+			throw new GenericException(HttpStatus.BAD_REQUEST, "Unable to read zip file", e);
 		}
 
-		return Flux.fromIterable(files);
+		List<String> folderList = new ArrayList<>(folders);
+		folderList.sort(String::compareTo);
+
+		return Tuples.of(files, folderList);
 	}
 
 	protected Tuple2<String, String> resolvePathWithClientCode(String uri) {
 
 		String path = uri.substring(uri.indexOf(this.uriPartFile) + this.uriPartFile.length());
+		if (path.startsWith(R2_FILE_SEPARATOR_STRING))
+			path = path.substring(1);
 		String origPath = path;
 
 		path = URLDecoder.decode(path.replace('+', ' '), StandardCharsets.UTF_8);
@@ -774,7 +819,7 @@ public abstract class AbstractFilesResourceService {
 		if (index != -1)
 			path = path.substring(0, index);
 
-		if (path.endsWith("/"))
+		if (path.endsWith(R2_FILE_SEPARATOR_STRING))
 			path = path.substring(0, path.length() - 1);
 
 		return Tuples.of(path, origPath);
@@ -782,7 +827,10 @@ public abstract class AbstractFilesResourceService {
 
 	protected Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
 
-		String path = uri.substring(uri.indexOf(part) + part.length(), uri.length() - (uri.endsWith("/") ? 1 : 0));
+		String path = uri.substring(uri.indexOf(part) + part.length(),
+				uri.length() - (uri.endsWith(R2_FILE_SEPARATOR_STRING) ? 1 : 0));
+		if (path.startsWith(R2_FILE_SEPARATOR_STRING))
+			path = path.substring(1);
 		String origPath = path;
 
 		path = URLDecoder.decode(path.replace('+', ' '), StandardCharsets.UTF_8);
@@ -791,7 +839,7 @@ public abstract class AbstractFilesResourceService {
 		if (index != -1)
 			path = path.substring(0, index);
 
-		if (path.endsWith("/"))
+		if (path.endsWith(R2_FILE_SEPARATOR_STRING))
 			path = path.substring(0, path.length() - 1);
 
 		return Tuples.of(path, origPath);

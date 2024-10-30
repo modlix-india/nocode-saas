@@ -1,10 +1,9 @@
 package com.fincity.saas.files.model;
 
-import java.nio.file.attribute.FileTime;
+import java.io.Serializable;
 
 import org.jooq.types.ULong;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
@@ -12,7 +11,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class FileDetail {
+public class FileDetail implements Serializable {
 
 	private ULong id;
 	private String name;
@@ -24,9 +23,6 @@ public class FileDetail {
 	private long lastModifiedTime;
 	private String type;
 	private String fileName;
-
-	@JsonIgnore
-	private FileTime modifiedTime;
 
 	public FileDetail setName(String name) {
 

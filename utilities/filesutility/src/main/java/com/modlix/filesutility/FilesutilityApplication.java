@@ -3,8 +3,10 @@ package com.modlix.filesutility;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -25,6 +27,7 @@ import software.amazon.awssdk.core.pagination.sync.SdkIterable;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -38,8 +41,8 @@ public class FilesutilityApplication {
 	private static final String ACCESS_KEY = "2229a18802734bc30a8419a2e622187c";
 	private static final String SECRET_KEY = "aae8d428632690931da6a00a4b3cc1d3a900ac108798f12818291e6289843c9e";
 
-	private static final String LOCAL_STATIC_LOCATION = "C:\\Users\\kiran\\Downloads\\files\\static"; // NOSONAR
-	private static final String LOCAL_SECURED_LOCATION = "C:\\Users\\kiran\\Downloads\\files\\secured"; // NOSONAR
+	private static final String LOCAL_STATIC_LOCATION = "C:\\Users\\kiran\\Downloads\\imp downloads\\files\\static"; // NOSONAR
+	private static final String LOCAL_SECURED_LOCATION = "C:\\Users\\kiran\\Downloads\\imp downloads\\files\\secured"; // NOSONAR
 
 	private static final String DB_CONNECTION_STRING = "jdbc:mysql://localhost:3306/files";
 	private static final String DB_USERNAME = "root";
@@ -60,8 +63,12 @@ public class FilesutilityApplication {
 		// Comment the following lines if you don't want to upload the files to
 		// CloudFlare from your local machine
 
-		// uploadFiles(s3Client, BUCKET_NAME_STATIC, LOCAL_STATIC_LOCATION); //NOSONAR
-		// uploadFiles(s3Client, BUCKET_NAME_SECURED, LOCAL_SECURED_LOCATION); //NOSONAR
+		// uploadFiles(s3Client, BUCKET_NAME_STATIC, LOCAL_STATIC_LOCATION, "SYSTEM");
+		// // NOSONAR
+		// uploadFiles(s3Client, BUCKET_NAME_SECURED, LOCAL_SECURED_LOCATION); //
+		// NOSONAR
+
+		// deleteObjectsInFolder(s3Client, BUCKET_NAME_STATIC, "fin1");
 
 		// try (Connection connection =
 		// DriverManager.getConnection(DB_CONNECTION_STRING, DB_USERNAME, DB_PASSWORD))
@@ -72,11 +79,41 @@ public class FilesutilityApplication {
 
 		// uploadFilesToDB(s3Client, connection, "STATIC", BUCKET_NAME_STATIC);
 		// uploadFilesToDB(s3Client, connection, "SECURED", BUCKET_NAME_SECURED);
-
 		// } catch (SQLException e) {
 		// logger.error("Failed to connect to the database.", e);
 		// }
-		printObjectsInFolder(s3Client, BUCKET_NAME_STATIC, "SYSTEM/sbrminara");
+
+		// printObjectsInFolder(s3Client, BUCKET_NAME_STATIC, "SYSTEM");
+
+		findObjectByName(s3Client, BUCKET_NAME_STATIC, "cedarthumb");
+	}
+
+	public static void findObjectByName(S3Client s3Client, String bucketName, String name) {
+
+		SdkIterable<S3Object> iterable = s3Client
+				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).build())
+				.contents();
+
+		for (S3Object s3Object : iterable) {
+			if (s3Object.key().toUpperCase().contains(name.toUpperCase()))
+				logger.info("Found object: {}", s3Object.key());
+		}
+	}
+
+	public static void deleteObjectsInFolder(S3Client s3Client, String bucketName, String path) {
+
+		SdkIterable<S3Object> iterable = s3Client
+				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).prefix(path).build())
+				.contents();
+
+		for (S3Object s3Object : iterable) {
+			s3Client.deleteObject(DeleteObjectRequest
+					.builder()
+					.bucket(bucketName)
+					.key(s3Object.key())
+					.build());
+			logger.info("Deleted object: {}", s3Object.key());
+		}
 	}
 
 	public static void printObjectsInFolder(S3Client s3Client, String bucketName, String path) {
@@ -93,7 +130,7 @@ public class FilesutilityApplication {
 	public static void emptyTable(Connection connection) {
 		try {
 			Statement statement = connection.createStatement();
-			statement.executeUpdate("TRUNCATE TABLE file_system");
+			statement.executeUpdate("TRUNCATE TABLE files_file_system");
 			logger.info("Table truncated successfully.");
 		} catch (SQLException e) {
 			logger.error("Failed to empty the table.", e);
@@ -110,13 +147,15 @@ public class FilesutilityApplication {
 		int batchSize = 0;
 
 		PreparedStatement fileStatement = connection.prepareStatement(
-				"INSERT INTO file_system (TYPE, CODE, NAME, FILE_TYPE, SIZE, PARENT_ID) VALUES ('" + type
+				"INSERT INTO files_file_system (TYPE, CODE, NAME, FILE_TYPE, SIZE, PARENT_ID) VALUES ('" + type
 						+ "', ?, ?, 'FILE', ?, ?)");
 
 		for (S3Object s3Object : iterable) {
 
 			String key = s3Object.key();
 			int index = key.indexOf("/");
+			if (index == -1)
+				continue;
 			String code = key.substring(0, index);
 			key = key.substring(index + 1);
 			index = key.lastIndexOf("/");
@@ -154,48 +193,56 @@ public class FilesutilityApplication {
 			Map<String, Long> directoryIds, String type, Connection connection) throws SQLException {
 
 		PreparedStatement directoryStatement = connection.prepareStatement(
-				"INSERT INTO file_system (TYPE, CODE, NAME, FILE_TYPE, PARENT_ID) VALUES ('" + type
-						+ "', ?, ?, 'DIRECTORY', ?)",
+				"INSERT INTO files_file_system (TYPE, CODE, NAME, FILE_TYPE, PARENT_ID) VALUES ('" + type
+						+ "', '" + code + "', ?, 'DIRECTORY', ?)",
 				Statement.RETURN_GENERATED_KEYS);
 
 		String directoryPath = code + (directory == null ? "" : R2_FILE_SEPARATOR + directory);
 		Long parentId = directory == null || !directoryIds.containsKey(directoryPath) ? null
 				: directoryIds.get(directoryPath);
-		if (parentId == null && directory != null) {
 
-			String[] pathParts = directory.split(R2_FILE_SEPARATOR);
-			StringBuilder currentPath = new StringBuilder();
-			directoryStatement.setString(1, code);
+		if (parentId != null || directory == null)
+			return parentId;
 
-			logger.info("Creating directory: {}/{}", code, directory);
-			for (String pathPart : pathParts) {
-				currentPath.append(R2_FILE_SEPARATOR).append(pathPart);
-				if (directoryIds.containsKey(code + R2_FILE_SEPARATOR + pathPart)) {
-					parentId = directoryIds.get(code + R2_FILE_SEPARATOR + pathPart);
-					continue;
-				}
+		String[] pathParts = directory.split(R2_FILE_SEPARATOR);
+		StringBuilder currentPath = new StringBuilder();
 
-				directoryStatement.setString(2, pathPart);
-				if (parentId != null)
-					directoryStatement.setLong(3, parentId);
-				else
-					directoryStatement.setNull(3, Types.BIGINT); // NOSONAR
-				directoryStatement.execute();
-				ResultSet rs = directoryStatement.getGeneratedKeys();
-				if (!rs.next())
-					throw new SQLException("Failed to get generated key for directory: " + currentPath.toString());
-				parentId = rs.getLong(1);
-				directoryIds.put(code + currentPath.toString(), parentId);
+		logger.info("Creating directory: {}/{}", code, directory);
+		currentPath.append(code);
+		for (String pathPart : pathParts) {
+			currentPath.append(R2_FILE_SEPARATOR).append(pathPart);
+			if (directoryIds.containsKey(currentPath.toString())) {
+				parentId = directoryIds.get(currentPath.toString());
+				continue;
 			}
-			directoryIds.put(directoryPath, parentId);
+
+			directoryStatement.setString(1, pathPart);
+			if (parentId != null)
+				directoryStatement.setLong(2, parentId);
+			else
+				directoryStatement.setNull(2, Types.BIGINT);
+
+			logger.info("Inserting directory: {}", directoryStatement.toString());
+			directoryStatement.execute();
+			ResultSet rs = directoryStatement.getGeneratedKeys();
+			if (!rs.next())
+				throw new SQLException("Failed to get generated key for directory: " + currentPath.toString());
+			parentId = rs.getLong(1);
+			directoryIds.put(currentPath.toString(), parentId);
 		}
 
 		return parentId;
 	}
 
-	public static void uploadFiles(S3Client s3Client, String bucketName, String localLocation) throws IOException {
+	public static void uploadFiles(S3Client s3Client, String bucketName, String localLocation, String fromPath)
+			throws IOException {
 
-		Files.walk(Paths.get(localLocation))
+		Path path = Paths.get(localLocation);
+
+		if (fromPath != null && !fromPath.isEmpty())
+			path = path.resolve(fromPath);
+
+		Files.walk(path)
 				.filter(Files::isRegularFile)
 				.forEach(file -> {
 					try {
@@ -216,5 +263,10 @@ public class FilesutilityApplication {
 						logger.error("Failed to upload file: {}", file.toAbsolutePath(), e);
 					}
 				});
+	}
+
+	public static void uploadFiles(S3Client s3Client, String bucketName, String localLocation) throws IOException {
+
+		uploadFiles(s3Client, bucketName, localLocation, "");
 	}
 }
