@@ -1701,7 +1701,7 @@ CREATE TABLE `files_secured_access_key` (
     UNIQUE KEY `access_key_UNIQUE` (`access_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- V4__Secured Asset Key.sql
+-- V4__Secured Asset Key.sql (Files)
 DROP TABLE IF EXISTS files.`files_secured_access_key`;
 
 CREATE TABLE files.`files_secured_access_keys`(
@@ -1715,6 +1715,35 @@ CREATE TABLE files.`files_secured_access_keys`(
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_ACCESS_KEY` (`ACCESS_KEY`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+  -- V5__Cloud File System.sql (Files)
+  use files;
+
+DROP TABLE IF EXISTS file_system_static;
+DROP TABLE IF EXISTS file_system_secured;
+DROP TABLE IF EXISTS file_system;
+DROP TABLE IF EXISTS files_file_system;
+
+CREATE TABLE files_file_system (
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `TYPE` ENUM('STATIC', 'SECURED') NOT NULL DEFAULT 'STATIC' COMMENT 'Type of the file system',
+    `CODE` CHAR(8) NOT NULL COMMENT 'Client code',
+    `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the file',
+    `FILE_TYPE` ENUM('FILE', 'DIRECTORY') NOT NULL DEFAULT 'FILE' COMMENT 'Type of the file',
+    `SIZE` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Size of the file',
+    `PARENT_ID` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Parent ID of the file',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+    
+    PRIMARY KEY (ID),
+    KEY `KEY_FILE_SYSTEM_TYPE_FILE_TYPE_PARENT_ID` (`TYPE`, `FILE_TYPE`, `PARENT_ID`),
+    KEY `KEY_FILE_SYSTEM_CODE_TYPE_FILE_TYPE` (`CODE`, `TYPE`, `FILE_TYPE`),
+    KEY `KEY_FILE_SYSTEM_CODE_NAME`(`CODE`, `NAME`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
