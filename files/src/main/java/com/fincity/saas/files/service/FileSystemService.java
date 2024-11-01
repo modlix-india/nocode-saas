@@ -147,6 +147,9 @@ public class FileSystemService {
     }
 
     public Mono<File> getAsFile(String path) {
+
+        path = path.replace("//", "/");
+
         if (StringUtil.safeIsBlank(path))
             return Mono.empty();
 
@@ -309,6 +312,7 @@ public class FileSystemService {
                                     exists && override))
                             .flatMap(this.evictCache(clientCode));
                 })
+                .flatMap(this.evictCache(clientCode))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         SERVICE_NAME_PREFIX + this.bucketName + ").createFileFromFluxDataBuffer"));
     }
