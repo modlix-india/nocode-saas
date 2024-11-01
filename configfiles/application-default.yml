@@ -18,10 +18,8 @@ files:
       url: jdbc:mysql://localhost:3306/files
   resources:
     endpoint: https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com
-    accessKeyId: 2229a18802734bc30a8419a2e622187c
-    secretAccessKey: aae8d428632690931da6a00a4b3cc1d3a900ac108798f12818291e6289843c9e
-    bucketPrefix: local
 
+    bucketPrefix: local
 multi:
   db:
     url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
@@ -41,6 +39,8 @@ schedular:
 ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
+  cdnHostName: cdn-local.modlix.com
+  cdnReplacePlus: true
 
 core:
   mongo:
