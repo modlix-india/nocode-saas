@@ -412,7 +412,7 @@ public abstract class AbstractFilesResourceService {
 				throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to write the image.");
 			image.flush();
 			return baos.toByteArray();
-		} catch (IOException | GenericException ex) {
+		} catch (IOException | GenericException | NullPointerException ex) {
 			logger.debug("Image resize issue", ex);
 			return new byte[0];
 		}
@@ -526,8 +526,9 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	private PathParts extractPathClientCodeFileName(String uri, FilePart fp, String filePath,
-			String clientCode, String fileName) {
+			String clientCode) {
 		String resourcePath;
+		String fileName = "";
 
 		if (fp != null) {
 			resourcePath = this.resolvePathWithoutClientCode(this.uriPart, uri).getT1();
@@ -555,6 +556,9 @@ public abstract class AbstractFilesResourceService {
 			resourcePath = resourcePath.substring(0, resourcePath.lastIndexOf(fileName));
 		}
 
+		if (resourcePath.startsWith(R2_FILE_SEPARATOR_STRING))
+			resourcePath = resourcePath.substring(1);
+
 		return new PathParts(resourcePath, clientCode, fileName);
 	}
 
@@ -568,8 +572,7 @@ public abstract class AbstractFilesResourceService {
 			uri = uri.substring(0, ind) + uri.substring(ind + TRANSFORM_TYPE.length() + 1);
 		}
 
-		PathParts pathParts = this.extractPathClientCodeFileName(uri, fp, filePath,
-				clientCode, fileName);
+		PathParts pathParts = this.extractPathClientCodeFileName(uri, fp, filePath, clientCode);
 
 		try {
 
@@ -618,6 +621,7 @@ public abstract class AbstractFilesResourceService {
 
 					(hasPermission, file, sourceTuple, transformedTuple) -> this.finalFileWrite(pathParts,
 							transformedTuple,
+							fileName,
 							ovr)
 
 			).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.imageUpload (File)"));
@@ -630,7 +634,7 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	private Mono<FileDetail> finalFileWrite(PathParts pathParts,
-			Tuple2<BufferedImage, Integer> transformedTuple, boolean override) {
+			Tuple2<BufferedImage, Integer> transformedTuple, String fileName, boolean override) {
 
 		try {
 			Path tempDirectory = Files.createTempDirectory("imageUpload");
@@ -641,10 +645,13 @@ public abstract class AbstractFilesResourceService {
 					.toLowerCase()
 					.endsWith("png") ? "png" : "jpeg", file);
 
+			String filePath = (pathParts.resourcePath + FileSystemService.R2_FILE_SEPARATOR_STRING + fileName)
+					.replace("//", "/");
+
 			return FlatMapUtil.flatMapMono(
 
 					() -> this.getFSService().createFileFromFile(pathParts.clientCode,
-							pathParts.resourcePath + FileSystemService.R2_FILE_SEPARATOR_STRING + pathParts.fileName,
+							filePath,
 							null, path, override),
 
 					fileDetail -> Mono.just(this.convertToFileDetailWhileCreation(pathParts.resourcePath,
