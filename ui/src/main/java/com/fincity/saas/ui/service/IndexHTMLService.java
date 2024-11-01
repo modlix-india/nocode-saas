@@ -176,7 +176,6 @@ public class IndexHTMLService {
 
 		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
 		str.append("<script>");
-		FlatMapUtil.logValue("CDN Prefix : " + this.cdnHostName);
 		if (!this.cdnHostName.isBlank()) {
 			str.append("window.cdnPrefix='" + this.cdnHostName + "';");
 			str.append("window.cdnStripAPIPrefix=" + this.cdnStripAPIPrefix + ";");
