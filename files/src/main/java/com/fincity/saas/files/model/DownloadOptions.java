@@ -1,5 +1,7 @@
 package com.fincity.saas.files.model;
 
+import com.fincity.saas.commons.util.BooleanUtil;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -23,16 +25,16 @@ public class DownloadOptions {
 	}
 
 	public String eTagCode() {
-
-		return "" + new StringBuilder(32).append(width == null ? -1 : width)
-		        .append(height == null ? -1 : height)
-		        .append(bandColor == null ? "no" : bandColor)
-		        .append('-')
-		        .append(resizeDirection)
-		        .append('-')
-		        .append(keepAspectRatio.booleanValue() ? 1 : 0)
-		        .toString()
-		        .hashCode();
+		return "" + new StringBuilder(32)
+				.append(width != null ? width.toString() : "-1")
+				.append(height != null ? height.toString() : "-1")
+				.append(bandColor == null ? "no" : bandColor)
+				.append('-')
+				.append(resizeDirection)
+				.append('-')
+				.append(BooleanUtil.safeValueOf(keepAspectRatio) ? 1 : 0)
+				.toString()
+				.hashCode();
 	}
 
 	public boolean hasModification() {

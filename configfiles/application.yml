@@ -54,7 +54,6 @@ jwt:
 
 ui:
   jsURL: https://nclc-dev.s3.ap-south-1.amazonaws.com
-  cdnHostName: d16khh9j09qf4s.cloudfront.net
 
 files:
   resources:

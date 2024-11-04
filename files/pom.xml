@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.4</version>
+        <version>3.3.5</version>
         <relativePath />
         <!-- lookup parent from repository -->
     </parent>
@@ -100,11 +100,6 @@
             <artifactId>jooq</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>kirun-java</artifactId>
-            <version>${nocode-kirun-version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons</artifactId>
             <version>${saas-commons-version}</version>
@@ -138,6 +133,15 @@
             <version>${img-scalr.version}</version>
         </dependency>
         <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-webp</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -159,6 +163,13 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.28.21</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
