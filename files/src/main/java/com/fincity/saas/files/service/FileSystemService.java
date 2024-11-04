@@ -298,13 +298,20 @@ public class FileSystemService {
                     if (BooleanUtil.safeValueOf(exists) && !override)
                         return this.getFileDetail(clientCode, filePath);
 
+                    String key = clientCode;
+
+                    if (filePath.startsWith(R2_FILE_SEPARATOR_STRING))
+                        key += filePath;
+                    else
+                        key += R2_FILE_SEPARATOR_STRING + filePath;
+
                     return Mono.fromFuture(s3Client.putObject(
                             PutObjectRequest.builder()
                                     .bucket(bucketName)
                                     .contentLength(length)
                                     .contentDisposition(
                                             "attachment; filename=\"" + fileName + "\"")
-                                    .key(clientCode + R2_FILE_SEPARATOR_STRING + filePath)
+                                    .key(key)
                                     .build(),
                             AsyncRequestBody.fromPublisher(byteBuffer)))
                             .then(this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
@@ -374,8 +381,6 @@ public class FileSystemService {
             paths.add(sb.toString());
             notFirstTime = true;
         }
-
-        System.err.println(System.currentTimeMillis() + " - " + " Service - Create Folder Paths : " + paths);
 
         return Flux.fromIterable(paths)
                 .flatMapSequential(e -> this.fileSystemDao.getId(this.fileSystemType, clientCode, e)
