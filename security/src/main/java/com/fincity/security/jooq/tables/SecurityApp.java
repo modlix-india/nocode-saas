@@ -283,6 +283,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityAppProperty;
     }
 
+    private transient SecurityClientUrlPath _securityClientUrl;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_url</code> table
+     */
+    public SecurityClientUrlPath securityClientUrl() {
+        if (_securityClientUrl == null)
+            _securityClientUrl = new SecurityClientUrlPath(this, null, Keys.FK1_CLIENT_URL_APP_CODE.getInverseKey());
+
+        return _securityClientUrl;
+    }
+
     private transient SecurityOtpPath _securityOtp;
 
     /**
@@ -427,19 +440,6 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _fk3AppRegAccAllowAppId = new SecurityAppRegAccessPath(this, null, Keys.FK3_APP_REG_ACC_ALLOW_APP_ID.getInverseKey());
 
         return _fk3AppRegAccAllowAppId;
-    }
-
-    private transient SecurityClientUrlPath _securityClientUrl;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_client_url</code> table
-     */
-    public SecurityClientUrlPath securityClientUrl() {
-        if (_securityClientUrl == null)
-            _securityClientUrl = new SecurityClientUrlPath(this, null, Keys.FK1_CLIENT_URL_APP_CODE.getInverseKey());
-
-        return _securityClientUrl;
     }
 
     @Override

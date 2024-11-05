@@ -94,18 +94,6 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
     public final TableField<SecurityOtpRecord, SecurityOtpTargetType> TARGET_TYPE = createField(DSL.name("TARGET_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("PHONE", SQLDataType.VARCHAR)).asEnumDataType(SecurityOtpTargetType.class), this, "The target medium for the OTP delivery: EMAIL, PHONE, or BOTH");
 
     /**
-     * The column <code>security.security_otp.EMAIL</code>. The email address to
-     * which the OTP is sent, if applicable
-     */
-    public final TableField<SecurityOtpRecord, String> EMAIL = createField(DSL.name("EMAIL"), SQLDataType.VARCHAR(255), this, "The email address to which the OTP is sent, if applicable");
-
-    /**
-     * The column <code>security.security_otp.PHONE_NUMBER</code>. The phone
-     * number to which the OTP is sent, if applicable
-     */
-    public final TableField<SecurityOtpRecord, String> PHONE_NUMBER = createField(DSL.name("PHONE_NUMBER"), SQLDataType.CHAR(32), this, "The phone number to which the OTP is sent, if applicable");
-
-    /**
      * The column <code>security.security_otp.UNIQUE_CODE</code>. The hashed OTP
      * code used for verification
      */
@@ -208,7 +196,7 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.SECURITY_OTP_EXPIRES_AT, Indexes.SECURITY_OTP_PURPOSE, Indexes.SECURITY_OTP_UNIQUE_CODE);
+        return Arrays.asList(Indexes.SECURITY_OTP_APP_ID, Indexes.SECURITY_OTP_CREATED_AT, Indexes.SECURITY_OTP_EXPIRES_AT, Indexes.SECURITY_OTP_UNIQUE_CODE);
     }
 
     @Override
