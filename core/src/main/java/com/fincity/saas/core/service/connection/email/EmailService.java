@@ -62,17 +62,7 @@ public class EmailService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> {
-
-					String inAppCode = appCode.trim().isEmpty() ? null : appCode;
-					String inClientCode = clientCode.trim().isEmpty() ? null : clientCode;
-
-					return SecurityContextUtil.getUsersContextAuthentication()
-							.map(e -> Tuples.of(
-									CommonsUtil.nonNullValue(inAppCode, e.getUrlAppCode()),
-									CommonsUtil.nonNullValue(inClientCode, e.getClientCode())))
-							.defaultIfEmpty(Tuples.of(inAppCode, inClientCode));
-				},
+				() -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
 
 				actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
 						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),

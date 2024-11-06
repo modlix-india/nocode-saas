@@ -16,11 +16,14 @@ import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenValueExtractor;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 public class SecurityContextUtil {
 
@@ -45,6 +48,18 @@ public class SecurityContextUtil {
 		return ReactiveSecurityContextHolder.getContext()
 				.map(SecurityContext::getAuthentication)
 				.map(ContextAuthentication.class::cast);
+	}
+
+	public static Mono<Tuple2<String, String>> resolveAppAndClientCode(String appCode, String clientCode) {
+
+		String inAppCode = appCode == null || appCode.trim().isEmpty() ? null : appCode;
+		String inClientCode = clientCode == null || clientCode.trim().isEmpty() ? null : clientCode;
+
+		return getUsersContextAuthentication()
+				.map(e -> Tuples.of(
+						CommonsUtil.nonNullValue(inAppCode, e.getUrlAppCode()),
+						CommonsUtil.nonNullValue(inClientCode, e.getClientCode())))
+				.defaultIfEmpty(Tuples.of(inAppCode, inClientCode));
 	}
 
 	public static Mono<Boolean> hasAuthority(String authority) {
