@@ -41,6 +41,8 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 
 	public static final String TEMPLATE_CONVERT_ERROR = "template_convert_error";
 
+	public static final String FS_STREAM_ERROR = "fs_stream_error";
+
 	public static final String MAIL_SEND_ERROR = "mail_send_error";
 
 	public static final String STORAGE_IS_APP_LEVEL = "storage_is_app_level";

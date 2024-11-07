@@ -84,7 +84,8 @@ public abstract class AbstractTemplateService {
 			try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); Writer out = new OutputStreamWriter(baos)) {
 
 				temp.process(templateData, out);
-				return baos.toString(StandardCharsets.UTF_8);
+				String as = baos.toString(StandardCharsets.UTF_8);
+				return as;
 			}
 		}).subscribeOn(Schedulers.boundedElastic());
 	}

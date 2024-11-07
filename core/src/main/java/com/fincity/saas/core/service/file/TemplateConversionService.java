@@ -19,6 +19,7 @@ import com.fincity.saas.core.service.TemplateService;
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 @Service
 public class TemplateConversionService {
@@ -45,7 +46,7 @@ public class TemplateConversionService {
         return FlatMapUtil.flatMapMono(
                 () -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
 
-                acTup -> Mono.justOrEmpty(this.services.getOrDefault(getMediaTypeFromFormat(outputFormat), null))
+                acTup -> Mono.justOrEmpty(this.services.getOrDefault(getMediaTypeFromFormat(outputFormat, acTup), null))
                         .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                                 CoreMessageResourceService.FILE_FORMAT_INVALID, outputFormat)),
 
@@ -59,18 +60,18 @@ public class TemplateConversionService {
     }
 
     public MediaType getMediaType(String outputFormat) {
-        MediaType mediaType = getMediaTypeFromFormat(outputFormat);
+        MediaType mediaType = getMediaTypeFromFormat(outputFormat, null);
         ITemplateConversionService service = this.services.get(mediaType);
         return service != null ? service.getMediaType(outputFormat) : MediaType.APPLICATION_OCTET_STREAM;
     }
 
     public String getFileExtension(String outputFormat) {
-        MediaType mediaType = getMediaTypeFromFormat(outputFormat);
+        MediaType mediaType = getMediaTypeFromFormat(outputFormat, null);
         ITemplateConversionService service = this.services.get(mediaType);
         return service != null ? service.getFileExtension(outputFormat) : ".bin";
     }
 
-    private MediaType getMediaTypeFromFormat(String outputFormat) {
+    private MediaType getMediaTypeFromFormat(String outputFormat, Tuple2<String, String> as) {
         outputFormat = outputFormat.toLowerCase();
         return switch (outputFormat) {
             case "pdf" -> MediaType.APPLICATION_PDF;
