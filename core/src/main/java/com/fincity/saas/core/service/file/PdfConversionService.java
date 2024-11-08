@@ -79,7 +79,7 @@ public class PdfConversionService extends AbstractTemplateConversionService impl
 				.toStream(os);
 	}
 
-	private byte[] generatePdf(String htmlContent, Template template, String outputFormat) throws IOException {
+	private byte[] generatePdf(String htmlContent, Template template, String outputFormat) {
 		try (ByteArrayOutputStream os = new ByteArrayOutputStream(INITIAL_BUFFER_SIZE)) {
 			PdfRendererBuilder builder = createPdfBuilder(htmlContent, os);
 			builder.run();
