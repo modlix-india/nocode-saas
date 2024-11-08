@@ -14,6 +14,7 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.dto.RestRequest;
 import com.fincity.saas.core.dto.RestResponse;
 import com.fincity.saas.core.feign.IFeignFilesService;
@@ -243,7 +244,7 @@ public class CallRequest extends AbstractReactiveFunction {
 						return this.makeErrorResponseFunctionOutput(obj);
 
 					if (downloadAsAFile) {
-						return this.processDownload(obj, context.getArguments().get(FILE_NAME).getAsString(),
+						return this.processDownload(obj, url , context.getArguments().get(FILE_NAME).getAsString(),
 								context.getArguments().get(FILE_LOCATION).getAsString(),
 								context.getArguments().get(FILE_OVERRIDE).getAsBoolean(),
 								context.getArguments().get(FILE_CLIENT_CODE).getAsString(),
@@ -256,7 +257,7 @@ public class CallRequest extends AbstractReactiveFunction {
 				.onErrorResume(this::makeExceptionResponseFunctionOutput);
 	}
 
-	private Mono<FunctionOutput> processDownload(RestResponse obj, String fileName, String fileLocation,
+	private Mono<FunctionOutput> processDownload(RestResponse obj, String url, String fileName, String fileLocation,
 			boolean override,
 			String fileClientCode, String fileType) {
 
@@ -286,7 +287,7 @@ public class CallRequest extends AbstractReactiveFunction {
 					if (!(obj.getData() instanceof byte[]))
 						return Mono.error(new Exception("Data is not a file"));
 
-					return this.makeFileInFiles(obj, fileName, fileLocation, override, cc, fileType);
+					return this.makeFileInFiles(obj, url, fileName, fileLocation, override, cc, fileType);
 				},
 
 				(ca, cc, fileObj) -> this.processOutput(obj.setData(fileObj))
@@ -294,29 +295,57 @@ public class CallRequest extends AbstractReactiveFunction {
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "CallRequest.processDownload"));
 	}
 
-	private Mono<Map<String, Object>> makeFileInFiles(RestResponse obj, String fileName,
-			String fileLocation,
-			boolean override,
-			String cc, String fileType) {
+	private Mono<Map<String, Object>> makeFileInFiles(RestResponse obj, String url, String fileName,
+			String fileLocation,boolean override,String cc, String fileType) {
+
 		try {
-			ByteBuffer buffer = ByteBuffer
-					.wrap((byte[]) obj.getData());
+			
+			ByteBuffer buffer = ByteBuffer.wrap((byte[]) obj.getData());
 
-			StringBuffer finalFileName = new StringBuffer(!StringUtil.safeIsBlank(fileName) ? fileName : FILE);
-			String fileTypeFromContent = obj.getHeaders().get("Content-Type");
-			String cd = obj.getHeaders().get("Content-Disposition");
+			return this.fileService.create(fileType, cc, override, fileLocation,  this.resolveFileName(obj, url, fileName), buffer);
 
-			if(!StringUtil.safeIsBlank(cd))
-				finalFileName.append(this.parseContentDispositionForFileName(StringUtil.safeValueOf(cd, "")));
-
-			if (!StringUtil.safeIsBlank(fileTypeFromContent)) {
-				finalFileName.append("." + MediaType.valueOf(fileTypeFromContent).getSubtype());
-			}	
-
-			return this.fileService.create(fileType, cc, override, fileLocation, finalFileName.toString(), buffer);
 		} catch (Exception e) {
 			return Mono.error(e);
 		}
+	}
+
+	private String resolveFileName(RestResponse obj, String url, String fileName){
+
+		boolean fileNameEmpty = StringUtil.safeIsBlank(fileName);
+
+		String fileExtension = "";
+		String finalFileName = fileNameEmpty ? FILE + UniqueUtil.shortUUID() : fileName;
+		String fileNameWithoutExtension = fileNameEmpty ? finalFileName : finalFileName.contains(".") ? finalFileName.substring(0, finalFileName.lastIndexOf(".")) : finalFileName;
+
+
+		String fileTypeFromContent = obj.getHeaders().get("Content-Type") ;
+		if(!StringUtil.safeIsBlank(fileTypeFromContent)){
+			fileExtension = MediaType.valueOf(fileTypeFromContent).getSubtype();
+			finalFileName = fileNameWithoutExtension + "." + fileExtension;
+			return finalFileName;
+		}
+		
+		int urlIndex = url.indexOf(".");
+		if(urlIndex != -1){
+			fileExtension = url.substring(urlIndex+1, url.indexOf("?") == -1 ? url.length() : url.indexOf("?"));
+			finalFileName = fileNameWithoutExtension + "." + fileExtension;
+			return finalFileName;
+		}
+		
+		String contentDisposition = obj.getHeaders().get("Content-Disposition") == null ? obj.getHeaders().get("content-disposition")
+			 : obj.getHeaders().get("Content-Disposition");
+
+		if (!StringUtil.safeIsBlank(contentDisposition)) {
+			String cdFileName = this.parseContentDispositionForFileName(contentDisposition);
+			if (!StringUtil.safeIsBlank(cdFileName) && cdFileName.contains(".")) {
+				int lastDotIndex = cdFileName.lastIndexOf(".");
+				fileExtension = cdFileName.substring(lastDotIndex + 1);
+				finalFileName = fileNameEmpty ? cdFileName : fileNameWithoutExtension + "." + fileExtension;
+				return finalFileName;
+			}
+		}
+
+		return finalFileName;
 	}
 
 	public String parseContentDispositionForFileName(String cd) {
