@@ -35,6 +35,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
@@ -87,6 +88,8 @@ public class CallRequest extends AbstractReactiveFunction {
 	private static final String FILE_OVERRIDE = "fileOverride";
 
 	private static final String CD_FILE_NAME = "filename";
+
+	private static final String FILE = "file";
 
 	private static final Logger logger = LoggerFactory.getLogger(CallRequest.class);
 
@@ -299,16 +302,18 @@ public class CallRequest extends AbstractReactiveFunction {
 			ByteBuffer buffer = ByteBuffer
 					.wrap((byte[]) obj.getData());
 
-			String finalFileName = fileName;
-			if (StringUtil.safeIsBlank(finalFileName)) {
-				String cd = obj.getHeaders().get("Content-Disposition");
-				finalFileName = this.parseContentDispositionForFileName(cd);
-			}
+			StringBuffer finalFileName = new StringBuffer(!StringUtil.safeIsBlank(fileName) ? fileName : FILE);
+			String fileTypeFromContent = obj.getHeaders().get("Content-Type");
+			String cd = obj.getHeaders().get("Content-Disposition");
 
-			if (StringUtil.safeIsBlank(finalFileName)) {
-				finalFileName = "file";
-			}
-			return this.fileService.create(fileType, cc, override, fileLocation, finalFileName, buffer);
+			if(!StringUtil.safeIsBlank(cd))
+				finalFileName.append(this.parseContentDispositionForFileName(StringUtil.safeValueOf(cd, "")));
+
+			if (!StringUtil.safeIsBlank(fileTypeFromContent)) {
+				finalFileName.append("." + MediaType.valueOf(fileTypeFromContent).getSubtype());
+			}	
+
+			return this.fileService.create(fileType, cc, override, fileLocation, finalFileName.toString(), buffer);
 		} catch (Exception e) {
 			return Mono.error(e);
 		}
