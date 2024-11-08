@@ -3,6 +3,7 @@ package com.fincity.saas.files.service;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.file.FileSystem;
@@ -26,8 +27,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.service.CacheService;
@@ -39,7 +40,6 @@ import com.fincity.saas.files.dao.FileSystemDao;
 import com.fincity.saas.files.jooq.enums.FilesFileSystemType;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.FilesPage;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -305,17 +305,19 @@ public class FileSystemService {
                     else
                         key += R2_FILE_SEPARATOR_STRING + filePath;
 
+                    String mimeType = URLConnection.guessContentTypeFromName(fileName);
+
                     return Mono.fromFuture(s3Client.putObject(
                             PutObjectRequest.builder()
                                     .bucket(bucketName)
                                     .contentLength(length)
-                                    .contentDisposition(
-                                            "attachment; filename=\"" + fileName + "\"")
+                                    .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)             
+                                    .contentDisposition("inline")
                                     .key(key)
                                     .build(),
                             AsyncRequestBody.fromPublisher(byteBuffer)))
                             .then(this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
-                                    fileName,
+                                    fileName, ULong.valueOf(length),
                                     exists && override))
                             .flatMap(this.evictCache(clientCode));
                 })
