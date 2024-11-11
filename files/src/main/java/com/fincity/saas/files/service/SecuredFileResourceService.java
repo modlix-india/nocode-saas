@@ -84,7 +84,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 		String clientCode;
 		if (index != -1) {
 
-			clientCode = resourcePath.substring(1, index);
+			clientCode = resourcePath.substring(0, index);
 			resourcePath = resourcePath.substring(index);
 		} else {
 
