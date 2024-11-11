@@ -13,6 +13,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -25,7 +26,6 @@ import java.util.zip.ZipInputStream;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
-
 import org.imgscalr.Scalr;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ContentDisposition;
@@ -298,17 +299,20 @@ public abstract class AbstractFilesResourceService {
 			fileName = pathParts[pathParts.length - 2];
 		if (StringUtil.safeIsBlank(fileName))
 			fileName = "file";
+		
+		downloadOptions.setName(downloadOptions.getName() == null ? fileName : downloadOptions.getName());
 
 		respHeaders.set("x-cache", "MISS");
 		respHeaders.setLastModified(fileMillis);
 		respHeaders.setETag(eTag);
 		if (!BooleanUtil.safeValueOf(downloadOptions.getNoCache())
 				&& this.getResourceType().equals(FilesAccessPathResourceType.STATIC.name()))
-			respHeaders.setCacheControl("public, max-age=3600");
+			respHeaders.setCacheControl("public, max-age=3600");		
+
 		respHeaders.setContentDisposition(
 				(BooleanUtil.safeValueOf(downloadOptions.getDownload()) ? ContentDisposition.attachment()
 						: ContentDisposition.inline())
-						.filename(downloadOptions.getName() == null ? fileName : downloadOptions.getName())
+						.filename( isDirectory ? downloadOptions.getName() + ".zip" : downloadOptions.getName() )
 						.build());
 		String mimeType = URLConnection.guessContentTypeFromName(fileName);
 		if (mimeType == null) {
@@ -320,7 +324,6 @@ public abstract class AbstractFilesResourceService {
 		Mono<File> actualFile;
 		if (isDirectory) {
 			downloadOptions.setDownload(true);
-			downloadOptions.setName(fileName + ".zip");
 			actualFile = this.getFSService().getDirectoryAsArchive(path);
 		} else {
 			actualFile = this.getFSService().getAsFile(path);
@@ -330,6 +333,7 @@ public abstract class AbstractFilesResourceService {
 				() -> actualFile,
 
 				af -> {
+
 					long length = af.length();
 
 					List<HttpRange> ranges = request.getHeaders()
@@ -852,29 +856,30 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	public Mono<FileDetail> createInternal(String clientCode, boolean ovr, String filePath,
-			String fileName, ServerHttpRequest request) {
+	public Mono<FileDetail> createInternal(String clientCode, boolean override, String filePath, 
+			String fileName, ServerHttpRequest request){
+				
+			Path tmpFolder;
+			Path tmpFile;
+			
+			try{
+				tmpFolder = Files.createTempDirectory("tmp" );
+				tmpFile = tmpFolder.resolve(fileName);
+			}
+			catch(IOException e){
+				return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+					FilesMessageResourceService.UNKNOWN_ERROR);
+			}
+			
+			return DataBufferUtils.write(request.getBody(), tmpFile, StandardOpenOption.CREATE, 
+					StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+					.then(Mono.just(tmpFile))
+					.flatMap(file -> {
+						return this.getFSService().createFileFromFile(
+							clientCode, filePath, fileName, tmpFile, override);
+					})
+					.map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file));
 
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, filePath);
-		String resourcePath = tup.getT1();
-		String urlResourcePath = tup.getT2();
-
-		return FlatMapUtil.flatMapMonoWithNull(
-
-				() -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode,
-						FilesAccessPathResourceType.valueOf(this.getResourceType())),
-
-				hasPermission -> {
-
-					if (!BooleanUtil.safeValueOf(hasPermission))
-						return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
-
-					return this.getFSService()
-							.createFileFromFluxDataBuffer(clientCode, resourcePath, fileName, request.getBody(), ovr)
-							.map(d -> this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, d));
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
 	}
 
 	public abstract FileSystemService getFSService();
