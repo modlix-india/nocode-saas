@@ -16,11 +16,14 @@ import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenValueExtractor;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 public class SecurityContextUtil {
 
@@ -45,6 +48,22 @@ public class SecurityContextUtil {
 		return ReactiveSecurityContextHolder.getContext()
 				.map(SecurityContext::getAuthentication)
 				.map(ContextAuthentication.class::cast);
+	}
+
+	public static Mono<Tuple2<String, String>> resolveAppAndClientCode(String appCode, String clientCode) {
+
+		if (!StringUtil.safeIsBlank(appCode) && StringUtil.safeIsBlank(clientCode)) {
+			return Mono.just(Tuples.of(appCode, clientCode));
+		}
+
+		return ReactiveSecurityContextHolder.getContext()
+				.map(SecurityContext::getAuthentication)
+				.cast(ContextAuthentication.class)
+				.map(auth -> Tuples.of(
+							!StringUtil.safeIsBlank(appCode) ? appCode : auth.getUrlAppCode(),
+							!StringUtil.safeIsBlank(clientCode) ? clientCode : auth.getClientCode()
+					))
+				.defaultIfEmpty(Tuples.of(appCode, clientCode));
 	}
 
 	public static Mono<Boolean> hasAuthority(String authority) {
