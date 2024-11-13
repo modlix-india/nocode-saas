@@ -65,7 +65,8 @@ public class SendEmail extends AbstractReactiveFunction {
 
 				Parameter.ofEntry(ADDRESS, Schema.ofString(ADDRESS).setDefaultValue(new JsonPrimitive("")), true),
 
-				Parameter.ofEntry(TEMPLATE_DATA, Schema.ofObject(TEMPLATE_DATA).setDefaultValue(new JsonObject()))));
+				Parameter.ofEntry(TEMPLATE_DATA, Schema.ofObject(TEMPLATE_DATA).setDefaultValue(new JsonObject()))
+		));
 
 		return new FunctionSignature().setNamespace(NAMESPACE).setName(FUNCTION_NAME).setParameters(parameters)
 				.setEvents(Map.of(event.getName(), event));

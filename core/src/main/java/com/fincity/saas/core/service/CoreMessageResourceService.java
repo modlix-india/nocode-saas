@@ -29,6 +29,8 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 
 	public static final String NOT_ABLE_TO_READ_FILE_FORMAT = "not_able_to_read_file_format";
 
+	public static final String FILE_FORMAT_INVALID = "file_format_invalid";
+
 	public static final String NOT_ABLE_TO_DOWNLOAD_DATA = "not_able_to_download_data";
 
 	public static final String BULK_UPLOAD_MESSAGE = "bulk_upload_message";
@@ -36,6 +38,10 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String NOT_ABLE_TO_READ_FROM_FILE = "not_able_to_read_from_file";
 
 	public static final String TEMPLATE_DETAILS_MISSING = "template_details_missing";
+
+	public static final String TEMPLATE_CONVERT_ERROR = "template_convert_error";
+
+	public static final String FS_STREAM_ERROR = "fs_stream_error";
 
 	public static final String MAIL_SEND_ERROR = "mail_send_error";
 

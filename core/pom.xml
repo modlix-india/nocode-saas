@@ -24,6 +24,7 @@
         <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
         <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
+        <openhtml.version>1.0.10</openhtml.version>
     </properties>
     <dependencies>
         <dependency>
@@ -170,6 +171,21 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-core</artifactId>
+            <version>${openhtml.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtml.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-rtl-support</artifactId>
+            <version>${openhtml.version}</version>
         </dependency>
     </dependencies>
     <dependencyManagement>
