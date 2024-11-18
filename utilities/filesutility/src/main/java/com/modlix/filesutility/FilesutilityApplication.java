@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -55,6 +54,7 @@ public class FilesutilityApplication {
 	private static final Logger logger = LoggerFactory.getLogger(FilesutilityApplication.class);
 
 	private static final Map<String, String> CONTENT_TYPE_MAP = new HashMap<>(Map.ofEntries(
+
 		Map.entry(".aac", "audio/aac"), Map.entry(".abw", "application/x-abiword"),
 		Map.entry(".apng", "image/apng"), Map.entry(".arc", "application/x-freearc"),
 		Map.entry(".avif", "image/avif"), Map.entry(".avi", "video/x-msvideo"),
@@ -125,8 +125,30 @@ public class FilesutilityApplication {
 		// printObjectsInFolder(s3Client, BUCKET_NAME_STATIC, "SYSTEM");
 
 		// findObjectByName(s3Client, BUCKET_NAME_STATIC, "cedarthumb");
+
 		updateHeadersToInline(s3Client, BUCKET_NAME_STATIC);
-		
+	}
+
+	public static void updateHeadersToInline(S3Client s3Client, String bucketName) {
+		SdkIterable<S3Object> iterable = s3Client
+				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).build())
+				.contents();
+
+		for (S3Object s3Object : iterable) {
+			int dotIndex = s3Object.key().lastIndexOf('.');
+			String contentType = dotIndex == -1 ? null
+					: CONTENT_TYPE_MAP.get(s3Object.key().toLowerCase().substring(dotIndex));
+
+			s3Client.copyObject(CopyObjectRequest.builder()
+					.sourceBucket(bucketName)
+					.sourceKey(s3Object.key())
+					.destinationBucket(bucketName)
+					.destinationKey(s3Object.key())
+					.metadataDirective(MetadataDirective.REPLACE)
+					.contentDisposition("inline")
+					.contentType(contentType)
+					.build());
+		}
 	}
 
 	public static void updateHeadersToInline(S3Client s3Client, String bucketName) {
