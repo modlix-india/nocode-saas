@@ -13,6 +13,9 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +39,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 @SpringBootApplication
 public class FilesutilityApplication {
 
-	private static final String BUCKET_NAME_STATIC = "local-static";
+	private static final String BUCKET_NAME_STATIC = "prod-static";
 	private static final String BUCKET_NAME_SECURED = "local-secured";
 	private static final String ENDPOINT = "https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com";
 	private static final String ACCESS_KEY = "";
@@ -125,7 +128,7 @@ public class FilesutilityApplication {
 
 		// findObjectByName(s3Client, BUCKET_NAME_STATIC, "cedarthumb");
 
-		updateHeadersToInline(s3Client, BUCKET_NAME_STATIC);
+		// updateHeadersToInline(s3Client, BUCKET_NAME_STATIC);
 	}
 
 	public static void updateHeadersToInline(S3Client s3Client, String bucketName) {
@@ -133,21 +136,31 @@ public class FilesutilityApplication {
 				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).build())
 				.contents();
 
+		AtomicInteger count = new AtomicInteger(0);
+		ExecutorService executor = Executors.newFixedThreadPool(50);
 		for (S3Object s3Object : iterable) {
+
 			int dotIndex = s3Object.key().lastIndexOf('.');
 			String contentType = dotIndex == -1 ? null
 					: CONTENT_TYPE_MAP.get(s3Object.key().toLowerCase().substring(dotIndex));
 
-			s3Client.copyObject(CopyObjectRequest.builder()
-					.sourceBucket(bucketName)
-					.sourceKey(s3Object.key())
-					.destinationBucket(bucketName)
-					.destinationKey(s3Object.key())
-					.metadataDirective(MetadataDirective.REPLACE)
-					.contentDisposition("inline")
-					.contentType(contentType)
-					.build());
+			executor.execute(() -> {
+				s3Client.copyObject(CopyObjectRequest.builder()
+						.sourceBucket(bucketName)
+						.sourceKey(s3Object.key())
+						.destinationBucket(bucketName)
+						.destinationKey(s3Object.key())
+						.metadataDirective(MetadataDirective.REPLACE)
+						.contentDisposition("inline")
+						.contentType(contentType)
+						.build());
+				var current = count.incrementAndGet();
+				if (current % 100 == 0)
+					logger.info("Copied {} objects.", current);
+			});
 		}
+		executor.shutdown();
+		logger.info("All objects copied. {} objects processed.", count.get());
 	}
 
 	public static void findObjectByName(S3Client s3Client, String bucketName, String name) {
@@ -309,6 +322,10 @@ public class FilesutilityApplication {
 				.forEach(file -> {
 					try {
 						String filePath = file.toAbsolutePath().toString();
+						String fileName = file.getFileName().toString();
+						int index = fileName.lastIndexOf('.');
+						String contentType = index == -1 ? null
+								: CONTENT_TYPE_MAP.get(filePath.substring(index).toLowerCase());
 						String key = filePath.substring(localLocation.length() + 1).trim().replace("\\", "/");
 						if (key.startsWith("/"))
 							key = key.substring(1);
@@ -316,7 +333,8 @@ public class FilesutilityApplication {
 								PutObjectRequest.builder()
 										.bucket(bucketName)
 										.contentDisposition(
-												"attachment; filename=\"" + file.getFileName().toString() + "\"")
+												"inline; filename=\"" + fileName + "\"")
+										.contentType(contentType)
 										.key(key)
 										.build(),
 								RequestBody.fromFile(file));
