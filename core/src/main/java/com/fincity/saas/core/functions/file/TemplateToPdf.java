@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.MediaType;
+
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
@@ -53,7 +55,7 @@ public class TemplateToPdf extends AbstractReactiveFunction {
 
 	private static final String FILE_OVERRIDE = "fileOverride";
 
-	private static final String OUTPUT_FORMAT = "pdf";
+	private static final String OUTPUT_FORMAT = MediaType.APPLICATION_PDF.getSubtype();
 
 	private final TemplateConversionService templateConversionService;
 
