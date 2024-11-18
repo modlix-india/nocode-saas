@@ -316,7 +316,7 @@ public class FileSystemDao {
     }
 
     public Mono<FileDetail> createOrUpdateFile(FilesFileSystemType fileSystemType, String clientCode, String path,
-            String fileName, boolean exists) {
+            String fileName, ULong fileLength, boolean exists) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
         String parentPath = index == -1 ? "" : path.substring(0, index);
@@ -351,6 +351,7 @@ public class FileSystemDao {
                                     null))
                             .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
                             .set(FILES_FILE_SYSTEM.NAME, name)
+                            .set(FILES_FILE_SYSTEM.SIZE, fileLength)
                             .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)).map(e -> e > 0);
                 },
                 (parentId, updatedCreated) -> BooleanUtil.safeValueOf(updatedCreated)
