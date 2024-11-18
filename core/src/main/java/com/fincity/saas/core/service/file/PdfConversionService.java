@@ -2,18 +2,24 @@ package com.fincity.saas.core.service.file;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
+import org.jsoup.Jsoup;
+import org.jsoup.helper.W3CDom;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.w3c.dom.Document;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -67,7 +73,13 @@ public class PdfConversionService extends AbstractTemplateConversionService impl
 		return "." + getMediaType(outputFormat).getSubtype();
 	}
 
+	public Document html5ParseDocument(String htmlContent){
+		return new W3CDom().fromJsoup(Jsoup.parse(htmlContent, "UTF-8"));
+	}
+
 	private PdfRendererBuilder createPdfBuilder(String htmlContent, ByteArrayOutputStream os) {
+
+		Document doc = html5ParseDocument(htmlContent);
 
 		return new PdfRendererBuilder()
 				.useHttpStreamImplementation(streamFactory)
@@ -75,7 +87,8 @@ public class PdfConversionService extends AbstractTemplateConversionService impl
 				.useUnicodeBidiSplitter(new ICUBidiSplitter.ICUBidiSplitterFactory())
 				.useUnicodeBidiReorderer(new ICUBidiReorderer())
 				.defaultTextDirection(BaseRendererBuilder.TextDirection.LTR)
-				.withHtmlContent(htmlContent, null)
+				.useDefaultPageSize(210, 297, BaseRendererBuilder.PageSizeUnits.MM)
+				.withW3cDocument(doc, null)
 				.toStream(os);
 	}
 
