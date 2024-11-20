@@ -20,6 +20,7 @@
         <feign-reactor.version>4.2.1</feign-reactor.version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <nocode-flatmap-util-version>1.3.0</nocode-flatmap-util-version>
+        <jar.finalName>gateway</jar.finalName>
     </properties>
     <dependencies>
         <dependency>
@@ -80,6 +81,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <finalName>${jar.finalName}</finalName>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>

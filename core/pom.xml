@@ -24,6 +24,7 @@
         <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
         <openhtml.version>1.0.10</openhtml.version>
+        <jar.finalName>core</jar.finalName>
     </properties>
     <dependencies>
         <dependency>
@@ -207,6 +208,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <finalName>${jar.finalName}</finalName>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

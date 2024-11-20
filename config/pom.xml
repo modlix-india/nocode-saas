@@ -16,6 +16,7 @@
         <java.version>21</java.version>
         <spring-boot-admin.version>3.0.2</spring-boot-admin.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <jar.finalName>config</jar.finalName>
     </properties>
     <dependencies>
         <dependency>
@@ -63,6 +64,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <finalName>${jar.finalName}</finalName>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
