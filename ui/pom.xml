@@ -19,7 +19,6 @@
         <saas-commons-version>2.0.0</saas-commons-version>
         <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
-        <jar.finalName>ui</jar.finalName>
     </properties>
     <dependencies>
         <dependency>
@@ -99,12 +98,10 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            
         </dependencies>
     </dependencyManagement>
 
     <build>
-        <finalName>${jar.finalName}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
