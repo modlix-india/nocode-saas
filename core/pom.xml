@@ -203,12 +203,12 @@
         </dependencies>
     </dependencyManagement>
     <build>
+        <finalName>${jar.finalName}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <finalName>${jar.finalName}</finalName>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
