@@ -76,4 +76,4 @@ jobs:
         uses: oracle-actions/run-oci-cli-command@v1.3.2
         id: upload-artifacts
         with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/config.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./config/target/config.jar"
+          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/config.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./config/target/config.jar -v"
