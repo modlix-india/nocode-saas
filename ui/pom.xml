@@ -19,6 +19,7 @@
         <saas-commons-version>2.0.0</saas-commons-version>
         <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
+        <jar.finalName>ui</jar.finalName>
     </properties>
     <dependencies>
         <dependency>
@@ -36,10 +37,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>de.codecentric</groupId>
-            <artifactId>spring-boot-admin-starter-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -102,13 +99,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>de.codecentric</groupId>
-                <artifactId>spring-boot-admin-dependencies</artifactId>
-                <version>${spring-boot-admin.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+            
         </dependencies>
     </dependencyManagement>
 
@@ -118,6 +109,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <finalName>${jar.finalName}</finalName>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
