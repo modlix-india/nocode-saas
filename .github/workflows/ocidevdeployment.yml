@@ -27,45 +27,45 @@ jobs:
         with:
           java-version: "21"
           distribution: "oracle"
-      - name: Building commons
-        working-directory: ./commons
-        run: mvn clean install
-      - name: Building commons-jooq
-        working-directory: ./commons-jooq
-        run: mvn clean install
-      - name: Building commons-security
-        working-directory: ./commons-security
-        run: mvn clean install
-      - name: Building commons-mongo
-        working-directory: ./commons-mongo
-        run: mvn clean install
-      - name: Building commons-mq
-        working-directory: ./commons-mq
-        run: mvn clean install
+      # - name: Building commons
+      #   working-directory: ./commons
+      #   run: mvn clean install
+      # - name: Building commons-jooq
+      #   working-directory: ./commons-jooq
+      #   run: mvn clean install
+      # - name: Building commons-security
+      #   working-directory: ./commons-security
+      #   run: mvn clean install
+      # - name: Building commons-mongo
+      #   working-directory: ./commons-mongo
+      #   run: mvn clean install
+      # - name: Building commons-mq
+      #   working-directory: ./commons-mq
+      #   run: mvn clean install
       - name: Building config
         working-directory: ./config
         run: mvn clean install
-      - name: Building eureka
-        working-directory: ./eureka
-        run: mvn clean install
-      - name: Building gateway
-        working-directory: ./gateway
-        run: mvn clean install
-      - name: Building security
-        working-directory: ./security
-        run: mvn clean install
-      - name: Building ui
-        working-directory: ./ui
-        run: mvn clean install
-      - name: Building files
-        working-directory: ./files
-        run: mvn clean install
-      - name: Building core
-        working-directory: ./core
-        run: mvn clean install
-      - name: Building multi
-        working-directory: ./multi
-        run: mvn clean install
+      # - name: Building eureka
+      #   working-directory: ./eureka
+      #   run: mvn clean install
+      # - name: Building gateway
+      #   working-directory: ./gateway
+      #   run: mvn clean install
+      # - name: Building security
+      #   working-directory: ./security
+      #   run: mvn clean install
+      # - name: Building ui
+      #   working-directory: ./ui
+      #   run: mvn clean install
+      # - name: Building files
+      #   working-directory: ./files
+      #   run: mvn clean install
+      # - name: Building core
+      #   working-directory: ./core
+      #   run: mvn clean install
+      # - name: Building multi
+      #   working-directory: ./multi
+      #   run: mvn clean install
       - name: Artifact version
         id: artifactVersionStep
         run: |
@@ -75,40 +75,40 @@ jobs:
       - name: Uploading Config Server Artifact
         uses: oracle-actions/run-oci-cli-command@v1.3.2
         with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/config.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./config/target/config-1.1.0.jar"
+          command: "artifacts generic artifact upload-by-path --debug --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/config.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./config/target/config-1.1.0.jar"
           silent: false
-      - name: Uploading Core Artifact
-        uses: oracle-actions/run-oci-cli-command@v1.3.2
-        with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/core.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./core/target/core-1.1.0.jar"
-          silent: false
-      - name: Uploading Multi Artifact
-        uses: oracle-actions/run-oci-cli-command@v1.3.2
-        with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/multi.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./multi/target/multi-2.0.0.jar"
-          silent: false
-      - name: Uploading UI Artifact
-        uses: oracle-actions/run-oci-cli-command@v1.3.2
-        with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/ui.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./ui/target/ui-1.1.0.jar"
-          silent: false
-      - name: Uploading Files Artifact
-        uses: oracle-actions/run-oci-cli-command@v1.3.2
-        with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/files.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./files/target/files-2.0.0.jar"
-          silent: false
-      - name: Uploading Eureka Artifact
-        uses: oracle-actions/run-oci-cli-command@v1.3.2
-        with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/eureka.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./eureka/target/eureka-1.1.0.jar"
-          silent: false
-      - name: Uploading Gateway Artifact
-        uses: oracle-actions/run-oci-cli-command@v1.3.2
-        with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/gateway.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./gateway/target/gateway-1.1.0.jar"
-          silent: false
-      - name: Uploading Security Artifact
-        uses: oracle-actions/run-oci-cli-command@v1.3.2
-        with:
-          command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/security.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./security/target/security-1.1.0.jar"
-          silent: false
+      # - name: Uploading Core Artifact
+      #   uses: oracle-actions/run-oci-cli-command@v1.3.2
+      #   with:
+      #     command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/core.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./core/target/core-1.1.0.jar"
+      #     silent: false
+      # - name: Uploading Multi Artifact
+      #   uses: oracle-actions/run-oci-cli-command@v1.3.2
+      #   with:
+      #     command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/multi.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./multi/target/multi-2.0.0.jar"
+      #     silent: false
+      # - name: Uploading UI Artifact
+      #   uses: oracle-actions/run-oci-cli-command@v1.3.2
+      #   with:
+      #     command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/ui.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./ui/target/ui-1.1.0.jar"
+      #     silent: false
+      # - name: Uploading Files Artifact
+      #   uses: oracle-actions/run-oci-cli-command@v1.3.2
+      #   with:
+      #     command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/files.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./files/target/files-2.0.0.jar"
+      #     silent: false
+      # - name: Uploading Eureka Artifact
+      #   uses: oracle-actions/run-oci-cli-command@v1.3.2
+      #   with:
+      #     command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/eureka.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./eureka/target/eureka-1.1.0.jar"
+      #     silent: false
+      # - name: Uploading Gateway Artifact
+      #   uses: oracle-actions/run-oci-cli-command@v1.3.2
+      #   with:
+      #     command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/gateway.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./gateway/target/gateway-1.1.0.jar"
+      #     silent: false
+      # - name: Uploading Security Artifact
+      #   uses: oracle-actions/run-oci-cli-command@v1.3.2
+      #   with:
+      #     command: "artifacts generic artifact upload-by-path --repository-id ocid1.artifactrepository.oc1.iad.0.amaaaaaay56thcyatixt7wsusao4pqxotk6wxtvqynuaeojd4w24y6rajbyq --artifact-path nclc/development/security.jar --artifact-version ${{ steps.artifactVersionStep.outputs.VERSION }} --content-body ./security/target/security-1.1.0.jar"
+      #     silent: false
