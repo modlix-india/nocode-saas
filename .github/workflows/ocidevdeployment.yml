@@ -86,7 +86,7 @@ jobs:
           echo "--> Building Docker Image"
           docker build -t dev-config-server:latest -t dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
           echo "--> Tagging Docker Image"
-          docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}}
+          docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
           echo "--> Pushing Docker Image"
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
 
