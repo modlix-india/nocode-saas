@@ -82,9 +82,9 @@ jobs:
         working-directory: ./config
         run: |
           docker pull openjdk:21-ea-jdk-oracle
-          docker build -t dev-config-server:latest -t dev-config-server:${VERSION} --build-arg profileName=${ENVIRONMENT} .
-          docker tag dev-config-server:${VERSION} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${VERSION}
-          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${VERSION}
+          docker build -t dev-config-server:latest -t dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
+          docker tag dev-config-server:${VERSION} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
 
       # - name: Uploading Config Server Artifact
       #   uses: oracle-actions/run-oci-cli-command@v1.3.2
