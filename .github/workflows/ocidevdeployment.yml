@@ -71,7 +71,7 @@ jobs:
         id: get-ocir-repository
         with:
           name: dev-config-server
-          compartment: ocid1.compartment.oc1..aaaaaaaayrl52i6nu3pl34pzkq3qxugbn5vami7z7ucqvih3diiqqrjchawq
+          compartment: ocid1.compartment.oc1..aaaaaaaaod3lhipgsvrxjfghrwbfkwtc42suuki2bprs6s7a5noslsvu6pkq
       - name: Log into OCIR
         uses: oracle-actions/login-ocir@v1.3.0
         id: login-ocir
