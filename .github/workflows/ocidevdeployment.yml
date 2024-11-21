@@ -81,9 +81,13 @@ jobs:
       - name: Pushing Config Docker Image to OCI
         working-directory: ./config
         run: |
+          echo "--> Pulling Java Image"
           docker pull openjdk:21-ea-jdk-oracle
+          echo "--> Building Docker Image"
           docker build -t dev-config-server:latest -t dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
-          docker tag dev-config-server:${VERSION} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}}
+          echo "--> Tagging Docker Image"
+          docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}}
+          echo "--> Pushing Docker Image"
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
 
       # - name: Uploading Config Server Artifact
