@@ -21,12 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2.3.4
         with:
-          ref: development
-      - name: Setting up Java
-        uses: actions/setup-java@v3
-        with:
-          java-version: "21"
-          distribution: "oracle"
+          ref: oci-development
+      # - name: Setting up Java
+      #   uses: actions/setup-java@v3
+      #   with:
+      #     java-version: "21"
+      #     distribution: "oracle"
       # - name: Building commons
       #   working-directory: ./commons
       #   run: mvn clean install
@@ -42,9 +42,9 @@ jobs:
       # - name: Building commons-mq
       #   working-directory: ./commons-mq
       #   run: mvn clean install
-      - name: Building config
-        working-directory: ./config
-        run: mvn clean install
+      # - name: Building config
+      #   working-directory: ./config
+      #   run: mvn clean install
       # - name: Building eureka
       #   working-directory: ./eureka
       #   run: mvn clean install
@@ -77,13 +77,13 @@ jobs:
           VERSION=$(date '+%Y%m%d%H%M%S')
           echo "Setting version to ${VERSION}"
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-      - name: Pushing Config Docker Image to OCI
-        working-directory: ./config
-        run: |
-          docker pull openjdk:21-ea-jdk-oracle
-          docker build -t dev-config-server:latest -t dev-config-server:${VERSION} --build-arg profileName=${ENVIRONMENT} .
-          docker tag dev-config-server:${VERSION} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${VERSION}
-          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${VERSION}
+      # - name: Pushing Config Docker Image to OCI
+      #   working-directory: ./config
+      #   run: |
+      #     docker pull openjdk:21-ea-jdk-oracle
+      #     docker build -t dev-config-server:latest -t dev-config-server:${VERSION} --build-arg profileName=${ENVIRONMENT} .
+      #     docker tag dev-config-server:${VERSION} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${VERSION}
+      #     docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${VERSION}
 
       # - name: Uploading Config Server Artifact
       #   uses: oracle-actions/run-oci-cli-command@v1.3.2
