@@ -66,6 +66,12 @@ jobs:
       # - name: Building multi
       #   working-directory: ./multi
       #   run: mvn clean install
+      - name: Get or create an OCIR Repository
+        uses: oracle-actions/get-ocir-repository@v1.3.0
+        id: get-ocir-repository
+        with:
+          name: dev-config-server
+          compartment: ocid1.compartment.oc1..aaaaaaaayrl52i6nu3pl34pzkq3qxugbn5vami7z7ucqvih3diiqqrjchawq
       - name: Log into OCIR
         uses: oracle-actions/login-ocir@v1.3.0
         id: login-ocir
