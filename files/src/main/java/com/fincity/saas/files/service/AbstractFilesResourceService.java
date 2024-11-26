@@ -2,7 +2,7 @@ package com.fincity.saas.files.service;
 
 import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 
-import java.awt.*;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -80,7 +80,7 @@ public abstract class AbstractFilesResourceService {
 
 	private static final String GENERIC_URI_PART_IMPORT = "/import";
 
-	private static final String INTERNAL_PATH = "/internal";
+	private static final String INTERNAL_URI_PART = "/internal";
 
 	private static final String STATIC_TYPE = "static";
 
@@ -860,10 +860,8 @@ public abstract class AbstractFilesResourceService {
 		return DataBufferUtils.write(request.getBody(), tmpFile, StandardOpenOption.CREATE,
 				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
 				.then(Mono.just(tmpFile))
-				.flatMap(file -> {
-					return this.getFSService().createFileFromFile(
-							clientCode, filePath, fileName, tmpFile, override);
-				})
+				.flatMap(file -> this.getFSService().createFileFromFile(
+						clientCode, filePath, fileName, tmpFile, override))
 				.map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file));
 
 	}
@@ -875,7 +873,7 @@ public abstract class AbstractFilesResourceService {
 			filePath = R2_FILE_SEPARATOR_STRING + filePath;
 		}
 
-		String uri = request.getPath().toString().replace(INTERNAL_PATH, "") + filePath;
+		String uri = request.getPath().toString().replace(INTERNAL_URI_PART, "") + filePath;
 
 		String rp = this.resolvePathWithClientCode(uri).getT1();
 
