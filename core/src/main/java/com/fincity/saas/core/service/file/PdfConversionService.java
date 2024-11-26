@@ -1,54 +1,46 @@
 package com.fincity.saas.core.service.file;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 
 import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 import org.w3c.dom.Document;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.Template;
+import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.openhtmltopdf.bidi.support.ICUBidiReorderer;
 import com.openhtmltopdf.bidi.support.ICUBidiSplitter;
-import com.openhtmltopdf.extend.FSStream;
 import com.openhtmltopdf.extend.FSStreamFactory;
 import com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
+import com.openhtmltopdf.svgsupport.BatikSVGDrawer;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
 @Service
-public class PdfConversionService extends AbstractTemplateConversionService implements ITemplateConversionService {
+public class PdfConversionService extends AbstractTemplateConversionService {
 
 	private static final int INITIAL_BUFFER_SIZE = 8192; // 8KB initial size
 	private static final String BODY_KEY = "body";
 
 	private final FSStreamFactory streamFactory;
 
-	public PdfConversionService() {
-		this.streamFactory = new SpringWebClientFSStreamFactory();
+	public PdfConversionService(IFeignFilesService fileService) {
+		this.streamFactory = new FileServerStreamFactory(fileService);
 	}
 
+	@Override
 	protected Mono<byte[]> convertToFormat(Map<String, String> processedParts, String outputFormat, Template template) {
 
 		String htmlContent = processedParts.get(BODY_KEY);
@@ -73,7 +65,7 @@ public class PdfConversionService extends AbstractTemplateConversionService impl
 		return "." + getMediaType(outputFormat).getSubtype();
 	}
 
-	public Document html5ParseDocument(String htmlContent){
+	public Document html5ParseDocument(String htmlContent) {
 		return new W3CDom().fromJsoup(Jsoup.parse(htmlContent, "UTF-8"));
 	}
 
@@ -88,6 +80,7 @@ public class PdfConversionService extends AbstractTemplateConversionService impl
 				.useUnicodeBidiReorderer(new ICUBidiReorderer())
 				.defaultTextDirection(BaseRendererBuilder.TextDirection.LTR)
 				.useDefaultPageSize(210, 297, BaseRendererBuilder.PageSizeUnits.MM)
+				.useSVGDrawer(new BatikSVGDrawer())
 				.withW3cDocument(doc, null)
 				.toStream(os);
 	}
@@ -103,48 +96,6 @@ public class PdfConversionService extends AbstractTemplateConversionService impl
 							template.getId(),
 							getFileExtension(outputFormat)),
 					ioException);
-		}
-	}
-
-	private static class SpringWebClientFSStreamFactory implements FSStreamFactory {
-
-		private final RestClient restClient;
-
-		private final Map<String, byte[]> resourceCache = new ConcurrentHashMap<>();
-
-		public SpringWebClientFSStreamFactory() {
-			this.restClient = RestClient.create();
-		}
-
-		@Override
-		public FSStream getUrl(String url) {
-
-			try {
-				byte[] responseBytes = resourceCache.computeIfAbsent(url, this::fetchResource);
-
-				if (responseBytes == null) {
-					return null;
-				}
-
-				return new FSStream() {
-					@Override
-					public InputStream getStream() {
-						return new ByteArrayInputStream(responseBytes);
-					}
-
-					@Override
-					public Reader getReader() {
-						return new InputStreamReader(getStream(), StandardCharsets.UTF_8);
-					}
-				};
-			} catch (Exception e) {
-				throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-						StringFormatter.format(CoreMessageResourceService.FS_STREAM_ERROR));
-			}
-		}
-
-		private byte[] fetchResource(String url) {
-			return restClient.get().uri(url).retrieve().body(byte[].class);
 		}
 	}
 }
