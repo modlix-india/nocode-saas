@@ -1,6 +1,8 @@
 package com.fincity.saas.files.service;
 
-import java.awt.Graphics2D;
+import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
+
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -26,6 +28,7 @@ import java.util.zip.ZipInputStream;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+
 import org.imgscalr.Scalr;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -59,7 +62,6 @@ import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.ImageDetails;
-import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 import com.fincity.saas.files.util.FileExtensionUtil;
 import com.fincity.saas.files.util.ImageTransformUtil;
 
@@ -77,6 +79,8 @@ public abstract class AbstractFilesResourceService {
 	private static final String GENERIC_URI_PART_FILE = "/file";
 
 	private static final String GENERIC_URI_PART_IMPORT = "/import";
+
+	private static final String INTERNAL_PATH = "/internal";
 
 	private static final String STATIC_TYPE = "static";
 
@@ -200,24 +204,7 @@ public abstract class AbstractFilesResourceService {
 
 					return this.getFSService().getFileDetail(rp);
 				},
-				(hasAccess, fd) -> {
-
-					long fileMillis = fd.getLastModifiedTime();
-					String fileETag = new StringBuilder().append('"')
-							.append(fd.getName().hashCode())
-							.append('-')
-							.append(fileMillis)
-							.append('-')
-							.append(downloadOptions.eTagCode())
-							.append('"')
-							.toString();
-
-					if (fd.isDirectory())
-						return downloadDirectory(downloadOptions, request, response, rp, fileMillis, fileETag);
-
-					return makeMatchesStartDownload(downloadOptions, request, response, false, rp, fileMillis,
-							fileETag);
-				})
+				(hasAccess, fd) -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"));
 
 	}
@@ -244,7 +231,7 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param resourcePath the path of the resource to which the access need to be
 	 *                     checked.
 	 * @return a Mono if the readAccess is granted by the requester
@@ -299,7 +286,7 @@ public abstract class AbstractFilesResourceService {
 			fileName = pathParts[pathParts.length - 2];
 		if (StringUtil.safeIsBlank(fileName))
 			fileName = "file";
-		
+
 		downloadOptions.setName(downloadOptions.getName() == null ? fileName : downloadOptions.getName());
 
 		respHeaders.set("x-cache", "MISS");
@@ -307,12 +294,12 @@ public abstract class AbstractFilesResourceService {
 		respHeaders.setETag(eTag);
 		if (!BooleanUtil.safeValueOf(downloadOptions.getNoCache())
 				&& this.getResourceType().equals(FilesAccessPathResourceType.STATIC.name()))
-			respHeaders.setCacheControl("public, max-age=3600");		
+			respHeaders.setCacheControl("public, max-age=3600");
 
 		respHeaders.setContentDisposition(
 				(BooleanUtil.safeValueOf(downloadOptions.getDownload()) ? ContentDisposition.attachment()
 						: ContentDisposition.inline())
-						.filename( isDirectory ? downloadOptions.getName() + ".zip" : downloadOptions.getName() )
+						.filename(isDirectory ? downloadOptions.getName() + ".zip" : downloadOptions.getName())
 						.build());
 		String mimeType = URLConnection.guessContentTypeFromName(fileName);
 		if (mimeType == null) {
@@ -856,30 +843,68 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	public Mono<FileDetail> createInternal(String clientCode, boolean override, String filePath, 
-			String fileName, ServerHttpRequest request){
-				
-			Path tmpFolder;
-			Path tmpFile;
-			
-			try{
-				tmpFolder = Files.createTempDirectory("tmp" );
-				tmpFile = tmpFolder.resolve(fileName);
-			}
-			catch(IOException e){
-				return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-					FilesMessageResourceService.UNKNOWN_ERROR);
-			}
-			
-			return DataBufferUtils.write(request.getBody(), tmpFile, StandardOpenOption.CREATE, 
-					StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
-					.then(Mono.just(tmpFile))
-					.flatMap(file -> {
-						return this.getFSService().createFileFromFile(
-							clientCode, filePath, fileName, tmpFile, override);
-					})
-					.map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file));
+	public Mono<FileDetail> createInternal(String clientCode, boolean override, String filePath,
+			String fileName, ServerHttpRequest request) {
 
+		Path tmpFolder;
+		Path tmpFile;
+
+		try {
+			tmpFolder = Files.createTempDirectory("tmp");
+			tmpFile = tmpFolder.resolve(fileName);
+		} catch (IOException e) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+					FilesMessageResourceService.UNKNOWN_ERROR);
+		}
+
+		return DataBufferUtils.write(request.getBody(), tmpFile, StandardOpenOption.CREATE,
+				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+				.then(Mono.just(tmpFile))
+				.flatMap(file -> {
+					return this.getFSService().createFileFromFile(
+							clientCode, filePath, fileName, tmpFile, override);
+				})
+				.map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file));
+
+	}
+
+	public Mono<Void> readInternal(DownloadOptions downloadOptions, String filePath, ServerHttpRequest request,
+			ServerHttpResponse response) {
+
+		if (!filePath.startsWith(R2_FILE_SEPARATOR_STRING)) {
+			filePath = R2_FILE_SEPARATOR_STRING + filePath;
+		}
+
+		String uri = request.getPath().toString().replace(INTERNAL_PATH, "") + filePath;
+
+		String rp = this.resolvePathWithClientCode(uri).getT1();
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.getFSService().getFileDetail(rp),
+
+				fd -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.readInternal"));
+	}
+
+	private Mono<Void> downloadFileByFileDetails(FileDetail fileDetail, DownloadOptions downloadOptions,
+			String resourcePath, ServerHttpRequest request, ServerHttpResponse response) {
+
+		long fileMillis = fileDetail.getLastModifiedTime();
+		String fileETag = new StringBuilder().append('"')
+				.append(fileDetail.getName().hashCode())
+				.append('-')
+				.append(fileMillis)
+				.append('-')
+				.append(downloadOptions.eTagCode())
+				.append('"')
+				.toString();
+
+		if (fileDetail.isDirectory())
+			return downloadDirectory(downloadOptions, request, response, resourcePath, fileMillis, fileETag);
+
+		return makeMatchesStartDownload(downloadOptions, request, response, false, resourcePath, fileMillis,
+				fileETag);
 	}
 
 	public abstract FileSystemService getFSService();

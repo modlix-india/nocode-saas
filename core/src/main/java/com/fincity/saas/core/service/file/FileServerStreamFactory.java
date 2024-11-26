@@ -28,8 +28,8 @@ public class FileServerStreamFactory implements FSStreamFactory {
 	private final WebClient webClient;
 	private final ConcurrentHashMap<String, byte[]> cache;
 
-	private static final Pattern FILE_SERVER_PATTERN = Pattern.compile(
-			".*/api/files/internal/(static|secured)/.*");
+	private static final Pattern FILE_SERVER_SECURED_PATTERN = Pattern.compile(
+			".*/api/files/secured/file/(.*)");
 
 	public FileServerStreamFactory(IFeignFilesService filesService) {
 		this.filesService = filesService;
@@ -85,7 +85,10 @@ public class FileServerStreamFactory implements FSStreamFactory {
 	}
 
 	private Mono<byte[]> fetchInternalResource(String url) {
-		return filesService.downloadFile(url.contains("/static/") ? "static" : "secured", null, null, false, true, null,
+
+		String path = extractFilePath(url);
+
+		return filesService.downloadFile("secured", path, null, null, false, true, null,
 				null, false, null)
 				.map(resourceBuffer -> {
 					byte[] bytes = new byte[resourceBuffer.remaining()];
@@ -96,6 +99,16 @@ public class FileServerStreamFactory implements FSStreamFactory {
 						StringFormatter.format(CoreMessageResourceService.UNABLE_TO_FETCH_INTERNAL_RESOURCE)));
 	}
 
+	private String extractFilePath(String url) {
+		var matcher = FILE_SERVER_SECURED_PATTERN.matcher(url);
+
+		if (matcher.find()) {
+			return matcher.group(1);
+		}
+
+		return "";
+	}
+
 	private Mono<byte[]> fetchExternalResource(String url) {
 		return webClient.get().uri(url).retrieve().bodyToMono(byte[].class)
 				.onErrorMap(e -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -103,7 +116,7 @@ public class FileServerStreamFactory implements FSStreamFactory {
 	}
 
 	private boolean isFileServerUrl(String url) {
-		return FILE_SERVER_PATTERN.matcher(url).matches();
+		return FILE_SERVER_SECURED_PATTERN.matcher(url).matches();
 	}
 
 	public void clearCache() {

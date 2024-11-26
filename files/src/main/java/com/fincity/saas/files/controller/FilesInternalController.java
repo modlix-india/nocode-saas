@@ -43,9 +43,10 @@ public class FilesInternalController {
                 .createInternal(clientCode, override, filePath, fileName, request).map(ResponseEntity::ok);
     }
 
-    @GetMapping(value = "/{resourceType}/file/**")
+    @GetMapping(value = "/{resourceType}/file")
     public Mono<Void> downloadFile(
             @PathVariable String resourceType,
+            @RequestParam String filePath,
             @RequestParam(required = false) Integer width,
             @RequestParam(required = false) Integer height,
             @RequestParam(required = false, defaultValue = "false") Boolean download,
@@ -56,13 +57,13 @@ public class FilesInternalController {
             @RequestParam(required = false) String name, ServerHttpResponse response) {
 
         return ("secured".equals(resourceType) ? this.securedService : this.staticService)
-                .downloadFile(new DownloadOptions().setHeight(height)
+                .readInternal(new DownloadOptions().setHeight(height)
                         .setWidth(width)
                         .setKeepAspectRatio(keepAspectRatio)
                         .setBandColor(bandColor)
                         .setResizeDirection(resizeDirection)
                         .setNoCache(noCache)
                         .setDownload(download)
-                        .setName(name), request, response);
+                        .setName(name), filePath, request, response);
     }
 }
