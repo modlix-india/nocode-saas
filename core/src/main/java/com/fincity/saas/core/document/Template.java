@@ -1,5 +1,6 @@
 package com.fincity.saas.core.document;
 
+import java.io.Serial;
 import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
@@ -30,6 +31,7 @@ import reactor.util.context.Context;
 @ToString(callSuper = true)
 public class Template extends AbstractOverridableDTO<Template> {
 
+	@Serial
 	private static final long serialVersionUID = -6427509976748513994L;
 
 	private Map<String, Map<String, String>> templateParts;

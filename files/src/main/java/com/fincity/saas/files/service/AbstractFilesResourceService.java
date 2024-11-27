@@ -1,5 +1,7 @@
 package com.fincity.saas.files.service;
 
+import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
+
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -13,6 +15,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ContentDisposition;
@@ -58,7 +62,6 @@ import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.ImageDetails;
-import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 import com.fincity.saas.files.util.FileExtensionUtil;
 import com.fincity.saas.files.util.ImageTransformUtil;
 
@@ -76,6 +79,8 @@ public abstract class AbstractFilesResourceService {
 	private static final String GENERIC_URI_PART_FILE = "/file";
 
 	private static final String GENERIC_URI_PART_IMPORT = "/import";
+
+	private static final String INTERNAL_URI_PART = "/internal";
 
 	private static final String STATIC_TYPE = "static";
 
@@ -199,24 +204,7 @@ public abstract class AbstractFilesResourceService {
 
 					return this.getFSService().getFileDetail(rp);
 				},
-				(hasAccess, fd) -> {
-
-					long fileMillis = fd.getLastModifiedTime();
-					String fileETag = new StringBuilder().append('"')
-							.append(fd.getName().hashCode())
-							.append('-')
-							.append(fileMillis)
-							.append('-')
-							.append(downloadOptions.eTagCode())
-							.append('"')
-							.toString();
-
-					if (fd.isDirectory())
-						return downloadDirectory(downloadOptions, request, response, rp, fileMillis, fileETag);
-
-					return makeMatchesStartDownload(downloadOptions, request, response, false, rp, fileMillis,
-							fileETag);
-				})
+				(hasAccess, fd) -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"));
 
 	}
@@ -243,7 +231,7 @@ public abstract class AbstractFilesResourceService {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param resourcePath the path of the resource to which the access need to be
 	 *                     checked.
 	 * @return a Mono if the readAccess is granted by the requester
@@ -299,16 +287,19 @@ public abstract class AbstractFilesResourceService {
 		if (StringUtil.safeIsBlank(fileName))
 			fileName = "file";
 
+		downloadOptions.setName(downloadOptions.getName() == null ? fileName : downloadOptions.getName());
+
 		respHeaders.set("x-cache", "MISS");
 		respHeaders.setLastModified(fileMillis);
 		respHeaders.setETag(eTag);
 		if (!BooleanUtil.safeValueOf(downloadOptions.getNoCache())
 				&& this.getResourceType().equals(FilesAccessPathResourceType.STATIC.name()))
 			respHeaders.setCacheControl("public, max-age=3600");
+
 		respHeaders.setContentDisposition(
 				(BooleanUtil.safeValueOf(downloadOptions.getDownload()) ? ContentDisposition.attachment()
 						: ContentDisposition.inline())
-						.filename(downloadOptions.getName() == null ? fileName : downloadOptions.getName())
+						.filename(isDirectory ? downloadOptions.getName() + ".zip" : downloadOptions.getName())
 						.build());
 		String mimeType = URLConnection.guessContentTypeFromName(fileName);
 		if (mimeType == null) {
@@ -320,7 +311,6 @@ public abstract class AbstractFilesResourceService {
 		Mono<File> actualFile;
 		if (isDirectory) {
 			downloadOptions.setDownload(true);
-			downloadOptions.setName(fileName + ".zip");
 			actualFile = this.getFSService().getDirectoryAsArchive(path);
 		} else {
 			actualFile = this.getFSService().getAsFile(path);
@@ -330,6 +320,7 @@ public abstract class AbstractFilesResourceService {
 				() -> actualFile,
 
 				af -> {
+
 					long length = af.length();
 
 					List<HttpRange> ranges = request.getHeaders()
@@ -852,29 +843,66 @@ public abstract class AbstractFilesResourceService {
 		return Tuples.of(path, origPath);
 	}
 
-	public Mono<FileDetail> createInternal(String clientCode, boolean ovr, String filePath,
+	public Mono<FileDetail> createInternal(String clientCode, boolean override, String filePath,
 			String fileName, ServerHttpRequest request) {
 
-		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, filePath);
-		String resourcePath = tup.getT1();
-		String urlResourcePath = tup.getT2();
+		Path tmpFolder;
+		Path tmpFile;
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		try {
+			tmpFolder = Files.createTempDirectory("tmp");
+			tmpFile = tmpFolder.resolve(fileName);
+		} catch (IOException e) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+					FilesMessageResourceService.UNKNOWN_ERROR);
+		}
 
-				() -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode,
-						FilesAccessPathResourceType.valueOf(this.getResourceType())),
+		return DataBufferUtils.write(request.getBody(), tmpFile, StandardOpenOption.CREATE,
+				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+				.then(Mono.just(tmpFile))
+				.flatMap(file -> this.getFSService().createFileFromFile(
+						clientCode, filePath, fileName, tmpFile, override))
+				.map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file));
 
-				hasPermission -> {
+	}
 
-					if (!BooleanUtil.safeValueOf(hasPermission))
-						return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
+	public Mono<Void> readInternal(DownloadOptions downloadOptions, String filePath, ServerHttpRequest request,
+			ServerHttpResponse response) {
 
-					return this.getFSService()
-							.createFileFromFluxDataBuffer(clientCode, resourcePath, fileName, request.getBody(), ovr)
-							.map(d -> this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, d));
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+		if (!filePath.startsWith(R2_FILE_SEPARATOR_STRING)) {
+			filePath = R2_FILE_SEPARATOR_STRING + filePath;
+		}
+
+		String uri = request.getPath().toString().replace(INTERNAL_URI_PART, "") + filePath;
+
+		String rp = this.resolvePathWithClientCode(uri).getT1();
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.getFSService().getFileDetail(rp),
+
+				fd -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.readInternal"));
+	}
+
+	private Mono<Void> downloadFileByFileDetails(FileDetail fileDetail, DownloadOptions downloadOptions,
+			String resourcePath, ServerHttpRequest request, ServerHttpResponse response) {
+
+		long fileMillis = fileDetail.getLastModifiedTime();
+		String fileETag = new StringBuilder().append('"')
+				.append(fileDetail.getName().hashCode())
+				.append('-')
+				.append(fileMillis)
+				.append('-')
+				.append(downloadOptions.eTagCode())
+				.append('"')
+				.toString();
+
+		if (fileDetail.isDirectory())
+			return downloadDirectory(downloadOptions, request, response, resourcePath, fileMillis, fileETag);
+
+		return makeMatchesStartDownload(downloadOptions, request, response, false, resourcePath, fileMillis,
+				fileETag);
 	}
 
 	public abstract FileSystemService getFSService();
