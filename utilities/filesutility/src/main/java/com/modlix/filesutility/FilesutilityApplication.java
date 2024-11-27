@@ -194,8 +194,8 @@ public class FilesutilityApplication {
 	}
 
 	public static void emptyTable(Connection connection) {
-		try {
-			Statement statement = connection.createStatement();
+
+		try(Statement statement = connection.createStatement()) {
 			statement.executeUpdate("TRUNCATE TABLE files_file_system");
 			logger.info("Table truncated successfully.");
 		} catch (SQLException e) {

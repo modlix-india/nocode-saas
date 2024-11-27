@@ -6,8 +6,8 @@ spring:
       server:
         bootstrap: true
   profiles:
-    active: ${SPRING_PROFILE:default} 
-        
+    active: ${SPRING_PROFILE:default}
+
 server:
   port: 8888
 
@@ -15,9 +15,8 @@ eureka:
   client:
     register-with-eureka: true
     serviceUrl:
-      defaultZone: http://localhost:9999/eureka/
+      defaultZone: http://${EUREKA_SERVER_HOST:localhost}:${EUREKA_SERVER_PORT:9999}/eureka/
   instance:
     prefer-ip-address: true
-
 ## To use it in local, please configure the following program arguments with the right path to the search locations to config files.
 #--spring.profiles.active=native,local --spring.cloud.config.server.native.search-locations=file:///Users/kirangrandhi/fincity/nocode-saas/configfiles
