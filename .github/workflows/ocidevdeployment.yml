@@ -79,45 +79,61 @@ jobs:
           docker build -t dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
           docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:latest
       - name: Pushing Eureka Docker Image to OCI
         working-directory: ./eureka
         run: |
           docker build -t dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server:latest
       - name: Pushing Gateway Docker Image to OCI
         working-directory: ./gateway
         run: |
           docker build -t dev-gateway-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-gateway-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-gateway-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-gateway-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-gateway-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-gateway-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-gateway-server:latest
       - name: Pushing Core Docker Image to OCI
         working-directory: ./core
         run: |
           docker build -t dev-core-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-core-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-core-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-core-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-core-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-core-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-core-server:latest
       - name: Pushing Multi Docker Image to OCI
         working-directory: ./multi
         run: |
           docker build -t dev-multi-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-multi-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-multi-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-multi-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-multi-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-multi-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-multi-server:latest
       - name: Pushing UI Docker Image to OCI
         working-directory: ./ui
         run: |
           docker build -t dev-ui-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-ui-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-ui-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-ui-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-ui-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-ui-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-ui-server:latest
       - name: Pushing Files Docker Image to OCI
         working-directory: ./files
         run: |
           docker build -t dev-files-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-files-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-files-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-files-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-files-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-files-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-files-server:latest
       - name: Pushing Security Docker Image to OCI
         working-directory: ./security
         run: |
           docker build -t dev-security-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-security-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-security-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-security-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-security-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-security-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-security-server:latest
