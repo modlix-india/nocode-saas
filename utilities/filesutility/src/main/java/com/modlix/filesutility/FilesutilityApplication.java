@@ -151,29 +151,6 @@ public class FilesutilityApplication {
 		}
 	}
 
-	public static void updateHeadersToInline(S3Client s3Client, String bucketName) {
-		SdkIterable<S3Object> iterable = s3Client
-				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).build())
-				.contents();
-
-		for (S3Object s3Object : iterable) {
-			int dotIndex = s3Object.key().lastIndexOf('.');
-			String contentType = dotIndex == -1 ? null
-					: CONTENT_TYPE_MAP.get(s3Object.key().toLowerCase().substring(dotIndex));
-
-			s3Client.copyObject(CopyObjectRequest.builder()
-					.sourceBucket(bucketName)
-					.sourceKey(s3Object.key())
-					.destinationBucket(bucketName)
-					.destinationKey(s3Object.key())
-					.metadataDirective(MetadataDirective.REPLACE)
-					.contentDisposition("inline")
-					.contentType(contentType)
-					.build());
-		}
-	}
-
-
 	public static void findObjectByName(S3Client s3Client, String bucketName, String name) {
 
 		SdkIterable<S3Object> iterable = s3Client
@@ -214,8 +191,8 @@ public class FilesutilityApplication {
 	}
 
 	public static void emptyTable(Connection connection) {
-		try {
-			Statement statement = connection.createStatement();
+
+		try(Statement statement = connection.createStatement()) {
 			statement.executeUpdate("TRUNCATE TABLE files_file_system");
 			logger.info("Table truncated successfully.");
 		} catch (SQLException e) {
