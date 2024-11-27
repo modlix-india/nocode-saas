@@ -43,6 +43,10 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 
 	public static final String FS_STREAM_ERROR = "fs_stream_error";
 
+	public static final String UNABLE_TO_FETCH_INTERNAL_RESOURCE = "unable_to_fetch_internal_resource";
+
+	public static final String UNABLE_TO_FETCH_EXTERNAL_RESOURCE = "unable_to_fetch_external_resource";
+
 	public static final String MAIL_SEND_ERROR = "mail_send_error";
 
 	public static final String STORAGE_IS_APP_LEVEL = "storage_is_app_level";
