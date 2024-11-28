@@ -6,4 +6,6 @@ EXPOSE 8002
 
 VOLUME [ "/logs" ]
 
-ENTRYPOINT ["java", "-Dlogging.file.name=/logs/ui.log", "-jar", "ui-1.1.0.jar"]
+ENV INSTANCE_ID=default
+
+ENTRYPOINT ["java", "-Dlogging.file.name=/logs/ui-${INSTANCE_ID}.log", "-jar", "ui-1.1.0.jar"]

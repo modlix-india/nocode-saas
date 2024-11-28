@@ -12,8 +12,6 @@ management:
   metrics:
     tags:
       application: ${INSTANCE_ENVIRONMENT:LOCAL}-${spring.application.name}-${INSTANCE_ID:default}
-      
-management:
   endpoint:
     gateway:
       enabled: true
