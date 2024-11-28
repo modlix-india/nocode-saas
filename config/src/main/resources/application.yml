@@ -12,6 +12,23 @@ management:
   metrics:
     tags:
       application: ${INSTANCE_ENVIRONMENT:LOCAL}-${spring.application.name}-${INSTANCE_ID:default}
+  info:
+    env:
+      enabled: true
+  security:
+    enabled: false
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      expose: "*"
+      exposure:
+        include: "*"
+
+endpoints:
+  enabled: true
 
 server:
   port: 8888
