@@ -6,4 +6,6 @@ EXPOSE 9999
 
 VOLUME [ "/logs" ]
 
-ENTRYPOINT ["java", "-Dlogging.file.name=/logs/eureka.log", "-jar", "eureka-1.1.0.jar"]
+ENV INSTANCE_ID=default
+
+ENTRYPOINT ["java", "-Dlogging.file.name=/logs/eureka-${INSTANCE_ID}.log", "-jar", "eureka-1.1.0.jar"]
