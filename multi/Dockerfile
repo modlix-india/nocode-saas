@@ -6,4 +6,6 @@ EXPOSE 8006
 
 VOLUME [ "/logs" ]
 
-ENTRYPOINT ["java", "-Dlogging.file.name=/logs/multi.log", "-jar", "multi-2.0.0.jar"]
+ENV INSTANCE_ID=default
+
+ENTRYPOINT ["java", "-Dlogging.file.name=/logs/multi-${INSTANCE_ID}.log", "-jar", "multi-2.0.0.jar"]
