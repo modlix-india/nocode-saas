@@ -36,9 +36,6 @@ jobs:
       - name: Building commons-mq
         working-directory: ./commons-mq
         run: mvn clean install
-      - name: Building admin
-        working-directory: ./admin
-        run: mvn clean install
       - name: Building config
         working-directory: ./config
         run: mvn clean install
