@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.5</version>
+        <version>3.4.0</version>
         <relativePath />
         <!-- lookup parent from repository -->
     </parent>
@@ -16,7 +16,7 @@
     <description>Core Server for the no code platform for logic and data</description>
     <properties>
         <java.version>21</java.version>
-        <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
@@ -304,4 +304,14 @@
             </build>
         </profile>
     </profiles>
+    <repositories>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>
