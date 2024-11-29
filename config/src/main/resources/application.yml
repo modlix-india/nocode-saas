@@ -44,6 +44,10 @@ eureka:
 #--spring.profiles.active=native,local --spring.cloud.config.server.native.search-locations=file:///Users/kirangrandhi/fincity/nocode-saas/configfiles
 
 logging:
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- [${INSTANCE_ID:default}] %X{x-debug} [%thread] %logger{40} : %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- [${INSTANCE_ID:default}] %X{x-debug} [%thread] %logger{40} : %msg%n"
+  structured:
+    format:
+      console: gelf
+      file: gelf
+    json:
+      add:
+        instanceId: ${INSTANCE_ID:default}

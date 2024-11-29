@@ -28,6 +28,8 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 public class FilesConfiguration extends AbstractJooqBaseConfiguration
 		implements ISecurityConfiguration {
@@ -40,6 +42,10 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 
 	@Value("${files.resources.secretAccessKey}")
 	private String secretAccessKey;
+
+	public FilesConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	@Override
 	@PostConstruct

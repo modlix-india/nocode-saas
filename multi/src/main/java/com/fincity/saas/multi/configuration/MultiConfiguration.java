@@ -19,8 +19,14 @@ import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 public class MultiConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
+
+	public MultiConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	@Override
 	@PostConstruct
@@ -37,12 +43,12 @@ public class MultiConfiguration extends AbstractJooqBaseConfiguration implements
 	}
 
 	@Bean
-	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper);
 	}
 
 	@Bean
-	ReactiveHttpRequestInterceptor feignInterceptor() {
+	public ReactiveHttpRequestInterceptor feignInterceptor() {
 		return request -> Mono.deferContextual(ctxView -> {
 
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
