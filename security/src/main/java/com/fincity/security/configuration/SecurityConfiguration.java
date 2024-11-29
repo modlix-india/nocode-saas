@@ -2,7 +2,6 @@ package com.fincity.security.configuration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -18,12 +17,18 @@ import com.fincity.security.service.SecurityMessageResourceService;
 
 import jakarta.annotation.PostConstruct;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 		implements ISecurityConfiguration, IMQConfiguration {
 
-	@Autowired
 	protected SecurityMessageResourceService messageResourceService;
+
+	public SecurityConfiguration(SecurityMessageResourceService messageResourceService, ObjectMapper objectMapper) {
+		super(objectMapper);
+		this.messageResourceService = messageResourceService;
+	}
 
 	@Override
 	@PostConstruct
