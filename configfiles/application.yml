@@ -1,7 +1,11 @@
 logging:
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n"
+  structured:
+    format:
+      console: gelf
+      file: gelf
+    json:
+      add:
+        instanceId: ${INSTANCE_ID:default}
   level:
     org:
       jooq: DEBUG

@@ -5,6 +5,8 @@ import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 
@@ -25,6 +27,10 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 
 	@Value("${spring.r2dbc.password}")
 	private String password;
+
+	protected AbstractJooqBaseConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	public void initialize(AbstractMessageService messageResourceService) {
 		super.initialize();

@@ -53,7 +53,6 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
 	protected static final Logger logger = LoggerFactory.getLogger(AbstractBaseConfiguration.class);
 
-	@Autowired
 	protected ObjectMapper objectMapper;
 
 	@Value("${redis.url:}")
@@ -63,6 +62,10 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	private String codecType;
 
 	private RedisCodec<String, Object> objectCodec;
+
+	protected AbstractBaseConfiguration(ObjectMapper objectMapper) {
+		this.objectMapper = objectMapper;
+	}
 
 	protected void initialize() {
 		this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
@@ -111,12 +114,12 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	}
 
 	@Bean
-	PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
+	public PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
 		return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
 	}
 
 	@Bean
-	RedisClient redisClient() {
+	public RedisClient redisClient() {
 		if (redisURL == null || redisURL.isBlank())
 			return null;
 
@@ -124,7 +127,7 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	}
 
 	@Bean
-	RedisAsyncCommands<String, Object> asyncCommands(@Autowired(required = false) RedisClient client) {
+	public RedisAsyncCommands<String, Object> asyncCommands(@Autowired(required = false) RedisClient client) {
 
 		if (client == null)
 			return null;
@@ -134,7 +137,8 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	}
 
 	@Bean
-	StatefulRedisPubSubConnection<String, String> subConnection(@Autowired(required = false) RedisClient client) {
+	public StatefulRedisPubSubConnection<String, String> subConnection(
+			@Autowired(required = false) RedisClient client) {
 
 		if (client == null)
 			return null;
@@ -143,7 +147,7 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	}
 
 	@Bean
-	RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
+	public RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
 			@Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
 
 		if (connection == null)
@@ -153,7 +157,8 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 	}
 
 	@Bean
-	RedisPubSubAsyncCommands<String, String> pubRedisAsyncCommand(@Autowired(required = false) RedisClient client) {
+	public RedisPubSubAsyncCommands<String, String> pubRedisAsyncCommand(
+			@Autowired(required = false) RedisClient client) {
 
 		if (client == null)
 			return null;

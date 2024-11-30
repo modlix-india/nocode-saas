@@ -12,11 +12,17 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jakarta.annotation.PostConstruct;
 
 @EnableAutoConfiguration
 @Configuration
 public class GatewayConfiguration extends AbstractBaseConfiguration {
+
+	public GatewayConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	@PostConstruct
 	@Override
@@ -33,7 +39,7 @@ public class GatewayConfiguration extends AbstractBaseConfiguration {
 	}
 
 	@Bean
-	RouteLocator applicationRoutes(RouteLocatorBuilder builder) {
+	public RouteLocator applicationRoutes(RouteLocatorBuilder builder) {
 		return builder.routes()
 				.build();
 	}
