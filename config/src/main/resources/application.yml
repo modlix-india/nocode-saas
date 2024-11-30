@@ -42,3 +42,12 @@ eureka:
     prefer-ip-address: true
 ## To use it in local, please configure the following program arguments with the right path to the search locations to config files.
 #--spring.profiles.active=native,local --spring.cloud.config.server.native.search-locations=file:///Users/kirangrandhi/fincity/nocode-saas/configfiles
+
+logging:
+  structured:
+    format:
+      console: gelf
+      file: gelf
+    json:
+      add:
+        instanceId: ${INSTANCE_ID:default}
