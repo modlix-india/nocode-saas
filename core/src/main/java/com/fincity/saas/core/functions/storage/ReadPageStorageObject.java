@@ -1,5 +1,6 @@
 package com.fincity.saas.core.functions.storage;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
@@ -19,9 +20,12 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 
 import reactor.core.publisher.Mono;
 
@@ -36,6 +40,8 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 	private static final String STORAGE_NAME = "storageName";
 
 	private static final String FILTER = "filter";
+
+	private static final String SORT = "sort";
 
 	private static final String PAGE = "page";
 
@@ -93,6 +99,9 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 						COUNT, Parameter.of(COUNT, Schema.ofBoolean(COUNT)
 								.setDefaultValue(new JsonPrimitive(true))),
 
+					    SORT, Parameter.of(SORT,Schema.ofArray(SORT)
+						        .setDefaultValue(new JsonArray())),
+
 						APP_CODE,
 						Parameter.of(APP_CODE,
 								Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
@@ -121,12 +130,16 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 				.get(FILTER)
 				.getAsJsonObject();
 
+		JsonArray sort = context.getArguments()
+				.get(SORT)
+				.getAsJsonArray();
+
 		Integer page = context.getArguments()
 				.get(PAGE)
 				.getAsInt();
 
 		Integer size = context.getArguments()
-				.get(SIZE)
+				.get(SIZE) 
 				.getAsInt();
 
 		boolean eager = context.getArguments().get(EAGER).getAsBoolean();
@@ -154,7 +167,9 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 				.setSize(size)
 				.setCount(true)
 				.setEager(eager)
+				.setSort(getSortObj(sort))	
 				.setEagerFields(eagerFields);
+
 
 		return this.appDataService
 				.readPage(StringUtil.isNullOrBlank(appCode) ? null : appCode,
@@ -184,5 +199,28 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 							List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(pg)))));
 				});
 	}
+
+	private Sort getSortObj(JsonArray sortJson){
+
+		if(sortJson.size() == 0) {
+			return Sort.by(Order.desc("updatedAt"));
+		}
+		
+		List<Map<String, String>> sortList = gson.fromJson(sortJson, List.class);
+			List<Sort.Order> orders = new ArrayList<>();
+			for (Map<String, String> sortMap : sortList) {
+				String field = sortMap.get("field");
+				String sortType = sortMap.get("sortType");
+		
+				if ("desc".equalsIgnoreCase(sortType)) {
+					orders.add(Sort.Order.desc(field));
+				} else {
+					orders.add(Sort.Order.asc(field));
+				}
+			}
+			return Sort.by(orders);
+	}
+	
+
 
 }
