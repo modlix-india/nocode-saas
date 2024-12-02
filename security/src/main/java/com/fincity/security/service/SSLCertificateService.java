@@ -1,5 +1,6 @@
 package com.fincity.security.service;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -8,10 +9,28 @@ import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.time.Duration;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.jooq.types.ULong;
@@ -29,7 +48,6 @@ import org.shredzone.acme4j.util.CSRBuilder;
 import org.shredzone.acme4j.util.KeyPairUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -78,23 +96,17 @@ public class SSLCertificateService {
 
 	private static final String CACHE_CERTIFICATE_LAST_UPDATED_VALUE = "certificatesLastUpdated";
 
-	@Autowired
-	private SecurityMessageResourceService msgService;
+	private final SecurityMessageResourceService msgService;
 
-	@Autowired
-	private SSLCertificateDAO certificateDao;
+	private final SSLCertificateDAO certificateDao;
 
-	@Autowired
-	private SSLRequestDAO requestDao;
+	private final SSLRequestDAO requestDao;
 
-	@Autowired
-	private SSLChallengeDAO challengeDao;
+	private final SSLChallengeDAO challengeDao;
 
-	@Autowired
-	private ClientUrlService clientUrlService;
+	private final ClientUrlService clientUrlService;
 
-	@Autowired
-	private CacheService cacheService;
+	private final CacheService cacheService;
 
 	@Value("${letsencrypt.session:}")
 	private String sessionURL;
@@ -107,8 +119,19 @@ public class SSLCertificateService {
 
 	private KeyPair accountKeyPair;
 
+	public SSLCertificateService(SecurityMessageResourceService msgService, SSLCertificateDAO certificateDao,
+			SSLRequestDAO requestDao, SSLChallengeDAO challengeDao, ClientUrlService clientUrlService,
+			CacheService cacheService) {
+		this.msgService = msgService;
+		this.certificateDao = certificateDao;
+		this.requestDao = requestDao;
+		this.challengeDao = challengeDao;
+		this.clientUrlService = clientUrlService;
+		this.cacheService = cacheService;
+	}
+
 	@PostConstruct
-	private void initialize() {
+	public void initialize() {
 
 		try {
 			this.accountKeyPair = KeyPairUtils.readKeyPair(new StringReader(this.accountKey));
@@ -135,15 +158,91 @@ public class SSLCertificateService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.clientUrlService.read(certificate.getUrlId()),
+				() -> this.validateCrtAndKey(certificate),
 
-				clientUrl -> this.certificateDao.create(certificate)
+				valid -> this.clientUrlService.read(certificate.getUrlId()),
+
+				(valid, clientUrl) -> this.certificateDao.create(certificate)
 
 		)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificate"))
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
 				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
 				.subscribeOn(Schedulers.boundedElastic());
+	}
+
+	private Mono<Boolean> validateCrtAndKey(SSLCertificate certificate) {
+
+		if (StringUtil.safeIsBlank(certificate.getCrtKey())) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.CRT_KEY_ISSUE, "Key is missing");
+		}
+
+		if (StringUtil.safeIsBlank(certificate.getCrt())) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					SecurityMessageResourceService.CRT_KEY_ISSUE, "Certificate is missing");
+		}
+
+		X509Certificate cert;
+		try {
+			cert = (X509Certificate) CertificateFactory.getInstance("X.509")
+					.generateCertificate(new ByteArrayInputStream(certificate.getCrt().getBytes()));
+			Date notAfter = cert.getNotAfter();
+			Date now = new Date();
+			if (notAfter.before(now))
+				return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+						SecurityMessageResourceService.CRT_KEY_ISSUE, "Certificate is expired");
+
+		} catch (CertificateException ex) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg, ex),
+					SecurityMessageResourceService.CRT_KEY_ISSUE, "Error while reading the certificate");
+		}
+
+		PublicKey publicKey = cert.getPublicKey();
+
+		PrivateKey privateKey;
+
+		try {
+			privateKey = this.parsePrivateKey(certificate.getCrtKey());
+		} catch (IOException ex) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg, ex),
+					SecurityMessageResourceService.CRT_KEY_ISSUE, "Error while reading the key");
+		}
+
+		try {
+
+			Cipher iesCipher = Cipher.getInstance("RSA"); // NOSONAR
+			iesCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+			byte[] ciphertext = iesCipher.doFinal("TEST my string for encryption".getBytes());
+			iesCipher.init(Cipher.DECRYPT_MODE, privateKey);
+			byte[] plaintext = iesCipher.doFinal(ciphertext);
+
+			String decryptedString = new String(plaintext);
+
+			if (!decryptedString.equals("TEST my string for encryption")) {
+				return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+						SecurityMessageResourceService.CRT_KEY_ISSUE, "Error while matching the certificate and key");
+			}
+		} catch (InvalidKeyException | NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException
+				| NoSuchPaddingException ex) {
+			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg, ex),
+					SecurityMessageResourceService.CRT_KEY_ISSUE,
+					"Error while matching the certificate and key. Either the certificate or key is incorrect, or Certificate and key are not based on RSA algorithm.");
+		}
+		return Mono.just(true);
+	}
+
+	private PrivateKey parsePrivateKey(String key)
+			throws IOException {
+		try (PEMParser pemParser = new PEMParser(new StringReader(key))) {
+			JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+			Object o = pemParser.readObject();
+			if (o instanceof PEMKeyPair pemKeyPair)
+				return converter.getPrivateKey(pemKeyPair.getPrivateKeyInfo());
+
+			PrivateKeyInfo privateKeyInfo = PrivateKeyInfo.getInstance(o);
+			return converter.getPrivateKey(privateKeyInfo);
+		}
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -346,10 +445,11 @@ public class SSLCertificateService {
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.requestDao.checkIfRequestExistOnURL(request.getUrlId())
-						.flatMap(exists -> exists.booleanValue()
-								? this.msgService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
-										SecurityMessageResourceService.REQUEST_EXISTING)
-								: Mono.just(false)),
+						.filter(exists -> exists)
+						.flatMap(
+								x -> this.msgService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
+										SecurityMessageResourceService.REQUEST_EXISTING))
+						.defaultIfEmpty(false),
 
 				e -> SecurityContextUtil.getUsersContextAuthentication(),
 
@@ -504,7 +604,7 @@ public class SSLCertificateService {
 						StringWriter sw = new StringWriter();
 						csr.write(sw);
 						rec.setCsr(sw.toString());
-					} catch (Exception ex) {
+					} catch (IOException ex) {
 						return this.msgService.throwMessage(
 								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
 								SecurityMessageResourceService.ERROR_KEY_CSR);
