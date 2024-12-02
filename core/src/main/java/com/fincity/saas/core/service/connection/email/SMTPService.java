@@ -71,7 +71,7 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
 								.forEach(e -> {
 									try {
 										message.addRecipient(Message.RecipientType.TO, new InternetAddress(e));
-									} catch (Exception e1) {
+									} catch (MessagingException e1) {
 										logger.error("Error while adding : {}", e, e1);
 									}
 								});
@@ -94,8 +94,8 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
 						logger.error("Error while sending : {}", mex.getMessage(), mex);
 
 						return this.msgService.throwMessage(
-								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-								CoreMessageResourceService.MAIL_SEND_ERROR, mex.getMessage(), mex);
+								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, mex),
+								CoreMessageResourceService.MAIL_SEND_ERROR, mex.getMessage());
 					}
 				})
 				.map(e -> true)
