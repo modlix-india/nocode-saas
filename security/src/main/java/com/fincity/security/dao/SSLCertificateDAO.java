@@ -59,7 +59,15 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 
 			Mono.just(Tuples.of(e.getId(), e.getUrlId())).delayElement(Duration.ofSeconds(10))
 					.map(tuple -> this.makeRestOfNotCurrent(tuple.getT1(), tuple.getT2()))
-					.subscribeOn(Schedulers.boundedElastic()).subscribe();
+					.subscribeOn(Schedulers.boundedElastic())
+					.onErrorResume((err) -> {
+						logger.error("Error while updating rest of the not current certificates for url id {}",
+								pojo.getUrlId(), err);
+						return Mono.empty();
+					}).subscribe(value -> {
+						logger.info("Updated rest of the not current certificates for url id {} with status : {}",
+								pojo.getUrlId(), value);
+					});
 
 			return Mono.just(e);
 		});
