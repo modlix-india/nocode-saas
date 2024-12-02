@@ -7,7 +7,6 @@ import java.util.List;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,11 +47,14 @@ public class SSLCertificateController {
 
 	private static final String URL_ID = "urlId";
 
-	@Autowired
-	private SecurityMessageResourceService msgService;
+	private final SecurityMessageResourceService msgService;
 
-	@Autowired
-	private SSLCertificateService service;
+	private final SSLCertificateService service;
+
+	public SSLCertificateController(SecurityMessageResourceService msgService, SSLCertificateService service) {
+		this.msgService = msgService;
+		this.service = service;
+	}
 
 	@InitBinder
 	public void initBinder(DataBinder binder) {
@@ -208,11 +210,9 @@ public class SSLCertificateController {
 						? Mono.<ResponseEntity<List<SSLCertificateConfiguration>>>just(
 								ResponseEntity.status(HttpStatus.NOT_MODIFIED)
 										.build())
-						: this.service.getAllCertificates().map(e -> {
-							return ResponseEntity.ok()
-									.eTag(updatedAt)
-									.body(e);
-						}));
+						: this.service.getAllCertificates().map(e -> ResponseEntity.ok()
+								.eTag(updatedAt)
+								.body(e)));
 	}
 
 }
