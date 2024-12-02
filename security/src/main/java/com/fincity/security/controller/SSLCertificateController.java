@@ -94,6 +94,8 @@ public class SSLCertificateController {
 	public Mono<ResponseEntity<SSLCertificate>> createExternallyIssuedCertificate(
 			@RequestBody SSLCertificate certificate) {
 
+		certificate.setCrtKey(certificate.getCrtKeyUpload());
+
 		return this.service.createExternallyIssuedCertificate(certificate)
 				.map(ResponseEntity::ok);
 	}
@@ -165,7 +167,7 @@ public class SSLCertificateController {
 		return this.service.deleteRequestByURLId(urlId)
 				.map(ResponseEntity::ok);
 	}
-	
+
 	@DeleteMapping("/{id}")
 	public Mono<ResponseEntity<Boolean>> deleteCertificate(@PathVariable("id") String id) {
 
@@ -196,9 +198,9 @@ public class SSLCertificateController {
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-		                : this.msgService.throwMessage(
-		                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-		                        SecurityMessageResourceService.ONLY_SYS_USER_CERTS),
+						: this.msgService.throwMessage(
+								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+								SecurityMessageResourceService.ONLY_SYS_USER_CERTS),
 
 				(ca, validUser) -> this.service.getLastUpdated(),
 

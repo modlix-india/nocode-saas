@@ -1,8 +1,8 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
-import static com.fincity.security.jooq.tables.SecuritySslCertificate.SECURITY_SSL_CERTIFICATE;
+import static com.fincity.security.jooq.tables.SecurityClient.*;
+import static com.fincity.security.jooq.tables.SecurityClientUrl.*;
+import static com.fincity.security.jooq.tables.SecuritySslCertificate.*;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -21,7 +21,6 @@ import org.jooq.UpdateConditionStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.shredzone.acme4j.Certificate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -39,38 +38,45 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.function.Tuples;
 
 @Component
 public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertificateRecord, ULong, SSLCertificate> {
 
 	private static final String LETS_ENCRYPT = "Lets Encrypt";
-	@Autowired
-	private SecurityMessageResourceService msgResourceService;
 
-	protected SSLCertificateDAO() {
+	private final SecurityMessageResourceService msgResourceService;
+
+	protected SSLCertificateDAO(SecurityMessageResourceService msgResourceService) {
 		super(SSLCertificate.class, SECURITY_SSL_CERTIFICATE, SECURITY_SSL_CERTIFICATE.ID);
+		this.msgResourceService = msgResourceService;
 	}
 
 	@Override
 	public Mono<SSLCertificate> create(SSLCertificate pojo) {
 
-		return super.create(pojo).subscribeOn(Schedulers.boundedElastic()).flatMap(this::makeRestOfNotCurrent);
+		return super.create(pojo).subscribeOn(Schedulers.boundedElastic()).flatMap(e -> {
+
+			Mono.just(Tuples.of(e.getId(), e.getUrlId())).delayElement(Duration.ofSeconds(10))
+					.map(tuple -> this.makeRestOfNotCurrent(tuple.getT1(), tuple.getT2()))
+					.subscribeOn(Schedulers.boundedElastic()).subscribe();
+
+			return Mono.just(e);
+		});
 	}
 
-	private Mono<SSLCertificate> makeRestOfNotCurrent(SSLCertificate cert) {
+	private Mono<Boolean> makeRestOfNotCurrent(ULong certId, ULong urlId) {
 
 		return Mono.from(this.dslContext.transactionPublisher(trx -> {
 
 			UpdateConditionStep<SecuritySslCertificateRecord> query = DSL.using(trx)
 					.update(SECURITY_SSL_CERTIFICATE)
 					.set(SECURITY_SSL_CERTIFICATE.CURRENT, ByteUtil.ZERO)
-					.where(DSL.and(SECURITY_SSL_CERTIFICATE.ID.ne(cert.getId()),
-							SECURITY_SSL_CERTIFICATE.URL_ID.eq(cert.getUrlId())));
+					.where(DSL.and(SECURITY_SSL_CERTIFICATE.ID.ne(certId),
+							SECURITY_SSL_CERTIFICATE.URL_ID.eq(urlId)));
 
 			return Mono.from(query);
-		})).map(e -> cert)
-				.onErrorResume(e -> Mono.just(cert))
-				.subscribeOn(Schedulers.boundedElastic());
+		})).map(e -> e > 0);
 	}
 
 	public Mono<SSLCertificate> create(SSLRequest request, Certificate certificate) {
