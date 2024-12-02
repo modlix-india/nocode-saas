@@ -58,7 +58,7 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 		return super.create(pojo).subscribeOn(Schedulers.boundedElastic()).flatMap(e -> {
 
 			Mono.just(Tuples.of(e.getId(), e.getUrlId())).delayElement(Duration.ofSeconds(10))
-					.map(tuple -> this.makeRestOfNotCurrent(tuple.getT1(), tuple.getT2()))
+					.flatMap(tuple -> this.makeRestOfNotCurrent(tuple.getT1(), tuple.getT2()))
 					.subscribeOn(Schedulers.boundedElastic())
 					.onErrorResume((err) -> {
 						logger.error("Error while updating rest of the not current certificates for url id {}",
