@@ -26,14 +26,14 @@ public class RestService {
 
 	private final ConnectionService connectionService;
 	private final BasicRestService basicRestService;
-	private final OAuthRestService oAuthRestService;
+	private final OAuth2RestService oAuth2RestService;
 	private final RestAuthService restAuthService;
 
 	public RestService(ConnectionService connectionService, BasicRestService basicRestService,
-			OAuthRestService oAuthRestService, RestAuthService restAuthService) {
+			OAuth2RestService oAuth2RestService, RestAuthService restAuthService) {
 		this.connectionService = connectionService;
 		this.basicRestService = basicRestService;
-		this.oAuthRestService = oAuthRestService;
+		this.oAuth2RestService = oAuth2RestService;
 		this.restAuthService = restAuthService;
 	}
 
@@ -42,7 +42,7 @@ public class RestService {
 	@PostConstruct
 	public void init() {
 		this.services.put(ConnectionSubType.REST_API_BASIC, basicRestService);
-		this.services.put(ConnectionSubType.REST_API_OAUTH2, oAuthRestService);
+		this.services.put(ConnectionSubType.REST_API_OAUTH2, oAuth2RestService);
 		this.services.put(ConnectionSubType.REST_API_AUTH, restAuthService);
 	}
 

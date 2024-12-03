@@ -58,4 +58,6 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String CANNOT_DELETE_STORAGE_WITH_RESTRICT = "cannot_delete_storage_with_restrict";
 
 	public static final String NOT_ABLE_TO_CREATE_TOKEN = "not_able_to_create_token";
+
+	public static final String CANNOT_DELETE_TOKEN_WITH_CLIENT_CODE = "cannot_delete_token_with_client_code";
 }
