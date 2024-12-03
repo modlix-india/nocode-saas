@@ -1,18 +1,15 @@
 package com.fincity.saas.files.configuration;
 
+import java.net.URI;
 import java.util.List;
-
-import javax.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
 import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
@@ -23,11 +20,32 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 
+import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
-public class FilesConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
+public class FilesConfiguration extends AbstractJooqBaseConfiguration
+		implements ISecurityConfiguration {
+
+	@Value("${files.resources.endpoint}")
+	private String endpoint;
+
+	@Value("${files.resources.accessKeyId}")
+	private String accessKeyId;
+
+	@Value("${files.resources.secretAccessKey}")
+	private String secretAccessKey;
+
+	public FilesConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	@Override
 	@PostConstruct
@@ -44,43 +62,41 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration implements
 	}
 
 	@Bean
-	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService, this.objectMapper,
-
-				"/api/files/static/file/**",
-				"/api/files/internal/**");
-	}
-
-	@Bean
-	@Order(value = Ordered.HIGHEST_PRECEDENCE)
-	SecurityWebFilterChain securedAndStaticHeadersFilterChain(ServerHttpSecurity http) {
-
+	public SecurityWebFilterChain filterChain(ServerHttpSecurity http,
+			FeignAuthenticationService authService) {
 		ServerWebExchangeMatcher matcher = new OrServerWebExchangeMatcher(
 				new PathPatternParserServerWebExchangeMatcher("/api/files/static/file/**"),
 				new PathPatternParserServerWebExchangeMatcher("/api/files/secured/file/**"),
-				new PathPatternParserServerWebExchangeMatcher("/api/files/secured/downloadFileByKey/*"));
+				new PathPatternParserServerWebExchangeMatcher(
+						"/api/files/secured/downloadFileByKey/*"));
 
-		return http
-				.securityMatcher(matcher)
-				.headers()
-				.frameOptions().mode(XFrameOptionsServerHttpHeadersWriter.Mode.SAMEORIGIN)
-				.contentSecurityPolicy("frame-ancestors 'self'")
-				.and().and().build();
+		return this.springSecurityFilterChain(http, authService, this.objectMapper, matcher,
+
+				"/api/files/static/file/**", "/api/files/internal/**", "/api/files/secured/downloadFileByKey/*");
 	}
 
 	@Bean
-	ReactiveHttpRequestInterceptor feignInterceptor() {
+	public ReactiveHttpRequestInterceptor feignInterceptor() {
 		return request -> Mono.deferContextual(ctxView -> {
 
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
 				String key = ctxView.get(LogUtil.DEBUG_KEY);
 
-				request.headers()
-						.put(LogUtil.DEBUG_KEY, List.of(key));
+				request.headers().put(LogUtil.DEBUG_KEY, List.of(key));
 			}
 
 			return Mono.just(request);
 		});
+	}
+
+	@Bean
+	public S3AsyncClient s3Client() {
+		return S3AsyncClient.builder()
+				.region(Region.US_EAST_1)
+				.endpointOverride(URI.create(endpoint))
+				.credentialsProvider(StaticCredentialsProvider
+						.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+				.build();
 	}
 
 }

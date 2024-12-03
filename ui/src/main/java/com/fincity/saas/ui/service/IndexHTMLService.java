@@ -76,6 +76,12 @@ public class IndexHTMLService {
 	@Value("${ui.cdnHostName:}")
 	private String cdnHostName;
 
+	@Value("${ui.cdnStripAPIPrefix:true}")
+	private boolean cdnStripAPIPrefix;
+
+	@Value("${ui.cdnReplacePlus:false}")
+	private boolean cdnReplacePlus;
+
 	private final ApplicationService appService;
 	private final CacheService cacheService;
 
@@ -170,8 +176,11 @@ public class IndexHTMLService {
 
 		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
 		str.append("<script>");
-		if (StringUtil.safeIsBlank(this.cdnHostName))
+		if (!this.cdnHostName.isBlank()) {
 			str.append("window.cdnPrefix='" + this.cdnHostName + "';");
+			str.append("window.cdnStripAPIPrefix=" + this.cdnStripAPIPrefix + ";");
+			str.append("window.cdnReplacePlus=" + this.cdnReplacePlus + ";");
+		}
 		str.append("window.domainAppCode='" + appCode + "';");
 		str.append("window.domainClientCode='" + clientCode + "';");
 		str.append("</script>");

@@ -6,8 +6,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -47,6 +45,7 @@ import com.fincity.saas.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.file.TemplateConversionService;
 import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
@@ -54,6 +53,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -99,6 +99,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
 	@Autowired
 	@Lazy
+	private TemplateConversionService templateConversionService;
+
+	@Autowired
+	@Lazy
 	private IFeignFilesService filesService;
 
 	public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
@@ -116,6 +120,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 						.setClientUrlService(clientUrlService)
 						.setEmailService(emailService)
 						.setFilesService(filesService)
+						.setTemplateConversionService(templateConversionService)
 						.setGson(gson)
 						.setObjectMapper(objectMapper)));
 	}

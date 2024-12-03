@@ -4,8 +4,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,6 +20,7 @@ import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.TemplateService;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuples;
@@ -63,17 +62,7 @@ public class EmailService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> {
-
-					String inAppCode = appCode.trim().isEmpty() ? null : appCode;
-					String inClientCode = clientCode.trim().isEmpty() ? null : clientCode;
-
-					return SecurityContextUtil.getUsersContextAuthentication()
-							.map(e -> Tuples.of(
-									CommonsUtil.nonNullValue(inAppCode, e.getUrlAppCode()),
-									CommonsUtil.nonNullValue(inClientCode, e.getClientCode())))
-							.defaultIfEmpty(Tuples.of(inAppCode, inClientCode));
-				},
+				() -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
 
 				actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
 						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),

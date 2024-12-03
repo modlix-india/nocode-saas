@@ -10,3 +10,8 @@ spring:
 
 server:
   port: 8005
+
+management:
+  metrics:
+    tags:
+      application: ${INSTANCE_ENVIRONMENT:LOCAL}-${spring.application.name}-${INSTANCE_ID:default}

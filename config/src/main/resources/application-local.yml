@@ -3,10 +3,10 @@ spring:
     config:
       server:
         native:
-          search-locations: file:///Users/kirangrandhi/fincity/saas/configfiles
+          search-locations: file:///C:/kiran/fincity/nocode-saas/configfiles
 server:
   port: 8888
-  
+
 eureka:
   client:
     serviceUrl:

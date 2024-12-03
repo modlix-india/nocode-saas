@@ -1,5 +1,8 @@
 package com.fincity.saas.commons.mongo.model;
 
+import java.io.Serial;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
 import lombok.Data;
@@ -17,6 +20,7 @@ import reactor.core.publisher.Mono;
 public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>>
 		extends AbstractUpdatableDTO<String, String> {
 
+	@Serial
 	private static final long serialVersionUID = -7561098495897714431L;
 
 	private String name;
@@ -83,5 +87,10 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
 				.setCreatedBy(obj.getCreatedBy());
 
 		this.notOverridable = obj.getNotOverridable();
+	}
+
+	@JsonIgnore
+	public String getTransportName() {
+		return this.name;
 	}
 }

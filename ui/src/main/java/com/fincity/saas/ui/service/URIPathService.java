@@ -2,6 +2,7 @@ package com.fincity.saas.ui.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,9 @@ import com.fincity.saas.ui.model.KIRunFxDefinition;
 import com.fincity.saas.ui.model.PathDefinition;
 import com.fincity.saas.ui.model.RedirectionDefinition;
 import com.fincity.saas.ui.repository.URIPathRepository;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Flux;
@@ -44,19 +48,30 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 	private static final String CACHE_NAME_PATTERN = "URIPatternCache";
 
+	private static final Set<String> ALLOWED_METHODS = Set.of(HttpMethod.GET.name(), HttpMethod.POST.name(),
+			HttpMethod.PUT.name(), HttpMethod.PATCH.name(), HttpMethod.DELETE.name());
+
 	private final IFeignCoreService iFeignCoreService;
 
 	private final PathMatcher pathMatcher;
+
+	private final Gson gson;
 
 	public URIPathService(IFeignCoreService iFeignCoreService) {
 		super(URIPath.class);
 		this.iFeignCoreService = iFeignCoreService;
 		this.pathMatcher = new AntPathMatcher();
+		gson = new Gson();
 	}
 
 	@Override
 	public String getAccessCheckName() {
 		return "Application";
+	}
+
+	@Override
+	protected String getCollectionName() {
+		return "uri_path";
 	}
 
 	@Override
@@ -73,7 +88,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				valid -> super.update(entity),
 
-				(valid, updatable) -> cacheService.evict(CACHE_NAME,
+				(valid, updatable) -> cacheService.evict(CACHE_NAME_PATTERN,
 						updatable.getAppCode(), "-", updatable.getClientCode())
 						.thenReturn(updatable)
 
@@ -89,7 +104,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				uriPath -> super.delete(id),
 
-				(uriPath, deleted) -> cacheService.evict(CACHE_NAME,
+				(uriPath, deleted) -> cacheService.evict(CACHE_NAME_PATTERN,
 						uriPath.getAppCode(), "-", uriPath.getClientCode())
 						.thenReturn(deleted)
 
@@ -118,7 +133,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				(pEntity, valid) -> super.create(pEntity),
 
-				(pEntity, valid, created) -> cacheService.evict(CACHE_NAME,
+				(pEntity, valid, created) -> cacheService.evict(CACHE_NAME_PATTERN,
 						created.getAppCode(), "-", created.getClientCode())
 						.thenReturn(created)
 
@@ -127,7 +142,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 	private Mono<URIPath> setPathDefinitions(URIPath entity) {
 
-		for (Map.Entry<HttpMethod, PathDefinition> pathDefs : entity.getPathDefinitions().entrySet()) {
+		for (Map.Entry<String, PathDefinition> pathDefs : entity.getPathDefinitions().entrySet()) {
 			PathDefinition pathDef = pathDefs.getValue();
 			if (pathDef.getUriType() == URIType.REDIRECTION) {
 				if (pathDef.getRedirectionDefinition() == null)
@@ -163,16 +178,14 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				valid -> {
 
-					for (Map.Entry<HttpMethod, PathDefinition> pathDef : entity.getPathDefinitions().entrySet()) {
+					for (Map.Entry<String, PathDefinition> pathDef : entity.getPathDefinitions().entrySet()) {
 						if (!pathDef.getValue().isValidType())
 							return this.messageResourceService.throwMessage(
 									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 									UIMessageResourceService.URI_INVALID_TYPE);
 					}
 
-					if (entity.getPathDefinitions().keySet().stream().anyMatch(e -> e != HttpMethod.GET
-							&& e != HttpMethod.POST && e != HttpMethod.PUT && e != HttpMethod.PATCH
-							&& e != HttpMethod.DELETE))
+					if (entity.getPathDefinitions().keySet().stream().noneMatch(ALLOWED_METHODS::contains))
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 								UIMessageResourceService.URI_INVALID_METHOD);
@@ -225,18 +238,12 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				this::uriPathAccessCheck,
 
-				(uriPath, hasAccess) -> {
-
-					HttpMethod method = request.getMethod();
-
-					return method == null || !uriPath.getPathDefinitions().containsKey(method)
-							? Mono.empty()
-							: Mono.just(uriPath.getPathDefinitions().get(method));
-				},
+				(uriPath, hasAccess) -> Mono.just(uriPath.getPathDefinitions()
+						.getOrDefault(request.getMethod().name(), null)),
 
 				(uriPath, hasAccess, pathDef) -> switch (pathDef.getUriType()) {
 					case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getPathString(),
-							pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), uriPath.getClientCode());
+							pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), clientCode);
 
 					case REDIRECTION -> // TODO
 						Mono.empty();
@@ -281,16 +288,41 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	private Mono<String> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject, String uriPathString,
 			KIRunFxDefinition kiRunFxDef, String appCode, String clientCode) {
 
-		return switch (request.getMethod()) {
-			case GET -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
-					kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
+		return FlatMapUtil.flatMapMono(
 
-			case POST, PUT, PATCH, DELETE ->
-				iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
-						kiRunFxDef.getName(), jsonObject.toString());
+				() -> switch (request.getMethod().toString()) {
+					case "GET" -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+							kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
 
-			default -> Mono.empty();
-		};
+					case "POST", "PUT", "PATCH", "DELETE" ->
+						iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+								kiRunFxDef.getName(), jsonObject.toString());
+
+					default -> Mono.empty();
+				},
+				responseString -> {
+
+					if (StringUtil.safeIsBlank(responseString)
+							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
+							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName())) {
+						return Mono.just(responseString);
+					}
+
+					JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
+
+					return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
+							kiRunFxDef.getOutputEventParamName());
+				});
+	}
+
+	private Mono<String> extractOutputEvent(JsonArray response, String outputEventName, String outputEventParamName) {
+		return Flux.fromIterable(response)
+				.filter(JsonElement::isJsonObject)
+				.map(JsonElement::getAsJsonObject)
+				.filter(output -> output.get("name").getAsString().equals(outputEventName))
+				.map(output -> output.get(outputEventParamName).toString())
+				.next()
+				.defaultIfEmpty("");
 	}
 
 	private MultiValueMap<String, String> getParamsFromHeadersPathRequest(ServerHttpRequest request,
