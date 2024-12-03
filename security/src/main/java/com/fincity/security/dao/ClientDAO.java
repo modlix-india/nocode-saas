@@ -37,11 +37,11 @@ import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
@@ -99,7 +99,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
         return FlatMapUtil.flatMapMonoWithNull(
 
                 () -> Mono.from(this.dslContext.select(SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID)
-                        .from(SECURITY_CLIENT_MANAGE).where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)))
+                        .from(SECURITY_CLIENT_MANAGE)
+                        .where(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(clientId)))
                         .map(Record1::value1),
 
                 manageClientId -> {
@@ -138,10 +139,13 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                         return x;
 
                     return x.map(tup -> tup
-                            .mapT1(query -> (SelectJoinStep<Record>) query.leftJoin(SECURITY_CLIENT_MANAGE)
-                                    .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID)))
+                            .mapT1(query -> (SelectJoinStep<Record>) query
+                                    .leftJoin(SECURITY_CLIENT_MANAGE)
+                                    .on(SECURITY_CLIENT_MANAGE.CLIENT_ID
+                                            .eq(SECURITY_CLIENT.ID)))
                             .mapT2(query -> query.leftJoin(SECURITY_CLIENT_MANAGE)
-                                    .on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID))));
+                                    .on(SECURITY_CLIENT_MANAGE.CLIENT_ID
+                                            .eq(SECURITY_CLIENT.ID))));
 
                 });
     }
@@ -177,7 +181,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .limit(1))
                 .map(Record1::value1)
                 .flatMap(manageClientId -> Mono.from(this.dslContext
-                        .insertInto(SECURITY_CLIENT_MANAGE, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID,
+                        .insertInto(SECURITY_CLIENT_MANAGE,
+                                SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID,
                                 SECURITY_CLIENT_MANAGE.CLIENT_ID)
                         .values(manageClientId, id)));
     }
@@ -218,7 +223,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                         .leftJoin(SECURITY_PACKAGE_ROLE)
                         .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
                         .leftJoin(SECURITY_CLIENT_PACKAGE)
-                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID
+                                .eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
                         .leftJoin(SECURITY_PACKAGE)
                         .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
                         .where(assignedOrBasePackageCondition.or(permissionCreatedCondition)))
@@ -274,7 +280,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
         return Mono.from(this.dslContext.update(SECURITY_CLIENT)
                 .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.ACTIVE)
                 .where(SECURITY_CLIENT.ID.eq(clientId)
-                        .and(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.INACTIVE))))
+                        .and(SECURITY_CLIENT.STATUS_CODE
+                                .eq(SecurityClientStatusCode.INACTIVE))))
                 .map(e -> e > 0);
 
     }
@@ -324,7 +331,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                         .leftJoin(SECURITY_PACKAGE)
                         .on(SECURITY_PACKAGE.ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
                         .leftJoin(SECURITY_CLIENT_PACKAGE)
-                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID
+                                .eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
                         .where(roleExistsCondition.or(roleCreatedCondition)))
 
                 .map(Record1::value1)
@@ -381,7 +389,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 this.dslContext.selectCount()
                         .from(SECURITY_CLIENT_PACKAGE)
                         .leftJoin(SECURITY_PACKAGE_ROLE)
-                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
+                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID
+                                .eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
                         .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
                                 .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)))
 
@@ -402,7 +411,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 this.dslContext.selectDistinct(SECURITY_USER.ID)
                         .from(SECURITY_PACKAGE_ROLE)
                         .leftJoin(SECURITY_CLIENT_PACKAGE)
-                        .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+                        .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID
+                                .eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
                         .leftJoin(SECURITY_USER)
                         .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
                         .where(SECURITY_PACKAGE_ROLE.ROLE_ID.in(roles)
@@ -436,7 +446,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                         .leftJoin(SECURITY_PACKAGE_ROLE)
                         .on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_PACKAGE_ROLE.ROLE_ID))
                         .leftJoin(SECURITY_CLIENT_PACKAGE)
-                        .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
+                        .on(SECURITY_PACKAGE_ROLE.PACKAGE_ID
+                                .eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
                         .leftJoin(SECURITY_USER)
                         .on(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
                         .where(SECURITY_ROLE_PERMISSION.PERMISSION_ID.in(permissions)
@@ -459,7 +470,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
         return Flux
                 .from(this.dslContext
-                        .select(SECURITY_CLIENT_URL.CLIENT_ID, SECURITY_CLIENT.CODE, SECURITY_CLIENT_URL.URL_PATTERN,
+                        .select(SECURITY_CLIENT_URL.CLIENT_ID, SECURITY_CLIENT.CODE,
+                                SECURITY_CLIENT_URL.URL_PATTERN,
                                 SECURITY_CLIENT_URL.APP_CODE)
                         .from(SECURITY_CLIENT_URL)
                         .leftJoin(SECURITY_CLIENT)
@@ -505,7 +517,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                             if (x.length() == clientCode.length())
                                 return clientCode + "1";
 
-                            int num = Integer.parseInt(x.substring(clientCode.length())) + 1;
+                            int num = Integer.parseInt(x.substring(clientCode.length()))
+                                    + 1;
                             return clientCode + num;
                         }))
                 .collectList()
@@ -545,5 +558,4 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .limit(1))
                 .map(Record1::value1);
     }
-
 }
