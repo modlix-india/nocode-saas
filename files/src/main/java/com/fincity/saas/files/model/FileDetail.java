@@ -1,8 +1,9 @@
 package com.fincity.saas.files.model;
 
-import java.nio.file.attribute.FileTime;
+import java.io.Serializable;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.jooq.types.ULong;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
@@ -10,8 +11,9 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class FileDetail {
+public class FileDetail implements Serializable {
 
+	private ULong id;
 	private String name;
 	private boolean isDirectory;
 	private long size;
@@ -19,12 +21,8 @@ public class FileDetail {
 	private String url;
 	private long createdDate;
 	private long lastModifiedTime;
-	private long lastAccessTime;
 	private String type;
 	private String fileName;
-
-	@JsonIgnore
-	private FileTime modifiedTime;
 
 	public FileDetail setName(String name) {
 
@@ -39,7 +37,7 @@ public class FileDetail {
 		else {
 			this.fileName = name.substring(0, ind);
 			this.type = name.substring(ind + 1)
-			        .toLowerCase();
+					.toLowerCase();
 		}
 		return this;
 	}
@@ -51,5 +49,16 @@ public class FileDetail {
 			return false;
 
 		return this.type.endsWith(".zip") || this.type.endsWith(".gz");
+	}
+
+	public static FileDetail clone(FileDetail fileDetail) {
+
+		return new FileDetail().setName(fileDetail.getName())
+				.setDirectory(fileDetail.isDirectory())
+				.setSize(fileDetail.getSize())
+				.setFilePath(fileDetail.getFilePath())
+				.setUrl(fileDetail.getUrl())
+				.setCreatedDate(fileDetail.getCreatedDate())
+				.setLastModifiedTime(fileDetail.getLastModifiedTime());
 	}
 }

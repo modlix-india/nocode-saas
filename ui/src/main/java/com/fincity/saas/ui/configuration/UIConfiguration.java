@@ -20,8 +20,14 @@ import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 public class UIConfiguration extends AbstractMongoConfiguration implements ISecurityConfiguration {
+
+	public UIConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	@Override
 	@PostConstruct
@@ -39,7 +45,7 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
 	}
 
 	@Bean
-	ReactiveHttpRequestInterceptor feignInterceptor() {
+	public ReactiveHttpRequestInterceptor feignInterceptor() {
 		return request -> Mono.deferContextual(ctxView -> {
 
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
@@ -54,7 +60,7 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
 	}
 
 	@Bean
-	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/**");
 	}
 }

@@ -12,7 +12,7 @@ import org.jooq.Schema;
 /**
  * Static or Secured resource
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum FilesAccessPathResourceType implements EnumType {
 
     STATIC("STATIC"),
@@ -37,7 +37,7 @@ public enum FilesAccessPathResourceType implements EnumType {
 
     @Override
     public String getName() {
-        return "files_access_path_RESOURCE_TYPE";
+        return null;
     }
 
     @Override
@@ -46,7 +46,9 @@ public enum FilesAccessPathResourceType implements EnumType {
     }
 
     /**
-     * Lookup a value of this EnumType by its literal
+     * Lookup a value of this EnumType by its literal. Returns
+     * <code>null</code>, if no such value could be found, see {@link
+     * EnumType#lookupLiteral(Class, String)}.
      */
     public static FilesAccessPathResourceType lookupLiteral(String literal) {
         return EnumType.lookupLiteral(FilesAccessPathResourceType.class, literal);

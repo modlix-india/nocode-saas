@@ -31,6 +31,7 @@ public class SSLCertificate extends AbstractUpdatableDTO<ULong, ULong> {
 	private String issuer;
 	private Boolean current;
 	private LocalDateTime autoRenewTill;
+	private String crtKeyUpload;
 
 	@JsonIgnore
 	public String getCrtKey() {

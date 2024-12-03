@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.4</version>
+        <version>3.4.0</version>
         <relativePath />
         <!-- lookup parent from repository -->
     </parent>
@@ -16,8 +16,8 @@
     <description>Fincity SAAS File server</description>
     <properties>
         <java.version>21</java.version>
-        <spring-cloud.version>2023.0.3</spring-cloud.version>
-        <nocode-kirun-version>3.5.0</nocode-kirun-version>
+        <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
+        <nocode-kirun-version>3.7.1</nocode-kirun-version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
@@ -25,6 +25,10 @@
         <img-scalr.version>4.2</img-scalr.version>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -100,11 +104,6 @@
             <artifactId>jooq</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>kirun-java</artifactId>
-            <version>${nocode-kirun-version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons</artifactId>
             <version>${saas-commons-version}</version>
@@ -138,6 +137,15 @@
             <version>${img-scalr.version}</version>
         </dependency>
         <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-webp</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -162,6 +170,13 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.28.21</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <repositories>
@@ -172,6 +187,14 @@
         <repository>
             <id>spring-libs-snapshot</id>
             <url>https://repo.spring.io/libs-snapshot</url>
+        </repository>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
     <build>

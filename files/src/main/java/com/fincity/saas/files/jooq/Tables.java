@@ -5,19 +5,25 @@ package com.fincity.saas.files.jooq;
 
 
 import com.fincity.saas.files.jooq.tables.FilesAccessPath;
+import com.fincity.saas.files.jooq.tables.FilesFileSystem;
 import com.fincity.saas.files.jooq.tables.FilesSecuredAccessKeys;
 
 
 /**
  * Convenience access to all tables in files.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
 
     /**
      * The table <code>files.files_access_path</code>.
      */
     public static final FilesAccessPath FILES_ACCESS_PATH = FilesAccessPath.FILES_ACCESS_PATH;
+
+    /**
+     * The table <code>files.files_file_system</code>.
+     */
+    public static final FilesFileSystem FILES_FILE_SYSTEM = FilesFileSystem.FILES_FILE_SYSTEM;
 
     /**
      * The table <code>files.files_secured_access_keys</code>.

@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.service.IndexHTMLService;
 import com.fincity.saas.ui.service.JSService;
@@ -47,6 +49,10 @@ public class UniversalController {
 
 	private static final ResponseEntity<String> RESPONSE_NOT_FOUND = ResponseEntity
 			.notFound()
+			.build();
+
+	private static final ResponseEntity<String> RESPONSE_BAD_REQUEST = ResponseEntity
+			.badRequest()
 			.build();
 
 	public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
@@ -102,15 +108,20 @@ public class UniversalController {
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
 			ServerHttpRequest request) {
 
-		return uriPathService.getResponse(request, null, appCode, clientCode).map(ResponseEntity::ok)
-				.switchIfEmpty(Mono.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode)
-						.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge,
-								MimeTypeUtils.TEXT_HTML_VALUE))));
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+
+				(ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
+				.switchIfEmpty(Mono
+						.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode).flatMap(e -> ResponseEntityUtils
+								.makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
 	}
 
 	@RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = { RequestMethod.POST,
 			RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE })
-	public Mono<ResponseEntity<String>> deafultRequests(
+	public Mono<ResponseEntity<String>> defaultRequests(
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
@@ -120,7 +131,13 @@ public class UniversalController {
 		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 				: this.gson.fromJson(jsonString, JsonObject.class);
 
-		return uriPathService.getResponse(request, jsonObject, appCode, clientCode).map(ResponseEntity::ok);
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+
+				(ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc).map(ResponseEntity::ok))
+				.switchIfEmpty(Mono.just(RESPONSE_BAD_REQUEST));
 	}
 
 	@GetMapping("/.well-known/acme-challenge/{token}")

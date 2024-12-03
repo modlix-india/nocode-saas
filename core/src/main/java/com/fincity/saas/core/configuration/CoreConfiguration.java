@@ -34,11 +34,12 @@ import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 public class CoreConfiguration extends AbstractMongoConfiguration
 		implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
 
-	@Autowired
 	private CoreMessageResourceService messageService;
 
 	@Value("${spring.r2dbc.url}")
@@ -49,6 +50,14 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 
 	@Value("${spring.r2dbc.password}")
 	private String password;
+
+	@Value("${INSTANCE_ID:default}")
+	private String instanceId;
+
+	public CoreConfiguration(CoreMessageResourceService messageService, ObjectMapper objectMapper) {
+		super(objectMapper);
+		this.messageService = messageService;
+	}
 
 	@PostConstruct
 	@Override
@@ -69,7 +78,7 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 	}
 
 	@Bean
-	DSLContext context() {
+	public DSLContext context() {
 
 		Builder props = ConnectionFactoryOptions.parse(url)
 				.mutate();
@@ -83,13 +92,13 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 	}
 
 	@Bean
-	SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**",
 				"/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind");
 	}
 
 	@Bean
-	ReactiveHttpRequestInterceptor feignInterceptor() {
+	public ReactiveHttpRequestInterceptor feignInterceptor() {
 		return request -> Mono.deferContextual(ctxView -> {
 
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {

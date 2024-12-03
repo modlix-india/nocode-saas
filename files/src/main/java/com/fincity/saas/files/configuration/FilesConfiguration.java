@@ -1,9 +1,11 @@
 package com.fincity.saas.files.configuration;
 
+import java.net.URI;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -21,10 +23,29 @@ import com.fincity.saas.commons.util.LogUtil;
 import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 public class FilesConfiguration extends AbstractJooqBaseConfiguration
 		implements ISecurityConfiguration {
+
+	@Value("${files.resources.endpoint}")
+	private String endpoint;
+
+	@Value("${files.resources.accessKeyId}")
+	private String accessKeyId;
+
+	@Value("${files.resources.secretAccessKey}")
+	private String secretAccessKey;
+
+	public FilesConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	@Override
 	@PostConstruct
@@ -41,7 +62,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 	}
 
 	@Bean
-	SecurityWebFilterChain filterChain(ServerHttpSecurity http,
+	public SecurityWebFilterChain filterChain(ServerHttpSecurity http,
 			FeignAuthenticationService authService) {
 		ServerWebExchangeMatcher matcher = new OrServerWebExchangeMatcher(
 				new PathPatternParserServerWebExchangeMatcher("/api/files/static/file/**"),
@@ -51,11 +72,11 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, matcher,
 
-				"/api/files/static/file/**", "/api/files/internal/**");
+				"/api/files/static/file/**", "/api/files/internal/**", "/api/files/secured/downloadFileByKey/*");
 	}
 
 	@Bean
-	ReactiveHttpRequestInterceptor feignInterceptor() {
+	public ReactiveHttpRequestInterceptor feignInterceptor() {
 		return request -> Mono.deferContextual(ctxView -> {
 
 			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
@@ -66,6 +87,16 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
 
 			return Mono.just(request);
 		});
+	}
+
+	@Bean
+	public S3AsyncClient s3Client() {
+		return S3AsyncClient.builder()
+				.region(Region.US_EAST_1)
+				.endpointOverride(URI.create(endpoint))
+				.credentialsProvider(StaticCredentialsProvider
+						.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+				.build();
 	}
 
 }

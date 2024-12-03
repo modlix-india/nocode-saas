@@ -31,6 +31,7 @@ import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.file.TemplateConversionService;
 import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
@@ -49,7 +50,9 @@ public class FunctionController
 
 	public FunctionController(AppDataService appDataService, ObjectMapper objectMapper, RestService restService, // NOSONAR
 			ContextService userContextService, IFeignSecurityService securityService, IFeignFilesService fileService,
-			ClientUrlService clientUrlService, EmailService emailService, Gson gson) {
+			ClientUrlService clientUrlService, EmailService emailService,
+			TemplateConversionService templateConversionService,
+			Gson gson) {
 
 		this.coreFunRepo = new CoreFunctionRepository(new CoreFunctionRepositoryBuilder()
 				.setAppDataService(appDataService)
@@ -60,6 +63,7 @@ public class FunctionController
 				.setFilesService(fileService)
 				.setClientUrlService(clientUrlService)
 				.setEmailService(emailService)
+				.setTemplateConversionService(templateConversionService)
 				.setGson(gson));
 		this.gson = gson;
 	}
