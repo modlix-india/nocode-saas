@@ -298,4 +298,9 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		return v -> this.evict(cacheName, keys)
 				.map(e -> v);
 	}
+
+	public <T> Function<T, Mono<T>> evictFunctionWithKeyFunction(String cacheName,
+			Function<T, String> keyMakingFunction) {
+		return v -> this.evict(cacheName, keyMakingFunction.apply(v)).map(e -> v);
+	}
 }
