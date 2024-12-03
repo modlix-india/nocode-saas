@@ -5,9 +5,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
+import static java.util.Map.entry;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
@@ -75,6 +79,13 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 	@Override
 	public FunctionSignature getSignature() {
 
+	 Schema objectSchema = new Schema()
+    .setType(Type.of(SchemaType.OBJECT))
+    .setProperties(Map.of(
+        "direction",Schema.ofString("direction").setEnums(List.of(new JsonPrimitive("ASC"),new JsonPrimitive("DESC"))).setDefaultValue(new JsonPrimitive("DESC")),
+        "property", Schema.ofString("property").setDefaultValue(new JsonPrimitive("updatedAt"))
+    ));
+
 		Event event = new Event().setName(Event.OUTPUT)
 				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
@@ -99,8 +110,7 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 						COUNT, Parameter.of(COUNT, Schema.ofBoolean(COUNT)
 								.setDefaultValue(new JsonPrimitive(true))),
 
-					    SORT, Parameter.of(SORT,Schema.ofArray(SORT)
-						        .setDefaultValue(new JsonArray())),
+					    SORT, Parameter.of(SORT,Schema.ofArray("sort", objectSchema).setDefaultValue(new JsonArray())),
 
 						APP_CODE,
 						Parameter.of(APP_CODE,
@@ -167,7 +177,7 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 				.setSize(size)
 				.setCount(true)
 				.setEager(eager)
-				.setSort(getSortObj(sort))	
+				.setSort(getSortObj(sort))
 				.setEagerFields(eagerFields);
 
 
@@ -201,26 +211,13 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 	}
 
 	private Sort getSortObj(JsonArray sortJson){
-
-		if(sortJson.size() == 0) {
-			return Sort.by(Order.desc("updatedAt"));
-		}
-		
-		List<Map<String, String>> sortList = gson.fromJson(sortJson, List.class);
-			List<Sort.Order> orders = new ArrayList<>();
-			for (Map<String, String> sortMap : sortList) {
-				String field = sortMap.get("field");
-				String sortType = sortMap.get("sortType");
-		
-				if ("desc".equalsIgnoreCase(sortType)) {
-					orders.add(Sort.Order.desc(field));
-				} else {
-					orders.add(Sort.Order.asc(field));
-				}
-			}
+	    List<Sort.Order> orders = new ArrayList<>();
+		for (JsonElement jsonElement : sortJson) {
+			JsonObject sortObj = jsonElement.getAsJsonObject();
+			orders.add("desc".equalsIgnoreCase(sortObj.get("direction").getAsString()) ? 
+			 Sort.Order.desc(sortObj.get("property").getAsString()):
+			 Sort.Order.asc(sortObj.get("property").getAsString()));			
+		}	
 			return Sort.by(orders);
 	}
-	
-
-
 }
