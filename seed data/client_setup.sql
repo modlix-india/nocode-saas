@@ -1275,6 +1275,7 @@ CREATE DATABASE IF NOT EXISTS `core` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8m
 
 
 -- V2__Core Tokens script.sql (CORE)
+use core;
 
 CREATE TABLE IF NOT EXISTS core_tokens
 (
