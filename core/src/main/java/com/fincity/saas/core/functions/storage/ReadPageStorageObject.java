@@ -79,12 +79,14 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 	@Override
 	public FunctionSignature getSignature() {
 
-	 Schema objectSchema = new Schema()
+	 Schema objectSchema = new Schema().setName("SortOrder")
     .setType(Type.of(SchemaType.OBJECT))
     .setProperties(Map.of(
         "direction",Schema.ofString("direction").setEnums(List.of(new JsonPrimitive("ASC"),new JsonPrimitive("DESC"))).setDefaultValue(new JsonPrimitive("DESC")),
-        "property", Schema.ofString("property").setDefaultValue(new JsonPrimitive("updatedAt"))
-    ));
+        "property", Schema.ofString("property"),
+		"ignoreCase",Schema.ofBoolean("ignoreCase").setDefaultValue(new JsonPrimitive(true)),
+		"nullHandling",Schema.ofString("nullHandling").setEnums(List.of(new JsonPrimitive("NATIVE"),new JsonPrimitive("NULLS_FIRST"),new JsonPrimitive("NULLS_LAST"))).setDefaultValue(new JsonPrimitive("NATIVE")))
+    );
 
 		Event event = new Event().setName(Event.OUTPUT)
 				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
@@ -110,7 +112,7 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 						COUNT, Parameter.of(COUNT, Schema.ofBoolean(COUNT)
 								.setDefaultValue(new JsonPrimitive(true))),
 
-					    SORT, Parameter.of(SORT,Schema.ofArray("sort", objectSchema).setDefaultValue(new JsonArray())),
+					    SORT, Parameter.of(SORT,Schema.ofArray(SORT, objectSchema).setDefaultValue(new JsonArray())),
 
 						APP_CODE,
 						Parameter.of(APP_CODE,
@@ -211,13 +213,34 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 	}
 
 	private Sort getSortObj(JsonArray sortJson){
-	    List<Sort.Order> orders = new ArrayList<>();
+	    List<Order> orders = new ArrayList<>();
 		for (JsonElement jsonElement : sortJson) {
 			JsonObject sortObj = jsonElement.getAsJsonObject();
-			orders.add("desc".equalsIgnoreCase(sortObj.get("direction").getAsString()) ? 
-			 Sort.Order.desc(sortObj.get("property").getAsString()):
-			 Sort.Order.asc(sortObj.get("property").getAsString()));			
+
+			Order order = "desc".equalsIgnoreCase(sortObj.get("direction").getAsString()) ?  
+			Order.desc(sortObj.get("property").getAsString()):
+			Order.asc(sortObj.get("property").getAsString());
+
+			if(sortObj.has("ignoreCase") && sortObj.get("ignoreCase").getAsBoolean()){
+				order = order.ignoreCase();
+			}
+
+			if(sortObj.has("nullHandling")){
+			 order = getNullsOrder(order, sortObj);
+			}
+			orders.add(order);
+
 		}	
+		    System.out.println(orders);
 			return Sort.by(orders);
+	}
+
+	private Order getNullsOrder(Order order , JsonObject sortObj  ){
+
+		switch (sortObj.get("nullHandling").getAsString()){
+			case "NULLS_FIRST" : return order.nullsFirst();
+			case "NULLS_LAST" : return order.nullsLast();
+			default: return order.nullsNative();
+		}
 	}
 }
