@@ -6,6 +6,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -65,5 +66,19 @@ public class FilesInternalController {
                         .setNoCache(noCache)
                         .setDownload(download)
                         .setName(name), filePath, request, response);
+    }
+
+    @GetMapping(value = "/{resourceType}/convertToBase64")
+    public Mono<String> convertToBase64(
+            @RequestHeader(required = false) String authorization,
+            @PathVariable String resourceType,
+            @RequestParam String clientCode,
+            @RequestParam String url,
+            @RequestParam(required = false) Boolean metadataRequired,
+            ServerHttpRequest request,
+            ServerHttpResponse response) {
+
+        return ("secured".equals(resourceType) ? this.securedService : this.staticService)
+                .readInternalWithClientCode(clientCode, resourceType, url, metadataRequired, request, response);
     }
 }

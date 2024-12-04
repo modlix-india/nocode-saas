@@ -46,6 +46,7 @@ public class FilesMessageResourceService extends AbstractMessageService {
 	public static final String UNABLE_TO_COPY_THE_IMAGE_FILE = "unable_to_copy_the_image_file";
 	public static final String INVALID_KEY = "invalid_key";
 	public static final String UNABLE_TO_UPLOAD_ZIP_FILE = "unable_to_upload_zip_file";
+	public static final String NOT_A_FILE = "not_a_file";
 
 	public FilesMessageResourceService() {
 
