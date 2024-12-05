@@ -73,11 +73,9 @@ public class AppRegistrationIntegrationService
         public Mono<AppRegistrationIntegration> update(AppRegistrationIntegration entity) {
 
                 return super.update(entity)
-                                .flatMap(this.cacheService.evictFunctionWithFunctionMultipleKeys(
-                                                CACHE_NAME_INTEGRATION_ID,
-                                                e -> new Object[] {
-                                                                e.getAppId(), "-", e.getClientId()
-                                                }));
+                                .flatMap(
+                                                this.cacheService.evictFunction(
+                                                                CACHE_NAME_INTEGRATION_ID, getCacheKeys(entity)));
         }
 
         @Override
@@ -87,7 +85,7 @@ public class AppRegistrationIntegrationService
                 return FlatMapUtil.flatMapMono(
                                 () -> this.read(id),
                                 e -> super.delete(id).flatMap(this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_ID,
-                                                e.getAppId(), "-", e.getClientId())))
+                                                getCacheKeys(e))))
                                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                                                 "AppRegistrationIntegrationService.delete"));
         }
@@ -130,22 +128,6 @@ public class AppRegistrationIntegrationService
                 }
 
                 return Mono.just(newFields);
-        }
-
-        public Mono<ULong> getIntegrationId() {
-
-                return FlatMapUtil.flatMapMono(
-
-                                SecurityContextUtil::getUsersContextAuthentication,
-
-                                ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-                                (ca, app) -> this.cacheService.cacheValueOrGet(CACHE_NAME_INTEGRATION_ID,
-                                                () -> this.dao.getIntegrationId(app.getId(),
-                                                                ULong.valueOf(ca.getLoggedInFromClientId())),
-                                                app.getId(), "-", ca.getLoggedInFromClientId()))
-                                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                                                "AppRegistrationIntegrationService.getIntegrationId"));
         }
 
         public Mono<AppRegistrationIntegration> getIntegration(SecurityAppRegIntegrationPlatform platform) {
@@ -327,6 +309,11 @@ public class AppRegistrationIntegrationService
                                                 .build())
                                 .retrieve()
                                 .bodyToMono(JsonNode.class);
+        }
+
+        private Object[] getCacheKeys(AppRegistrationIntegration entity) {
+                return new Object[] { entity.getClientId(), ":", entity.getAppId(), ":",
+                                entity.getPlatform().toString() };
         }
 
 }
