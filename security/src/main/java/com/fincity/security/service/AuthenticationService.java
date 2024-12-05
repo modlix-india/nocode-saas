@@ -17,13 +17,15 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppRegistrationIntegrationTokenDao;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.SoxLog;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
+import com.fincity.security.dto.policy.AbstractPolicy;
+import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
@@ -52,11 +54,17 @@ import reactor.util.function.Tuple2;
 @Service
 public class AuthenticationService implements IAuthenticationService {
 
+	private static final String AC = "appCode";
+
+	private static final String CC = "clientCode";
+
 	private final UserService userService;
 
 	private final ClientService clientService;
 
 	private final TokenService tokenService;
+
+	private final OtpService otpService;
 
 	private final SecurityMessageResourceService resourceService;
 
@@ -71,11 +79,14 @@ public class AuthenticationService implements IAuthenticationService {
 	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
 	public AuthenticationService(UserService userService, ClientService clientService, TokenService tokenService,
+			OtpService otpService,
 			SecurityMessageResourceService resourceService, SoxLogService soxLogService, PasswordEncoder pwdEncoder,
-			CacheService cacheService, AppRegistrationIntegrationTokenDao integrationTokenDao, AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
+			CacheService cacheService, AppRegistrationIntegrationTokenDao integrationTokenDao,
+			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
 		this.userService = userService;
 		this.clientService = clientService;
 		this.tokenService = tokenService;
+		this.otpService = otpService;
 		this.resourceService = resourceService;
 		this.soxLogService = soxLogService;
 		this.pwdEncoder = pwdEncoder;
@@ -135,9 +146,9 @@ public class AuthenticationService implements IAuthenticationService {
 	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
 			ServerHttpResponse response) {
 
-		String appCode = request.getHeaders().getFirst("appCode");
+		String appCode = request.getHeaders().getFirst(AC);
 
-		String clientCode = request.getHeaders().getFirst("clientCode");
+		String clientCode = request.getHeaders().getFirst(CC);
 
 		if (authRequest.getIdentifierType() == null) {
 			authRequest.setIdentifierType(
@@ -146,23 +157,26 @@ public class AuthenticationService implements IAuthenticationService {
 							: AuthenticationIdentifierType.EMAIL_ID);
 		}
 
+		AuthenticationPasswordType passType = getPasswordType(authRequest);
+
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
-						appCode,
-						authRequest.getIdentifierType(), true),
+						appCode, authRequest.getIdentifierType(), true),
+
 				tup -> {
 					String linClientCode = tup.getT1().getCode();
 					return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode)
 							|| tup.getT1().getId().equals(tup.getT2().getId()) ? true : null);
 				},
 
-				(tup, linCCheck) -> this.checkPassword(authRequest, tup.getT3()),
+				(tup, linCCheck) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), appCode, passType),
 
-				(tup, linCCheck, passwordChecked) -> this.clientService.getClientPasswordPolicy(tup.getT2().getId())
-						.flatMap(policy -> this.checkFailedAttempts(tup.getT3(), policy)).defaultIfEmpty(1),
+				(tup, linCCheck, policy) -> this.checkPassword(authRequest, appCode, tup.getT3(), policy)
+						.flatMap(passwordChecked -> this.checkFailedAttempts(tup.getT3(), policy))
+						.defaultIfEmpty(1),
 
-				(tup, linCCheck, passwordChecked, j) -> {
+				(tup, linCCheck, policy, passwordChecked) -> {
 
 					User user = tup.getT3();
 
@@ -181,9 +195,21 @@ public class AuthenticationService implements IAuthenticationService {
 				.switchIfEmpty(Mono.defer(this::credentialError));
 	}
 
+	private AuthenticationPasswordType getPasswordType(AuthenticationRequest authRequest) {
+
+		if (!StringUtil.safeIsBlank(authRequest.getPassword())) {
+			return AuthenticationPasswordType.PASSWORD;
+		}
+
+		if (!StringUtil.safeIsBlank(authRequest.getPin())) {
+			return AuthenticationPasswordType.PIN;
+		}
+
+		return AuthenticationPasswordType.OTP;
+	}
+
 	public Mono<AuthenticationResponse> authenticateWSocial(AuthenticationRequest authRequest,
-			ServerHttpRequest request,
-			ServerHttpResponse response) {
+			ServerHttpRequest request, ServerHttpResponse response) {
 
 		if (authRequest.getSocialRegisterState() == null) {
 			return this.resourceService.throwMessage(
@@ -191,9 +217,9 @@ public class AuthenticationService implements IAuthenticationService {
 					SecurityMessageResourceService.SOCIAL_LOGIN_FAILED);
 		}
 
-		String appCode = request.getHeaders().getFirst("appCode");
+		String appCode = request.getHeaders().getFirst(AC);
 
-		String clientCode = request.getHeaders().getFirst("clientCode");
+		String clientCode = request.getHeaders().getFirst(CC);
 
 		if (authRequest.getIdentifierType() == null) {
 			authRequest.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
@@ -282,45 +308,59 @@ public class AuthenticationService implements IAuthenticationService {
 						.setAccessToken(token.getT1()).setAccessTokenExpiryAt(token.getT2()));
 	}
 
-	private Mono<Integer> checkFailedAttempts(User u, ClientPasswordPolicy pol) {
+	private <T extends AbstractPolicy> Mono<Integer> checkFailedAttempts(User u, T policy) {
 
-		if (pol.getNoFailedAttempts() != null && pol.getNoFailedAttempts().shortValue() <= u.getNoFailedAttempt()) {
+		if (policy.getNoFailedAttempts() != null && policy.getNoFailedAttempts()
+				.shortValue() <= u.getNoFailedAttempt()) {
 
 			soxLogService.create(new SoxLog().setObjectId(u.getId()).setActionName(SecuritySoxLogActionName.LOGIN)
 					.setObjectName(SecuritySoxLogObjectName.USER)
 					.setDescription("Failed password attempts are more than the configuration")).subscribe();
 
-			return this.credentialError().map(e -> 1);
+			return this.credentialError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED)
+					.map(e -> 1);
 		}
 
 		return Mono.just(1);
 	}
 
-	private Mono<Boolean> checkPassword(AuthenticationRequest authRequest, User u) {
+	private <T extends AbstractPolicy> Mono<Boolean> checkPassword(AuthenticationRequest authRequest, String appCode,
+			User user, T policy) {
 
-		if (u.isPasswordHashed()) {
-			if (pwdEncoder.matches(u.getId() + authRequest.getPassword(), u.getPassword()))
-				return Mono.just(true);
-		} else if (StringUtil.safeEquals(authRequest.getPassword(), u.getPassword()))
-			return Mono.just(true);
+		if (authRequest.getOtp() != null)
+			return otpService.verifyOtp(appCode, user, OtpPurpose.LOGIN.name(), authRequest.getOtp())
+					.flatMap(otpVerified -> Boolean.TRUE.equals(otpVerified) ? Mono.just(true)
+							: handleAuthFailure(user, policy));
 
-		userService.increaseFailedAttempt(u.getId()).subscribe();
+		boolean isValidPassword = user.isPasswordHashed()
+				? pwdEncoder.matches(user.getId() + authRequest.getPassword(), user.getPassword())
+				: StringUtil.safeEquals(authRequest.getPassword(), user.getPassword());
 
-		soxLogService.createLog(u.getId(), SecuritySoxLogActionName.UPDATE, SecuritySoxLogObjectName.USER,
-				"Given Password is mismatching with existing.");
-
-		return this.credentialError().map(e -> false);
+		return isValidPassword ? Mono.just(true) : handleAuthFailure(user, policy);
 	}
 
-	private Mono<? extends AuthenticationResponse> credentialError() {
+	private <T extends AbstractPolicy> Mono<Boolean> handleAuthFailure(User user, T policy) {
 
-		return resourceService.getMessage(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED).map(msg -> {
+		return userService.increaseFailedAttempt(user.getId())
+				.flatMap(increasedAttempts -> {
+					int remainingAttempts = policy.getNoFailedAttempts().intValue() - (int) increasedAttempts;
+
+					soxLogService.createLog(user.getId(), SecuritySoxLogActionName.UPDATE,
+							SecuritySoxLogObjectName.USER,
+							"Given Password is mismatching with existing.");
+
+					return credentialError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED)
+							.map(msg -> false);
+				});
+	}
+
+	private Mono<? extends AuthenticationResponse> credentialError(String message, String... params) {
+		return resourceService.getMessage(message, (Object) params).map(msg -> {
 			throw new GenericException(HttpStatus.FORBIDDEN, msg);
 		});
-
 	}
 
-	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, String clientcode, String appCode,
+	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, String clientCode, String appCode,
 			ServerHttpRequest request) {
 
 		if (StringUtil.safeIsBlank(bearerToken)) {
@@ -331,7 +371,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 				() -> cacheService.get(CACHE_NAME_TOKEN, bearerToken).map(ContextAuthentication.class::cast),
 
-				cachedCA -> checkTokenOrigin(request, this.extractClamis(bearerToken)),
+				cachedCA -> checkTokenOrigin(request, this.extractClaims(bearerToken)),
 
 				(cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
 						: Mono.just(cachedCA))
@@ -344,7 +384,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 		if (!basic) {
 
-			final var claims = extractClamis(bearerToken);
+			final var claims = extractClaims(bearerToken);
 
 			return FlatMapUtil.flatMapMono(
 
@@ -366,23 +406,23 @@ public class AuthenticationService implements IAuthenticationService {
 							resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
 
 		} else {
-			// Need to add the basic authorisation...
+			// TODO: Need to add the basic authorisation...
 		}
 
 		return Mono.empty();
 	}
 
-	private JWTClaims extractClamis(String bearerToken) {
+	private JWTClaims extractClaims(String bearerToken) {
 
-		JWTClaims c = null;
+		JWTClaims claims;
 		try {
-			c = JWTUtil.getClaimsFromToken(this.tokenKey, bearerToken);
+			claims = JWTUtil.getClaimsFromToken(this.tokenKey, bearerToken);
 		} catch (Exception ex) {
 			throw new GenericException(HttpStatus.UNAUTHORIZED,
 					resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.TOKEN_EXPIRED), ex);
 		}
 
-		return c;
+		return claims;
 	}
 
 	private String toPartToken(String bearerToken) {
@@ -410,24 +450,36 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {
 
-		List<String> clientCode = request.getHeaders().get("clientCode");
+		List<String> clientCode = request.getHeaders().get(CC);
 
 		Mono<Client> loggedInClient = ((clientCode != null && !clientCode.isEmpty())
-				? this.clientService.getClientBy(clientCode.get(0))
+				? this.clientService.getClientBy(clientCode.getFirst())
 				: this.clientService.getClientBy(request))
 				.switchIfEmpty(
 						this.resourceService.throwMessage(msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
 								SecurityMessageResourceService.UNKNOWN_CLIENT));
 
-		return loggedInClient.map(e -> (Authentication) new ContextAuthentication(
-				new ContextUser().setId(BigInteger.ZERO).setCreatedBy(BigInteger.ZERO).setUpdatedBy(BigInteger.ZERO)
-						.setCreatedAt(LocalDateTime.now()).setUpdatedAt(LocalDateTime.now())
+		return loggedInClient.map(e -> new ContextAuthentication(
+				new ContextUser()
+						.setId(BigInteger.ZERO)
+						.setCreatedBy(BigInteger.ZERO)
+						.setUpdatedBy(BigInteger.ZERO)
+						.setCreatedAt(LocalDateTime.now())
+						.setUpdatedAt(LocalDateTime.now())
 						.setClientId(e.getId().toBigInteger())
-						.setUserName("_Anonymous").setEmailId("nothing@nothing").setPhoneNumber("+910000000000")
-						.setFirstName("Anonymous").setLastName("").setLocaleCode("en").setPassword("")
+						.setUserName("_Anonymous")
+						.setEmailId("nothing@nothing")
+						.setPhoneNumber("+910000000000")
+						.setFirstName("Anonymous")
+						.setLastName("")
+						.setLocaleCode("en")
+						.setPassword("")
 						.setPasswordHashed(false)
-						.setAccountNonExpired(true).setAccountNonLocked(true).setCredentialsNonExpired(true)
-						.setNoFailedAttempt((short) 0).setStringAuthorities(List.of("Authorities._Anonymous")),
+						.setAccountNonExpired(true)
+						.setAccountNonLocked(true)
+						.setCredentialsNonExpired(true)
+						.setNoFailedAttempt((short) 0)
+						.setStringAuthorities(List.of("Authorities._Anonymous")),
 				false, e.getId().toBigInteger(), e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX, null,
 				null));
 	}
@@ -439,7 +491,7 @@ public class AuthenticationService implements IAuthenticationService {
 		List<String> forwardedHost = request.getHeaders().get("X-Forwarded-Host");
 
 		if (forwardedHost != null && !forwardedHost.isEmpty()) {
-			host = forwardedHost.get(0);
+			host = forwardedHost.getFirst();
 		}
 
 		if (!host.equals(jwtClaims.getHostName())) {
@@ -479,7 +531,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 				(ca, client, revoked) -> {
 
-					if (revoked.booleanValue())
+					if (Boolean.TRUE.equals(revoked))
 						return this.generateNewToken(ca, request, client);
 
 					return Mono.just(new AuthenticationResponse().setUser(ca.getUser()).setClient(client)

@@ -21,7 +21,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -40,7 +39,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dao.CLientDAO;
+import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.AppProperty;
@@ -392,7 +391,7 @@ public class ClientService
 					if (result.booleanValue())
 						return Mono.just(true);
 
-					return flatMapMono(
+					return FlatMapUtil.flatMapMono(
 
 							SecurityContextUtil::getUsersContextAuthentication,
 
@@ -471,7 +470,7 @@ public class ClientService
 
 	private Mono<Boolean> checkClientAndPackageManaged(ULong loggedInClientId, ULong clientId, ULong packageClientId) {
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 				() -> this.isBeingManagedBy(loggedInClientId, clientId)
 						.flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -513,7 +512,7 @@ public class ClientService
 								msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 								SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
 
-					return flatMapMono(
+					return FlatMapUtil.flatMapMono(
 
 							SecurityContextUtil::getUsersContextAuthentication,
 
@@ -754,7 +753,7 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
