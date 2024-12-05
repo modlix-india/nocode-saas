@@ -1,7 +1,12 @@
 package com.fincity.security.controller.appregistration;
 
+import com.fincity.security.dto.AppRegistrationAccess;
+import com.fincity.security.dto.AppRegistrationFile;
+import com.fincity.security.dto.AppRegistrationPackage;
+import com.fincity.security.dto.AppRegistrationRole;
+import com.fincity.security.model.AppRegistrationQuery;
+import com.fincity.security.service.appregistration.AppRegistrationService;
 import java.beans.PropertyEditorSupport;
-
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,14 +21,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fincity.security.dto.AppRegistrationAccess;
-import com.fincity.security.dto.AppRegistrationFile;
-import com.fincity.security.dto.AppRegistrationPackage;
-import com.fincity.security.dto.AppRegistrationRole;
-import com.fincity.security.model.AppRegistrationQuery;
-import com.fincity.security.service.appregistration.AppRegistrationService;
-
 import reactor.core.publisher.Mono;
 
 @RestController

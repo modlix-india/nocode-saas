@@ -1,9 +1,8 @@
 package com.fincity.security.model;
 
-import org.jooq.types.ULong;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -14,6 +13,8 @@ public class AuthenticationRequest {
 	private ULong userId;
 	private String otp = null;
 	private String pin = null;
+
+	private String socialRegisterState;
 
 	private AuthenticationIdentifierType identifierType;
 	private boolean rememberMe = false;
