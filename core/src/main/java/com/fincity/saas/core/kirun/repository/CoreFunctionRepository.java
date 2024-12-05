@@ -66,7 +66,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		this.makeSecurityFunctions(builder.securityService, builder.gson);
 		this.makeEmailFunctions(builder.emailService);
 		this.makeFileConversionFunctions(builder.templateConversionService, builder.filesService, builder.gson);
-		this.makeFileEncodingFunctions(builder.filesService);
+		this.makeFileEncodingFunctions(builder.securityService, builder.filesService);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -153,10 +153,11 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(templateToPdf.getSignature().getFullName(), templateToPdf);
 	}
 
-	private void makeFileEncodingFunctions(IFeignFilesService filesService){
-		ReactiveFunction urlToBase64 = new UrlToBase64(filesService);
-
+	private void makeFileEncodingFunctions(IFeignSecurityService securityService, IFeignFilesService filesService){
+		
+		ReactiveFunction urlToBase64 = new UrlToBase64(securityService, filesService);
 		repoMap.put(urlToBase64.getSignature().getFullName(), urlToBase64);
+		
 	}
 
 	@Override

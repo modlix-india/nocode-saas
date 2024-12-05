@@ -12,9 +12,11 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.core.feign.IFeignFilesService;
+
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
@@ -33,6 +35,8 @@ public class UrlToBase64 extends AbstractReactiveFunction {
 
     private static final String EVENT_RESULT = "result";
 
+    private final IFeignSecurityService securityService;
+
     private final IFeignFilesService filesService;
 
 
@@ -43,7 +47,8 @@ public class UrlToBase64 extends AbstractReactiveFunction {
             .setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
 
-    public UrlToBase64(IFeignFilesService filesService) {
+    public UrlToBase64(IFeignSecurityService securityService, IFeignFilesService filesService) {
+        this.securityService = securityService;
         this.filesService = filesService;
     }
 
@@ -77,14 +82,23 @@ public class UrlToBase64 extends AbstractReactiveFunction {
             return Mono.just(new FunctionOutput(List.of(EventResult.of(errorEvent.getName(),
                     Map.of(Event.ERROR, new JsonPrimitive("Please provide the url."))))));
 
+       return FlatMapUtil.flatMapMono(
+                
+                SecurityContextUtil::getUsersContextAuthentication,
 
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> {
+                ca -> this.securityService.isBeingManaged(ca.getLoggedInFromClientCode() , ca.getClientCode()),
 
-                    return this.filesService.convertToBase64(ca.getAccessToken(), fileType, 
-                        CommonsUtil.nonNullValue(ca.getClientCode(), ca.getUrlClientCode()), url, metadataRequired);
-                })
-                .map(e -> new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(e))))));
+                (ca, managed) -> {
+                        if(!managed.booleanValue())
+                                return Mono.just(new FunctionOutput(
+                                        List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(""))))));
+                        
+
+                        return this.filesService.convertToBase64(fileType,ca.getClientCode(), url, metadataRequired)
+                        .map(e -> new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(e))))));
+                }
+        );
+
     }
 
 }
