@@ -74,8 +74,8 @@ public class AppRegistrationIntegrationService
 
                 return super.update(entity)
                                 .flatMap(
-                                                this.cacheService.evictFunction(
-                                                                CACHE_NAME_INTEGRATION_ID, getCacheKeys(entity)));
+                                                this.cacheService.evictFunctionWithKeyFunction(
+                                                                CACHE_NAME_INTEGRATION_ID, this::getCacheKeys));
         }
 
         @Override
@@ -311,9 +311,9 @@ public class AppRegistrationIntegrationService
                                 .bodyToMono(JsonNode.class);
         }
 
-        private Object[] getCacheKeys(AppRegistrationIntegration entity) {
-                return new Object[] { entity.getClientId(), ":", entity.getAppId(), ":",
-                                entity.getPlatform().toString() };
+        private String getCacheKeys(AppRegistrationIntegration entity) {
+                return  String.join(entity.getClientId().toString(), ":", entity.getAppId().toString(), ":",
+                                entity.getPlatform().toString());
         }
 
 }
