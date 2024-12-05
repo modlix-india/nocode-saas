@@ -14,7 +14,6 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.SecurityMessageResourceService;
-
 import jakarta.annotation.PostConstruct;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,6 +51,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/authenticate",
 
+				"/api/security/authenticate/social",
+
 				"/api/security/verifyToken",
 
 				"/api/security/clients/internal/**",
@@ -65,6 +66,12 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 				"/api/security/users/findUserClients",
 
 				"/api/security/clients/register",
+
+				"/api/security/clients/socialRegister",
+
+				"/api/security/clients/socialRegister/callback",
+
+				"/api/security/clients/socialRegister/evoke",
 
 				"/api/security/clients/generateCode",
 
