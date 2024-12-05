@@ -82,7 +82,7 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 	 Schema objectSchema = new Schema().setName("SortOrder")
     .setType(Type.of(SchemaType.OBJECT))
     .setProperties(Map.of(
-        "direction",Schema.ofString("direction").setEnums(List.of(new JsonPrimitive("ASC"),new JsonPrimitive("DESC"))).setDefaultValue(new JsonPrimitive("DESC")),
+        "direction",Schema.ofString("direction").setEnums(List.of(new JsonPrimitive("ASC"),new JsonPrimitive("DESC"))).setDefaultValue(new JsonPrimitive("ASC")),
         "property", Schema.ofString("property"),
 		"ignoreCase",Schema.ofBoolean("ignoreCase").setDefaultValue(new JsonPrimitive(true)),
 		"nullHandling",Schema.ofString("nullHandling").setEnums(List.of(new JsonPrimitive("NATIVE"),new JsonPrimitive("NULLS_FIRST"),new JsonPrimitive("NULLS_LAST"))).setDefaultValue(new JsonPrimitive("NATIVE")))
@@ -231,7 +231,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 			orders.add(order);
 
 		}	
-		    System.out.println(orders);
 			return Sort.by(orders);
 	}
 
