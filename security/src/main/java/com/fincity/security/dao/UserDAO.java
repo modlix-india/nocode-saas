@@ -7,6 +7,7 @@ import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
+import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
 import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
@@ -66,6 +67,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	private static final String SYSTEM = "SYSTEM";
 	private static final String CLIENT_ID = "CLIENT_ID";
 	private static final String APP_CODE = "APP_CODE";
+
 	@Autowired
 	private PasswordEncoder encoder;
 
@@ -299,6 +301,22 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.where(SECURITY_USER.ID.eq(id)));
 	}
 
+	public Mono<Integer> setPin(ULong id, String pin, ULong currentUserId) {
+
+		String encryptedPin = encoder.encode((id + pin));
+		Mono.from(this.dslContext
+				.insertInto(SECURITY_PAST_PINS, SECURITY_PAST_PINS.USER_ID, SECURITY_PAST_PINS.PIN,
+						SECURITY_PAST_PINS.PIN_HASHED, SECURITY_PAST_PINS.CREATED_BY)
+				.values(id, encryptedPin, ByteUtil.ONE, currentUserId))
+				.subscribe();
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.PIN, encryptedPin)
+				.set(SECURITY_USER.PIN_HASHED, ByteUtil.ONE)
+				.set(SECURITY_USER.UPDATED_BY, currentUserId)
+				.where(SECURITY_USER.ID.eq(id)));
+	}
+
 	public Mono<User> readInternal(ULong id) {
 		return Mono.from(this.dslContext.selectFrom(this.table)
 				.where(this.idField.eq(id))
@@ -437,7 +455,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
 
 		var query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
-				onlyActiveUsers, SECURITY_USER.fields());	
+				onlyActiveUsers, SECURITY_USER.fields());
 
 		var limitQuery = query.limit(2);
 
@@ -563,20 +581,20 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	public Mono<Boolean> makeUserActiveIfInActive(ULong uid) {
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
-		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-		        .where(SECURITY_USER.ID.eq(uid)
-		                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
-		        .map(e -> e > 0);
+				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+				.where(SECURITY_USER.ID.eq(uid)
+						.and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
+				.map(e -> e > 0);
 
 	}
 
 	public Mono<Boolean> makeUserInActive(ULong id) {
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
-		        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.INACTIVE)
-		        .where(SECURITY_USER.ID.eq(id)
-		                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
-		        .map(e -> e > 0);
+				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.INACTIVE)
+				.where(SECURITY_USER.ID.eq(id)
+						.and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+				.map(e -> e > 0);
 
 	}
 
@@ -706,6 +724,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 										.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(referenceUserId)))
 						.onDuplicateKeyIgnore())
 				.map(rowsInserted -> rowsInserted > 0);
-	}	
+	}
 
 }

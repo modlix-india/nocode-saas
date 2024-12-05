@@ -1,6 +1,6 @@
-USE `security`;
+DROP TABLE IF EXISTS `security`.`security_otp`;
 
-CREATE TABLE `security_otp`
+CREATE TABLE `security`.`security_otp`
 (
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each OTP entry',
 
@@ -26,4 +26,7 @@ CREATE TABLE `security_otp`
     INDEX (`EXPIRES_AT`),
     INDEX (`CREATED_AT` DESC),
     INDEX (`APP_ID`, `USER_ID`, `PURPOSE`)
-);
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;

@@ -18,9 +18,13 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
 	public static final String FORBIDDEN_CREATE = "forbidden_create";
 	public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
+	public static final String FORBIDDEN_CREATE_INVALID_PASS = "forbidden_create_user_invalid_password";
 	public static final String UNABLE_TO_DELETE = "unable_to_delete";
 	public static final String OBJECT_NOT_UPDATABLE = "object_not_updatable";
 	public static final String USER_CREDENTIALS_MISMATCHED = "user_credentials_mismatched";
+	public static final String USER_PASSWORD_INVALID = "user_password_invalid";
+	public static final String USER_PIN_INVALID = "user_pin_invalid";
+	public static final String USER_ACCOUNT_BLOCKED = "user_account_blocked";
 	public static final String UNKNOWN_ERROR = "unknown_error";
 	public static final String UNKNOWN_ERROR_WITH_ID = "unknown_error_with_id";
 	public static final String UNKONWN_ERROR_INSERT = "unkonwn_error_insert";
@@ -96,6 +100,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String FORBIDDEN_COPY_ROLE_PERMISSION = "forbidden_copying_role_permission";
 	public static final String ACTIVE_INACTIVE_ERROR = "active_inactive_error";
 	public static final String HIERARCHY_ERROR = "hierarchy_error";
+	public static final String SMS_OTP_ERROR = "sms_otp_error";
+	public static final String INVALID_APP_PROP = "invalid_app_prop";
 
 	public SecurityMessageResourceService() {
 

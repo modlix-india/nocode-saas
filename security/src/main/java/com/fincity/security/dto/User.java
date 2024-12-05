@@ -1,5 +1,6 @@
 package com.fincity.security.dto;
 
+import java.io.Serial;
 import java.math.BigInteger;
 import java.util.List;
 
@@ -21,6 +22,7 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public class User extends AbstractUpdatableDTO<ULong, ULong> {
 
+	@Serial
 	private static final long serialVersionUID = 754028768624617709L;
 
 	public static final String PLACEHOLDER = "NONE";
@@ -36,10 +38,14 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	private String localeCode;
 	private String password;
 	private boolean passwordHashed;
+	private String pin;
+	private boolean pinHashed;
 	private boolean accountNonExpired;
 	private boolean accountNonLocked;
 	private boolean credentialsNonExpired;
 	private Short noFailedAttempt;
+	private Short noPinFailedAttempt;
+	private Short noOtoFailedAttempt;
 	private SecurityUserStatusCode statusCode;
 	private List<String> authorities;
 
@@ -66,6 +72,16 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	@JsonIgnore
+	public String getPin() {
+		return this.pin;
+	}
+
+	@JsonIgnore
+	public boolean isPinHashed() {
+		return this.pinHashed;
+	}
+
+	@JsonIgnore
 	public ContextUser toContextUser() {
 		return new ContextUser().setId(safeFrom(this.getId()))
 				.setCreatedBy(safeFrom(this.getCreatedBy()))
@@ -88,7 +104,7 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 				.setUserName(this.getUserName());
 	}
 
-	public static final BigInteger safeFrom(ULong v) {
+	public static BigInteger safeFrom(ULong v) {
 
 		if (v == null)
 			return null;

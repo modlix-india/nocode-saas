@@ -9,15 +9,12 @@ import java.time.LocalDateTime;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreType;
-import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.jooq.enums.SecurityOtpTargetType;
 import com.fincity.security.util.HashUtil;
 
-import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 
@@ -32,10 +29,7 @@ public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong userId;
 	private String purpose;
 	private SecurityOtpTargetType targetType;
-
-	@Setter(AccessLevel.NONE)
 	private String uniqueCode;
-
 	private LocalDateTime resendAt;
 	private LocalDateTime expiresAt;
 	private int resends = 0;
@@ -58,11 +52,6 @@ public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
 
 	public boolean isExpired() {
 		return this.expiresAt.isBefore(LocalDateTime.now());
-	}
-
-	public Otp setUniqueCode(String uniqueCode) {
-		this.uniqueCode = HashUtil.hash(uniqueCode);
-		return this;
 	}
 
 	public boolean match(String uniqueCode) {

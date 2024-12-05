@@ -6,6 +6,7 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
 
@@ -73,6 +74,13 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
      * ID
      */
     public final TableField<SecurityClientPasswordPolicyRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID");
+
+    /**
+     * The column <code>security.security_client_password_policy.APP_ID</code>.
+     * Identifier for the application to which this OTP belongs. References
+     * security_app table
+     */
+    public final TableField<SecurityClientPasswordPolicyRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the application to which this OTP belongs. References security_app table");
 
     /**
      * The column
@@ -279,7 +287,7 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
 
     @Override
     public List<ForeignKey<SecurityClientPasswordPolicyRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_CLIENT_PWD_POL_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_CLIENT_PWD_POL_CLIENT_ID, Keys.FK2_CLIENT_PWD_POL_APP_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -293,6 +301,19 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
             _securityClient = new SecurityClientPath(this, Keys.FK1_CLIENT_PWD_POL_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityAppPath _securityApp;
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityAppPath securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityAppPath(this, Keys.FK2_CLIENT_PWD_POL_APP_ID, null);
+
+        return _securityApp;
     }
 
     @Override

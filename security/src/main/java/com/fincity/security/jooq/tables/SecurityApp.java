@@ -17,6 +17,9 @@ import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegF
 import com.fincity.security.jooq.tables.SecurityAppRegPackage.SecurityAppRegPackagePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole.SecurityAppRegUserRolePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
+import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
+import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
+import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPinPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.SecurityCodeAccess.SecurityCodeAccessPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
@@ -374,6 +377,45 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityAppRegUserRole = new SecurityAppRegUserRolePath(this, null, Keys.FK2_APP_REG_ROLE_APP_ID.getInverseKey());
 
         return _securityAppRegUserRole;
+    }
+
+    private transient SecurityClientOtpPolicyPath _securityClientOtpPolicy;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_otp_policy</code> table
+     */
+    public SecurityClientOtpPolicyPath securityClientOtpPolicy() {
+        if (_securityClientOtpPolicy == null)
+            _securityClientOtpPolicy = new SecurityClientOtpPolicyPath(this, null, Keys.FK2_CLIENT_OTP_POL_APP_ID.getInverseKey());
+
+        return _securityClientOtpPolicy;
+    }
+
+    private transient SecurityClientPinPolicyPath _securityClientPinPolicy;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_pin_policy</code> table
+     */
+    public SecurityClientPinPolicyPath securityClientPinPolicy() {
+        if (_securityClientPinPolicy == null)
+            _securityClientPinPolicy = new SecurityClientPinPolicyPath(this, null, Keys.FK2_CLIENT_PIN_POL_APP_ID.getInverseKey());
+
+        return _securityClientPinPolicy;
+    }
+
+    private transient SecurityClientPasswordPolicyPath _securityClientPasswordPolicy;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_password_policy</code> table
+     */
+    public SecurityClientPasswordPolicyPath securityClientPasswordPolicy() {
+        if (_securityClientPasswordPolicy == null)
+            _securityClientPasswordPolicy = new SecurityClientPasswordPolicyPath(this, null, Keys.FK2_CLIENT_PWD_POL_APP_ID.getInverseKey());
+
+        return _securityClientPasswordPolicy;
     }
 
     private transient SecurityCodeAccessPath _securityCodeAccess;

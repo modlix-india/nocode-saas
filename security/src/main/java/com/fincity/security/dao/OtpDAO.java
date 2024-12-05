@@ -5,7 +5,6 @@ import static com.fincity.security.jooq.Tables.SECURITY_OTP;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
-import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;

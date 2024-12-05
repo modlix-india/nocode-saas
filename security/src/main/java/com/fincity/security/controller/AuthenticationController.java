@@ -23,6 +23,7 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.OtpService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -38,11 +39,22 @@ public class AuthenticationController {
 	@Autowired
 	private ClientService clientService;
 
+	@Autowired
+	private OtpService otpService;
+
 	@PostMapping("authenticate")
 	public Mono<ResponseEntity<AuthenticationResponse>> authenticate(@RequestBody AuthenticationRequest authRequest,
 			ServerHttpRequest request, ServerHttpResponse response) {
 
 		return this.service.authenticate(authRequest, request, response)
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("authenticate/otp/generate")
+	public Mono<ResponseEntity<Boolean>> generateOtp(@RequestBody AuthenticationRequest authRequest,
+			ServerHttpRequest request) {
+
+		return this.otpService.generateOtp(authRequest, request)
 				.map(ResponseEntity::ok);
 	}
 

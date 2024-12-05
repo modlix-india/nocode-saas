@@ -1,80 +1,52 @@
-package com.fincity.security.service;
+package com.fincity.security.service.policy;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dao.ClientPasswordPolicyDAO;
-import com.fincity.security.dto.ClientPasswordPolicy;
+import com.fincity.security.dao.policy.ClientPasswordPolicyDAO;
+import com.fincity.security.dto.policy.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
+import com.fincity.security.model.AuthenticationPasswordType;
+import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class ClientPasswordPolicyService extends
-		AbstractJOOQUpdatableDataService<SecurityClientPasswordPolicyRecord, ULong, ClientPasswordPolicy, ClientPasswordPolicyDAO> {
+public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityClientPasswordPolicyRecord, ClientPasswordPolicy, ClientPasswordPolicyDAO>
+		implements IPolicyService<ClientPasswordPolicy>{
 
 	private static final String CLIENT_PASSWORD_POLICY = "client password policy";
 
 	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 
-	@Autowired
-	private SecurityMessageResourceService securityMessageResourceService;
-
-	@Autowired
-	private ClientService clientService;
-
-	@Autowired
-	private CacheService cacheService;
-
 	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 			'_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
-	public Mono<ClientPasswordPolicy> create(ClientPasswordPolicy entity) {
-
-		return SecurityContextUtil.getUsersContextAuthentication()
-
-				.flatMap(ca -> {
-
-					ULong currentUser = ULong.valueOf(ca.getLoggedInFromClientId());
-
-					if (ca.isSystemClient() || currentUser.equals(entity.getClientId()))
-						return super.create(entity);
-
-					return this.clientService.isBeingManagedBy(currentUser, entity.getClientId())
-							.flatMap(managed -> managed.booleanValue() ? super.create(entity) : Mono.empty());
-				})
-				.flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
-						.map(x -> e))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
+	public String getPolicyName() {
+		return CLIENT_PASSWORD_POLICY;
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
 	@Override
-	public Mono<ClientPasswordPolicy> read(ULong id) {
+	public AuthenticationPasswordType getAuthenticationPasswordType() {
+		return AuthenticationPasswordType.PASSWORD;
+	}
 
-		return super.read(id);
+	@Override
+	public String getPolicyCacheName() {
+		return CACHE_NAME_CLIENT_PWD_POLICY;
 	}
 
 	@Override
@@ -82,7 +54,7 @@ public class ClientPasswordPolicyService extends
 		return this.read(entity.getId())
 				.map(e -> {
 					e.setAtleastOneDigit(entity.isAtleastOneDigit());
-					e.setAtleastoneLowercase(entity.isAtleastoneLowercase());
+					e.setAtleastOneLowercase(entity.isAtleastOneLowercase());
 					e.setAtleastOneSpecialChar(entity.isAtleastOneSpecialChar());
 					e.setAtleastOneUppercase(entity.isAtleastOneUppercase());
 					e.setNoFailedAttempts(entity.getNoFailedAttempts());
@@ -99,69 +71,19 @@ public class ClientPasswordPolicyService extends
 	}
 
 	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-		if (fields == null || key == null)
-			return Mono.just(new HashMap<String, Object>());
-
-		fields.remove("clientId");
-		fields.remove("updatedAt");
-		fields.remove("updatedBy");
-		fields.remove("createdAt");
-		fields.remove("createdBy");
-
-		return Mono.just(fields);
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
-	@Override
-	public Mono<ClientPasswordPolicy> update(ULong key, Map<String, Object> fields) {
-		return this.dao.canBeUpdated(key)
-				.flatMap(e -> e.booleanValue() ? super.update(key, fields) : Mono.empty())
-				.flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
-						.map(x -> e))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
-	@Override
-	public Mono<ClientPasswordPolicy> update(ClientPasswordPolicy entity) {
-
-		return this.dao.canBeUpdated(entity.getId())
-				.flatMap(e -> e.booleanValue() ? super.update(entity) : Mono.empty())
-				.flatMap(e -> cacheService.evict(CACHE_NAME_CLIENT_PWD_POLICY, e.getClientId())
-						.map(x -> e))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
-	@Override
-	public Mono<Integer> delete(ULong id) {
-		return this.dao.canBeUpdated(id)
-				.flatMap(e -> e.booleanValue() ? super.delete(id) : Mono.empty())
-				.flatMap(cacheService.evictFunction(CACHE_NAME_CLIENT_PWD_POLICY, id))
-		        .switchIfEmpty(securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.FORBIDDEN_CREATE, CLIENT_PASSWORD_POLICY));
-	}
-
-	public Mono<Boolean> checkAllConditions(ULong clientId, String password) {
+	public Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, String password) {
 
 		return flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.dao.getByClientId(clientId, ULong.valueOf(ca.getLoggedInFromClientId())),
+				ca -> this.dao.getByClientIdAndAppId(clientId, appId, ULong.valueOf(ca.getLoggedInFromClientId())),
 
 				(ca, passwordPolicy) -> checkAlphanumericExists(passwordPolicy, password),
 
-				(ca, passwordPolicy, isAlphaNumberic) -> checkInSpecialCharacters(password),
+				(ca, passwordPolicy, isAlphaNumeric) -> checkInSpecialCharacters(password),
 
-				(ca, passwordPolicy, isAlphaNumberic, isSpecial) -> {
+				(ca, passwordPolicy, isAlphaNumeric, isSpecial) -> {
 
 					if (passwordPolicy.isSpacesAllowed())
 						return Mono.just(true);
@@ -174,7 +96,7 @@ public class ClientPasswordPolicyService extends
 					return Mono.just(true);
 				},
 
-				(ca, passwordPolicy, isAlphaNumberic, isSpecial, isSpace) -> {
+				(ca, passwordPolicy, isAlphaNumeric, isSpecial, isSpace) -> {
 
 					String regex = passwordPolicy.getRegex();
 
@@ -185,7 +107,7 @@ public class ClientPasswordPolicyService extends
 
 				},
 
-				(ca, passwordPolicy, isAlphaNumberic, isSpecial, isSpace, isRegex) -> this
+				(ca, passwordPolicy, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this
 						.checkStrengthOfPassword(passwordPolicy, password))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
 				.defaultIfEmpty(true);
@@ -221,7 +143,6 @@ public class ClientPasswordPolicyService extends
 				return true;
 
 		}
-
 		return false;
 	}
 
@@ -263,5 +184,4 @@ public class ClientPasswordPolicyService extends
 
 		return Mono.just(true);
 	}
-
 }

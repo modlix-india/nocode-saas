@@ -215,11 +215,45 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
     }
 
     /**
+     * Setter for <code>security.security_user.PIN</code>. PIN message digested
+     * string
+     */
+    public SecurityUserRecord setPin(String value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.PIN</code>. PIN message digested
+     * string
+     */
+    public String getPin() {
+        return (String) get(12);
+    }
+
+    /**
+     * Setter for <code>security.security_user.PIN_HASHED</code>. PIN stored is
+     * hashed or not
+     */
+    public SecurityUserRecord setPinHashed(Byte value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.PIN_HASHED</code>. PIN stored is
+     * hashed or not
+     */
+    public Byte getPinHashed() {
+        return (Byte) get(13);
+    }
+
+    /**
      * Setter for <code>security.security_user.ACCOUNT_NON_EXPIRED</code>. If
      * false, means user is expired
      */
     public SecurityUserRecord setAccountNonExpired(Byte value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -228,7 +262,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * false, means user is expired
      */
     public Byte getAccountNonExpired() {
-        return (Byte) get(12);
+        return (Byte) get(14);
     }
 
     /**
@@ -236,7 +270,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * false, means user is locked
      */
     public SecurityUserRecord setAccountNonLocked(Byte value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -245,7 +279,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * false, means user is locked
      */
     public Byte getAccountNonLocked() {
-        return (Byte) get(13);
+        return (Byte) get(15);
     }
 
     /**
@@ -253,7 +287,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * If flase, password is expired
      */
     public SecurityUserRecord setCredentialsNonExpired(Byte value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -262,7 +296,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * If flase, password is expired
      */
     public Byte getCredentialsNonExpired() {
-        return (Byte) get(14);
+        return (Byte) get(16);
     }
 
     /**
@@ -270,7 +304,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * failed attempts
      */
     public SecurityUserRecord setNoFailedAttempt(Short value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -279,7 +313,41 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * failed attempts
      */
     public Short getNoFailedAttempt() {
-        return (Short) get(15);
+        return (Short) get(17);
+    }
+
+    /**
+     * Setter for <code>security.security_user.NO_PIN_FAILED_ATTEMPT</code>. No
+     * of failed attempts for PIN
+     */
+    public SecurityUserRecord setNoPinFailedAttempt(Short value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.NO_PIN_FAILED_ATTEMPT</code>. No
+     * of failed attempts for PIN
+     */
+    public Short getNoPinFailedAttempt() {
+        return (Short) get(18);
+    }
+
+    /**
+     * Setter for <code>security.security_user.NO_OTP_FAILED_ATTEMPT</code>. No
+     * of failed attempts for OTP
+     */
+    public SecurityUserRecord setNoOtpFailedAttempt(Short value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.NO_OTP_FAILED_ATTEMPT</code>. No
+     * of failed attempts for OTP
+     */
+    public Short getNoOtpFailedAttempt() {
+        return (Short) get(19);
     }
 
     /**
@@ -287,7 +355,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * user
      */
     public SecurityUserRecord setStatusCode(SecurityUserStatusCode value) {
-        set(16, value);
+        set(20, value);
         return this;
     }
 
@@ -296,7 +364,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * user
      */
     public SecurityUserStatusCode getStatusCode() {
-        return (SecurityUserStatusCode) get(16);
+        return (SecurityUserStatusCode) get(20);
     }
 
     /**
@@ -304,7 +372,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who created this row
      */
     public SecurityUserRecord setCreatedBy(ULong value) {
-        set(17, value);
+        set(21, value);
         return this;
     }
 
@@ -313,7 +381,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(17);
+        return (ULong) get(21);
     }
 
     /**
@@ -321,7 +389,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is created
      */
     public SecurityUserRecord setCreatedAt(LocalDateTime value) {
-        set(18, value);
+        set(22, value);
         return this;
     }
 
@@ -330,7 +398,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(18);
+        return (LocalDateTime) get(22);
     }
 
     /**
@@ -338,7 +406,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who updated this row
      */
     public SecurityUserRecord setUpdatedBy(ULong value) {
-        set(19, value);
+        set(23, value);
         return this;
     }
 
@@ -347,7 +415,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(23);
     }
 
     /**
@@ -355,7 +423,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is updated
      */
     public SecurityUserRecord setUpdatedAt(LocalDateTime value) {
-        set(20, value);
+        set(24, value);
         return this;
     }
 
@@ -364,7 +432,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(24);
     }
 
     // -------------------------------------------------------------------------
@@ -390,7 +458,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
     /**
      * Create a detached, initialised SecurityUserRecord
      */
-    public SecurityUserRecord(ULong id, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String designation, String middleName, String localeCode, String password, Byte passwordHashed, Byte accountNonExpired, Byte accountNonLocked, Byte credentialsNonExpired, Short noFailedAttempt, SecurityUserStatusCode statusCode, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityUserRecord(ULong id, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String designation, String middleName, String localeCode, String password, Byte passwordHashed, String pin, Byte pinHashed, Byte accountNonExpired, Byte accountNonLocked, Byte credentialsNonExpired, Short noFailedAttempt, Short noPinFailedAttempt, Short noOtpFailedAttempt, SecurityUserStatusCode statusCode, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityUser.SECURITY_USER);
 
         setId(id);
@@ -405,10 +473,14 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
         setLocaleCode(localeCode);
         setPassword(password);
         setPasswordHashed(passwordHashed);
+        setPin(pin);
+        setPinHashed(pinHashed);
         setAccountNonExpired(accountNonExpired);
         setAccountNonLocked(accountNonLocked);
         setCredentialsNonExpired(credentialsNonExpired);
         setNoFailedAttempt(noFailedAttempt);
+        setNoPinFailedAttempt(noPinFailedAttempt);
+        setNoOtpFailedAttempt(noOtpFailedAttempt);
         setStatusCode(statusCode);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

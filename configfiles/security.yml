@@ -44,3 +44,13 @@ management:
 redis:
   cache:
     prefix: sec
+
+sms:
+  allow: ${smsService.allow}
+  otp:
+    expire:
+      interval: 15
+  provider:
+    2Factor:
+      api:
+        key: ${smsService.provider.2factor.api.key}

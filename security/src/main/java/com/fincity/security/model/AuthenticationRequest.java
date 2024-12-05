@@ -13,6 +13,7 @@ public class AuthenticationRequest {
 	private String password;
 	private ULong userId;
 	private String otp = null;
+	private String pin = null;
 
 	private AuthenticationIdentifierType identifierType;
 	private boolean rememberMe = false;

@@ -12,6 +12,7 @@ import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityOrgStructure.SecurityOrgStructurePath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPastPasswords.SecurityPastPasswordsPath;
+import com.fincity.security.jooq.tables.SecurityPastPins.SecurityPastPinsPath;
 import com.fincity.security.jooq.tables.SecurityUserAddress.SecurityUserAddressPath;
 import com.fincity.security.jooq.tables.SecurityUserRolePermission.SecurityUserRolePermissionPath;
 import com.fincity.security.jooq.tables.SecurityUserToken.SecurityUserTokenPath;
@@ -135,6 +136,18 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
     public final TableField<SecurityUserRecord, Byte> PASSWORD_HASHED = createField(DSL.name("PASSWORD_HASHED"), SQLDataType.TINYINT.defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Password stored is hashed or not");
 
     /**
+     * The column <code>security.security_user.PIN</code>. PIN message digested
+     * string
+     */
+    public final TableField<SecurityUserRecord, String> PIN = createField(DSL.name("PIN"), SQLDataType.VARCHAR(512), this, "PIN message digested string");
+
+    /**
+     * The column <code>security.security_user.PIN_HASHED</code>. PIN stored is
+     * hashed or not
+     */
+    public final TableField<SecurityUserRecord, Byte> PIN_HASHED = createField(DSL.name("PIN_HASHED"), SQLDataType.TINYINT.defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "PIN stored is hashed or not");
+
+    /**
      * The column <code>security.security_user.ACCOUNT_NON_EXPIRED</code>. If
      * false, means user is expired
      */
@@ -157,6 +170,18 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * failed attempts
      */
     public final TableField<SecurityUserRecord, Short> NO_FAILED_ATTEMPT = createField(DSL.name("NO_FAILED_ATTEMPT"), SQLDataType.SMALLINT.defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "No of failed attempts");
+
+    /**
+     * The column <code>security.security_user.NO_PIN_FAILED_ATTEMPT</code>. No
+     * of failed attempts for PIN
+     */
+    public final TableField<SecurityUserRecord, Short> NO_PIN_FAILED_ATTEMPT = createField(DSL.name("NO_PIN_FAILED_ATTEMPT"), SQLDataType.SMALLINT.defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "No of failed attempts for PIN");
+
+    /**
+     * The column <code>security.security_user.NO_OTP_FAILED_ATTEMPT</code>. No
+     * of failed attempts for OTP
+     */
+    public final TableField<SecurityUserRecord, Short> NO_OTP_FAILED_ATTEMPT = createField(DSL.name("NO_OTP_FAILED_ATTEMPT"), SQLDataType.SMALLINT.defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "No of failed attempts for OTP");
 
     /**
      * The column <code>security.security_user.STATUS_CODE</code>. Status of the
@@ -304,6 +329,19 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
             _securityPastPasswords = new SecurityPastPasswordsPath(this, null, Keys.FK1_PAST_PASSWORD_USER_ID.getInverseKey());
 
         return _securityPastPasswords;
+    }
+
+    private transient SecurityPastPinsPath _securityPastPins;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_past_pins</code> table
+     */
+    public SecurityPastPinsPath securityPastPins() {
+        if (_securityPastPins == null)
+            _securityPastPins = new SecurityPastPinsPath(this, null, Keys.FK1_PAST_PIN_USER_ID.getInverseKey());
+
+        return _securityPastPins;
     }
 
     private transient SecurityUserAddressPath _securityUserAddress;

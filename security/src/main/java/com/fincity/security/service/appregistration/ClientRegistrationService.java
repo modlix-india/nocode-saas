@@ -1,8 +1,5 @@
 package com.fincity.security.service.appregistration;
 
-import static com.fincity.saas.commons.util.CommonsUtil.nonNullValue;
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
-
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -22,8 +19,10 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
+import static com.fincity.saas.commons.util.CommonsUtil.nonNullValue;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
@@ -357,7 +356,7 @@ public class ClientRegistrationService {
                                     return e.get(clientId).get(AppService.APP_PROP_REG_TYPE).getValue();
 
                                 var m = e.values().stream().findFirst();
-                                if (!m.isPresent())
+                                if (m.isEmpty())
                                     return "";
 
                                 return m.get().get(AppService.APP_PROP_REG_TYPE).getValue();
@@ -474,6 +473,7 @@ public class ClientRegistrationService {
 
     private Mono<Tuple2<User, String>> registerUser(String appCode, ULong urlClientId,
             ClientRegistrationRequest request, Client client, String regType) {
+
         User user = new User();
         user.setClientId(client.getId());
         user.setEmailId(request.getEmailId());
@@ -483,29 +483,23 @@ public class ClientRegistrationService {
         user.setUserName(request.getUserName());
         user.setPhoneNumber(request.getPhoneNumber());
 
-        String password = "";
-        if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD) || StringUtil.safeIsBlank(request.getPassword())) {
+        //TODO : Generate Password based on client password policy
+        final String password = StringUtil.safeIsBlank(request.getPassword()) ? PasswordUtil.generatePassword(8) : request.getPassword();
 
-            password = PasswordUtil.generatePassword(8);
-            user.setPassword(password);
-            user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-        } else if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
-            user.setPassword(request.getPassword());
+        user.setPassword(password);
+
+        if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
             user.setStatusCode(SecurityUserStatusCode.INACTIVE);
         } else {
             // In all other cases we make the user active as the user will already be
             // authenticated by a code or no verification required.
-
-            user.setPassword(request.getPassword());
             user.setStatusCode(SecurityUserStatusCode.ACTIVE);
         }
-
-        final String finPassword = password;
 
         return this.appService.getAppByCode(appCode)
                 .flatMap(app -> this.userService
                         .createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user)
-                        .map(e -> Tuples.of(e, finPassword)));
+                        .map(e -> Tuples.of(e, password)));
     }
 
     private String getValidClientName(ClientRegistrationRequest request) {
