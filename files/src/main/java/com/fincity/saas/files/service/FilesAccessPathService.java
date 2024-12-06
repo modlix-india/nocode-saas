@@ -383,4 +383,12 @@ public class FilesAccessPathService
 
 		return super.create(accessPath);
 	}
+
+	public Mono<Boolean> isClientBeingManaged(String managingClientCode, String clientCode) {
+
+		if(StringUtil.safeEquals(managingClientCode, clientCode) || StringUtil.safeEquals(managingClientCode, "SYSTEM"))
+			return Mono.just(true);
+			
+		return this.securityService.isBeingManaged(managingClientCode, clientCode);
+	}
 }

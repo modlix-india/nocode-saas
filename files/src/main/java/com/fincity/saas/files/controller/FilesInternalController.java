@@ -72,11 +72,9 @@ public class FilesInternalController {
             @PathVariable String resourceType,
             @RequestParam String clientCode,
             @RequestParam String url,
-            @RequestParam(required = false) Boolean metadataRequired,
-            ServerHttpRequest request,
-            ServerHttpResponse response) {
+            @RequestParam(required = false) Boolean metadataRequired) {
 
-        return ("SECURED".equals(resourceType) ? this.securedService : this.staticService)
-                .convertToBase64(clientCode, resourceType, url, metadataRequired, request, response);
+        return ("secured".equals(resourceType) ? this.securedService : this.staticService)
+                .convertToBase64(clientCode, resourceType.toUpperCase(), url, metadataRequired);
     }
 }

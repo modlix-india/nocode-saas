@@ -12,9 +12,8 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.core.feign.IFeignFilesService;
 
 import com.google.gson.JsonPrimitive;
@@ -35,8 +34,6 @@ public class UrlToBase64 extends AbstractReactiveFunction {
 
     private static final String EVENT_RESULT = "result";
 
-    private final IFeignSecurityService securityService;
-
     private final IFeignFilesService filesService;
 
 
@@ -47,8 +44,7 @@ public class UrlToBase64 extends AbstractReactiveFunction {
             .setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
 
-    public UrlToBase64(IFeignSecurityService securityService, IFeignFilesService filesService) {
-        this.securityService = securityService;
+    public UrlToBase64(IFeignFilesService filesService) {
         this.filesService = filesService;
     }
 
@@ -60,8 +56,8 @@ public class UrlToBase64 extends AbstractReactiveFunction {
                 FILE_TYPE,
                 Parameter.of(FILE_TYPE, Schema.ofString(FILE_TYPE)
                         .setEnums(
-                                List.of(new JsonPrimitive("STATIC"), new JsonPrimitive("SECURED")))
-                        .setDefaultValue(new JsonPrimitive("STATIC"))),
+                                List.of(new JsonPrimitive("static"), new JsonPrimitive("secured")))
+                        .setDefaultValue(new JsonPrimitive("static"))),
                 METADATA_REQUIRED,
                 Parameter.of(METADATA_REQUIRED,
                         Schema.ofBoolean(METADATA_REQUIRED)
@@ -82,22 +78,16 @@ public class UrlToBase64 extends AbstractReactiveFunction {
             return Mono.just(new FunctionOutput(List.of(EventResult.of(errorEvent.getName(),
                     Map.of(Event.ERROR, new JsonPrimitive("Please provide the url."))))));
 
-       return FlatMapUtil.flatMapMono(
-                
-                SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.securityService.isBeingManaged(ca.getLoggedInFromClientCode() , ca.getClientCode()),
+        return  SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+                        return this.filesService.convertToBase64(fileType,CommonsUtil.nonNullValue(ca.getClientCode(),
+                                                ca.getUrlClientCode()), url, metadataRequired)
+                               .map(e -> new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(e))))))
+                               .switchIfEmpty(Mono.just(new FunctionOutput(List.of(EventResult.of(errorEvent.getName(), 
+                                    Map.of(EVENT_RESULT, new JsonPrimitive("File cannot be converted to base64")))))));
 
-                (ca, managed) -> {
-                        if(!managed.booleanValue())
-                                return Mono.just(new FunctionOutput(
-                                        List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(""))))));
-                        
-
-                        return this.filesService.convertToBase64(fileType,ca.getClientCode(), url, metadataRequired)
-                        .map(e -> new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(e))))));
-                }
-        );
+                        });
 
     }
 
