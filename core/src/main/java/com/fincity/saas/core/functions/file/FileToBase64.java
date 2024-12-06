@@ -30,7 +30,7 @@ public class FileToBase64 extends AbstractReactiveFunction {
 
     private static final String NAME = "FileToBase64";
 
-    private static final String URL = "url";
+    private static final String FILE_PATH = "filePath";
 
     private static final String EVENT_RESULT = "result";
 
@@ -52,7 +52,7 @@ public class FileToBase64 extends AbstractReactiveFunction {
     public FunctionSignature getSignature() {
 
         return new FunctionSignature().setNamespace(NAMESPACE).setName(NAME).setParameters(Map.of(
-                URL, Parameter.of(URL, Schema.ofString(URL).setDefaultValue(new JsonPrimitive(""))),
+                FILE_PATH, Parameter.of(FILE_PATH, Schema.ofString(FILE_PATH).setDefaultValue(new JsonPrimitive(""))),
                 FILE_TYPE,
                 Parameter.of(FILE_TYPE, Schema.ofString(FILE_TYPE)
                         .setEnums(
@@ -68,21 +68,21 @@ public class FileToBase64 extends AbstractReactiveFunction {
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
 
-        String url = context.getArguments().get(URL).getAsString();
+        String path = context.getArguments().get(FILE_PATH).getAsString();
 
         String fileType = context.getArguments().get(FILE_TYPE).getAsString();
 
         boolean metadataRequired = context.getArguments().get(METADATA_REQUIRED).getAsBoolean();
 
-        if (StringUtil.isNullOrBlank(url))
+        if (StringUtil.isNullOrBlank(path))
             return Mono.just(new FunctionOutput(List.of(EventResult.of(errorEvent.getName(),
-                    Map.of(Event.ERROR, new JsonPrimitive("Please provide the url."))))));
+                    Map.of(Event.ERROR, new JsonPrimitive("Please provide the valid file path."))))));
 
 
         return  SecurityContextUtil.getUsersContextAuthentication()
                 .flatMap(ca -> {
                         return this.filesService.readFileAsBase64(fileType,CommonsUtil.nonNullValue(ca.getClientCode(),
-                                                ca.getUrlClientCode()), url, metadataRequired)
+                                                ca.getUrlClientCode()), path, metadataRequired)
                                .map(e -> new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(e))))))
                                .switchIfEmpty(Mono.just(new FunctionOutput(List.of(EventResult.of(errorEvent.getName(), 
                                     Map.of(EVENT_RESULT, new JsonPrimitive("File cannot be converted to base64")))))));
