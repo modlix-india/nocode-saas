@@ -75,6 +75,6 @@ public class FilesInternalController {
             @RequestParam(required = false) Boolean metadataRequired) {
 
         return ("secured".equals(resourceType) ? this.securedService : this.staticService)
-                .convertToBase64(clientCode, resourceType.toUpperCase(), url, metadataRequired);
+                .readFileAsBase64(clientCode, resourceType.toUpperCase(), url, metadataRequired);
     }
 }

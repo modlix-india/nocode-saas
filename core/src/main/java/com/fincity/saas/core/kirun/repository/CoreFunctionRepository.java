@@ -13,7 +13,7 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.functions.email.SendEmail;
 import com.fincity.saas.core.functions.file.TemplateToPdf;
-import com.fincity.saas.core.functions.file.UrlToBase64;
+import com.fincity.saas.core.functions.file.FileToBase64;
 import com.fincity.saas.core.functions.rest.CallRequest;
 import com.fincity.saas.core.functions.security.GetAppUrl;
 import com.fincity.saas.core.functions.security.GetClient;
@@ -155,8 +155,8 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 	private void makeFileEncodingFunctions(IFeignFilesService filesService){
 		
-		ReactiveFunction urlToBase64 = new UrlToBase64(filesService);
-		repoMap.put(urlToBase64.getSignature().getFullName(), urlToBase64);
+		ReactiveFunction fileToBase64 = new FileToBase64(filesService);
+		repoMap.put(fileToBase64.getSignature().getFullName(), fileToBase64);
 		
 	}
 

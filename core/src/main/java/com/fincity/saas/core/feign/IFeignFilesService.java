@@ -39,7 +39,7 @@ public interface IFeignFilesService {
 
 
         @GetMapping("/api/files/internal/{resourceType}/convertToBase64")
-        Mono<String> convertToBase64(
+        Mono<String> readFileAsBase64(
                 @PathVariable String resourceType,
                 @RequestParam String clientCode,
                 @RequestParam String url,

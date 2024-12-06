@@ -20,7 +20,7 @@ import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
 
-public class UrlToBase64 extends AbstractReactiveFunction {
+public class FileToBase64 extends AbstractReactiveFunction {
 
     private static final String FILE_TYPE = "fileType";
 
@@ -28,7 +28,7 @@ public class UrlToBase64 extends AbstractReactiveFunction {
 
     private static final String NAMESPACE = "CoreServices.File";
 
-    private static final String NAME = "UrlToBase64";
+    private static final String NAME = "FileToBase64";
 
     private static final String URL = "url";
 
@@ -44,7 +44,7 @@ public class UrlToBase64 extends AbstractReactiveFunction {
             .setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
 
-    public UrlToBase64(IFeignFilesService filesService) {
+    public FileToBase64(IFeignFilesService filesService) {
         this.filesService = filesService;
     }
 
@@ -81,7 +81,7 @@ public class UrlToBase64 extends AbstractReactiveFunction {
 
         return  SecurityContextUtil.getUsersContextAuthentication()
                 .flatMap(ca -> {
-                        return this.filesService.convertToBase64(fileType,CommonsUtil.nonNullValue(ca.getClientCode(),
+                        return this.filesService.readFileAsBase64(fileType,CommonsUtil.nonNullValue(ca.getClientCode(),
                                                 ca.getUrlClientCode()), url, metadataRequired)
                                .map(e -> new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonPrimitive(e))))))
                                .switchIfEmpty(Mono.just(new FunctionOutput(List.of(EventResult.of(errorEvent.getName(), 

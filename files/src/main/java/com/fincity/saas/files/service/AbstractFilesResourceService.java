@@ -867,7 +867,7 @@ public abstract class AbstractFilesResourceService {
 
 	}
 
-	public Mono<String> convertToBase64(String clientCode, String resourceType, String uri, boolean metadataRequired) {
+	public Mono<String> readFileAsBase64(String clientCode, String resourceType, String uri, boolean metadataRequired) {
 
 		Tuple2<String, String> uriPath = this.resolvePathWithClientCode(uri);
 
