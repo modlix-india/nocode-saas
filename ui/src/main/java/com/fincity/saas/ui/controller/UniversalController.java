@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -41,9 +42,6 @@ public class UniversalController {
 
 	private final Gson gson;
 
-	@Value("${ui.jsURL:}")
-	private String jsURL;
-
 	@Value("${ui.resourceCacheAge:604800}")
 	private int cacheAge;
 
@@ -65,20 +63,16 @@ public class UniversalController {
 		this.gson = gson;
 	}
 
-	@GetMapping(value = "js/index.js", produces = "text/javascript")
-	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag) {
+	@GetMapping(value = "js/dist/**")
+	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag,
+			ServerHttpRequest request) {
 
-		return jsService.getJSObject()
+		int index = request.getURI().getPath().indexOf("/js/dist/");
+		String filePath = request.getURI().getPath().substring(index + 9);
+
+		return jsService.getJSResource(filePath)
 				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);
-	}
-
-	@GetMapping(value = "js/index.js.map", produces = "text/javascript")
-	public Mono<ResponseEntity<String>> indexJSMap(
-			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
-
-		return Mono.just(ResponseEntity.notFound()
-				.build());
 	}
 
 	@GetMapping(value = "manifest/manifest.json", produces = MimeTypeUtils.APPLICATION_JSON_VALUE)
@@ -106,6 +100,7 @@ public class UniversalController {
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
+			@RequestParam(required = false) String debug,
 			ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
@@ -115,8 +110,9 @@ public class UniversalController {
 
 				(ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
 				.switchIfEmpty(Mono
-						.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode).flatMap(e -> ResponseEntityUtils
-								.makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
+						.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode, debug)
+								.flatMap(e -> ResponseEntityUtils
+										.makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
 	}
 
 	@RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = { RequestMethod.POST,
