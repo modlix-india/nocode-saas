@@ -42,6 +42,7 @@ ui:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
   cdnHostName: cdn-local.modlix.com
   cdnReplacePlus: true
+  jsURL: https://cdn-local.modlix.com
 
 core:
   mongo:

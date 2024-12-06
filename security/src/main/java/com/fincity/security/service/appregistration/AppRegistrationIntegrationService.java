@@ -36,284 +36,284 @@ import reactor.util.context.Context;
 
 @Service
 public class AppRegistrationIntegrationService
-                extends
-                AbstractJOOQUpdatableDataService<SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration, AppRegistrationIntegrationDAO> {
+        extends
+        AbstractJOOQUpdatableDataService<SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration, AppRegistrationIntegrationDAO> {
 
-        private static final String LOGIN_URI = "loginUri";
-        private static final String INTG_ID = "intgId";
-        private static final String INTG_SECRET = "intgSecret";
+    private static final String LOGIN_URI = "loginUri";
+    private static final String INTG_ID = "intgId";
+    private static final String INTG_SECRET = "intgSecret";
 
-        private static final String CACHE_NAME_INTEGRATION_ID = "integrationId";
-        private static final String CACHE_NAME_INTEGRATION_PLATFORM = "integrationPlatform";
+    private static final String CACHE_NAME_INTEGRATION_ID = "integrationId";
+    private static final String CACHE_NAME_INTEGRATION_PLATFORM = "integrationPlatform";
 
-        private final AppService appService;
-        private final CacheService cacheService;
-        private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
+    private final AppService appService;
+    private final CacheService cacheService;
+    private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
-        public AppRegistrationIntegrationService(AppService appService, CacheService cacheService,
-                        AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
-                this.appService = appService;
-                this.cacheService = cacheService;
-                this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
+    public AppRegistrationIntegrationService(AppService appService, CacheService cacheService,
+            AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
+        this.appService = appService;
+        this.cacheService = cacheService;
+        this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Integration_CREATE')")
+    public Mono<AppRegistrationIntegration> create(AppRegistrationIntegration entity) {
+        return super.create(entity);
+    }
+
+    @Override
+    public Mono<AppRegistrationIntegration> read(ULong id) {
+        return super.read(id);
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Integration_UPDATE')")
+    public Mono<AppRegistrationIntegration> update(AppRegistrationIntegration entity) {
+
+        return super.update(entity)
+                .flatMap(
+                        this.cacheService.evictFunctionWithKeyFunction(
+                                CACHE_NAME_INTEGRATION_ID, this::getCacheKeys));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Integration_DELETE')")
+    public Mono<Integer> delete(ULong id) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(id),
+                e -> super.delete(id).flatMap(this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_ID,
+                        getCacheKeys(e))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        "AppRegistrationIntegrationService.delete"));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('Authorities.Integration_READ')")
+    public Mono<Page<AppRegistrationIntegration>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return super.readPageFilter(pageable, condition);
+    }
+
+    protected Mono<AppRegistrationIntegration> updatableEntity(AppRegistrationIntegration entity) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.read(entity.getId()),
+
+                existing -> {
+                    existing.setIntgId(entity.getIntgId());
+                    existing.setIntgSecret(entity.getIntgSecret());
+                    existing.setLoginUri(entity.getLoginUri());
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        "AppRegistrationIntegrationService.updatableEntity"));
+    }
+
+    @Override
+    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+
+        Map<String, Object> newFields = new HashMap<>();
+
+        if (fields.containsKey(LOGIN_URI)) {
+            newFields.put(LOGIN_URI, fields.get(LOGIN_URI));
+        }
+        if (fields.containsKey(INTG_ID)) {
+            newFields.put(INTG_ID, fields.get(INTG_ID));
+        }
+        if (fields.containsKey(INTG_SECRET)) {
+            newFields.put(INTG_SECRET, fields.get(INTG_SECRET));
         }
 
-        @Override
-        @PreAuthorize("hasAuthority('Authorities.Integration_CREATE')")
-        public Mono<AppRegistrationIntegration> create(AppRegistrationIntegration entity) {
-                return super.create(entity);
-        }
+        return Mono.just(newFields);
+    }
 
-        @Override
-        public Mono<AppRegistrationIntegration> read(ULong id) {
-                return super.read(id);
-        }
+    public Mono<AppRegistrationIntegration> getIntegration(SecurityAppRegIntegrationPlatform platform) {
 
-        @Override
-        @PreAuthorize("hasAuthority('Authorities.Integration_UPDATE')")
-        public Mono<AppRegistrationIntegration> update(AppRegistrationIntegration entity) {
+        return FlatMapUtil.flatMapMono(
 
-                return super.update(entity)
-                                .flatMap(
-                                                this.cacheService.evictFunctionWithKeyFunction(
-                                                                CACHE_NAME_INTEGRATION_ID, this::getCacheKeys));
-        }
+                SecurityContextUtil::getUsersContextAuthentication,
 
-        @Override
-        @PreAuthorize("hasAuthority('Authorities.Integration_DELETE')")
-        public Mono<Integer> delete(ULong id) {
+                ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-                return FlatMapUtil.flatMapMono(
-                                () -> this.read(id),
-                                e -> super.delete(id).flatMap(this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_ID,
-                                                getCacheKeys(e))))
-                                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                                                "AppRegistrationIntegrationService.delete"));
-        }
+                (ca, app) -> this.cacheService.cacheValueOrGet(CACHE_NAME_INTEGRATION_PLATFORM,
+                        () -> this.dao.getIntegration(app.getId(),
+                                ULong.valueOf(ca.getLoggedInFromClientId()), platform),
+                        app.getId(), "-", ca.getLoggedInFromClientId(), "-", platform))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        "AppRegistrationIntegrationService.getIntegration"));
+    }
 
-        @Override
-        @PreAuthorize("hasAuthority('Authorities.Integration_READ')")
-        public Mono<Page<AppRegistrationIntegration>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-                return super.readPageFilter(pageable, condition);
-        }
+    public Mono<String> redirectToGoogleAuthConsent(AppRegistrationIntegration appRegIntg, String state,
+            String callBackURL) {
 
-        protected Mono<AppRegistrationIntegration> updatableEntity(AppRegistrationIntegration entity) {
+        return FlatMapUtil.flatMapMono(
 
-                return FlatMapUtil.flatMapMono(
+                () -> {
+                    URI authUri = UriComponentsBuilder
+                            .fromHttpUrl("https://accounts.google.com/o/oauth2/v2/auth")
+                            .queryParam("client_id", appRegIntg.getIntgId())
+                            .queryParam("redirect_uri", callBackURL)
+                            .queryParam("scope", "email profile openid")
+                            .queryParam("response_type", "code")
+                            .queryParam("state", state).queryParam("access_type", "offline")
+                            .queryParam("prompt", "consent").build().toUri();
 
-                                () -> this.read(entity.getId()),
+                    return Mono.just(authUri);
+                },
 
-                                existing -> {
-                                        existing.setIntgId(entity.getIntgId());
-                                        existing.setIntgSecret(entity.getIntgSecret());
-                                        existing.setLoginUri(entity.getLoginUri());
-                                        return Mono.just(existing);
-                                })
-                                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                                                "AppRegistrationIntegrationService.updatableEntity"));
-        }
+                authUri -> this.appRegistrationIntegrationTokenService.create(
+                        new AppRegistrationIntegrationToken()
+                                .setIntegrationId(appRegIntg.getId()).setState(state)),
 
-        @Override
-        protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+                (authUri, appRegIntgToken) -> Mono.just(authUri.toString()));
+    }
 
-                Map<String, Object> newFields = new HashMap<>();
+    public Mono<String> redirectToMetaAuthConsent(AppRegistrationIntegration appRegIntg, String state,
+            String callBackURL) {
 
-                if (fields.containsKey(LOGIN_URI)) {
-                        newFields.put(LOGIN_URI, fields.get(LOGIN_URI));
-                }
-                if (fields.containsKey(INTG_ID)) {
-                        newFields.put(INTG_ID, fields.get(INTG_ID));
-                }
-                if (fields.containsKey(INTG_SECRET)) {
-                        newFields.put(INTG_SECRET, fields.get(INTG_SECRET));
-                }
+        return FlatMapUtil.flatMapMono(
 
-                return Mono.just(newFields);
-        }
+                () -> {
+                    URI authUri = UriComponentsBuilder
+                            .fromHttpUrl("https://www.facebook.com/dialog/oauth")
+                            .queryParam("client_id", appRegIntg.getIntgId())
+                            .queryParam("redirect_uri", callBackURL)
+                            .queryParam("scope", "public_profile,email")
+                            .queryParam("response_type", "code")
+                            .queryParam("state", state).build().toUri();
+                    return Mono.just(authUri);
+                },
 
-        public Mono<AppRegistrationIntegration> getIntegration(SecurityAppRegIntegrationPlatform platform) {
+                authUri -> this.appRegistrationIntegrationTokenService.create(
+                        new AppRegistrationIntegrationToken()
+                                .setIntegrationId(appRegIntg.getId()).setState(state)),
 
-                return FlatMapUtil.flatMapMono(
+                (authUri, appRegIntgToken) -> Mono.just(authUri.toString()));
+    }
 
-                                SecurityContextUtil::getUsersContextAuthentication,
+    public Mono<ClientRegistrationRequest> getGoogleUserToken(AppRegistrationIntegration appRegIntg,
+            AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
+            ServerHttpRequest request) {
 
-                                ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
+        String baseTokenURL = "https://oauth2.googleapis.com/token";
+        WebClient webClient = WebClient.create();
 
-                                (ca, app) -> this.cacheService.cacheValueOrGet(CACHE_NAME_INTEGRATION_PLATFORM,
-                                                () -> this.dao.getIntegration(app.getId(),
-                                                                ULong.valueOf(ca.getLoggedInFromClientId()), platform),
-                                                app.getId(), "-", ca.getLoggedInFromClientId(), "-", platform))
-                                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                                                "AppRegistrationIntegrationService.getIntegration"));
-        }
+        return FlatMapUtil.flatMapMono(
 
-        public Mono<String> redirectToGoogleAuthConsent(AppRegistrationIntegration appRegIntg, String state,
-                        String callBackURL) {
+                () -> webClient.post().uri(baseTokenURL)
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .body(BodyInserters.fromFormData("client_id", appRegIntg.getIntgId())
+                                .with("client_secret", appRegIntg.getIntgSecret())
+                                .with("grant_type", "authorization_code")
+                                .with("code", request.getQueryParams().getFirst("code"))
+                                .with("redirect_uri", callBackURL))
+                        .retrieve().bodyToMono(JsonNode.class),
 
-                return FlatMapUtil.flatMapMono(
+                tokenObj -> this.getGoogleUserInfo(tokenObj.get("access_token").toString()),
 
-                                () -> {
-                                        URI authUri = UriComponentsBuilder
-                                                        .fromHttpUrl("https://accounts.google.com/o/oauth2/v2/auth")
-                                                        .queryParam("client_id", appRegIntg.getIntgId())
-                                                        .queryParam("redirect_uri", callBackURL)
-                                                        .queryParam("scope", "email profile openid")
-                                                        .queryParam("response_type", "code")
-                                                        .queryParam("state", state).queryParam("access_type", "offline")
-                                                        .queryParam("prompt", "consent").build().toUri();
+                (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
+                        .update(appRegIntgToken
+                                .setAuthCode(request.getQueryParams().getFirst("code"))
+                                .setToken(tokenObj.get("access_token").asText())
+                                .setRefreshToken(tokenObj.get("refresh_token").asText())
+                                .setExpiresAt(
+                                        LocalDateTime.now().plusSeconds(Long
+                                                .parseLong(tokenObj.get(
+                                                        "expires_in")
+                                                        .asText())))
+                                .setUsername(userObj.get("email").asText())
+                                .setTokenMetadata(tokenObj)
+                                .setUserMetadata(userObj)),
 
-                                        return Mono.just(authUri);
-                                },
+                (tokenObj, userObj, updatedAppRegIntgToken) -> {
+                    ClientRegistrationRequest clientRegistrationRequest = new ClientRegistrationRequest();
+                    clientRegistrationRequest.setEmailId(updatedAppRegIntgToken.getUsername());
+                    clientRegistrationRequest.setFirstName(userObj.get("given_name").asText());
+                    clientRegistrationRequest.setLastName(userObj.get("family_name").asText());
+                    clientRegistrationRequest.setUserName(updatedAppRegIntgToken.getUsername());
+                    clientRegistrationRequest
+                            .setSocialRegisterState(updatedAppRegIntgToken.getState());
 
-                                authUri -> this.appRegistrationIntegrationTokenService.create(
-                                                new AppRegistrationIntegrationToken()
-                                                                .setIntegrationId(appRegIntg.getId()).setState(state)),
+                    return Mono.just(clientRegistrationRequest);
+                });
+    }
 
-                                (authUri, appRegIntgToken) -> Mono.just(authUri.toString()));
-        }
+    public Mono<ClientRegistrationRequest> getMetaUserToken(AppRegistrationIntegration appRegIntg,
+            AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
+            ServerHttpRequest request) {
 
-        public Mono<String> redirectToMetaAuthConsent(AppRegistrationIntegration appRegIntg, String state,
-                        String callBackURL) {
+        String baseTokenURL = "https://graph.facebook.com/v20.0/oauth/access_token";
+        WebClient webClient = WebClient.create();
 
-                return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-                                () -> {
-                                        URI authUri = UriComponentsBuilder
-                                                        .fromHttpUrl("https://www.facebook.com/dialog/oauth")
-                                                        .queryParam("client_id", appRegIntg.getIntgId())
-                                                        .queryParam("redirect_uri", callBackURL)
-                                                        .queryParam("scope", "public_profile,email")
-                                                        .queryParam("response_type", "code")
-                                                        .queryParam("state", state).build().toUri();
-                                        return Mono.just(authUri);
-                                },
+                () -> webClient.post().uri(baseTokenURL)
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .body(BodyInserters.fromFormData("client_id", appRegIntg.getIntgId())
+                                .with("client_secret", appRegIntg.getIntgSecret())
+                                .with("grant_type", "authorization_code")
+                                .with("code", request.getQueryParams().getFirst("code"))
+                                .with("redirect_uri", callBackURL))
+                        .retrieve().bodyToMono(JsonNode.class),
 
-                                authUri -> this.appRegistrationIntegrationTokenService.create(
-                                                new AppRegistrationIntegrationToken()
-                                                                .setIntegrationId(appRegIntg.getId()).setState(state)),
+                tokenObj -> this.getMetaUserInfo(tokenObj.get("access_token").asText()),
 
-                                (authUri, appRegIntgToken) -> Mono.just(authUri.toString()));
-        }
+                (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
+                        .update(appRegIntgToken
+                                .setAuthCode(request.getQueryParams().getFirst("code"))
+                                .setToken(tokenObj.get("access_token").asText())
+                                .setExpiresAt(
+                                        LocalDateTime.now().plusSeconds(Long
+                                                .parseLong(tokenObj.get(
+                                                        "expires_in")
+                                                        .asText())))
+                                .setUsername(userObj.get("email").asText())
+                                .setTokenMetadata(tokenObj)
+                                .setUserMetadata(userObj)),
 
-        public Mono<ClientRegistrationRequest> getGoogleUserToken(AppRegistrationIntegration appRegIntg,
-                        AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
-                        ServerHttpRequest request) {
+                (tokenObj, userObj, updatedAppRegIntgToken) -> {
+                    ClientRegistrationRequest clientRegistrationRequest = new ClientRegistrationRequest();
+                    clientRegistrationRequest.setEmailId(updatedAppRegIntgToken.getUsername());
+                    clientRegistrationRequest.setFirstName(userObj.get("first_name").asText());
+                    clientRegistrationRequest.setLastName(userObj.get("last_name").asText());
+                    clientRegistrationRequest.setUserName(updatedAppRegIntgToken.getUsername());
+                    clientRegistrationRequest
+                            .setSocialRegisterState(updatedAppRegIntgToken.getState());
 
-                String baseTokenURL = "https://oauth2.googleapis.com/token";
-                WebClient webClient = WebClient.create();
+                    return Mono.just(clientRegistrationRequest);
+                });
+    }
 
-                return FlatMapUtil.flatMapMono(
+    private Mono<JsonNode> getGoogleUserInfo(String token) {
 
-                                () -> webClient.post().uri(baseTokenURL)
-                                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                                                .body(BodyInserters.fromFormData("client_id", appRegIntg.getIntgId())
-                                                                .with("client_secret", appRegIntg.getIntgSecret())
-                                                                .with("grant_type", "authorization_code")
-                                                                .with("code", request.getQueryParams().getFirst("code"))
-                                                                .with("redirect_uri", callBackURL))
-                                                .retrieve().bodyToMono(JsonNode.class),
+        String baseURL = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-                                tokenObj -> this.getGoogleUserInfo(tokenObj.get("access_token").toString()),
+        return WebClient.create().get().uri(baseURL).headers(h -> h.setBearerAuth(token)).retrieve()
+                .bodyToMono(JsonNode.class);
+    }
 
-                                (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
-                                                .update(appRegIntgToken
-                                                                .setAuthCode(request.getQueryParams().getFirst("code"))
-                                                                .setToken(tokenObj.get("access_token").asText())
-                                                                .setRefreshToken(tokenObj.get("refresh_token").asText())
-                                                                .setExpiresAt(
-                                                                                LocalDateTime.now().plusSeconds(Long
-                                                                                                .parseLong(tokenObj.get(
-                                                                                                                "expires_in")
-                                                                                                                .asText())))
-                                                                .setUsername(userObj.get("email").asText())
-                                                                .setTokenMetadata(tokenObj)
-                                                                .setUserMetadata(userObj)),
+    private Mono<JsonNode> getMetaUserInfo(String token) {
 
-                                (tokenObj, userObj, updatedAppRegIntgToken) -> {
-                                        ClientRegistrationRequest clientRegistrationRequest = new ClientRegistrationRequest();
-                                        clientRegistrationRequest.setEmailId(updatedAppRegIntgToken.getUsername());
-                                        clientRegistrationRequest.setFirstName(userObj.get("given_name").asText());
-                                        clientRegistrationRequest.setLastName(userObj.get("family_name").asText());
-                                        clientRegistrationRequest.setUserName(updatedAppRegIntgToken.getUsername());
-                                        clientRegistrationRequest
-                                                        .setSocialRegisterState(updatedAppRegIntgToken.getState());
+        String fields = "id,first_name,middle_name,last_name,email,locale";
 
-                                        return Mono.just(clientRegistrationRequest);
-                                });
-        }
+        return WebClient.create().get()
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("https")
+                        .host("graph.facebook.com")
+                        .path("/me")
+                        .queryParam("fields", fields)
+                        .queryParam("access_token", token)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class);
+    }
 
-        public Mono<ClientRegistrationRequest> getMetaUserToken(AppRegistrationIntegration appRegIntg,
-                        AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
-                        ServerHttpRequest request) {
-
-                String baseTokenURL = "https://graph.facebook.com/v20.0/oauth/access_token";
-                WebClient webClient = WebClient.create();
-
-                return FlatMapUtil.flatMapMono(
-
-                                () -> webClient.post().uri(baseTokenURL)
-                                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                                                .body(BodyInserters.fromFormData("client_id", appRegIntg.getIntgId())
-                                                                .with("client_secret", appRegIntg.getIntgSecret())
-                                                                .with("grant_type", "authorization_code")
-                                                                .with("code", request.getQueryParams().getFirst("code"))
-                                                                .with("redirect_uri", callBackURL))
-                                                .retrieve().bodyToMono(JsonNode.class),
-
-                                tokenObj -> this.getMetaUserInfo(tokenObj.get("access_token").asText()),
-
-                                (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
-                                                .update(appRegIntgToken
-                                                                .setAuthCode(request.getQueryParams().getFirst("code"))
-                                                                .setToken(tokenObj.get("access_token").asText())
-                                                                .setExpiresAt(
-                                                                                LocalDateTime.now().plusSeconds(Long
-                                                                                                .parseLong(tokenObj.get(
-                                                                                                                "expires_in")
-                                                                                                                .asText())))
-                                                                .setUsername(userObj.get("email").asText())
-                                                                .setTokenMetadata(tokenObj)
-                                                                .setUserMetadata(userObj)),
-
-                                (tokenObj, userObj, updatedAppRegIntgToken) -> {
-                                        ClientRegistrationRequest clientRegistrationRequest = new ClientRegistrationRequest();
-                                        clientRegistrationRequest.setEmailId(updatedAppRegIntgToken.getUsername());
-                                        clientRegistrationRequest.setFirstName(userObj.get("first_name").asText());
-                                        clientRegistrationRequest.setLastName(userObj.get("last_name").asText());
-                                        clientRegistrationRequest.setUserName(updatedAppRegIntgToken.getUsername());
-                                        clientRegistrationRequest
-                                                        .setSocialRegisterState(updatedAppRegIntgToken.getState());
-
-                                        return Mono.just(clientRegistrationRequest);
-                                });
-        }
-
-        private Mono<JsonNode> getGoogleUserInfo(String token) {
-
-                String baseURL = "https://www.googleapis.com/oauth2/v2/userinfo";
-
-                return WebClient.create().get().uri(baseURL).headers(h -> h.setBearerAuth(token)).retrieve()
-                                .bodyToMono(JsonNode.class);
-        }
-
-        private Mono<JsonNode> getMetaUserInfo(String token) {
-
-                String fields = "id,first_name,middle_name,last_name,email,locale";
-
-                return WebClient.create().get()
-                                .uri(uriBuilder -> uriBuilder
-                                                .scheme("https")
-                                                .host("graph.facebook.com")
-                                                .path("/me")
-                                                .queryParam("fields", fields)
-                                                .queryParam("access_token", token)
-                                                .build())
-                                .retrieve()
-                                .bodyToMono(JsonNode.class);
-        }
-
-        private String getCacheKeys(AppRegistrationIntegration entity) {
-                return  String.join(entity.getClientId().toString(), ":", entity.getAppId().toString(), ":",
-                                entity.getPlatform().toString());
-        }
+    private String getCacheKeys(AppRegistrationIntegration entity) {
+        return String.join(entity.getClientId().toString(), ":", entity.getAppId().toString(), ":",
+                entity.getPlatform().toString());
+    }
 
 }
