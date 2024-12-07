@@ -1,11 +1,9 @@
 package com.fincity.saas.ui.service;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
@@ -22,8 +20,6 @@ public class JSService {
 	private static final String CACHE_OBJECT_JS_KEY = "jsObject";
 
 	public static final String CACHE_NAME_JS_MAP = "jsMapCache";
-
-	private static final String CACHE_OBJECT_JS_MAP_KEY = "jsMapObject";
 
 	private final CacheService cacheService;
 	private final WebClient.Builder builder;
@@ -50,7 +46,7 @@ public class JSService {
 			return Mono.just(new ObjectWithUniqueID<>(""));
 
 		Mono<ObjectWithUniqueID<String>> cacheEmptyDefer = Mono.defer(() -> webClient.get()
-				.uri("js/dist/" + filePath)
+				.uri(filePath)
 				.retrieve()
 				.bodyToMono(String.class)
 				.flatMap(jsString -> cacheService.put(filePath,

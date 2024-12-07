@@ -4,7 +4,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +11,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
@@ -23,27 +21,29 @@ import com.fincity.saas.core.service.TemplateService;
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuples;
 
 @Service
 public class EmailService {
 
-	@Autowired
-	private ConnectionService connectionService;
+	private final ConnectionService connectionService;
 
-	@Autowired
-	private CoreMessageResourceService msgService;
+	private final CoreMessageResourceService msgService;
 
-	@Autowired
-	private SendGridService sendGridService;
+	private final SendGridService sendGridService;
+	private final SMTPService smtpService;
 
-	@Autowired
-	private SMTPService smtpService;
-
-	@Autowired
-	private TemplateService templateService;
+	private final TemplateService templateService;
 
 	private final EnumMap<ConnectionSubType, IAppEmailService> services = new EnumMap<>(ConnectionSubType.class);
+
+	public EmailService(SendGridService sendGridService, SMTPService smtpService, TemplateService templateService,
+			ConnectionService connectionService, CoreMessageResourceService msgService) {
+		this.sendGridService = sendGridService;
+		this.smtpService = smtpService;
+		this.templateService = templateService;
+		this.connectionService = connectionService;
+		this.msgService = msgService;
+	}
 
 	@PostConstruct
 	public void init() {
