@@ -17,7 +17,7 @@ import org.jooq.impl.Internal;
  * A class modelling foreign key relationships and constraints of tables in
  * core.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Keys {
 
     // -------------------------------------------------------------------------
@@ -25,4 +25,5 @@ public class Keys {
     // -------------------------------------------------------------------------
 
     public static final UniqueKey<CoreTokensRecord> KEY_CORE_TOKENS_PRIMARY = Internal.createUniqueKey(CoreTokens.CORE_TOKENS, DSL.name("KEY_core_tokens_PRIMARY"), new TableField[] { CoreTokens.CORE_TOKENS.ID }, true);
+    public static final UniqueKey<CoreTokensRecord> KEY_CORE_TOKENS_UK_CORE_TOKEN_STATE = Internal.createUniqueKey(CoreTokens.CORE_TOKENS, DSL.name("KEY_core_tokens_UK_CORE_TOKEN_STATE"), new TableField[] { CoreTokens.CORE_TOKENS.STATE }, true);
 }

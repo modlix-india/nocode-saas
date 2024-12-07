@@ -10,7 +10,7 @@ import com.fincity.saas.core.jooq.tables.CoreTokens;
 /**
  * Convenience access to all tables in core.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
 
     /**
