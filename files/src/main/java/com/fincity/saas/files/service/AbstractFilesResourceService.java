@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -864,6 +865,78 @@ public abstract class AbstractFilesResourceService {
 						clientCode, filePath, fileName, tmpFile, override))
 				.map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file));
 
+	}
+
+	public Mono<String> readFileAsBase64(String clientCode, String resourceType, String uri, boolean metadataRequired) {
+
+		Tuple2<String, String> uriPath = this.resolvePathWithClientCode(uri);
+
+		String resourcePath = uriPath.getT1();
+
+		int ind = resourcePath.charAt(0) == '/' ? 1 : 0;
+		int secondInd = resourcePath.indexOf('/', ind);
+
+		String clientCodeFromUrl = secondInd == -1 ? resourcePath.substring(ind) : resourcePath.substring(ind, secondInd);
+
+		if(StringUtil.safeIsBlank(clientCodeFromUrl))
+			return Mono.empty();
+
+
+		return	FlatMapUtil.flatMapMono(
+
+			() -> this.fileAccessService.isClientBeingManaged(clientCode, clientCodeFromUrl),
+
+			isManaged -> {
+				if(!BooleanUtil.safeValueOf(isManaged))
+					return Mono.empty();
+				
+				return this.getFSService().getFileDetail(uriPath.getT1());
+			},
+
+			(isManaged, fileDetail) -> {
+
+					if (fileDetail.isDirectory())
+						return Mono.empty();
+
+					return	this.getFSService().getAsFile(uriPath.getT1())
+							.flatMap( e -> {
+
+								Path filePath = e.toPath();
+
+								StringBuffer sb = new StringBuffer();
+
+								if(metadataRequired){
+
+									String[] pathParts = filePath.toString().split(FileSystemService.R2_FILE_SEPARATOR_STRING);
+									String fileName = pathParts[pathParts.length - 1];
+									if (StringUtil.safeIsBlank(fileName) && pathParts.length > 1)
+										fileName = pathParts[pathParts.length - 2];
+									if (StringUtil.safeIsBlank(fileName))
+										fileName = "file";
+									
+									String mimeType = URLConnection.guessContentTypeFromName(fileName);
+									if (mimeType == null) {
+										mimeType = "application/octet-stream";
+									}
+
+									sb.append("data:");
+									sb.append(mimeType);
+									sb.append(";name:");
+									sb.append(fileName);
+									sb.append(";base64,");
+								}
+
+								try{
+									byte[] bytes = Files.readAllBytes(filePath);
+									sb.append(Base64.getEncoder().encodeToString(bytes));
+									return Mono.just(sb.toString());
+								}catch(IOException ex){
+									return  Mono.empty();
+								}
+
+						}).switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+								FilesMessageResourceService.FILE_CANNOT_BE_CONVERTED));
+			}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.convertToBase64"));
 	}
 
 	public Mono<Void> readInternal(DownloadOptions downloadOptions, String filePath, ServerHttpRequest request,

@@ -13,6 +13,7 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.functions.email.SendEmail;
 import com.fincity.saas.core.functions.file.TemplateToPdf;
+import com.fincity.saas.core.functions.file.FileToBase64;
 import com.fincity.saas.core.functions.rest.CallRequest;
 import com.fincity.saas.core.functions.security.GetAppUrl;
 import com.fincity.saas.core.functions.security.GetClient;
@@ -65,6 +66,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		this.makeSecurityFunctions(builder.securityService, builder.gson);
 		this.makeEmailFunctions(builder.emailService);
 		this.makeFileConversionFunctions(builder.templateConversionService, builder.filesService, builder.gson);
+		this.makeFileEncodingFunctions(builder.filesService);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -149,6 +151,13 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction templateToPdf = new TemplateToPdf(templateConversionService, fileService, gson);
 
 		repoMap.put(templateToPdf.getSignature().getFullName(), templateToPdf);
+	}
+
+	private void makeFileEncodingFunctions(IFeignFilesService filesService){
+		
+		ReactiveFunction fileToBase64 = new FileToBase64(filesService);
+		repoMap.put(fileToBase64.getSignature().getFullName(), fileToBase64);
+		
 	}
 
 	@Override
