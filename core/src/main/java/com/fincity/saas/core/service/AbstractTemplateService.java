@@ -82,10 +82,8 @@ public abstract class AbstractTemplateService {
 
 			freemarker.template.Template temp = new freemarker.template.Template(name, template, CONFIGURATION);
 			try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); Writer out = new OutputStreamWriter(baos)) {
-
 				temp.process(templateData, out);
-				String as = baos.toString(StandardCharsets.UTF_8);
-				return as;
+				return baos.toString(StandardCharsets.UTF_8);
 			}
 		}).subscribeOn(Schedulers.boundedElastic());
 	}

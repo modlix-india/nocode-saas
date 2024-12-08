@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.model.dto;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -12,8 +13,9 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class AbstractDTO<I extends Serializable, U extends Serializable> implements Serializable {
+public abstract class AbstractDTO<I extends Serializable, U extends Serializable> implements Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 7628167781600904807L;
 
 	@Id

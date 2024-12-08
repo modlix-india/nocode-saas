@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.util;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -9,7 +10,7 @@ import lombok.experimental.Accessors;
 
 public class CodeUtil {
 
-    private static final Random rand = new Random();
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Data
     @Accessors(chain = true)
@@ -52,9 +53,9 @@ public class CodeUtil {
         while (sb.length() != config.length) {
             int set = 0;
             if (charSets.size() > 1)
-                set = rand.nextInt(charSets.size());
+                set = SECURE_RANDOM.nextInt(charSets.size());
             String charSet = charSets.get(set);
-            sb.append(charSet.charAt(rand.nextInt(charSet.length())));
+            sb.append(charSet.charAt(SECURE_RANDOM.nextInt(charSet.length())));
         }
 
         if (config.separators != null && config.separators.length != 0) {

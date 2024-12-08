@@ -10,6 +10,7 @@ public class EventNames {
 	public static final String USER_PASSWORD_RESET_DONE = "USER_PASSWORD_RESET_DONE";
 	public static final String USER_RESET_PASSWORD_REQUEST = "USER_RESET_PASSWORD_REQUEST";
 	public static final String USER_CODE_GENERATION = "USER_CODE_GENERATION";
+	public static final String USER_OTP_GENERATE = "USER_OTP_GENERATE";
 
 	private EventNames() {
 	}

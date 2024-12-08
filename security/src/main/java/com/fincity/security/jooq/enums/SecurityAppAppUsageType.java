@@ -13,7 +13,7 @@ import org.jooq.Schema;
  * S - Standalone (Mostly for sites), B - Business only, B to C Consumer, B
  * Business, X Any, and so on so forth.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum SecurityAppAppUsageType implements EnumType {
 
     S("S"),
@@ -63,7 +63,9 @@ public enum SecurityAppAppUsageType implements EnumType {
     }
 
     /**
-     * Lookup a value of this EnumType by its literal
+     * Lookup a value of this EnumType by its literal. Returns
+     * <code>null</code>, if no such value could be found, see {@link
+     * EnumType#lookupLiteral(Class, String)}.
      */
     public static SecurityAppAppUsageType lookupLiteral(String literal) {
         return EnumType.lookupLiteral(SecurityAppAppUsageType.class, literal);

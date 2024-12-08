@@ -12,7 +12,7 @@ import org.jooq.Schema;
 /**
  * Application type
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum SecurityAppAppType implements EnumType {
 
     APP("APP"),
@@ -48,7 +48,9 @@ public enum SecurityAppAppType implements EnumType {
     }
 
     /**
-     * Lookup a value of this EnumType by its literal
+     * Lookup a value of this EnumType by its literal. Returns
+     * <code>null</code>, if no such value could be found, see {@link
+     * EnumType#lookupLiteral(Class, String)}.
      */
     public static SecurityAppAppType lookupLiteral(String literal) {
         return EnumType.lookupLiteral(SecurityAppAppType.class, literal);

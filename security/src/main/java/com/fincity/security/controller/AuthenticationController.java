@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.fincity.security.service.OtpService;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -31,10 +33,12 @@ public class AuthenticationController {
 
 	private final AuthenticationService service;
 	private final ClientService clientService;
+	private final OtpService otpService;
 
-	public AuthenticationController(AuthenticationService service, ClientService clientService) {
+	public AuthenticationController(AuthenticationService service, ClientService clientService, OtpService otpService) {
 		this.service = service;
 		this.clientService = clientService;
+		this.otpService = otpService;
 	}
 
 	@PostMapping("authenticate")
@@ -49,6 +53,14 @@ public class AuthenticationController {
 			@RequestBody AuthenticationRequest authRequest,
 			ServerHttpRequest request, ServerHttpResponse response) {
 		return this.service.authenticateWSocial(authRequest, request, response).map(ResponseEntity::ok);
+	}
+
+	@PostMapping("authenticate/otp/generate")
+	public Mono<ResponseEntity<Boolean>> generateOtp(@RequestBody AuthenticationRequest authRequest,
+			ServerHttpRequest request) {
+
+		return this.otpService.generateOtp(authRequest, request)
+				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping(value = "revoke")
