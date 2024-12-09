@@ -12,7 +12,7 @@ import org.jooq.Schema;
 /**
  * Type of token that is generated
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum CoreTokensTokenType implements EnumType {
 
     ACCESS("ACCESS"),
@@ -37,7 +37,7 @@ public enum CoreTokensTokenType implements EnumType {
 
     @Override
     public String getName() {
-        return "core_tokens_TOKEN_TYPE";
+        return null;
     }
 
     @Override
@@ -46,7 +46,9 @@ public enum CoreTokensTokenType implements EnumType {
     }
 
     /**
-     * Lookup a value of this EnumType by its literal
+     * Lookup a value of this EnumType by its literal. Returns
+     * <code>null</code>, if no such value could be found, see {@link
+     * EnumType#lookupLiteral(Class, String)}.
      */
     public static CoreTokensTokenType lookupLiteral(String literal) {
         return EnumType.lookupLiteral(CoreTokensTokenType.class, literal);
