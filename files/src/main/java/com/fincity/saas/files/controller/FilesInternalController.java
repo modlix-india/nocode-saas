@@ -66,4 +66,15 @@ public class FilesInternalController {
                         .setDownload(download)
                         .setName(name), filePath, request, response);
     }
+
+    @GetMapping(value = "/{resourceType}/convertToBase64")
+    public Mono<String> convertToBase64(
+            @PathVariable String resourceType,
+            @RequestParam String clientCode,
+            @RequestParam String url,
+            @RequestParam(required = false) Boolean metadataRequired) {
+
+        return ("secured".equals(resourceType) ? this.securedService : this.staticService)
+                .readFileAsBase64(clientCode, resourceType.toUpperCase(), url, metadataRequired);
+    }
 }

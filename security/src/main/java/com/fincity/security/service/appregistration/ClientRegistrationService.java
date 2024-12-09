@@ -699,7 +699,7 @@ public class ClientRegistrationService {
                 user.setPhoneNumber(request.getPhoneNumber());
 
                 String password = "";
-                if (StringUtil.safeIsBlank(request.getSocialRegisterState())
+                if (!StringUtil.safeIsBlank(request.getSocialRegisterState())
                                 || regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)
                                 || StringUtil.safeIsBlank(request.getPassword())) {
 
