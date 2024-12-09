@@ -1,6 +1,5 @@
 package com.fincity.saas.files.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -54,16 +53,30 @@ public class TransformStaticImageController {
 			@RequestPart(required = false) String fileName, ServerHttpRequest request) {
 
 		ImageDetails imageDetails = new ImageDetails()
-				.setWidth(width != null ? Integer.parseInt(width) : null)
-				.setHeight(height != null ? Integer.parseInt(height) : null)
-				.setRotation(rotation != null ? Integer.parseInt(rotation) : null)
-				.setCropAreaX(cropAreaX != null ? Integer.parseInt(cropAreaX) : null)
-				.setCropAreaY(cropAreaY != null ? Integer.parseInt(cropAreaY) : null)
-				.setCropAreaWidth(cropAreaWidth != null ? Integer.parseInt(cropAreaWidth) : null)
-				.setCropAreaHeight(cropAreaHeight != null ? Integer.parseInt(cropAreaHeight) : null)
 				.setFlipHorizontal(BooleanUtil.safeValueOf(flipHorizontal))
 				.setFlipVertical(BooleanUtil.safeValueOf(flipVertical))
 				.setBackgroundColor(backgroundColor);
+
+		if (width != null)
+			imageDetails.setWidth(Integer.valueOf(width));
+
+		if (height != null)
+			imageDetails.setHeight(Integer.valueOf(height));
+
+		if (rotation != null)
+			imageDetails.setRotation(Integer.valueOf(rotation));
+
+		if (cropAreaX != null)
+			imageDetails.setCropAreaX(Integer.valueOf(cropAreaX));
+
+		if (cropAreaY != null)
+			imageDetails.setCropAreaY(Integer.valueOf(cropAreaY));
+
+		if (cropAreaWidth != null)
+			imageDetails.setCropAreaWidth(Integer.valueOf(cropAreaWidth));
+
+		if (cropAreaHeight != null)
+			imageDetails.setCropAreaHeight(Integer.valueOf(cropAreaHeight));
 
 		return FlatMapUtil.flatMapMonoWithNull(
 

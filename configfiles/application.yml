@@ -2,9 +2,19 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n"
+    json:
+      add:
+        instanceId: ${INSTANCE_ID:default}
   level:
     org:
       jooq: DEBUG
+  # structured:
+  #   format:
+  #     console: gelf
+  #     file: gelf
+  #   json:
+  #     add:
+  #       instanceId: ${INSTANCE_ID:default}
 
 eureka:
   client:
@@ -54,7 +64,6 @@ jwt:
 
 ui:
   jsURL: https://nclc-dev.s3.ap-south-1.amazonaws.com
-  cdnHostName: d16khh9j09qf4s.cloudfront.net
 
 files:
   resources:

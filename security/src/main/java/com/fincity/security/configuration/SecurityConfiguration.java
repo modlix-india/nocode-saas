@@ -1,10 +1,7 @@
 package com.fincity.security.configuration;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -17,13 +14,20 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.SecurityMessageResourceService;
+import jakarta.annotation.PostConstruct;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 		implements ISecurityConfiguration, IMQConfiguration {
 
-	@Autowired
 	protected SecurityMessageResourceService messageResourceService;
+
+	public SecurityConfiguration(SecurityMessageResourceService messageResourceService, ObjectMapper objectMapper) {
+		super(objectMapper);
+		this.messageResourceService = messageResourceService;
+	}
 
 	@Override
 	@PostConstruct
@@ -47,6 +51,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/authenticate",
 
+				"/api/security/authenticate/social",
+
 				"/api/security/verifyToken",
 
 				"/api/security/clients/internal/**",
@@ -61,6 +67,12 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/clients/register",
 
+				"/api/security/clients/socialRegister",
+
+				"/api/security/clients/socialRegister/callback",
+
+				"/api/security/clients/socialRegister/evoke",
+
 				"/api/security/clients/generateCode",
 
 				"/api/security/users/requestResetPassword",
@@ -72,7 +84,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 				"/api/security/applications/dependencies",
 
 				"/api/security/applications/internal/dependencies",
-				
+
 				"/api/security/clients/register/events");
 	}
 

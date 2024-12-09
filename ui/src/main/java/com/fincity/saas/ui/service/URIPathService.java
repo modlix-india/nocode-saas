@@ -2,6 +2,7 @@ package com.fincity.saas.ui.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,9 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	private static final String CACHE_NAME_URI = "URICache";
 
 	private static final String CACHE_NAME_PATTERN = "URIPatternCache";
+
+	private static final Set<String> ALLOWED_METHODS = Set.of(HttpMethod.GET.name(), HttpMethod.POST.name(),
+			HttpMethod.PUT.name(), HttpMethod.PATCH.name(), HttpMethod.DELETE.name());
 
 	private final IFeignCoreService iFeignCoreService;
 
@@ -138,7 +142,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 	private Mono<URIPath> setPathDefinitions(URIPath entity) {
 
-		for (Map.Entry<HttpMethod, PathDefinition> pathDefs : entity.getPathDefinitions().entrySet()) {
+		for (Map.Entry<String, PathDefinition> pathDefs : entity.getPathDefinitions().entrySet()) {
 			PathDefinition pathDef = pathDefs.getValue();
 			if (pathDef.getUriType() == URIType.REDIRECTION) {
 				if (pathDef.getRedirectionDefinition() == null)
@@ -174,16 +178,14 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				valid -> {
 
-					for (Map.Entry<HttpMethod, PathDefinition> pathDef : entity.getPathDefinitions().entrySet()) {
+					for (Map.Entry<String, PathDefinition> pathDef : entity.getPathDefinitions().entrySet()) {
 						if (!pathDef.getValue().isValidType())
 							return this.messageResourceService.throwMessage(
 									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 									UIMessageResourceService.URI_INVALID_TYPE);
 					}
 
-					if (entity.getPathDefinitions().keySet().stream().anyMatch(e -> e != HttpMethod.GET
-							&& e != HttpMethod.POST && e != HttpMethod.PUT && e != HttpMethod.PATCH
-							&& e != HttpMethod.DELETE))
+					if (entity.getPathDefinitions().keySet().stream().noneMatch(ALLOWED_METHODS::contains))
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 								UIMessageResourceService.URI_INVALID_METHOD);
@@ -236,18 +238,12 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				this::uriPathAccessCheck,
 
-				(uriPath, hasAccess) -> {
-
-					HttpMethod method = request.getMethod();
-
-					return method == null || !uriPath.getPathDefinitions().containsKey(method)
-							? Mono.empty()
-							: Mono.just(uriPath.getPathDefinitions().get(method));
-				},
+				(uriPath, hasAccess) -> Mono.just(uriPath.getPathDefinitions()
+						.getOrDefault(request.getMethod().name(), null)),
 
 				(uriPath, hasAccess, pathDef) -> switch (pathDef.getUriType()) {
 					case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getPathString(),
-							pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), uriPath.getClientCode());
+							pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), clientCode);
 
 					case REDIRECTION -> // TODO
 						Mono.empty();
@@ -294,11 +290,11 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> switch (request.getMethod()) {
-					case GET -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+				() -> switch (request.getMethod().toString()) {
+					case "GET" -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
 							kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
 
-					case POST, PUT, PATCH, DELETE ->
+					case "POST", "PUT", "PATCH", "DELETE" ->
 						iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
 								kiRunFxDef.getName(), jsonObject.toString());
 

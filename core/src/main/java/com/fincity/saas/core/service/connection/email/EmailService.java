@@ -4,9 +4,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +11,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
@@ -22,29 +18,32 @@ import com.fincity.saas.core.service.ConnectionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.TemplateService;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuples;
 
 @Service
 public class EmailService {
 
-	@Autowired
-	private ConnectionService connectionService;
+	private final ConnectionService connectionService;
 
-	@Autowired
-	private CoreMessageResourceService msgService;
+	private final CoreMessageResourceService msgService;
 
-	@Autowired
-	private SendGridService sendGridService;
+	private final SendGridService sendGridService;
+	private final SMTPService smtpService;
 
-	@Autowired
-	private SMTPService smtpService;
-
-	@Autowired
-	private TemplateService templateService;
+	private final TemplateService templateService;
 
 	private final EnumMap<ConnectionSubType, IAppEmailService> services = new EnumMap<>(ConnectionSubType.class);
+
+	public EmailService(SendGridService sendGridService, SMTPService smtpService, TemplateService templateService,
+			ConnectionService connectionService, CoreMessageResourceService msgService) {
+		this.sendGridService = sendGridService;
+		this.smtpService = smtpService;
+		this.templateService = templateService;
+		this.connectionService = connectionService;
+		this.msgService = msgService;
+	}
 
 	@PostConstruct
 	public void init() {
@@ -63,17 +62,7 @@ public class EmailService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> {
-
-					String inAppCode = appCode.trim().isEmpty() ? null : appCode;
-					String inClientCode = clientCode.trim().isEmpty() ? null : clientCode;
-
-					return SecurityContextUtil.getUsersContextAuthentication()
-							.map(e -> Tuples.of(
-									CommonsUtil.nonNullValue(inAppCode, e.getUrlAppCode()),
-									CommonsUtil.nonNullValue(inClientCode, e.getClientCode())))
-							.defaultIfEmpty(Tuples.of(inAppCode, inClientCode));
-				},
+				() -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
 
 				actup -> connectionService.read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
 						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),

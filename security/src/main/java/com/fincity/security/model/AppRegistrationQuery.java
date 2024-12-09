@@ -20,6 +20,7 @@ public class AppRegistrationQuery implements Serializable {
     private String clientType;
     private ClientLevelType level;
     private String businessType;
+    private ULong integrationId;
     private Integer page;
     private Integer size;
 }

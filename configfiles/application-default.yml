@@ -17,10 +17,10 @@ files:
     flyway:
       url: jdbc:mysql://localhost:3306/files
   resources:
-    location:
-      static: /Users/kirangrandhi/Downloads/files/static
-      secured: /Users/kirangrandhi/Downloads/files/secured
-
+    endpoint: https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com
+    accessKeyId: 2229a18802734bc30a8419a2e622187c
+    secretAccessKey: e3176a3ebe9532faedf2853988b48722861a8ff859a2167c3df82311e205b8a9
+    bucketPrefix: local
 multi:
   db:
     url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
@@ -40,6 +40,10 @@ schedular:
 ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
+  cdnHostName: cdn-local.modlix.com
+  cdnReplacePlus: true
+  # Don't forget to add slash in the end.
+  jsURL: https://cdn-local.modlix.com/js/dist/
 
 core:
   mongo:
@@ -56,7 +60,7 @@ spring:
     enabled: false
 
 redis:
-  url: redis://kiran%40123@localhost:6379
+  url: redis://Kiran%40123@localhost:6379
   codec: object
   cache:
     prefix: cmn

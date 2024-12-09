@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.mongo.service;
 
+import java.lang.reflect.InvocationTargetException;
+
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService.FORBIDDEN_CREATE;
@@ -712,14 +714,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> {
-					System.err.println("name: " + name + " appCode: " + appCode + " clientCode: " + clientCode);
-					return Mono.just(clientCode);
-				},
+				() -> Mono.just(clientCode),
 
-				key -> {
-					return cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key);
-				},
+				key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
 
 				(key, cApp) -> {
 
@@ -743,7 +740,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 					try {
 						return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
 								.newInstance(cApp != null ? cApp.getObject() : mergedApp));
-					} catch (Exception e) {
+					} catch (IllegalAccessException | IllegalArgumentException | InstantiationException
+							| NoSuchMethodException | SecurityException | InvocationTargetException e) {
 
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),

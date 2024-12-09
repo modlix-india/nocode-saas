@@ -1,0 +1,139 @@
+name: OCI Stage Deployment
+
+on:
+  #To trigger manually
+  workflow_dispatch:
+  push:
+    branches: [oci-stage]
+
+env:
+  ENVIRONMENT: ocistage
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+        with:
+          ref: oci-stage
+      - name: Setting up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: "21"
+          distribution: "oracle"
+      - name: Building commons
+        working-directory: ./commons
+        run: mvn clean install
+      - name: Building commons-jooq
+        working-directory: ./commons-jooq
+        run: mvn clean install
+      - name: Building commons-security
+        working-directory: ./commons-security
+        run: mvn clean install
+      - name: Building commons-mongo
+        working-directory: ./commons-mongo
+        run: mvn clean install
+      - name: Building commons-mq
+        working-directory: ./commons-mq
+        run: mvn clean install
+      - name: Building config
+        working-directory: ./config
+        run: mvn clean install
+      - name: Building eureka
+        working-directory: ./eureka
+        run: mvn clean install
+      - name: Building gateway
+        working-directory: ./gateway
+        run: mvn clean install
+      - name: Building security
+        working-directory: ./security
+        run: mvn clean install
+      - name: Building ui
+        working-directory: ./ui
+        run: mvn clean install
+      - name: Building files
+        working-directory: ./files
+        run: mvn clean install
+      - name: Building core
+        working-directory: ./core
+        run: mvn clean install
+      - name: Building multi
+        working-directory: ./multi
+        run: mvn clean install
+      - name: Login to OCIR
+        uses: docker/login-action@v3
+        with:
+          registry: ocir.us-ashburn-1.oci.oraclecloud.com
+          username: ${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}
+          password: ${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}
+      - name: Docker version
+        id: dockerVersion
+        run: |
+          VERSION=$(date '+%Y%m%d%H%M%S')
+          echo "Setting version to ${VERSION}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+      - name: Pushing Config Docker Image to OCI
+        working-directory: ./config
+        run: |
+          docker pull openjdk:21-ea-jdk-oracle
+          docker build -t stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
+          docker tag stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:latest
+      - name: Pushing Eureka Docker Image to OCI
+        working-directory: ./eureka
+        run: |
+          docker build -t stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-eureka-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-eureka-server:latest
+      - name: Pushing Gateway Docker Image to OCI
+        working-directory: ./gateway
+        run: |
+          docker build -t stage-gateway-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-gateway-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-gateway-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-gateway-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-gateway-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-gateway-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-gateway-server:latest
+      - name: Pushing Core Docker Image to OCI
+        working-directory: ./core
+        run: |
+          docker build -t stage-core-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-core-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-core-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-core-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-core-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-core-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-core-server:latest
+      - name: Pushing Multi Docker Image to OCI
+        working-directory: ./multi
+        run: |
+          docker build -t stage-multi-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-multi-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-multi-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-multi-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-multi-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-multi-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-multi-server:latest
+      - name: Pushing UI Docker Image to OCI
+        working-directory: ./ui
+        run: |
+          docker build -t stage-ui-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-ui-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-ui-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-ui-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-ui-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-ui-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-ui-server:latest
+      - name: Pushing Files Docker Image to OCI
+        working-directory: ./files
+        run: |
+          docker build -t stage-files-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-files-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-files-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-files-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-files-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-files-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-files-server:latest
+      - name: Pushing Security Docker Image to OCI
+        working-directory: ./security
+        run: |
+          docker build -t stage-security-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-security-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-security-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-security-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-security-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-security-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-security-server:latest

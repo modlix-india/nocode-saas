@@ -12,6 +12,8 @@ import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.core.feign.IFeignFilesService;
 import com.fincity.saas.core.functions.email.SendEmail;
+import com.fincity.saas.core.functions.file.TemplateToPdf;
+import com.fincity.saas.core.functions.file.FileToBase64;
 import com.fincity.saas.core.functions.rest.CallRequest;
 import com.fincity.saas.core.functions.security.GetAppUrl;
 import com.fincity.saas.core.functions.security.GetClient;
@@ -28,6 +30,7 @@ import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
+import com.fincity.saas.core.service.file.TemplateConversionService;
 import com.fincity.saas.core.service.security.ClientUrlService;
 import com.fincity.saas.core.service.security.ContextService;
 import com.google.gson.Gson;
@@ -52,6 +55,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		private ClientUrlService clientUrlService;
 		private EmailService emailService;
 		private IFeignFilesService filesService;
+		private TemplateConversionService templateConversionService;
 		private Gson gson;
 	}
 
@@ -61,6 +65,8 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		this.makeSecurityContextFunctions(builder.userContextService, builder.clientUrlService, builder.gson);
 		this.makeSecurityFunctions(builder.securityService, builder.gson);
 		this.makeEmailFunctions(builder.emailService);
+		this.makeFileConversionFunctions(builder.templateConversionService, builder.filesService, builder.gson);
+		this.makeFileEncodingFunctions(builder.filesService);
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -137,6 +143,21 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction sendEmail = new SendEmail(emailService);
 
 		repoMap.put(sendEmail.getSignature().getFullName(), sendEmail);
+	}
+
+	private void makeFileConversionFunctions(TemplateConversionService templateConversionService,
+			IFeignFilesService fileService, Gson gson) {
+
+		ReactiveFunction templateToPdf = new TemplateToPdf(templateConversionService, fileService, gson);
+
+		repoMap.put(templateToPdf.getSignature().getFullName(), templateToPdf);
+	}
+
+	private void makeFileEncodingFunctions(IFeignFilesService filesService){
+		
+		ReactiveFunction fileToBase64 = new FileToBase64(filesService);
+		repoMap.put(fileToBase64.getSignature().getFullName(), fileToBase64);
+		
 	}
 
 	@Override

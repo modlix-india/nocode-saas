@@ -1,11 +1,9 @@
 package com.fincity.security.model;
 
 import java.io.Serializable;
-
-import org.jooq.types.ULong;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -27,4 +25,7 @@ public class ClientRegistrationRequest implements Serializable {
 	private String businessType;
 	private String code;
 	private String subDomain;
+	private String socialRegisterState;
+
 }
+	

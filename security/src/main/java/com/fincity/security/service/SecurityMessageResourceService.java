@@ -14,7 +14,6 @@ import reactor.core.publisher.Mono;
 @Service
 public class SecurityMessageResourceService extends AbstractMessageService {
 
-	public static final String OBJECT_NOT_FOUND = "object_not_found";
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
 	public static final String FORBIDDEN_CREATE = "forbidden_create";
 	public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
@@ -22,7 +21,6 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String OBJECT_NOT_UPDATABLE = "object_not_updatable";
 	public static final String USER_CREDENTIALS_MISMATCHED = "user_credentials_mismatched";
 	public static final String UNKNOWN_ERROR = "unknown_error";
-	public static final String UNKNOWN_ERROR_WITH_ID = "unknown_error_with_id";
 	public static final String UNKONWN_ERROR_INSERT = "unkonwn_error_insert";
 	public static final String TOKEN_EXPIRED = "token_expired";
 	public static final String UNKNOWN_TOKEN = "unknown_token";
@@ -89,6 +87,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String MISSING_PASSWORD = "missing_password";
 	public static final String FIELDS_MISSING = "fields_missing";
 	public static final String MANDATORY_APP_CODE = "mandatory_app_code";
+	public static final String MANDATORY_CLIENT_CODE = "mandatory_client_code";
 	public static final String CLIENT_CODE_OR_ID_ONLY_ONE = "client_code_or_id_only_one";
 	public static final String FORBIDDEN_APP_REG_OBJECTS = "forbidden_app_reg_objects";
 	public static final String SUBDOMAIN_ALREADY_EXISTS = "subdomain_already_exists";
@@ -96,6 +95,10 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String FORBIDDEN_COPY_ROLE_PERMISSION = "forbidden_copying_role_permission";
 	public static final String ACTIVE_INACTIVE_ERROR = "active_inactive_error";
 	public static final String HIERARCHY_ERROR = "hierarchy_error";
+	public static final String SESSION_EXPIRED = "session_expired";
+	public static final String SOCIAL_LOGIN_FAILED = "social_login_failed";
+	public static final String UNSUPPORTED_PLATFORM = "unsupported_platform";
+	public static final String CRT_KEY_ISSUE = "crt_key_issue";
 
 	public SecurityMessageResourceService() {
 
@@ -114,8 +117,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 				x = this.bundleMap.get(Locale.forLanguageTag(l.getLanguage()));
 
 			return x == null ? Mono.empty() : Mono.just(x);
-		})
-				.defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
+		}).defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
 				.map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
 
 	}

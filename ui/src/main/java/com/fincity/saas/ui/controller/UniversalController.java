@@ -10,9 +10,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.service.IndexHTMLService;
 import com.fincity.saas.ui.service.JSService;
@@ -39,14 +42,15 @@ public class UniversalController {
 
 	private final Gson gson;
 
-	@Value("${ui.jsURL:}")
-	private String jsURL;
-
 	@Value("${ui.resourceCacheAge:604800}")
 	private int cacheAge;
 
 	private static final ResponseEntity<String> RESPONSE_NOT_FOUND = ResponseEntity
 			.notFound()
+			.build();
+
+	private static final ResponseEntity<String> RESPONSE_BAD_REQUEST = ResponseEntity
+			.badRequest()
 			.build();
 
 	public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
@@ -59,20 +63,16 @@ public class UniversalController {
 		this.gson = gson;
 	}
 
-	@GetMapping(value = "js/index.js", produces = "text/javascript")
-	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag) {
+	@GetMapping(value = "js/dist/**")
+	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag,
+			ServerHttpRequest request) {
 
-		return jsService.getJSObject()
+		int index = request.getURI().getPath().indexOf("/js/dist/");
+		String filePath = request.getURI().getPath().substring(index + 9);
+
+		return jsService.getJSResource(filePath)
 				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
 				.defaultIfEmpty(RESPONSE_NOT_FOUND);
-	}
-
-	@GetMapping(value = "js/index.js.map", produces = "text/javascript")
-	public Mono<ResponseEntity<String>> indexJSMap(
-			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
-
-		return Mono.just(ResponseEntity.notFound()
-				.build());
 	}
 
 	@GetMapping(value = "manifest/manifest.json", produces = MimeTypeUtils.APPLICATION_JSON_VALUE)
@@ -100,17 +100,24 @@ public class UniversalController {
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
+			@RequestParam(required = false) String debug,
 			ServerHttpRequest request) {
 
-		return uriPathService.getResponse(request, null, appCode, clientCode).map(ResponseEntity::ok)
-				.switchIfEmpty(Mono.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode)
-						.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge,
-								MimeTypeUtils.TEXT_HTML_VALUE))));
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+
+				(ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
+				.switchIfEmpty(Mono
+						.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode, debug)
+								.flatMap(e -> ResponseEntityUtils
+										.makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
 	}
 
 	@RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = { RequestMethod.POST,
 			RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE })
-	public Mono<ResponseEntity<String>> deafultRequests(
+	public Mono<ResponseEntity<String>> defaultRequests(
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
@@ -120,7 +127,13 @@ public class UniversalController {
 		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
 				: this.gson.fromJson(jsonString, JsonObject.class);
 
-		return uriPathService.getResponse(request, jsonObject, appCode, clientCode).map(ResponseEntity::ok);
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+
+				(ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc).map(ResponseEntity::ok))
+				.switchIfEmpty(Mono.just(RESPONSE_BAD_REQUEST));
 	}
 
 	@GetMapping("/.well-known/acme-challenge/{token}")

@@ -19,8 +19,8 @@ jobs:
       - name: Setting up Java
         uses: actions/setup-java@v3
         with:
-          java-version: "20"
-          distribution: "adopt"
+          java-version: "21"
+          distribution: "oracle"
       - name: Building commons
         working-directory: ./commons
         run: mvn clean install
@@ -35,9 +35,6 @@ jobs:
         run: mvn clean install
       - name: Building commons-mq
         working-directory: ./commons-mq
-        run: mvn clean install
-      - name: Building admin
-        working-directory: ./admin
         run: mvn clean install
       - name: Building config
         working-directory: ./config
@@ -63,9 +60,6 @@ jobs:
       - name: Building multi
         working-directory: ./multi
         run: mvn clean install
-      - name: Building schedular
-        working-directory: ./schedular
-        run: mvn clean install
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -83,4 +77,3 @@ jobs:
           aws s3 cp ./files/target/*.jar s3://nclc-deployment/stage/files.jar
           aws s3 cp ./core/target/*.jar s3://nclc-deployment/stage/core.jar
           aws s3 cp ./multi/target/*.jar s3://nclc-deployment/stage/multi.jar
-          aws s3 cp ./schedular/target/*.jar s3://nclc-deployment/stage/schedular.jar

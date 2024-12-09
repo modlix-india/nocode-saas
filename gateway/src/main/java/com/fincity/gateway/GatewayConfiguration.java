@@ -1,7 +1,5 @@
 package com.fincity.gateway;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -14,9 +12,17 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.annotation.PostConstruct;
+
 @EnableAutoConfiguration
 @Configuration
 public class GatewayConfiguration extends AbstractBaseConfiguration {
+
+	public GatewayConfiguration(ObjectMapper objectMapper) {
+		super(objectMapper);
+	}
 
 	@PostConstruct
 	@Override
@@ -33,8 +39,8 @@ public class GatewayConfiguration extends AbstractBaseConfiguration {
 	}
 
 	@Bean
-	RouteLocator applicationRoutes(RouteLocatorBuilder builder) {
+	public RouteLocator applicationRoutes(RouteLocatorBuilder builder) {
 		return builder.routes()
-		        .build();
+				.build();
 	}
 }

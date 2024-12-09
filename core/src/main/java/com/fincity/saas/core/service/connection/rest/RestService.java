@@ -2,8 +2,6 @@ package com.fincity.saas.core.service.connection.rest;
 
 import java.util.EnumMap;
 
-import javax.annotation.PostConstruct;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +15,7 @@ import com.fincity.saas.core.enums.ConnectionSubType;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.service.ConnectionService;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuples;
@@ -26,14 +25,14 @@ public class RestService {
 
 	private final ConnectionService connectionService;
 	private final BasicRestService basicRestService;
-	private final OAuthRestService oAuthRestService;
+	private final OAuth2RestService oAuth2RestService;
 	private final RestAuthService restAuthService;
 
 	public RestService(ConnectionService connectionService, BasicRestService basicRestService,
-			OAuthRestService oAuthRestService, RestAuthService restAuthService) {
+			OAuth2RestService oAuth2RestService, RestAuthService restAuthService) {
 		this.connectionService = connectionService;
 		this.basicRestService = basicRestService;
-		this.oAuthRestService = oAuthRestService;
+		this.oAuth2RestService = oAuth2RestService;
 		this.restAuthService = restAuthService;
 	}
 
@@ -42,7 +41,7 @@ public class RestService {
 	@PostConstruct
 	public void init() {
 		this.services.put(ConnectionSubType.REST_API_BASIC, basicRestService);
-		this.services.put(ConnectionSubType.REST_API_OAUTH2, oAuthRestService);
+		this.services.put(ConnectionSubType.REST_API_OAUTH2, oAuth2RestService);
 		this.services.put(ConnectionSubType.REST_API_AUTH, restAuthService);
 	}
 
