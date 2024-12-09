@@ -95,6 +95,14 @@ public class UserController
 		        .map(ResponseEntity::ok);
 	}
 
+	@GetMapping("/makeRegisteredUserActive/{emailId}/{token}")
+	public Mono<ResponseEntity<Boolean>> makeRegisteredUserActive(@PathVariable String emailId,
+			@PathVariable String token) {
+				
+		return this.userService.makeRegisteredUserActive(emailId, token)
+				.map(ResponseEntity::ok);
+	}
+
 	@GetMapping("/availablePermissions/{userId}")
 	public Mono<ResponseEntity<List<Permission>>> getPermissionsFromUser(@PathVariable ULong userId) {
 		return this.userService.getPermissionsFromGivenUser(userId)
