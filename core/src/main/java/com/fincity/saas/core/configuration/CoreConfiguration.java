@@ -8,13 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.configuration.AbstractMongoConfiguration;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
@@ -33,8 +33,6 @@ import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
 import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 public class CoreConfiguration extends AbstractMongoConfiguration
@@ -94,7 +92,8 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 	@Bean
 	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**",
-				"/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind");
+				"/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind",
+				"/api/core/connections/oauth/evoke", "/api/core/connections/oauth/callback");
 	}
 
 	@Bean

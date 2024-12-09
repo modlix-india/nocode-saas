@@ -85,7 +85,7 @@ public class RestAuthService extends AbstractRestService implements IRestService
 	}
 
 	private Mono<Tuple2<String, LocalDateTime>> getExistingAccessToken(Connection connection) {
-		return cacheService.cacheValueOrGet(CACHE_NAME_REST_AUTH, () -> this.coreTokenDAO.getActiveAccessToken(
+		return cacheService.cacheValueOrGet(CACHE_NAME_REST_AUTH, () -> this.coreTokenDAO.getActiveAccessTokenTuple(
 				connection.getClientCode(), connection.getAppCode(), connection.getName()), getCacheKeys(connection));
 	}
 
