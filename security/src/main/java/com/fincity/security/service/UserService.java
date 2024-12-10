@@ -838,8 +838,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
 	}
 
-	public Mono<Boolean> makeRegisteredUserActive(String emailId, String token) {
-		return this.dao.validateRegisteredUserAndMakeActive(emailId, token);
+	public Mono<Boolean> makeRegisteredUserActive(String emailId, String clientCode, String token) {
+
+		if(StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(token))
+			return this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), 
+				SecurityMessageResourceService.EMAIL_VERIFY_ERROR);
+
+		return this.dao.validateRegisteredUserAndMakeActive(emailId, clientCode, token)
+				.flatMap(BooleanUtil::safeValueOfWithEmpty)
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), 
+								SecurityMessageResourceService.EMAIL_VERIFY_ERROR));
 	}
 
 	

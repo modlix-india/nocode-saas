@@ -95,11 +95,12 @@ public class UserController
 		        .map(ResponseEntity::ok);
 	}
 
-	@GetMapping("/makeRegisteredUserActive/{emailId}/{token}")
-	public Mono<ResponseEntity<Boolean>> makeRegisteredUserActive(@PathVariable String emailId,
-			@PathVariable String token) {
-				
-		return this.userService.makeRegisteredUserActive(emailId, token)
+
+	@GetMapping("/makeRegisteredUserActive/{emailId}")
+	public Mono<ResponseEntity<Boolean>> makeRegisteredUserActive(@PathVariable String emailId, @RequestParam(required = false) String clientCode,
+			@RequestParam(required = false) String token) {
+						
+		return this.userService.makeRegisteredUserActive(emailId, clientCode, token)
 				.map(ResponseEntity::ok);
 	}
 

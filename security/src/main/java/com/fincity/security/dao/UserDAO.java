@@ -711,22 +711,25 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(rowsInserted -> rowsInserted > 0);
 	}	
 
-	public Mono<Boolean> validateRegisteredUserAndMakeActive(String emailId, String token) {
+	public Mono<Boolean> validateRegisteredUserAndMakeActive(String emailId, String clientCode, String token) {
 
 		return Mono.from(this.dslContext.select(SECURITY_USER.fields()).from(SECURITY_USER)
-			.leftJoin(SECURITY_USER_TOKEN).on(SECURITY_USER.ID.eq(SECURITY_USER_TOKEN.USER_ID))
-			.where(SECURITY_USER.EMAIL_ID.eq(emailId))
-			.and(SECURITY_USER_TOKEN.TOKEN.eq(token))
-			.limit(1))
-			.map(e -> e.into(User.class))
-			.flatMap(user -> BooleanUtil.safeValueOfWithEmpty(user.getCreatedAt().equals(user.getUpdatedAt())))
-			.flatMap(validUser -> {
-				return  Mono.from(this.dslContext.update(SECURITY_USER)
-							.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-							.where(SECURITY_USER.EMAIL_ID.eq(emailId)))
-							.map(e -> e > 0);
-			})
-			.switchIfEmpty(Mono.just(false));
+										.leftJoin(SECURITY_CLIENT).on(SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT.ID))
+										.leftJoin(SECURITY_USER_TOKEN).on(SECURITY_USER.ID.eq(SECURITY_USER_TOKEN.USER_ID))
+										.where(SECURITY_USER.EMAIL_ID.eq(emailId))
+										.and(SECURITY_CLIENT.CODE.eq(clientCode))
+										.and(SECURITY_USER_TOKEN.TOKEN.eq(token))
+										.limit(1))
+										.map(e -> e.into(User.class))
+										.flatMap(user -> BooleanUtil.safeValueOfWithEmpty(
+											user.getCreatedAt().equals(user.getUpdatedAt())))
+										.flatMap(validUser -> {
+											return  Mono.from(this.dslContext.update(SECURITY_USER)
+														.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+														.where(SECURITY_USER.EMAIL_ID.eq(emailId)))
+														.map(e -> e > 0);
+										})
+										.switchIfEmpty(Mono.just(false)).log();
 
 	}
 }
