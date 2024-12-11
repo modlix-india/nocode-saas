@@ -12,6 +12,7 @@ public class AuthenticationRequest {
 	private String password;
 	private ULong userId;
 	private String otp = null;
+	private boolean isResend = false;
 	private String pin = null;
 
 	private String socialRegisterState;

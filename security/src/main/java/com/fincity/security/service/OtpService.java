@@ -6,14 +6,14 @@ import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -21,7 +21,6 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.OtpDAO;
-import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Otp;
 import com.fincity.security.dto.User;
 import com.fincity.security.enums.otp.OtpPurpose;
@@ -31,15 +30,14 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.OtpMessageVars;
 import com.fincity.security.service.message.MessageService;
-import com.fincity.security.util.HashUtil;
+import com.fincity.security.service.policy.ClientOtpPolicyService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple5;
 import reactor.util.function.Tuples;
 
 @Service
-public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpRecord, ULong, Otp, OtpDAO> {
+public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong, Otp, OtpDAO> {
 
 	@Autowired
 	private AppService appService;
@@ -56,27 +54,15 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 	@Autowired
 	private MessageService messageService;
 
-	@Value("${message.otp.expire.interval:15}")
-	private long otpExpireInterval;
+	@Autowired
+	private ClientOtpPolicyService clientOtpPolicyService;
+
+	@Autowired
+	private PasswordEncoder encoder;
 
 	@Override
 	public Mono<Otp> create(Otp entity) {
 		return this.dao.create(entity);
-	}
-
-	@Override
-	protected Mono<Otp> updatableEntity(Otp entity) {
-		return null;
-	}
-
-	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-		return null;
-	}
-
-	@Override
-	public Mono<Otp> update(Otp entity) {
-		return this.dao.update(entity);
 	}
 
 	public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
@@ -108,59 +94,29 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 
 				(tup, linCCheck) -> this.appService.getAppByCode(appCode),
 
-				(tup, linCCheck, app) -> {
+				(tup, linCCheck, app) -> clientOtpPolicyService.getClientAppPolicy(app.getClientId(), app.getId())
+						.flatMap(policy -> Mono.just(Tuples.of(policy.getTargetType(), policy.getExpireInterval().longValue(), policy.generate())))
+						.switchIfEmpty(
+								messageResourceService.getMessage(SecurityMessageResourceService.APP_POLICY_EMPTY)
+										.flatMap(msg -> Mono.error(new GenericException(HttpStatus.BAD_REQUEST, msg)))),
 
-					ULong clientId = app.getClientId();
-					return this.appService.getProperties(app.getClientId(), app.getId(), app.getAppCode(), null).map(
-							e -> {
-								if (e.isEmpty() || !e.containsKey(clientId))
-									return Tuples.of("", "", "", "", "");
+				(tup, linCCheck, app, otpPolicy) -> {
 
-								Map<String, AppProperty> clientProp = e.get(clientId);
+					SecurityOtpTargetType target = SecurityOtpTargetType.lookupLiteral(otpPolicy.getT1().getLiteral());
 
-								if (clientProp.containsKey(AppService.APP_PROP_LOGIN_TYPE))
-									return getRequiredOtpProp(clientProp);
-
-								return e.values().stream().findFirst()
-										.map(this::getRequiredOtpProp)
-										.orElseGet(() -> Tuples.of("", "", "", "", ""));
-							});
+					return target != null ? Mono.just(target) : Mono.just(SecurityOtpTargetType.EMAIL);
 				},
 
-				(tup, linCCheck, app, prop) -> {
+				(tup, linCCheck, app, otpPolicy, target) -> sendOtp(target, tup.getT3(), otpPolicy.getT3(),
+						app.getAppCode(), clientCode, app.getAppName()),
 
-					if (StringUtil.safeIsBlank(prop.getT1())
-							|| !prop.getT1().equals(AppService.APP_PROP_LOGIN_TYPE_OTP))
-						return messageResourceService.getMessage(SecurityMessageResourceService.INVALID_APP_PROP)
-								.flatMap(msg -> Mono.error(new GenericException(HttpStatus.BAD_REQUEST, msg)));
-
-					SecurityOtpTargetType securityOtpTargetType = SecurityOtpTargetType.lookupLiteral(prop.getT3());
-
-					if (securityOtpTargetType == null)
-						return messageResourceService.getMessage(SecurityMessageResourceService.INVALID_APP_PROP)
-								.flatMap(msg -> Mono.error(new GenericException(HttpStatus.BAD_REQUEST, msg)));
-
-					return Mono.just(Tuples.of(securityOtpTargetType, ""));
-				},
-
-				(tup, linCCheck, app, prop, otp) -> {
-
-					if (Boolean.parseBoolean(prop.getT4()))
-						// if we have a const prop we will not sent it just create a entry for that.
-						return Mono.just(Boolean.TRUE);
-
-					return sendOtp(otp.getT1(), tup.getT3(), otp.getT2(), app.getAppCode(), clientCode,
-							app.getAppName());
-				},
-
-				(tup, linCCheck, app, prop, otp, otpSent) -> {
-					if (Boolean.TRUE.equals(otpSent))
-						return this
-								.createOtp(app.getId(), tup.getT3(), OtpPurpose.LOGIN.name(), otp.getT1(), otp.getT2(),
-										request.getRemoteAddress())
-								.map(otpHistory -> otpHistory.getId() != null ? Boolean.TRUE : Boolean.FALSE);
-					return Mono.just(Boolean.FALSE);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp"));
+				(tup, linCCheck, app, otpPolicy, target, otpSent) -> Boolean.TRUE.equals(otpSent)
+						? this.createOtp(app.getId(), tup.getT3(), OtpPurpose.LOGIN.name(), target, otpPolicy.getT3(),
+								otpPolicy.getT2(), request.getRemoteAddress())
+								.map(otpHistory -> Boolean.TRUE)
+								.onErrorReturn(Boolean.FALSE)
+						: Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp"));
 	}
 
 	public Mono<Boolean> verifyOtp(String appCode, User user, String purpose, String uniqueCode) {
@@ -180,38 +136,31 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 					if (lotp.isExpired())
 						return Mono.just(Boolean.FALSE);
 
-					if (lotp.match(uniqueCode))
+					if (encoder.matches(uniqueCode, lotp.getUniqueCode()))
 						return Mono.just(Boolean.TRUE);
 
 					return Mono.just(Boolean.FALSE);
-				});
-	}
-
-	private Tuple5<String, String, String, String, String> getRequiredOtpProp(Map<String, AppProperty> appProperties) {
-		return Tuples.of(
-				appProperties.get(AppService.APP_PROP_LOGIN_TYPE).getValue(),
-				appProperties.get(AppService.APP_PROP_OTP_TYPE).getValue(),
-				appProperties.get(AppService.APP_PROP_OTP_TYPE_TARGET_TYPE).getValue(),
-				appProperties.get(AppService.APP_PROP_OTP_TYPE_USE_CONST).getValue(),
-				appProperties.get(AppService.APP_PROP_OTP_TYPE_CONST).getValue());
+				})
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtp"));
 	}
 
 	private Mono<Boolean> sendOtp(SecurityOtpTargetType securityOtpTargetType, User user,
 			String otp, String appCode, String clientCode, String appName) {
 
 		if (StringUtil.safeIsBlank(otp))
-			return Mono.just(false);
+			return Mono.just(Boolean.FALSE);
 
 		boolean hasEmail = !StringUtil.safeIsBlank(user.getEmailId());
 		boolean hasPhone = !StringUtil.safeIsBlank(user.getPhoneNumber());
 
 		return switch (securityOtpTargetType) {
 			case EMAIL -> hasEmail ? sendEmailOtp(appCode, clientCode, appName, user.getEmailId(), otp)
-					: Mono.just(false);
+					: Mono.just(Boolean.FALSE);
 			case PHONE -> hasPhone ? sendPhoneOtp(appName, user.getPhoneNumber(), otp)
-					: Mono.just(false);
+					: Mono.just(Boolean.FALSE);
 			case BOTH -> (hasEmail || hasPhone) ? sendBothOtp(appCode, clientCode, appName, user, otp)
-					: Mono.just(false);
+					: Mono.just(Boolean.FALSE);
 		};
 	}
 
@@ -229,7 +178,7 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 	private Mono<Boolean> sendEmailOtp(String appCode, String clientCode, String appName, String email, String otp) {
 
 		if (email == null)
-			return Mono.just(false);
+			return Mono.just(Boolean.FALSE);
 
 		return this.ecService.createEvent(
 				new EventQueObject()
@@ -248,7 +197,7 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 	private Mono<Boolean> sendPhoneOtp(String appName, String phoneNumber, String otp) {
 
 		if (phoneNumber == null)
-			return Mono.just(false);
+			return Mono.just(Boolean.FALSE);
 
 		return this.messageService.sendOtpMessage(
 				phoneNumber,
@@ -260,18 +209,19 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.sendPhoneOtp"));
 	}
 
-	public Mono<Otp> createOtp(ULong appId, User user, String purpose, SecurityOtpTargetType targetType,
-			String uniqueCode, InetSocketAddress ipAddress) {
+	private Mono<Otp> createOtp(ULong appId, User user, String purpose, SecurityOtpTargetType targetType,
+			String uniqueCode, Long expireInterval, InetSocketAddress ipAddress) {
 
 		Otp otp = new Otp()
 				.setAppId(appId)
 				.setUserId(user.getId())
 				.setPurpose(purpose)
 				.setTargetType(targetType)
-				.setUniqueCode(HashUtil.hash(uniqueCode))
-				.setExpiresAt(LocalDateTime.now().plusMinutes(otpExpireInterval))
+				.setUniqueCode(encoder.encode(uniqueCode))
+				.setExpiresAt(LocalDateTime.now().plusMinutes(expireInterval))
 				.setIpAddress(ipAddress != null ? ipAddress.getHostString() : null);
 
-		return super.create(otp);
+		return super.create(otp)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.createOtp"));
 	}
 }

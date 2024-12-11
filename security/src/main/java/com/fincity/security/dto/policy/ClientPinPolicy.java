@@ -21,10 +21,11 @@ public class ClientPinPolicy extends AbstractPolicy {
 	@Serial
 	private static final long serialVersionUID = 6320470382858314209L;
 
-	private UShort length;
-	private ULong reLoginAfterInterval;
-	private UShort expiryInDays;
-	private UShort expiryWarnInDays;
+	private UShort length = UShort.valueOf(4);
+	private ULong reLoginAfterInterval = ULong.valueOf(120);
+	private UShort expiryInDays = UShort.valueOf(30);
+	private UShort expiryWarnInDays = UShort.valueOf(25);
+	private UShort pinHistoryCount = UShort.valueOf(3);
 
 	@Override
 	public String generate() {

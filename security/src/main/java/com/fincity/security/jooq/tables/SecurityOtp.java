@@ -91,13 +91,13 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
      * The column <code>security.security_otp.TARGET_TYPE</code>. The target
      * medium for the OTP delivery: EMAIL, PHONE, or BOTH
      */
-    public final TableField<SecurityOtpRecord, SecurityOtpTargetType> TARGET_TYPE = createField(DSL.name("TARGET_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("PHONE", SQLDataType.VARCHAR)).asEnumDataType(SecurityOtpTargetType.class), this, "The target medium for the OTP delivery: EMAIL, PHONE, or BOTH");
+    public final TableField<SecurityOtpRecord, SecurityOtpTargetType> TARGET_TYPE = createField(DSL.name("TARGET_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("EMAIL", SQLDataType.VARCHAR)).asEnumDataType(SecurityOtpTargetType.class), this, "The target medium for the OTP delivery: EMAIL, PHONE, or BOTH");
 
     /**
      * The column <code>security.security_otp.UNIQUE_CODE</code>. The hashed OTP
      * code used for verification
      */
-    public final TableField<SecurityOtpRecord, String> UNIQUE_CODE = createField(DSL.name("UNIQUE_CODE"), SQLDataType.CHAR(64).nullable(false), this, "The hashed OTP code used for verification");
+    public final TableField<SecurityOtpRecord, String> UNIQUE_CODE = createField(DSL.name("UNIQUE_CODE"), SQLDataType.CHAR(60).nullable(false), this, "The hashed OTP code used for verification");
 
     /**
      * The column <code>security.security_otp.ATTEMPTS</code>. Number of
@@ -196,7 +196,7 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.SECURITY_OTP_APP_ID, Indexes.SECURITY_OTP_CREATED_AT, Indexes.SECURITY_OTP_EXPIRES_AT, Indexes.SECURITY_OTP_UNIQUE_CODE);
+        return Arrays.asList(Indexes.SECURITY_OTP_APP_ID, Indexes.SECURITY_OTP_CREATED_AT, Indexes.SECURITY_OTP_EXPIRES_AT);
     }
 
     @Override

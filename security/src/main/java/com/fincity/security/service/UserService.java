@@ -1,6 +1,5 @@
 package com.fincity.security.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
@@ -55,7 +54,6 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
-import com.fincity.security.service.policy.ClientPasswordPolicyService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -78,7 +76,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	private static final int VALIDITY_MINUTES = 30;
 
 	private final ClientService clientService;
-	private final ClientPasswordPolicyService clientPasswordPolicyService;
 	private final PasswordEncoder passwordEncoder;
 	private final SecurityMessageResourceService securityMessageResourceService;
 	private final SoxLogService soxLogService;
@@ -89,13 +86,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	@Value("${jwt.key}")
 	private String tokenKey;
 
-	public UserService(ClientService clientService, ClientPasswordPolicyService clientPasswordPolicyService,
-			PasswordEncoder passwordEncoder, SecurityMessageResourceService securityMessageResourceService,
-			SoxLogService soxLogService, TokenService tokenService, EventCreationService ecService,
-			AppRegistrationDAO appRegistrationDAO) {
+	public UserService(ClientService clientService, PasswordEncoder passwordEncoder,
+			SecurityMessageResourceService securityMessageResourceService, SoxLogService soxLogService,
+			TokenService tokenService, EventCreationService ecService, AppRegistrationDAO appRegistrationDAO) {
 
 		this.clientService = clientService;
-		this.clientPasswordPolicyService = clientPasswordPolicyService;
 		this.passwordEncoder = passwordEncoder;
 		this.securityMessageResourceService = securityMessageResourceService;
 		this.soxLogService = soxLogService;
@@ -139,16 +134,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	public Mono<User> getUserForContext(ULong id) {
-		return this.dao.readById(id)
-				.flatMap(this.dao::setPermissions);
+		return this.dao.readById(id).flatMap(this.dao::setPermissions);
 	}
 
-	public Mono<Object> increaseFailedAttempt(ULong userId) {
-		return this.dao.increaseFailedAttempt(userId);
+	public Mono<Short> increaseFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
+		return this.dao.increaseFailedAttempt(userId, passwordType);
 	}
 
-	public Mono<Object> resetFailedAttempt(ULong userId) {
-		return this.dao.resetFailedAttempt(userId);
+	public Mono<Boolean> resetFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
+		return this.dao.resetFailedAttempt(userId, passwordType);
 	}
 
 	@Override
@@ -161,7 +155,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
-
 		return SecuritySoxLogObjectName.USER;
 	}
 
@@ -276,7 +269,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	private Mono<Integer> evictTokens(ULong id) {
-
 		return this.tokenService.evictTokensOfUser(id);
 	}
 
@@ -558,13 +550,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 									})
 
 				).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
-
 							.flatMap(e -> this.evictTokens(userId)
 									.map(x -> e))
 							.switchIfEmpty(securityMessageResourceService.throwMessage(
 									msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 									SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
-
 				});
 
 	}
@@ -578,7 +568,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	public Mono<Boolean> updateNewPassword(String urlAppCode, String urlClientCode, ULong reqUserId,
-			RequestUpdatePassword requestPassword, boolean isResetPassword) {
+			RequestUpdatePassword requestPassword, boolean isReset, AuthenticationPasswordType passwordType) {
 
 		if (StringUtil.safeIsBlank(requestPassword.getNewPassword()))
 			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -588,17 +578,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				() -> this.dao.readById(reqUserId),
 
-				user -> this.checkHierarchy(user, requestPassword, isResetPassword),
+				user -> this.checkHierarchy(user, requestPassword, isReset, passwordType),
 
-				(user, isUpdatable) -> this.clientPasswordPolicyService.checkAllConditions(user.getClientId(),
-						ULong.valueOf(0),
-						requestPassword.getNewPassword()),
+				(user, isUpdatable) -> this.clientService.validatePasswordPolicy(user.getClientId(), urlAppCode,
+						user.getId(), passwordType, requestPassword.getNewPassword()),
 
-				(user, isUpdatable, isValid) -> isResetPassword ? Mono.just(true)
-						: this.checkPasswordInPastPasswords(user, requestPassword.getNewPassword()),
-
-				(user, isUpdatable, isValid, isPastPassword) -> this.dao
-						.setPassword(reqUserId, requestPassword.getNewPassword(), user.getId())
+				(user, isUpdatable, isValid) -> this.setPassword(user, requestPassword.getNewPassword(), passwordType)
 						.flatMap(e -> {
 							this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
 									.setActionName(SecuritySoxLogActionName.OTHER)
@@ -608,10 +593,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 							return ecService.createEvent(new EventQueObject().setAppCode(urlAppCode)
 									.setClientCode(urlClientCode)
-									.setEventName(isResetPassword ? EventNames.USER_PASSWORD_RESET_DONE
-											: EventNames.USER_PASSWORD_CHANGED)
-									.setData(Map.of("user", user)))
-									.map(x -> e > 0);
+									.setEventName(isReset
+											? EventNames.getEventName(EventNames.USER_PASSWORD_RESET_DONE, passwordType)
+											: EventNames.getEventName(EventNames.USER_PASSWORD_CHANGED, passwordType))
+									.setData(Map.of("user", user)));
 						}))
 
 				.flatMap(e -> this.evictTokens(reqUserId)
@@ -620,57 +605,52 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.map(x -> e))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateNewPassword"))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg), "Password cannot be updated"));
-
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg), "$ cannot be updated", passwordType));
 	}
 
 	// check the hierarchy with client id and user id as per the comment given
 	// 1.) same user id
-	// 2.) logged in user's client id matches given user's client id if logged in
+	// 2.) logged-in user's client id matches given user's client id if logged-in
 	// user has user edit access update the password
-	// 3.) logged in user's client id is system if logged in user has user edit
+	// 3.) logged-in user's client id is system if logged-in user has user edit
 	// access update the password
-	// 4.) if no client id matches check logged in user's client id is managing user
-	// id's client id if logged in user has user edit access the update password
-
-	public Mono<Boolean> checkHierarchy(User user, RequestUpdatePassword reqPassword, boolean isResetPassword) {
+	// 4.) if no client id matches check logged-in user's client id is managing user
+	// id's client id if logged-in user has user edit access the update password
+	public Mono<Boolean> checkHierarchy(User user, RequestUpdatePassword reqPassword, boolean isResetPassword,
+			AuthenticationPasswordType passwordType) {
 
 		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> {
-					ULong loggedInUserClientId = ULong.valueOf(ca.getUser()
-							.getClientId());
 
-					if (ULongUtil.valueOf(ca.getUser()
-							.getId())
-							.equals(user.getId()) && !isResetPassword) {
+					if (ULongUtil.valueOf(ca.getUser().getId()).equals(user.getId()) && !isResetPassword) {
 
 						return FlatMapUtil.flatMapMono(
 
 								() -> SecurityUserStatusCode.ACTIVE.equals(user.getStatusCode())
-										? this.checkPasswordEquality(user, reqPassword)
+										? this.checkPasswordEquality(user, reqPassword, passwordType)
 										: securityMessageResourceService.throwMessage(
 												msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 												SecurityMessageResourceService.USER_NOT_ACTIVE),
 
-								passwordEqual -> passwordEqual.booleanValue() ? Mono.just(passwordEqual)
+								passwordEqual -> Boolean.TRUE.equals(passwordEqual) ? Mono.just(Boolean.TRUE)
 										: securityMessageResourceService.throwMessage(
-
 												msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 												SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH))
 								.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"))
 								.log();
-
 					}
+
+					ULong loggedInUserClientId = ULong.valueOf(ca.getUser().getClientId());
 
 					return FlatMapUtil.flatMapMono(
 
 							() -> Mono.just(ca.isSystemClient() || user.getClientId()
 									.equals(loggedInUserClientId)),
 
-							sysOrSame -> sysOrSame.booleanValue() ? Mono.just(sysOrSame)
+							sysOrSame -> Boolean.TRUE.equals(sysOrSame) ? Mono.just(Boolean.TRUE)
 									: this.clientService.isBeingManagedBy(loggedInUserClientId, user.getClientId())
 											.flatMap(BooleanUtil::safeValueOfWithEmpty)
 											.flatMap(e -> SecurityContextUtil.hasAuthority("Authorities.User_UPDATE"))
@@ -680,41 +660,34 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 									SecurityMessageResourceService.HIERARCHY_ERROR));
 
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"));
-
 	}
 
-	public Mono<Boolean> checkPasswordEquality(User u, RequestUpdatePassword reqPassword) {
+	public Mono<Boolean> checkPasswordEquality(User user, RequestUpdatePassword reqPassword,
+			AuthenticationPasswordType passwordType) {
 
-		if (u.isPasswordHashed())
-			return Mono.just(passwordEncoder.matches(u.getId() + reqPassword.getOldPassword(), u.getPassword())
-					&& !passwordEncoder.matches(u.getId() + reqPassword.getNewPassword(), u.getPassword()));
+		switch (passwordType) {
+			case PASSWORD -> {
+				if (user.isPasswordHashed())
+					return Mono.just(
+							passwordEncoder.matches(user.getId() + reqPassword.getOldPassword(), user.getPassword())
+									&& !passwordEncoder.matches(user.getId() + reqPassword.getNewPassword(),
+											user.getPassword()));
 
-		return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), u.getPassword())
-				&& StringUtil.safeEquals(reqPassword.getOldPassword(), u.getPassword()));
-	}
+				return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), user.getPassword())
+						&& StringUtil.safeEquals(reqPassword.getOldPassword(), user.getPassword()));
+			}
+			case PIN -> {
+				if (user.isPinHashed())
+					return Mono.just(passwordEncoder.matches(user.getId() + reqPassword.getOldPassword(), user.getPin())
+							&& !passwordEncoder.matches(user.getId() + reqPassword.getNewPassword(), user.getPin()));
 
-	private Mono<Boolean> checkPasswordInPastPasswords(User user, String newPassword) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.dao.getPastPasswordsBasedOnPolicy(user.getId(), user.getClientId()),
-
-				pastPasswords -> {
-
-					for (var pastPassword : pastPasswords) {
-						if ((pastPassword.isPasswordHashed()
-								&& passwordEncoder.matches(pastPassword.getPassword(), user.getId() + newPassword))
-								|| (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
-										.equals(newPassword)))
-							return this.securityMessageResourceService.throwMessage(
-									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-									SecurityMessageResourceService.PASSWORD_USER_ERROR);
-
-					}
-
-					return Mono.just(true);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkPasswordInPastPasswords"));
-
+				return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), user.getPin())
+						&& StringUtil.safeEquals(reqPassword.getOldPassword(), user.getPin()));
+			}
+			default -> {
+				return Mono.just(Boolean.FALSE);
+			}
+		}
 	}
 
 	public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
@@ -773,11 +746,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 									.setDescription("User created"))
 							.subscribe();
 
-					return this.setPassword(createdUser, password);
+					return this.setPassword(createdUser, password, AuthenticationPasswordType.PASSWORD);
 				},
 
-				(u, cu, createdUser, spu) -> {
-					Mono<Boolean> roleUser = flatMapMono(
+				(u, cu, createdUser, passSet) -> {
+					Mono<Boolean> roleUser = FlatMapUtil.flatMapMono(
 
 							SecurityContextUtil::getUsersContextAuthentication,
 
@@ -868,9 +841,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return this.dao.checkUserExists(urlAppCode, urlClientCode, request);
 	}
 
-	public Mono<Boolean> resetPasswordRequest(AuthenticationRequest authRequest, ServerHttpRequest request) {
+	public Mono<Boolean> resetPasswordRequest(AuthenticationRequest authRequest, ServerHttpRequest request,
+			AuthenticationPasswordType passwordType) {
 
-		LogUtil.logIfDebugKey(logger, "Requesting reset password.");
+		LogUtil.logIfDebugKey(logger, StringFormatter.format("Requesting reset $.", passwordType));
 
 		String host = request.getHeaders().getFirst("X-Forwarded-Host");
 		String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
@@ -903,12 +877,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				(ca, cu, loggedInClientId,
 						token) -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
 								.setClientCode(ca.getUrlClientCode())
-								.setEventName(EventNames.USER_RESET_PASSWORD_REQUEST)
-								.setData(Map.of("user", cu.getT3(), "token", token.getToken(), "urlPrefix", urlPrefix)))
-
-		)
+								.setEventName(
+										EventNames.getEventName(EventNames.USER_RESET_PASSWORD_REQUEST, passwordType))
+								.setData(
+										Map.of("user", cu.getT3(), "token", token.getToken(), "urlPrefix", urlPrefix))))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.resetPasswordRequest"))
-				.map(e -> true);
+				.map(e -> Boolean.TRUE);
 	}
 
 	public Mono<TokenObject> makeOneTimeToken(ServerHttpRequest httpRequest, ContextAuthentication ca, User u,
@@ -1017,19 +991,22 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.passwordEntitiesPolicyCheck"));
 	}
 
-	private Mono<User> passwordPolicyCheck(User user, ULong appId, String appCode, AuthenticationPasswordType passType,
-			String password) {
+	private Mono<User> passwordPolicyCheck(User user, ULong appId, String appCode,
+			AuthenticationPasswordType passwordType, String password) {
 
 		return FlatMapUtil.flatMapMono(
+
 				() -> appId != null
-						? this.clientService.validatePasswordPolicy(user.getClientId(), appId, passType, password)
-						: this.clientService.validatePasswordPolicy(user.getClientId(), appCode, passType, password),
+						? this.clientService.validatePasswordPolicy(user.getClientId(), appId, user.getId(),
+								passwordType, password)
+						: this.clientService.validatePasswordPolicy(user.getClientId(), appCode, user.getId(),
+								passwordType, password),
+
 				isValid -> {
-					if (Boolean.FALSE.equals(isValid)) {
+					if (Boolean.FALSE.equals(isValid))
 						return securityMessageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								SecurityMessageResourceService.FORBIDDEN_CREATE_INVALID_PASS, passType);
-					}
+								SecurityMessageResourceService.FORBIDDEN_CREATE_INVALID_PASS, passwordType);
 					return Mono.just(user);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.passwordPolicyCheck"));
@@ -1037,58 +1014,32 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	private Mono<User> setPasswordEntities(User user, Map<AuthenticationPasswordType, String> passEntities) {
 
-		return Flux.fromIterable(passEntities.entrySet())
-				.flatMap(
-						passEntry -> setPassword(user, passEntry.getKey(), passEntry.getValue()))
-				.then(Mono.just(user))
+		return FlatMapUtil.flatMapMono(
+
+				this::getLoggedInUserId,
+
+				loggedInUserId -> FlatMapUtil.flatMapFlux(
+
+						() -> Flux.fromIterable(passEntities.entrySet()),
+
+						passEntry -> this.dao
+								.setPassword(user.getId(), loggedInUserId, passEntry.getValue(), passEntry.getKey())
+								.map(result -> result > 0)
+								.flatMapMany(BooleanUtil::safeValueOfWithEmpty))
+						.then(Mono.just(user)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setPasswordEntities"));
 	}
 
-	private Mono<User> setPassword(User user, AuthenticationPasswordType passType, String password) {
-
-		switch (passType) {
-			case PASSWORD -> {
-				return setPassword(user, password);
-			}
-			case PIN -> {
-				return setPin(user, password);
-			}
-			default -> {
-				return securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.FORBIDDEN_CREATE_INVALID_PASS, passType);
-			}
-		}
-	}
-
-	private Mono<User> setPin(User user, String pin) {
+	private Mono<Boolean> setPassword(User user, String password, AuthenticationPasswordType passwordType) {
 
 		return FlatMapUtil.flatMapMono(
 
 				this::getLoggedInUserId,
 
-				loggedInUserId -> this.dao.setPin(user.getId(), pin, loggedInUserId)
+				loggedInUserId -> this.dao.setPassword(user.getId(), loggedInUserId, password, passwordType)
 						.map(result -> result > 0)
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(loggedInUserId, pinSet) -> Mono.just(user)
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setPin"));
-	}
-
-	private Mono<User> setPassword(User user, String password) {
-
-		return FlatMapUtil.flatMapMono(
-
-				this::getLoggedInUserId,
-
-				loggedInUserId -> this.dao.setPassword(user.getId(), password, loggedInUserId)
-						.map(result -> result > 0)
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(loggedInUserId, passwordSet) -> Mono.just(user)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setPassword"));
-
 	}
 }

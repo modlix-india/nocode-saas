@@ -10,26 +10,20 @@ import org.jooq.Schema;
 
 
 /**
- * Platform
+ * The target medium for the OTP delivery: EMAIL, PHONE, or BOTH
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityAppRegIntegrationPlatform implements EnumType {
+public enum SecurityClientOtpPolicyTargetType implements EnumType {
 
-    GOOGLE("GOOGLE"),
+    EMAIL("EMAIL"),
 
-    META("META"),
+    PHONE("PHONE"),
 
-    APPLE("APPLE"),
-
-    SSO("SSO"),
-
-    MICROSOFT("MICROSOFT"),
-
-    X("X");
+    BOTH("BOTH");
 
     private final String literal;
 
-    private SecurityAppRegIntegrationPlatform(String literal) {
+    private SecurityClientOtpPolicyTargetType(String literal) {
         this.literal = literal;
     }
 
@@ -58,7 +52,7 @@ public enum SecurityAppRegIntegrationPlatform implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityAppRegIntegrationPlatform lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityAppRegIntegrationPlatform.class, literal);
+    public static SecurityClientOtpPolicyTargetType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityClientOtpPolicyTargetType.class, literal);
     }
 }

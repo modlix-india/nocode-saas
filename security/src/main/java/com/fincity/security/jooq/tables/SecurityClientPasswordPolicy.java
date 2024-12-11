@@ -282,7 +282,7 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
 
     @Override
     public List<UniqueKey<SecurityClientPasswordPolicyRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_PASSWORD_POLICY_UK1_CLIENT_PWD_POL_ID);
+        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_PASSWORD_POLICY_UK1_CLIENT_PWD_POL_CLIENT_ID_APP_ID);
     }
 
     @Override

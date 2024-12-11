@@ -6,6 +6,7 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityClientOtpPolicyTargetType;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityClientOtpPolicyRecord;
@@ -83,6 +84,24 @@ public class SecurityClientOtpPolicy extends TableImpl<SecurityClientOtpPolicyRe
     public final TableField<SecurityClientOtpPolicyRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application to which this OTP policy belongs. References security_app table");
 
     /**
+     * The column <code>security.security_client_otp_policy.TARGET_TYPE</code>.
+     * The target medium for the OTP delivery: EMAIL, PHONE, or BOTH
+     */
+    public final TableField<SecurityClientOtpPolicyRecord, SecurityClientOtpPolicyTargetType> TARGET_TYPE = createField(DSL.name("TARGET_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("EMAIL", SQLDataType.VARCHAR)).asEnumDataType(SecurityClientOtpPolicyTargetType.class), this, "The target medium for the OTP delivery: EMAIL, PHONE, or BOTH");
+
+    /**
+     * The column <code>security.security_client_otp_policy.IS_CONSTANT</code>.
+     * Flag indicating if OTP should be a constant value
+     */
+    public final TableField<SecurityClientOtpPolicyRecord, Byte> IS_CONSTANT = createField(DSL.name("IS_CONSTANT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag indicating if OTP should be a constant value");
+
+    /**
+     * The column <code>security.security_client_otp_policy.CONSTANT</code>.
+     * Value of OTP if IS_CONSTANT is true
+     */
+    public final TableField<SecurityClientOtpPolicyRecord, String> CONSTANT = createField(DSL.name("CONSTANT"), SQLDataType.CHAR(10), this, "Value of OTP if IS_CONSTANT is true");
+
+    /**
      * The column <code>security.security_client_otp_policy.IS_NUMERIC</code>.
      * Flag indicating if OTP should contain only numeric characters
      */
@@ -103,10 +122,17 @@ public class SecurityClientOtpPolicy extends TableImpl<SecurityClientOtpPolicyRe
 
     /**
      * The column
-     * <code>security.security_client_otp_policy.NO_FAILED_ATTEMPTS</code>.
-     * Maximum number of failed attempts allowed before OTP is invalidated
+     * <code>security.security_client_otp_policy.RESEND_SAME_OTP</code>. Flag
+     * indication weather to send same OTP in resend request.
      */
-    public final TableField<SecurityClientOtpPolicyRecord, UShort> NO_FAILED_ATTEMPTS = createField(DSL.name("NO_FAILED_ATTEMPTS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("3", SQLDataType.SMALLINTUNSIGNED)), this, "Maximum number of failed attempts allowed before OTP is invalidated");
+    public final TableField<SecurityClientOtpPolicyRecord, Byte> RESEND_SAME_OTP = createField(DSL.name("RESEND_SAME_OTP"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag indication weather to send same OTP in resend request.");
+
+    /**
+     * The column
+     * <code>security.security_client_otp_policy.NO_RESEND_ATTEMPTS</code>.
+     * Maximum number of Resend attempts allowed before User is blocked
+     */
+    public final TableField<SecurityClientOtpPolicyRecord, UShort> NO_RESEND_ATTEMPTS = createField(DSL.name("NO_RESEND_ATTEMPTS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("3", SQLDataType.SMALLINTUNSIGNED)), this, "Maximum number of Resend attempts allowed before User is blocked");
 
     /**
      * The column
@@ -114,6 +140,13 @@ public class SecurityClientOtpPolicy extends TableImpl<SecurityClientOtpPolicyRe
      * interval in minutes after which OTP will expire
      */
     public final TableField<SecurityClientOtpPolicyRecord, ULong> EXPIRE_INTERVAL = createField(DSL.name("EXPIRE_INTERVAL"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("5", SQLDataType.BIGINTUNSIGNED)), this, "Time interval in minutes after which OTP will expire");
+
+    /**
+     * The column
+     * <code>security.security_client_otp_policy.NO_FAILED_ATTEMPTS</code>.
+     * Maximum number of failed attempts allowed before OTP is invalidated
+     */
+    public final TableField<SecurityClientOtpPolicyRecord, UShort> NO_FAILED_ATTEMPTS = createField(DSL.name("NO_FAILED_ATTEMPTS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("3", SQLDataType.SMALLINTUNSIGNED)), this, "Maximum number of failed attempts allowed before OTP is invalidated");
 
     /**
      * The column <code>security.security_client_otp_policy.CREATED_BY</code>.
@@ -216,6 +249,11 @@ public class SecurityClientOtpPolicy extends TableImpl<SecurityClientOtpPolicyRe
     @Override
     public UniqueKey<SecurityClientOtpPolicyRecord> getPrimaryKey() {
         return Keys.KEY_SECURITY_CLIENT_OTP_POLICY_PRIMARY;
+    }
+
+    @Override
+    public List<UniqueKey<SecurityClientOtpPolicyRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_OTP_POLICY_UK1_CLIENT_OTP_POL_CLIENT_ID_APP_ID);
     }
 
     @Override

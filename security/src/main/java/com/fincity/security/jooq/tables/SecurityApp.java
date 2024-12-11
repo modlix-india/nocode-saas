@@ -14,6 +14,7 @@ import com.fincity.security.jooq.tables.SecurityAppDependency.SecurityAppDepende
 import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyPath;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegFileAccessPath;
+import com.fincity.security.jooq.tables.SecurityAppRegIntegration.SecurityAppRegIntegrationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegPackage.SecurityAppRegPackagePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole.SecurityAppRegUserRolePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
@@ -286,6 +287,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityAppProperty;
     }
 
+    private transient SecurityAppRegIntegrationPath _securityAppRegIntegration;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_reg_integration</code> table
+     */
+    public SecurityAppRegIntegrationPath securityAppRegIntegration() {
+        if (_securityAppRegIntegration == null)
+            _securityAppRegIntegration = new SecurityAppRegIntegrationPath(this, null, Keys.FK1_APP_REG_INTEGRATION_APP_ID.getInverseKey());
+
+        return _securityAppRegIntegration;
+    }
+
     private transient SecurityClientUrlPath _securityClientUrl;
 
     /**
@@ -482,6 +496,42 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _fk3AppRegAccAllowAppId = new SecurityAppRegAccessPath(this, null, Keys.FK3_APP_REG_ACC_ALLOW_APP_ID.getInverseKey());
 
         return _fk3AppRegAccAllowAppId;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
+     * <code>FK1_APP_ACCESS_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk1AppAccessClientId() {
+        return securityAppAccess().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
+     * <code>FK1_CLIENT_OTP_POL_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk1ClientOtpPolClientId() {
+        return securityClientOtpPolicy().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
+     * <code>FK1_CLIENT_PWD_POL_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk1ClientPwdPolClientId() {
+        return securityClientPasswordPolicy().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
+     * <code>FK1_CLIENT_PIN_POL_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk1ClientPinPolClientId() {
+        return securityClientPinPolicy().securityClient();
     }
 
     @Override

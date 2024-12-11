@@ -2,6 +2,7 @@ package com.fincity.security.dto;
 
 import java.io.Serial;
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.jooq.types.ULong;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.model.AuthenticationPasswordType;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -45,8 +47,11 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	private boolean credentialsNonExpired;
 	private Short noFailedAttempt;
 	private Short noPinFailedAttempt;
-	private Short noOtoFailedAttempt;
+	private Short noOtpResendAttempts;
+	private Short noOtpFailedAttempt;
 	private SecurityUserStatusCode statusCode;
+	private LocalDateTime lockedUntil;
+	private String lockedDueTo;
 	private List<String> authorities;
 
 	public String getUserName() {
@@ -99,8 +104,13 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 				.setLocaleCode(localeCode)
 				.setMiddleName(middleName)
 				.setNoFailedAttempt(noFailedAttempt)
+				.setNoPinFailedAttempt(noPinFailedAttempt)
+				.setNoOtpResendAttempts(noOtpResendAttempts)
+				.setNoOtpFailedAttempt(noOtpFailedAttempt)
 				.setPhoneNumber(this.getPhoneNumber())
 				.setStatusCode(this.statusCode.toString())
+				.setLockedUntil(lockedUntil)
+				.setLockedDueTo(lockedDueTo)
 				.setUserName(this.getUserName());
 	}
 

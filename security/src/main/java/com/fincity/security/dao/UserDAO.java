@@ -5,7 +5,6 @@ import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
-import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
 import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
 import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
@@ -45,7 +44,6 @@ import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.PastPassword;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
@@ -54,6 +52,7 @@ import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.service.SecurityMessageResourceService;
 
@@ -101,16 +100,71 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(e -> e.into(User.class));
 	}
 
-	public Mono<Object> increaseFailedAttempt(ULong userId) {
-		return Mono.from(this.dslContext.update(SECURITY_USER)
-				.set(SECURITY_USER.NO_FAILED_ATTEMPT, SECURITY_USER.NO_FAILED_ATTEMPT.add(1))
-				.where(SECURITY_USER.ID.eq(userId)));
+	public Mono<Short> increaseFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
+		return switch (passwordType) {
+			case PASSWORD -> increaseFailedAttempt(userId);
+			case PIN -> increasePinFailedAttempt(userId);
+			case OTP -> increaseOtpFailedAttempt(userId);
+		};
 	}
 
-	public Mono<Object> resetFailedAttempt(ULong userId) {
+	public Mono<Boolean> resetFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
+		return switch (passwordType) {
+			case PASSWORD -> resetFailedAttempt(userId);
+			case PIN -> resetPinFailedAttempt(userId);
+			case OTP -> resetOtpFailedAttempt(userId);
+		};
+	}
+
+	private Mono<Short> increaseFailedAttempt(ULong userId) {
 		return Mono.from(this.dslContext.update(SECURITY_USER)
-				.set(SECURITY_USER.NO_FAILED_ATTEMPT, Short.valueOf((short) 0))
-				.where(SECURITY_USER.ID.eq(userId)));
+				.set(SECURITY_USER.NO_FAILED_ATTEMPT, SECURITY_USER.NO_FAILED_ATTEMPT.add(1))
+				.where(SECURITY_USER.ID.eq(userId)))
+				.flatMap(updatedRows -> Mono.from(this.dslContext.select(SECURITY_USER.NO_FAILED_ATTEMPT)
+						.from(SECURITY_USER)
+						.where(SECURITY_USER.ID.eq(userId)))
+						.map(Record1::value1));
+	}
+
+	private Mono<Short> increasePinFailedAttempt(ULong userId) {
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.NO_PIN_FAILED_ATTEMPT, SECURITY_USER.NO_PIN_FAILED_ATTEMPT.add(1))
+				.where(SECURITY_USER.ID.eq(userId)))
+				.flatMap(updatedRows -> Mono.from(this.dslContext.select(SECURITY_USER.NO_PIN_FAILED_ATTEMPT)
+						.from(SECURITY_USER)
+						.where(SECURITY_USER.ID.eq(userId)))
+						.map(Record1::value1));
+	}
+
+	private Mono<Short> increaseOtpFailedAttempt(ULong userId) {
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, SECURITY_USER.NO_OTP_FAILED_ATTEMPT.add(1))
+				.where(SECURITY_USER.ID.eq(userId)))
+				.flatMap(updatedRows -> Mono.from(this.dslContext.select(SECURITY_USER.NO_OTP_FAILED_ATTEMPT)
+						.from(SECURITY_USER)
+						.where(SECURITY_USER.ID.eq(userId)))
+						.map(Record1::value1));
+	}
+
+	private Mono<Boolean> resetFailedAttempt(ULong userId) {
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.NO_FAILED_ATTEMPT, (short) 0)
+				.where(SECURITY_USER.ID.eq(userId)))
+				.map(isUpdated -> isUpdated > 0);
+	}
+
+	private Mono<Boolean> resetPinFailedAttempt(ULong userId) {
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.NO_PIN_FAILED_ATTEMPT, (short) 0)
+				.where(SECURITY_USER.ID.eq(userId)))
+				.map(isUpdated -> isUpdated > 0);
+	}
+
+	private Mono<Boolean> resetOtpFailedAttempt(ULong userId) {
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, (short) 0)
+				.where(SECURITY_USER.ID.eq(userId)))
+				.map(isUpdated -> isUpdated > 0);
 	}
 
 	public Mono<User> setPermissions(User user) {
@@ -285,36 +339,46 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	}
 
-	public Mono<Integer> setPassword(ULong id, String password, ULong currentUserId) {
+	public Mono<Integer> setPassword(ULong userId, ULong currentUserId, String password,
+			AuthenticationPasswordType passwordType) {
 
-		String encryptedPassword = encoder.encode((id + password));
+		String encryptedPassword = encoder.encode((userId + password));
+
+		return switch (passwordType) {
+			case PASSWORD -> setPassword(userId, currentUserId, encryptedPassword);
+			case PIN -> setPin(userId, currentUserId, encryptedPassword);
+			default -> Mono.just(0);
+		};
+	}
+
+	private Mono<Integer> setPassword(ULong userId, ULong currentUserId, String encryptedPassword) {
+
 		Mono.from(this.dslContext
 				.insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
 						SECURITY_PAST_PASSWORDS.PASSWORD_HASHED, SECURITY_PAST_PASSWORDS.CREATED_BY)
-				.values(id, encryptedPassword, ByteUtil.ONE, currentUserId))
+				.values(userId, encryptedPassword, ByteUtil.ONE, currentUserId))
 				.subscribe();
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
 				.set(SECURITY_USER.PASSWORD, encryptedPassword)
 				.set(SECURITY_USER.PASSWORD_HASHED, ByteUtil.ONE)
 				.set(SECURITY_USER.UPDATED_BY, currentUserId)
-				.where(SECURITY_USER.ID.eq(id)));
+				.where(SECURITY_USER.ID.eq(userId)));
 	}
 
-	public Mono<Integer> setPin(ULong id, String pin, ULong currentUserId) {
+	private Mono<Integer> setPin(ULong userId, ULong currentUserId, String encryptedPin) {
 
-		String encryptedPin = encoder.encode((id + pin));
 		Mono.from(this.dslContext
 				.insertInto(SECURITY_PAST_PINS, SECURITY_PAST_PINS.USER_ID, SECURITY_PAST_PINS.PIN,
 						SECURITY_PAST_PINS.PIN_HASHED, SECURITY_PAST_PINS.CREATED_BY)
-				.values(id, encryptedPin, ByteUtil.ONE, currentUserId))
+				.values(userId, encryptedPin, ByteUtil.ONE, currentUserId))
 				.subscribe();
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
 				.set(SECURITY_USER.PIN, encryptedPin)
 				.set(SECURITY_USER.PIN_HASHED, ByteUtil.ONE)
 				.set(SECURITY_USER.UPDATED_BY, currentUserId)
-				.where(SECURITY_USER.ID.eq(id)));
+				.where(SECURITY_USER.ID.eq(userId)));
 	}
 
 	public Mono<User> readInternal(ULong id) {
@@ -394,22 +458,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				}
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.isBeingManagedBy"));
-	}
-
-	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ULong userId, ULong clientId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_CLIENT_PASSWORD_POLICY.PASS_HISTORY_COUNT)
-				.from(SECURITY_CLIENT_PASSWORD_POLICY)
-				.where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId))
-				.limit(1))
-				.flatMapMany(cnt -> Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
-						.from(SECURITY_PAST_PASSWORDS)
-						.where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
-						.orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
-						.limit(cnt.value1())))
-				.map(e -> e.into(PastPassword.class))
-				.collectList()
-				.defaultIfEmpty(List.of());
 	}
 
 	public Mono<Boolean> checkPermissionAssignedForUser(ULong userId, ULong permissionId) {

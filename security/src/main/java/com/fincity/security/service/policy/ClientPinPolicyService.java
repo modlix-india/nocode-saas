@@ -1,6 +1,8 @@
 package com.fincity.security.service.policy;
 
 import org.jooq.types.ULong;
+import org.jooq.types.UShort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.security.dao.policy.ClientPinPolicyDAO;
@@ -29,6 +31,22 @@ public class ClientPinPolicyService extends AbstractPolicyService<SecurityClient
 	}
 
 	@Override
+	protected Mono<ClientPinPolicy> getDefaultPolicy() {
+		return Mono.just(
+				(ClientPinPolicy) new ClientPinPolicy()
+						.setLength(UShort.valueOf(4))
+						.setReLoginAfterInterval(ULong.valueOf(120))
+						.setExpiryInDays(UShort.valueOf(30))
+						.setExpiryWarnInDays(UShort.valueOf(25))
+						.setPinHistoryCount(UShort.valueOf(3))
+						.setClientId(ULong.valueOf(0))
+						.setAppId(ULong.valueOf(0))
+						.setNoFailedAttempts(UShort.valueOf(3))
+		);
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
+	@Override
 	protected Mono<ClientPinPolicy> updatableEntity(ClientPinPolicy entity) {
 		return this.read(entity.getId())
 				.map(e -> {
@@ -37,6 +55,7 @@ public class ClientPinPolicyService extends AbstractPolicyService<SecurityClient
 					e.setReLoginAfterInterval(entity.getReLoginAfterInterval());
 					e.setExpiryInDays(entity.getExpiryInDays());
 					e.setExpiryWarnInDays(entity.getExpiryWarnInDays());
+					e.setPinHistoryCount(entity.getPinHistoryCount());
 					return e;
 				});
 	}
@@ -47,7 +66,7 @@ public class ClientPinPolicyService extends AbstractPolicyService<SecurityClient
 	}
 
 	@Override
-	public Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, String password) {
+	public Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, ULong userId, String password) {
 		return null;
 	}
 }

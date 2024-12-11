@@ -334,11 +334,28 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
     }
 
     /**
+     * Setter for <code>security.security_user.NO_OTP_RESEND_ATTEMPT</code>. No
+     * of Resend attempts for OTP
+     */
+    public SecurityUserRecord setNoOtpResendAttempt(Short value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.NO_OTP_RESEND_ATTEMPT</code>. No
+     * of Resend attempts for OTP
+     */
+    public Short getNoOtpResendAttempt() {
+        return (Short) get(19);
+    }
+
+    /**
      * Setter for <code>security.security_user.NO_OTP_FAILED_ATTEMPT</code>. No
      * of failed attempts for OTP
      */
     public SecurityUserRecord setNoOtpFailedAttempt(Short value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -347,7 +364,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * of failed attempts for OTP
      */
     public Short getNoOtpFailedAttempt() {
-        return (Short) get(19);
+        return (Short) get(20);
     }
 
     /**
@@ -355,7 +372,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * user
      */
     public SecurityUserRecord setStatusCode(SecurityUserStatusCode value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -364,7 +381,41 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * user
      */
     public SecurityUserStatusCode getStatusCode() {
-        return (SecurityUserStatusCode) get(20);
+        return (SecurityUserStatusCode) get(21);
+    }
+
+    /**
+     * Setter for <code>security.security_user.LOCKED_UNTIL</code>. If user is
+     * blocked based on STATUS_CODE, until when this will indicate
+     */
+    public SecurityUserRecord setLockedUntil(LocalDateTime value) {
+        set(22, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.LOCKED_UNTIL</code>. If user is
+     * blocked based on STATUS_CODE, until when this will indicate
+     */
+    public LocalDateTime getLockedUntil() {
+        return (LocalDateTime) get(22);
+    }
+
+    /**
+     * Setter for <code>security.security_user.LOCKED_DUE_TO</code>. Reason for
+     * the user blocking action
+     */
+    public SecurityUserRecord setLockedDueTo(String value) {
+        set(23, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.LOCKED_DUE_TO</code>. Reason for
+     * the user blocking action
+     */
+    public String getLockedDueTo() {
+        return (String) get(23);
     }
 
     /**
@@ -372,7 +423,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who created this row
      */
     public SecurityUserRecord setCreatedBy(ULong value) {
-        set(21, value);
+        set(24, value);
         return this;
     }
 
@@ -381,7 +432,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(24);
     }
 
     /**
@@ -389,7 +440,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is created
      */
     public SecurityUserRecord setCreatedAt(LocalDateTime value) {
-        set(22, value);
+        set(25, value);
         return this;
     }
 
@@ -398,7 +449,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(25);
     }
 
     /**
@@ -406,7 +457,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who updated this row
      */
     public SecurityUserRecord setUpdatedBy(ULong value) {
-        set(23, value);
+        set(26, value);
         return this;
     }
 
@@ -415,7 +466,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(23);
+        return (ULong) get(26);
     }
 
     /**
@@ -423,7 +474,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is updated
      */
     public SecurityUserRecord setUpdatedAt(LocalDateTime value) {
-        set(24, value);
+        set(27, value);
         return this;
     }
 
@@ -432,7 +483,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
      * row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(24);
+        return (LocalDateTime) get(27);
     }
 
     // -------------------------------------------------------------------------
@@ -458,7 +509,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
     /**
      * Create a detached, initialised SecurityUserRecord
      */
-    public SecurityUserRecord(ULong id, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String designation, String middleName, String localeCode, String password, Byte passwordHashed, String pin, Byte pinHashed, Byte accountNonExpired, Byte accountNonLocked, Byte credentialsNonExpired, Short noFailedAttempt, Short noPinFailedAttempt, Short noOtpFailedAttempt, SecurityUserStatusCode statusCode, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityUserRecord(ULong id, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String designation, String middleName, String localeCode, String password, Byte passwordHashed, String pin, Byte pinHashed, Byte accountNonExpired, Byte accountNonLocked, Byte credentialsNonExpired, Short noFailedAttempt, Short noPinFailedAttempt, Short noOtpResendAttempt, Short noOtpFailedAttempt, SecurityUserStatusCode statusCode, LocalDateTime lockedUntil, String lockedDueTo, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityUser.SECURITY_USER);
 
         setId(id);
@@ -480,8 +531,11 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
         setCredentialsNonExpired(credentialsNonExpired);
         setNoFailedAttempt(noFailedAttempt);
         setNoPinFailedAttempt(noPinFailedAttempt);
+        setNoOtpResendAttempt(noOtpResendAttempt);
         setNoOtpFailedAttempt(noOtpFailedAttempt);
         setStatusCode(statusCode);
+        setLockedUntil(lockedUntil);
+        setLockedDueTo(lockedDueTo);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

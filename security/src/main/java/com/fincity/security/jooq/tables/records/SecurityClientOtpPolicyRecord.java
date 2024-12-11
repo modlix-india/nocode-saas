@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.enums.SecurityClientOtpPolicyTargetType;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 
 import java.time.LocalDateTime;
@@ -78,11 +79,62 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
     }
 
     /**
+     * Setter for <code>security.security_client_otp_policy.TARGET_TYPE</code>.
+     * The target medium for the OTP delivery: EMAIL, PHONE, or BOTH
+     */
+    public SecurityClientOtpPolicyRecord setTargetType(SecurityClientOtpPolicyTargetType value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client_otp_policy.TARGET_TYPE</code>.
+     * The target medium for the OTP delivery: EMAIL, PHONE, or BOTH
+     */
+    public SecurityClientOtpPolicyTargetType getTargetType() {
+        return (SecurityClientOtpPolicyTargetType) get(3);
+    }
+
+    /**
+     * Setter for <code>security.security_client_otp_policy.IS_CONSTANT</code>.
+     * Flag indicating if OTP should be a constant value
+     */
+    public SecurityClientOtpPolicyRecord setIsConstant(Byte value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client_otp_policy.IS_CONSTANT</code>.
+     * Flag indicating if OTP should be a constant value
+     */
+    public Byte getIsConstant() {
+        return (Byte) get(4);
+    }
+
+    /**
+     * Setter for <code>security.security_client_otp_policy.CONSTANT</code>.
+     * Value of OTP if IS_CONSTANT is true
+     */
+    public SecurityClientOtpPolicyRecord setConstant(String value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client_otp_policy.CONSTANT</code>.
+     * Value of OTP if IS_CONSTANT is true
+     */
+    public String getConstant() {
+        return (String) get(5);
+    }
+
+    /**
      * Setter for <code>security.security_client_otp_policy.IS_NUMERIC</code>.
      * Flag indicating if OTP should contain only numeric characters
      */
     public SecurityClientOtpPolicyRecord setIsNumeric(Byte value) {
-        set(3, value);
+        set(6, value);
         return this;
     }
 
@@ -91,7 +143,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Flag indicating if OTP should contain only numeric characters
      */
     public Byte getIsNumeric() {
-        return (Byte) get(3);
+        return (Byte) get(6);
     }
 
     /**
@@ -100,7 +152,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * indicating if OTP should contain alphanumeric characters
      */
     public SecurityClientOtpPolicyRecord setIsAlphanumeric(Byte value) {
-        set(4, value);
+        set(7, value);
         return this;
     }
 
@@ -110,7 +162,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * indicating if OTP should contain alphanumeric characters
      */
     public Byte getIsAlphanumeric() {
-        return (Byte) get(4);
+        return (Byte) get(7);
     }
 
     /**
@@ -118,7 +170,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Length of the OTP to be generated
      */
     public SecurityClientOtpPolicyRecord setLength(UShort value) {
-        set(5, value);
+        set(8, value);
         return this;
     }
 
@@ -127,26 +179,45 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Length of the OTP to be generated
      */
     public UShort getLength() {
-        return (UShort) get(5);
+        return (UShort) get(8);
     }
 
     /**
      * Setter for
-     * <code>security.security_client_otp_policy.NO_FAILED_ATTEMPTS</code>.
-     * Maximum number of failed attempts allowed before OTP is invalidated
+     * <code>security.security_client_otp_policy.RESEND_SAME_OTP</code>. Flag
+     * indication weather to send same OTP in resend request.
      */
-    public SecurityClientOtpPolicyRecord setNoFailedAttempts(UShort value) {
-        set(6, value);
+    public SecurityClientOtpPolicyRecord setResendSameOtp(Byte value) {
+        set(9, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>security.security_client_otp_policy.NO_FAILED_ATTEMPTS</code>.
-     * Maximum number of failed attempts allowed before OTP is invalidated
+     * <code>security.security_client_otp_policy.RESEND_SAME_OTP</code>. Flag
+     * indication weather to send same OTP in resend request.
      */
-    public UShort getNoFailedAttempts() {
-        return (UShort) get(6);
+    public Byte getResendSameOtp() {
+        return (Byte) get(9);
+    }
+
+    /**
+     * Setter for
+     * <code>security.security_client_otp_policy.NO_RESEND_ATTEMPTS</code>.
+     * Maximum number of Resend attempts allowed before User is blocked
+     */
+    public SecurityClientOtpPolicyRecord setNoResendAttempts(UShort value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_client_otp_policy.NO_RESEND_ATTEMPTS</code>.
+     * Maximum number of Resend attempts allowed before User is blocked
+     */
+    public UShort getNoResendAttempts() {
+        return (UShort) get(10);
     }
 
     /**
@@ -155,7 +226,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * interval in minutes after which OTP will expire
      */
     public SecurityClientOtpPolicyRecord setExpireInterval(ULong value) {
-        set(7, value);
+        set(11, value);
         return this;
     }
 
@@ -165,7 +236,26 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * interval in minutes after which OTP will expire
      */
     public ULong getExpireInterval() {
-        return (ULong) get(7);
+        return (ULong) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>security.security_client_otp_policy.NO_FAILED_ATTEMPTS</code>.
+     * Maximum number of failed attempts allowed before OTP is invalidated
+     */
+    public SecurityClientOtpPolicyRecord setNoFailedAttempts(UShort value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_client_otp_policy.NO_FAILED_ATTEMPTS</code>.
+     * Maximum number of failed attempts allowed before OTP is invalidated
+     */
+    public UShort getNoFailedAttempts() {
+        return (UShort) get(12);
     }
 
     /**
@@ -173,7 +263,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who created this row
      */
     public SecurityClientOtpPolicyRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(13, value);
         return this;
     }
 
@@ -182,7 +272,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(13);
     }
 
     /**
@@ -190,7 +280,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public SecurityClientOtpPolicyRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(14, value);
         return this;
     }
 
@@ -199,7 +289,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(14);
     }
 
     /**
@@ -207,7 +297,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public SecurityClientOtpPolicyRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(15, value);
         return this;
     }
 
@@ -216,7 +306,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(15);
     }
 
     /**
@@ -224,7 +314,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public SecurityClientOtpPolicyRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(16, value);
         return this;
     }
 
@@ -233,7 +323,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -259,17 +349,22 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
     /**
      * Create a detached, initialised SecurityClientOtpPolicyRecord
      */
-    public SecurityClientOtpPolicyRecord(ULong id, ULong clientId, ULong appId, Byte isNumeric, Byte isAlphanumeric, UShort length, UShort noFailedAttempts, ULong expireInterval, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientOtpPolicyRecord(ULong id, ULong clientId, ULong appId, SecurityClientOtpPolicyTargetType targetType, Byte isConstant, String constant, Byte isNumeric, Byte isAlphanumeric, UShort length, Byte resendSameOtp, UShort noResendAttempts, ULong expireInterval, UShort noFailedAttempts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY);
 
         setId(id);
         setClientId(clientId);
         setAppId(appId);
+        setTargetType(targetType);
+        setIsConstant(isConstant);
+        setConstant(constant);
         setIsNumeric(isNumeric);
         setIsAlphanumeric(isAlphanumeric);
         setLength(length);
-        setNoFailedAttempts(noFailedAttempts);
+        setResendSameOtp(resendSameOtp);
+        setNoResendAttempts(noResendAttempts);
         setExpireInterval(expireInterval);
+        setNoFailedAttempts(noFailedAttempts);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

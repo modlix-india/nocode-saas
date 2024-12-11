@@ -96,30 +96,11 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
 
     /**
      * Setter for
-     * <code>security.security_client_pin_policy.NO_FAILED_ATTEMPTS</code>.
-     * Maximum number of failed attempts allowed before PIN login is blocked
-     */
-    public SecurityClientPinPolicyRecord setNoFailedAttempts(UShort value) {
-        set(4, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_client_pin_policy.NO_FAILED_ATTEMPTS</code>.
-     * Maximum number of failed attempts allowed before PIN login is blocked
-     */
-    public UShort getNoFailedAttempts() {
-        return (UShort) get(4);
-    }
-
-    /**
-     * Setter for
      * <code>security.security_client_pin_policy.RE_LOGIN_AFTER_INTERVAL</code>.
      * Time interval in minutes after which re-login is required
      */
     public SecurityClientPinPolicyRecord setReLoginAfterInterval(ULong value) {
-        set(5, value);
+        set(4, value);
         return this;
     }
 
@@ -129,7 +110,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time interval in minutes after which re-login is required
      */
     public ULong getReLoginAfterInterval() {
-        return (ULong) get(5);
+        return (ULong) get(4);
     }
 
     /**
@@ -138,7 +119,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * of days after which the PIN expires
      */
     public SecurityClientPinPolicyRecord setExpiryInDays(UShort value) {
-        set(6, value);
+        set(5, value);
         return this;
     }
 
@@ -148,7 +129,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * of days after which the PIN expires
      */
     public UShort getExpiryInDays() {
-        return (UShort) get(6);
+        return (UShort) get(5);
     }
 
     /**
@@ -157,7 +138,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Number of days before expiry to warn the user
      */
     public SecurityClientPinPolicyRecord setExpiryWarnInDays(UShort value) {
-        set(7, value);
+        set(6, value);
         return this;
     }
 
@@ -167,7 +148,45 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Number of days before expiry to warn the user
      */
     public UShort getExpiryWarnInDays() {
+        return (UShort) get(6);
+    }
+
+    /**
+     * Setter for
+     * <code>security.security_client_pin_policy.PIN_HISTORY_COUNT</code>.
+     * Remember how many pin
+     */
+    public SecurityClientPinPolicyRecord setPinHistoryCount(UShort value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_client_pin_policy.PIN_HISTORY_COUNT</code>.
+     * Remember how many pin
+     */
+    public UShort getPinHistoryCount() {
         return (UShort) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>security.security_client_pin_policy.NO_FAILED_ATTEMPTS</code>.
+     * Maximum number of failed attempts allowed before PIN login is blocked
+     */
+    public SecurityClientPinPolicyRecord setNoFailedAttempts(UShort value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_client_pin_policy.NO_FAILED_ATTEMPTS</code>.
+     * Maximum number of failed attempts allowed before PIN login is blocked
+     */
+    public UShort getNoFailedAttempts() {
+        return (UShort) get(8);
     }
 
     /**
@@ -175,7 +194,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who created this row
      */
     public SecurityClientPinPolicyRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -184,7 +203,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -192,7 +211,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public SecurityClientPinPolicyRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -201,7 +220,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -209,7 +228,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public SecurityClientPinPolicyRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -218,7 +237,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -226,7 +245,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public SecurityClientPinPolicyRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -235,7 +254,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -261,17 +280,18 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
     /**
      * Create a detached, initialised SecurityClientPinPolicyRecord
      */
-    public SecurityClientPinPolicyRecord(ULong id, ULong clientId, ULong appId, UShort length, UShort noFailedAttempts, ULong reLoginAfterInterval, UShort expiryInDays, UShort expiryWarnInDays, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientPinPolicyRecord(ULong id, ULong clientId, ULong appId, UShort length, ULong reLoginAfterInterval, UShort expiryInDays, UShort expiryWarnInDays, UShort pinHistoryCount, UShort noFailedAttempts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY);
 
         setId(id);
         setClientId(clientId);
         setAppId(appId);
         setLength(length);
-        setNoFailedAttempts(noFailedAttempts);
         setReLoginAfterInterval(reLoginAfterInterval);
         setExpiryInDays(expiryInDays);
         setExpiryWarnInDays(expiryWarnInDays);
+        setPinHistoryCount(pinHistoryCount);
+        setNoFailedAttempts(noFailedAttempts);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

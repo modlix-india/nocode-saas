@@ -5,6 +5,7 @@ package com.fincity.security.jooq;
 
 
 import com.fincity.security.jooq.tables.SecurityAppAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecurityUser;
@@ -37,6 +38,6 @@ public class Indexes {
     public static final Index SECURITY_USER_K3_PHONE_NUMBER = Internal.createIndex(DSL.name("K3_PHONE_NUMBER"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.PHONE_NUMBER }, false);
     public static final Index SECURITY_SOX_LOG_OBJECT_NAME = Internal.createIndex(DSL.name("OBJECT_NAME"), SecuritySoxLog.SECURITY_SOX_LOG, new OrderField[] { SecuritySoxLog.SECURITY_SOX_LOG.OBJECT_NAME, SecuritySoxLog.SECURITY_SOX_LOG.ACTION_NAME }, false);
     public static final Index SECURITY_USER_TOKEN_PART_TOKEN = Internal.createIndex(DSL.name("PART_TOKEN"), SecurityUserToken.SECURITY_USER_TOKEN, new OrderField[] { SecurityUserToken.SECURITY_USER_TOKEN.PART_TOKEN }, false);
+    public static final Index SECURITY_APP_REG_INTEGRATION_TOKENS_STATE = Internal.createIndex(DSL.name("STATE"), SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS, new OrderField[] { SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS.STATE }, false);
     public static final Index SECURITY_USER_ROLE_PERMISSION_UK1_USER = Internal.createIndex(DSL.name("UK1_USER"), SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION, new OrderField[] { SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION.USER_ID }, false);
-    public static final Index SECURITY_OTP_UNIQUE_CODE = Internal.createIndex(DSL.name("UNIQUE_CODE"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.UNIQUE_CODE }, false);
 }

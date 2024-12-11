@@ -178,6 +178,12 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
     public final TableField<SecurityUserRecord, Short> NO_PIN_FAILED_ATTEMPT = createField(DSL.name("NO_PIN_FAILED_ATTEMPT"), SQLDataType.SMALLINT.defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "No of failed attempts for PIN");
 
     /**
+     * The column <code>security.security_user.NO_OTP_RESEND_ATTEMPT</code>. No
+     * of Resend attempts for OTP
+     */
+    public final TableField<SecurityUserRecord, Short> NO_OTP_RESEND_ATTEMPT = createField(DSL.name("NO_OTP_RESEND_ATTEMPT"), SQLDataType.SMALLINT.defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "No of Resend attempts for OTP");
+
+    /**
      * The column <code>security.security_user.NO_OTP_FAILED_ATTEMPT</code>. No
      * of failed attempts for OTP
      */
@@ -188,6 +194,18 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * user
      */
     public final TableField<SecurityUserRecord, SecurityUserStatusCode> STATUS_CODE = createField(DSL.name("STATUS_CODE"), SQLDataType.VARCHAR(16).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(SecurityUserStatusCode.class), this, "Status of the user");
+
+    /**
+     * The column <code>security.security_user.LOCKED_UNTIL</code>. If user is
+     * blocked based on STATUS_CODE, until when this will indicate
+     */
+    public final TableField<SecurityUserRecord, LocalDateTime> LOCKED_UNTIL = createField(DSL.name("LOCKED_UNTIL"), SQLDataType.LOCALDATETIME(0), this, "If user is blocked based on STATUS_CODE, until when this will indicate");
+
+    /**
+     * The column <code>security.security_user.LOCKED_DUE_TO</code>. Reason for
+     * the user blocking action
+     */
+    public final TableField<SecurityUserRecord, String> LOCKED_DUE_TO = createField(DSL.name("LOCKED_DUE_TO"), SQLDataType.VARCHAR(512), this, "Reason for the user blocking action");
 
     /**
      * The column <code>security.security_user.CREATED_BY</code>. ID of the user

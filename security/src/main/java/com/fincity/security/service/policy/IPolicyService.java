@@ -15,7 +15,7 @@ public interface IPolicyService<T extends AbstractPolicy> {
 
 	Mono<T> getClientAppPolicy(ULong clientId, ULong appId);
 
-	Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, String password);
+	Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, ULong userId, String password);
 
 	Mono<String> generatePolicyPassword(ULong clientId, ULong appId);
 }

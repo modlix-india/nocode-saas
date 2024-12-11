@@ -75,13 +75,6 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public static final String APP_PROP_REG_TYPE_EMAIL_PASSWORD = "REGISTRATION_TYPE_EMAIL_PASSWORD";
 	public static final String APP_PROP_REG_TYPE_NO_VERIFICATION = "REGISTRATION_TYPE_NO_VERIFICATION";
 	public static final String APP_PROP_REG_TYPE_NO_REGISTRATION = "REGISTRATION_TYPE_NO_REGISTRATION";
-	public static final String APP_PROP_LOGIN_TYPE = "LOGIN_TYPE";
-	public static final String APP_PROP_LOGIN_TYPE_OTP = "LOGIN_TYPE_OTP";
-
-	public static final String APP_PROP_OTP_TYPE = "OTP_TYPE";
-	public static final String APP_PROP_OTP_TYPE_TARGET_TYPE = "OTP_TYPE_TARGET_TYPE";
-	public static final String APP_PROP_OTP_TYPE_USE_CONST = "OTP_TYPE_USE_CONST";
-	public static final String APP_PROP_OTP_TYPE_CONST = "OTP_TYPE_CONST";
 
 	public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
 	public static final String APP_PROP_URL = "URL";

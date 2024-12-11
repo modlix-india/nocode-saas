@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS `security`.`security_past_pins`
 
     PRIMARY KEY (`ID`),
     CONSTRAINT `FK1_PAST_PIN_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security`.`security_user` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
-)
-    ENGINE = INNODB
-    CHARACTER SET `utf8mb4`
-    COLLATE `utf8mb4_unicode_ci`;
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;

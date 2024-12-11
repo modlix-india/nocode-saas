@@ -6,6 +6,7 @@ import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	protected SecurityMessageResourceService securityMessageResourceService;
 
 	@Autowired
+	@Lazy
 	private ClientService clientService;
 
 	@Autowired
@@ -38,6 +40,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	protected abstract String getPolicyName();
 
 	public abstract String getPolicyCacheName();
+
+	protected abstract Mono<D> getDefaultPolicy();
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
@@ -147,7 +151,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	}
 
 	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
-		return this.dao.getByClientIdAndAppId(clientId, appId, clientId);
+		return this.dao.getByClientIdAndAppId(clientId, appId, clientId)
+				.switchIfEmpty(getDefaultPolicy());
 	}
 
 	public Mono<String> generatePolicyPassword(ULong clientId, ULong appId) {

@@ -90,17 +90,10 @@ public class SecurityClientPinPolicy extends TableImpl<SecurityClientPinPolicyRe
 
     /**
      * The column
-     * <code>security.security_client_pin_policy.NO_FAILED_ATTEMPTS</code>.
-     * Maximum number of failed attempts allowed before PIN login is blocked
-     */
-    public final TableField<SecurityClientPinPolicyRecord, UShort> NO_FAILED_ATTEMPTS = createField(DSL.name("NO_FAILED_ATTEMPTS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("3", SQLDataType.SMALLINTUNSIGNED)), this, "Maximum number of failed attempts allowed before PIN login is blocked");
-
-    /**
-     * The column
      * <code>security.security_client_pin_policy.RE_LOGIN_AFTER_INTERVAL</code>.
      * Time interval in minutes after which re-login is required
      */
-    public final TableField<SecurityClientPinPolicyRecord, ULong> RE_LOGIN_AFTER_INTERVAL = createField(DSL.name("RE_LOGIN_AFTER_INTERVAL"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("15", SQLDataType.BIGINTUNSIGNED)), this, "Time interval in minutes after which re-login is required");
+    public final TableField<SecurityClientPinPolicyRecord, ULong> RE_LOGIN_AFTER_INTERVAL = createField(DSL.name("RE_LOGIN_AFTER_INTERVAL"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("120", SQLDataType.BIGINTUNSIGNED)), this, "Time interval in minutes after which re-login is required");
 
     /**
      * The column
@@ -114,7 +107,21 @@ public class SecurityClientPinPolicy extends TableImpl<SecurityClientPinPolicyRe
      * <code>security.security_client_pin_policy.EXPIRY_WARN_IN_DAYS</code>.
      * Number of days before expiry to warn the user
      */
-    public final TableField<SecurityClientPinPolicyRecord, UShort> EXPIRY_WARN_IN_DAYS = createField(DSL.name("EXPIRY_WARN_IN_DAYS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("5", SQLDataType.SMALLINTUNSIGNED)), this, "Number of days before expiry to warn the user");
+    public final TableField<SecurityClientPinPolicyRecord, UShort> EXPIRY_WARN_IN_DAYS = createField(DSL.name("EXPIRY_WARN_IN_DAYS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("25", SQLDataType.SMALLINTUNSIGNED)), this, "Number of days before expiry to warn the user");
+
+    /**
+     * The column
+     * <code>security.security_client_pin_policy.PIN_HISTORY_COUNT</code>.
+     * Remember how many pin
+     */
+    public final TableField<SecurityClientPinPolicyRecord, UShort> PIN_HISTORY_COUNT = createField(DSL.name("PIN_HISTORY_COUNT"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("3", SQLDataType.SMALLINTUNSIGNED)), this, "Remember how many pin");
+
+    /**
+     * The column
+     * <code>security.security_client_pin_policy.NO_FAILED_ATTEMPTS</code>.
+     * Maximum number of failed attempts allowed before PIN login is blocked
+     */
+    public final TableField<SecurityClientPinPolicyRecord, UShort> NO_FAILED_ATTEMPTS = createField(DSL.name("NO_FAILED_ATTEMPTS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("3", SQLDataType.SMALLINTUNSIGNED)), this, "Maximum number of failed attempts allowed before PIN login is blocked");
 
     /**
      * The column <code>security.security_client_pin_policy.CREATED_BY</code>.
@@ -217,6 +224,11 @@ public class SecurityClientPinPolicy extends TableImpl<SecurityClientPinPolicyRe
     @Override
     public UniqueKey<SecurityClientPinPolicyRecord> getPrimaryKey() {
         return Keys.KEY_SECURITY_CLIENT_PIN_POLICY_PRIMARY;
+    }
+
+    @Override
+    public List<UniqueKey<SecurityClientPinPolicyRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_SECURITY_CLIENT_PIN_POLICY_UK1_CLIENT_PIN_POL_CLIENT_ID_APP_ID);
     }
 
     @Override

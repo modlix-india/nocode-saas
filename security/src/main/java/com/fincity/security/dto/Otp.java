@@ -9,9 +9,8 @@ import java.time.LocalDateTime;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreType;
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.security.jooq.enums.SecurityOtpTargetType;
-import com.fincity.security.util.HashUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,16 +22,14 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @ToString(callSuper = true)
 @JsonIgnoreType
-public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
+public class Otp extends AbstractDTO<ULong, ULong> {
 
 	private ULong appId;
 	private ULong userId;
 	private String purpose;
 	private SecurityOtpTargetType targetType;
 	private String uniqueCode;
-	private LocalDateTime resendAt;
 	private LocalDateTime expiresAt;
-	private int resends = 0;
 	private String ipAddress;
 
 	@Serial
@@ -45,17 +42,7 @@ public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
 		throw new NotSerializableException("OTP class is not Serializable");
 	}
 
-	public Otp increaseResend() {
-		this.resends++;
-		return this;
-	}
-
 	public boolean isExpired() {
 		return this.expiresAt.isBefore(LocalDateTime.now());
 	}
-
-	public boolean match(String uniqueCode) {
-		return HashUtil.equal(this.uniqueCode, uniqueCode);
-	}
-
 }

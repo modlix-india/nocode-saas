@@ -55,6 +55,7 @@ import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.service.policy.ClientOtpPolicyService;
 import com.fincity.security.service.policy.ClientPasswordPolicyService;
 import com.fincity.security.service.policy.ClientPinPolicyService;
 import com.fincity.security.service.policy.IPolicyService;
@@ -120,6 +121,9 @@ public class ClientService
 	@Autowired
 	private ClientPinPolicyService clientPinPolicyService;
 
+	@Autowired
+	private ClientOtpPolicyService clientOtpPolicyService;
+
 	private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
 			AuthenticationPasswordType.class);
 
@@ -136,7 +140,8 @@ public class ClientService
 	public void init() {
 		this.policyServices.putAll(Map.of(
 				clientPasswordPolicyService.getAuthenticationPasswordType(), clientPasswordPolicyService,
-				clientPinPolicyService.getAuthenticationPasswordType(), clientPinPolicyService));
+				clientPinPolicyService.getAuthenticationPasswordType(), clientPinPolicyService,
+				clientOtpPolicyService.getAuthenticationPasswordType(), clientOtpPolicyService));
 	}
 
 	@Override
@@ -239,20 +244,20 @@ public class ClientService
 
 	@SuppressWarnings("unchecked")
 	public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, ULong appId,
-			AuthenticationPasswordType passType) {
+			AuthenticationPasswordType passwordType) {
 
-		IPolicyService<T> policyService = (IPolicyService<T>) policyServices.get(passType);
+		IPolicyService<T> policyService = (IPolicyService<T>) policyServices.get(passwordType);
 
 		return cacheService.cacheEmptyValueOrGet(policyService.getPolicyCacheName(),
 				() -> policyService.getClientAppPolicy(clientId, appId), clientId, appId);
 	}
 
 	public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, String appCode,
-			AuthenticationPasswordType passType) {
+			AuthenticationPasswordType passwordType) {
 
 		return FlatMapUtil.flatMapMono(
 				() -> appService.getAppByCode(appCode),
-				app -> getClientAppPolicy(clientId, app.getId(), passType));
+				app -> getClientAppPolicy(clientId, app.getId(), passwordType));
 	}
 
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
@@ -350,17 +355,20 @@ public class ClientService
 				.map(ULong::valueOf);
 	}
 
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong appId, AuthenticationPasswordType passType,
-			String password) {
-		return policyServices.get(passType).checkAllConditions(clientId, appId, password)
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong appId, ULong userId,
+			AuthenticationPasswordType passwordType, String password) {
+		return policyServices.get(passwordType).checkAllConditions(clientId, appId, userId, password)
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String appCode, AuthenticationPasswordType passType,
-			String password) {
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String appCode, ULong userId,
+			AuthenticationPasswordType passwordType, String password) {
+
 		return FlatMapUtil.flatMapMono(
+
 				() -> appService.getAppByCode(appCode),
-				app -> validatePasswordPolicy(clientId, app.getId(), passType, password))
+
+				app -> validatePasswordPolicy(clientId, app.getId(), userId, passwordType, password))
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
