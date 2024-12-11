@@ -188,8 +188,11 @@ public class IndexHTMLService {
 
 		String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
 		str.append("<script src=\"" + jsURLPrefix + "index.js\"></script>");
-		if (!StringUtil.safeIsBlank(debug))
+		str.append("<script src=\"" + jsURLPrefix + "vendor.js\"></script>");
+		if (!StringUtil.safeIsBlank(debug)) {
 			str.append("<script src=\"" + jsURLPrefix + "index.js.map\"></script>");
+			str.append("<script src=\"" + jsURLPrefix + "vendor.js.map\"></script>");
+		}
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
 
