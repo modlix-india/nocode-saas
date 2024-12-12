@@ -2,6 +2,7 @@ package com.fincity.saas.ui.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.http.HttpMethod;
@@ -16,6 +17,7 @@ import org.springframework.util.PathMatcher;
 import org.springframework.web.util.pattern.PathPattern;
 import org.springframework.web.util.pattern.PathPatternParser;
 
+import com.fincity.nocode.kirun.engine.runtime.tokenextractors.ArgumentsTokenValueExtractor;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
@@ -304,25 +306,45 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 					if (StringUtil.safeIsBlank(responseString)
 							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
-							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName())) {
+							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName()))
 						return Mono.just(responseString);
-					}
 
 					JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
 
 					return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
-							kiRunFxDef.getOutputEventParamName());
+							kiRunFxDef.getOutputEventParamName(), kiRunFxDef.getOutputEventExp());
 				});
 	}
 
-	private Mono<String> extractOutputEvent(JsonArray response, String outputEventName, String outputEventParamName) {
+	private static Mono<String> extractOutputEvent(JsonArray response, String outputEventName,
+			String outputEventParamName, String outputEventExp) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> findMatchingOutputEvent(response, outputEventName),
+				matchingOutput -> {
+
+					if (StringUtil.safeIsBlank(outputEventExp)) {
+						return Mono.justOrEmpty(matchingOutput.get(outputEventParamName).toString());
+					}
+
+					ArgumentsTokenValueExtractor atv = new ArgumentsTokenValueExtractor(
+							Map.of(outputEventName, matchingOutput));
+
+					return Mono.justOrEmpty(
+							Optional.ofNullable(atv.getValue(ArgumentsTokenValueExtractor.PREFIX + outputEventExp))
+									.map(JsonElement::getAsString));
+
+				}).switchIfEmpty(Mono.empty());
+	}
+
+	private static Mono<JsonObject> findMatchingOutputEvent(JsonArray response, String outputEventName) {
 		return Flux.fromIterable(response)
 				.filter(JsonElement::isJsonObject)
 				.map(JsonElement::getAsJsonObject)
-				.filter(output -> output.get("name").getAsString().equals(outputEventName))
-				.map(output -> output.get(outputEventParamName).toString())
-				.next()
-				.defaultIfEmpty("");
+				.filter(output -> output.has("name") &&
+						output.get("name").isJsonPrimitive() &&
+						outputEventName.equals(output.get("name").getAsString()))
+				.next();
 	}
 
 	private MultiValueMap<String, String> getParamsFromHeadersPathRequest(ServerHttpRequest request,

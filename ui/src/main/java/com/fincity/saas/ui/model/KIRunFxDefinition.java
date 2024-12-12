@@ -29,6 +29,7 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 
 	private String outputEventName;
 	private String outputEventParamName;
+	private String outputEventExp;
 
 	public KIRunFxDefinition(KIRunFxDefinition kinRunFxDefinition) {
 		this.name = kinRunFxDefinition.name;
@@ -39,6 +40,7 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 		this.queryParamMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.queryParamMapping);
 		this.outputEventName = kinRunFxDefinition.outputEventName;
 		this.outputEventParamName = kinRunFxDefinition.outputEventParamName;
+		this.outputEventExp = kinRunFxDefinition.outputEventExp;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -67,6 +69,8 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 						diff.setOutputEventName(this.outputEventName);
 					if (!this.outputEventParamName.equals(inc.outputEventParamName))
 						diff.setOutputEventParamName(this.outputEventParamName);
+					if (!this.outputEventExp.equals(inc.outputEventExp))
+						diff.setOutputEventExp(this.outputEventExp);
 
 					return Mono.just(diff);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.extractDifference"));
@@ -93,8 +97,12 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 						this.setNamespace(override.getNamespace());
 					if (override.getFunctionAppCode() != null)
 						this.setFunctionAppCode(override.getFunctionAppCode());
+					if (override.getOutputEventName() != null)
+						this.setOutputEventName(override.getOutputEventName());
 					if (override.getOutputEventParamName() != null)
 						this.setOutputEventParamName(override.getOutputEventParamName());
+					if (override.getOutputEventExp() != null)
+						this.setOutputEventExp(override.getOutputEventExp());
 
 					return Mono.just(this);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.applyOverride"));
