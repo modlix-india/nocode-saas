@@ -310,8 +310,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 					if (StringUtil.safeIsBlank(responseString))
 						return Mono.just("");
 
-					if (StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
-							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName()))
+					if (StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName()))
 						return Mono.just(responseString);
 
 					JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
