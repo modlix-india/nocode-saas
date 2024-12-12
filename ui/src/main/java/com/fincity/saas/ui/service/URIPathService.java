@@ -321,7 +321,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				});
 	}
 
-	private static Mono<String> extractOutputEvent(JsonArray response, String outputEventName,
+	private Mono<String> extractOutputEvent(JsonArray response, String outputEventName,
 			String outputEventParamName) {
 
 		return FlatMapUtil.flatMapMono(
@@ -346,7 +346,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				}).switchIfEmpty(Mono.empty());
 	}
 
-	private static Mono<JsonObject> findMatchingOutputEvent(JsonArray response, String outputEventName) {
+	private Mono<JsonObject> findMatchingOutputEvent(JsonArray response, String outputEventName) {
 		return Flux.fromIterable(response)
 				.filter(JsonElement::isJsonObject)
 				.map(JsonElement::getAsJsonObject)
