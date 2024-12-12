@@ -329,6 +329,9 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				() -> findMatchingOutputEvent(response, outputEventName),
 				matchingOutput -> {
 
+					if (StringUtil.safeIsBlank(outputEventParamName))
+						return Mono.justOrEmpty(matchingOutput.get(FO_RESULT).toString());
+
 					if (matchingOutput.has(FO_RESULT)
 							&& matchingOutput.get(FO_RESULT).isJsonObject()) {
 
