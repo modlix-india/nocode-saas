@@ -307,8 +307,10 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				},
 				responseString -> {
 
-					if (StringUtil.safeIsBlank(responseString)
-							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
+					if (StringUtil.safeIsBlank(responseString))
+						return Mono.empty();
+
+					if (StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
 							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName()))
 						return Mono.just(responseString);
 
@@ -326,9 +328,6 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 
 				() -> findMatchingOutputEvent(response, outputEventName),
 				matchingOutput -> {
-
-					if (StringUtil.safeIsBlank(outputEventParamName))
-						return Mono.justOrEmpty(matchingOutput.toString());
 
 					if (matchingOutput.has(FO_RESULT)
 							&& matchingOutput.get(FO_RESULT).isJsonObject()) {
