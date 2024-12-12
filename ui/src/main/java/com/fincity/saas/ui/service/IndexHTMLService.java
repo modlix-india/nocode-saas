@@ -202,17 +202,6 @@ public class IndexHTMLService {
 		str.append("window.domainAppCode='").append(appCode).append("';");
 		str.append("window.domainClientCode='").append(clientCode).append("';");
 
-		appProps.remove("manifest");
-		appProps.remove("mobileApps");
-		try {
-			String applicationDefinition = this.objectMapper.writeValueAsString(app);
-			str.append("window.applicationDefinition=")
-					.append(applicationDefinition)
-					.append(";");
-		} catch (JsonProcessingException e) {
-			logger.error("Error while converting application to JSON", e);
-		}
-
 		str.append("</script>");
 
 		String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
