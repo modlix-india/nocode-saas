@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -100,7 +99,6 @@ public class UniversalController {
 			@RequestHeader("appCode") String appCode,
 			@RequestHeader("clientCode") String clientCode,
 			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			@RequestParam(required = false) String debug,
 			ServerHttpRequest request) {
 
 		return FlatMapUtil.flatMapMono(
@@ -110,7 +108,7 @@ public class UniversalController {
 
 				(ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
 				.switchIfEmpty(Mono
-						.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode, debug)
+						.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode)
 								.flatMap(e -> ResponseEntityUtils
 										.makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
 	}
