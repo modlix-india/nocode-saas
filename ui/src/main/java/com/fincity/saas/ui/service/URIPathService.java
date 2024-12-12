@@ -2,7 +2,6 @@ package com.fincity.saas.ui.service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.http.HttpMethod;
@@ -58,6 +57,10 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	private final PathMatcher pathMatcher;
 
 	private final Gson gson;
+
+	private static final String FO_RESULT = "result";
+
+	private static final String FO_NAME = "name";
 
 	public URIPathService(IFeignCoreService iFeignCoreService) {
 		super(URIPath.class);
@@ -312,27 +315,31 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 					JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
 
 					return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
-							kiRunFxDef.getOutputEventParamName(), kiRunFxDef.getOutputEventExp());
+							kiRunFxDef.getOutputEventParamName());
 				});
 	}
 
 	private static Mono<String> extractOutputEvent(JsonArray response, String outputEventName,
-			String outputEventParamName, String outputEventExp) {
+			String outputEventParamName) {
 
 		return FlatMapUtil.flatMapMono(
+
 				() -> findMatchingOutputEvent(response, outputEventName),
 				matchingOutput -> {
 
-					if (StringUtil.safeIsBlank(outputEventExp)) {
-						return Mono.justOrEmpty(matchingOutput.get(outputEventParamName).toString());
+					if (StringUtil.safeIsBlank(outputEventParamName))
+						return Mono.justOrEmpty(matchingOutput.toString());
+
+					if (matchingOutput.has(FO_RESULT)
+							&& matchingOutput.get(FO_RESULT).isJsonObject()) {
+
+						ArgumentsTokenValueExtractor atv = new ArgumentsTokenValueExtractor(
+								Map.of(FO_RESULT, matchingOutput.get(FO_RESULT)));
+
+						return Mono.justOrEmpty(atv.getValue(ArgumentsTokenValueExtractor.PREFIX
+								+ outputEventParamName).toString());
 					}
-
-					ArgumentsTokenValueExtractor atv = new ArgumentsTokenValueExtractor(
-							Map.of(outputEventName, matchingOutput));
-
-					return Mono.justOrEmpty(
-							Optional.ofNullable(atv.getValue(ArgumentsTokenValueExtractor.PREFIX + outputEventExp))
-									.map(JsonElement::getAsString));
+					return Mono.empty();
 
 				}).switchIfEmpty(Mono.empty());
 	}
@@ -341,9 +348,9 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 		return Flux.fromIterable(response)
 				.filter(JsonElement::isJsonObject)
 				.map(JsonElement::getAsJsonObject)
-				.filter(output -> output.has("name") &&
-						output.get("name").isJsonPrimitive() &&
-						outputEventName.equals(output.get("name").getAsString()))
+				.filter(output -> output.has(FO_NAME) &&
+						output.get(FO_NAME).isJsonPrimitive() &&
+						outputEventName.equals(output.get(FO_NAME).getAsString()))
 				.next();
 	}
 
