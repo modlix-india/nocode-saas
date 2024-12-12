@@ -91,7 +91,7 @@ public class IndexHTMLService {
 		this.cacheService = cacheService;
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
+	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode, String debug) {
 
 		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode),
 
@@ -100,11 +100,11 @@ public class IndexHTMLService {
 
 								() -> appService.read(appCode, appCode, clientCode),
 
-								app -> this.indexFromApp(app.getObject(), appCode, clientCode))
+								app -> this.indexFromApp(app.getObject(), appCode, clientCode, debug))
 
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
 
-				clientCode);
+				clientCode, ":", StringUtil.safeIsBlank(debug) ? "debug" : "nodebug");
 	}
 
 	@SuppressWarnings("unchecked")
@@ -142,7 +142,7 @@ public class IndexHTMLService {
 
 	@SuppressWarnings("unchecked")
 	private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode,
-			String clientCode) {
+			String clientCode, String debug) {
 
 		Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
@@ -180,11 +180,19 @@ public class IndexHTMLService {
 			str.append("window.cdnPrefix='" + this.cdnHostName + "';");
 			str.append("window.cdnStripAPIPrefix=" + this.cdnStripAPIPrefix + ";");
 			str.append("window.cdnReplacePlus=" + this.cdnReplacePlus + ";");
+
 		}
 		str.append("window.domainAppCode='" + appCode + "';");
 		str.append("window.domainClientCode='" + clientCode + "';");
 		str.append("</script>");
-		str.append("<script src=\"/js/index.js\"></script>");
+
+		String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
+		str.append("<script src=\"" + jsURLPrefix + "index.js\"></script>");
+		str.append("<script src=\"" + jsURLPrefix + "vendors.js\"></script>");
+		if (!StringUtil.safeIsBlank(debug)) {
+			str.append("<script src=\"" + jsURLPrefix + "index.js.map\"></script>");
+			str.append("<script src=\"" + jsURLPrefix + "vendors.js.map\"></script>");
+		}
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
 

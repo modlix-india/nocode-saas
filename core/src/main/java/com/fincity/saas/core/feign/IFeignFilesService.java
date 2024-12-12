@@ -36,4 +36,12 @@ public interface IFeignFilesService {
                         @RequestParam(required = false, defaultValue = "HORIZONTAL") String resizeDirection,
                         @RequestParam(required = false, defaultValue = "false") Boolean noCache,
                         @RequestParam(required = false) String name);
+
+
+        @GetMapping("/api/files/internal/{resourceType}/convertToBase64")
+        Mono<String> readFileAsBase64(
+                @PathVariable String resourceType,
+                @RequestParam String clientCode,
+                @RequestParam String url,
+                @RequestParam(required = false) Boolean metadataRequired);
 }
