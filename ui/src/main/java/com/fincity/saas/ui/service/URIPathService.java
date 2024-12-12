@@ -308,7 +308,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 				responseString -> {
 
 					if (StringUtil.safeIsBlank(responseString))
-						return Mono.empty();
+						return Mono.just("");
 
 					if (StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName())
 							|| StringUtil.safeIsBlank(kiRunFxDef.getOutputEventParamName()))
