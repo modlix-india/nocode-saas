@@ -1,9 +1,8 @@
 package com.fincity.saas.ui.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import javax.annotation.Nonnull;
 
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,6 +11,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -74,9 +74,9 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 
 					ca -> Mono.just(ca.isAuthenticated()),
 
-					(ca, isAuthenticated) -> {
+					(ContextAuthentication ca, @Nonnull Boolean isAuthenticated) -> {
 
-						if (isAuthenticated.booleanValue())
+						if (isAuthenticated)
 							return Mono.just(pg);
 
 						return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
@@ -131,20 +131,6 @@ public class PageService extends AbstractOverridableDataService<Page, PageReposi
 					}
 
 					return Mono.just(new ObjectWithUniqueID<>(page, checksumString));
-				},
-
-				(ca, app, object) -> {
-					object.getObject().setComponentDefinition(object.getObject().getComponentDefinition()
-							.entrySet()
-							.stream()
-							.filter(c -> c.getValue()
-									.getPermission() == null || SecurityContextUtil.hasAuthority(
-											c.getValue()
-													.getPermission(),
-											ca.getAuthorities()))
-							.collect(Collectors.toMap(Entry::getKey, Entry::getValue)));
-
-					return Mono.just(object);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.applyChange"))
 				.defaultIfEmpty(new ObjectWithUniqueID<>(page, checksumString));
 
