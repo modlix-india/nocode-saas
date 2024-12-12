@@ -44,7 +44,6 @@ import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
-import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
@@ -167,24 +166,22 @@ public class AuthenticationService implements IAuthenticationService {
 				() -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
 						appCode, authRequest.getIdentifierType(), true),
 
-				tup -> this.checkUserStatus(tup.getT3()),
-
-				(tup, user) -> Mono.justOrEmpty(
+				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals("SYSTEM") ||
 								clientCode.equals(tup.getT1().getCode()) ||
 								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
 
-				(tup, user, linCCheck) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), appCode,
+				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
+
+				(tup, linCCheck, user) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), appCode,
 						passwordType),
 
-				(tup, user, linCCheck, policy) -> this.checkPassword(authRequest, appCode, user, policy, passwordType)
-						.flatMap(passwordChecked -> this.checkFailedAttempts(user, policy))
-						.defaultIfEmpty(1),
+				(tup, linCCheck, user, policy) -> this.checkPassword(authRequest, appCode, user, policy, passwordType),
 
-				(tup, user, linCCheck, policy, passwordChecked) -> userService.resetFailedAttempt(user.getId(),
+				(tup, linCCheck, user, policy, passwordChecked) -> userService.resetFailedAttempt(user.getId(),
 						passwordType),
 
-				(tup, user, linCCheck, policy, passwordChecked, attemptsReset) -> logAndMakeToken(authRequest,
+				(tup, linCCheck, user, policy, passwordChecked, attemptsReset) -> logAndMakeToken(authRequest,
 						request, response, user, tup.getT2(), tup.getT1()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate"))
 				.switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED)).log();
@@ -207,30 +204,32 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.appRegistrationIntegrationTokenService
-						.verifyIntegrationState(authRequest.getSocialRegisterState()),
-
-				appRegIntgToken -> Mono.just(appRegIntgToken.getUsername().equals(authRequest.getUserName()))
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(appRegIntgToken, usernameChecked) -> this.userService.findUserNClient(authRequest.getUserName(),
+				() -> this.userService.findUserNClient(authRequest.getUserName(),
 						authRequest.getUserId(), clientCode, appCode, authRequest.getIdentifierType(), true),
 
-				(appRegIntgToken, usernameChecked, tup) -> Mono.justOrEmpty(
-						tup.getT1().getCode().equals("SYSTEM") || clientCode.equals(tup.getT1().getCode())
-								|| tup.getT1().getId().equals(tup.getT2().getId())
-										? true
-										: null),
+				tup -> Mono.justOrEmpty(
+						tup.getT1().getCode().equals("SYSTEM") ||
+								clientCode.equals(tup.getT1().getCode()) ||
+								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
 
-				(appRegIntgToken, usernameChecked, tup, linCCheck) -> {
+				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
-					appRegIntgToken.setCreatedBy(tup.getT3().getId());
-					appRegIntgToken.setUpdatedBy(tup.getT3().getId());
+				(tup, linCCheck, user) -> this.appRegistrationIntegrationTokenService
+						.verifyIntegrationState(authRequest.getSocialRegisterState()),
+
+				(tup, linCCheck, user, appRegIntgToken) -> Mono
+						.just(appRegIntgToken.getUsername().equals(authRequest.getUserName()))
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+				(tup, linCCheck, user, appRegIntgToken, usernameChecked) -> {
+
+					appRegIntgToken.setCreatedBy(user.getId());
+					appRegIntgToken.setUpdatedBy(user.getId());
 
 					return this.integrationTokenDao.update(appRegIntgToken);
 				},
-				(appRegIntgToken, usernameChecked, tup, linCCheck, updatedToken) -> logAndMakeToken(authRequest,
-						request, response, tup.getT3(), tup.getT2(), tup.getT1()))
+				(tup, linCCheck, user, appRegIntgToken, usernameChecked, updatedToken) -> logAndMakeToken(authRequest,
+						request, response, user, tup.getT2(), tup.getT1()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateWSocial"))
 				.switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED)).log();
 	}
@@ -318,22 +317,6 @@ public class AuthenticationService implements IAuthenticationService {
 						.setAccessToken(token.getT1()).setAccessTokenExpiryAt(token.getT2()));
 	}
 
-	private <T extends AbstractPolicy> Mono<Integer> checkFailedAttempts(User user, T policy) {
-
-		if (policy.getNoFailedAttempts() != null && policy.getNoFailedAttempts()
-				.shortValue() <= user.getNoFailedAttempt()) {
-
-			soxLogService.create(new SoxLog().setObjectId(user.getId()).setActionName(SecuritySoxLogActionName.LOGIN)
-					.setObjectName(SecuritySoxLogObjectName.USER)
-					.setDescription("Failed password attempts are more than the configuration")).subscribe();
-
-			return this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED)
-					.map(e -> 1);
-		}
-
-		return Mono.just(1);
-	}
-
 	private <T extends AbstractPolicy> Mono<Boolean> checkPassword(AuthenticationRequest authRequest, String appCode,
 			User user, T policy, AuthenticationPasswordType passwordType) {
 
@@ -349,8 +332,28 @@ public class AuthenticationService implements IAuthenticationService {
 							: Mono.just(StringUtil.safeEquals(authRequest.getPin(), user.getPin()));
 					case OTP -> otpService.verifyOtp(appCode, user, OtpPurpose.LOGIN.name(), authRequest.getOtp());
 				},
-				idValid -> Boolean.FALSE.equals(idValid) ? handleAuthFailure(user, policy, passwordType)
-						: Mono.just(Boolean.TRUE));
+				isValid -> {
+					if (Boolean.FALSE.equals(isValid)) {
+						return checkFailedAttempts(user, policy, passwordType);
+					}
+					return Mono.just(Boolean.TRUE);
+				});
+	}
+
+	private <T extends AbstractPolicy> Mono<Boolean> checkFailedAttempts(User user, T policy,
+			AuthenticationPasswordType passwordType) {
+
+		if (policy.getNoFailedAttempts() != null && policy.getNoFailedAttempts()
+				.shortValue() <= user.getNoFailedAttempt()) {
+
+			soxLogService.create(new SoxLog().setObjectId(user.getId()).setActionName(SecuritySoxLogActionName.LOGIN)
+					.setObjectName(SecuritySoxLogObjectName.USER)
+					.setDescription("Failed password attempts are more than the configuration")).subscribe();
+
+			return this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED);
+		}
+
+		return handleAuthFailure(user, policy, passwordType);
 	}
 
 	private <T extends AbstractPolicy> Mono<Boolean> handleAuthFailure(User user, T policy,
@@ -366,7 +369,7 @@ public class AuthenticationService implements IAuthenticationService {
 							"Given Password is mismatching with existing.");
 
 					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID, passwordType.getName(),
-							remainingAttempts).map(msg -> Boolean.FALSE);
+							remainingAttempts);
 				});
 	}
 
@@ -524,9 +527,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 				ca -> {
 
-					if (!ca.isAuthenticated()) {
+					if (!ca.isAuthenticated())
 						return Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
-					}
 
 					return this.clientService.getClientInfoById(ca.getUser().getClientId());
 				},
