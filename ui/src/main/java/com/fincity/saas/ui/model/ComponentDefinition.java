@@ -30,7 +30,6 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 	private boolean override;
 	private Map<String, Boolean> children;
 	private Integer displayOrder;
-	private String permission;
 	private Map<String, String> bindingPath;
 	private Map<String, String> bindingPath2;
 	private Map<String, String> bindingPath3;
@@ -43,7 +42,6 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 		this.name = cd.name;
 		this.type = cd.type;
 		this.override = cd.override;
-		this.permission = cd.permission;
 		this.properties = CloneUtil.cloneMapObject(cd.properties);
 		this.styleProperties = CloneUtil.cloneMapObject(cd.styleProperties);
 		this.displayOrder = cd.displayOrder;
@@ -142,6 +140,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ComponentDefinition.extractDifference"));
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public Mono<ComponentDefinition> applyOverride(ComponentDefinition base) { // NOSONAR
 		// Cannot split the logic
