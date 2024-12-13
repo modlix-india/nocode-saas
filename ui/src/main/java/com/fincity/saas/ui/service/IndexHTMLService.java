@@ -90,13 +90,11 @@ public class IndexHTMLService {
 
 	private final ApplicationService appService;
 	private final CacheService cacheService;
-	private final ObjectMapper objectMapper;
 
-	public IndexHTMLService(ApplicationService appService, CacheService cacheService, ObjectMapper objectMapper) {
+	public IndexHTMLService(ApplicationService appService, CacheService cacheService) {
 
 		this.appService = appService;
 		this.cacheService = cacheService;
-		this.objectMapper = objectMapper;
 	}
 
 	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
@@ -226,7 +224,7 @@ public class IndexHTMLService {
 						return "";
 
 					Map<String, Object> mso = (Map<String, Object>) e;
-					String packName = mso.get("pack") == null ? null : ICON_PACK.get(mso.get("pack").toString());
+					String packName = mso.get("name") == null ? null : ICON_PACK.get(mso.get("name").toString());
 
 					return CommonsUtil.nonNullValue(mso.get("code"), packName, "")
 							.toString();
