@@ -12,6 +12,7 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.security.util.ServerHttpRequestUtil;
@@ -48,8 +49,11 @@ public class JWTTokenFilter implements WebFilter {
 				.get(LogUtil.DEBUG_KEY);
 		final String dc = debugCode == null || debugCode.isEmpty() ? null : debugCode.get(0);
 
-		return this.authService.getAuthentication(isBasic, bearerToken, cc, ac, request)
-				.flatMap(ca -> {
+		var mono = FlatMapUtil.flatMapMono(
+
+				() -> this.authService.getAuthentication(isBasic, bearerToken, cc, ac, request),
+
+				ca -> {
 
 					if (cc != null && !"SYSTEM".equals(cc) && ca.isAuthenticated()
 							&& !cc.equals(((ContextAuthentication) ca).getLoggedInFromClientCode()))
@@ -59,14 +63,13 @@ public class JWTTokenFilter implements WebFilter {
 							.setUrlAppCode(ac)
 							.setUrlClientCode(cc);
 
-					var x = chain.filter(exchange)
+					return chain.filter(exchange)
 							.contextWrite(ReactiveSecurityContextHolder
 									.withSecurityContext(Mono.just(new SecurityContextImpl(newCA))));
-					if (dc != null)
-						x = x.contextWrite(Context.of(LogUtil.DEBUG_KEY, dc));
-
-					return x;
 				});
+		if (dc == null)
+			return mono;
+		return mono.contextWrite(Context.of(LogUtil.DEBUG_KEY, dc));
 	}
 
 }

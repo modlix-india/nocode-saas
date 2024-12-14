@@ -203,8 +203,10 @@ public class IndexHTMLService {
 		str.append("</script>");
 
 		String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
-		str.append("<script src=\"").append(jsURLPrefix).append("index.js\"></script>");
-		str.append("<script src=\"").append(jsURLPrefix).append("vendors.js\"></script>");
+		str.append("<script src=\"").append(jsURLPrefix).append("index.js?").append(System.currentTimeMillis())
+				.append("\"></script>");
+		str.append("<script src=\"").append(jsURLPrefix).append("vendors.js?").append(System.currentTimeMillis())
+				.append("\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
 
