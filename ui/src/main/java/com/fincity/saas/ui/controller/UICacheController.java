@@ -13,7 +13,6 @@ import com.fincity.saas.ui.service.IndexHTMLService;
 import com.fincity.saas.ui.service.JSService;
 
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 @RestController
 @RequestMapping("api/ui/")
@@ -27,15 +26,10 @@ public class UICacheController extends AbstractCacheController {
 				() -> SecurityContextUtil.getUsersContextAuthentication()
 						.filter(ContextAuthentication::isAuthenticated),
 
-				isAuthenticatedUser -> {
-
-					Mono.zip(this.service.evictAll(JSService.CACHE_NAME_JS),
-							this.service.evictAll(JSService.CACHE_NAME_JS_MAP),
-							this.service.evictAll(IndexHTMLService.CACHE_NAME_INDEX))
-							.subscribeOn(Schedulers.boundedElastic()).subscribe();
-
-					return Mono.just(ResponseEntity.ok(1));
-				}).defaultIfEmpty(ResponseEntity.badRequest().build());
+				isAuthenticatedUser -> Mono.zip(this.service.evictAll(JSService.CACHE_NAME_JS),
+						this.service.evictAll(JSService.CACHE_NAME_JS_MAP),
+						this.service.evictAll(IndexHTMLService.CACHE_NAME_INDEX)).map(e -> ResponseEntity.ok(1)))
+				.defaultIfEmpty(ResponseEntity.badRequest().build());
 
 	}
 }
