@@ -1,25 +1,5 @@
 package com.fincity.security.service;
 
-import java.math.BigInteger;
-import java.net.InetSocketAddress;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpCookie;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -378,6 +358,7 @@ public class AuthenticationService implements IAuthenticationService {
 				.handle((msg, sink) -> sink.error(new GenericException(HttpStatus.FORBIDDEN, msg)));
 	}
 
+	@Override
 	public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, String clientCode, String appCode,
 			ServerHttpRequest request) {
 
@@ -388,10 +369,15 @@ public class AuthenticationService implements IAuthenticationService {
 
 				() -> cacheService.get(CACHE_NAME_TOKEN, bearerToken).map(ContextAuthentication.class::cast),
 
-				cachedCA -> checkTokenOrigin(request, this.extractClaims(bearerToken)),
+				cachedCA -> basic ? Mono.empty() : checkTokenOrigin(request, this.extractClamis(bearerToken)),
 
-				(cachedCA, claims) -> cachedCA == null ? getAuthenticationIfNotInCache(basic, bearerToken, request)
-						: Mono.just(cachedCA))
+				(cachedCA, claims) -> {
+
+					if (cachedCA != null)
+						return Mono.just(cachedCA);
+
+					return getAuthenticationIfNotInCache(basic, bearerToken, request);
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"))
 				.onErrorResume(e -> this.makeAnonySpringAuthentication(request));
 	}
@@ -417,16 +403,57 @@ public class AuthenticationService implements IAuthenticationService {
 							return tokenService.delete(token.getId()).map(e -> ca);
 
 						return cacheService.put(CACHE_NAME_TOKEN, ca, bearerToken);
-					}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"))
+					})
+					.contextWrite(
+							Context.of(LogUtil.METHOD_NAME,
+									"AuthenticationService.getAuthenticationIfNotInCache [Bearer]"))
 					.map(Authentication.class::cast)
 					.switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
 							resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
 
 		} else {
-			// TODO: Need to add the basic authorisation...
-		}
 
-		return Mono.empty();
+			String token = bearerToken;
+			String finToken;
+			if (token.toLowerCase().startsWith("basic ")) {
+				token = token.substring(6);
+				finToken = bearerToken;
+			} else {
+				finToken = "Basic " + bearerToken;
+			}
+			token = new String(Base64.getDecoder().decode(token));
+
+			String username = token.substring(0, token.indexOf(':'));
+			String password = token.substring(token.indexOf(':') + 1);
+
+			String appCode = request.getHeaders().getFirst("appCode");
+			String clientCode = request.getHeaders().getFirst("clientCode");
+
+			return FlatMapUtil.flatMapMono(
+
+					() -> this.userService.findUserNClient(username, null, clientCode, appCode,
+							AuthenticationIdentifierType.USER_NAME, true),
+
+					tup -> {
+						String linClientCode = tup.getT1().getCode();
+						return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || linClientCode.equals(clientCode)
+								|| tup.getT1().getId().equals(tup.getT2().getId()) ? true : null);
+					},
+
+					(tup, linCCheck) -> this.checkPassword(password, tup.getT3()),
+
+					(tup, linCCheck, passwordChecked) -> {
+						return Mono.just(new ContextAuthentication(
+								tup.getT3().toContextUser(), true, tup.getT1().getId().toBigInteger(),
+								tup.getT1().getCode(), tup.getT2().getTypeCode(), tup.getT2().getCode(), finToken,
+								LocalDateTime.now().plusYears(1), clientCode, appCode));
+					})
+					.contextWrite(Context.of(LogUtil.METHOD_NAME,
+							"AuthenticationService.getAuthenticationIfNotInCache [Basic]"))
+					.map(Authentication.class::cast)
+					.switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
+							resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
+		}
 	}
 
 	private JWTClaims extractClaims(String bearerToken) {

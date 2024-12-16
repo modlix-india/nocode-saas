@@ -25,10 +25,11 @@ public class ServerHttpRequestUtil {
 		if (bearerToken != null) {
 
 			bearerToken = bearerToken.trim();
+			String smallCaseBearerToken = bearerToken.toLowerCase();
 
-			if (bearerToken.startsWith("Bearer ")) {
+			if (smallCaseBearerToken.startsWith("bearer ")) {
 				bearerToken = bearerToken.substring(7);
-			} else if (bearerToken.startsWith("basic ")) {
+			} else if (smallCaseBearerToken.startsWith("basic ")) {
 				isBasic = true;
 				bearerToken = bearerToken.substring(6);
 			}
