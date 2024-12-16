@@ -1,7 +1,6 @@
 package com.fincity.security.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
@@ -9,7 +8,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -838,6 +836,19 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				(levelType, roles, addedRoles) -> Mono.just(true)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
+	}
+
+	public Mono<Boolean> makeRegisteredUserActive(String emailId, String clientCode, String token) {
+
+		if(StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(token))
+			return this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), 
+				SecurityMessageResourceService.EMAIL_VERIFY_ERROR);
+
+		return this.dao.validateRegisteredUserAndMakeActive(emailId, clientCode, token)
+				.flatMap(BooleanUtil::safeValueOfWithEmpty)
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), 
+								SecurityMessageResourceService.EMAIL_VERIFY_ERROR));
 	}
 
 	
