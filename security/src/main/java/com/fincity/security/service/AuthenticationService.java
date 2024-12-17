@@ -329,10 +329,12 @@ public class AuthenticationService implements IAuthenticationService {
 
 		if (passwordType.equals(AuthenticationPasswordType.OTP)) {
 			return userService.resetFailedAttempt(user.getId(), passwordType)
-					.flatMap(reset -> userService.resetResendAttempt(user.getId()));
+					.flatMap(reset -> userService.resetResendAttempt(user.getId()))
+					.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
 		}
 
-		return userService.resetFailedAttempt(user.getId(), passwordType);
+		return userService.resetFailedAttempt(user.getId(), passwordType)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
 	}
 
 	private Mono<AuthenticationResponse> logAndMakeToken(AuthenticationRequest authRequest, ServerHttpRequest request,
@@ -385,7 +387,8 @@ public class AuthenticationService implements IAuthenticationService {
 				.map(t -> new AuthenticationResponse().setUser(user.toContextUser()).setClient(client)
 						.setLoggedInClientCode(linClient.getCode())
 						.setLoggedInClientId(linClient.getId().toBigInteger())
-						.setAccessToken(token.getT1()).setAccessTokenExpiryAt(token.getT2()));
+						.setAccessToken(token.getT1()).setAccessTokenExpiryAt(token.getT2()))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeToken"));
 	}
 
 	@Override
