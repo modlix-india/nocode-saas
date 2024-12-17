@@ -6,8 +6,6 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.jooq.dao.AbstractDAO;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.security.dto.Otp;
 import com.fincity.security.jooq.tables.records.SecurityOtpRecord;
 
@@ -21,14 +19,24 @@ public class OtpDAO extends AbstractDAO<SecurityOtpRecord, ULong, Otp> {
 	}
 
 	public Mono<Otp> getLatestOtp(ULong appId, ULong userId, String purpose) {
-
-		return this.filter(ComplexCondition.and(
-						FilterCondition.make(SECURITY_OTP.APP_ID.getName(), appId),
-						FilterCondition.make(SECURITY_OTP.USER_ID.getName(), userId),
-						FilterCondition.make(SECURITY_OTP.PURPOSE.getName(), purpose)
-				)).flatMap(condition ->
-						Mono.from(this.dslContext.selectFrom(SECURITY_OTP.getName()).where(condition)
-								.orderBy(SECURITY_OTP.CREATED_AT.desc()).limit(1)))
-				.map(e -> e.into(Otp.class));
+		return Mono.from(this.dslContext.selectFrom(SECURITY_OTP)
+						.where(
+								SECURITY_OTP.APP_ID.eq(appId)
+										.and(SECURITY_OTP.USER_ID.eq(userId))
+										.and(SECURITY_OTP.PURPOSE.eq(purpose)))
+						.orderBy(SECURITY_OTP.CREATED_AT.desc())
+						.limit(1)
+				).map(e->e.into(Otp.class));
 	}
+
+	public Mono<String> getLatestOtpCode(ULong appId, ULong userId, String purpose) {
+		return Mono.from(this.dslContext.select(SECURITY_OTP.UNIQUE_CODE).from(SECURITY_OTP)
+				.where(
+						SECURITY_OTP.APP_ID.eq(appId)
+								.and(SECURITY_OTP.USER_ID.eq(userId))
+								.and(SECURITY_OTP.PURPOSE.eq(purpose)))
+				.orderBy(SECURITY_OTP.CREATED_AT.desc())
+				.limit(1)).map(e->e.into(String.class));
+	}
+
 }

@@ -30,7 +30,6 @@ import lombok.Data;
 import reactor.core.publisher.Mono;
 
 @Service
-@ConditionalOnProperty(name = "sms.otp.allow", havingValue = "true")
 public class TwoFactorService implements MessageService {
 
 	private static final Logger logger = LoggerFactory.getLogger(TwoFactorService.class);
@@ -65,7 +64,10 @@ public class TwoFactorService implements MessageService {
 	@Override
 	public Mono<Boolean> sendOtpMessage(String phoneNumber, OtpMessageVars otpMessageVars) {
 
-		checkForKeys();
+		if (Boolean.FALSE.equals(checkForKeys())) {
+			logger.info("Sending fOTP message to {} with details {}", phoneNumber, otpMessageVars);
+			return Mono.just(Boolean.TRUE);
+		}
 
 		TransactionalSms request = TransactionalSms.builder()
 				.apikey(apiKey)
@@ -101,7 +103,7 @@ public class TwoFactorService implements MessageService {
 								.flatMap(msg -> Mono.error(new GenericException(HttpStatus.resolve(response.getStatusCode().value()), msg)));
 					}
 
-					return Mono.just(true);
+					return Mono.just(Boolean.TRUE);
 				}).onErrorResume(error -> {
 			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
 					SecurityMessageResourceService.SMS_OTP_ERROR);
@@ -184,11 +186,12 @@ public class TwoFactorService implements MessageService {
 		}
 	}
 
-	private void checkForKeys() {
-		if (!StringUtil.safeIsBlank(apiKey)) {
+	private Boolean checkForKeys() {
+		if (StringUtil.safeIsBlank(apiKey)) {
 			logger.error("ERROR: Two Factor Credentials Missing: apiKey");
-			throw new GenericException(HttpStatus.NOT_FOUND, "Two Factor Credentials Missing: apiKey");
+			return Boolean.FALSE;
 		}
+		return Boolean.TRUE;
 	}
 
 }

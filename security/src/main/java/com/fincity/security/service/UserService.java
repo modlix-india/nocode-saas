@@ -145,6 +145,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		return this.dao.resetFailedAttempt(userId, passwordType);
 	}
 
+	public Mono<Short> increaseResendAttempt(ULong userId) {
+		return this.dao.increaseResendAttempts(userId);
+	}
+
+	public Mono<Boolean> resetResendAttempt(ULong userId) {
+		return this.dao.resetResendAttempts(userId);
+	}
+
 	@Override
 	protected Mono<ULong> getLoggedInUserId() {
 

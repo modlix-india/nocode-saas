@@ -181,8 +181,7 @@ public class AuthenticationService implements IAuthenticationService {
 				(tup, linCCheck, user, policy) -> this.checkPassword(authRequest.getInputPassword(), appCode, user,
 						policy, passwordType),
 
-				(tup, linCCheck, user, policy, passwordChecked) -> userService.resetFailedAttempt(user.getId(),
-						passwordType),
+				(tup, linCCheck, user, policy, passwordChecked) -> this.resetUserAttempts(user, passwordType),
 
 				(tup, linCCheck, user, policy, passwordChecked, attemptsReset) -> logAndMakeToken(authRequest,
 						request, response, user, tup.getT2(), tup.getT1()))
@@ -324,6 +323,16 @@ public class AuthenticationService implements IAuthenticationService {
 	private <T> Mono<T> authError(String message, Object... params) {
 		return resourceService.getMessage(message, (Object) params)
 				.handle((msg, sink) -> sink.error(new GenericException(HttpStatus.FORBIDDEN, msg)));
+	}
+
+	private Mono<Boolean> resetUserAttempts(User user, AuthenticationPasswordType passwordType) {
+
+		if (passwordType.equals(AuthenticationPasswordType.OTP)) {
+			return userService.resetFailedAttempt(user.getId(), passwordType)
+					.flatMap(reset -> userService.resetResendAttempt(user.getId()));
+		}
+
+		return userService.resetFailedAttempt(user.getId(), passwordType);
 	}
 
 	private Mono<AuthenticationResponse> logAndMakeToken(AuthenticationRequest authRequest, ServerHttpRequest request,

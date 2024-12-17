@@ -110,12 +110,29 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		};
 	}
 
+	public Mono<Short> increaseResendAttempts(ULong userId) {
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.NO_OTP_RESEND_ATTEMPT, SECURITY_USER.NO_OTP_RESEND_ATTEMPT.add(1))
+				.where(SECURITY_USER.ID.eq(userId)))
+				.flatMap(updatedRows -> Mono.from(this.dslContext.select(SECURITY_USER.NO_OTP_RESEND_ATTEMPT)
+						.from(SECURITY_USER)
+						.where(SECURITY_USER.ID.eq(userId)))
+						.map(Record1::value1));
+	}
+
 	public Mono<Boolean> resetFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
 		return switch (passwordType) {
 			case PASSWORD -> resetFailedAttempt(userId);
 			case PIN -> resetPinFailedAttempt(userId);
 			case OTP -> resetOtpFailedAttempt(userId);
 		};
+	}
+
+	public Mono<Boolean> resetResendAttempts(ULong userId) {
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.NO_OTP_RESEND_ATTEMPT, (short) 0)
+				.where(SECURITY_USER.ID.eq(userId)))
+				.map(isUpdated -> isUpdated > 0);
 	}
 
 	private Mono<Short> increaseFailedAttempt(ULong userId) {
@@ -634,7 +651,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.LOCKED)
 				.set(SECURITY_USER.ACCOUNT_NON_LOCKED, ByteUtil.ZERO)
 				.set(SECURITY_USER.LOCKED_UNTIL, lockUntil)
-						.set(SECURITY_USER.LOCKED_DUE_TO, lockedDueTo)
+				.set(SECURITY_USER.LOCKED_DUE_TO, lockedDueTo)
 				.where(SECURITY_USER.ID.eq(userId)))
 				.map(e -> e > 0);
 	}
@@ -662,18 +679,18 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	public Mono<Boolean> updateUserStatusToActive(ULong reqUserId) {
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
-						.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-						.set(SECURITY_USER.ACCOUNT_NON_EXPIRED, ByteUtil.ONE)
-						.set(SECURITY_USER.ACCOUNT_NON_LOCKED, ByteUtil.ONE)
-						.set(SECURITY_USER.CREDENTIALS_NON_EXPIRED, ByteUtil.ONE)
-						.set(SECURITY_USER.NO_FAILED_ATTEMPT, (short) 0)
-						.set(SECURITY_USER.NO_PIN_FAILED_ATTEMPT, (short) 0)
-						.set(SECURITY_USER.NO_OTP_RESEND_ATTEMPT, (short) 0)
-						.set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, (short) 0)
-						.set(SECURITY_USER.LOCKED_UNTIL, (LocalDateTime) null)
-						.set(SECURITY_USER.LOCKED_DUE_TO, (String) null)
-						.where(SECURITY_USER.ID.eq(reqUserId)
-								.and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+				.set(SECURITY_USER.ACCOUNT_NON_EXPIRED, ByteUtil.ONE)
+				.set(SECURITY_USER.ACCOUNT_NON_LOCKED, ByteUtil.ONE)
+				.set(SECURITY_USER.CREDENTIALS_NON_EXPIRED, ByteUtil.ONE)
+				.set(SECURITY_USER.NO_FAILED_ATTEMPT, (short) 0)
+				.set(SECURITY_USER.NO_PIN_FAILED_ATTEMPT, (short) 0)
+				.set(SECURITY_USER.NO_OTP_RESEND_ATTEMPT, (short) 0)
+				.set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, (short) 0)
+				.set(SECURITY_USER.LOCKED_UNTIL, (LocalDateTime) null)
+				.set(SECURITY_USER.LOCKED_DUE_TO, (String) null)
+				.where(SECURITY_USER.ID.eq(reqUserId)
+						.and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
 				.map(e -> e > 0);
 	}
 
