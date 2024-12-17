@@ -167,6 +167,13 @@ public class SecurityClientPasswordPolicy extends TableImpl<SecurityClientPasswo
 
     /**
      * The column
+     * <code>security.security_client_password_policy.USER_LOCK_TIME</code>.
+     * Time in minutes for which user need to be locked it policy violates
+     */
+    public final TableField<SecurityClientPasswordPolicyRecord, ULong> USER_LOCK_TIME = createField(DSL.name("USER_LOCK_TIME"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("30", SQLDataType.BIGINTUNSIGNED)), this, "Time in minutes for which user need to be locked it policy violates");
+
+    /**
+     * The column
      * <code>security.security_client_password_policy.PASS_HISTORY_COUNT</code>.
      * Remember how many passwords
      */

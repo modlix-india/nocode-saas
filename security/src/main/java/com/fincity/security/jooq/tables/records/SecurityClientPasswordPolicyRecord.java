@@ -305,11 +305,30 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
 
     /**
      * Setter for
+     * <code>security.security_client_password_policy.USER_LOCK_TIME</code>.
+     * Time in minutes for which user need to be locked it policy violates
+     */
+    public SecurityClientPasswordPolicyRecord setUserLockTime(ULong value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_client_password_policy.USER_LOCK_TIME</code>.
+     * Time in minutes for which user need to be locked it policy violates
+     */
+    public ULong getUserLockTime() {
+        return (ULong) get(15);
+    }
+
+    /**
+     * Setter for
      * <code>security.security_client_password_policy.PASS_HISTORY_COUNT</code>.
      * Remember how many passwords
      */
     public SecurityClientPasswordPolicyRecord setPassHistoryCount(UShort value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -319,7 +338,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * Remember how many passwords
      */
     public UShort getPassHistoryCount() {
-        return (UShort) get(15);
+        return (UShort) get(16);
     }
 
     /**
@@ -328,7 +347,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * the user who created this row
      */
     public SecurityClientPasswordPolicyRecord setCreatedBy(ULong value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -338,7 +357,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(17);
     }
 
     /**
@@ -347,7 +366,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * when this row is created
      */
     public SecurityClientPasswordPolicyRecord setCreatedAt(LocalDateTime value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -357,7 +376,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -366,7 +385,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * the user who updated this row
      */
     public SecurityClientPasswordPolicyRecord setUpdatedBy(ULong value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -376,7 +395,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(19);
     }
 
     /**
@@ -385,7 +404,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * when this row is updated
      */
     public SecurityClientPasswordPolicyRecord setUpdatedAt(LocalDateTime value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -395,7 +414,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
      * when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -421,7 +440,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
     /**
      * Create a detached, initialised SecurityClientPasswordPolicyRecord
      */
-    public SecurityClientPasswordPolicyRecord(ULong id, ULong clientId, ULong appId, Byte atleastOneUppercase, Byte atleastOneLowercase, Byte atleastOneDigit, Byte atleastOneSpecialChar, Byte spacesAllowed, String regex, UShort percentageNameMatch, UShort passExpiryInDays, UShort passExpiryWarnInDays, UShort passMinLength, UShort passMaxLength, UShort noFailedAttempts, UShort passHistoryCount, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientPasswordPolicyRecord(ULong id, ULong clientId, ULong appId, Byte atleastOneUppercase, Byte atleastOneLowercase, Byte atleastOneDigit, Byte atleastOneSpecialChar, Byte spacesAllowed, String regex, UShort percentageNameMatch, UShort passExpiryInDays, UShort passExpiryWarnInDays, UShort passMinLength, UShort passMaxLength, UShort noFailedAttempts, ULong userLockTime, UShort passHistoryCount, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY);
 
         setId(id);
@@ -439,6 +458,7 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
         setPassMinLength(passMinLength);
         setPassMaxLength(passMaxLength);
         setNoFailedAttempts(noFailedAttempts);
+        setUserLockTime(userLockTime);
         setPassHistoryCount(passHistoryCount);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
