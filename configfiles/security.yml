@@ -46,11 +46,7 @@ redis:
     prefix: sec
 
 sms:
-  allow: ${smsService.allow}
-  otp:
-    expire:
-      interval: 15
   provider:
-    2Factor:
+    2factor:
       api:
         key: ${smsService.provider.2factor.api.key}

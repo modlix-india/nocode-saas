@@ -52,7 +52,7 @@ public class TwoFactorService implements MessageService {
 
 	private static final String ERROR = "Error";
 
-	@Value("${sms.provider.2Factor.api.key}")
+	@Value("${sms.provider.2factor.api.key}")
 	private String apiKey;
 
 	private final WebClient webClient;

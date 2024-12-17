@@ -83,11 +83,10 @@ mq:
   password: fincity
 
 smsService:
-  allow: false
   provider:
-    2Factor:
+    2factor:
       api:
-        key:
+        key: ~
 
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594
