@@ -15,8 +15,9 @@ CREATE TABLE `security`.`security_client_otp_policy`
     `NO_RESEND_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of Resend attempts allowed before User is blocked',
     `EXPIRE_INTERVAL` BIGINT UNSIGNED NOT NULL DEFAULT 5 COMMENT 'Time interval in minutes after which OTP will expire',
     `NO_FAILED_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of failed attempts allowed before OTP is invalidated',
+    `USER_LOCK_TIME` BIGINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Time in minutes for which user need to be locked it policy violates',
 
-    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+`CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
     `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who last updated this row',
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',

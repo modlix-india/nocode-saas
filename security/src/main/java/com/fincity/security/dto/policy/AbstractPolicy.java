@@ -24,6 +24,7 @@ public abstract class AbstractPolicy extends AbstractUpdatableDTO<ULong, ULong> 
 	private ULong clientId;
 	private ULong appId;
 	private UShort noFailedAttempts;
+	private ULong userLockTimeMin;
 
 	public abstract String generate();
 

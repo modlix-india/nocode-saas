@@ -13,6 +13,7 @@ import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_R
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.Set;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
+import org.jooq.Null;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.Record3;
@@ -626,6 +628,17 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
 
+	public Mono<Boolean> lockUser(ULong userId, LocalDateTime lockUntil, String lockedDueTo) {
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.LOCKED)
+				.set(SECURITY_USER.ACCOUNT_NON_LOCKED, ByteUtil.ZERO)
+				.set(SECURITY_USER.LOCKED_UNTIL, lockUntil)
+						.set(SECURITY_USER.LOCKED_DUE_TO, lockedDueTo)
+				.where(SECURITY_USER.ID.eq(userId)))
+				.map(e -> e > 0);
+	}
+
 	public Mono<Boolean> makeUserActiveIfInActive(ULong uid) {
 
 		return Mono.from(this.dslContext.update(SECURITY_USER)
@@ -644,6 +657,24 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 						.and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
 				.map(e -> e > 0);
 
+	}
+
+	public Mono<Boolean> updateUserStatusToActive(ULong reqUserId) {
+
+		return Mono.from(this.dslContext.update(SECURITY_USER)
+						.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
+						.set(SECURITY_USER.ACCOUNT_NON_EXPIRED, ByteUtil.ONE)
+						.set(SECURITY_USER.ACCOUNT_NON_LOCKED, ByteUtil.ONE)
+						.set(SECURITY_USER.CREDENTIALS_NON_EXPIRED, ByteUtil.ONE)
+						.set(SECURITY_USER.NO_FAILED_ATTEMPT, (short) 0)
+						.set(SECURITY_USER.NO_PIN_FAILED_ATTEMPT, (short) 0)
+						.set(SECURITY_USER.NO_OTP_RESEND_ATTEMPT, (short) 0)
+						.set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, (short) 0)
+						.set(SECURITY_USER.LOCKED_UNTIL, (LocalDateTime) null)
+						.set(SECURITY_USER.LOCKED_DUE_TO, (String) null)
+						.where(SECURITY_USER.ID.eq(reqUserId)
+								.and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+				.map(e -> e > 0);
 	}
 
 	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
@@ -696,19 +727,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		return Mono.from(query)
 				.map(Record1::value1)
-				.map(e -> e > 0);
-	}
-
-	public Mono<Boolean> updateUserStatus(ULong reqUserId) {
-
-		return Mono.from(this.dslContext.update(SECURITY_USER)
-				.set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-				.set(SECURITY_USER.ACCOUNT_NON_EXPIRED, ByteUtil.ONE)
-				.set(SECURITY_USER.ACCOUNT_NON_LOCKED, ByteUtil.ONE)
-				.set(SECURITY_USER.CREDENTIALS_NON_EXPIRED, ByteUtil.ONE)
-				.set(SECURITY_USER.NO_FAILED_ATTEMPT, Short.valueOf((short) 0))
-				.where(SECURITY_USER.ID.eq(reqUserId)
-						.and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
 				.map(e -> e > 0);
 	}
 

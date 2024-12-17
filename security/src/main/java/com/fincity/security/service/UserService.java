@@ -588,7 +588,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 							this.soxLogService.create(new SoxLog().setObjectId(reqUserId)
 									.setActionName(SecuritySoxLogActionName.OTHER)
 									.setObjectName(SecuritySoxLogObjectName.USER)
-									.setDescription("Password updated"))
+									.setDescription(StringFormatter.format("$ updated", passwordType.getName())))
 									.subscribe();
 
 							return ecService.createEvent(new EventQueObject().setAppCode(urlAppCode)
@@ -601,7 +601,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				.flatMap(e -> this.evictTokens(reqUserId)
 						.map(x -> e))
-				.flatMap(e -> this.dao.updateUserStatus(reqUserId)
+				.flatMap(e -> this.unlockUserInternal(reqUserId)
 						.map(x -> e))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateNewPassword"))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -836,8 +836,40 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	}
 
-	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
+	@PreAuthorize("hasAuthority('Authorities.User_UPDATE')")
+	public Mono<Boolean> unblockUser(ULong userId) {
 
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> Mono.just(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
+						.getId()))),
+
+				(ca, id) -> ca.isSystemClient() ? Mono.just(true)
+						: this.dao.readById(id)
+								.flatMap(e -> this.clientService.isBeingManagedBy(
+										ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
+
+				(ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged) ? Mono.empty()
+						: this.unlockUserInternal(id))
+
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.unblockUser"))
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
+
+	}
+
+	public Mono<Boolean> lockUserInternal(ULong userId, LocalDateTime lockUntil, String lockedDueTo) {
+		return this.dao.lockUser(userId, lockUntil, lockedDueTo);
+	}
+
+	public Mono<Boolean> unlockUserInternal(ULong userId) {
+		return this.dao.updateUserStatusToActive(userId);
+	}
+
+	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
 		return this.dao.checkUserExists(urlAppCode, urlClientCode, request);
 	}
 

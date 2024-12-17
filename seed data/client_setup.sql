@@ -1919,7 +1919,8 @@ ALTER TABLE `security`.`security_client_password_policy`
     DROP INDEX `UK1_CLIENT_PWD_POL_ID`;
 
 ALTER TABLE `security`.`security_client_password_policy`
-    ADD COLUMN `APP_ID` BIGINT UNSIGNED NULL DEFAULT NULL COMMENT 'Identifier for the application to which this OTP belongs. References security_app table' AFTER CLIENT_ID;
+    ADD COLUMN `APP_ID` BIGINT UNSIGNED NULL DEFAULT NULL COMMENT 'Identifier for the application to which this OTP belongs. References security_app table' AFTER CLIENT_ID,
+    ADD COLUMN `USER_LOCK_TIME` BIGINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Time in minutes for which user need to be locked it policy violates' AFTER `NO_FAILED_ATTEMPTS`;
 
 ALTER TABLE `security`.`security_client_password_policy`
     ADD CONSTRAINT `UK1_CLIENT_PWD_POL_CLIENT_ID_APP_ID` UNIQUE (`CLIENT_ID`, `APP_ID`),
@@ -1944,6 +1945,7 @@ CREATE TABLE `security`.`security_client_otp_policy`
     `NO_RESEND_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of Resend attempts allowed before User is blocked',
     `EXPIRE_INTERVAL` BIGINT UNSIGNED NOT NULL DEFAULT 5 COMMENT 'Time interval in minutes after which OTP will expire',
     `NO_FAILED_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of failed attempts allowed before OTP is invalidated',
+    `USER_LOCK_TIME` BIGINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Time in minutes for which user need to be locked it policy violates',
 
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
@@ -1973,6 +1975,7 @@ CREATE TABLE `security`.`security_client_pin_policy`
     `EXPIRY_WARN_IN_DAYS` SMALLINT UNSIGNED NOT NULL DEFAULT 25 COMMENT 'Number of days before expiry to warn the user',
     `PIN_HISTORY_COUNT` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Remember how many pin',
     `NO_FAILED_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of failed attempts allowed before PIN login is blocked',
+    `USER_LOCK_TIME` BIGINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Time in minutes for which user need to be locked it policy violates',
 
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',

@@ -74,6 +74,7 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts(UShort.valueOf(3))
+						.setUserLockTimeMin(ULong.valueOf(30))
 		);
 	}
 

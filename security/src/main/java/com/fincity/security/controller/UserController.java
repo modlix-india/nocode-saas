@@ -106,6 +106,12 @@ public class UserController
 				.map(ResponseEntity::ok);
 	}
 
+	@PostMapping("/unblockUser")
+	public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
+		return this.service.unblockUser(userId)
+				.map(ResponseEntity::ok);
+	}
+
 	@GetMapping("/availablePermissions/{userId}")
 	public Mono<ResponseEntity<List<Permission>>> getPermissionsFromUser(@PathVariable ULong userId) {
 		return this.userService.getPermissionsFromGivenUser(userId)
