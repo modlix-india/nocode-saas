@@ -106,9 +106,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.flatMap(this.dao::setPermissions);
 	}
 
-	public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId, String clientCode,
-	                                                                    String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
-		return findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType, getNonDeletedUserStatusCodes());
+	public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId,
+			String clientCode,
+			String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
+		return findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType,
+				getNonDeletedUserStatusCodes());
 	}
 
 	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String clientCode,

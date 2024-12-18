@@ -11,7 +11,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.model.AuthenticationPasswordType;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

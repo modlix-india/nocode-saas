@@ -165,7 +165,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
+				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
+						clientCode,
 						appCode, authRequest.getIdentifierType()),
 
 				tup -> Mono.justOrEmpty(
@@ -297,7 +298,8 @@ public class AuthenticationService implements IAuthenticationService {
 		return handleAuthFailure(user, policy, passwordType);
 	}
 
-	private <T extends AbstractPolicy> int compareFailedAttempts(User user, T policy, AuthenticationPasswordType passwordType) {
+	private <T extends AbstractPolicy> int compareFailedAttempts(User user, T policy,
+			AuthenticationPasswordType passwordType) {
 
 		return switch (passwordType) {
 			case PASSWORD -> user.getNoFailedAttempt().compareTo(policy.getNoFailedAttempts().shortValue());
