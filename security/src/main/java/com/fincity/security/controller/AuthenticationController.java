@@ -1,6 +1,14 @@
 package com.fincity.security.controller;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -12,15 +20,6 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.fincity.security.service.OtpService;
 
 import reactor.core.publisher.Mono;
@@ -106,7 +105,7 @@ public class AuthenticationController {
 						.setAccessToken(ca.getAccessToken())
 						.setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())),
 
-				(ca, ca2, client, vr) -> Mono.just(ResponseEntity.<AuthenticationResponse>ok(vr)))
+				(ca, ca2, client, vr) -> Mono.just(ResponseEntity.ok(vr)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
 
 	}
@@ -114,11 +113,11 @@ public class AuthenticationController {
 	@GetMapping(value = "internal/securityContextAuthentication", produces = { "application/json" })
 	public Mono<ResponseEntity<ContextAuthentication>> contextAuthentication() {
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				contextAuthentication -> Mono.just(ResponseEntity.<ContextAuthentication>ok(contextAuthentication)))
+				contextAuthentication -> Mono.just(ResponseEntity.ok(contextAuthentication)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.contextAuthentication"));
 	}
 

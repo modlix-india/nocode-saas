@@ -133,16 +133,10 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 
 				app -> this.dao.getLatestOtp(app.getId(), user.getId(), purpose),
 				(app, lotp) -> {
-					if (lotp == null)
+					if (lotp == null || lotp.isExpired() || !encoder.matches(uniqueCode, lotp.getUniqueCode())) {
 						return Mono.just(Boolean.FALSE);
-
-					if (lotp.isExpired())
-						return Mono.just(Boolean.FALSE);
-
-					if (encoder.matches(uniqueCode, lotp.getUniqueCode()))
-						return Mono.just(Boolean.TRUE);
-
-					return Mono.just(Boolean.FALSE);
+					}
+					return this.delete(lotp.getId()).flatMap(deleted -> Mono.just(Boolean.TRUE));
 				})
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtp"));
