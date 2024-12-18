@@ -125,28 +125,11 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
     }
 
     /**
-     * Setter for <code>security.security_otp.ATTEMPTS</code>. Number of
-     * attempts made to use this OTP for verification
-     */
-    public SecurityOtpRecord setAttempts(Integer value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_otp.ATTEMPTS</code>. Number of
-     * attempts made to use this OTP for verification
-     */
-    public Integer getAttempts() {
-        return (Integer) get(6);
-    }
-
-    /**
      * Setter for <code>security.security_otp.EXPIRES_AT</code>. Timestamp
      * indicating when the OTP expires and becomes invalid
      */
     public SecurityOtpRecord setExpiresAt(LocalDateTime value) {
-        set(7, value);
+        set(6, value);
         return this;
     }
 
@@ -155,7 +138,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * indicating when the OTP expires and becomes invalid
      */
     public LocalDateTime getExpiresAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(6);
     }
 
     /**
@@ -163,7 +146,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * the user to track OTP generation or use, supports both IPv4 and IPv6
      */
     public SecurityOtpRecord setIpAddress(String value) {
-        set(8, value);
+        set(7, value);
         return this;
     }
 
@@ -172,14 +155,14 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * the user to track OTP generation or use, supports both IPv4 and IPv6
      */
     public String getIpAddress() {
-        return (String) get(8);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>security.security_otp.CREATED_BY</code>.
      */
     public SecurityOtpRecord setCreatedBy(ULong value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
@@ -187,14 +170,14 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * Getter for <code>security.security_otp.CREATED_BY</code>.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(8);
     }
 
     /**
      * Setter for <code>security.security_otp.CREATED_AT</code>.
      */
     public SecurityOtpRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -202,7 +185,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * Getter for <code>security.security_otp.CREATED_AT</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(9);
     }
 
     // -------------------------------------------------------------------------
@@ -228,7 +211,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
     /**
      * Create a detached, initialised SecurityOtpRecord
      */
-    public SecurityOtpRecord(ULong id, ULong appId, ULong userId, String purpose, SecurityOtpTargetType targetType, String uniqueCode, Integer attempts, LocalDateTime expiresAt, String ipAddress, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityOtpRecord(ULong id, ULong appId, ULong userId, String purpose, SecurityOtpTargetType targetType, String uniqueCode, LocalDateTime expiresAt, String ipAddress, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityOtp.SECURITY_OTP);
 
         setId(id);
@@ -237,7 +220,6 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
         setPurpose(purpose);
         setTargetType(targetType);
         setUniqueCode(uniqueCode);
-        setAttempts(attempts);
         setExpiresAt(expiresAt);
         setIpAddress(ipAddress);
         setCreatedBy(createdBy);

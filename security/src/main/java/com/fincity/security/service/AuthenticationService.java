@@ -165,8 +165,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
-						appCode, authRequest.getIdentifierType(), true),
+				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(), clientCode,
+						appCode, authRequest.getIdentifierType()),
 
 				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals(SYSTEM_CC) ||
@@ -206,8 +206,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.userService.findUserNClient(authRequest.getUserName(),
-						authRequest.getUserId(), clientCode, appCode, authRequest.getIdentifierType(), true),
+				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(),
+						authRequest.getUserId(), clientCode, appCode, authRequest.getIdentifierType()),
 
 				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals(SYSTEM_CC) ||
@@ -284,8 +284,7 @@ public class AuthenticationService implements IAuthenticationService {
 	private <T extends AbstractPolicy> Mono<Boolean> checkFailedAttempts(User user, T policy,
 			AuthenticationPasswordType passwordType) {
 
-		if (policy.getNoFailedAttempts() != null && policy.getNoFailedAttempts()
-				.shortValue() <= user.getNoFailedAttempt()) {
+		if (policy.getNoFailedAttempts() != null && compareFailedAttempts(user, policy, passwordType) >= 0) {
 
 			soxLogService.createLog(user.getId(), SecuritySoxLogActionName.LOGIN, SecuritySoxLogObjectName.USER,
 					"Failed password attempts are more than the configuration");
@@ -296,6 +295,15 @@ public class AuthenticationService implements IAuthenticationService {
 					userLocked -> this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED));
 		}
 		return handleAuthFailure(user, policy, passwordType);
+	}
+
+	private <T extends AbstractPolicy> int compareFailedAttempts(User user, T policy, AuthenticationPasswordType passwordType) {
+
+		return switch (passwordType) {
+			case PASSWORD -> user.getNoFailedAttempt().compareTo(policy.getNoFailedAttempts().shortValue());
+			case PIN -> user.getNoPinFailedAttempt().compareTo(policy.getNoFailedAttempts().shortValue());
+			case OTP -> user.getNoOtpFailedAttempt().compareTo(policy.getNoFailedAttempts().shortValue());
+		};
 	}
 
 	private Mono<Boolean> lockUser(User user, LocalDateTime lockUntil, String lockedDueTo) {
@@ -321,7 +329,7 @@ public class AuthenticationService implements IAuthenticationService {
 	}
 
 	private <T> Mono<T> authError(String message, Object... params) {
-		return resourceService.getMessage(message, (Object) params)
+		return resourceService.getMessage(message, params)
 				.handle((msg, sink) -> sink.error(new GenericException(HttpStatus.FORBIDDEN, msg)));
 	}
 
@@ -464,8 +472,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 			return FlatMapUtil.flatMapMono(
 
-					() -> this.userService.findUserNClient(username, null, clientCode, appCode,
-							AuthenticationIdentifierType.USER_NAME, true),
+					() -> this.userService.findNonDeletedUserNClient(username, null, clientCode, appCode,
+							AuthenticationIdentifierType.USER_NAME),
 
 					tup -> Mono.justOrEmpty(
 							tup.getT1().getCode().equals(SYSTEM_CC) ||

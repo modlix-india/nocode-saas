@@ -81,8 +81,8 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 		String purpose = OtpPurpose.LOGIN.name();
 
 		return FlatMapUtil.flatMapMono(
-				() -> this.userService.findUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-						clientCode, appCode, authRequest.getIdentifierType(), true),
+				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
+						clientCode, appCode, authRequest.getIdentifierType()),
 
 				tup -> {
 					String linClientCode = tup.getT1().getCode();
@@ -119,6 +119,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 								.map(otpHistory -> Boolean.TRUE)
 								.onErrorReturn(Boolean.FALSE)
 						: Mono.just(Boolean.FALSE))
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp"));
 	}
 

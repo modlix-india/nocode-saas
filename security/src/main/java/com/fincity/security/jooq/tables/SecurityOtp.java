@@ -100,12 +100,6 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
     public final TableField<SecurityOtpRecord, String> UNIQUE_CODE = createField(DSL.name("UNIQUE_CODE"), SQLDataType.CHAR(60).nullable(false), this, "The hashed OTP code used for verification");
 
     /**
-     * The column <code>security.security_otp.ATTEMPTS</code>. Number of
-     * attempts made to use this OTP for verification
-     */
-    public final TableField<SecurityOtpRecord, Integer> ATTEMPTS = createField(DSL.name("ATTEMPTS"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "Number of attempts made to use this OTP for verification");
-
-    /**
      * The column <code>security.security_otp.EXPIRES_AT</code>. Timestamp
      * indicating when the OTP expires and becomes invalid
      */

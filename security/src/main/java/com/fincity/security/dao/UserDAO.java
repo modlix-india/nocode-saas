@@ -519,10 +519,10 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	}
 
 	public Mono<List<User>> getBy(String userName, ULong userId, String clientCode, String appCode,
-			AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
+			AuthenticationIdentifierType authenticationIdentifierType, SecurityUserStatusCode... userStatusCodes) {
 
 		var query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
-				onlyActiveUsers, SECURITY_USER.fields());
+				userStatusCodes, SECURITY_USER.fields());
 
 		var limitQuery = query.limit(2);
 
@@ -534,8 +534,15 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	}
 
 	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
-			String appCode, AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers,
-			Field<?>... fields) {
+			String appCode, AuthenticationIdentifierType authenticationIdentifierType,
+			SecurityUserStatusCode userStatusCode, Field<?>... fields) {
+		return getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
+				new SecurityUserStatusCode[] { userStatusCode }, fields);
+	}
+
+	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
+			String appCode, AuthenticationIdentifierType authenticationIdentifierType,
+			SecurityUserStatusCode[] userStatusCodes, Field<?>... fields) {
 
 		TableField<SecurityUserRecord, String> userIdentificationField = SECURITY_USER.USER_NAME;
 		if (authenticationIdentifierType == AuthenticationIdentifierType.EMAIL_ID) {
@@ -547,12 +554,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		List<Condition> conditions = new ArrayList<>();
 
 		conditions.add(userIdentificationField.eq(userName));
-		if (onlyActiveUsers) {
-			conditions.add(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
-			conditions.add(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE));
-		} else {
-			conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
-			conditions.add(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED));
+
+		if (userStatusCodes != null && userStatusCodes.length > 0) {
+			conditions.add(SECURITY_USER.STATUS_CODE.in(userStatusCodes));
 		}
 
 		if (userId != null)
@@ -639,8 +643,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 			AuthenticationIdentifierType identifierType) {
 
 		return Flux
-				.from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType, true,
-						SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
+				.from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType,
+						SecurityUserStatusCode.ACTIVE, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
 
 				.collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}

@@ -35,7 +35,7 @@ public class ClientOtpPolicy extends AbstractPolicy {
 	@Override
 	public String generate() {
 
-		if (!this.isConstant) {
+		if (this.isConstant) {
 			return this.constantValue;
 		}
 

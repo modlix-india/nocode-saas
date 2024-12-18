@@ -106,13 +106,19 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.flatMap(this.dao::setPermissions);
 	}
 
+	public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId, String clientCode,
+	                                                                    String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
+		return findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType, getNonDeletedUserStatusCodes());
+	}
+
 	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String clientCode,
-			String appCode, AuthenticationIdentifierType authenticationIdentifierType, boolean onlyActiveUsers) {
+			String appCode, AuthenticationIdentifierType authenticationIdentifierType,
+			SecurityUserStatusCode... userStatusCodes) {
 
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.dao
-						.getBy(userName, userId, clientCode, appCode, authenticationIdentifierType, onlyActiveUsers)
+						.getBy(userName, userId, clientCode, appCode, authenticationIdentifierType, userStatusCodes)
 						.flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.get(0)))
 						.flatMap(this.dao::setPermissions),
 
@@ -151,6 +157,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> resetResendAttempt(ULong userId) {
 		return this.dao.resetResendAttempts(userId);
+	}
+
+	public SecurityUserStatusCode[] getNonDeletedUserStatusCodes() {
+		return new SecurityUserStatusCode[] { SecurityUserStatusCode.ACTIVE, SecurityUserStatusCode.INACTIVE,
+				SecurityUserStatusCode.LOCKED, SecurityUserStatusCode.PASSWORD_EXPIRED };
 	}
 
 	@Override
@@ -905,8 +916,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
 					}
 
-					return this.findUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-							ca.getUrlClientCode(), ca.getUrlAppCode(), authRequest.getIdentifierType(), false);
+					return this.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
+							ca.getUrlClientCode(), ca.getUrlAppCode(), authRequest.getIdentifierType());
 				},
 
 				(ca, cuTup) -> this.clientService.getClientBy(ca.getUrlClientCode())

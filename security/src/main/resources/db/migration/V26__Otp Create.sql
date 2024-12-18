@@ -11,7 +11,6 @@ CREATE TABLE `security`.`security_otp`
     `TARGET_TYPE` ENUM ('EMAIL', 'PHONE', 'BOTH') DEFAULT 'EMAIL' NOT NULL COMMENT 'The target medium for the OTP delivery: EMAIL, PHONE, or BOTH',
 
     `UNIQUE_CODE` CHAR(60) NOT NULL COMMENT 'The hashed OTP code used for verification',
-    `ATTEMPTS` INT DEFAULT 0 NOT NULL COMMENT 'Number of attempts made to use this OTP for verification',
     `EXPIRES_AT` TIMESTAMP NOT NULL COMMENT 'Timestamp indicating when the OTP expires and becomes invalid',
     `IP_ADDRESS` CHAR(45) COMMENT 'IP address of the user to track OTP generation or use, supports both IPv4 and IPv6',
 
