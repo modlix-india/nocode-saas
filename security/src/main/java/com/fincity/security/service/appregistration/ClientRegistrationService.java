@@ -36,11 +36,13 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
+import com.fincity.security.dto.policy.ClientPasswordPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.feign.IFeignFilesService;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
@@ -50,7 +52,6 @@ import com.fincity.security.service.ClientService;
 import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.UserService;
-import com.fincity.security.util.PasswordUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -386,11 +387,15 @@ public class ClientRegistrationService {
 
                                 (tup, prop) -> this.registerClient(registrationRequest, tup.getT2(), prop),
 
-                                (tup, prop, client) -> this.registerUser(tup.getT2().getUrlAppCode(),
+                                (tup, prop, client) -> this.clientService.getClientAppPolicy(
                                                 ULong.valueOf(tup.getT2().getLoggedInFromClientId()),
-                                                registrationRequest, client, prop),
+                                                tup.getT2().getUrlAppCode(), AuthenticationPasswordType.PASSWORD),
 
-                                (tup, prop, client, userTuple) -> {
+                                (tup, prop, client, policy) -> this.registerUser(tup.getT2().getUrlAppCode(),
+                                                ULong.valueOf(tup.getT2().getLoggedInFromClientId()),
+                                                registrationRequest, client, prop, (ClientPasswordPolicy) policy),
+
+                                (tup, prop, client, policy, userTuple) -> {
 
                                         if (StringUtil.safeIsBlank(registrationRequest.getSocialRegisterState())
                                                         && !StringUtil.safeIsBlank(registrationRequest.getPassword())) {
@@ -404,9 +409,10 @@ public class ClientRegistrationService {
                                         return Mono.just("");
                                 },
 
-                                (tup, prop, client, userTuple, token) -> this.addFilesAccessPath(tup.getT2(), client),
+                                (tup, prop, client, policy, userTuple, token) -> this.addFilesAccessPath(tup.getT2(),
+                                                client),
 
-                                (tup, prop, client, userTuple, token, filesAccessCreated) -> this.ecService
+                                (tup, prop, client, policy, userTuple, token, filesAccessCreated) -> this.ecService
                                                 .createEvent(new EventQueObject()
                                                                 .setAppCode(tup.getT2().getUrlAppCode())
                                                                 .setClientCode(tup.getT2().getLoggedInFromClientCode())
@@ -488,7 +494,7 @@ public class ClientRegistrationService {
                                                         return Mono.just(e);
                                                 }),
 
-                                (tup, prop, client, userTuple, token, filesAccessCreated, res) -> {
+                                (tup, prop, client, policy, userTuple, token, filesAccessCreated, res) -> {
 
                                         if (tup.getT1().isBlank())
                                                 return Mono.just(res);
@@ -688,7 +694,8 @@ public class ClientRegistrationService {
         }
 
         private Mono<Tuple2<User, String>> registerUser(String appCode, ULong urlClientId,
-                        ClientRegistrationRequest request, Client client, String regType) {
+                        ClientRegistrationRequest request, Client client, String regType,
+                        ClientPasswordPolicy clientPasswordPolicy) {
                 User user = new User();
                 user.setClientId(client.getId());
                 user.setEmailId(request.getEmailId());
@@ -698,30 +705,22 @@ public class ClientRegistrationService {
                 user.setUserName(request.getUserName());
                 user.setPhoneNumber(request.getPhoneNumber());
 
-                String password = "";
-                if (!StringUtil.safeIsBlank(request.getSocialRegisterState())
-                                || regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_PASSWORD)
-                                || StringUtil.safeIsBlank(request.getPassword())) {
+                String password = StringUtil.safeIsBlank(request.getPassword()) ? clientPasswordPolicy.generate()
+                                : request.getPassword();
 
-                        password = PasswordUtil.generatePassword(8);
-                        user.setPassword(password);
-                        user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-                } else if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
-                        user.setPassword(request.getPassword());
+                user.setPassword(password);
+
+                if (regType.equals(AppService.APP_PROP_REG_TYPE_EMAIL_VERIFY)) {
                         user.setStatusCode(SecurityUserStatusCode.INACTIVE);
                 } else {
                         // In all other cases we make the user active as the user will already be
                         // authenticated by a code or no verification required.
-
-                        user.setPassword(request.getPassword());
                         user.setStatusCode(SecurityUserStatusCode.ACTIVE);
                 }
 
-                final String finPassword = password;
-
                 return this.appService.getAppByCode(appCode).flatMap(app -> this.userService
                                 .createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user)
-                                .map(e -> Tuples.of(e, finPassword)));
+                                .map(e -> Tuples.of(e, password)));
         }
 
         private String getValidClientName(ClientRegistrationRequest request) {

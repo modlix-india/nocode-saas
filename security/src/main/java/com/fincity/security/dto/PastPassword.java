@@ -1,5 +1,7 @@
 package com.fincity.security.dto;
 
+import java.io.Serial;
+
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractDTO;
@@ -15,6 +17,7 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public class PastPassword extends AbstractDTO<ULong, ULong> {
 
+	@Serial
 	private static final long serialVersionUID = 4360853737062991688L;
 
 	private ULong userId;

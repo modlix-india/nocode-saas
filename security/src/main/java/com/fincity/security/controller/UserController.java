@@ -22,6 +22,7 @@ import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
+import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.service.UserService;
@@ -71,7 +72,17 @@ public class UserController
 
 		return SecurityContextUtil.getUsersContextAuthentication()
 				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(), userId,
-						passwordRequest, false))
+						passwordRequest, false, AuthenticationPasswordType.PASSWORD))
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("{userId}/updatePin")
+	public Mono<ResponseEntity<Boolean>> updatePinForUser(@PathVariable ULong userId,
+			@RequestBody RequestUpdatePassword passwordRequest) {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(), userId,
+						passwordRequest, false, AuthenticationPasswordType.PIN))
 				.map(ResponseEntity::ok);
 	}
 
@@ -86,13 +97,19 @@ public class UserController
 	@GetMapping("/makeUserActive")
 	public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
 		return this.service.makeUserActive(userId)
-		        .map(ResponseEntity::ok);
+				.map(ResponseEntity::ok);
 	}
-	
+
 	@GetMapping("/makeUserInActive")
 	public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
 		return this.service.makeUserInActive(userId)
-		        .map(ResponseEntity::ok);
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/unblockUser")
+	public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
+		return this.service.unblockUser(userId)
+				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/availablePermissions/{userId}")
@@ -114,7 +131,18 @@ public class UserController
 				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
 						ULong.valueOf(ca.getUser()
 								.getId()),
-						passwordRequest, true))
+						passwordRequest, true, AuthenticationPasswordType.PASSWORD))
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/resetPin")
+	public Mono<ResponseEntity<Boolean>> changePin(@RequestBody RequestUpdatePassword passwordRequest) {
+
+		return SecurityContextUtil.getUsersContextAuthentication()
+				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
+						ULong.valueOf(ca.getUser()
+								.getId()),
+						passwordRequest, true, AuthenticationPasswordType.PIN))
 				.map(ResponseEntity::ok);
 	}
 
@@ -122,7 +150,15 @@ public class UserController
 	public Mono<ResponseEntity<Boolean>> requestResetPassword(@RequestBody AuthenticationRequest authRequest,
 			ServerHttpRequest request) {
 
-		return this.userService.resetPasswordRequest(authRequest, request)
+		return this.userService.resetPasswordRequest(authRequest, request, AuthenticationPasswordType.PASSWORD)
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/requestResetPin")
+	public Mono<ResponseEntity<Boolean>> requestResetPin(@RequestBody AuthenticationRequest authRequest,
+			ServerHttpRequest request) {
+
+		return this.userService.resetPasswordRequest(authRequest, request, AuthenticationPasswordType.PIN)
 				.map(ResponseEntity::ok);
 	}
 
