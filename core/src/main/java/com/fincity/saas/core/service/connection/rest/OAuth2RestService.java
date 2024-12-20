@@ -91,9 +91,18 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> this.getExistingAccessToken(connection),
+				SecurityContextUtil::getUsersContextAuthentication,
 
-				token -> {
+				ca -> {
+					if(!ca.isAuthenticated()){
+						return this.msgService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								CoreMessageResourceService.FORBIDDEN_EXECUTION, connection.getName());
+					}
+					return this.getExistingAccessToken(connection, ca.getClientCode(), ca.getUrlAppCode());
+				},
+
+				(ca,token) -> {
 					if (token == null) {
 
 						String grantTypeString = (String) connection.getConnectionDetails().get(AUTH_GRANT_TYPE);
@@ -103,17 +112,16 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 									"Access denied: Integration token unavailable or expired"));
 						}
 
-						return createClientCredentialsToken(connection)
-								.doOnNext(next -> System.out.println(next + "Kailash is not okay"));
+						return createClientCredentialsToken(connection);
 					}
 
 					return Mono.just(token);
 				});
 	}
 
-	private Mono<String> getExistingAccessToken(Connection connection) {
+	private Mono<String> getExistingAccessToken(Connection connection, String clientCode, String appCode) {
 		return cacheService.cacheValueOrGet(CACHE_NAME_REST_OAUTH2, () -> this.coreTokenDAO.getActiveAccessToken(
-				connection.getClientCode(), connection.getAppCode(), connection.getName()), getCacheKeys(connection));
+				clientCode, appCode, connection.getName()), getCacheKeys(connection, clientCode, appCode));
 	}
 
 	public Mono<String> evokeConsentAuth(String connectionName, ServerHttpRequest request) {
@@ -157,8 +165,8 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 		return basicRestService.call(connection, request, fileDownload);
 	}
 
-	private Object[] getCacheKeys(Connection connection) {
-		return new Object[] { connection.getClientCode(), ":", connection.getAppCode(), ":", connection.getName() };
+	private Object[] getCacheKeys(Connection connection, String clientCode, String appCode) {
+		return new Object[] { connection.getClientCode(), ":", clientCode, ":", appCode };
 	}
 
 	private Mono<String> getAuthConsentURI(ContextAuthentication ca, Connection connection, String callBackURL) {
@@ -185,8 +193,8 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 		return FlatMapUtil.flatMapMono(
 
 				() -> coreTokenDAO.create(new CoreToken()
-						.setClientCode(connection.getClientCode())
-						.setAppCode(connection.getAppCode())
+						.setClientCode(ca.getClientCode())
+						.setAppCode(ca.getUrlAppCode())
 						.setConnectionName(connection.getName())
 						.setTokenType(CoreTokensTokenType.ACCESS).setState(state)
 						.setUserId(ULongUtil.valueOf(ca.getUser().getId()))),
@@ -236,7 +244,7 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 						coreToken.getAppCode(), coreToken.getConnectionName()),
 
 				(coreToken, connection, invPrev) -> cacheService.evict(CACHE_NAME_REST_OAUTH2,
-						getCacheKeys(connection)),
+						getCacheKeys(connection, coreToken.getClientCode(), coreToken.getAppCode())),
 
 				(coreToken, connection, invPrev, evictCache) -> {
 
@@ -276,11 +284,19 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 					Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
 					Mono<CoreToken> token = this.coreTokenDAO.update(
-							coreToken.setToken(tup.getT2().get((String) connectionDetails.get(TOKEN_KEY)).asText())
-									.setExpiresAt(LocalDateTime.now().plusSeconds(Long
-											.parseLong(tup.getT2()
-													.get((String) connectionDetails.get(TOKEN_EXPIRES_AT_KEY))
-													.asText())))
+							coreToken.setToken(
+											tup.getT2().get((String) connectionDetails.get(TOKEN_KEY)).asText())
+									.setExpiresAt(
+											Boolean.FALSE.equals(connectionDetails.get(IS_LIFETIME_TOKEN))
+													|| !StringUtil.safeIsBlank(tup.getT2()
+													.get((String) connectionDetails.get(TOKEN_EXPIRES_AT_KEY)))
+													? LocalDateTime.now().plusSeconds(Long
+													.parseLong(tup.getT2()
+															.get((String) connectionDetails.get(TOKEN_EXPIRES_AT_KEY))
+															.asText())
+											)
+													: null
+									)
 									.setIsLifetimeToken((Boolean) connectionDetails.get(IS_LIFETIME_TOKEN))
 									.setTokenMetadata(tup.getT2()));
 
@@ -357,11 +373,7 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 						.setExpiresAt(LocalDateTime.now()
 								.plusSeconds(Long.parseLong(tokenResponse
 										.get((String) connectionDetails.get(TOKEN_EXPIRES_AT_KEY)).asText()))))
-						.doOnNext(token -> System.out.println("Token created in DB: {}" + token))
-						.doOnError(error -> System.out.println("Error creating token: {}" + error.getMessage())),
-
-				(ca, tokenResponse, cToken) -> Mono
-						.just("1000.f06450b2654a434dc4216b7c50bce3f7.64a57771d260971e9f3b3b6caec08817"));
+						.map(CoreToken::getToken));
 
 	}
 
@@ -371,7 +383,7 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(Tuples.of(ca.getLoggedInFromClientCode(), ca.getUrlAppCode())),
+				ca -> Mono.just(Tuples.of(ca.getClientCode(), ca.getUrlAppCode())),
 
 				(ca, tup) -> this.coreTokenDAO.revokeToken(tup.getT1(), tup.getT2(), connectionName)
 

@@ -1,12 +1,16 @@
 package com.fincity.saas.core.service.connection.rest;
 
 import java.lang.reflect.Type;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.fincity.saas.commons.webclient.CustomUriBuilderFactory;
+import com.fincity.saas.commons.webclient.WebClientEncodingModes;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -45,6 +49,8 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 	private static final String ENCODED_TEXT_TAG_NAME = "name:";
 	private static final String ENCODED_TEXT_TAG_BASE = "base64,";
 
+	private static final String ENCODING_MODE = "encodingMode";
+
 	private final CoreMessageResourceService msgService;
 	private final Gson gson;
 
@@ -78,13 +84,21 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 							.isEmpty())
 						headers.addAll(request.getHeaders());
 
+					WebClientEncodingModes encodingMode = WebClientEncodingModes.valueOf(connection.getConnectionDetails()
+							.getOrDefault(ENCODING_MODE, WebClientEncodingModes.TEMPLATE_AND_VALUES).toString());
+
+          CustomUriBuilderFactory uriBuilderFactory = new CustomUriBuilderFactory(tup.getT1(), encodingMode);
+
 					WebClient.Builder webClientBuilder = WebClient.builder();
-					WebClient webClient = webClientBuilder.baseUrl(tup.getT1())
+					WebClient webClient = webClientBuilder
+							.baseUrl(tup.getT1())
 							.codecs(c -> c.defaultCodecs().maxInMemorySize(50 * 1024 * 1024)).build();
 
-					WebClient.RequestBodySpec requestBuilder = webClient.method(HttpMethod.valueOf(request.getMethod()))
+					WebClient.RequestBodySpec requestBuilder = webClient.mutate()
+							.uriBuilderFactory(uriBuilderFactory).build()
+							.method(HttpMethod.valueOf(request.getMethod()))
 							.uri(uriBuilder -> {
-								uriBuilder = applyQueryParameters(uriBuilder, request.getQueryParameters());
+								uriBuilder = applyQueryParameters(uriBuilder, request.getQueryParameters(), encodingMode);
 								return uriBuilder.build(request.getPathParameters());
 							})
 							.headers(h -> h.addAll(headers));
@@ -256,10 +270,16 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 		return Mono.just(Tuples.of(url, headers, timeoutDuration));
 	}
 
-	private UriBuilder applyQueryParameters(UriBuilder uriBuilder, Map<String, String> queryParameters) {
+	private UriBuilder applyQueryParameters(UriBuilder uriBuilder,
+			Map<String, String> queryParameters, WebClientEncodingModes encodingMode) {
 		if (queryParameters != null && !queryParameters.isEmpty()) {
 			for (Map.Entry<String, String> entry : queryParameters.entrySet()) {
-				uriBuilder.queryParam(entry.getKey(), entry.getValue());
+				if (encodingMode.equals(WebClientEncodingModes.MANUAL_VALUES_ENCODED)) {
+					uriBuilder.queryParam(entry.getKey(),
+							URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+				} else {
+					uriBuilder.queryParam(entry.getKey(), entry.getValue());
+				}
 			}
 		}
 		return uriBuilder;
