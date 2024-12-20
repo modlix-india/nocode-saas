@@ -43,7 +43,6 @@ public class AppRegistrationIntegrationService
     private static final String INTG_ID = "intgId";
     private static final String INTG_SECRET = "intgSecret";
 
-    private static final String CACHE_NAME_INTEGRATION_ID = "integrationId";
     private static final String CACHE_NAME_INTEGRATION_PLATFORM = "integrationPlatform";
 
     private final AppService appService;
@@ -75,7 +74,7 @@ public class AppRegistrationIntegrationService
         return super.update(entity)
                 .flatMap(
                         this.cacheService.evictFunctionWithKeyFunction(
-                                CACHE_NAME_INTEGRATION_ID, this::getCacheKeys));
+                            CACHE_NAME_INTEGRATION_PLATFORM, this::getCacheKeys));
     }
 
     @Override
@@ -84,7 +83,7 @@ public class AppRegistrationIntegrationService
 
         return FlatMapUtil.flatMapMono(
                 () -> this.read(id),
-                e -> super.delete(id).flatMap(this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_ID,
+                e -> super.delete(id).flatMap(this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_PLATFORM,
                         getCacheKeys(e))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "AppRegistrationIntegrationService.delete"));
