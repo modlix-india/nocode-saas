@@ -9,9 +9,13 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
@@ -28,6 +32,8 @@ import reactor.util.function.Tuples;
 
 @Service
 public class IndexHTMLService {
+
+	private static final Logger logger = LoggerFactory.getLogger(IndexHTMLService.class);
 
 	private static final String[] LINK_FIELDS = new String[] { "crossorigin", "href", "hreflang", "media",
 			"referrerpolicy", "rel", "sizes", "title", "type" };
@@ -91,7 +97,7 @@ public class IndexHTMLService {
 		this.cacheService = cacheService;
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode, String debug) {
+	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
 
 		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode),
 
@@ -100,11 +106,11 @@ public class IndexHTMLService {
 
 								() -> appService.read(appCode, appCode, clientCode),
 
-								app -> this.indexFromApp(app.getObject(), appCode, clientCode, debug))
+								app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode))
 
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
 
-				clientCode, ":", StringUtil.safeIsBlank(debug) ? "debug" : "nodebug");
+				clientCode);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -142,7 +148,7 @@ public class IndexHTMLService {
 
 	@SuppressWarnings("unchecked")
 	private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode,
-			String clientCode, String debug) {
+			String clientCode) {
 
 		Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
@@ -164,7 +170,12 @@ public class IndexHTMLService {
 		processTagType(str, (Map<String, Object>) appProps.get("scripts"), "script", SCRIPT_FIELDS);
 		processTagType(str, (Map<String, Object>) appProps.get("metas"), "meta", META_FIELDS);
 
-		str.append("<link rel=\"manifest\" href=\"/" + appCode + "/" + clientCode + "/manifest/manifest.json\" />");
+		if (appProps.get("manifest") != null && !((Map<String, ?>) appProps.get("manifest")).isEmpty())
+			str.append("<link rel=\"manifest\" href=\"")
+					.append(appCode)
+					.append("/")
+					.append(clientCode)
+					.append("/manifest/manifest.json\" />");
 		str.append(processFontPacks((Map<String, Object>) appProps.get("fontPacks")));
 		str.append(processIconPacks((Map<String, Object>) appProps.get("iconPacks")));
 		str.append(codeParts.get(1));
@@ -173,26 +184,29 @@ public class IndexHTMLService {
 		str.append("<div id=\"app\"></div>");
 
 		// Here the preference will be for the style from the style service.
-
-		str.append("<link rel=\"stylesheet\" href=\"/" + appCode + "/" + clientCode + "/page/api/ui/style\" />");
+		str.append("<link rel=\"stylesheet\" href=\"/")
+				.append(appCode)
+				.append("/")
+				.append(clientCode)
+				.append("/page/api/ui/style\" />");
 		str.append("<script>");
-		if (!this.cdnHostName.isBlank()) {
-			str.append("window.cdnPrefix='" + this.cdnHostName + "';");
-			str.append("window.cdnStripAPIPrefix=" + this.cdnStripAPIPrefix + ";");
-			str.append("window.cdnReplacePlus=" + this.cdnReplacePlus + ";");
 
+		if (!this.cdnHostName.isBlank()) {
+			str.append("window.cdnPrefix='").append(this.cdnHostName).append("';");
+			str.append("window.cdnStripAPIPrefix='").append(this.cdnStripAPIPrefix).append("';");
+			str.append("window.cdnReplacePlus=").append(this.cdnReplacePlus).append(";");
 		}
-		str.append("window.domainAppCode='" + appCode + "';");
-		str.append("window.domainClientCode='" + clientCode + "';");
+
+		str.append("window.domainAppCode='").append(appCode).append("';");
+		str.append("window.domainClientCode='").append(clientCode).append("';");
+
 		str.append("</script>");
 
 		String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
-		str.append("<script src=\"" + jsURLPrefix + "index.js\"></script>");
-		str.append("<script src=\"" + jsURLPrefix + "vendors.js\"></script>");
-		if (!StringUtil.safeIsBlank(debug)) {
-			str.append("<script src=\"" + jsURLPrefix + "index.js.map\"></script>");
-			str.append("<script src=\"" + jsURLPrefix + "vendors.js.map\"></script>");
-		}
+		str.append("<script src=\"").append(jsURLPrefix).append("index.js?").append(System.currentTimeMillis())
+				.append("\"></script>");
+		str.append("<script src=\"").append(jsURLPrefix).append("vendors.js?").append(System.currentTimeMillis())
+				.append("\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
 
@@ -212,8 +226,9 @@ public class IndexHTMLService {
 						return "";
 
 					Map<String, Object> mso = (Map<String, Object>) e;
+					String packName = mso.get("name") == null ? null : ICON_PACK.get(mso.get("name").toString());
 
-					return CommonsUtil.nonNullValue(mso.get("code"), ICON_PACK.get(mso.get("name")), "")
+					return CommonsUtil.nonNullValue(mso.get("code"), packName, "")
 							.toString();
 				})
 				.filter(e -> !StringUtil.safeIsBlank(e))
