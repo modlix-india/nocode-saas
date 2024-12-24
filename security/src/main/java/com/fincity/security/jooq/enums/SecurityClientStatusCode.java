@@ -12,7 +12,7 @@ import org.jooq.Schema;
 /**
  * Status of the client
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum SecurityClientStatusCode implements EnumType {
 
     ACTIVE("ACTIVE"),
@@ -50,7 +50,9 @@ public enum SecurityClientStatusCode implements EnumType {
     }
 
     /**
-     * Lookup a value of this EnumType by its literal
+     * Lookup a value of this EnumType by its literal. Returns
+     * <code>null</code>, if no such value could be found, see {@link
+     * EnumType#lookupLiteral(Class, String)}.
      */
     public static SecurityClientStatusCode lookupLiteral(String literal) {
         return EnumType.lookupLiteral(SecurityClientStatusCode.class, literal);
