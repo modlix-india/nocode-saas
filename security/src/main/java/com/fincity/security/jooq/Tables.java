@@ -18,15 +18,19 @@ import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientManage;
+import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
+import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityCodeAccess;
 import com.fincity.security.jooq.tables.SecurityOrgStructure;
+import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPackage;
 import com.fincity.security.jooq.tables.SecurityPackageRole;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
+import com.fincity.security.jooq.tables.SecurityPastPins;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityRole;
 import com.fincity.security.jooq.tables.SecurityRolePermission;
@@ -43,7 +47,7 @@ import com.fincity.security.jooq.tables.SecurityUserToken;
 /**
  * Convenience access to all tables in security.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
 
     /**
@@ -117,6 +121,11 @@ public class Tables {
     public static final SecurityClientManage SECURITY_CLIENT_MANAGE = SecurityClientManage.SECURITY_CLIENT_MANAGE;
 
     /**
+     * The table <code>security.security_client_otp_policy</code>.
+     */
+    public static final SecurityClientOtpPolicy SECURITY_CLIENT_OTP_POLICY = SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY;
+
+    /**
      * The table <code>security.security_client_package</code>.
      */
     public static final SecurityClientPackage SECURITY_CLIENT_PACKAGE = SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
@@ -125,6 +134,11 @@ public class Tables {
      * The table <code>security.security_client_password_policy</code>.
      */
     public static final SecurityClientPasswordPolicy SECURITY_CLIENT_PASSWORD_POLICY = SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
+
+    /**
+     * The table <code>security.security_client_pin_policy</code>.
+     */
+    public static final SecurityClientPinPolicy SECURITY_CLIENT_PIN_POLICY = SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY;
 
     /**
      * The table <code>security.security_client_type</code>.
@@ -147,6 +161,11 @@ public class Tables {
     public static final SecurityOrgStructure SECURITY_ORG_STRUCTURE = SecurityOrgStructure.SECURITY_ORG_STRUCTURE;
 
     /**
+     * The table <code>security.security_otp</code>.
+     */
+    public static final SecurityOtp SECURITY_OTP = SecurityOtp.SECURITY_OTP;
+
+    /**
      * The table <code>security.security_package</code>.
      */
     public static final SecurityPackage SECURITY_PACKAGE = SecurityPackage.SECURITY_PACKAGE;
@@ -160,6 +179,11 @@ public class Tables {
      * The table <code>security.security_past_passwords</code>.
      */
     public static final SecurityPastPasswords SECURITY_PAST_PASSWORDS = SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
+
+    /**
+     * The table <code>security.security_past_pins</code>.
+     */
+    public static final SecurityPastPins SECURITY_PAST_PINS = SecurityPastPins.SECURITY_PAST_PINS;
 
     /**
      * The table <code>security.security_permission</code>.

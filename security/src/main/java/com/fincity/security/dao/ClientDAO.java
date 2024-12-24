@@ -4,7 +4,6 @@ import static com.fincity.saas.commons.util.StringUtil.removeSpecialCharacters;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
-import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
@@ -38,7 +37,6 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.Role;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
@@ -70,14 +68,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .map(Record1::value1)
                 .collectList()
                 .map(HashSet::new);
-    }
-
-    public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong clientId) {
-
-        return Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT_PASSWORD_POLICY)
-                .where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId))
-                .limit(1))
-                .map(e -> e.into(ClientPasswordPolicy.class));
     }
 
     public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {

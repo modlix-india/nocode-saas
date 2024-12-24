@@ -78,7 +78,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 	public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
 	public static final String APP_PROP_URL = "URL";
-	
+
 	public static final String APP_ACCESS_TYPE = "appAccessType";
 	public static final String APP_USAGE_TYPE = "appUsageType";
 	public static final String APP_NAME = "appName";
@@ -336,7 +336,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		);
 
 	}
-	
+
 	private Mono<Map<String, Object>> validateFields(Map<String, Object> fields) {
 
 		Map<String, Object> updatableFields = new HashMap<>();
@@ -349,7 +349,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		if (fields.containsKey(APP_ACCESS_TYPE))
 			updatableFields.put(APP_ACCESS_TYPE, fields.get(APP_ACCESS_TYPE));
-		
+
 		if (fields.containsKey(APP_USAGE_TYPE))
 			updatableFields.put(APP_USAGE_TYPE, fields.get(APP_USAGE_TYPE));
 

@@ -82,6 +82,12 @@ mq:
   username: fincity
   password: fincity
 
+smsService:
+  provider:
+    2factor:
+      api:
+        key: ~
+
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594
   session: acme://letsencrypt.org/staging

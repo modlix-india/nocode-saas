@@ -53,6 +53,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/authenticate/social",
 
+				"api/security/authenticate/otp/generate",
+
 				"/api/security/verifyToken",
 
 				"/api/security/clients/internal/**",
