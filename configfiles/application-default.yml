@@ -71,6 +71,7 @@ logging:
     com.fincity: DEBUG
     org.jooq: DEBUG
     org.jooq.tools.LoggerListener: DEBUG
+    io.asyncer.r2dbc.mysql.QUERY: DEBUG
     sun.rmi: INFO
     javax.management.remote.rmi: INFO
     org.springframework.beans.factory.support: INFO
