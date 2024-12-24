@@ -107,7 +107,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 				(ca, person) -> {
 
-					if (ca == null)
+					if (ca == null || !ca.isAuthenticated())
 						return Mono.just(personalization);
 
 					if (person == null) {
