@@ -1878,6 +1878,147 @@ ENGINE = INNODB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+-- V26__Otp Create.sql
+DROP TABLE IF EXISTS `security`.`security_otp`;
+
+CREATE TABLE `security`.`security_otp`
+(
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each OTP entry',
+
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application to which this OTP belongs. References security_app table',
+    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the user for whom this OTP is generated. References security_user table',
+
+    `PURPOSE` VARCHAR(255) NOT NULL COMMENT 'Purpose or reason for the OTP (e.g., authentication, password reset, etc.)',
+    `TARGET_TYPE` ENUM ('EMAIL', 'PHONE', 'BOTH') DEFAULT 'EMAIL' NOT NULL COMMENT 'The target medium for the OTP delivery: EMAIL, PHONE, or BOTH',
+
+    `UNIQUE_CODE` CHAR(60) NOT NULL COMMENT 'The hashed OTP code used for verification',
+    `EXPIRES_AT` TIMESTAMP NOT NULL COMMENT 'Timestamp indicating when the OTP expires and becomes invalid',
+    `IP_ADDRESS` CHAR(45) COMMENT 'IP address of the user to track OTP generation or use, supports both IPv4 and IPv6',
+
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL,
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (`ID`),
+    CONSTRAINT `FK1_OTP_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_OTP_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security_user` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+
+    INDEX (`EXPIRES_AT`),
+    INDEX (`CREATED_AT` DESC),
+    INDEX (`APP_ID`, `USER_ID`, `PURPOSE`)
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+-- V27__Client Password Policy Add appcode.sql
+ALTER TABLE security.security_client_password_policy
+    DROP FOREIGN KEY `FK1_CLIENT_PWD_POL_CLIENT_ID`;
+
+ALTER TABLE `security`.`security_client_password_policy`
+    DROP INDEX `UK1_CLIENT_PWD_POL_ID`;
+
+ALTER TABLE `security`.`security_client_password_policy`
+    ADD COLUMN `APP_ID` BIGINT UNSIGNED NULL DEFAULT NULL COMMENT 'Identifier for the application to which this OTP belongs. References security_app table' AFTER CLIENT_ID,
+    ADD COLUMN `USER_LOCK_TIME` BIGINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Time in minutes for which user need to be locked it policy violates' AFTER `NO_FAILED_ATTEMPTS`;
+
+ALTER TABLE `security`.`security_client_password_policy`
+    ADD CONSTRAINT `UK1_CLIENT_PWD_POL_CLIENT_ID_APP_ID` UNIQUE (`CLIENT_ID`, `APP_ID`),
+    ADD CONSTRAINT `FK1_CLIENT_PWD_POL_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security`.`security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    ADD CONSTRAINT `FK2_CLIENT_PWD_POL_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security`.`security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+-- V28__Client Otp Policy.sql
+DROP TABLE IF EXISTS `security`.`security_client_otp_policy`;
+
+CREATE TABLE `security`.`security_client_otp_policy`
+(
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each OTP policy entry',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client to which this OTP policy belongs. References security_client table',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application to which this OTP policy belongs. References security_app table',
+    `TARGET_TYPE` ENUM ('EMAIL', 'PHONE', 'BOTH') DEFAULT 'EMAIL' NOT NULL COMMENT 'The target medium for the OTP delivery: EMAIL, PHONE, or BOTH',
+    `IS_CONSTANT` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag indicating if OTP should be a constant value',
+    `CONSTANT` CHAR(10) NULL COMMENT 'Value of OTP if IS_CONSTANT is true',
+    `IS_NUMERIC` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag indicating if OTP should contain only numeric characters',
+    `IS_ALPHANUMERIC` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag indicating if OTP should contain alphanumeric characters',
+    `LENGTH` SMALLINT UNSIGNED NOT NULL DEFAULT 4 COMMENT 'Length of the OTP to be generated',
+    `RESEND_SAME_OTP` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag indication weather to send same OTP in resend request.',
+    `NO_RESEND_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of Resend attempts allowed before User is blocked',
+    `EXPIRE_INTERVAL` BIGINT UNSIGNED NOT NULL DEFAULT 5 COMMENT 'Time interval in minutes after which OTP will expire',
+    `NO_FAILED_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of failed attempts allowed before OTP is invalidated',
+    `USER_LOCK_TIME` BIGINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Time in minutes for which user need to be locked it policy violates',
+
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+
+    PRIMARY KEY (`ID`),
+    CONSTRAINT `UK1_CLIENT_OTP_POL_CLIENT_ID_APP_ID` UNIQUE (`CLIENT_ID`, `APP_ID`),
+    CONSTRAINT `FK1_CLIENT_OTP_POL_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_CLIENT_OTP_POL_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+-- V29__Client Pin Policy.sql
+DROP TABLE IF EXISTS  `security`.`security_client_pin_policy`;
+
+CREATE TABLE `security`.`security_client_pin_policy`
+(
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each PIN policy entry',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client to which this PIN policy belongs. References security_client table',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application to which this PIN policy belongs. References security_app table',
+    `LENGTH` SMALLINT UNSIGNED NOT NULL DEFAULT 4 COMMENT 'Length of the PIN to be generated',
+    `RE_LOGIN_AFTER_INTERVAL` BIGINT UNSIGNED NOT NULL DEFAULT 120 COMMENT 'Time interval in minutes after which re-login is required',
+    `EXPIRY_IN_DAYS` SMALLINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Number of days after which the PIN expires',
+    `EXPIRY_WARN_IN_DAYS` SMALLINT UNSIGNED NOT NULL DEFAULT 25 COMMENT 'Number of days before expiry to warn the user',
+    `PIN_HISTORY_COUNT` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Remember how many pin',
+    `NO_FAILED_ATTEMPTS` SMALLINT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Maximum number of failed attempts allowed before PIN login is blocked',
+    `USER_LOCK_TIME` BIGINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Time in minutes for which user need to be locked it policy violates',
+
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+
+    PRIMARY KEY (`ID`),
+    CONSTRAINT `UK1_CLIENT_PIN_POL_CLIENT_ID_APP_ID` UNIQUE (`CLIENT_ID`, `APP_ID`),
+    CONSTRAINT `FK1_CLIENT_PIN_POL_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_CLIENT_PIN_POL_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+-- V30__Client User Add Pin And Otp Fields.sql
+ALTER TABLE `security`.`security_user`
+    ADD COLUMN `PIN` VARCHAR(512) COMMENT 'PIN message digested string' AFTER `PASSWORD_HASHED`,
+    ADD COLUMN `PIN_HASHED` TINYINT DEFAULT 1 COMMENT 'PIN stored is hashed or not' AFTER `PIN`,
+    ADD COLUMN `NO_PIN_FAILED_ATTEMPT` SMALLINT DEFAULT 0 COMMENT 'No of failed attempts for PIN' AFTER `NO_FAILED_ATTEMPT`,
+    ADD COLUMN `NO_OTP_RESEND_ATTEMPT` SMALLINT DEFAULT 0 COMMENT 'No of Resend attempts for OTP' AFTER `NO_PIN_FAILED_ATTEMPT`,
+    ADD COLUMN `NO_OTP_FAILED_ATTEMPT` SMALLINT DEFAULT 0 COMMENT 'No of failed attempts for OTP' AFTER `NO_OTP_RESEND_ATTEMPT`,
+    ADD COLUMN `LOCKED_UNTIL` TIMESTAMP NULL COMMENT 'If user is blocked based on STATUS_CODE, until when this will indicate' AFTER `STATUS_CODE`,
+    ADD COLUMN `LOCKED_DUE_TO` VARCHAR(512) NULL COMMENT 'Reason for the user blocking action' AFTER LOCKED_UNTIL;
+
+-- V31__Client Past Pins.sql
+DROP TABLE IF EXISTS `security`.`security_past_pins`;
+
+CREATE TABLE IF NOT EXISTS `security`.`security_past_pins`
+(
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Past PIN entry',
+    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User ID',
+    `PIN` VARCHAR(512) DEFAULT NULL COMMENT 'Pin message digested string',
+    `PIN_HASHED` TINYINT DEFAULT 1 COMMENT 'Pin stored is hashed or not',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    CONSTRAINT `FK1_PAST_PIN_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security`.`security_user` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....

@@ -12,7 +12,7 @@ import org.jooq.Schema;
 /**
  * Access level
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum SecurityAppRegPackageLevel implements EnumType {
 
     CLIENT("CLIENT"),
@@ -48,7 +48,9 @@ public enum SecurityAppRegPackageLevel implements EnumType {
     }
 
     /**
-     * Lookup a value of this EnumType by its literal
+     * Lookup a value of this EnumType by its literal. Returns
+     * <code>null</code>, if no such value could be found, see {@link
+     * EnumType#lookupLiteral(Class, String)}.
      */
     public static SecurityAppRegPackageLevel lookupLiteral(String literal) {
         return EnumType.lookupLiteral(SecurityAppRegPackageLevel.class, literal);
