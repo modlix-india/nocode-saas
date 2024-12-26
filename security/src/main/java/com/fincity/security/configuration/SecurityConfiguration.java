@@ -95,7 +95,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"api/security/clientPinPolicy/client"
 
-				);
+		);
 	}
 
 }
