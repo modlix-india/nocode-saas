@@ -3,6 +3,7 @@ package com.fincity.security.dao.policy;
 import static com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY;
 
 import org.jooq.Field;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -24,5 +25,10 @@ public class ClientOtpPolicyDAO extends AbstractPolicyDao<SecurityClientOtpPolic
 	@Override
 	protected Field<ULong> getAppIdField() {
 		return SECURITY_CLIENT_OTP_POLICY.APP_ID;
+	}
+
+	@Override
+	protected Table<SecurityClientOtpPolicyRecord> getTable() {
+		return SECURITY_CLIENT_OTP_POLICY;
 	}
 }

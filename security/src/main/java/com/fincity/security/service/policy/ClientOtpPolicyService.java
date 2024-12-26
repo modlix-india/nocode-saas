@@ -47,7 +47,12 @@ public class ClientOtpPolicyService extends AbstractPolicyService<SecurityClient
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts(UShort.valueOf(3))
 						.setUserLockTimeMin(ULong.valueOf(30))
-				);
+		);
+	}
+
+	@Override
+	public Mono<ClientOtpPolicy> getClientAppPolicy(String clientCode, String appCode) {
+		return this.dao.getClientAppPolicy(clientCode, appCode).switchIfEmpty(this.getDefaultPolicy());
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")

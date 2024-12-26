@@ -6,6 +6,7 @@ import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PA
 import java.util.List;
 
 import org.jooq.Field;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -34,13 +35,19 @@ public class ClientPasswordPolicyDAO
 		return SECURITY_CLIENT_PASSWORD_POLICY.APP_ID;
 	}
 
-	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ClientPasswordPolicy clientPasswordPolicy, ULong userId) {
+	@Override
+	protected Table<SecurityClientPasswordPolicyRecord> getTable() {
+		return SECURITY_CLIENT_PASSWORD_POLICY;
+	}
+
+	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ClientPasswordPolicy clientPasswordPolicy,
+			ULong userId) {
 
 		return Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
-						.from(SECURITY_PAST_PASSWORDS)
-						.where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
-						.orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
-						.limit(clientPasswordPolicy.getPassHistoryCount()))
+				.from(SECURITY_PAST_PASSWORDS)
+				.where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
+				.orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
+				.limit(clientPasswordPolicy.getPassHistoryCount()))
 				.map(e -> e.into(PastPassword.class))
 				.collectList()
 				.defaultIfEmpty(List.of());

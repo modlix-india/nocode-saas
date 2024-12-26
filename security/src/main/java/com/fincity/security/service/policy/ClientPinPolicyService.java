@@ -46,6 +46,11 @@ public class ClientPinPolicyService extends AbstractPolicyService<SecurityClient
 		);
 	}
 
+	@Override
+	public Mono<ClientPinPolicy> getClientAppPolicy(String clientCode, String appCode) {
+		return null;
+	}
+
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
 	@Override
 	protected Mono<ClientPinPolicy> updatableEntity(ClientPinPolicy entity) {

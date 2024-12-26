@@ -43,6 +43,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 	protected abstract Mono<D> getDefaultPolicy();
 
+	public abstract Mono<D> getClientAppPolicy(String clientCode, String appCode);
+
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
 	public Mono<D> create(D entity) {
@@ -151,7 +153,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	}
 
 	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
-		return this.dao.getByClientIdAndAppId(clientId, appId, clientId)
+		return this.dao.getClientAppPolicy(clientId, appId, clientId)
 				.switchIfEmpty(getDefaultPolicy());
 	}
 

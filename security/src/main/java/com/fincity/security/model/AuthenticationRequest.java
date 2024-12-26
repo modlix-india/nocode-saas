@@ -34,7 +34,10 @@ public class AuthenticationRequest {
 		if (!StringUtil.safeIsBlank(pin))
 			return pin;
 
-		return otp;
+		if (!StringUtil.safeIsBlank(otp))
+			return otp;
+
+		return null;
 	}
 
 	@JsonIgnore
@@ -46,6 +49,9 @@ public class AuthenticationRequest {
 		if (!StringUtil.safeIsBlank(pin))
 			return AuthenticationPasswordType.PIN;
 
-		return AuthenticationPasswordType.OTP;
+		if (!StringUtil.safeIsBlank(otp))
+			return AuthenticationPasswordType.OTP;
+
+		return null;
 	}
 }

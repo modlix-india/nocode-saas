@@ -5,6 +5,7 @@ import java.io.Serial;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
 import lombok.Data;
@@ -26,6 +27,7 @@ public abstract class AbstractPolicy extends AbstractUpdatableDTO<ULong, ULong> 
 	private UShort noFailedAttempts;
 	private ULong userLockTimeMin;
 
+	@JsonIgnore
 	public abstract String generate();
 
 }
