@@ -535,13 +535,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
 			String appCode, AuthenticationIdentifierType authenticationIdentifierType,
-			SecurityUserStatusCode userStatusCode, Field<?>... fields) {
-		return getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
-				new SecurityUserStatusCode[] { userStatusCode }, fields);
-	}
-
-	private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
-			String appCode, AuthenticationIdentifierType authenticationIdentifierType,
 			SecurityUserStatusCode[] userStatusCodes, Field<?>... fields) {
 
 		TableField<SecurityUserRecord, String> userIdentificationField = SECURITY_USER.USER_NAME;
@@ -640,12 +633,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	}
 
 	public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String clientCode, String appCode,
-			AuthenticationIdentifierType identifierType) {
+			AuthenticationIdentifierType identifierType, SecurityUserStatusCode... userStatusCodes) {
 
 		return Flux
 				.from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType,
-						SecurityUserStatusCode.ACTIVE, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
-
+						userStatusCodes, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
 				.collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
 	}
 
