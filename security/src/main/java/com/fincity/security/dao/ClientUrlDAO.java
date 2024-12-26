@@ -1,6 +1,5 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 
 import java.util.ArrayList;
@@ -15,7 +14,6 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
@@ -40,14 +38,6 @@ public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord
 		return filter(query).flatMapMany(
 				condition -> Mono.from(this.dslContext.select(Arrays.asList(table.fields())).from(table).where(condition))
 						.map(e -> e.into(this.pojoClass)));
-	}
-
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong clientId) {
-
-		return Mono
-				.from(this.dslContext.selectFrom(SECURITY_CLIENT_PASSWORD_POLICY)
-						.where(SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID.eq(clientId)).limit(1))
-				.map(e -> e.into(ClientPasswordPolicy.class));
 	}
 
 	public Mono<List<String>> getClientUrlsBasedOnAppAndClient(String appCode, ULong clientId) {

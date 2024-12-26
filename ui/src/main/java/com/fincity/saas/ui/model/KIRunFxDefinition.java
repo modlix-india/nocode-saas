@@ -93,6 +93,8 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 						this.setNamespace(override.getNamespace());
 					if (override.getFunctionAppCode() != null)
 						this.setFunctionAppCode(override.getFunctionAppCode());
+					if (override.getOutputEventName() != null)
+						this.setOutputEventName(override.getOutputEventName());
 					if (override.getOutputEventParamName() != null)
 						this.setOutputEventParamName(override.getOutputEventParamName());
 
