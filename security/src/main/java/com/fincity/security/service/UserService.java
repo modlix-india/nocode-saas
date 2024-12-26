@@ -107,10 +107,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId,
-			String clientCode,
-			String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
+			String clientCode, String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
 		return findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType,
-				getNonDeletedUserStatusCodes());
+				this.getNonDeletedUserStatusCodes());
 	}
 
 	public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String clientCode,
@@ -719,13 +718,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		String clientCode = request.getHeaders()
 				.getFirst("clientCode");
 
-		return this.findUserClients(authRequest, appCode, clientCode);
+		return this.findUserClients(authRequest, appCode, clientCode, this.getNonDeletedUserStatusCodes());
 	}
 
 	public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, String appCode,
-			String clientCode) {
+			String clientCode, SecurityUserStatusCode... userStatusCodes) {
 
-		return this.dao.getAllClientsBy(authRequest.getUserName(), clientCode, appCode, authRequest.getIdentifierType())
+		return this.dao.getAllClientsBy(authRequest.getUserName(), clientCode, appCode, authRequest.getIdentifierType(),
+				userStatusCodes)
 				.flatMapMany(map -> Flux.fromIterable(map.entrySet()))
 				.flatMap(e -> this.clientService.getClientInfoById(e.getValue())
 						.map(c -> Tuples.of(e.getKey(), c)))
