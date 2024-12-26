@@ -42,6 +42,8 @@ ui:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
   cdnHostName: cdn-local.modlix.com
   cdnReplacePlus: true
+  # Don't forget to add slash in the end.
+  jsURL: https://cdn-local.modlix.com/js/dist/
 
 core:
   mongo:
@@ -69,6 +71,7 @@ logging:
     com.fincity: DEBUG
     org.jooq: DEBUG
     org.jooq.tools.LoggerListener: DEBUG
+    io.asyncer.r2dbc.mysql.QUERY: DEBUG
     sun.rmi: INFO
     javax.management.remote.rmi: INFO
     org.springframework.beans.factory.support: INFO
@@ -79,6 +82,12 @@ mq:
   port: 5672
   username: fincity
   password: fincity
+
+smsService:
+  provider:
+    2factor:
+      api:
+        key: ~
 
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594

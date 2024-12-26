@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.security.jwt;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import lombok.experimental.Accessors;
 @ToString
 public class ContextUser implements Serializable {
 
+	@Serial
 	private static final long serialVersionUID = -4905785598739255667L;
 
 	private BigInteger id;
@@ -38,12 +40,20 @@ public class ContextUser implements Serializable {
 	private String localeCode;
 	private String password;
 	private boolean passwordHashed;
+	private String pin;
+	private boolean pinHashed;
 	private boolean accountNonExpired;
 	private boolean accountNonLocked;
 	private boolean credentialsNonExpired;
 	private Short noFailedAttempt;
+	private Short noPinFailedAttempt;
+	private Short noOtpResendAttempts;
+	private Short noOtpFailedAttempt;
 	private String statusCode;
+	private LocalDateTime lockedUntil;
+	private String lockedDueTo;
 	private List<String> stringAuthorities;
+
 	@JsonIgnore
 	private Set<SimpleGrantedAuthority> grantedAuthorities;
 
@@ -69,5 +79,15 @@ public class ContextUser implements Serializable {
 	@JsonIgnore
 	public boolean isPasswordHashed() {
 		return this.passwordHashed;
+	}
+
+	@JsonIgnore
+	public String getPin() {
+		return this.pin;
+	}
+
+	@JsonIgnore
+	public boolean isPinHashed() {
+		return this.pinHashed;
 	}
 }

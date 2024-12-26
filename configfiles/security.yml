@@ -44,3 +44,9 @@ management:
 redis:
   cache:
     prefix: sec
+
+sms:
+  provider:
+    2factor:
+      api:
+        key: ${smsService.provider.2factor.api.key}

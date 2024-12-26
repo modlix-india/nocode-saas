@@ -1,19 +1,18 @@
 package com.fincity.saas.ui.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
-
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.ui.document.Personalization;
 import com.fincity.saas.ui.repository.PersonalizationRepository;
 
@@ -102,13 +101,13 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> ca == null ? Mono.empty()
+				ca -> ca == null || !ca.isAuthenticated() ? Mono.empty()
 						: this.repo.findOneByNameAndAppCodeAndClientCode(name + ca.getUser().getId(), appName,
 								ca.getClientCode()),
 
 				(ca, person) -> {
 
-					if (ca == null)
+					if (ca == null || !ca.isAuthenticated())
 						return Mono.just(personalization);
 
 					if (person == null) {
@@ -137,7 +136,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> ca == null ? Mono.empty()
+				ca -> ca == null || !ca.isAuthenticated() ? Mono.empty()
 						: this.repo
 								.findOneByNameAndAppCodeAndClientCode(name + ca.getUser().getId(), appName,
 										ca.getClientCode())
@@ -153,7 +152,7 @@ public class PersonalizationService extends AbstractOverridableDataService<Perso
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> ca == null ? Mono.empty()
+				ca -> ca == null || !ca.isAuthenticated() ? Mono.empty()
 						: this.repo
 								.findOneByNameAndAppCodeAndClientCode(name + ca.getUser().getId(), appName,
 										ca.getClientCode()),

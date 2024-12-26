@@ -1,6 +1,7 @@
 package com.fincity.saas.ui.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -20,18 +21,18 @@ public class JSService {
 
 	public static final String CACHE_NAME_JS_MAP = "jsMapCache";
 
-	private static final String CACHE_OBJECT_JS_MAP_KEY = "jsMapObject";
-
-	@Autowired
-	private CacheService cacheService;
-
-	@Autowired
-	private WebClient.Builder builder;
+	private final CacheService cacheService;
+	private final WebClient.Builder builder;
 
 	@Value("${ui.jsURL:}")
 	private String jsURL;
 
 	private WebClient webClient;
+
+	public JSService(CacheService cacheService, WebClient.Builder builder) {
+		this.cacheService = cacheService;
+		this.builder = builder;
+	}
 
 	@PostConstruct
 	public void initialize() {
@@ -40,36 +41,36 @@ public class JSService {
 				.build();
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getJSObject() {
-
+	public Mono<ObjectWithUniqueID<String>> getJSResource(String filePath) {
 		if (jsURL == null || jsURL.isBlank())
 			return Mono.just(new ObjectWithUniqueID<>(""));
 
 		Mono<ObjectWithUniqueID<String>> cacheEmptyDefer = Mono.defer(() -> webClient.get()
-				.uri("/index.js")
+				.uri(filePath)
 				.retrieve()
 				.bodyToMono(String.class)
-				.flatMap(jsString -> cacheService.put(CACHE_NAME_JS, new ObjectWithUniqueID<>(jsString),
+				.flatMap(jsString -> cacheService.put(filePath,
+						(new ObjectWithUniqueID<>(jsString)).setHeaders(this.getHeaders(filePath)),
 						CACHE_OBJECT_JS_KEY))
 				.defaultIfEmpty(new ObjectWithUniqueID<>("")));
 
-		return cacheService.<ObjectWithUniqueID<String>>get(CACHE_NAME_JS, CACHE_OBJECT_JS_KEY)
+		return cacheService.<ObjectWithUniqueID<String>>get(filePath, CACHE_OBJECT_JS_KEY)
 				.switchIfEmpty(cacheEmptyDefer);
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getJSMapObject() {
-		if (jsURL == null || jsURL.isBlank())
-			return Mono.just(new ObjectWithUniqueID<String>(""));
+	private Map<String, String> getHeaders(String filePath) {
+		return Map.of("Content-Type", getMimeType(filePath));
+	}
 
-		Mono<ObjectWithUniqueID<String>> cacheEmptyDefer = Mono.defer(() -> webClient.get()
-				.uri("/index.js.map")
-				.retrieve()
-				.bodyToMono(String.class)
-				.flatMap(jsString -> cacheService.put(CACHE_NAME_JS_MAP, new ObjectWithUniqueID<>(jsString),
-						CACHE_OBJECT_JS_MAP_KEY))
-				.defaultIfEmpty(new ObjectWithUniqueID<>("")));
-
-		return cacheService.<ObjectWithUniqueID<String>>get(CACHE_NAME_JS_MAP, CACHE_OBJECT_JS_MAP_KEY)
-				.switchIfEmpty(cacheEmptyDefer);
+	private String getMimeType(String filePath) {
+		if (filePath.endsWith(".js"))
+			return "text/javascript";
+		if (filePath.endsWith(".css"))
+			return "text/css";
+		if (filePath.endsWith(".html"))
+			return "text/html";
+		if (filePath.endsWith(".json"))
+			return "application/json";
+		return "application/octet-stream";
 	}
 }

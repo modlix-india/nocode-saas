@@ -1,10 +1,9 @@
 package com.fincity.security.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-
 import java.math.BigInteger;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,17 +44,23 @@ import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientPasswordPolicy;
 import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.dto.UserClient;
+import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.service.policy.ClientOtpPolicyService;
+import com.fincity.security.service.policy.ClientPasswordPolicyService;
+import com.fincity.security.service.policy.ClientPinPolicyService;
+import com.fincity.security.service.policy.IPolicyService;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -70,7 +75,6 @@ public class ClientService
 	public static final String CACHE_NAME_CLIENT_URI = "uri";
 
 	private static final String CACHE_NAME_CLIENT_RELATION = "clientRelation";
-	private static final String CACHE_NAME_CLIENT_PWD_POLICY = "clientPasswordPolicy";
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
 	private static final String CACHE_NAME_CLIENT_MANAGED = "clientManaged";
@@ -100,10 +104,6 @@ public class ClientService
 	private AppService appService;
 
 	@Autowired
-	@Lazy
-	private TokenService tokenService;
-
-	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
 
 	@Autowired
@@ -116,8 +116,16 @@ public class ClientService
 	private AppRegistrationDAO appRegistrationDAO;
 
 	@Autowired
-	@Lazy
-	private AuthenticationService authenticationService;
+	private ClientPasswordPolicyService clientPasswordPolicyService;
+
+	@Autowired
+	private ClientPinPolicyService clientPinPolicyService;
+
+	@Autowired
+	private ClientOtpPolicyService clientOtpPolicyService;
+
+	private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
+			AuthenticationPasswordType.class);
 
 	@Value("${jwt.token.rememberme.expiry}")
 	private Integer remembermeExpiryInMinutes;
@@ -127,6 +135,14 @@ public class ClientService
 
 	@Value("${security.subdomain.endings}")
 	private String[] subDomainURLEndings;
+
+	@PostConstruct
+	public void init() {
+		this.policyServices.putAll(Map.of(
+				clientPasswordPolicyService.getAuthenticationPasswordType(), clientPasswordPolicyService,
+				clientPinPolicyService.getAuthenticationPasswordType(), clientPinPolicyService,
+				clientOtpPolicyService.getAuthenticationPasswordType(), clientOtpPolicyService));
+	}
 
 	@Override
 	public SecuritySoxLogObjectName getSoxObjectName() {
@@ -226,10 +242,22 @@ public class ClientService
 				() -> this.dao.isBeingManagedBy(managingClientId, clientId), managingClientId, "-", clientId);
 	}
 
-	public Mono<ClientPasswordPolicy> getClientPasswordPolicy(ULong id) {
+	@SuppressWarnings("unchecked")
+	public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, ULong appId,
+			AuthenticationPasswordType passwordType) {
 
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_PWD_POLICY,
-				() -> this.dao.getClientPasswordPolicy(id), id);
+		IPolicyService<T> policyService = (IPolicyService<T>) policyServices.get(passwordType);
+
+		return cacheService.cacheEmptyValueOrGet(policyService.getPolicyCacheName(),
+				() -> policyService.getClientAppPolicy(clientId, appId), clientId, appId);
+	}
+
+	public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, String appCode,
+			AuthenticationPasswordType passwordType) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> appService.getAppByCode(appCode),
+				app -> getClientAppPolicy(clientId, app.getId(), passwordType));
 	}
 
 	public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
@@ -327,25 +355,20 @@ public class ClientService
 				.map(ULong::valueOf);
 	}
 
-	// For creating user.
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String password) { // NOSONAR
-
-		return this.dao.getClientPasswordPolicy(clientId)
-				.map(e -> {// NOSONAR
-							// Need to check the password policy
-					return true;
-				})
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong appId, ULong userId,
+			AuthenticationPasswordType passwordType, String password) {
+		return policyServices.get(passwordType).checkAllConditions(clientId, appId, userId, password)
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
-	// For existing user.
-	public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong userId, String password) { // NOSONAR
+	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String appCode, ULong userId,
+			AuthenticationPasswordType passwordType, String password) {
 
-		return this.dao.getClientPasswordPolicy(clientId)
-				.map(e -> { // NOSONAR
-							// Need to check the password policy
-					return true;
-				})
+		return FlatMapUtil.flatMapMono(
+
+				() -> appService.getAppByCode(appCode),
+
+				app -> validatePasswordPolicy(clientId, app.getId(), userId, passwordType, password))
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
@@ -365,9 +388,7 @@ public class ClientService
 	}
 
 	public Mono<Boolean> checkClientHasPackage(ULong clientId, ULong packageId) {
-
 		return this.dao.checkPackageAssignedForClient(clientId, packageId);
-
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
@@ -378,7 +399,7 @@ public class ClientService
 					if (result.booleanValue())
 						return Mono.just(true);
 
-					return flatMapMono(
+					return FlatMapUtil.flatMapMono(
 
 							SecurityContextUtil::getUsersContextAuthentication,
 
@@ -407,10 +428,7 @@ public class ClientService
 									msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 									SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
 
-				}
-
-				);
-
+				});
 	}
 
 	public Mono<Boolean> hasPackageAccess(ULong clientId, ULong packageId) {
@@ -460,7 +478,7 @@ public class ClientService
 
 	private Mono<Boolean> checkClientAndPackageManaged(ULong loggedInClientId, ULong clientId, ULong packageClientId) {
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 				() -> this.isBeingManagedBy(loggedInClientId, clientId)
 						.flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -502,7 +520,7 @@ public class ClientService
 								msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
 								SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
 
-					return flatMapMono(
+					return FlatMapUtil.flatMapMono(
 
 							SecurityContextUtil::getUsersContextAuthentication,
 
@@ -547,52 +565,50 @@ public class ClientService
 
 	}
 
-	
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-		                .getClientId()))),
+				ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+						.getClientId()))),
 
-		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
-		                : this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), id),
+				(ca, id) -> ca.isSystemClient() ? Mono.just(true)
+						: this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
+								.getClientId()), id),
 
-		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientActiveIfInActive(clientId)
-		                : Mono.empty())
+				(ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientActiveIfInActive(clientId)
+						: Mono.empty())
 
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
-		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 
 	}
 
-	
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> makeClientInActive(ULong clientId) {
 
 		return FlatMapUtil.flatMapMono(
 
-		        SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-		        ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-		                .getClientId()))),
+				ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+						.getClientId()))),
 
-		        (ca, id) -> ca.isSystemClient() ? Mono.just(true)
-		                : this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
-		                        .getClientId()), id),
+				(ca, id) -> ca.isSystemClient() ? Mono.just(true)
+						: this.dao.isBeingManagedBy(ULong.valueOf(ca.getUser()
+								.getClientId()), id),
 
-		        (ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientInActive(clientId)
-		                : Mono.empty())
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
-		        .switchIfEmpty(this.securityMessageResourceService.throwMessage(
-		                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		                SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
+				(ca, id, sysOrManaged) -> sysOrManaged.booleanValue() ? this.dao.makeClientInActive(clientId)
+						: Mono.empty())
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 	}
 
 	public Mono<Page<CodeAccess>> fetchCodesBasedOnClient(Pageable page, String clientCode, String emailId) {
@@ -745,7 +761,7 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
 
-		return flatMapMono(
+		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
