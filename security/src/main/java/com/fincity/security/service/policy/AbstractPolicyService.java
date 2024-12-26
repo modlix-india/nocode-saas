@@ -43,29 +43,27 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 	protected abstract Mono<D> getDefaultPolicy();
 
-	public abstract Mono<D> getClientAppPolicy(String clientCode, String appCode);
-
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
 	public Mono<D> create(D entity) {
 
 		return FlatMapUtil.flatMapMono(
 
-						SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-						ca -> {
-							ULong currentUser = ULong.valueOf(ca.getLoggedInFromClientId());
+				ca -> {
+					ULong currentUser = ULong.valueOf(ca.getLoggedInFromClientId());
 
-							if (ca.isSystemClient() || currentUser.equals(entity.getClientId()))
-								return super.create(entity);
+					if (ca.isSystemClient() || currentUser.equals(entity.getClientId()))
+						return super.create(entity);
 
-							return this.clientService.isBeingManagedBy(currentUser, entity.getClientId())
-									.flatMap(managed -> Boolean.TRUE.equals(managed) ? super.create(entity) : Mono.empty());
-						},
+					return this.clientService.isBeingManagedBy(currentUser, entity.getClientId())
+							.flatMap(managed -> Boolean.TRUE.equals(managed) ? super.create(entity) : Mono.empty());
+				},
 
-						(ca, created) -> cacheService.evict(getPolicyCacheName(), created.getClientId(), created.getAppId()),
+				(ca, created) -> cacheService.evict(getPolicyCacheName(), created.getClientId(), created.getAppId()),
 
-						(ca, created, evicted) -> Mono.just(created))
+				(ca, created, evicted) -> Mono.just(created))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -99,14 +97,14 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 		return FlatMapUtil.flatMapMono(
 
-						() -> this.dao.canBeUpdated(key),
+				() -> this.dao.canBeUpdated(key),
 
-						canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(key, fields) : Mono.empty(),
+				canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(key, fields) : Mono.empty(),
 
-						(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
-								updated.getAppId()),
+				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
+						updated.getAppId()),
 
-						(canUpdate, updated, evicted) -> Mono.just(updated))
+				(canUpdate, updated, evicted) -> Mono.just(updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -118,14 +116,14 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 		return FlatMapUtil.flatMapMono(
 
-						() -> this.dao.canBeUpdated(entity.getId()),
+				() -> this.dao.canBeUpdated(entity.getId()),
 
-						canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(entity) : Mono.empty(),
+				canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(entity) : Mono.empty(),
 
-						(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
-								updated.getAppId()),
+				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
+						updated.getAppId()),
 
-						(canUpdate, updated, evicted) -> Mono.just(updated))
+				(canUpdate, updated, evicted) -> Mono.just(updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -137,19 +135,24 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 		return FlatMapUtil.flatMapMono(
 
-						() -> this.read(id),
+				() -> this.read(id),
 
-						entity -> this.dao.canBeUpdated(entity.getId()),
+				entity -> this.dao.canBeUpdated(entity.getId()),
 
-						(entity, canDelete) -> Boolean.TRUE.equals(canDelete) ? super.delete(id) : Mono.empty(),
+				(entity, canDelete) -> Boolean.TRUE.equals(canDelete) ? super.delete(id) : Mono.empty(),
 
-						(entity, canDelete, deleted) -> cacheService.evict(getPolicyCacheName(), entity.getClientId(),
-								entity.getAppId()),
+				(entity, canDelete, deleted) -> cacheService.evict(getPolicyCacheName(), entity.getClientId(),
+						entity.getAppId()),
 
-						(entity, canDelete, deleted, evicted) -> Mono.just(deleted))
+				(entity, canDelete, deleted, evicted) -> Mono.just(deleted))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
+	}
+
+	public Mono<D> getClientAppPolicy(String clientCode, String appCode) {
+		return this.dao.getClientAppPolicy(clientCode, appCode)
+				.switchIfEmpty(this.getDefaultPolicy());
 	}
 
 	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
@@ -160,7 +163,6 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	public Mono<String> generatePolicyPassword(ULong clientId, ULong appId) {
 		return FlatMapUtil.flatMapMono(
 				() -> getClientAppPolicy(clientId, appId),
-				policy -> Mono.just(policy.generate())
-		);
+				policy -> Mono.just(policy.generate()));
 	}
 }

@@ -74,8 +74,7 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts(UShort.valueOf(3))
-						.setUserLockTimeMin(ULong.valueOf(30))
-		);
+						.setUserLockTimeMin(ULong.valueOf(30)));
 	}
 
 	@Override
@@ -111,42 +110,42 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 
 		return FlatMapUtil.flatMapMono(
 
-						SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-						ca -> this.dao.getByClientIdAndAppId(clientId, appId, ULong.valueOf(ca.getLoggedInFromClientId())),
+				ca -> this.dao.getClientAppPolicy(clientId, appId, ULong.valueOf(ca.getLoggedInFromClientId())),
 
-						(ca, passwordPolicy) -> checkPastPasswords(passwordPolicy, userId, password),
+				(ca, passwordPolicy) -> checkPastPasswords(passwordPolicy, userId, password),
 
-						(ca, passwordPolicy, pastPassCheck) -> checkAlphanumericExists(passwordPolicy, password),
+				(ca, passwordPolicy, pastPassCheck) -> checkAlphanumericExists(passwordPolicy, password),
 
-						(ca, passwordPolicy, pastPassCheck, isAlphaNumeric) -> checkInSpecialCharacters(password),
+				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric) -> checkInSpecialCharacters(password),
 
-						(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial) -> {
+				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial) -> {
 
-							if (passwordPolicy.isSpacesAllowed())
-								return Mono.just(true);
+					if (passwordPolicy.isSpacesAllowed())
+						return Mono.just(true);
 
-							if (password.indexOf(' ') != -1)
-								return securityMessageResourceService.throwMessage(
-										msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-										SecurityMessageResourceService.SPACES_MISSING);
+					if (password.indexOf(' ') != -1)
+						return securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.SPACES_MISSING);
 
-							return Mono.just(true);
-						},
+					return Mono.just(true);
+				},
 
-						(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
+				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
 
-							String regex = passwordPolicy.getRegex();
+					String regex = passwordPolicy.getRegex();
 
-							if (StringUtil.safeIsBlank(regex))
-								return Mono.just(true);
+					if (StringUtil.safeIsBlank(regex))
+						return Mono.just(true);
 
-							return checkRegexPattern(password, regex);
+					return checkRegexPattern(password, regex);
 
-						},
+				},
 
-						(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this
-								.checkStrengthOfPassword(passwordPolicy, password))
+				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this
+						.checkStrengthOfPassword(passwordPolicy, password))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
 				.defaultIfEmpty(true);
 	}
@@ -166,7 +165,7 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 						if ((pastPassword.isPasswordHashed()
 								&& encoder.matches(userId + password, pastPassword.getPassword()))
 								|| (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
-								.equals(password)))
+										.equals(password)))
 							return this.securityMessageResourceService.throwMessage(
 									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 									SecurityMessageResourceService.PASSWORD_USER_ERROR);

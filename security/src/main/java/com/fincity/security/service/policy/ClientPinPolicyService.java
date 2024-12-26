@@ -42,13 +42,7 @@ public class ClientPinPolicyService extends AbstractPolicyService<SecurityClient
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts(UShort.valueOf(3))
-						.setUserLockTimeMin(ULong.valueOf(30))
-		);
-	}
-
-	@Override
-	public Mono<ClientPinPolicy> getClientAppPolicy(String clientCode, String appCode) {
-		return null;
+						.setUserLockTimeMin(ULong.valueOf(30)));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
