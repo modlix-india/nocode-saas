@@ -51,6 +51,7 @@ import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
@@ -692,9 +693,9 @@ public class ClientService
 
 				(ca, app) -> this.getClientBy(ca.getUrlClientCode()),
 
-				(ca, app, client) -> this.userService.findUserClients(new AuthenticationRequest().setUserName(emailId)
-						.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID), ca.getUrlAppCode(),
-						ca.getUrlClientCode()).flatMap(
+				(ca, app, client) -> this.userService.findUserClients(
+						new AuthenticationRequest().setUserName(emailId).setIdentifierType(AuthenticationIdentifierType.EMAIL_ID),
+						ca.getUrlAppCode(), ca.getUrlClientCode(), SecurityUserStatusCode.ACTIVE).flatMap(
 								e -> this.dao.getManagingClientIds(e.stream()
 										.map(UserClient::getClient)
 										.map(Client::getId)
