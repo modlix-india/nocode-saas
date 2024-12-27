@@ -79,7 +79,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
+	@PreAuthorize("hasAuthority('Authorities.Client_READ')")
 	@Override
 	public Mono<D> read(ULong id) {
 		return super.read(id);
@@ -101,7 +101,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 		return Mono.just(fields);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<D> update(ULong key, Map<String, Object> fields) {
 
@@ -120,7 +120,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	@Override
 	public Mono<D> update(D entity) {
 
@@ -139,7 +139,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
 	@Override
 	public Mono<Integer> delete(ULong id) {
 
@@ -160,7 +160,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_CREATE')")
 	public Mono<D> create(String clientCode, String appCode, D entity) {
 
 		return FlatMapUtil.flatMapMono(
@@ -183,7 +183,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				});
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<D> update(String clientCode, String appCode, Map<String, Object> fields) {
 
 		return FlatMapUtil.flatMapMono(
@@ -197,7 +197,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				});
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
+	@PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
 	public Mono<Integer> delete(String clientCode, String appCode) {
 
 		return FlatMapUtil.flatMapMono(
