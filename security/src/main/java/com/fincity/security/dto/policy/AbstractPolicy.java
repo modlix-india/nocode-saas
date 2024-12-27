@@ -22,12 +22,17 @@ public abstract class AbstractPolicy extends AbstractUpdatableDTO<ULong, ULong> 
 	@Serial
 	private static final long serialVersionUID = 234658377111974288L;
 
+	@JsonIgnore
 	private ULong clientId;
-	private ULong appId;
-	private UShort noFailedAttempts;
-	private ULong userLockTimeMin;
 
 	@JsonIgnore
+	private ULong appId;
+
+	private UShort noFailedAttempts;
+
+	@JsonIgnore
+	private ULong userLockTimeMin;
+
 	public abstract String generate();
 
 }

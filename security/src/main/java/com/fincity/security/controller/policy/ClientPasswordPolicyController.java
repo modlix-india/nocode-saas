@@ -3,7 +3,7 @@ package com.fincity.security.controller.policy;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,9 +18,9 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/clientPasswordPolicy")
 public class ClientPasswordPolicyController extends
-        AbstractJOOQUpdatableDataController<SecurityClientPasswordPolicyRecord, ULong, ClientPasswordPolicy, ClientPasswordPolicyDAO, ClientPasswordPolicyService> {
+		AbstractJOOQUpdatableDataController<SecurityClientPasswordPolicyRecord, ULong, ClientPasswordPolicy, ClientPasswordPolicyDAO, ClientPasswordPolicyService> {
 
-	@PostMapping("/client")
+	@GetMapping("/client")
 	public Mono<ResponseEntity<ClientPasswordPolicy>> getClientAppPolicy(ServerHttpRequest request) {
 
 		String appCode = request.getHeaders().getFirst("appCode");

@@ -48,7 +48,7 @@ public abstract class AbstractPolicyDao<R extends UpdatableRecord<R>, D extends 
 
 	public Mono<D> getClientAppPolicy(String clientCode, String appCode) {
 		return Mono.from(this.dslContext.select(getTable().fields())
-				.from(SECURITY_CLIENT_OTP_POLICY)
+				.from(getTable())
 				.join(SECURITY_CLIENT).on(getClientIDField().eq(SECURITY_CLIENT.ID))
 				.join(SECURITY_APP).on(getAppIdField().eq(SECURITY_APP.ID))
 				.where(SECURITY_CLIENT.CODE.eq(clientCode)

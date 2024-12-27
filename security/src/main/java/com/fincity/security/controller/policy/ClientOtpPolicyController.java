@@ -3,7 +3,7 @@ package com.fincity.security.controller.policy;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono;
 public class ClientOtpPolicyController extends
 		AbstractJOOQUpdatableDataController<SecurityClientOtpPolicyRecord, ULong, ClientOtpPolicy, ClientOtpPolicyDAO, ClientOtpPolicyService> {
 
-	@PostMapping("/client")
+	@GetMapping("/client")
 	public Mono<ResponseEntity<ClientOtpPolicy>> getClientAppPolicy(ServerHttpRequest request) {
 
 		String appCode = request.getHeaders().getFirst("appCode");

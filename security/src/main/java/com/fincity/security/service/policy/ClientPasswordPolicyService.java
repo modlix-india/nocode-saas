@@ -77,11 +77,6 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 						.setUserLockTimeMin(ULong.valueOf(30)));
 	}
 
-	@Override
-	public Mono<ClientPasswordPolicy> getClientAppPolicy(String clientCode, String appCode) {
-		return null;
-	}
-
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
 	@Override
 	protected Mono<ClientPasswordPolicy> updatableEntity(ClientPasswordPolicy entity) {

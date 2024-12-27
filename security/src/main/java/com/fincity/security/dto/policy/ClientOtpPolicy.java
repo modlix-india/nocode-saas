@@ -24,16 +24,25 @@ public class ClientOtpPolicy extends AbstractPolicy {
 	private static final long serialVersionUID = 5872464330396067248L;
 
 	private SecurityClientOtpPolicyTargetType targetType = SecurityClientOtpPolicyTargetType.EMAIL;
+
+	@JsonIgnore
 	private boolean isConstant = false;
+
+	@JsonIgnore
 	private String constantValue;
 	private boolean isNumeric = true;
 	private boolean isAlphanumeric = false;
 	private UShort length = UShort.valueOf(4);
+
+	@JsonIgnore
 	private boolean resendSameOtp = false;
+
+	@JsonIgnore
 	private UShort noResendAttempts = UShort.valueOf(3);
 	private ULong expireInterval = ULong.valueOf(5);
 
 	@Override
+	@JsonIgnore
 	public String generate() {
 
 		if (this.isConstant) {
