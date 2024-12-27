@@ -3,7 +3,6 @@ package com.fincity.security.dao.policy;
 import static com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY;
 
 import org.jooq.Field;
-import org.jooq.Table;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 

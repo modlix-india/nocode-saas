@@ -6,7 +6,6 @@ import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PA
 import java.util.List;
 
 import org.jooq.Field;
-import org.jooq.Table;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
