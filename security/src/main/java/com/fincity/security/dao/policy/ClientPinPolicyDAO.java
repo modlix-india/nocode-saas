@@ -33,11 +33,6 @@ public class ClientPinPolicyDAO extends AbstractPolicyDao<SecurityClientPinPolic
 		return SECURITY_CLIENT_PIN_POLICY.APP_ID;
 	}
 
-	@Override
-	protected Table<SecurityClientPinPolicyRecord> getTable() {
-		return SECURITY_CLIENT_PIN_POLICY;
-	}
-
 	public Mono<List<PastPin>> getPastPinBasedOnPolicy(ClientPinPolicy clientPinPolicy, ULong userId) {
 
 		return Flux.from(this.dslContext.select(SECURITY_PAST_PINS.fields())

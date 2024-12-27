@@ -26,9 +26,4 @@ public class ClientOtpPolicyDAO extends AbstractPolicyDao<SecurityClientOtpPolic
 	protected Field<ULong> getAppIdField() {
 		return SECURITY_CLIENT_OTP_POLICY.APP_ID;
 	}
-
-	@Override
-	protected Table<SecurityClientOtpPolicyRecord> getTable() {
-		return SECURITY_CLIENT_OTP_POLICY;
-	}
 }

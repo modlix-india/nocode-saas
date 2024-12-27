@@ -6,6 +6,7 @@ import org.jooq.types.ULong;
 import org.jooq.types.UShort;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.commons.util.CodeUtil;
 
 import lombok.Data;
@@ -24,16 +25,16 @@ public class ClientPinPolicy extends AbstractPolicy {
 
 	private UShort length = UShort.valueOf(4);
 
-	@JsonIgnore
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private ULong reLoginAfterInterval = ULong.valueOf(120);
 
-	@JsonIgnore
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private UShort expiryInDays = UShort.valueOf(30);
 
-	@JsonIgnore
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private UShort expiryWarnInDays = UShort.valueOf(25);
 
-	@JsonIgnore
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private UShort pinHistoryCount = UShort.valueOf(3);
 
 	@Override

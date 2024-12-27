@@ -1,5 +1,6 @@
 package com.fincity.security.model;
 
+import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -9,6 +10,7 @@ import org.jooq.types.ULong;
 @Accessors(chain = true)
 public class ClientRegistrationRequest implements Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 2510675233197533873L;
 
 	private String clientName;
@@ -28,4 +30,3 @@ public class ClientRegistrationRequest implements Serializable {
 	private String socialRegisterState;
 
 }
-	

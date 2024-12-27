@@ -18,10 +18,13 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.policy.AbstractPolicyDao;
 import com.fincity.security.dto.policy.AbstractPolicy;
+import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractPolicyDao<R, D>>
@@ -35,7 +38,13 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	private ClientService clientService;
 
 	@Autowired
+	@Lazy
+	private AppService appService;
+
+	@Autowired
 	private CacheService cacheService;
+
+	protected static final ULong DEFAULT_POLICY_ID = ULong.MIN;
 
 	protected abstract String getPolicyName();
 
@@ -61,7 +70,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 							.flatMap(managed -> Boolean.TRUE.equals(managed) ? super.create(entity) : Mono.empty());
 				},
 
-				(ca, created) -> cacheService.evict(getPolicyCacheName(), created.getClientId(), created.getAppId()),
+				(ca, created) -> cacheService.evict(getPolicyCacheName(), created.getClientId(),
+						created.getAppId()),
 
 				(ca, created, evicted) -> Mono.just(created))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -150,19 +160,88 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
 	}
 
-	public Mono<D> getClientAppPolicy(String clientCode, String appCode) {
-		return this.dao.getClientAppPolicy(clientCode, appCode)
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
+	public Mono<D> create(String clientCode, String appCode, D entity) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.getClientAndAppId(clientCode, appCode),
+
+				clientAppIds -> this.read(clientAppIds.getT1(), clientAppIds.getT2()),
+
+				(clientAppIds, policy) -> {
+
+					if (policy != null && !isDefaultPolicy(policy)) {
+						return securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName());
+					}
+
+					entity.setClientId(clientAppIds.getT1());
+					entity.setAppId(clientAppIds.getT2());
+
+					return this.create(entity);
+				});
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_UPDATE')")
+	public Mono<D> update(String clientCode, String appCode, Map<String, Object> fields) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.read(clientCode, appCode),
+				policy -> {
+
+					if (isDefaultPolicy(policy))
+						return Mono.just(policy);
+
+					return this.update(policy.getId(), fields);
+				});
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_DELETE')")
+	public Mono<Integer> delete(String clientCode, String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.read(clientCode, appCode),
+				policy -> {
+
+					if (isDefaultPolicy(policy))
+						return Mono.just(0);
+
+					return this.delete(policy.getId());
+				});
+	}
+
+	public Mono<D> read(String clientCode, String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.getClientAndAppId(clientCode, appCode),
+				clientAppIds -> this.read(clientAppIds.getT1(), clientAppIds.getT2()));
+	}
+
+	public Mono<D> read(ULong clientId, ULong appId) {
+
+		return this.cacheService.cacheEmptyValueOrGet(this.getPolicyCacheName(),
+				() -> this.dao.getClientAppPolicy(clientId, appId, clientId),
+				clientId, appId)
 				.switchIfEmpty(this.getDefaultPolicy());
 	}
 
-	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
-		return this.dao.getClientAppPolicy(clientId, appId, clientId)
-				.switchIfEmpty(getDefaultPolicy());
+	public Mono<String> generatePolicyPassword(ULong clientId, ULong appId) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.read(clientId, appId),
+				policy -> Mono.just(policy.generate()));
 	}
 
-	public Mono<String> generatePolicyPassword(ULong clientId, ULong appId) {
+	private Mono<Tuple2<ULong, ULong>> getClientAndAppId(String clientCode, String appCode) {
+
 		return FlatMapUtil.flatMapMono(
-				() -> getClientAppPolicy(clientId, appId),
-				policy -> Mono.just(policy.generate()));
+				() -> clientService.getClientBy(clientCode),
+				client -> appService.getAppByCode(appCode),
+				(client, app) -> Mono.just(Tuples.of(client.getId(), app.getId())));
+	}
+
+	private boolean isDefaultPolicy(D policy) {
+		return policy.getId() == null || policy.getId().equals(DEFAULT_POLICY_ID);
 	}
 }

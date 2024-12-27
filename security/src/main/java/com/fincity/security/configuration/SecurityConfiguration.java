@@ -89,11 +89,11 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/clients/register/events",
 
-				"api/security/clientOtpPolicy/client",
+				"api/security/clientOtpPolicy/codes/policy",
 
-				"api/security/clientPasswordPolicy/client",
+				"api/security/clientPasswordPolicy/codes/policy",
 
-				"api/security/clientPinPolicy/client"
+				"api/security/clientPinPolicy/codes/policy"
 
 		);
 	}

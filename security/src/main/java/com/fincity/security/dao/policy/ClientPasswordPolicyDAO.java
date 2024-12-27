@@ -35,11 +35,6 @@ public class ClientPasswordPolicyDAO
 		return SECURITY_CLIENT_PASSWORD_POLICY.APP_ID;
 	}
 
-	@Override
-	protected Table<SecurityClientPasswordPolicyRecord> getTable() {
-		return SECURITY_CLIENT_PASSWORD_POLICY;
-	}
-
 	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ClientPasswordPolicy clientPasswordPolicy,
 			ULong userId) {
 
