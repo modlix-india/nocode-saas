@@ -36,10 +36,10 @@ public class ClientPinPolicyDAO extends AbstractPolicyDao<SecurityClientPinPolic
 	public Mono<List<PastPin>> getPastPinBasedOnPolicy(ClientPinPolicy clientPinPolicy, ULong userId) {
 
 		return Flux.from(this.dslContext.select(SECURITY_PAST_PINS.fields())
-						.from(SECURITY_PAST_PINS)
-						.where(SECURITY_PAST_PINS.USER_ID.eq(userId))
-						.orderBy(SECURITY_PAST_PINS.CREATED_AT.desc())
-						.limit(clientPinPolicy.getPinHistoryCount()))
+				.from(SECURITY_PAST_PINS)
+				.where(SECURITY_PAST_PINS.USER_ID.eq(userId))
+				.orderBy(SECURITY_PAST_PINS.CREATED_AT.desc())
+				.limit(clientPinPolicy.getPinHistoryCount()))
 				.map(e -> e.into(PastPin.class))
 				.collectList()
 				.defaultIfEmpty(List.of());

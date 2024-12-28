@@ -2019,6 +2019,10 @@ CREATE TABLE IF NOT EXISTS `security`.`security_past_pins`
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
+-- V32__Alter Otp Policy Constant Column.sql
+ALTER TABLE `security`.security_client_otp_policy
+    RENAME COLUMN `CONSTANT` TO `CONSTANT_VALUE`;
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....
@@ -2174,7 +2178,5 @@ INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`) VA
 -- select 1, 6, role_id from security.security_app_package ap
 -- 	left join security.security_package_role rp on rp.package_id = ap.package_id
 --     where role_id is not null;
-
-
 
 -- Testing 

@@ -96,10 +96,11 @@ public class SecurityClientOtpPolicy extends TableImpl<SecurityClientOtpPolicyRe
     public final TableField<SecurityClientOtpPolicyRecord, Byte> IS_CONSTANT = createField(DSL.name("IS_CONSTANT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag indicating if OTP should be a constant value");
 
     /**
-     * The column <code>security.security_client_otp_policy.CONSTANT</code>.
-     * Value of OTP if IS_CONSTANT is true
+     * The column
+     * <code>security.security_client_otp_policy.CONSTANT_VALUE</code>. Value of
+     * OTP if IS_CONSTANT is true
      */
-    public final TableField<SecurityClientOtpPolicyRecord, String> CONSTANT = createField(DSL.name("CONSTANT"), SQLDataType.CHAR(10), this, "Value of OTP if IS_CONSTANT is true");
+    public final TableField<SecurityClientOtpPolicyRecord, String> CONSTANT_VALUE = createField(DSL.name("CONSTANT_VALUE"), SQLDataType.CHAR(10), this, "Value of OTP if IS_CONSTANT is true");
 
     /**
      * The column <code>security.security_client_otp_policy.IS_NUMERIC</code>.

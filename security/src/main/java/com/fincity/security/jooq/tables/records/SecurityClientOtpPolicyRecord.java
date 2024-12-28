@@ -113,19 +113,21 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
     }
 
     /**
-     * Setter for <code>security.security_client_otp_policy.CONSTANT</code>.
-     * Value of OTP if IS_CONSTANT is true
+     * Setter for
+     * <code>security.security_client_otp_policy.CONSTANT_VALUE</code>. Value of
+     * OTP if IS_CONSTANT is true
      */
-    public SecurityClientOtpPolicyRecord setConstant(String value) {
+    public SecurityClientOtpPolicyRecord setConstantValue(String value) {
         set(5, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_client_otp_policy.CONSTANT</code>.
-     * Value of OTP if IS_CONSTANT is true
+     * Getter for
+     * <code>security.security_client_otp_policy.CONSTANT_VALUE</code>. Value of
+     * OTP if IS_CONSTANT is true
      */
-    public String getConstant() {
+    public String getConstantValue() {
         return (String) get(5);
     }
 
@@ -349,7 +351,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
     /**
      * Create a detached, initialised SecurityClientOtpPolicyRecord
      */
-    public SecurityClientOtpPolicyRecord(ULong id, ULong clientId, ULong appId, SecurityClientOtpPolicyTargetType targetType, Byte isConstant, String constant, Byte isNumeric, Byte isAlphanumeric, UShort length, Byte resendSameOtp, UShort noResendAttempts, ULong expireInterval, UShort noFailedAttempts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientOtpPolicyRecord(ULong id, ULong clientId, ULong appId, SecurityClientOtpPolicyTargetType targetType, Byte isConstant, String constantValue, Byte isNumeric, Byte isAlphanumeric, UShort length, Byte resendSameOtp, UShort noResendAttempts, ULong expireInterval, UShort noFailedAttempts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY);
 
         setId(id);
@@ -357,7 +359,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
         setAppId(appId);
         setTargetType(targetType);
         setIsConstant(isConstant);
-        setConstant(constant);
+        setConstantValue(constantValue);
         setIsNumeric(isNumeric);
         setIsAlphanumeric(isAlphanumeric);
         setLength(length);
