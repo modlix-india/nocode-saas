@@ -6,6 +6,9 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 import org.jooq.types.ULong;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.util.StringUtil;
+
 @Data
 @Accessors(chain = true)
 public class ClientRegistrationRequest implements Serializable {
@@ -23,10 +26,24 @@ public class ClientRegistrationRequest implements Serializable {
 	private String lastName;
 	private String middleName;
 	private String password;
+	private String pin;
 	private boolean businessClient;
 	private String businessType;
-	private String code;
+	private String uniqueCode;
 	private String subDomain;
 	private String socialRegisterState;
+
+	@JsonIgnore
+	public AuthenticationPasswordType getPasswordType() {
+
+		if (!StringUtil.safeIsBlank(password))
+			return AuthenticationPasswordType.PASSWORD;
+
+		if (!StringUtil.safeIsBlank(pin))
+			return AuthenticationPasswordType.PIN;
+
+		return null;
+	}
+
 
 }

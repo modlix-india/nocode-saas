@@ -29,6 +29,7 @@ public class Indexes {
     // -------------------------------------------------------------------------
 
     public static final Index SECURITY_OTP_APP_ID = Internal.createIndex(DSL.name("APP_ID"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.APP_ID, SecurityOtp.SECURITY_OTP.USER_ID, SecurityOtp.SECURITY_OTP.PURPOSE }, false);
+    public static final Index SECURITY_OTP_APP_ID_2 = Internal.createIndex(DSL.name("APP_ID_2"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.APP_ID, SecurityOtp.SECURITY_OTP.EMAIL_ID, SecurityOtp.SECURITY_OTP.PHONE_NUMBER, SecurityOtp.SECURITY_OTP.PURPOSE }, false);
     public static final Index SECURITY_OTP_CREATED_AT = Internal.createIndex(DSL.name("CREATED_AT"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.CREATED_AT }, false);
     public static final Index SECURITY_SOX_LOG_CREATED_AT = Internal.createIndex(DSL.name("CREATED_AT"), SecuritySoxLog.SECURITY_SOX_LOG, new OrderField[] { SecuritySoxLog.SECURITY_SOX_LOG.CREATED_AT }, false);
     public static final Index SECURITY_OTP_EXPIRES_AT = Internal.createIndex(DSL.name("EXPIRES_AT"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.EXPIRES_AT }, false);

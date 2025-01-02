@@ -3,8 +3,6 @@ package com.fincity.security.controller;
 import java.util.List;
 
 import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
@@ -142,25 +139,6 @@ public class ClientController
 	public Mono<ResponseEntity<Void>> socialRegisterCallback(ServerHttpRequest request, ServerHttpResponse response) {
 
 		return this.clientRegistrationService.registerWSocialCallback(request, response).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/generateCode")
-	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId, ServerHttpRequest request) {
-
-		return this.service.generateCodeAndTriggerMail(emailId, request).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/triggerCodeOnRequest/{accessId}")
-	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId, ServerHttpRequest request) {
-
-		return this.service.tiggerMailOnRequest(accessId, request).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/fetchCodes")
-	public Mono<ResponseEntity<Page<CodeAccess>>> fetchCodes(Pageable pageable,
-			@RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
-
-		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/register/events")
