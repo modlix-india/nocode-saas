@@ -92,7 +92,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 
 				(tup, linCCheck) -> this.appService.getAppByCode(appCode),
 
-				(tup, linCCheck, app) -> clientOtpPolicyService.getClientAppPolicy(app.getClientId(), app.getId()),
+				(tup, linCCheck, app) -> clientOtpPolicyService.read(app.getClientId(), app.getId()),
 
 				(tup, linCCheck, app, otpPolicy) -> {
 					if (authRequest.isResend() && otpPolicy.isResendSameOtp()) {

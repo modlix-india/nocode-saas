@@ -34,13 +34,14 @@ public class ClientPasswordPolicyDAO
 		return SECURITY_CLIENT_PASSWORD_POLICY.APP_ID;
 	}
 
-	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ClientPasswordPolicy clientPasswordPolicy, ULong userId) {
+	public Mono<List<PastPassword>> getPastPasswordsBasedOnPolicy(ClientPasswordPolicy clientPasswordPolicy,
+			ULong userId) {
 
 		return Flux.from(this.dslContext.select(SECURITY_PAST_PASSWORDS.fields())
-						.from(SECURITY_PAST_PASSWORDS)
-						.where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
-						.orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
-						.limit(clientPasswordPolicy.getPassHistoryCount()))
+				.from(SECURITY_PAST_PASSWORDS)
+				.where(SECURITY_PAST_PASSWORDS.USER_ID.eq(userId))
+				.orderBy(SECURITY_PAST_PASSWORDS.CREATED_AT.desc())
+				.limit(clientPasswordPolicy.getPassHistoryCount()))
 				.map(e -> e.into(PastPassword.class))
 				.collectList()
 				.defaultIfEmpty(List.of());

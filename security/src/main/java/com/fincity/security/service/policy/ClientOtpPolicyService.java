@@ -47,7 +47,8 @@ public class ClientOtpPolicyService extends AbstractPolicyService<SecurityClient
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts(UShort.valueOf(3))
 						.setUserLockTimeMin(ULong.valueOf(30))
-				);
+						.setId(DEFAULT_POLICY_ID)
+		);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")

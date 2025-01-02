@@ -5,6 +5,8 @@ import java.io.Serial;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.commons.util.CodeUtil;
 import com.fincity.security.jooq.enums.SecurityClientOtpPolicyTargetType;
 
@@ -23,16 +25,25 @@ public class ClientOtpPolicy extends AbstractPolicy {
 	private static final long serialVersionUID = 5872464330396067248L;
 
 	private SecurityClientOtpPolicyTargetType targetType = SecurityClientOtpPolicyTargetType.EMAIL;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private boolean isConstant = false;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String constantValue;
 	private boolean isNumeric = true;
 	private boolean isAlphanumeric = false;
 	private UShort length = UShort.valueOf(4);
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private boolean resendSameOtp = false;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private UShort noResendAttempts = UShort.valueOf(3);
 	private ULong expireInterval = ULong.valueOf(5);
 
 	@Override
+	@JsonIgnore
 	public String generate() {
 
 		if (this.isConstant) {
