@@ -114,35 +114,37 @@ public class ClientController
 	}
 
 	@PostMapping("/generate")
-	public Mono<ResponseEntity<Boolean>> generateClient(@RequestParam(required = false) ULong clientId) {
+	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam(required = false) String email,
+			@RequestParam(required = false) String phoneNumber,
+			@RequestParam(defaultValue = "false") boolean isResend,
+			ServerHttpRequest request) {
+		return this.clientRegistrationService.generateOtp(email, phoneNumber, isResend, request)
+				.map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/register")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> register(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
-
 		return this.clientRegistrationService.register(registrationRequest, request, response).map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/socialRegister")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> socialRegister(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
-
 		return this.clientRegistrationService.registerWSocial(request, response, registrationRequest)
 				.map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/socialRegister/evoke")
-	public Mono<ResponseEntity<String>> evokeSocialRegister(ServerHttpRequest request, ServerHttpResponse response,
-			@RequestParam(required = true) SecurityAppRegIntegrationPlatform platform) {
-
+	public Mono<ResponseEntity<String>> evokeSocialRegister(ServerHttpRequest request,
+			@RequestParam SecurityAppRegIntegrationPlatform platform) {
 		return this.clientRegistrationService.evokeRegisterWSocial(platform, request).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/socialRegister/callback")
 	public Mono<ResponseEntity<Void>> socialRegisterCallback(ServerHttpRequest request, ServerHttpResponse response) {
-
-		return this.clientRegistrationService.registerWSocialCallback(request, response).map(ResponseEntity::ok);
+		return this.clientRegistrationService.registerWSocialCallback(request, response)
+				.then(Mono.just(ResponseEntity.ok().build()));
 	}
 
 	@GetMapping("/register/events")
