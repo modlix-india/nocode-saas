@@ -163,11 +163,14 @@ public class AuthenticationService implements IAuthenticationService {
 
 		AuthenticationPasswordType passwordType = authRequest.getPasswordType();
 
+		if (passwordType == null) {
+			return this.authError(SecurityMessageResourceService.UNKNOWN_ERROR);
+		}
+
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-						clientCode,
-						appCode, authRequest.getIdentifierType()),
+						clientCode, appCode, authRequest.getIdentifierType()),
 
 				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals(SYSTEM_CC) ||

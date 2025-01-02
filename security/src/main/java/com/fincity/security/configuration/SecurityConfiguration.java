@@ -87,7 +87,15 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/applications/internal/dependencies",
 
-				"/api/security/clients/register/events");
+				"/api/security/clients/register/events",
+
+				"api/security/clientOtpPolicy/codes/policy",
+
+				"api/security/clientPasswordPolicy/codes/policy",
+
+				"api/security/clientPinPolicy/codes/policy"
+
+		);
 	}
 
 }
