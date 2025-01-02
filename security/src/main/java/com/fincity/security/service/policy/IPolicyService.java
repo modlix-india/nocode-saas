@@ -13,7 +13,7 @@ public interface IPolicyService<T extends AbstractPolicy> {
 
 	String getPolicyCacheName();
 
-	Mono<T> getClientAppPolicy(ULong clientId, ULong appId);
+	Mono<T> read(ULong clientId, ULong appId);
 
 	Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, ULong userId, String password);
 
