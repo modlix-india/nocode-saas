@@ -694,7 +694,8 @@ public class ClientService
 				(ca, app) -> this.getClientBy(ca.getUrlClientCode()),
 
 				(ca, app, client) -> this.userService.findUserClients(
-						new AuthenticationRequest().setUserName(emailId).setIdentifierType(AuthenticationIdentifierType.EMAIL_ID),
+						new AuthenticationRequest().setUserName(emailId)
+								.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID),
 						ca.getUrlAppCode(), ca.getUrlClientCode(), SecurityUserStatusCode.ACTIVE).flatMap(
 								e -> this.dao.getManagingClientIds(e.stream()
 										.map(UserClient::getClient)
@@ -706,7 +707,7 @@ public class ClientService
 					boolean hasUser = userClients.stream()
 							.anyMatch(e -> e.equals(client.getId()));
 
-					return Mono.justOrEmpty(!hasUser ? true : null);
+					return Mono.justOrEmpty(!hasUser ? Boolean.TRUE : null);
 				},
 
 				(ca, app, client, userClients, exists) -> this.appService

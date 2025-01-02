@@ -1,8 +1,5 @@
 package com.fincity.security.service.appregistration;
 
-import static com.fincity.saas.commons.util.CommonsUtil.nonNullValue;
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
-
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -26,8 +23,10 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
+import static com.fincity.saas.commons.util.CommonsUtil.nonNullValue;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
@@ -791,8 +790,8 @@ public class ClientRegistrationService {
                                                                 .checkClientAccessCode(app.getId(), ULongUtil
                                                                                 .valueOf(ca.getLoggedInFromClientId()),
                                                                                 request.getEmailId(), request.getCode())
-                                                                .flatMap(e -> Mono.justOrEmpty(
-                                                                                e.booleanValue() ? true : null));
+                                                                .flatMap(e -> e.booleanValue() ? Mono.just(true)
+                                                                                : Mono.empty());
 
                                         return Mono.just(true);
 

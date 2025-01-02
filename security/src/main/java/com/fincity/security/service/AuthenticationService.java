@@ -175,7 +175,7 @@ public class AuthenticationService implements IAuthenticationService {
 				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals(SYSTEM_CC) ||
 								clientCode.equals(tup.getT1().getCode()) ||
-								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+								tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -216,7 +216,7 @@ public class AuthenticationService implements IAuthenticationService {
 				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals(SYSTEM_CC) ||
 								clientCode.equals(tup.getT1().getCode()) ||
-								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+								tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -483,7 +483,7 @@ public class AuthenticationService implements IAuthenticationService {
 					tup -> Mono.justOrEmpty(
 							tup.getT1().getCode().equals(SYSTEM_CC) ||
 									clientCode.equals(tup.getT1().getCode()) ||
-									tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+									tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null),
 
 					(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
