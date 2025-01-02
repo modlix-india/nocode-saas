@@ -113,6 +113,10 @@ public class ClientController
 		return this.service.makeClientInActive(clientId).map(ResponseEntity::ok);
 	}
 
+	@PostMapping("/generate")
+	public Mono<ResponseEntity<Boolean>> generateClient(@RequestParam(required = false) ULong clientId) {
+	}
+
 	@PostMapping("/register")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> register(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
