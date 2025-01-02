@@ -284,6 +284,10 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 	}
 
 	private Mono<Boolean> sendEmailOtp(OtpGenerationRequest request, String otp) {
+
+		if (StringUtil.safeIsBlank(request.getEmailId()))
+			return Mono.just(Boolean.FALSE);
+
 		return this.ecService.createEvent(
 				new EventQueObject()
 						.setAppCode(request.getAppCode())
@@ -299,6 +303,10 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 	}
 
 	private Mono<Boolean> sendPhoneOtp(OtpGenerationRequest request, String otp) {
+
+		if (StringUtil.safeIsBlank(request.getPhoneNumber()))
+			return Mono.just(Boolean.FALSE);
+
 		return this.messageService.sendOtpMessage(
 				request.getPhoneNumber(),
 				new OtpMessageVars()
