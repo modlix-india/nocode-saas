@@ -29,6 +29,7 @@ import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.service.CacheService;
@@ -40,6 +41,7 @@ import com.fincity.saas.files.dao.FileSystemDao;
 import com.fincity.saas.files.jooq.enums.FilesFileSystemType;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.FilesPage;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -311,7 +313,7 @@ public class FileSystemService {
                             PutObjectRequest.builder()
                                     .bucket(bucketName)
                                     .contentLength(length)
-                                    .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)             
+                                    .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)
                                     .contentDisposition("inline")
                                     .key(key)
                                     .build(),
@@ -350,9 +352,17 @@ public class FileSystemService {
                     if (response == null)
                         return Mono.just(true);
 
+                    long fileLength = 0l;
+
+                    try {
+                        fileLength = Files.size(file);
+                    } catch (IOException ex) {
+                        logger.error("Failed to get file size : {}", file.getFileName(), ex);
+                    }
+
                     return this.fileSystemDao
                             .createOrUpdateFileForZipUpload(this.fileSystemType, clientCode, folderId, path,
-                                    file.getFileName().toString());
+                                    file.getFileName().toString(), ULong.valueOf(fileLength));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         SERVICE_NAME_PREFIX + this.bucketName + ").createFileForZipUpload"));
