@@ -169,11 +169,12 @@ public class ClientRegistrationService {
 				},
 				(ca, subDomain, regProp, client, policy, userTuple, token) -> this.addFilesAccessPath(ca, client),
 
-				(ca, subDomain, regProp, client, policy, userTuple, token, filesAccessCreated) ->
-						this.createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
+				(ca, subDomain, regProp, client, policy, userTuple, token, filesAccessCreated) -> this
+						.createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
 								userTuple.getT2())
 						.flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
-								userTuple.getT1().getId(), userTuple.getT2(), request, response)),
+								userTuple.getT1().getId(), userTuple.getT2(), request, response))
+						.map(ClientRegistrationResponse.class::cast),
 
 				(ca, subDomain, regProp, client, policy, userTuple, token, filesAccessCreated,
 						res) -> {
@@ -185,7 +186,6 @@ public class ClientRegistrationService {
 							new ClientUrl().setAppCode(ca.getUrlAppCode()).setUrlPattern(subDomain)
 									.setClientId(client.getId()))
 							.map(e -> res.setRedirectURL(subDomain));
-
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
 	}
