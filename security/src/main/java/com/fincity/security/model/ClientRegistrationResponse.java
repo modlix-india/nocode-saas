@@ -1,5 +1,6 @@
 package com.fincity.security.model;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 import org.jooq.types.ULong;
@@ -15,6 +16,7 @@ import lombok.experimental.Accessors;
 @AllArgsConstructor
 public class ClientRegistrationResponse implements Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 567874378374L;
 
 	private Boolean created;

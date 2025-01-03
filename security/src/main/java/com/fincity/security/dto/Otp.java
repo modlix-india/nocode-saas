@@ -26,6 +26,8 @@ public class Otp extends AbstractDTO<ULong, ULong> {
 
 	private ULong appId;
 	private ULong userId;
+	private String emailId = null;
+	private String phoneNumber = null;
 	private String purpose;
 	private SecurityOtpTargetType targetType;
 	private String uniqueCode;

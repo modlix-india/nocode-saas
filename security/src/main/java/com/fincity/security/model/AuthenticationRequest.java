@@ -28,6 +28,7 @@ public class AuthenticationRequest {
 
 	@JsonIgnore
 	public String getInputPassword() {
+
 		if (!StringUtil.safeIsBlank(password))
 			return password;
 
