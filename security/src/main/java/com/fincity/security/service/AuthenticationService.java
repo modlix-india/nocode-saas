@@ -48,6 +48,7 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.model.OtpGenerationRequestInternal;
 import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
 
 import reactor.core.publisher.Mono;
@@ -67,6 +68,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private final ClientService clientService;
 
+	private final AppService appService;
+
 	private final TokenService tokenService;
 
 	private final OtpService otpService;
@@ -83,13 +86,15 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
-	public AuthenticationService(UserService userService, ClientService clientService, TokenService tokenService,
+	public AuthenticationService(UserService userService, ClientService clientService, AppService appService,
+			TokenService tokenService,
 			OtpService otpService, SecurityMessageResourceService resourceService, SoxLogService soxLogService,
 			PasswordEncoder pwdEncoder, CacheService cacheService,
 			AppRegistrationIntegrationTokenDao integrationTokenDao,
 			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
 		this.userService = userService;
 		this.clientService = clientService;
+		this.appService = appService;
 		this.tokenService = tokenService;
 		this.otpService = otpService;
 		this.resourceService = resourceService;
@@ -146,6 +151,48 @@ public class AuthenticationService implements IAuthenticationService {
 				.filter(e -> e.getToken().equals(finToken)).map(TokenObject::getId).collectList()
 				.flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst())).flatMap(tokenService::delete)
 				.defaultIfEmpty(1);
+	}
+
+	public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
+
+		if (!authRequest.isGenerateOtp())
+			return Mono.just(false);
+
+		String appCode = request.getHeaders().getFirst(AC);
+		String clientCode = request.getHeaders().getFirst(CC);
+
+		if (authRequest.getIdentifierType() == null)
+			authRequest.setIdentifierType(StringUtil.safeIsBlank(authRequest.getUserName()) || authRequest.getUserName()
+					.indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
+							: AuthenticationIdentifierType.EMAIL_ID);
+
+		OtpPurpose purpose = OtpPurpose.LOGIN;
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
+						clientCode, appCode, authRequest.getIdentifierType()),
+
+				tup -> Mono.justOrEmpty(
+						tup.getT1().getCode().equals(SYSTEM_CC) ||
+								clientCode.equals(tup.getT1().getCode()) ||
+								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+
+				(tup, linCCheck) -> this.appService.getAppByCode(appCode),
+
+				(tup, linCCheck, app) -> Mono.just(
+						new OtpGenerationRequestInternal()
+								.setClientOption(tup.getT1())
+								.setAppOption(app)
+								.setWithUserOption(tup.getT3())
+								.setIpAddress(request.getRemoteAddress())
+								.setResend(authRequest.isResend())
+								.setPurpose(purpose.name())),
+
+				(app, tup, linCCheck, targetReq) -> this.otpService.generateOtpInternal(targetReq))
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"OtpService.generateOtp : [" + purpose.name() + "]"));
 	}
 
 	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
@@ -278,7 +325,7 @@ public class AuthenticationService implements IAuthenticationService {
 							? Mono.just(
 									pwdEncoder.matches(user.getId() + passwordString, user.getPin()))
 							: Mono.just(StringUtil.safeEquals(passwordString, user.getPin()));
-					case OTP -> otpService.verifyOtpInternal(appCode, user, OtpPurpose.LOGIN, passwordString);
+					case OTP -> this.otpService.verifyOtpInternal(appCode, user, OtpPurpose.LOGIN, passwordString);
 				},
 				isValid -> Boolean.FALSE.equals(isValid) ? checkFailedAttempts(user, policy, passwordType)
 						: Mono.just(Boolean.TRUE))
@@ -328,7 +375,8 @@ public class AuthenticationService implements IAuthenticationService {
 							SecuritySoxLogObjectName.USER,
 							"Given Password is mismatching with existing.");
 
-					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID_ATTEMPTS, passwordType.getName(),
+					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID_ATTEMPTS,
+							passwordType.getName(),
 							remainingAttempts);
 				});
 	}
