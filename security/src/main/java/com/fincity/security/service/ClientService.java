@@ -2,7 +2,6 @@ package com.fincity.security.service;
 
 import java.math.BigInteger;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -24,13 +23,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import com.fincity.saas.commons.mq.events.EventCreationService;
-import com.fincity.saas.commons.mq.events.EventNames;
-import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -38,24 +30,16 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
-import com.fincity.security.dao.CodeAccessDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
-import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
-import com.fincity.security.dto.UserClient;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
-import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
-import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.service.policy.ClientOtpPolicyService;
 import com.fincity.security.service.policy.ClientPasswordPolicyService;
 import com.fincity.security.service.policy.ClientPinPolicyService;
@@ -98,20 +82,10 @@ public class ClientService
 
 	@Autowired
 	@Lazy
-	private UserService userService;
-
-	@Autowired
-	@Lazy
 	private AppService appService;
 
 	@Autowired
 	private SecurityMessageResourceService securityMessageResourceService;
-
-	@Autowired
-	private EventCreationService ecService;
-
-	@Autowired
-	private CodeAccessDAO codeAccessDAO;
 
 	@Autowired
 	private AppRegistrationDAO appRegistrationDAO;
@@ -127,12 +101,6 @@ public class ClientService
 
 	private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
 			AuthenticationPasswordType.class);
-
-	@Value("${jwt.token.rememberme.expiry}")
-	private Integer remembermeExpiryInMinutes;
-
-	@Value("${jwt.token.default.expiry}")
-	private Integer defaultExpiryInMinutes;
 
 	@Value("${security.subdomain.endings}")
 	private String[] subDomainURLEndings;
@@ -498,12 +466,10 @@ public class ClientService
 	}
 
 	public Mono<Boolean> isUserBeingManaged(ULong userId, String clientCode) {
-
 		return this.dao.isUserBeingManaged(userId, clientCode);
 	}
 
 	public Mono<Client> getClientBy(String clientCode) {
-
 		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_CODE, () -> this.dao.getClientBy(clientCode), clientCode);
 	}
 
@@ -612,153 +578,6 @@ public class ClientService
 						SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 	}
 
-	public Mono<Page<CodeAccess>> fetchCodesBasedOnClient(Pageable page, String clientCode, String emailId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> Mono.just(ca.isSystemClient() && !StringUtil.safeIsBlank(clientCode) ? clientCode
-						: ca.getLoggedInFromClientCode()),
-
-				(ca, finClientCode) -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-				(ca, finClientCode, app) -> this.getClientBy(finClientCode),
-
-				(ca, finClientCode, app, client) -> {
-
-					List<AbstractCondition> conditions = new ArrayList<>(
-							List.of(FilterCondition.make("appId", app.getId()),
-									FilterCondition.make(CLIENT_ID, client.getId())));
-
-					if (!StringUtil.safeIsBlank(emailId))
-						conditions.add(FilterCondition.make("emaiId", emailId)
-								.setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL));
-
-					AbstractCondition condition = new ComplexCondition().setConditions(conditions)
-							.setOperator(ComplexConditionOperator.AND);
-
-					return this.codeAccessDAO.readPageFilter(page, condition);
-
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchCodesWithApp"));
-
-	}
-
-	public Mono<Boolean> tiggerMailOnRequest(ULong accessCodeId, ServerHttpRequest request) {
-
-		String host = request.getHeaders().getFirst("X-Forwarded-Host");
-		String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
-		String port = request.getHeaders().getFirst("X-Forwarded-Port");
-
-		String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
-				: "http://" + host + ":" + port;
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.codeAccessDAO.readById(accessCodeId),
-
-				(ca, accessCode) -> (accessCode.getClientId()
-						.equals(ULong.valueOf(ca.getUser()
-								.getClientId()))
-						|| ca.isSystemClient()) ? Mono.just(true) : Mono.empty(),
-
-				(ca, accessCode, hasAccess) -> ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
-						.setClientCode(ca.getClientCode())
-						.setEventName(EventNames.USER_CODE_GENERATION)
-						.setData(Map.of("emailId", accessCode.getEmailId(), "accessCode", accessCode.getCode(),
-								"urlPrefix", urlPrefix))))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.tiggerMailOnRequest"))
-				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
-						SecurityMessageResourceService.MAIL_CANNOT_BE_TRIGGERED));
-	}
-
-	public Mono<Boolean> generateCodeAndTriggerMail(String emailId, ServerHttpRequest request) { // NOSONAR
-
-		String host = request.getHeaders().getFirst("X-Forwarded-Host");
-		String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
-		String port = request.getHeaders().getFirst("X-Forwarded-Port");
-
-		String urlPrefix = (scheme != null && scheme.contains("https")) ? "https://" + host
-				: "http://" + host + ":" + port;
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-				(ca, app) -> this.getClientBy(ca.getUrlClientCode()),
-
-				(ca, app, client) -> this.userService.findUserClients(
-						new AuthenticationRequest().setUserName(emailId).setIdentifierType(AuthenticationIdentifierType.EMAIL_ID),
-						ca.getUrlAppCode(), ca.getUrlClientCode(), SecurityUserStatusCode.ACTIVE).flatMap(
-								e -> this.dao.getManagingClientIds(e.stream()
-										.map(UserClient::getClient)
-										.map(Client::getId)
-										.toList())),
-
-				(ca, app, client, userClients) -> {
-
-					boolean hasUser = userClients.stream()
-							.anyMatch(e -> e.equals(client.getId()));
-
-					return Mono.justOrEmpty(!hasUser ? true : null);
-				},
-
-				(ca, app, client, userClients, exists) -> this.appService
-						.getProperties(client.getId(), app.getId(), null, AppService.APP_PROP_REG_TYPE)
-						.flatMap(e -> {
-
-							if (e.isEmpty() || !e.containsKey(client.getId()))
-								return Mono.empty();
-
-							AppProperty prop = e.get(client.getId())
-									.get(AppService.APP_PROP_REG_TYPE);
-
-							if (prop == null)
-								return Mono.empty();
-
-							if (AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE.equals(prop.getValue())
-									|| AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE
-											.equals(prop.getValue())
-									|| AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST.equals(prop.getValue())
-									|| AppService.APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE
-											.equals(prop.getValue()))
-
-								return Mono.just(prop.getValue());
-
-							return Mono.empty();
-
-						}),
-
-				(ca, app, client, userClients, exists,
-						prop) -> this.codeAccessDAO.create(new CodeAccess().setAppId(app.getId())
-								.setClientId(client.getId())
-								.setEmailId(emailId)),
-
-				(ca, app, client, userClients, exists, prop, x) -> {
-
-					if (AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE.equals(prop)
-							|| AppService.APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE.equals(prop))
-						return ecService.createEvent(new EventQueObject().setAppCode(ca.getUrlAppCode())
-								.setClientCode(client.getCode())
-								.setEventName(EventNames.USER_CODE_GENERATION)
-								.setData(Map.of("emailId", x.getEmailId(), "accessCode", x.getCode(), "urlPrefix",
-										urlPrefix)));
-
-					return Mono.just(true);
-
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateCodeAndTriggerMail"))
-				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
-						SecurityMessageResourceService.USER_ALREADY_CREATED));
-	}
-
 	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
 	public Mono<List<Package>> fetchPackages(ULong clientId) {
 
@@ -796,7 +615,7 @@ public class ClientService
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientLevelType(ULong,String)"));
 	}
 
-	public static record LevelTypeReturnRecord(ClientLevelType type, Client client) {
+	public record LevelTypeReturnRecord(ClientLevelType type, Client client) {
 		public LevelTypeReturnRecord(ClientLevelType type) {
 			this(type, null);
 		}

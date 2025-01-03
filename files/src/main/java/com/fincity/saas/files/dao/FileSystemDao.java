@@ -362,7 +362,7 @@ public class FileSystemDao {
     }
 
     public Mono<Boolean> createOrUpdateFileForZipUpload(FilesFileSystemType fileSystemType, String clientCode,
-            ULong folderId, String path, String fileName) {
+            ULong folderId, String path, String fileName, ULong fileLength) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
         String parentPath = index == -1 ? "" : path.substring(0, index);
@@ -387,6 +387,7 @@ public class FileSystemDao {
                     if (existingId.isPresent()) {
                         return Mono.<Integer>from(this.context.update(FILES_FILE_SYSTEM)
                                 .set(FILES_FILE_SYSTEM.UPDATED_AT, LocalDateTime.now(ZoneOffset.UTC))
+                                .set(FILES_FILE_SYSTEM.SIZE, fileLength)
                                 .where(DSL.and(
                                         parentId.isPresent() ? FILES_FILE_SYSTEM.PARENT_ID.eq(parentId.get())
                                                 : FILES_FILE_SYSTEM.PARENT_ID.isNull(),
@@ -400,6 +401,7 @@ public class FileSystemDao {
                                     null))
                             .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
                             .set(FILES_FILE_SYSTEM.NAME, name)
+                            .set(FILES_FILE_SYSTEM.SIZE, fileLength)
                             .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)).<Boolean>map(e -> e > 0);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.createOrUpdateFileForZipUpload"));

@@ -938,43 +938,40 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.map(e -> Boolean.TRUE);
 	}
 
-	public Mono<TokenObject> makeOneTimeToken(ServerHttpRequest httpRequest, ContextAuthentication ca, User u,
-			ULong loggedInClientCode) {
-		String host = httpRequest.getURI()
-				.getHost();
-		String port = "" + httpRequest.getURI()
-				.getPort();
+	public Mono<TokenObject> makeOneTimeToken(ServerHttpRequest httpRequest, ContextAuthentication ca, User user,
+			ULong loggedInClientId) {
 
-		List<String> forwardedHost = httpRequest.getHeaders()
-				.get("X-Forwarded-Host");
+		String host = httpRequest.getURI().getHost();
+
+		String port = "" + httpRequest.getURI().getPort();
+
+		List<String> forwardedHost = httpRequest.getHeaders().get("X-Forwarded-Host");
 
 		if (forwardedHost != null && !forwardedHost.isEmpty()) {
-			host = forwardedHost.get(0);
+			host = forwardedHost.getFirst();
 		}
 
-		List<String> forwardedPort = httpRequest.getHeaders()
-				.get("X-Forwarded-Port");
+		List<String> forwardedPort = httpRequest.getHeaders().get("X-Forwarded-Port");
 
 		if (forwardedPort != null && !forwardedPort.isEmpty()) {
-			port = forwardedPort.get(0);
+			port = forwardedPort.getFirst();
 		}
 
 		InetSocketAddress inetAddress = httpRequest.getRemoteAddress();
 		final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
 
 		Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(JWTGenerateTokenParameters.builder()
-				.userId(u.getId()
-						.toBigInteger())
+				.userId(user.getId().toBigInteger())
 				.secretKey(tokenKey)
 				.expiryInMin(VALIDITY_MINUTES)
 				.host(host)
 				.port(port)
-				.loggedInClientId(loggedInClientCode.toBigInteger())
+				.loggedInClientId(loggedInClientId.toBigInteger())
 				.loggedInClientCode(ca.getUrlClientCode())
 				.oneTime(true)
 				.build());
 
-		return tokenService.create(new TokenObject().setUserId(u.getId())
+		return tokenService.create(new TokenObject().setUserId(user.getId())
 				.setToken(token.getT1())
 				.setPartToken(token.getT1()
 						.length() < 50 ? token.getT1()

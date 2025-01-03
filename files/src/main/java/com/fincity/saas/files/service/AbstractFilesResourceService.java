@@ -753,7 +753,7 @@ public abstract class AbstractFilesResourceService {
 
 							return this.getFSService().createFileForZipUpload(clientCode, folderId,
 									folderPath.isEmpty() ? tup.getT1()
-											: (folderPath + R2_FILE_SEPARATOR_STRING
+											: (resourcePath + R2_FILE_SEPARATOR_STRING
 													+ tup.getT1()),
 									tup.getT2(), override);
 						})
@@ -876,44 +876,45 @@ public abstract class AbstractFilesResourceService {
 		int ind = resourcePath.charAt(0) == '/' ? 1 : 0;
 		int secondInd = resourcePath.indexOf('/', ind);
 
-		String clientCodeFromUrl = secondInd == -1 ? resourcePath.substring(ind) : resourcePath.substring(ind, secondInd);
+		String clientCodeFromUrl = secondInd == -1 ? resourcePath.substring(ind)
+				: resourcePath.substring(ind, secondInd);
 
-		if(StringUtil.safeIsBlank(clientCodeFromUrl))
+		if (StringUtil.safeIsBlank(clientCodeFromUrl))
 			return Mono.empty();
 
+		return FlatMapUtil.flatMapMono(
 
-		return	FlatMapUtil.flatMapMono(
+				() -> this.fileAccessService.isClientBeingManaged(clientCode, clientCodeFromUrl),
 
-			() -> this.fileAccessService.isClientBeingManaged(clientCode, clientCodeFromUrl),
+				isManaged -> {
+					if (!BooleanUtil.safeValueOf(isManaged))
+						return Mono.empty();
 
-			isManaged -> {
-				if(!BooleanUtil.safeValueOf(isManaged))
-					return Mono.empty();
-				
-				return this.getFSService().getFileDetail(uriPath.getT1());
-			},
+					return this.getFSService().getFileDetail(uriPath.getT1());
+				},
 
-			(isManaged, fileDetail) -> {
+				(isManaged, fileDetail) -> {
 
 					if (fileDetail.isDirectory())
 						return Mono.empty();
 
-					return	this.getFSService().getAsFile(uriPath.getT1())
-							.flatMap( e -> {
+					return this.getFSService().getAsFile(uriPath.getT1())
+							.flatMap(e -> {
 
 								Path filePath = e.toPath();
 
 								StringBuffer sb = new StringBuffer();
 
-								if(metadataRequired){
+								if (metadataRequired) {
 
-									String[] pathParts = filePath.toString().split(FileSystemService.R2_FILE_SEPARATOR_STRING);
+									String[] pathParts = filePath.toString()
+											.split(FileSystemService.R2_FILE_SEPARATOR_STRING);
 									String fileName = pathParts[pathParts.length - 1];
 									if (StringUtil.safeIsBlank(fileName) && pathParts.length > 1)
 										fileName = pathParts[pathParts.length - 2];
 									if (StringUtil.safeIsBlank(fileName))
 										fileName = "file";
-									
+
 									String mimeType = URLConnection.guessContentTypeFromName(fileName);
 									if (mimeType == null) {
 										mimeType = "application/octet-stream";
@@ -926,17 +927,19 @@ public abstract class AbstractFilesResourceService {
 									sb.append(";base64,");
 								}
 
-								try{
+								try {
 									byte[] bytes = Files.readAllBytes(filePath);
 									sb.append(Base64.getEncoder().encodeToString(bytes));
 									return Mono.just(sb.toString());
-								}catch(IOException ex){
-									return  Mono.empty();
+								} catch (IOException ex) {
+									return Mono.empty();
 								}
 
-						}).switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-								FilesMessageResourceService.FILE_CANNOT_BE_CONVERTED));
-			}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.convertToBase64"));
+							})
+							.switchIfEmpty(this.msgService.throwMessage(
+									msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+									FilesMessageResourceService.FILE_CANNOT_BE_CONVERTED));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.convertToBase64"));
 	}
 
 	public Mono<Void> readInternal(DownloadOptions downloadOptions, String filePath, ServerHttpRequest request,

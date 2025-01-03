@@ -175,7 +175,7 @@ public class AuthenticationService implements IAuthenticationService {
 				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals(SYSTEM_CC) ||
 								clientCode.equals(tup.getT1().getCode()) ||
-								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+								tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -216,7 +216,7 @@ public class AuthenticationService implements IAuthenticationService {
 				tup -> Mono.justOrEmpty(
 						tup.getT1().getCode().equals(SYSTEM_CC) ||
 								clientCode.equals(tup.getT1().getCode()) ||
-								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+								tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -278,7 +278,7 @@ public class AuthenticationService implements IAuthenticationService {
 							? Mono.just(
 									pwdEncoder.matches(user.getId() + passwordString, user.getPin()))
 							: Mono.just(StringUtil.safeEquals(passwordString, user.getPin()));
-					case OTP -> otpService.verifyOtp(appCode, user, OtpPurpose.LOGIN.name(), passwordString);
+					case OTP -> otpService.verifyOtpInternal(appCode, user, OtpPurpose.LOGIN, passwordString);
 				},
 				isValid -> Boolean.FALSE.equals(isValid) ? checkFailedAttempts(user, policy, passwordType)
 						: Mono.just(Boolean.TRUE))
@@ -328,7 +328,7 @@ public class AuthenticationService implements IAuthenticationService {
 							SecuritySoxLogObjectName.USER,
 							"Given Password is mismatching with existing.");
 
-					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID, passwordType.getName(),
+					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID_ATTEMPTS, passwordType.getName(),
 							remainingAttempts);
 				});
 	}
@@ -483,7 +483,7 @@ public class AuthenticationService implements IAuthenticationService {
 					tup -> Mono.justOrEmpty(
 							tup.getT1().getCode().equals(SYSTEM_CC) ||
 									clientCode.equals(tup.getT1().getCode()) ||
-									tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+									tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null),
 
 					(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
