@@ -1140,7 +1140,7 @@ public class AppDataService {
 				SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> Mono.justOrEmpty(SecurityContextUtil.hasAuthority(authFun.apply(storage), ca.getUser()
-						.getAuthorities()) ? true : null),
+						.getAuthorities()) ? Boolean.TRUE : null),
 
 				bifun)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.genericOperation"))
