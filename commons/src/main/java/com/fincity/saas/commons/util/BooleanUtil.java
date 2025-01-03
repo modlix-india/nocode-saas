@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono;
 
 public class BooleanUtil {
 
-    private static final Byte BYTE_0 = Byte.valueOf((byte) 0);
+    private static final Byte BYTE_0 = (byte) 0;
 
     public static boolean safeValueOf(Object object) {
 

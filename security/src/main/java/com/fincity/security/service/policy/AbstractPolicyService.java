@@ -170,11 +170,10 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				(clientAppIds, policy) -> {
 
-					if (policy != null && !isDefaultPolicy(policy)) {
+					if (policy != null && !isDefaultPolicy(policy))
 						return securityMessageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName());
-					}
 
 					entity.setClientId(clientAppIds.getT1());
 					entity.setAppId(clientAppIds.getT2());
