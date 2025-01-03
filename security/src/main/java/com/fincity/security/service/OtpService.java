@@ -94,7 +94,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				(app, tup) -> {
 					String linClientCode = tup.getT1().getCode();
 					return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode)
-							|| tup.getT1().getId().equals(tup.getT2().getId()) ? true : null);
+							|| tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null);
 				},
 				(app, tup, linCCheck) -> Mono.just(
 						new OtpGenerationRequest()

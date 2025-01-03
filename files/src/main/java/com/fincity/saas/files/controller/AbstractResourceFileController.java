@@ -119,6 +119,9 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 			@RequestParam(required = false) String clientCode,
 			@RequestPart(required = false, name = "override") String override, ServerHttpRequest request) {
 
+		// Default value is true
+		final boolean overrideValue = override == null ? true : BooleanUtil.safeValueOf(override); // NOSONAR
+
 		return FlatMapUtil.flatMapMonoWithNull(
 
 				SecurityContextUtil::getUsersContextAuthentication,
@@ -131,8 +134,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 										ca.getLoggedInFromClientCode()),
 								request.getPath()
 										.toString(),
-								fp, override != null ? BooleanUtil.safeValueOf(override)
-										: null))
+								fp, overrideValue))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.createWithZip"));
 	}
