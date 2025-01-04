@@ -69,13 +69,13 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/clients/register",
 
+				"/api/security/clients/register/otp/generate",
+
 				"/api/security/clients/socialRegister",
 
 				"/api/security/clients/socialRegister/callback",
 
 				"/api/security/clients/socialRegister/evoke",
-
-				"/api/security/clients/generateCode",
 
 				"/api/security/users/requestResetPassword",
 
