@@ -22,6 +22,7 @@ import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
+import com.fincity.security.model.OtpGenerationRequest;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.appregistration.ClientRegistrationService;
 
@@ -113,12 +114,11 @@ public class ClientController
 		return this.service.makeClientInActive(clientId).map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/generate")
-	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam(required = false) String email,
-			@RequestParam(required = false) String phoneNumber,
-			@RequestParam(defaultValue = "false") boolean isResend,
+	@PostMapping("/register/otp/generate")
+	public Mono<ResponseEntity<Boolean>> generateCode(
+			@RequestBody OtpGenerationRequest otpGenerationRequest,
 			ServerHttpRequest request) {
-		return this.clientRegistrationService.generateOtp(email, phoneNumber, isResend, request)
+		return this.clientRegistrationService.generateOtp(otpGenerationRequest, request)
 				.map(ResponseEntity::ok);
 	}
 

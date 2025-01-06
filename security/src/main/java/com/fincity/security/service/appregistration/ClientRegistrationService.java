@@ -47,6 +47,7 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
+import com.fincity.security.model.OtpGenerationRequest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientHierarchyService;
@@ -118,7 +119,7 @@ public class ClientRegistrationService {
 				SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, params);
 	}
 
-	public Mono<Boolean> generateOtp(String emailId, String phoneNumber, boolean isResend, ServerHttpRequest request) {
+	public Mono<Boolean> generateOtp(OtpGenerationRequest otpGenerationRequest, ServerHttpRequest request) {
 
 		String appCode = request.getHeaders().getFirst("appCode");
 		String clientCode = request.getHeaders().getFirst("clientCode");
@@ -134,7 +135,7 @@ public class ClientRegistrationService {
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
 						return regError("Feature not supported");
 
-					return otpService.generateOtp(emailId, phoneNumber, OtpPurpose.REGISTRATION, isResend, request);
+					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION.name()), request);
 				})
 				.switchIfEmpty(regError("Feature not supported"))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));
@@ -417,7 +418,7 @@ public class ClientRegistrationService {
 		if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
 			return Mono.just(Boolean.TRUE);
 
-		return otpService.verifyOtpInternal(appCode, emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
+		return this.otpService.verifyOtpInternal(appCode, emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
 				.flatMap(isVerified -> Mono.justOrEmpty(Boolean.TRUE.equals(isVerified) ? Boolean.TRUE : null))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),

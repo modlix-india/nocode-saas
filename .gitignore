@@ -40,3 +40,8 @@ maven-wrapper.jar
 *.log
 
 *.hprof
+
+*_SECURED.txt
+*_STATIC.txt
+*_SECURED.sql
+*_STATIC.sql
