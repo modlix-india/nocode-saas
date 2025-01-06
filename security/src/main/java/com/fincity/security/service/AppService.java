@@ -52,8 +52,6 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private final ClientService clientService;
 	private final SecurityMessageResourceService messageResourceService;
 	private final CacheService cacheService;
-	private final PackageService packageService;
-	private final RoleService roleService;
 	private final AppRegistrationDAO appRegistrationDao;
 
 	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
@@ -86,13 +84,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public static final String APP_NAME = "appName";
 	public static final String THUMB_URL = "thumbUrl";
 
-	public AppService(ClientService clientService, PackageService packageService, RoleService roleService,
-			SecurityMessageResourceService messageResourceService, CacheService cacheService,
-			AppRegistrationDAO appRegistrationDao) {
+	public AppService(ClientService clientService, SecurityMessageResourceService messageResourceService,
+	                  CacheService cacheService, AppRegistrationDAO appRegistrationDao) {
 
 		this.clientService = clientService;
-		this.packageService = packageService;
-		this.roleService = roleService;
 		this.messageResourceService = messageResourceService;
 		this.cacheService = cacheService;
 		this.appRegistrationDao = appRegistrationDao;
@@ -515,6 +510,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public Mono<App> getAppByCode(String appCode) {
 		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE, () -> this.dao.getByAppCode(appCode),
 				appCode);
+	}
+
+	public Mono<ULong> getAppId(String appCode) {
+		return this.getAppByCode(appCode).map(App::getId);
 	}
 
 	public Mono<App> getAppById(ULong appId) {

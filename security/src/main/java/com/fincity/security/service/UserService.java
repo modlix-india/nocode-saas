@@ -99,13 +99,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		this.appRegistrationDAO = appRegistrationDAO;
 	}
 
-	public Mono<User> findByUserName(ULong clientId, String userName,
-			AuthenticationIdentifierType authenticationIdentifierType) {
-
-		return this.dao.getBy(clientId, userName, authenticationIdentifierType)
-				.flatMap(this.dao::setPermissions);
-	}
-
 	public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId,
 			String clientCode, String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
 		return findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType,
@@ -579,14 +572,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	}
 
-	public Mono<Boolean> isBeingManagedBy(ULong loggedInClientId, ULong userId) {
-		return this.dao.isBeingManagedBy(loggedInClientId, userId);
-	}
-
-	public Mono<Boolean> checkRoleCreatedByUser(ULong userId, ULong roleId) {
-		return this.dao.checkRoleCreatedByUser(roleId, userId);
-	}
-
 	public Mono<Boolean> updateNewPassword(String urlAppCode, String urlClientCode, ULong reqUserId,
 			RequestUpdatePassword requestPassword, boolean isReset, AuthenticationPasswordType passwordType) {
 
@@ -738,7 +723,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	// Don't call this method other than from the client service register method
 	public Mono<User> createForRegistration(ULong appId, ULong appClientId, ULong urlClientId, Client client,
-			User user) {
+			User user, AuthenticationPasswordType passwordType) {
 
 		String password = user.getPassword();
 		user.setPassword(null);
@@ -749,7 +734,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.passwordPolicyCheck(user, appId, null, AuthenticationPasswordType.PASSWORD, password),
+				() -> this.passwordPolicyCheck(user, appId, null, passwordType, password),
 
 				u -> this.dao
 						.checkAvailabilityWithClientId(u.getClientId(), u.getUserName(), u.getEmailId(),

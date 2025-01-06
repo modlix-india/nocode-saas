@@ -1,5 +1,7 @@
 package com.fincity.security.service.appregistration;
 
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -16,6 +18,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -25,7 +28,6 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
@@ -47,6 +49,7 @@ import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.AuthenticationService;
+import com.fincity.security.service.ClientHierarchyService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.OtpService;
@@ -68,6 +71,7 @@ public class ClientRegistrationService {
 	private final OtpService otpService;
 	private final AuthenticationService authenticationService;
 	private final ClientService clientService;
+	private final ClientHierarchyService clientHierarchyService;
 	private final EventCreationService ecService;
 	private final ClientUrlService clientUrlService;
 	private final AppRegistrationDAO appRegistrationDAO;
@@ -86,6 +90,7 @@ public class ClientRegistrationService {
 
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
+			ClientHierarchyService clientHierarchyService,
 			EventCreationService ecService, ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO,
 			IFeignFilesService filesService, AppRegistrationIntegrationService appRegistrationIntegrationService,
 			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
@@ -97,6 +102,7 @@ public class ClientRegistrationService {
 		this.otpService = otpService;
 		this.authenticationService = authenticationService;
 		this.clientService = clientService;
+		this.clientHierarchyService = clientHierarchyService;
 		this.ecService = ecService;
 		this.clientUrlService = clientUrlService;
 		this.appRegistrationDAO = appRegistrationDAO;
@@ -378,6 +384,8 @@ public class ClientRegistrationService {
 		if (safeIsBlank(client.getName()))
 			return this.regError("Client name cannot be blank");
 
+		ULong loggedInFromClientId = ULongUtil.valueOf(ca.getLoggedInFromClientId());
+
 		return FlatMapUtil.flatMapMono(
 
 				() -> verifyClient(ca.getUrlAppCode(), regProp, request.getEmailId(), request.getPhoneNumber(),
@@ -389,17 +397,17 @@ public class ClientRegistrationService {
 
 				(isVerified, app, c) -> this.clientService.createForRegistration(c),
 
-				(isVerified, app, c, clnt) -> this.dao.addManageRecord(ca.getLoggedInFromClientCode(),
-						clnt.getId()),
+				(isVerified, app, c, createdClient) -> this.clientHierarchyService
+						.create(loggedInFromClientId, createdClient.getId()),
 
-				(isVerified, app, c, clnt, num) -> this.clientService.addClientPackagesAfterRegistration(
-						app.getId(), app.getClientId(), ULong.valueOf(ca.getLoggedInFromClientId()), clnt),
+				(isVerified, app, c, createdClient, clientHierarchy) -> this.clientService
+						.addClientPackagesAfterRegistration(app.getId(), app.getClientId(), loggedInFromClientId, createdClient),
 
-				(isVerified, app, c, clnt, num, packagesAdded) -> this.appService
-						.addClientAccessAfterRegistration(ca.getUrlAppCode(),
-								ULong.valueOf(ca.getLoggedInFromClientId()), clnt),
+				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
+						.addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient),
 
-				(isVerified, app, c, clnt, num, packagesAdded, clientAccessAdded) -> Mono.just(clnt))
+				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded, clientAccessAdded) -> Mono
+						.just(createdClient))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerClient"));
 	}
 
@@ -456,7 +464,7 @@ public class ClientRegistrationService {
 
 		return this.appService.getAppByCode(appCode)
 				.flatMap(app -> this.userService
-						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user)
+						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user, request.getPasswordType())
 						.map(usr -> Tuples.of(usr, pass)));
 	}
 

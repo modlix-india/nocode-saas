@@ -1,7 +1,7 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientManage.SECURITY_CLIENT_MANAGE;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -56,14 +56,14 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 	protected Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> addJoinCondition(
 			SelectJoinStep<Record> mainQuery, SelectJoinStep<Record1<Integer>> countQuery, Field<ULong> clientIdField) {
 
-		return Tuples.of((SelectJoinStep<Record>) mainQuery.leftJoin(SECURITY_CLIENT)
+		return Tuples.of(mainQuery.leftJoin(SECURITY_CLIENT)
 				.on(SECURITY_CLIENT.ID.eq(clientIdField))
-				.leftJoin(SECURITY_CLIENT_MANAGE)
-				.on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID)),
-				(SelectJoinStep<Record1<Integer>>) countQuery.leftJoin(SECURITY_CLIENT)
+				.leftJoin(SECURITY_CLIENT_HIERARCHY)
+				.on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_CLIENT.ID)),
+				countQuery.leftJoin(SECURITY_CLIENT)
 						.on(SECURITY_CLIENT.ID.eq(clientIdField))
-						.leftJoin(SECURITY_CLIENT_MANAGE)
-						.on(SECURITY_CLIENT_MANAGE.CLIENT_ID.eq(SECURITY_CLIENT.ID)));
+						.leftJoin(SECURITY_CLIENT_HIERARCHY)
+						.on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_CLIENT.ID)));
 	}
 
 	@Override
@@ -80,7 +80,7 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 					ULong clientId = ULong.valueOf(ca.getUser()
 							.getClientId());
 
-					return condition.map(c -> DSL.and(c, SECURITY_CLIENT_MANAGE.MANAGE_CLIENT_ID.eq(clientId)
+					return condition.map(c -> DSL.and(c, SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(clientId)
 							.or(SECURITY_CLIENT.ID.eq(clientId))));
 				})
 				.switchIfEmpty(condition);

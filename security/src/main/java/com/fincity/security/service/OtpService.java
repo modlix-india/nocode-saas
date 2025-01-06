@@ -216,7 +216,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 
 				() -> this.appService.getAppByCode(request.getAppCode()),
 
-				app -> clientOtpPolicyService.read(request.getClientId(), app.getId()),
+				app -> clientOtpPolicyService.getClientAppPolicy(request.getClientId(), app.getId()),
 
 				(app, otpPolicy) -> {
 

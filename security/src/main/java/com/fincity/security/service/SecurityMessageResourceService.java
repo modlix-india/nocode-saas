@@ -50,6 +50,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String REGEX_MISMATCH = "regex_mismatch";
 	public static final String MIN_LENGTH_ERROR = "min_length_error";
 	public static final String MAX_LENGTH_ERROR = "max_length_error";
+	public static final String LENGTH_ERROR = "length_error";
 	public static final String USER_NOT_ACTIVE = "user_not_active";
 	public static final String OLD_NEW_PASSWORD_MATCH = "old_new_password_match";
 	public static final String NEW_PASSWORD_MISSING = "new_password_missing";
