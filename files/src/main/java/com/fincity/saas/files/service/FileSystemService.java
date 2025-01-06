@@ -343,7 +343,7 @@ public class FileSystemService {
                                     .bucket(bucketName)
                                     .contentDisposition(
                                             "attachment; filename=\"" + file.getFileName().toString() + "\"")
-                                    .key(clientCode + R2_FILE_SEPARATOR_STRING + path)
+                                    .key((clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"))
                                     .build(),
                             AsyncRequestBody.fromFile(file)));
                 },

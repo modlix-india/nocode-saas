@@ -5,17 +5,21 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +44,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 public class FilesutilityApplication {
 
 	private static final String BUCKET_NAME_STATIC = "prod-static";
-	private static final String BUCKET_NAME_SECURED = "local-secured";
+	private static final String BUCKET_NAME_SECURED = "prod-secured";
 	private static final String ENDPOINT = "https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com";
 	private static final String ACCESS_KEY = "";
 	private static final String SECRET_KEY = "";
@@ -49,15 +53,14 @@ public class FilesutilityApplication {
 	private static final String LOCAL_SECURED_LOCATION = "C:\\Users\\kiran\\Downloads\\imp downloads\\files\\secured"; // NOSONAR
 
 	private static final String DB_CONNECTION_STRING = "jdbc:mysql://localhost:3306/files";
-	private static final String DB_USERNAME = "root";
-	private static final String DB_PASSWORD = "Kiran@123";
+	private static final String DB_USERNAME = "";
+	private static final String DB_PASSWORD = "";
 
 	private static final String R2_FILE_SEPARATOR = "/";
 
 	private static final Logger logger = LoggerFactory.getLogger(FilesutilityApplication.class);
 
 	private static final Map<String, String> CONTENT_TYPE_MAP = new HashMap<>(Map.ofEntries(
-
 			Map.entry(".aac", "audio/aac"), Map.entry(".abw", "application/x-abiword"),
 			Map.entry(".apng", "image/apng"), Map.entry(".arc", "application/x-freearc"),
 			Map.entry(".avif", "image/avif"), Map.entry(".avi", "video/x-msvideo"),
@@ -119,6 +122,8 @@ public class FilesutilityApplication {
 		// emptyTable(connection);
 		// logger.info("Database connection established successfully.");
 
+		// Use v1 method for local and use the below method for cloudflare, which
+		// generates the sql file
 		// uploadFilesToDB(s3Client, connection, "STATIC", BUCKET_NAME_STATIC);
 		// uploadFilesToDB(s3Client, connection, "SECURED", BUCKET_NAME_SECURED);
 		// } catch (SQLException e) {
@@ -195,7 +200,7 @@ public class FilesutilityApplication {
 
 	public static void emptyTable(Connection connection) {
 
-		try(Statement statement = connection.createStatement()) {
+		try (Statement statement = connection.createStatement()) {
 			statement.executeUpdate("TRUNCATE TABLE files_file_system");
 			logger.info("Table truncated successfully.");
 		} catch (SQLException e) {
@@ -204,6 +209,131 @@ public class FilesutilityApplication {
 	}
 
 	public static void uploadFilesToDB(S3Client s3Client, Connection connection, String type, String bucketName)
+			throws SQLException {
+
+		SdkIterable<S3Object> iterable = s3Client
+				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).build())
+				.contents();
+
+		record S3Size(String key, Long size) {
+		}
+
+		List<S3Size> sb = new ArrayList<>();
+		Set<String> directories = new HashSet<>();
+		for (S3Object s3Object : iterable) {
+
+			String key = s3Object.key();
+			if (key.startsWith("js"))
+				continue;
+			int index = key.indexOf("/");
+			if (index == -1)
+				continue;
+
+			int doublIndex = key.indexOf("//", index);
+			if (doublIndex != -1) {
+
+				String newKey = key.replace("//", "/");
+				s3Client.copyObject(CopyObjectRequest.builder()
+						.sourceBucket(bucketName)
+						.sourceKey(key)
+						.destinationBucket(bucketName)
+						.destinationKey(newKey)
+						.build());
+				s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
+				logger.info("Key updated: {} to {}", key, newKey);
+				key = newKey;
+			}
+			sb.add(new S3Size(key, s3Object.size()));
+			directories.add(key.substring(0, key.lastIndexOf("/")));
+		}
+
+		Map<String, Long> directoryIds = new HashMap<>();
+
+		try {
+			Files.write(Paths.get("directories_" + type + ".txt"),
+					directories.stream().filter(e -> e.contains("/")).sorted().collect(Collectors.joining("\n"))
+							.getBytes(),
+					StandardOpenOption.CREATE,
+					StandardOpenOption.TRUNCATE_EXISTING);
+		} catch (IOException e) {
+			logger.error("Failed to write to file.", e);
+		}
+
+		directories.stream().sorted((a, b) -> b.compareTo(a)).forEach(d -> {
+			try {
+				int index = d.indexOf("/");
+				if (index == -1)
+					return;
+				findParentId(d.substring(index + 1), d.substring(0, index), directoryIds, type, connection);
+
+			} catch (SQLException e) {
+				logger.error("Failed to finding id of : {}", d, e);
+			}
+		});
+		logger.info("Directories added to the database successfully.");
+
+		String query = "INSERT INTO files_file_system (TYPE, FILE_TYPE, CODE, NAME, SIZE, PARENT_ID) VALUES ('" + type
+				+ "','FILE', ";
+
+		StringBuilder sql = new StringBuilder();
+		for (S3Size s3Size : sb) {
+			String key = s3Size.key;
+			int index = key.indexOf("/");
+			if (index == -1)
+				continue;
+
+			String code = key.substring(0, index);
+			key = key.substring(index + 1);
+			index = key.lastIndexOf("/");
+			String directory = index == -1 ? null : key.substring(0, index);
+			String fileName = index == -1 ? key : key.substring(index + 1);
+
+			Long parentId = findParentId(directory, code, directoryIds, type, connection);
+
+			sql.append(query)
+					.append("'")
+					.append(code)
+					.append("', '")
+					.append(fileName.replace("'", "''"))
+					.append("', ")
+					.append(s3Size.size)
+					.append(", ")
+					.append(parentId == null ? "NULL" : parentId)
+					.append(");")
+					.append("\n");
+			// fileStatement.setString(1, code);
+			// fileStatement.setString(2, fileName);
+			// fileStatement.setLong(3, s3Size.size);
+			// if (parentId != null)
+			// fileStatement.setLong(4, parentId);
+			// else
+			// fileStatement.setNull(4, Types.BIGINT); // NOSONAR
+
+			// fileStatement.addBatch();
+
+			// if (batchSize == 500) {
+			// fileStatement.executeBatch();
+			// batchSize = 0;
+			// logger.info("Batch size reached. Executing batch.");
+			// fileStatement.executeBatch();
+			// logger.info("Batch executed successfully.");
+			// }
+		}
+
+		try {
+			Files.write(Paths.get("files_" + type + ".txt"),
+					sb.stream().map(S3Size::key).collect(Collectors.joining("\n")).getBytes(),
+					StandardOpenOption.CREATE,
+					StandardOpenOption.TRUNCATE_EXISTING);
+
+			Files.write(Paths.get("files_" + type + ".sql"), sql.toString().getBytes(), StandardOpenOption.CREATE,
+					StandardOpenOption.TRUNCATE_EXISTING);
+		} catch (IOException e) {
+			logger.error("Failed to write to file.", e);
+		}
+	}
+
+	public static void uploadFilesToDBv1(S3Client s3Client, Connection connection, String type, String bucketName)
 			throws SQLException {
 		SdkIterable<S3Object> iterable = s3Client
 				.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucketName).build())
@@ -216,12 +346,28 @@ public class FilesutilityApplication {
 				"INSERT INTO files_file_system (TYPE, CODE, NAME, FILE_TYPE, SIZE, PARENT_ID) VALUES ('" + type
 						+ "', ?, ?, 'FILE', ?, ?)");
 
+		int count = 0;
+		int errorCount = 0;
 		for (S3Object s3Object : iterable) {
 
 			String key = s3Object.key();
 			int index = key.indexOf("/");
+			count++;
 			if (index == -1)
 				continue;
+
+			if (index == 0) {
+				errorCount++;
+				logger.info("Error : {}", key);
+				continue;
+			}
+
+			int doubleSlashIndex = key.indexOf("//", index);
+			if (doubleSlashIndex != -1) {
+				errorCount++;
+				logger.info("Error : {}", key);
+			}
+
 			String code = key.substring(0, index);
 			key = key.substring(index + 1);
 			index = key.lastIndexOf("/");
@@ -238,18 +384,21 @@ public class FilesutilityApplication {
 				fileStatement.setLong(4, parentId);
 			else
 				fileStatement.setNull(4, Types.BIGINT); // NOSONAR
-			fileStatement.addBatch();
+			// fileStatement.addBatch();
 
-			if (batchSize == 100) {
-				fileStatement.executeBatch();
+			if (batchSize == 1000) {
+				// fileStatement.executeBatch();
 				batchSize = 0;
 				logger.info("Batch size reached. Executing batch.");
 			}
 		}
 
+		logger.info("Total files: {}", count);
+		logger.info("Error files: {}", errorCount);
+
 		if (batchSize > 0) {
 			logger.info("Executing remaining batch.");
-			fileStatement.executeBatch();
+			// fileStatement.executeBatch();
 		}
 
 		logger.info("{} files uploaded to the database successfully.", type);
@@ -288,7 +437,7 @@ public class FilesutilityApplication {
 			else
 				directoryStatement.setNull(2, Types.BIGINT);
 
-			logger.info("Inserting directory: {}", directoryStatement.toString());
+			// logger.info("Inserting directory: {}", directoryStatement.toString());
 			directoryStatement.execute();
 			ResultSet rs = directoryStatement.getGeneratedKeys();
 			if (!rs.next())
