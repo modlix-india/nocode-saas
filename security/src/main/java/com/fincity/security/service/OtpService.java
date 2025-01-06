@@ -105,7 +105,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 								.setResend(authRequest.isResend())
 								.setPurpose(purpose.name())),
 
-				(app, tup, linCCheck, targetReq) -> this.generateOtp(targetReq))
+				(app, tup, linCCheck, targetReq) -> this.generateOtpInternal(targetReq))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
 						"OtpService.generateOtp : [" + purpose.name() + "]"));
@@ -133,10 +133,43 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 							.setResend(isResend)
 							.setPurpose(purpose.name());
 
-					return this.generateOtp(targetReq);
+					return this.generateOtpInternal(targetReq);
 				})
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [" + purpose.name() + "]"));
+	}
+
+	public Mono<Boolean> generateOtpInternal(OtpGenerationRequestInternal request) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppByCode(request.getAppCode()),
+
+				app -> clientOtpPolicyService.getClientAppPolicy(request.getClientId(), app.getId()),
+
+				(app, otpPolicy) -> {
+
+					SecurityOtpTargetType target = SecurityOtpTargetType
+							.lookupLiteral(otpPolicy.getTargetType().getLiteral());
+
+					return target == null ? Mono.just(DEFAULT_TARGET) : Mono.just(target);
+				},
+
+				(app, otpPolicy, target) -> {
+					if (request.isResend() && otpPolicy.isResendSameOtp())
+						return getOtpForResend(request);
+
+					return Mono.just(Tuples.of(Boolean.TRUE, otpPolicy.generate()));
+				},
+
+				(app, otpPolicy, target, otpCode) -> sendOtp(request, target, otpCode.getT2()),
+
+				(app, otpPolicy, target, otpCode, otpSent) -> Boolean.TRUE.equals(otpSent)
+						? this.createOtp(request, target, otpCode, otpPolicy.getExpireInterval().longValue())
+								.map(otpHistory -> Boolean.TRUE).onErrorReturn(Boolean.FALSE)
+						: Mono.just(Boolean.FALSE))
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp"));
 	}
 
 	public Mono<Boolean> verifyOtp(String clientCode, String appCode, String emailId, String phoneNumber,
@@ -210,49 +243,14 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [emailId, phoneNumber]"));
 	}
 
-	private Mono<Boolean> generateOtp(OtpGenerationRequestInternal request) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.appService.getAppByCode(request.getAppCode()),
-
-				app -> clientOtpPolicyService.getClientAppPolicy(request.getClientId(), app.getId()),
-
-				(app, otpPolicy) -> {
-
-					SecurityOtpTargetType target = SecurityOtpTargetType
-							.lookupLiteral(otpPolicy.getTargetType().getLiteral());
-
-					return target == null ? Mono.just(DEFAULT_TARGET) : Mono.just(target);
-				},
-
-				(app, otpPolicy, target) -> {
-					if (request.isResend() && otpPolicy.isResendSameOtp())
-						return getOtpForResend(request);
-
-					return Mono.just(Tuples.of(Boolean.TRUE, otpPolicy.generate()));
-				},
-
-				(app, otpPolicy, target, otpCode) -> sendOtp(request, target, otpCode.getT2()),
-
-				(app, otpPolicy, target, otpCode, otpSent) -> Boolean.TRUE.equals(otpSent)
-						? this.createOtp(request, target, otpCode, otpPolicy.getExpireInterval().longValue())
-								.map(otpHistory -> Boolean.TRUE).onErrorReturn(Boolean.FALSE)
-						: Mono.just(Boolean.FALSE))
-				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp"));
-	}
-
 	private Mono<Tuple2<Boolean, String>> getOtpForResend(OtpGenerationRequestInternal request) {
 
 		if (request.isWithUser())
-			return this.dao.getLatestOtpCode(request.getAppId(), request.getUserId(),
-					request.getPurpose())
+			return this.dao.getLatestOtpCode(request.getAppId(), request.getUserId(), request.getPurpose())
 					.flatMap(lastOtp -> Mono.just(Tuples.of(Boolean.TRUE, lastOtp)));
 
 		return this.dao.getLatestOtpCode(request.getAppId(), request.getEmailId(), request.getPhoneNumber(),
-				request.getPurpose())
-				.flatMap(lastOtp -> Mono.just(Tuples.of(Boolean.TRUE, lastOtp)));
+				request.getPurpose()).flatMap(lastOtp -> Mono.just(Tuples.of(Boolean.TRUE, lastOtp)));
 	}
 
 	private Mono<Boolean> sendOtp(OtpGenerationRequestInternal request, SecurityOtpTargetType targetType, String otp) {
