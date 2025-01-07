@@ -15,6 +15,7 @@ import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.OtpDAO;
@@ -25,8 +26,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecurityOtpTargetType;
 import com.fincity.security.jooq.tables.records.SecurityOtpRecord;
-import com.fincity.security.model.AuthenticationIdentifierType;
-import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.model.OtpGenerationRequest;
 import com.fincity.security.model.OtpGenerationRequestInternal;
 import com.fincity.security.model.OtpMessageVars;
 import com.fincity.security.service.message.MessageService;
@@ -69,50 +69,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 		return this.dao.create(entity);
 	}
 
-	public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
-
-		if (!authRequest.isGenerateOtp())
-			return Mono.just(false);
-
-		String appCode = request.getHeaders().getFirst("appCode");
-		String clientCode = request.getHeaders().getFirst("clientCode");
-
-		if (authRequest.getIdentifierType() == null)
-			authRequest.setIdentifierType(StringUtil.safeIsBlank(authRequest.getUserName()) || authRequest.getUserName()
-					.indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
-							: AuthenticationIdentifierType.EMAIL_ID);
-
-		OtpPurpose purpose = OtpPurpose.LOGIN;
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.appService.getAppByCode(appCode),
-
-				app -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-						clientCode, appCode, authRequest.getIdentifierType()),
-
-				(app, tup) -> {
-					String linClientCode = tup.getT1().getCode();
-					return Mono.justOrEmpty(linClientCode.equals("SYSTEM") || clientCode.equals(linClientCode)
-							|| tup.getT1().getId().equals(tup.getT2().getId()) ? Boolean.TRUE : null);
-				},
-				(app, tup, linCCheck) -> Mono.just(
-						new OtpGenerationRequestInternal()
-								.setClientOption(tup.getT1())
-								.setAppOption(app)
-								.setWithUserOption(tup.getT3())
-								.setIpAddress(request.getRemoteAddress())
-								.setResend(authRequest.isResend())
-								.setPurpose(purpose.name())),
-
-				(app, tup, linCCheck, targetReq) -> this.generateOtpInternal(targetReq))
-				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"OtpService.generateOtp : [" + purpose.name() + "]"));
-	}
-
-	public Mono<Boolean> generateOtp(String emailId, String phoneNumber, OtpPurpose purpose, boolean isResend,
-			ServerHttpRequest request) {
+	public Mono<Boolean> generateOtp(OtpGenerationRequest otpGenerationRequest, ServerHttpRequest request) {
 
 		String appCode = request.getHeaders().getFirst("appCode");
 		String clientCode = request.getHeaders().getFirst("clientCode");
@@ -128,15 +85,15 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 					OtpGenerationRequestInternal targetReq = new OtpGenerationRequestInternal()
 							.setClientOption(appInherit.getT1())
 							.setAppOption(appInherit.getT2())
-							.setWithoutUserOption(emailId, phoneNumber)
+							.setWithoutUserOption(otpGenerationRequest.getEmailId(), otpGenerationRequest.getEmailId())
 							.setIpAddress(request.getRemoteAddress())
-							.setResend(isResend)
-							.setPurpose(purpose.name());
+							.setResend(otpGenerationRequest.isResend())
+							.setPurpose(otpGenerationRequest.getPurpose());
 
 					return this.generateOtpInternal(targetReq);
 				})
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [" + purpose.name() + "]"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [OtpGenerationRequest, ServerHttpRequest]"));
 	}
 
 	public Mono<Boolean> generateOtpInternal(OtpGenerationRequestInternal request) {
@@ -169,15 +126,14 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 								.map(otpHistory -> Boolean.TRUE).onErrorReturn(Boolean.FALSE)
 						: Mono.just(Boolean.FALSE))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtpInternal"));
 	}
 
 	public Mono<Boolean> verifyOtp(String clientCode, String appCode, String emailId, String phoneNumber,
 			OtpPurpose purpose, String uniqueCode) {
 
 		if (StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(appCode) || purpose == null ||
-				StringUtil.safeIsBlank(uniqueCode)
-				|| (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
+				StringUtil.safeIsBlank(uniqueCode) || (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
 			return Mono.just(Boolean.FALSE);
 
 		return FlatMapUtil.flatMapMono(

@@ -135,7 +135,8 @@ public class ClientRegistrationService {
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
 						return regError("Feature not supported");
 
-					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION.name()), request);
+					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION.name()),
+							request);
 				})
 				.switchIfEmpty(regError("Feature not supported"))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));
@@ -308,7 +309,6 @@ public class ClientRegistrationService {
 					return this.regError("Business clients are required for B2B2X Applications at owner level");
 
 				break;
-
 			case B2X2C:
 				if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
 					return this.regError("Only Applications owner can register for B2X2C Applications");
@@ -402,7 +402,8 @@ public class ClientRegistrationService {
 						.create(loggedInFromClientId, createdClient.getId()),
 
 				(isVerified, app, c, createdClient, clientHierarchy) -> this.clientService
-						.addClientPackagesAfterRegistration(app.getId(), app.getClientId(), loggedInFromClientId, createdClient),
+						.addClientPackagesAfterRegistration(app.getId(), app.getClientId(), loggedInFromClientId,
+								createdClient),
 
 				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
 						.addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient),
@@ -465,7 +466,8 @@ public class ClientRegistrationService {
 
 		return this.appService.getAppByCode(appCode)
 				.flatMap(app -> this.userService
-						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user, request.getPasswordType())
+						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user,
+								request.getPasswordType())
 						.map(usr -> Tuples.of(usr, pass)));
 	}
 
@@ -566,8 +568,8 @@ public class ClientRegistrationService {
 	}
 
 	private Mono<ClientRegistrationResponse> getClientRegistrationResponse(
-			ClientRegistrationRequest registrationRequest, ULong userId, String password,
-			ServerHttpRequest request, ServerHttpResponse response) {
+			ClientRegistrationRequest registrationRequest, ULong userId, String password, ServerHttpRequest request,
+			ServerHttpResponse response) {
 
 		return this.getClientAuthenticationResponse(registrationRequest, password, request, response)
 				.flatMap(auth -> Mono.just(new ClientRegistrationResponse(true, userId, "", auth)))
