@@ -75,8 +75,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 							.flatMap(managed -> Boolean.TRUE.equals(managed) ? super.create(entity) : Mono.empty());
 				},
 
-				(ca, created) -> cacheService.evict(getPolicyCacheName(), created.getClientId(),
-						created.getAppId()),
+				(ca, created) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(created.getClientId(), created.getAppId())),
 
 				(ca, created, evicted) -> Mono.just(created))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -116,8 +116,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(key, fields) : Mono.empty(),
 
-				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
-						updated.getAppId()),
+				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(updated.getClientId(), updated.getAppId())),
 
 				(canUpdate, updated, evicted) -> Mono.just(updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -135,8 +135,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(entity) : Mono.empty(),
 
-				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
-						updated.getAppId()),
+				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(entity.getClientId(), entity.getAppId())),
 
 				(canUpdate, updated, evicted) -> Mono.just(updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -156,8 +156,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				(entity, canDelete) -> Boolean.TRUE.equals(canDelete) ? super.delete(id) : Mono.empty(),
 
-				(entity, canDelete, deleted) -> cacheService.evict(getPolicyCacheName(), entity.getClientId(),
-						entity.getAppId()),
+				(entity, canDelete, deleted) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(entity.getClientId(), entity.getAppId())),
 
 				(entity, canDelete, deleted, evicted) -> Mono.just(deleted))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -222,7 +222,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
 		return this.cacheService.cacheEmptyValueOrGet(this.getPolicyCacheName(),
-				() -> this.dao.getClientAppPolicy(clientId, appId), clientId, appId)
+				() -> this.dao.getClientAppPolicy(clientId, appId), getCacheKeys(clientId, appId))
 				.switchIfEmpty(this.getDefaultPolicy());
 	}
 
@@ -240,5 +240,9 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 	private boolean isDefaultPolicy(D policy) {
 		return policy.getId() == null || policy.getId().equals(DEFAULT_POLICY_ID);
+	}
+
+	private String getCacheKeys(ULong clientId, ULong appId) {
+		return clientId + ":" + appId;
 	}
 }
