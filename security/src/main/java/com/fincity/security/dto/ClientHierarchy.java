@@ -1,8 +1,7 @@
 package com.fincity.security.dto;
 
 import java.io.Serial;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Objects;
 
 import org.jooq.types.ULong;
 
@@ -29,35 +28,37 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong manageClientLevel3;
 
 	public enum Level {
-		ZERO, ONE, TWO, THREE
-	}
-
-	public List<ULong> getClientLevels() {
-		List<ULong> clientLevels = new LinkedList<>();
-		clientLevels.add(clientId);
-		clientLevels.add(manageClientLevel0);
-		clientLevels.add(manageClientLevel1);
-		clientLevels.add(manageClientLevel2);
-		clientLevels.add(manageClientLevel3);
-		return clientLevels;
+		SYSTEM, ZERO, ONE, TWO, THREE
 	}
 
 	public boolean isSystemClient() {
-		return this.manageClientLevel0 == null && this.manageClientLevel1 == null
-				&& this.manageClientLevel2 == null && this.manageClientLevel3 == null;
+		return this.manageClientLevel0 == null
+				&& this.manageClientLevel1 == null
+				&& this.manageClientLevel2 == null
+				&& this.manageClientLevel3 == null;
 	}
 
 	public boolean canAddLevel() {
-		return this.manageClientLevel3 != null || this.manageClientLevel2 != null || this.manageClientLevel1 != null;
+		return this.manageClientLevel1 != null
+				|| this.manageClientLevel2 != null
+				|| this.manageClientLevel3 != null;
 	}
 
 	public boolean isManagedBy(ULong clientId) {
-		return this.clientId.equals(clientId) || this.manageClientLevel0.equals(clientId) || this.manageClientLevel1.equals(clientId)
-				|| this.manageClientLevel2.equals(clientId) || this.manageClientLevel3.equals(clientId);
+		if (clientId == null) {
+			return false;
+		}
+
+		return this.clientId.equals(clientId)
+				|| Objects.equals(this.manageClientLevel0, clientId)
+				|| Objects.equals(this.manageClientLevel1, clientId)
+				|| Objects.equals(this.manageClientLevel2, clientId)
+				|| Objects.equals(this.manageClientLevel3, clientId);
 	}
 
 	public ULong getManagingClient(Level level) {
 		return switch (level) {
+			case SYSTEM -> isSystemClient() ? this.clientId : null;
 			case ZERO -> this.manageClientLevel0;
 			case ONE -> this.manageClientLevel1;
 			case TWO -> this.manageClientLevel2;
@@ -79,6 +80,6 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 		if (this.manageClientLevel0 != null)
 			return Level.ZERO;
 
-		return null;
+		return Level.SYSTEM;
 	}
 }

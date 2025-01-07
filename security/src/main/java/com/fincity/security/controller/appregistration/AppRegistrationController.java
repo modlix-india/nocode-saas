@@ -27,16 +27,14 @@ import reactor.core.publisher.Mono;
 @RequestMapping("api/security/applications/reg")
 public class AppRegistrationController {
 
-    private AppRegistrationService service;
+    private final AppRegistrationService service;
 
     @InitBinder
     public void initBinder(DataBinder binder) {
         binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
             @Override
             public void setAsText(String text) {
-                if (text == null)
-                    setValue(null);
-                setValue(ULong.valueOf(text));
+	            setValue(text == null ? null : Long.valueOf(text));
             }
         });
     }
