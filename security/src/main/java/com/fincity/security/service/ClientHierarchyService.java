@@ -100,6 +100,10 @@ public class ClientHierarchyService
 	}
 
 	public Mono<ULong> getManagingClient(ULong clientId, ClientHierarchy.Level level) {
+
+		if (level.equals(ClientHierarchy.Level.SYSTEM))
+			return this.clientService.getSystemClientId();
+
 		return this.getClientHierarchy(clientId).map(clientHierarchy -> clientHierarchy.getManagingClient(level));
 	}
 
@@ -118,4 +122,6 @@ public class ClientHierarchyService
 				managingClientId -> isUserBeingManaged(managingClientId, userId))
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
+
+
 }

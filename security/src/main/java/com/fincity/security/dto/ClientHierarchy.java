@@ -45,9 +45,8 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	public boolean isManagedBy(ULong clientId) {
-		if (clientId == null) {
+		if (clientId == null)
 			return false;
-		}
 
 		return this.clientId.equals(clientId)
 				|| Objects.equals(this.manageClientLevel0, clientId)
@@ -56,6 +55,7 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 				|| Objects.equals(this.manageClientLevel3, clientId);
 	}
 
+	// Always use this through service
 	public ULong getManagingClient(Level level) {
 		return switch (level) {
 			case SYSTEM -> isSystemClient() ? this.clientId : null;
