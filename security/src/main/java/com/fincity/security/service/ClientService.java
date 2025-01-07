@@ -197,8 +197,7 @@ public class ClientService
 
 		IPolicyService<T> policyService = (IPolicyService<T>) policyServices.get(passwordType);
 
-		return this.cacheService.cacheEmptyValueOrGet(policyService.getPolicyCacheName(),
-				() -> policyService.getClientAppPolicy(clientId, appId), clientId, appId);
+		return policyService.getClientAppPolicy(clientId, appId);
 	}
 
 	public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, String appCode,
