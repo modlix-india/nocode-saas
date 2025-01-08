@@ -1,7 +1,9 @@
 package com.fincity.security.dto;
 
 import java.io.Serial;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 
@@ -39,9 +41,7 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	public boolean canAddLevel() {
-		return this.manageClientLevel1 != null
-				|| this.manageClientLevel2 != null
-				|| this.manageClientLevel3 != null;
+		return this.manageClientLevel3 == null;
 	}
 
 	public boolean isManagedBy(ULong clientId) {
@@ -81,5 +81,35 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 			return Level.ZERO;
 
 		return Level.SYSTEM;
+	}
+
+	public Set<ULong> getClientIds(Level level) {
+
+		Set<ULong> clientIds = new HashSet<>();
+		clientIds.add(this.clientId);
+
+		if (Level.ZERO.equals(level)) {
+			clientIds.add(this.manageClientLevel0);
+		}
+
+		if (Level.ONE.equals(level)) {
+			clientIds.add(this.manageClientLevel0);
+			clientIds.add(this.manageClientLevel1);
+		}
+		if (Level.TWO.equals(level)) {
+			clientIds.add(this.manageClientLevel0);
+			clientIds.add(this.manageClientLevel1);
+			clientIds.add(this.manageClientLevel2);
+		}
+
+		if (Level.THREE.equals(level)) {
+			clientIds.add(this.manageClientLevel0);
+			clientIds.add(this.manageClientLevel1);
+			clientIds.add(this.manageClientLevel2);
+			clientIds.add(this.manageClientLevel3);
+		}
+
+		clientIds.remove(null);
+		return clientIds;
 	}
 }

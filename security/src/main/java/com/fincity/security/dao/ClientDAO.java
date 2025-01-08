@@ -80,7 +80,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                                     .leftJoin(SECURITY_CLIENT_HIERARCHY)
                                     .on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID
                                             .eq(SECURITY_CLIENT.ID))));
-
                 });
     }
 
@@ -95,8 +94,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
                     ULong clientId = ULong.valueOf(ca.getUser().getClientId());
 
-                    return DSL.and(cond, SECURITY_CLIENT.ID.eq(clientId)
-                            .or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(clientId)));
+                    return DSL.and(cond, ClientHierarchyDAO.getManageClientCondition(clientId));
                 }));
     }
 

@@ -180,8 +180,7 @@ public class ClientRegistrationService {
 						.createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
 								userTuple.getT2())
 						.flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
-								userTuple.getT1().getId(), userTuple.getT2(), request, response))
-						.map(ClientRegistrationResponse.class::cast),
+								userTuple.getT1().getId(), userTuple.getT2(), request, response)),
 
 				(ca, subDomain, regProp, client, policy, userTuple, token, filesAccessCreated,
 						res) -> {
@@ -190,8 +189,8 @@ public class ClientRegistrationService {
 						return Mono.just(res);
 
 					return this.clientUrlService.createForRegistration(
-							new ClientUrl().setAppCode(ca.getUrlAppCode()).setUrlPattern(subDomain)
-									.setClientId(client.getId()))
+							new ClientUrl().setAppCode(ca.getUrlAppCode())
+									.setUrlPattern(subDomain).setClientId(client.getId()))
 							.map(e -> res.setRedirectURL(subDomain));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
@@ -221,9 +220,9 @@ public class ClientRegistrationService {
 		Mono<ClientLevelType> clientLevelTypeMono = appMono.flatMap(app -> this.clientService
 				.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()));
 
-		Mono<Boolean> checkIfUserExists = registrationRequest.isBusinessClient() ? Mono.just(true)
+		Mono<Boolean> checkIfUserExists = registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
 				: this.userService
-						.checkUserExists(ca.getUrlAppCode(), ca.getLoggedInFromClientCode(), registrationRequest)
+						.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
 						.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.CONFLICT, msg),
 								SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
@@ -326,7 +325,7 @@ public class ClientRegistrationService {
 				return this.regError("Invalid Application Usage Type");
 		}
 
-		return Mono.just(true);
+		return Mono.just(Boolean.TRUE);
 	}
 
 	private Mono<String> fetchAppProp(ULong clientId, ULong appId, String appCode, String propName) {
@@ -594,7 +593,7 @@ public class ClientRegistrationService {
 							&& !appRegIntgToken.getUsername().equals(registrationRequest.getEmailId()))
 						return this.regError("Username and EmailId should not be changed");
 
-					return Mono.just(true);
+					return Mono.just(Boolean.TRUE);
 				},
 				(ca, appRegIntgToken, emailChecked) -> {
 

@@ -27,6 +27,9 @@ CREATE TABLE `security`.`security_client_hierarchy`
   COLLATE = `UTF8MB4_UNICODE_CI`;
 
 -- Adding SYSTEM to security.security_client_hierarchy
+INSERT IGNORE INTO security.security_client_manage (CLIENT_ID, MANAGE_CLIENT_ID)
+    (SELECT id, 1 FROM `security`.security_client WHERE id NOT IN (SELECT client_id FROM security.security_client_manage) AND CODE <> 'SYSTEM');
+
 INSERT INTO `security`.`security_client_hierarchy` (`CLIENT_ID`,
                                                     `MANAGE_CLIENT_LEVEL_0`,
                                                     `MANAGE_CLIENT_LEVEL_1`,
