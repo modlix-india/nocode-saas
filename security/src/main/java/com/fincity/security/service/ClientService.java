@@ -556,7 +556,7 @@ public class ClientService
 						return Mono.just(ClientLevelType.OWNER);
 
 					return switch (clientHierarchy.getMaxLevel()) {
-						case SYSTEM, ZERO -> Mono.just(ClientLevelType.CLIENT);
+						case SYSTEM ,ZERO -> Mono.just(ClientLevelType.CLIENT);
 						case ONE -> Mono.just(ClientLevelType.CUSTOMER);
 						case TWO, THREE -> Mono.just(ClientLevelType.CONSUMER);
 					};

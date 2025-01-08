@@ -92,7 +92,8 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 					return this.generateOtpInternal(targetReq);
 				})
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [OtpGenerationRequest, ServerHttpRequest]"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"OtpService.generateOtp : [OtpGenerationRequest, ServerHttpRequest]"));
 	}
 
 	public Mono<Boolean> generateOtpInternal(OtpGenerationRequestInternal request) {
@@ -118,7 +119,8 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 					return Mono.just(Tuples.of(Boolean.TRUE, otpPolicy.generate()));
 				},
 
-				(app, otpPolicy, target, otpCode) -> sendOtp(request, target, otpCode.getT2()),
+				(app, otpPolicy, target, otpCode) -> sendOtp(request, target, otpPolicy.getExpireInterval().longValue(),
+						otpCode.getT2()),
 
 				(app, otpPolicy, target, otpCode, otpSent) -> Boolean.TRUE.equals(otpSent)
 						? this.createOtp(request, target, otpCode, otpPolicy.getExpireInterval().longValue())
@@ -132,7 +134,8 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 			OtpPurpose purpose, String uniqueCode) {
 
 		if (StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(appCode) || purpose == null ||
-				StringUtil.safeIsBlank(uniqueCode) || (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
+				StringUtil.safeIsBlank(uniqueCode)
+				|| (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
 			return Mono.just(Boolean.FALSE);
 
 		return FlatMapUtil.flatMapMono(
@@ -208,7 +211,9 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				request.getPurpose()).flatMap(lastOtp -> Mono.just(Tuples.of(Boolean.TRUE, lastOtp)));
 	}
 
-	private Mono<Boolean> sendOtp(OtpGenerationRequestInternal request, SecurityOtpTargetType targetType, String otp) {
+	private Mono<Boolean> sendOtp(OtpGenerationRequestInternal request, SecurityOtpTargetType targetType,
+			Long expireInterval,
+			String otp) {
 
 		if (StringUtil.safeIsBlank(otp))
 			return Mono.just(Boolean.FALSE);
@@ -217,23 +222,23 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 		boolean hasPhone = !StringUtil.safeIsBlank(request.getPhoneNumber());
 
 		return switch (targetType) {
-			case EMAIL -> hasEmail ? sendEmailOtp(request, otp)
+			case EMAIL -> hasEmail ? sendEmailOtp(request, expireInterval, otp)
 					: Mono.just(Boolean.FALSE);
-			case PHONE -> hasPhone ? sendPhoneOtp(request, otp)
+			case PHONE -> hasPhone ? sendPhoneOtp(request, expireInterval, otp)
 					: Mono.just(Boolean.FALSE);
-			case BOTH -> (hasEmail || hasPhone) ? sendBothOtp(request, otp)
+			case BOTH -> (hasEmail || hasPhone) ? sendBothOtp(request, expireInterval, otp)
 					: Mono.just(Boolean.FALSE);
 		};
 	}
 
-	private Mono<Boolean> sendBothOtp(OtpGenerationRequestInternal request, String otp) {
+	private Mono<Boolean> sendBothOtp(OtpGenerationRequestInternal request, Long expireInterval, String otp) {
 		return Mono.zip(
-				sendEmailOtp(request, otp), sendPhoneOtp(request, otp),
+				sendEmailOtp(request, expireInterval, otp), sendPhoneOtp(request, expireInterval, otp),
 				(emailSend, phoneSend) -> emailSend || phoneSend)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.sendBothOtp"));
 	}
 
-	private Mono<Boolean> sendEmailOtp(OtpGenerationRequestInternal request, String otp) {
+	private Mono<Boolean> sendEmailOtp(OtpGenerationRequestInternal request, Long expireInterval, String otp) {
 
 		if (StringUtil.safeIsBlank(request.getEmailId()))
 			return Mono.just(Boolean.FALSE);
@@ -247,12 +252,13 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 								"appName", request.getAppName(),
 								"email", request.getEmailId(),
 								"otp", otp,
-								"otpPurpose", OtpPurpose.LOGIN)))
+								"otpPurpose", OtpPurpose.LOGIN,
+								"expireInterval", expireInterval)))
 				.flatMap(BooleanUtil::safeValueOfWithEmpty)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.sendEmailOtp"));
 	}
 
-	private Mono<Boolean> sendPhoneOtp(OtpGenerationRequestInternal request, String otp) {
+	private Mono<Boolean> sendPhoneOtp(OtpGenerationRequestInternal request, Long expireInterval, String otp) {
 
 		if (StringUtil.safeIsBlank(request.getPhoneNumber()))
 			return Mono.just(Boolean.FALSE);
@@ -262,7 +268,8 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				new OtpMessageVars()
 						.setAppName(request.getAppName())
 						.setOtpCode(otp)
-						.setOtpPurpose(OtpPurpose.LOGIN))
+						.setOtpPurpose(OtpPurpose.LOGIN)
+						.setExpireInterval(expireInterval))
 				.flatMap(BooleanUtil::safeValueOfWithEmpty)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.sendPhoneOtp"));
 	}

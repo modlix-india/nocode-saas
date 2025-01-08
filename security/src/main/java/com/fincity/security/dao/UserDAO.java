@@ -14,10 +14,8 @@ import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURI
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
@@ -26,6 +24,7 @@ import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.Record3;
 import org.jooq.SelectConditionStep;
+import org.jooq.SelectLimitPercentStep;
 import org.jooq.SelectOrderByStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
@@ -37,11 +36,9 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
@@ -50,7 +47,6 @@ import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
-import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
@@ -64,6 +60,17 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	protected UserDAO() {
 		super(User.class, SECURITY_USER, SECURITY_USER.ID);
+	}
+
+	@Override
+	protected Field<ULong> getClientIDField() {
+		return SECURITY_USER.CLIENT_ID;
+	}
+
+	public Mono<ULong> getUserClientId(ULong userId) {
+		return Mono.from(this.dslContext.select(SECURITY_USER.CLIENT_ID)
+				.from(SECURITY_USER).where(SECURITY_USER.ID.eq(userId))
+		).map(Record1::value1);
 	}
 
 	public Mono<Short> increaseFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
@@ -201,123 +208,65 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(user::setAuthorities);
 	}
 
-	@Override
-	protected Field<ULong> getClientIDField() {
-		return SECURITY_USER.CLIENT_ID;
-	}
-
-	public Mono<Boolean> checkAvailabilityWithClientId(ULong clientID, String userName, String emailId,
-			String phoneNumber) {
-
-		Mono<Set<ULong>> clientIds = Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT)
-				.where(SECURITY_CLIENT.ID.eq(clientID))
-				.limit(1))
-				.map(e -> e.into(Client.class))
-				.flatMap(this::getClientIdsToCheckUserAvailability);
-
-		List<Condition> conditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
-
-		return clientIds
-				.flatMap(
-						cis -> Flux
-								.from(this.dslContext
-										.select(SECURITY_USER.USER_NAME, SECURITY_USER.EMAIL_ID,
-												SECURITY_USER.PHONE_NUMBER)
-										.from(SECURITY_USER)
-										.where(SECURITY_USER.CLIENT_ID.in(cis)
-												.and(DSL.or(conditions))))
-								.collectList()
-								.flatMap(e -> this.generateAvailabilityException(userName, emailId, phoneNumber, e))
-								.switchIfEmpty(Mono.just(true)));
-	}
-
-	public Mono<Boolean> checkAvailability(ULong userId, String userName, String emailId, String phoneNumber) {
-
-		Mono<Client> client = Mono.from(this.dslContext.select(SECURITY_CLIENT.fields())
-				.from(SECURITY_CLIENT)
-				.leftJoin(SECURITY_USER)
-				.on(SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-				.where(SECURITY_USER.ID.eq(userId)
-						.and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED)))
-				.limit(1))
-				.map(e -> e.into(Client.class));
-
-		Mono<Set<ULong>> clientIds = client.flatMap(this::getClientIdsToCheckUserAvailability);
-
-		List<Condition> conditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
-
-		return clientIds.flatMap(cis -> Flux
-				.from(this.dslContext
-						.select(SECURITY_USER.USER_NAME, SECURITY_USER.EMAIL_ID, SECURITY_USER.PHONE_NUMBER)
-						.from(SECURITY_USER)
-						.where(SECURITY_USER.CLIENT_ID.in(cis)
-								.and(SECURITY_USER.ID.ne(userId)
-										.and(DSL.or(conditions)))))
-				.collectList()
-				.flatMap(e -> this.generateAvailabilityException(userName, emailId, phoneNumber, e))
-				.switchIfEmpty(Mono.just(true)));
-	}
-
-	public List<Condition> getUserAvailabilityConditions(String userName, String emailId, String phoneNumber) {
+	public Mono<Boolean> checkUserExistsExclude(ULong clientId, String userName, String emailId, String phoneNumber, String typeCode, ULong userIdToExclude) {
 
 		List<Condition> conditions = new ArrayList<>();
 
-		if (userName != null && !User.PLACEHOLDER.equals(userName))
+		if (typeCode != null)
+			conditions.add(SECURITY_CLIENT.TYPE_CODE.in(typeCode));
+
+		if (userIdToExclude != null)
+			conditions.add(SECURITY_USER.ID.ne(userIdToExclude));
+
+		return this.checkUserExists(clientId, userName, emailId, phoneNumber, conditions);
+	}
+
+	public Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber, String typeCode) {
+
+		List<Condition> conditions = new ArrayList<>();
+
+		if (typeCode != null)
+			conditions.add(SECURITY_CLIENT.TYPE_CODE.in(typeCode));
+
+		return this.checkUserExists(clientId, userName, emailId, phoneNumber, conditions);
+	}
+
+	private Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber, List<Condition> conditions) {
+
+		List<Condition> userConditions = new ArrayList<>(conditions);
+
+		if (clientId == null)
+			return messageResourceService
+					.getMessage(SecurityMessageResourceService.PARAMS_NOT_FOUND, "clientId, userId", "checkUserExists")
+					.flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT, msg)));
+
+		userConditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
+
+		userConditions.add(DSL.or(getUserAvailabilityConditions(userName, emailId, phoneNumber)));
+
+		userConditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+
+		return Mono.from(
+						this.dslContext.selectCount().from(SECURITY_USER)
+								.leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
+								.where(DSL.and(userConditions)))
+				.map(e -> e.value1() > 0);
+	}
+
+	private List<Condition> getUserAvailabilityConditions(String userName, String emailId, String phoneNumber) {
+
+		List<Condition> conditions = new ArrayList<>();
+
+		if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName))
 			conditions.add(SECURITY_USER.USER_NAME.eq(userName));
 
-		if (emailId != null && !User.PLACEHOLDER.equals(emailId))
+		if (!StringUtil.safeIsBlank(emailId) && !User.PLACEHOLDER.equals(emailId))
 			conditions.add(SECURITY_USER.EMAIL_ID.eq(emailId));
 
-		if (phoneNumber != null && !User.PLACEHOLDER.equals(phoneNumber))
+		if (!StringUtil.safeIsBlank(phoneNumber) && !User.PLACEHOLDER.equals(phoneNumber))
 			conditions.add(SECURITY_USER.PHONE_NUMBER.eq(phoneNumber));
+
 		return conditions;
-	}
-
-	private Mono<Boolean> generateAvailabilityException(String userName, String emailId, String phoneNumber,
-			List<Record3<String, String, String>> e) {
-
-		for (Record3<String, String, String> r : e) {
-			if (userName != null && !User.PLACEHOLDER.equals(userName) && r.value1()
-					.equals(userName))
-				return messageResourceService.getMessage(SecurityMessageResourceService.ALREADY_EXISTS)
-						.flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
-								StringFormatter.format(msg, "User name", userName))));
-
-			if (emailId != null && !User.PLACEHOLDER.equals(emailId) && r.value2()
-					.equals(emailId))
-				return messageResourceService.getMessage(SecurityMessageResourceService.ALREADY_EXISTS)
-						.flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
-								StringFormatter.format(msg, "Email", emailId))));
-
-			if (phoneNumber != null && !User.PLACEHOLDER.equals(phoneNumber) && r.value3()
-					.equals(phoneNumber))
-				return messageResourceService.getMessage(SecurityMessageResourceService.ALREADY_EXISTS)
-						.flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT,
-								StringFormatter.format(msg, "Phone number", phoneNumber))));
-		}
-		return Mono.just(false);
-	}
-
-	private Mono<Set<ULong>> getClientIdsToCheckUserAvailability(Client c) {
-
-		if (c.getTypeCode()
-				.equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
-			return Mono.just(Set.of(c.getId()));
-
-		return Flux
-				.from(this.dslContext
-						.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID, SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0)
-						.from(SECURITY_CLIENT_HIERARCHY)
-						.where(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(c.getId())
-								.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(c.getId()))))
-				.flatMap(e -> Flux.just(e.value1(), e.value2()))
-				.collectList()
-				.map(HashSet::new)
-				.map(e -> {
-					e.add(c.getId());
-					return e;
-				});
-
 	}
 
 	public Mono<Integer> setPassword(ULong userId, ULong currentUserId, String password,
@@ -406,7 +355,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
 
 		return Mono.from(
-
 				this.dslContext
 						.insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
 								SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
@@ -417,7 +365,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	public Mono<Boolean> checkPermissionAssignedForUser(ULong userId, ULong permissionId) {
 
 		return Mono.from(
-
 				this.dslContext.selectCount()
 						.from(SECURITY_USER_ROLE_PERMISSION)
 						.where(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)
@@ -456,10 +403,10 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	public Mono<List<User>> getBy(String userName, ULong userId, String clientCode, String appCode,
 			AuthenticationIdentifierType authenticationIdentifierType, SecurityUserStatusCode... userStatusCodes) {
 
-		var query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode, authenticationIdentifierType,
-				userStatusCodes, SECURITY_USER.fields());
+		SelectConditionStep<Record> query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode,
+				authenticationIdentifierType, userStatusCodes, SECURITY_USER.fields());
 
-		var limitQuery = query.limit(2);
+		SelectLimitPercentStep<Record> limitQuery = query.limit(2);
 
 		return Mono.just(limitQuery)
 				.flatMap(LogUtil.logIfDebugKey(logger, "User Query : {}", limitQuery.toString()))
@@ -569,39 +516,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(e -> e > 0);
 	}
 
-	public Mono<Boolean> checkUserExists(String urlAppCode, String urlClientCode, ClientRegistrationRequest request) {
-
-		List<Condition> userFieldsConditions = new ArrayList<>();
-
-		if (!StringUtil.safeIsBlank(request.getUserName()))
-			userFieldsConditions.add(SECURITY_USER.USER_NAME.eq(request.getUserName()));
-
-		if (!StringUtil.safeIsBlank(request.getEmailId()))
-			userFieldsConditions.add(SECURITY_USER.EMAIL_ID.eq(request.getEmailId()));
-
-		if (!StringUtil.safeIsBlank(request.getPhoneNumber()))
-			userFieldsConditions.add(SECURITY_USER.PHONE_NUMBER.eq(request.getPhoneNumber()));
-
-		var c1 = SECURITY_CLIENT.as("c1");
-		var c2 = SECURITY_CLIENT.as("c2");
-
-		var query = this.dslContext.selectCount().from(SECURITY_USER)
-				.leftJoin(c1).on(c1.field("ID", ULong.class).eq(SECURITY_USER.CLIENT_ID))
-				.leftJoin(SECURITY_APP_ACCESS).on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
-				.leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
-				.leftJoin(SECURITY_CLIENT_HIERARCHY).on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
-				.leftJoin(c2).on(c2.field("ID", ULong.class).eq(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0))
-				.where(DSL.and(
-						SECURITY_APP.APP_CODE.eq(urlAppCode),
-						c1.field("TYPE_CODE", String.class).eq("INDV"),
-						c2.field("CODE", String.class).eq(urlClientCode),
-						DSL.or(userFieldsConditions)));
-
-		return Mono.from(query)
-				.map(Record1::value1)
-				.map(e -> e > 0);
-	}
-
 	public Mono<List<Permission>> fetchPermissionsFromGivenUser(ULong userId) {
 
 		return Flux.from(
@@ -616,7 +530,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 																.isNotNull())))))
 				.map(e -> e.into(Permission.class))
 				.collectList();
-
 	}
 
 	public Mono<List<Role>> fetchRolesFromGivenUser(ULong userId) {
@@ -632,7 +545,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 														.and(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.isNotNull())))))
 				.map(e -> e.into(Role.class))
 				.collectList();
-
 	}
 
 	public Mono<Boolean> copyRolesNPermissionsFromUser(ULong userId, ULong referenceUserId) {

@@ -402,8 +402,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 					case "INDV" ->
 						this.clientHierarchyService.getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
 								.flatMap(managingClientId -> this.dao.checkUserExistsExclude(managingClientId,
-										entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber(), "INDV",
-										entity.getId()));
+										entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber(), "INDV", entity.getId()));
 					case "BUS" ->
 						this.dao.checkUserExists(entity.getClientId(), entity.getUserName(), entity.getEmailId(),
 								entity.getPhoneNumber(), null);

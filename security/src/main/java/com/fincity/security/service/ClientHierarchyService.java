@@ -1,33 +1,42 @@
 package com.fincity.security.service;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientHierarchyDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.jooq.tables.records.SecurityClientHierarchyRecord;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 public class ClientHierarchyService
 		extends AbstractJOOQDataService<SecurityClientHierarchyRecord, ULong, ClientHierarchy, ClientHierarchyDAO> {
 
-	@Autowired
-	@Lazy
-	private ClientService clientService;
+	private final SecurityMessageResourceService securityMessageResourceService;
 
-	@Autowired
-	private CacheService cacheService;
+	private final CacheService cacheService;
+
+	@Lazy
+	private final ClientService clientService;
 
 	private static final String CLIENT_HIERARCHY_CACHE_NAME = "clientHierarchy";
 
 	private static final String USER_CLIENT_HIERARCHY_CACHE_NAME = "userClientHierarchy";
+
+	public ClientHierarchyService(SecurityMessageResourceService securityMessageResourceService,
+			CacheService cacheService, ClientService clientService) {
+		this.securityMessageResourceService = securityMessageResourceService;
+		this.cacheService = cacheService;
+		this.clientService = clientService;
+	}
 
 	public Mono<ClientHierarchy> create(ULong managingClientId, ULong clientId) {
 
@@ -45,19 +54,19 @@ public class ClientHierarchyService
 					if (!manageClientHie.canAddLevel())
 						return Mono.empty();
 
-					ClientHierarchy clientHierarchy = new ClientHierarchy()
-							.setClientId(clientId)
-							.setManageClientLevel0(managingClientId)
-							.setManageClientLevel1(manageClientHie.getManageClientLevel0())
-							.setManageClientLevel2(manageClientHie.getManageClientLevel1() != null
-									? manageClientHie.getManageClientLevel2()
-									: null)
-							.setManageClientLevel3(manageClientHie.getManageClientLevel2() != null
-									? manageClientHie.getManageClientLevel3()
-									: null);
+					ClientHierarchy clientHierarchy = new ClientHierarchyBuilder(clientId)
+							.next(managingClientId)
+							.next(manageClientHie.getManageClientLevel0())
+							.next(manageClientHie.getManageClientLevel1())
+							.next(manageClientHie.getManageClientLevel2())
+							.next(manageClientHie.getManageClientLevel3())
+							.build();
 
 					return this.create(clientHierarchy);
-				});
+				})
+				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+						SecurityMessageResourceService.FORBIDDEN_CREATE, "ClientHierarchy"));
 	}
 
 	public Mono<ClientHierarchy> getClientHierarchy(ULong clientId) {
@@ -72,6 +81,16 @@ public class ClientHierarchyService
 
 	public Mono<ClientHierarchy> getClientHierarchy(String clientCode) {
 		return this.clientService.getClientId(clientCode).flatMap(this::getClientHierarchy);
+	}
+
+	public Flux<ULong> getClientHierarchyIds(ULong clientId, ClientHierarchy.Level level) {
+		return this.getClientHierarchy(clientId)
+				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds(level)));
+	}
+
+	public Flux<ULong> getUserClientHierarchyIds(ULong userId, ClientHierarchy.Level level) {
+		return this.getUserClientHierarchy(userId)
+				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds(level)));
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
@@ -123,5 +142,48 @@ public class ClientHierarchyService
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
+	private static class ClientHierarchyBuilder {
+
+		private final ClientHierarchy clientHierarchy;
+		private int currentLevel = -1;
+		private boolean isValid;
+
+		public ClientHierarchyBuilder(ULong clientId) {
+			if (clientId == null)
+				throw new GenericException(HttpStatus.BAD_REQUEST, "Client Id cannot be null.");
+
+			this.clientHierarchy = new ClientHierarchy().setClientId(clientId);
+		}
+
+		public ClientHierarchyBuilder next(ULong clientId) {
+
+			if (!this.isValid)
+				return this;
+
+			if (clientId == null) {
+				this.isValid = false;
+				return this;
+			}
+
+			this.currentLevel++;
+
+			switch (this.currentLevel) {
+				case 0 -> this.clientHierarchy.setManageClientLevel0(clientId);
+				case 1 -> this.clientHierarchy.setManageClientLevel1(clientId);
+				case 2 -> this.clientHierarchy.setManageClientLevel2(clientId);
+				case 3 -> this.clientHierarchy.setManageClientLevel3(clientId);
+				default -> throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid level.");
+			}
+
+			return this;
+		}
+
+		public ClientHierarchy build() {
+			if (this.clientHierarchy.getManageClientLevel0() == null)
+				throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid Client hierarchy.");
+
+			return this.clientHierarchy;
+		}
+	}
 
 }
