@@ -67,9 +67,9 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 	}
 
 	@Override
-	protected Mono<Condition> filter(AbstractCondition acond) {
+	protected Mono<Condition> filter(AbstractCondition abstractCondition) {
 
-		Mono<Condition> condition = super.filter(acond);
+		Mono<Condition> condition = super.filter(abstractCondition);
 
 		return SecurityContextUtil.getUsersContextAuthentication()
 				.flatMap(ca -> {
@@ -77,11 +77,9 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 							.equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
 						return condition;
 
-					ULong clientId = ULong.valueOf(ca.getUser()
-							.getClientId());
+					ULong clientId = ULong.valueOf(ca.getUser().getClientId());
 
-					return condition.map(c -> DSL.and(c, SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(clientId)
-							.or(SECURITY_CLIENT.ID.eq(clientId))));
+					return condition.map(c -> DSL.and(c, ClientHierarchyDAO.getManageClientCondition(clientId)));
 				})
 				.switchIfEmpty(condition);
 	}

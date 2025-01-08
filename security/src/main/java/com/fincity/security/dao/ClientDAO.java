@@ -240,23 +240,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .map(value -> value == 1);
     }
 
-    public Mono<Boolean> checkRoleAssignedForClient(ULong clientId, ULong roleId) {
-
-        return Mono.from(
-
-                this.dslContext.selectCount()
-                        .from(SECURITY_CLIENT_PACKAGE)
-                        .leftJoin(SECURITY_PACKAGE_ROLE)
-                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID
-                                .eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-                        .where(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
-                                .and(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(roleId)))
-
-        )
-                .map(Record1::value1)
-                .map(e -> e > 0);
-    }
-
     public Mono<Boolean> findAndRemoveRolesFromUsers(List<ULong> roles, ULong packageId) {
 
         DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
