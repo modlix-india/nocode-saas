@@ -14,8 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
@@ -203,9 +201,9 @@ public class IndexHTMLService {
 		str.append("</script>");
 
 		String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
-		str.append("<script src=\"").append(jsURLPrefix).append("index.js?").append(System.currentTimeMillis())
+		str.append("<script src=\"").append(jsURLPrefix).append("index.js")
 				.append("\"></script>");
-		str.append("<script src=\"").append(jsURLPrefix).append("vendors.js?").append(System.currentTimeMillis())
+		str.append("<script src=\"").append(jsURLPrefix).append("vendors.js")
 				.append("\"></script>");
 		str.append(codeParts.get(3));
 		str.append("</body></html>");
