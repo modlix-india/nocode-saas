@@ -23,7 +23,7 @@ import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
 
-public class DeleteByFilterObject extends AbstractReactiveFunction {
+public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
 	private static final String EVENT_RESULT = "result";
 
@@ -45,7 +45,7 @@ public class DeleteByFilterObject extends AbstractReactiveFunction {
 	private final ObjectMapper mapper;
 	private final Gson gson;
 
-	public DeleteByFilterObject(AppDataService appDataService, ObjectMapper mapper, Gson gson) {
+	public DeleteStorageObjectWithFilter(AppDataService appDataService, ObjectMapper mapper, Gson gson) {
 		
 		this.appDataService = appDataService;
 		this.mapper = mapper;
@@ -55,7 +55,7 @@ public class DeleteByFilterObject extends AbstractReactiveFunction {
 	@Override
 	public FunctionSignature getSignature() {
 
-		Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
+		Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_RESULT, Schema.ofInteger(EVENT_RESULT)));
 
 		Event errorEvent = new Event().setName(Event.ERROR)
 				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
@@ -69,7 +69,7 @@ public class DeleteByFilterObject extends AbstractReactiveFunction {
 						FILTER, Parameter.of(FILTER, Schema.ofObject(FILTER).setDefaultValue(new JsonObject())),
 
 						DEV_MODE,
-						Parameter.of(DEV_MODE, Schema.ofBoolean(DEV_MODE).setDefaultValue(new JsonPrimitive(true))),
+						Parameter.of(DEV_MODE, Schema.ofBoolean(DEV_MODE).setDefaultValue(new JsonPrimitive(false))),
 
 						APP_CODE,
 						Parameter.of(APP_CODE, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
