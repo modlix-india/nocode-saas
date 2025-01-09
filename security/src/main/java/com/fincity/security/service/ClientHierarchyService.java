@@ -89,14 +89,14 @@ public class ClientHierarchyService
 		return this.clientService.getClientId(clientCode).flatMap(this::getClientHierarchy);
 	}
 
-	public Flux<ULong> getClientHierarchyIds(ULong clientId, ClientHierarchy.Level level) {
+	public Flux<ULong> getClientHierarchyIds(ULong clientId) {
 		return this.getClientHierarchy(clientId)
-				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds(level)));
+				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
 	}
 
-	public Flux<ULong> getUserClientHierarchyIds(ULong userId, ClientHierarchy.Level level) {
+	public Flux<ULong> getUserClientHierarchyIds(ULong userId) {
 		return this.getUserClientHierarchy(userId)
-				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds(level)));
+				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
@@ -152,7 +152,7 @@ public class ClientHierarchyService
 
 		private final ClientHierarchy clientHierarchy;
 		private int currentLevel = -1;
-		private boolean isValid;
+		private boolean isValid = Boolean.TRUE;
 
 		public ClientHierarchyBuilder(ULong clientId) {
 			if (clientId == null)
