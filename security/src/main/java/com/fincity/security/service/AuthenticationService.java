@@ -187,7 +187,7 @@ public class AuthenticationService implements IAuthenticationService {
 								.setWithUserOption(tup.getT3())
 								.setIpAddress(request.getRemoteAddress())
 								.setResend(authRequest.isResend())
-								.setPurpose(purpose.name())),
+								.setPurpose(purpose)),
 
 				(app, tup, linCCheck, targetReq) -> this.otpService.generateOtpInternal(targetReq))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [" + purpose.name() + "]"))

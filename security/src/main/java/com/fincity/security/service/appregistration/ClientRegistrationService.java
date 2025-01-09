@@ -135,7 +135,7 @@ public class ClientRegistrationService {
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
 						return regError("Feature not supported");
 
-					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION.name()),
+					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION),
 							request);
 				})
 				.switchIfEmpty(regError("Feature not supported"))

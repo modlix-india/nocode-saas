@@ -10,6 +10,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.User;
+import com.fincity.security.enums.otp.OtpPurpose;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -95,7 +96,7 @@ public class OtpGenerationRequestInternal extends OtpGenerationRequest implement
 	}
 
 	@Override
-	public OtpGenerationRequestInternal setPurpose(String otpPurpose) {
+	public OtpGenerationRequestInternal setPurpose(OtpPurpose otpPurpose) {
 		super.setPurpose(otpPurpose);
 		return this;
 	}

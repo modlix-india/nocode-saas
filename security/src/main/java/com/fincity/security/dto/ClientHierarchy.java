@@ -44,6 +44,14 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 		return this.manageClientLevel3 == null;
 	}
 
+	public boolean inClientHierarchy(ULong clientId) {
+		return this.clientId.equals(clientId)
+				|| this.manageClientLevel3.equals(clientId)
+				|| this.manageClientLevel2.equals(clientId)
+				|| this.manageClientLevel1.equals(clientId)
+				|| this.manageClientLevel0.equals(clientId);
+	}
+
 	public boolean isManagedBy(ULong clientId) {
 		if (clientId == null)
 			return false;
