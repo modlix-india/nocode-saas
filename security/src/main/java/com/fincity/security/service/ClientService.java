@@ -552,14 +552,20 @@ public class ClientService
 				app -> this.clientHierarchyService.getClientHierarchy(clientId),
 
 				(app, clientHierarchy) -> {
+
+					if (!clientHierarchy.inClientHierarchy(clientId))
+						return Mono.empty();
+
 					if (app.getClientId().equals(clientId))
 						return Mono.just(ClientLevelType.OWNER);
 
-					return switch (clientHierarchy.getMaxLevel()) {
-						case SYSTEM ,ZERO -> Mono.just(ClientLevelType.CLIENT);
-						case ONE -> Mono.just(ClientLevelType.CUSTOMER);
-						case TWO, THREE -> Mono.just(ClientLevelType.CONSUMER);
-					};
+					if (app.getClientId().equals(clientHierarchy.getManageClientLevel0()))
+						return Mono.just(ClientLevelType.CLIENT);
+
+					if (app.getClientId().equals(clientHierarchy.getManageClientLevel1()))
+						return Mono.just(ClientLevelType.CUSTOMER);
+
+					return Mono.just(ClientLevelType.CONSUMER);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientLevelType(ULong,ULong)"));
 	}
 
