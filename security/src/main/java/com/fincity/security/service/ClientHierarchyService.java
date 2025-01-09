@@ -148,11 +148,15 @@ public class ClientHierarchyService
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
+	public Mono<Boolean> isClientHierarchyActive(ULong clientId) {
+		return this.dao.isClientHierarchyActive(clientId).switchIfEmpty(Mono.just(Boolean.FALSE));
+	}
+
 	private static class ClientHierarchyBuilder {
 
 		private final ClientHierarchy clientHierarchy;
 		private int currentLevel = -1;
-		private boolean isValid;
+		private boolean isValid = Boolean.TRUE;
 
 		public ClientHierarchyBuilder(ULong clientId) {
 			if (clientId == null)
