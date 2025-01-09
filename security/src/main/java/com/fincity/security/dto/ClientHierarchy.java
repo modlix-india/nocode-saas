@@ -91,31 +91,15 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 		return Level.SYSTEM;
 	}
 
-	public Set<ULong> getClientIds(Level level) {
+	public Set<ULong> getClientIds() {
 
 		Set<ULong> clientIds = new HashSet<>();
 		clientIds.add(this.clientId);
 
-		if (Level.ZERO.equals(level)) {
-			clientIds.add(this.manageClientLevel0);
-		}
-
-		if (Level.ONE.equals(level)) {
-			clientIds.add(this.manageClientLevel0);
-			clientIds.add(this.manageClientLevel1);
-		}
-		if (Level.TWO.equals(level)) {
-			clientIds.add(this.manageClientLevel0);
-			clientIds.add(this.manageClientLevel1);
-			clientIds.add(this.manageClientLevel2);
-		}
-
-		if (Level.THREE.equals(level)) {
-			clientIds.add(this.manageClientLevel0);
-			clientIds.add(this.manageClientLevel1);
-			clientIds.add(this.manageClientLevel2);
-			clientIds.add(this.manageClientLevel3);
-		}
+		clientIds.add(this.manageClientLevel0);
+		clientIds.add(this.manageClientLevel1);
+		clientIds.add(this.manageClientLevel2);
+		clientIds.add(this.manageClientLevel3);
 
 		clientIds.remove(null);
 		return clientIds;

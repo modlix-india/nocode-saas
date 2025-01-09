@@ -549,37 +549,34 @@ public class ClientRegistrationService {
 				.onErrorReturn(Boolean.FALSE);
 	}
 
-	private Mono<AuthenticationResponse> getClientAuthenticationResponse(ClientRegistrationRequest registrationRequest,
-			String password, ServerHttpRequest request, ServerHttpResponse response) {
+	private Mono<ClientRegistrationResponse> getClientRegistrationResponse(
+			ClientRegistrationRequest registrationRequest, ULong userId, String password, ServerHttpRequest request,
+			ServerHttpResponse response) {
 
-		AuthenticationRequest authRequest = new AuthenticationRequest()
-				.setUserName(CommonsUtil.nonNullValue(registrationRequest.getUserName(),
-						registrationRequest.getEmailId(), registrationRequest.getPhoneNumber()));
+		return this.getClientAuthenticationResponse(registrationRequest, userId, password, request, response)
+				.flatMap(auth -> Mono.just(new ClientRegistrationResponse(true, userId, "", auth)))
+				.switchIfEmpty(Mono.just(new ClientRegistrationResponse(true, userId, "", null)));
+	}
+
+	private Mono<AuthenticationResponse> getClientAuthenticationResponse(ClientRegistrationRequest registrationRequest,
+			ULong userId, String password, ServerHttpRequest request, ServerHttpResponse response) {
+
+		AuthenticationRequest authRequest = new AuthenticationRequest().setUserId(userId);
 
 		if (registrationRequest.getPasswordType() != null)
 			return switch (registrationRequest.getPasswordType()) {
 				case PASSWORD ->
 					this.authenticationService.authenticate(authRequest.setPassword(password), request, response);
-				case PIN ->
-					this.authenticationService.authenticate(authRequest.setPin(password), request, response);
+				case PIN -> this.authenticationService.authenticate(authRequest.setPin(password), request, response);
 				case OTP -> Mono.empty();
 			};
 
 		if (!safeIsBlank(registrationRequest.getSocialRegisterState()))
 			return this.authenticationService.authenticateWSocial(
-					authRequest.setSocialRegisterState(registrationRequest.getSocialRegisterState()),
-					request, response);
+					authRequest.setSocialRegisterState(registrationRequest.getSocialRegisterState()), request,
+					response);
 
 		return Mono.empty();
-	}
-
-	private Mono<ClientRegistrationResponse> getClientRegistrationResponse(
-			ClientRegistrationRequest registrationRequest, ULong userId, String password, ServerHttpRequest request,
-			ServerHttpResponse response) {
-
-		return this.getClientAuthenticationResponse(registrationRequest, password, request, response)
-				.flatMap(auth -> Mono.just(new ClientRegistrationResponse(true, userId, "", auth)))
-				.switchIfEmpty(Mono.just(new ClientRegistrationResponse(true, userId, "", null)));
 	}
 
 	public Mono<ClientRegistrationResponse> registerWSocial(ServerHttpRequest request, ServerHttpResponse response,
@@ -709,6 +706,8 @@ public class ClientRegistrationService {
 
 		String urlPrefix = getUrlPrefix(request);
 
+		AuthenticationPasswordType passType = registrationRequest.getPasswordType();
+
 		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
@@ -717,8 +716,8 @@ public class ClientRegistrationService {
 
 				(ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
 
-				(ca, user, client) -> this.getClientAuthenticationResponse(registrationRequest,
-						getUserPasswordType(registrationRequest.getPasswordType(), user), request, response),
+				(ca, user, client) -> this.getClientAuthenticationResponse(registrationRequest, user.getId(),
+						getUserPasswordType((passType), user), request, response),
 
 				(ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(), ca.getUrlAppCode()),
 

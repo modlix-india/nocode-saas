@@ -248,7 +248,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 								"appName", request.getAppName(),
 								"email", request.getEmailId(),
 								"otp", otp,
-								"otpPurpose", OtpPurpose.LOGIN,
+								"otpPurpose", request.getPurpose(),
 								"expireInterval", expireInterval)))
 				.flatMap(BooleanUtil::safeValueOfWithEmpty)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.sendEmailOtp"));
