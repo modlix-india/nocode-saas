@@ -430,7 +430,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 		List<Condition> conditions = new ArrayList<>();
 
-		conditions.add(userIdentificationField.eq(userName));
+		if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName))
+			conditions.add(userIdentificationField.eq(userName));
 
 		if (userStatusCodes != null && userStatusCodes.length > 0)
 			conditions.add(SECURITY_USER.STATUS_CODE.in(userStatusCodes));

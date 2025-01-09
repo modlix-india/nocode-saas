@@ -32,6 +32,7 @@ import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Package;
+import com.fincity.security.jooq.Tables;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
@@ -369,5 +370,14 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .where(SECURITY_CLIENT.TYPE_CODE.eq("SYS"))
                 .limit(1))
                 .map(Record1::value1);
+    }
+
+
+    public Mono<Boolean> isClientActive(List<ULong> clientIds) {
+        return Mono.from(this.dslContext.selectCount()
+				        .from(SECURITY_CLIENT)
+				        .where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
+				        .and(SECURITY_CLIENT.ID.in(clientIds)))
+		        .map(count -> count.value1() > 0);
     }
 }
