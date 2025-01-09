@@ -65,6 +65,12 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 		return PLACEHOLDER.equals(this.phoneNumber) ? null : this.phoneNumber;
 	}
 
+	public boolean checkIdentificationKeys() {
+		return PLACEHOLDER.equals(this.userName)
+				&& PLACEHOLDER.equals(this.emailId)
+				&& PLACEHOLDER.equals(this.phoneNumber);
+	}
+
 	@JsonIgnore
 	public String getPassword() {
 		return this.password;

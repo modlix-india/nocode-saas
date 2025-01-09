@@ -600,6 +600,40 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
+	public Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode) {
+
+		AbstractCondition condition = query.getCondition();
+	
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.filter(storage, condition),
+
+				(ca, bsonCondition) -> {
+
+					if (devMode.booleanValue()) {
+
+						return this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+								storage.getIndexes(), storage.getTextIndexFields())
+								.flatMap(collection -> Mono.from(collection
+										.countDocuments(bsonCondition)));
+					} else {
+						
+						return this.getCollection(conn, storage.getAppCode(), storage.getIsAppLevel()
+								.booleanValue() ? ca.getUrlClientCode() : ca.getClientCode(), storage.getUniqueName(),
+								storage.getIndexes(), storage.getTextIndexFields())
+								.flatMap(collection -> Mono.from(collection
+										.deleteMany(bsonCondition))
+
+								.map(deleteResult -> deleteResult.getDeletedCount()));
+					}
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteByFilter"));
+	}
+	
+	@Override
 	public Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String objectId,
 			Query query) {
 

@@ -76,7 +76,7 @@ public class ClientOtpPolicyService extends AbstractPolicyService<SecurityClient
 	}
 
 	@Override
-	public Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, ULong userId, String password) {
-		return null;
+	public Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, ULong userId, String otp) {
+		return Mono.just(Boolean.FALSE);
 	}
 }

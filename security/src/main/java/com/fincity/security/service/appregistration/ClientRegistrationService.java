@@ -1,5 +1,7 @@
 package com.fincity.security.service.appregistration;
 
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -16,6 +18,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -25,7 +28,6 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
@@ -48,6 +50,7 @@ import com.fincity.security.model.ClientRegistrationResponse;
 import com.fincity.security.model.OtpGenerationRequest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.AuthenticationService;
+import com.fincity.security.service.ClientHierarchyService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.OtpService;
@@ -69,6 +72,7 @@ public class ClientRegistrationService {
 	private final OtpService otpService;
 	private final AuthenticationService authenticationService;
 	private final ClientService clientService;
+	private final ClientHierarchyService clientHierarchyService;
 	private final EventCreationService ecService;
 	private final ClientUrlService clientUrlService;
 	private final AppRegistrationDAO appRegistrationDAO;
@@ -87,8 +91,9 @@ public class ClientRegistrationService {
 
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
-			EventCreationService ecService, ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO,
-			IFeignFilesService filesService, AppRegistrationIntegrationService appRegistrationIntegrationService,
+			ClientHierarchyService clientHierarchyService, EventCreationService ecService,
+			ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO, IFeignFilesService filesService,
+			AppRegistrationIntegrationService appRegistrationIntegrationService,
 			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
 			SecurityMessageResourceService securityMessageResourceService) {
 
@@ -98,6 +103,7 @@ public class ClientRegistrationService {
 		this.otpService = otpService;
 		this.authenticationService = authenticationService;
 		this.clientService = clientService;
+		this.clientHierarchyService = clientHierarchyService;
 		this.ecService = ecService;
 		this.clientUrlService = clientUrlService;
 		this.appRegistrationDAO = appRegistrationDAO;
@@ -129,7 +135,8 @@ public class ClientRegistrationService {
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
 						return regError("Feature not supported");
 
-					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION.name()), request);
+					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION),
+							request);
 				})
 				.switchIfEmpty(regError("Feature not supported"))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));
@@ -173,8 +180,7 @@ public class ClientRegistrationService {
 						.createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
 								userTuple.getT2())
 						.flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
-								userTuple.getT1().getId(), userTuple.getT2(), request, response))
-						.map(ClientRegistrationResponse.class::cast),
+								userTuple.getT1().getId(), userTuple.getT2(), request, response)),
 
 				(ca, subDomain, regProp, client, policy, userTuple, token, filesAccessCreated,
 						res) -> {
@@ -183,8 +189,8 @@ public class ClientRegistrationService {
 						return Mono.just(res);
 
 					return this.clientUrlService.createForRegistration(
-							new ClientUrl().setAppCode(ca.getUrlAppCode()).setUrlPattern(subDomain)
-									.setClientId(client.getId()))
+							new ClientUrl().setAppCode(ca.getUrlAppCode())
+									.setUrlPattern(subDomain).setClientId(client.getId()))
 							.map(e -> res.setRedirectURL(subDomain));
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
@@ -214,9 +220,9 @@ public class ClientRegistrationService {
 		Mono<ClientLevelType> clientLevelTypeMono = appMono.flatMap(app -> this.clientService
 				.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()));
 
-		Mono<Boolean> checkIfUserExists = registrationRequest.isBusinessClient() ? Mono.just(true)
+		Mono<Boolean> checkIfUserExists = registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
 				: this.userService
-						.checkUserExists(ca.getUrlAppCode(), ca.getLoggedInFromClientCode(), registrationRequest)
+						.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
 						.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.CONFLICT, msg),
 								SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
@@ -239,9 +245,7 @@ public class ClientRegistrationService {
 
 				(exists, app, client, levelType, usageType, suffix) -> this
 						.checkSubDomainAvailability(this.subDomainEndings, registrationRequest.getSubDomain(),
-								registrationRequest.isBusinessClient()),
-
-				(exists, app, client, levelType, usageType, suffix, subDomain) -> Mono.just(subDomain))
+								registrationRequest.isBusinessClient()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
 	}
 
@@ -302,7 +306,6 @@ public class ClientRegistrationService {
 					return this.regError("Business clients are required for B2B2X Applications at owner level");
 
 				break;
-
 			case B2X2C:
 				if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
 					return this.regError("Only Applications owner can register for B2X2C Applications");
@@ -320,7 +323,7 @@ public class ClientRegistrationService {
 				return this.regError("Invalid Application Usage Type");
 		}
 
-		return Mono.just(true);
+		return Mono.just(Boolean.TRUE);
 	}
 
 	private Mono<String> fetchAppProp(ULong clientId, ULong appId, String appCode, String propName) {
@@ -379,9 +382,11 @@ public class ClientRegistrationService {
 		if (safeIsBlank(client.getName()))
 			return this.regError("Client name cannot be blank");
 
+		ULong loggedInFromClientId = ULongUtil.valueOf(ca.getLoggedInFromClientId());
+
 		return FlatMapUtil.flatMapMono(
 
-				() -> verifyClient(ca.getUrlAppCode(), regProp, request.getEmailId(), request.getPhoneNumber(),
+				() -> this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(),
 						request.getUniqueCode()),
 
 				isVerified -> this.appService.getAppByCode(ca.getUrlAppCode()),
@@ -390,27 +395,37 @@ public class ClientRegistrationService {
 
 				(isVerified, app, c) -> this.clientService.createForRegistration(c),
 
-				(isVerified, app, c, clnt) -> this.dao.addManageRecord(ca.getLoggedInFromClientCode(),
-						clnt.getId()),
+				(isVerified, app, c, createdClient) -> this.clientHierarchyService
+						.create(loggedInFromClientId, createdClient.getId()),
 
-				(isVerified, app, c, clnt, num) -> this.clientService.addClientPackagesAfterRegistration(
-						app.getId(), app.getClientId(), ULong.valueOf(ca.getLoggedInFromClientId()), clnt),
+				(isVerified, app, c, createdClient, clientHierarchy) -> this.clientService
+						.addClientPackagesAfterRegistration(app.getId(), app.getClientId(), loggedInFromClientId,
+								createdClient),
 
-				(isVerified, app, c, clnt, num, packagesAdded) -> this.appService
-						.addClientAccessAfterRegistration(ca.getUrlAppCode(),
-								ULong.valueOf(ca.getLoggedInFromClientId()), clnt),
-
-				(isVerified, app, c, clnt, num, packagesAdded, clientAccessAdded) -> Mono.just(clnt))
+				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
+						.addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient)
+						.map(clientAccessAdded -> createdClient))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerClient"));
 	}
 
-	private Mono<Boolean> verifyClient(String appCode, String regProp, String emailId, String phoneNumber,
+	/**
+	 * We will not verify client if regProp is
+	 * {@code AppService.APP_PROP_REG_TYPE_NO_VERIFICATION}
+	 * or
+	 * We have an authenticated client. In this client will be registered under this
+	 * client.
+	 */
+	private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
 			String uniqueCode) {
 
-		if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
+		if (!regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
 			return Mono.just(Boolean.TRUE);
 
-		return this.otpService.verifyOtpInternal(appCode, emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
+		if (ca.isAuthenticated())
+			return Mono.just(Boolean.TRUE);
+
+		return this.otpService
+				.verifyOtpInternal(ca.getUrlAppCode(), emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
 				.flatMap(isVerified -> Mono.justOrEmpty(Boolean.TRUE.equals(isVerified) ? Boolean.TRUE : null))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -457,7 +472,8 @@ public class ClientRegistrationService {
 
 		return this.appService.getAppByCode(appCode)
 				.flatMap(app -> this.userService
-						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user)
+						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user,
+								request.getPasswordType())
 						.map(usr -> Tuples.of(usr, pass)));
 	}
 
@@ -558,8 +574,8 @@ public class ClientRegistrationService {
 	}
 
 	private Mono<ClientRegistrationResponse> getClientRegistrationResponse(
-			ClientRegistrationRequest registrationRequest, ULong userId, String password,
-			ServerHttpRequest request, ServerHttpResponse response) {
+			ClientRegistrationRequest registrationRequest, ULong userId, String password, ServerHttpRequest request,
+			ServerHttpResponse response) {
 
 		return this.getClientAuthenticationResponse(registrationRequest, password, request, response)
 				.flatMap(auth -> Mono.just(new ClientRegistrationResponse(true, userId, "", auth)))
@@ -584,7 +600,7 @@ public class ClientRegistrationService {
 							&& !appRegIntgToken.getUsername().equals(registrationRequest.getEmailId()))
 						return this.regError("Username and EmailId should not be changed");
 
-					return Mono.just(true);
+					return Mono.just(Boolean.TRUE);
 				},
 				(ca, appRegIntgToken, emailChecked) -> {
 

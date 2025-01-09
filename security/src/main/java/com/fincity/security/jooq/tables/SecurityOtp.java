@@ -79,7 +79,7 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
      * The column <code>security.security_otp.USER_ID</code>. Identifier for the
      * user for whom this OTP is generated. References security_user table
      */
-    public final TableField<SecurityOtpRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the user for whom this OTP is generated. References security_user table");
+    public final TableField<SecurityOtpRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the user for whom this OTP is generated. References security_user table");
 
     /**
      * The column <code>security.security_otp.EMAIL_ID</code>. Email ID to which

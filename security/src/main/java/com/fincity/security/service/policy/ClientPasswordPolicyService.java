@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.policy.ClientPasswordPolicyDAO;
@@ -28,7 +27,8 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityClientPasswordPolicyRecord, ClientPasswordPolicy, ClientPasswordPolicyDAO>
+public class ClientPasswordPolicyService
+		extends AbstractPolicyService<SecurityClientPasswordPolicyRecord, ClientPasswordPolicy, ClientPasswordPolicyDAO>
 		implements IPolicyService<ClientPasswordPolicy> {
 
 	private static final String CLIENT_PASSWORD_POLICY = "client password policy";
@@ -75,8 +75,7 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts(UShort.valueOf(3))
 						.setUserLockTimeMin(ULong.valueOf(30))
-						.setId(DEFAULT_POLICY_ID)
-		);
+						.setId(DEFAULT_POLICY_ID));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")
@@ -107,41 +106,39 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+				() -> this.getClientAppPolicy(clientId, appId),
 
-				ca -> this.dao.getClientAppPolicy(clientId, appId, ULong.valueOf(ca.getLoggedInFromClientId())),
+				passwordPolicy -> checkPastPasswords(passwordPolicy, userId, password),
 
-				(ca, passwordPolicy) -> checkPastPasswords(passwordPolicy, userId, password),
+				(passwordPolicy, pastPassCheck) -> checkAlphanumericExists(passwordPolicy, password),
 
-				(ca, passwordPolicy, pastPassCheck) -> checkAlphanumericExists(passwordPolicy, password),
+				(passwordPolicy, pastPassCheck, isAlphaNumeric) -> checkInSpecialCharacters(password),
 
-				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric) -> checkInSpecialCharacters(password),
-
-				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial) -> {
+				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial) -> {
 
 					if (passwordPolicy.isSpacesAllowed())
-						return Mono.just(true);
+						return Mono.just(Boolean.TRUE);
 
 					if (password.indexOf(' ') != -1)
 						return securityMessageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 								SecurityMessageResourceService.SPACES_MISSING);
 
-					return Mono.just(true);
+					return Mono.just(Boolean.TRUE);
 				},
 
-				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
+				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
 
 					String regex = passwordPolicy.getRegex();
 
 					if (StringUtil.safeIsBlank(regex))
-						return Mono.just(true);
+						return Mono.just(Boolean.TRUE);
 
 					return checkRegexPattern(password, regex);
 
 				},
 
-				(ca, passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this
+				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this
 						.checkStrengthOfPassword(passwordPolicy, password))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
 				.defaultIfEmpty(true);
@@ -150,46 +147,38 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 	private Mono<Boolean> checkPastPasswords(ClientPasswordPolicy passwordPolicy, ULong userId, String password) {
 
 		if (userId == null)
-			return Mono.just(true);
+			return Mono.just(Boolean.TRUE);
 
-		return FlatMapUtil.flatMapMono(
+		return this.dao.getPastPasswordsBasedOnPolicy(passwordPolicy, userId)
+				.filter(pastPasswords -> isPasswordMatch(pastPasswords, userId, password))
+				.next()
+				.flatMap(matchedPin -> policyBadRequestException(
+						SecurityMessageResourceService.PASSWORD_USER_ERROR,
+						getAuthenticationPasswordType().getName(), passwordPolicy.getPassHistoryCount(),
+						getAuthenticationPasswordType().getName()))
+				.switchIfEmpty(Mono.just(Boolean.TRUE));
+	}
 
-				() -> this.dao.getPastPasswordsBasedOnPolicy(passwordPolicy, userId),
-
-				pastPasswords -> {
-
-					for (PastPassword pastPassword : pastPasswords) {
-						if ((pastPassword.isPasswordHashed()
-								&& encoder.matches(userId + password, pastPassword.getPassword()))
-								|| (!pastPassword.isPasswordHashed() && pastPassword.getPassword()
-										.equals(password)))
-							return this.securityMessageResourceService.throwMessage(
-									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-									SecurityMessageResourceService.PASSWORD_USER_ERROR);
-					}
-
-					return Mono.just(true);
-				});
+	private boolean isPasswordMatch(PastPassword pastPassword, ULong userId, String password) {
+		return pastPassword.isPasswordHashed() ? encoder.matches(userId + password, pastPassword.getPassword())
+				: pastPassword.getPassword().equals(password);
 	}
 
 	private Mono<Boolean> checkAlphanumericExists(ClientPasswordPolicy passwordPolicy, String password) {
 
-		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'A', 'Z')) {
+		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'A', 'Z'))
 			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.CAPTIAL_LETTERS_MISSING);
-		}
 
-		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'a', 'z')) {
+		if (passwordPolicy.isAtleastOneUppercase() && !checkExistsInBetween(password, 'a', 'z'))
 			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.SMALL_LETTERS_MISSING);
-		}
 
-		if (passwordPolicy.isAtleastOneDigit() && !checkExistsInBetween(password, '0', '9')) {
+		if (passwordPolicy.isAtleastOneDigit() && !checkExistsInBetween(password, '0', '9'))
 			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.NUMBERS_MISSING);
-		}
 
-		return Mono.just(true);
+		return Mono.just(Boolean.TRUE);
 	}
 
 	private boolean checkExistsInBetween(String password, char minBoundary, char maxBoundary) {
@@ -217,7 +206,7 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.MIN_LENGTH_ERROR, passwordPolicy.getPassMinLength());
 
-		return Mono.just(true);
+		return Mono.just(Boolean.TRUE);
 
 	}
 
@@ -226,7 +215,7 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 		for (int i = 0; i < password.length(); i++) {
 			Character ch = password.charAt(i);
 			if (specialCharacters.contains(ch))
-				return Mono.just(true);
+				return Mono.just(Boolean.TRUE);
 		}
 
 		return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -241,6 +230,6 @@ public class ClientPasswordPolicyService extends AbstractPolicyService<SecurityC
 			return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.REGEX_MISMATCH);
 
-		return Mono.just(true);
+		return Mono.just(Boolean.TRUE);
 	}
 }

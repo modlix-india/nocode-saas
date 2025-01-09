@@ -52,6 +52,11 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 	protected abstract Mono<D> getDefaultPolicy();
 
+	public Mono<Boolean> policyBadRequestException(String messageId, Object... params) {
+		return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+				messageId, params);
+	}
+
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_CREATE')")
 	@Override
 	public Mono<D> create(D entity) {
@@ -70,8 +75,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 							.flatMap(managed -> Boolean.TRUE.equals(managed) ? super.create(entity) : Mono.empty());
 				},
 
-				(ca, created) -> cacheService.evict(getPolicyCacheName(), created.getClientId(),
-						created.getAppId()),
+				(ca, created) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(created.getClientId(), created.getAppId())),
 
 				(ca, created, evicted) -> Mono.just(created))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -111,8 +116,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(key, fields) : Mono.empty(),
 
-				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
-						updated.getAppId()),
+				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(updated.getClientId(), updated.getAppId())),
 
 				(canUpdate, updated, evicted) -> Mono.just(updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -130,8 +135,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				canUpdate -> Boolean.TRUE.equals(canUpdate) ? super.update(entity) : Mono.empty(),
 
-				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(), updated.getClientId(),
-						updated.getAppId()),
+				(canUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(entity.getClientId(), entity.getAppId())),
 
 				(canUpdate, updated, evicted) -> Mono.just(updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -151,8 +156,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				(entity, canDelete) -> Boolean.TRUE.equals(canDelete) ? super.delete(id) : Mono.empty(),
 
-				(entity, canDelete, deleted) -> cacheService.evict(getPolicyCacheName(), entity.getClientId(),
-						entity.getAppId()),
+				(entity, canDelete, deleted) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(entity.getClientId(), entity.getAppId())),
 
 				(entity, canDelete, deleted, evicted) -> Mono.just(deleted))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -166,7 +171,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 		return FlatMapUtil.flatMapMono(
 				() -> this.getClientAndAppId(clientCode, appCode),
 
-				clientAppIds -> this.read(clientAppIds.getT1(), clientAppIds.getT2()),
+				clientAppIds -> this.getClientAppPolicy(clientAppIds.getT1(), clientAppIds.getT2()),
 
 				(clientAppIds, policy) -> {
 
@@ -186,7 +191,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	public Mono<D> update(String clientCode, String appCode, Map<String, Object> fields) {
 
 		return FlatMapUtil.flatMapMono(
-				() -> this.read(clientCode, appCode),
+				() -> this.getClientAppPolicy(clientCode, appCode),
 				policy -> {
 
 					if (isDefaultPolicy(policy))
@@ -200,7 +205,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	public Mono<Integer> delete(String clientCode, String appCode) {
 
 		return FlatMapUtil.flatMapMono(
-				() -> this.read(clientCode, appCode),
+				() -> this.getClientAppPolicy(clientCode, appCode),
 				policy -> {
 
 					if (isDefaultPolicy(policy))
@@ -210,37 +215,34 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				});
 	}
 
-	public Mono<D> read(String clientCode, String appCode) {
-
-		return FlatMapUtil.flatMapMono(
-				() -> this.getClientAndAppId(clientCode, appCode),
-				clientAppIds -> this.read(clientAppIds.getT1(), clientAppIds.getT2()));
+	public Mono<D> getClientAppPolicy(String clientCode, String appCode) {
+		return this.getClientAndAppId(clientCode, appCode)
+				.flatMap(clientAppIds -> this.getClientAppPolicy(clientAppIds.getT1(), clientAppIds.getT2()));
 	}
 
-	public Mono<D> read(ULong clientId, ULong appId) {
-
+	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
 		return this.cacheService.cacheEmptyValueOrGet(this.getPolicyCacheName(),
-				() -> this.dao.getClientAppPolicy(clientId, appId, clientId),
-				clientId, appId)
+				() -> this.dao.getClientAppPolicy(clientId, appId), getCacheKeys(clientId, appId))
 				.switchIfEmpty(this.getDefaultPolicy());
 	}
 
 	public Mono<String> generatePolicyPassword(ULong clientId, ULong appId) {
-
-		return FlatMapUtil.flatMapMono(
-				() -> this.read(clientId, appId),
-				policy -> Mono.just(policy.generate()));
+		return this.getClientAppPolicy(clientId, appId).map(AbstractPolicy::generate);
 	}
 
 	private Mono<Tuple2<ULong, ULong>> getClientAndAppId(String clientCode, String appCode) {
 
 		return FlatMapUtil.flatMapMono(
-				() -> clientService.getClientBy(clientCode),
-				client -> appService.getAppByCode(appCode),
-				(client, app) -> Mono.just(Tuples.of(client.getId(), app.getId())));
+				() -> clientService.getClientId(clientCode),
+				clientId -> appService.getAppByCode(appCode),
+				(clientId, app) -> Mono.just(Tuples.of(clientId, app.getId())));
 	}
 
 	private boolean isDefaultPolicy(D policy) {
 		return policy.getId() == null || policy.getId().equals(DEFAULT_POLICY_ID);
+	}
+
+	private String getCacheKeys(ULong clientId, ULong appId) {
+		return clientId + ":" + appId;
 	}
 }

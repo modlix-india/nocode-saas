@@ -11,9 +11,7 @@ public interface IPolicyService<T extends AbstractPolicy> {
 
 	AuthenticationPasswordType getAuthenticationPasswordType();
 
-	String getPolicyCacheName();
-
-	Mono<T> read(ULong clientId, ULong appId);
+	Mono<T> getClientAppPolicy(ULong clientId, ULong appId);
 
 	Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, ULong userId, String password);
 

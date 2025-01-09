@@ -15,11 +15,14 @@ import reactor.core.publisher.Mono;
 public class SecurityMessageResourceService extends AbstractMessageService {
 
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
+	public static final String PARAMS_NOT_FOUND = "params_not_found";
 	public static final String FORBIDDEN_CREATE = "forbidden_create";
+	public static final String FORBIDDEN_UPDATE = "forbidden_update";
 	public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
 	public static final String FORBIDDEN_CREATE_INVALID_PASS = "forbidden_create_user_invalid_password";
 	public static final String UNABLE_TO_DELETE = "unable_to_delete";
 	public static final String OBJECT_NOT_UPDATABLE = "object_not_updatable";
+	public static final String USER_IDENTIFICATION_NOT_FOUND = "user_identification_not_found";
 	public static final String USER_CREDENTIALS_MISMATCHED = "user_credentials_mismatched";
 	public static final String USER_PASSWORD_INVALID_ATTEMPTS = "user_password_invalid_attempts";
 	public static final String USER_PASSWORD_INVALID = "user_password_invalid";
@@ -50,6 +53,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String REGEX_MISMATCH = "regex_mismatch";
 	public static final String MIN_LENGTH_ERROR = "min_length_error";
 	public static final String MAX_LENGTH_ERROR = "max_length_error";
+	public static final String LENGTH_ERROR = "length_error";
 	public static final String USER_NOT_ACTIVE = "user_not_active";
 	public static final String OLD_NEW_PASSWORD_MATCH = "old_new_password_match";
 	public static final String NEW_PASSWORD_MISSING = "new_password_missing";
