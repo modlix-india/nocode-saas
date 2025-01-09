@@ -17,6 +17,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegPackage;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
+import com.fincity.security.jooq.tables.SecurityClientHierarchy;
 import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
@@ -128,6 +129,11 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_client_address</code>.
      */
     public final SecurityClientAddress SECURITY_CLIENT_ADDRESS = SecurityClientAddress.SECURITY_CLIENT_ADDRESS;
+
+    /**
+     * The table <code>security.security_client_hierarchy</code>.
+     */
+    public final SecurityClientHierarchy SECURITY_CLIENT_HIERARCHY = SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 
     /**
      * The table <code>security.security_client_manage</code>.
@@ -283,6 +289,7 @@ public class Security extends SchemaImpl {
             SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
+            SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY,
             SecurityClientManage.SECURITY_CLIENT_MANAGE,
             SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY,
             SecurityClientPackage.SECURITY_CLIENT_PACKAGE,

@@ -261,11 +261,30 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
     }
 
     /**
+     * Setter for
+     * <code>security.security_client_otp_policy.USER_LOCK_TIME</code>. Time in
+     * minutes for which user need to be locked it policy violates
+     */
+    public SecurityClientOtpPolicyRecord setUserLockTime(ULong value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_client_otp_policy.USER_LOCK_TIME</code>. Time in
+     * minutes for which user need to be locked it policy violates
+     */
+    public ULong getUserLockTime() {
+        return (ULong) get(13);
+    }
+
+    /**
      * Setter for <code>security.security_client_otp_policy.CREATED_BY</code>.
      * ID of the user who created this row
      */
     public SecurityClientOtpPolicyRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -274,7 +293,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(14);
     }
 
     /**
@@ -282,7 +301,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public SecurityClientOtpPolicyRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -291,7 +310,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -299,7 +318,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public SecurityClientOtpPolicyRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -308,7 +327,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(16);
     }
 
     /**
@@ -316,7 +335,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public SecurityClientOtpPolicyRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -325,7 +344,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -351,7 +370,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
     /**
      * Create a detached, initialised SecurityClientOtpPolicyRecord
      */
-    public SecurityClientOtpPolicyRecord(ULong id, ULong clientId, ULong appId, SecurityClientOtpPolicyTargetType targetType, Byte isConstant, String constantValue, Byte isNumeric, Byte isAlphanumeric, UShort length, Byte resendSameOtp, UShort noResendAttempts, ULong expireInterval, UShort noFailedAttempts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientOtpPolicyRecord(ULong id, ULong clientId, ULong appId, SecurityClientOtpPolicyTargetType targetType, Byte isConstant, String constantValue, Byte isNumeric, Byte isAlphanumeric, UShort length, Byte resendSameOtp, UShort noResendAttempts, ULong expireInterval, UShort noFailedAttempts, ULong userLockTime, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY);
 
         setId(id);
@@ -367,6 +386,7 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
         setNoResendAttempts(noResendAttempts);
         setExpireInterval(expireInterval);
         setNoFailedAttempts(noFailedAttempts);
+        setUserLockTime(userLockTime);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

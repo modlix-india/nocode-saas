@@ -23,6 +23,7 @@ import com.fincity.saas.core.functions.securitycontext.GetAuthentication;
 import com.fincity.saas.core.functions.securitycontext.GetUser;
 import com.fincity.saas.core.functions.securitycontext.HasAuthority;
 import com.fincity.saas.core.functions.storage.CreateStorageObject;
+import com.fincity.saas.core.functions.storage.DeleteStorageObjectWithFilter;
 import com.fincity.saas.core.functions.storage.DeleteStorageObject;
 import com.fincity.saas.core.functions.storage.ReadPageStorageObject;
 import com.fincity.saas.core.functions.storage.ReadStorageObject;
@@ -104,9 +105,11 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction updateStorage = new UpdateStorageObject(appDataService, gson);
 		ReactiveFunction readStorage = new ReadStorageObject(appDataService, gson);
 		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper, gson);
+		ReactiveFunction deleteByFilterStorage = new DeleteStorageObjectWithFilter(appDataService, objectMapper, gson);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
 		repoMap.put(deleteStorage.getSignature().getFullName(), deleteStorage);
+		repoMap.put(deleteByFilterStorage.getSignature().getFullName(), deleteByFilterStorage);
 		repoMap.put(updateStorage.getSignature().getFullName(), updateStorage);
 		repoMap.put(readStorage.getSignature().getFullName(), readStorage);
 		repoMap.put(readPageStorage.getSignature().getFullName(), readPageStorage);
