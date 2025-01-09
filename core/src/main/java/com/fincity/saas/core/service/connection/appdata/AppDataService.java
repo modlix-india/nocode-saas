@@ -835,6 +835,38 @@ public class AppDataService {
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.delete"));
 	}
 
+	
+	public Mono<Long> deleteByFilter(String appCode, String clientCode, String storageName, Query query, Boolean devMode) {
+
+        Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+                (ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+                (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+
+                (ca, ac, cc, conn) -> Mono.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+                (ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc).map(ObjectWithUniqueID::getObject),
+
+                (ca, ac, cc, conn, dataService, storage) -> this.<Long>genericOperation(storage,
+
+                        (cona, hasAccess) -> dataService.deleteByFilter(conn, storage, query, devMode), 
+
+                        Storage::getDeleteAuth, CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE),
+
+                (ca, ac, cc, conn, dataService, storage, deletedCount) -> {
+
+                        return Mono.just(deletedCount);
+                });
+
+        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteByFilter"));
+    }
+	
+
 	private Mono<Boolean> deleteRelatedObjects(String appCode, String clientCode, IAppDataService dataService,
 			Connection conn, Storage storage, String id) {
 

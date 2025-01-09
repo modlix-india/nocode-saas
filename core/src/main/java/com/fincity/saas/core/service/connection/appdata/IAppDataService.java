@@ -28,6 +28,8 @@ public interface IAppDataService {
 
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
 
+	public Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode);
+
 	public Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId);
 
 	public Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String versionId,
