@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientHierarchyDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.jooq.tables.records.SecurityClientHierarchyRecord;
+import com.netflix.discovery.converters.Auto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,23 +22,19 @@ import reactor.core.publisher.Mono;
 public class ClientHierarchyService
 		extends AbstractJOOQDataService<SecurityClientHierarchyRecord, ULong, ClientHierarchy, ClientHierarchyDAO> {
 
-	private final SecurityMessageResourceService securityMessageResourceService;
+	@Autowired
+	private  SecurityMessageResourceService securityMessageResourceService;
 
-	private final CacheService cacheService;
+	@Autowired
+	private CacheService cacheService;
 
+	@Autowired
 	@Lazy
-	private final ClientService clientService;
+	private ClientService clientService;
 
 	private static final String CLIENT_HIERARCHY_CACHE_NAME = "clientHierarchy";
 
 	private static final String USER_CLIENT_HIERARCHY_CACHE_NAME = "userClientHierarchy";
-
-	public ClientHierarchyService(SecurityMessageResourceService securityMessageResourceService,
-			CacheService cacheService, ClientService clientService) {
-		this.securityMessageResourceService = securityMessageResourceService;
-		this.cacheService = cacheService;
-		this.clientService = clientService;
-	}
 
 	public Mono<ClientHierarchy> create(ULong managingClientId, ULong clientId) {
 
