@@ -34,7 +34,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -69,8 +68,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	public Mono<ULong> getUserClientId(ULong userId) {
 		return Mono.from(this.dslContext.select(SECURITY_USER.CLIENT_ID)
-				.from(SECURITY_USER).where(SECURITY_USER.ID.eq(userId))
-		).map(Record1::value1);
+				.from(SECURITY_USER).where(SECURITY_USER.ID.eq(userId))).map(Record1::value1);
 	}
 
 	public Mono<Short> increaseFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
@@ -208,7 +206,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(user::setAuthorities);
 	}
 
-	public Mono<Boolean> checkUserExistsExclude(ULong clientId, String userName, String emailId, String phoneNumber, String typeCode, ULong userIdToExclude) {
+	public Mono<Boolean> checkUserExistsExclude(ULong clientId, String userName, String emailId, String phoneNumber,
+			String typeCode, ULong userIdToExclude) {
 
 		List<Condition> conditions = new ArrayList<>();
 
@@ -221,7 +220,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return this.checkUserExists(clientId, userName, emailId, phoneNumber, conditions);
 	}
 
-	public Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber, String typeCode) {
+	public Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber,
+			String typeCode) {
 
 		List<Condition> conditions = new ArrayList<>();
 
@@ -231,9 +231,10 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return this.checkUserExists(clientId, userName, emailId, phoneNumber, conditions);
 	}
 
-	private Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber, List<Condition> conditions) {
+	private Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber,
+			List<Condition> extraConditions) {
 
-		List<Condition> userConditions = new ArrayList<>(conditions);
+		List<Condition> userConditions = new ArrayList<>(extraConditions);
 
 		if (clientId == null)
 			return messageResourceService
@@ -247,9 +248,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		userConditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
 
 		return Mono.from(
-						this.dslContext.selectCount().from(SECURITY_USER)
-								.leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
-								.where(DSL.and(userConditions)))
+				this.dslContext.selectCount().from(SECURITY_USER)
+						.leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
+						.where(DSL.and(userConditions)))
 				.map(e -> e.value1() > 0);
 	}
 
