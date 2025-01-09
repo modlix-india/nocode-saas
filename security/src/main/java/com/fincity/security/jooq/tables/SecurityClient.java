@@ -16,6 +16,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegIntegration.SecurityAppReg
 import com.fincity.security.jooq.tables.SecurityAppRegPackage.SecurityAppRegPackagePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole.SecurityAppRegUserRolePath;
 import com.fincity.security.jooq.tables.SecurityClientAddress.SecurityClientAddressPath;
+import com.fincity.security.jooq.tables.SecurityClientHierarchy.SecurityClientHierarchyPath;
 import com.fincity.security.jooq.tables.SecurityClientManage.SecurityClientManagePath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPackage.SecurityClientPackagePath;
@@ -341,6 +342,76 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityClientAddress = new SecurityClientAddressPath(this, null, Keys.FK1_CLIENT_ADDRESS_CLIENT_ID.getInverseKey());
 
         return _securityClientAddress;
+    }
+
+    private transient SecurityClientHierarchyPath _fk1ClientHierarchyClientId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_hierarchy</code> table, via the
+     * <code>FK1_CLIENT_HIERARCHY_CLIENT_ID</code> key
+     */
+    public SecurityClientHierarchyPath fk1ClientHierarchyClientId() {
+        if (_fk1ClientHierarchyClientId == null)
+            _fk1ClientHierarchyClientId = new SecurityClientHierarchyPath(this, null, Keys.FK1_CLIENT_HIERARCHY_CLIENT_ID.getInverseKey());
+
+        return _fk1ClientHierarchyClientId;
+    }
+
+    private transient SecurityClientHierarchyPath _fk1ClientHierarchyLevel_0;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_hierarchy</code> table, via the
+     * <code>FK1_CLIENT_HIERARCHY_LEVEL_0</code> key
+     */
+    public SecurityClientHierarchyPath fk1ClientHierarchyLevel_0() {
+        if (_fk1ClientHierarchyLevel_0 == null)
+            _fk1ClientHierarchyLevel_0 = new SecurityClientHierarchyPath(this, null, Keys.FK1_CLIENT_HIERARCHY_LEVEL_0.getInverseKey());
+
+        return _fk1ClientHierarchyLevel_0;
+    }
+
+    private transient SecurityClientHierarchyPath _fk1ClientHierarchyLevel_1;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_hierarchy</code> table, via the
+     * <code>FK1_CLIENT_HIERARCHY_LEVEL_1</code> key
+     */
+    public SecurityClientHierarchyPath fk1ClientHierarchyLevel_1() {
+        if (_fk1ClientHierarchyLevel_1 == null)
+            _fk1ClientHierarchyLevel_1 = new SecurityClientHierarchyPath(this, null, Keys.FK1_CLIENT_HIERARCHY_LEVEL_1.getInverseKey());
+
+        return _fk1ClientHierarchyLevel_1;
+    }
+
+    private transient SecurityClientHierarchyPath _fk1ClientHierarchyLevel_2;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_hierarchy</code> table, via the
+     * <code>FK1_CLIENT_HIERARCHY_LEVEL_2</code> key
+     */
+    public SecurityClientHierarchyPath fk1ClientHierarchyLevel_2() {
+        if (_fk1ClientHierarchyLevel_2 == null)
+            _fk1ClientHierarchyLevel_2 = new SecurityClientHierarchyPath(this, null, Keys.FK1_CLIENT_HIERARCHY_LEVEL_2.getInverseKey());
+
+        return _fk1ClientHierarchyLevel_2;
+    }
+
+    private transient SecurityClientHierarchyPath _fk1ClientHierarchyLevel_3;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_hierarchy</code> table, via the
+     * <code>FK1_CLIENT_HIERARCHY_LEVEL_3</code> key
+     */
+    public SecurityClientHierarchyPath fk1ClientHierarchyLevel_3() {
+        if (_fk1ClientHierarchyLevel_3 == null)
+            _fk1ClientHierarchyLevel_3 = new SecurityClientHierarchyPath(this, null, Keys.FK1_CLIENT_HIERARCHY_LEVEL_3.getInverseKey());
+
+        return _fk1ClientHierarchyLevel_3;
     }
 
     private transient SecurityClientManagePath _fk1ClientManageClientId;

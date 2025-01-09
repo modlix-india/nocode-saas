@@ -71,7 +71,7 @@ public class ClientController
 	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
 			@RequestParam String clientCode) {
 
-		return this.service.isUserBeingManaged(userId, clientCode).map(ResponseEntity::ok);
+		return this.service.isUserBeingManaged(clientCode, userId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/validateClientCode")

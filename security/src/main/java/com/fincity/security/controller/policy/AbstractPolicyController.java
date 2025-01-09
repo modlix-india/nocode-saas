@@ -27,7 +27,7 @@ public class AbstractPolicyController<R extends UpdatableRecord<R>, D extends Ab
 	@GetMapping("/codes/policy")
 	public Mono<ResponseEntity<D>> getClientAppPolicy(ServerHttpRequest request) {
 		return getClientCodeAppCode(request)
-				.flatMap(code -> this.service.read(code.getT1(), code.getT2())
+				.flatMap(code -> this.service.getClientAppPolicy(code.getT1(), code.getT2())
 						.map(ResponseEntity::ok));
 	}
 
