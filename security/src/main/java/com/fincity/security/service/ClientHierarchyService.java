@@ -14,6 +14,7 @@ import com.fincity.security.dao.ClientHierarchyDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.jooq.tables.records.SecurityClientHierarchyRecord;
 
+import lombok.Getter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -21,19 +22,27 @@ import reactor.core.publisher.Mono;
 public class ClientHierarchyService
 		extends AbstractJOOQDataService<SecurityClientHierarchyRecord, ULong, ClientHierarchy, ClientHierarchyDAO> {
 
-	@Autowired
-	private  SecurityMessageResourceService securityMessageResourceService;
+	private final SecurityMessageResourceService securityMessageResourceService;
 
-	@Autowired
-	private CacheService cacheService;
+	private final CacheService cacheService;
 
-	@Autowired
-	@Lazy
+	@Getter
 	private ClientService clientService;
 
 	private static final String CLIENT_HIERARCHY_CACHE_NAME = "clientHierarchy";
 
 	private static final String USER_CLIENT_HIERARCHY_CACHE_NAME = "userClientHierarchy";
+
+	public ClientHierarchyService(SecurityMessageResourceService securityMessageResourceService,
+			CacheService cacheService) {
+		this.securityMessageResourceService = securityMessageResourceService;
+		this.cacheService = cacheService;
+	}
+
+	@Autowired
+	public void setClientService(@Lazy ClientService clientService) {
+		this.clientService = clientService;
+	}
 
 	public Mono<ClientHierarchy> create(ULong managingClientId, ULong clientId) {
 

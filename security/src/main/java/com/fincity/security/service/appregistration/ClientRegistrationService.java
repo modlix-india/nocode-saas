@@ -91,9 +91,9 @@ public class ClientRegistrationService {
 
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
-			ClientHierarchyService clientHierarchyService,
-			EventCreationService ecService, ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO,
-			IFeignFilesService filesService, AppRegistrationIntegrationService appRegistrationIntegrationService,
+			ClientHierarchyService clientHierarchyService, EventCreationService ecService,
+			ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO, IFeignFilesService filesService,
+			AppRegistrationIntegrationService appRegistrationIntegrationService,
 			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
 			SecurityMessageResourceService securityMessageResourceService) {
 
@@ -245,9 +245,7 @@ public class ClientRegistrationService {
 
 				(exists, app, client, levelType, usageType, suffix) -> this
 						.checkSubDomainAvailability(this.subDomainEndings, registrationRequest.getSubDomain(),
-								registrationRequest.isBusinessClient()),
-
-				(exists, app, client, levelType, usageType, suffix, subDomain) -> Mono.just(subDomain))
+								registrationRequest.isBusinessClient()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
 	}
 
@@ -388,7 +386,7 @@ public class ClientRegistrationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> verifyClient(ca.getUrlAppCode(), regProp, request.getEmailId(), request.getPhoneNumber(),
+				() -> this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(),
 						request.getUniqueCode()),
 
 				isVerified -> this.appService.getAppByCode(ca.getUrlAppCode()),
@@ -405,20 +403,29 @@ public class ClientRegistrationService {
 								createdClient),
 
 				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
-						.addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient),
-
-				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded, clientAccessAdded) -> Mono
-						.just(createdClient))
+						.addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient)
+						.map(clientAccessAdded -> createdClient))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerClient"));
 	}
 
-	private Mono<Boolean> verifyClient(String appCode, String regProp, String emailId, String phoneNumber,
+	/**
+	 * We will not verify client if regProp is
+	 * {@code AppService.APP_PROP_REG_TYPE_NO_VERIFICATION}
+	 * or
+	 * We have an authenticated client. In this client will be registered under this
+	 * client.
+	 */
+	private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
 			String uniqueCode) {
 
-		if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
+		if (!regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
 			return Mono.just(Boolean.TRUE);
 
-		return this.otpService.verifyOtpInternal(appCode, emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
+		if (ca.isAuthenticated())
+			return Mono.just(Boolean.TRUE);
+
+		return this.otpService
+				.verifyOtpInternal(ca.getUrlAppCode(), emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
 				.flatMap(isVerified -> Mono.justOrEmpty(Boolean.TRUE.equals(isVerified) ? Boolean.TRUE : null))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
