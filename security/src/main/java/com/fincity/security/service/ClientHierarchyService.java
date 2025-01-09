@@ -89,14 +89,14 @@ public class ClientHierarchyService
 		return this.clientService.getClientId(clientCode).flatMap(this::getClientHierarchy);
 	}
 
-	public Flux<ULong> getClientHierarchyIds(ULong clientId, ClientHierarchy.Level level) {
+	public Flux<ULong> getClientHierarchyIds(ULong clientId) {
 		return this.getClientHierarchy(clientId)
-				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds(level)));
+				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
 	}
 
-	public Flux<ULong> getUserClientHierarchyIds(ULong userId, ClientHierarchy.Level level) {
+	public Flux<ULong> getUserClientHierarchyIds(ULong userId) {
 		return this.getUserClientHierarchy(userId)
-				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds(level)));
+				.flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
 	}
 
 	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
@@ -146,10 +146,6 @@ public class ClientHierarchyService
 
 				managingClientId -> isUserBeingManaged(managingClientId, userId))
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
-	}
-
-	public Mono<Boolean> isClientHierarchyActive(ULong clientId) {
-		return this.dao.isClientHierarchyActive(clientId).switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
 	private static class ClientHierarchyBuilder {

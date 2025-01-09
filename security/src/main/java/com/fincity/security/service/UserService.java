@@ -120,7 +120,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.getFirst()))
 						.flatMap(this.dao::setPermissions),
 
-				user -> this.clientHierarchyService.isClientHierarchyActive(user.getClientId()),
+				user -> this.clientService.isClientActive(user.getClientId()),
 
 				(user, managerActive) -> this.clientService.getClientInfoById(user.getClientId()),
 

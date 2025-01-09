@@ -591,4 +591,9 @@ public class ClientService
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"));
 	}
+
+	public Mono<Boolean> isClientActive(ULong clientId) {
+		return this.clientHierarchyService.getClientHierarchyIds(clientId).collectList()
+				.flatMap(clientHie -> this.dao.isClientActive(clientHie));
+	}
 }

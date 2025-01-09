@@ -45,27 +45,6 @@ public class ClientHierarchyDAO extends AbstractDAO<SecurityClientHierarchyRecor
 				.map(e -> e.into(ClientHierarchy.class));
 	}
 
-	public Mono<Boolean> isClientHierarchyActive(ULong clientId) {
-
-		return FlatMapUtil.flatMapMono(
-				() -> Mono.from(this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID,
-						SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0,
-						SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1,
-						SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2)
-						.from(SECURITY_CLIENT_HIERARCHY)
-						.where(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(clientId)))
-						.map(clientHie -> Stream.of(clientHie.component1(), clientHie.component2(),
-								clientHie.component3(), clientHie.component4()).filter(Objects::nonNull).toList()),
-
-				clientHies -> Mono.from(
-						this.dslContext.selectCount()
-								.from(SECURITY_CLIENT)
-								.where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
-								.and(SECURITY_CLIENT.ID.in(clientHies)))
-						.map(count -> count.value1() > 0))
-				.switchIfEmpty(Mono.just(Boolean.FALSE));
-	}
-
 	public static Condition getManageClientCondition(ULong clientId) {
 		return SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(clientId)
 				.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(clientId))
