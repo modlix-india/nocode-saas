@@ -13,7 +13,6 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientHierarchyDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.jooq.tables.records.SecurityClientHierarchyRecord;
-import com.netflix.discovery.converters.Auto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
