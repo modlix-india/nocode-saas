@@ -1,20 +1,14 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.Tables.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
-
-import java.util.Objects;
-import java.util.stream.Stream;
 
 import org.jooq.Condition;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientHierarchyRecord;
 
 import reactor.core.publisher.Mono;
