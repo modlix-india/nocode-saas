@@ -23,7 +23,7 @@ public class StringUtil {
 	public static boolean safeIsBlank(Object object) {
 
 		return object == null || object.toString()
-		        .isBlank();
+				.isBlank();
 	}
 
 	public static boolean safeEquals(String str, String str2) {
@@ -55,29 +55,45 @@ public class StringUtil {
 	}
 
 	public static String removeLineFeedOrNewLineChars(String str) {
-		
-		if (str == null) return str;
-		
+
+		if (str == null)
+			return str;
+
 		int len = str.length() - 1;
-		
-		while (len >= 0 && (str.charAt(len) == '\r' || str.charAt(len) == '\n')) len--;
-		
+
+		while (len >= 0 && (str.charAt(len) == '\r' || str.charAt(len) == '\n'))
+			len--;
+
 		return str.substring(0, len + 1);
 	}
-	
+
 	public static String removeSpecialCharacters(String str) {
-	    
-	    if(str == null || str.isBlank())
-	        return str;
-	    
-	    StringBuilder sb = new StringBuilder(str.length());
-	    
-	    for(int i=0;i<str.length();i++) {
-	        char c = str.charAt(i);
-	        if(Character.isLetter(c))
-	            sb.append(c);
-	    }
-	    
-	    return sb.toString();
+
+		if (str == null || str.isBlank())
+			return str;
+
+		StringBuilder sb = new StringBuilder(str.length());
+
+		for (int i = 0; i < str.length(); i++) {
+			char c = str.charAt(i);
+			if (Character.isLetter(c))
+				sb.append(c);
+		}
+
+		return sb.toString();
+	}
+
+	public static String capitalize(String str) {
+
+		if (str == null || str.isBlank())
+			return str;
+
+		char base = Character.toUpperCase(str.charAt(0));
+
+		char[] chars = str.toCharArray();
+		chars[0] = base;
+
+		return new String(chars);
+
 	}
 }

@@ -41,9 +41,9 @@ public class TwoFactorService implements MessageService {
 
 	private static final String TWO_FACTOR_API_URL = "https://2factor.in/API/R1/";
 
-	private static final String FROM = "APYASA";
+	private static final String SENDER_ID = "MODLIX";
 
-	private static final String OTP_TEMPLATE = "SAOtpMessage";
+	private static final String TEMPLATE_NAME = "MODLIXOTP";
 
 	private static final String OTP_PEID = "PEID";
 
@@ -71,8 +71,11 @@ public class TwoFactorService implements MessageService {
 		TransactionalSms request = TransactionalSms.builder()
 				.apikey(apiKey)
 				.to(new String[]{phoneNumber})
-				.templateName(OTP_TEMPLATE)
-				.var1(otpMessageVars.getOtpCode())
+				.templateName(TEMPLATE_NAME)
+				.var1(otpMessageVars.getOtpPurpose().getDisplayName())
+				.var2(otpMessageVars.getOtpCode())
+				.var3(otpMessageVars.getExpireInterval() + "mins")
+				.var4(StringUtil.capitalize(otpMessageVars.getAppName()))
 				.peid(OTP_PEID)
 				.ctid(OTP_CTID)
 				.build();
@@ -159,6 +162,10 @@ public class TwoFactorService implements MessageService {
 			public TransactionalSmsBuilder var3(String value) {
 				return addVar(3, value);
 			}
+
+			public TransactionalSmsBuilder var4(String value) {
+				return addVar(4, value);
+			}
 		}
 
 		public MultiValueMap<String, String> toBodyMap() {
@@ -169,7 +176,7 @@ public class TwoFactorService implements MessageService {
 			body.add("module", TSMS_MODULE);
 			body.add("apikey", apikey);
 			body.add("to", String.join(",", to));
-			body.add("from", FROM);
+			body.add("from", SENDER_ID);
 			body.add("templatename", templateName);
 
 			if (scheduletime != null)

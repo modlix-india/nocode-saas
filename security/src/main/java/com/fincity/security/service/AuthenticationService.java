@@ -156,7 +156,7 @@ public class AuthenticationService implements IAuthenticationService {
 	public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
 
 		if (!authRequest.isGenerateOtp())
-			return Mono.just(false);
+			return Mono.just(Boolean.FALSE);
 
 		String appCode = request.getHeaders().getFirst(AC);
 		String clientCode = request.getHeaders().getFirst(CC);
@@ -187,12 +187,11 @@ public class AuthenticationService implements IAuthenticationService {
 								.setWithUserOption(tup.getT3())
 								.setIpAddress(request.getRemoteAddress())
 								.setResend(authRequest.isResend())
-								.setPurpose(purpose.name())),
+								.setPurpose(purpose)),
 
 				(app, tup, linCCheck, targetReq) -> this.otpService.generateOtpInternal(targetReq))
-				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"OtpService.generateOtp : [" + purpose.name() + "]"));
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [" + purpose.name() + "]"))
+				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
 	}
 
 	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
@@ -288,7 +287,6 @@ public class AuthenticationService implements IAuthenticationService {
 	}
 
 	private Mono<User> checkUserStatus(User user) {
-
 		return switch (user.getStatusCode()) {
 			case ACTIVE -> Mono.just(user);
 			case LOCKED -> this.checkUserLockStatus(user);
@@ -300,11 +298,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<User> checkUserLockStatus(User user) {
 
-		if (user.getLockedUntil().isBefore(LocalDateTime.now())) {
+		if (user.getLockedUntil().isBefore(LocalDateTime.now()))
 			return this.userService.unlockUserInternal(user.getId())
 					.flatMap(unblocked -> Boolean.TRUE.equals(unblocked) ? Mono.just(user)
 							: this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED));
-		}
 
 		return this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED_LIMIT, user.getLockedDueTo(),
 				user.getLockedUntil() == null ? 5
@@ -372,12 +369,10 @@ public class AuthenticationService implements IAuthenticationService {
 					int remainingAttempts = Math.max(policy.getNoFailedAttempts().intValue() - increasedAttempts, 0);
 
 					soxLogService.createLog(user.getId(), SecuritySoxLogActionName.UPDATE,
-							SecuritySoxLogObjectName.USER,
-							"Given Password is mismatching with existing.");
+							SecuritySoxLogObjectName.USER, "Given Password is mismatching with existing.");
 
 					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID_ATTEMPTS,
-							passwordType.getName(),
-							remainingAttempts);
+							passwordType.getName(), remainingAttempts);
 				});
 	}
 
@@ -388,11 +383,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<Boolean> resetUserAttempts(User user, AuthenticationPasswordType passwordType) {
 
-		if (passwordType.equals(AuthenticationPasswordType.OTP)) {
+		if (passwordType.equals(AuthenticationPasswordType.OTP))
 			return userService.resetFailedAttempt(user.getId(), passwordType)
 					.flatMap(reset -> userService.resetResendAttempt(user.getId()))
 					.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
-		}
 
 		return userService.resetFailedAttempt(user.getId(), passwordType)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
