@@ -91,8 +91,6 @@ public class ClientRegistrationService {
 	@Value("${security.register.legs.counts}")
 	private Short registerLegsCount;
 
-	private static final String FEATURE_NOT_SUPPORTED = "Feature not supported";
-
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
 			ClientHierarchyService clientHierarchyService, EventCreationService ecService,
@@ -137,7 +135,7 @@ public class ClientRegistrationService {
 				(client, regProp) -> {
 
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
-						return this.regError(FEATURE_NOT_SUPPORTED);
+						return this.regError("Feature not supported");
 
 					return otpService.generateOtp(
 							otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION)
@@ -149,9 +147,6 @@ public class ClientRegistrationService {
 	}
 
 	public Mono<Boolean> preRegisterCheckOne(ClientRegistrationRequest registrationRequest) {
-
-		if (registerLegsCount == null || registerLegsCount > 1)
-			return this.regError(FEATURE_NOT_SUPPORTED);
 
 		return FlatMapUtil.flatMapMono(
 
