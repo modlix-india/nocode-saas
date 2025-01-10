@@ -25,7 +25,6 @@ import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
@@ -127,19 +126,39 @@ public class ClientRegistrationService {
 		return FlatMapUtil.flatMapMono(
 				() -> clientService.getClientBy(clientCode),
 
-				client -> this.fetchAppProp(client.getId(), null,
-						appCode, AppService.APP_PROP_REG_TYPE),
+				client -> this.fetchAppProp(client.getId(), null, appCode, AppService.APP_PROP_REG_TYPE),
 
 				(client, regProp) -> {
 
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
-						return regError("Feature not supported");
+						return this.regError("Feature not supported");
 
-					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION),
-							request);
+					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION), request);
 				})
 				.switchIfEmpty(regError("Feature not supported"))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));
+	}
+
+	public Mono<Boolean> preRegisterCheckOne(ClientRegistrationRequest registrationRequest) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.preRegisterCheck(registrationRequest, ca),
+
+				(ca, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+						ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
+				(ca, subDomain, regProp) -> {
+
+					if (safeIsBlank(regProp) || AppService.APP_PROP_REG_TYPE_NO_REGISTRATION.equals(regProp))
+						return this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
+
+					return this.verifyClient(ca, regProp, registrationRequest.getEmailId(),
+							registrationRequest.getPhoneNumber(), registrationRequest.getUniqueCode());
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
 	}
 
 	public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
@@ -418,7 +437,7 @@ public class ClientRegistrationService {
 	private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
 			String uniqueCode) {
 
-		if (!regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
+		if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
 			return Mono.just(Boolean.TRUE);
 
 		if (ca.isAuthenticated())
@@ -429,7 +448,8 @@ public class ClientRegistrationService {
 				.flatMap(isVerified -> Mono.justOrEmpty(Boolean.TRUE.equals(isVerified) ? Boolean.TRUE : null))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-						SecurityMessageResourceService.USER_PASSWORD_INVALID, AuthenticationPasswordType.OTP.getName()))
+						SecurityMessageResourceService.USER_PASSWORD_INVALID, AuthenticationPasswordType.OTP.getName(),
+						AuthenticationPasswordType.OTP.getName()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.verifyClient"));
 	}
 
