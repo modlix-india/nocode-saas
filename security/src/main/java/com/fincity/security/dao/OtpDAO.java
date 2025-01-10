@@ -7,7 +7,7 @@ import org.jooq.Condition;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
-import com.fincity.saas.commons.jooq.dao.AbstractDAO;
+import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Otp;
 import com.fincity.security.enums.otp.OtpPurpose;
@@ -17,10 +17,26 @@ import com.fincity.security.jooq.tables.records.SecurityOtpRecord;
 import reactor.core.publisher.Mono;
 
 @Component
-public class OtpDAO extends AbstractDAO<SecurityOtpRecord, ULong, Otp> {
+public class OtpDAO extends AbstractUpdatableDAO<SecurityOtpRecord, ULong, Otp> {
 
 	protected OtpDAO() {
 		super(Otp.class, SECURITY_OTP, SECURITY_OTP.ID);
+	}
+
+	public Mono<Boolean> decreaseVerifyCounts(ULong otpId) {
+
+		return Mono.from(this.dslContext.select(SECURITY_OTP.VERIFY_LEGS_COUNTS)
+						.from(SECURITY_OTP)
+						.where(SECURITY_OTP.ID.eq(otpId)))
+				.flatMap(count -> {
+					if (count == null || count.value1() == 0)
+						return Mono.empty();
+
+					return Mono.from(this.dslContext.update(SECURITY_OTP)
+									.set(SECURITY_OTP.VERIFY_LEGS_COUNTS, SECURITY_OTP.VERIFY_LEGS_COUNTS.sub(1))
+									.where(SECURITY_OTP.ID.eq(otpId)))
+							.map(rowsUpdated -> rowsUpdated > 0);
+				});
 	}
 
 	public Mono<Otp> getLatestOtp(ULong appId, ULong userId, OtpPurpose purpose) {

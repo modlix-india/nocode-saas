@@ -1,6 +1,8 @@
 package com.fincity.security.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -10,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
+import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -37,7 +39,7 @@ import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
-public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong, Otp, OtpDAO> {
+public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpRecord, ULong, Otp, OtpDAO> {
 
 	@Autowired
 	private ClientService clientService;
@@ -67,6 +69,27 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 		return this.dao.create(entity);
 	}
 
+	@Override
+	protected Mono<Otp> updatableEntity(Otp entity) {
+
+		return this.read(entity.getId())
+				.map(e -> {
+					e.setVerifyLegsCounts(entity.getVerifyLegsCounts());
+					return e;
+				});
+	}
+
+	@Override
+	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+
+		if (fields == null || key == null)
+			return Mono.just(new HashMap<>());
+
+		fields.keySet().retainAll(List.of("verifyCounts"));
+
+		return Mono.just(fields);
+	}
+
 	public Mono<Boolean> generateOtp(OtpGenerationRequest otpGenerationRequest, ServerHttpRequest request) {
 
 		String appCode = request.getHeaders().getFirst("appCode");
@@ -87,7 +110,8 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 									otpGenerationRequest.getPhoneNumber())
 							.setIpAddress(request.getRemoteAddress())
 							.setResend(otpGenerationRequest.isResend())
-							.setPurpose(otpGenerationRequest.getPurpose());
+							.setPurpose(otpGenerationRequest.getPurpose())
+							.setVerifyLegsCounts(otpGenerationRequest.getVerifyLegsCounts());
 
 					return this.generateOtpInternal(targetReq);
 				})
@@ -129,77 +153,6 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtpInternal"));
 	}
 
-	public Mono<Boolean> verifyOtp(String clientCode, String appCode, String emailId, String phoneNumber,
-			OtpPurpose purpose, String uniqueCode) {
-
-		if (StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(appCode) || purpose == null ||
-				StringUtil.safeIsBlank(uniqueCode)
-				|| (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
-			return Mono.just(Boolean.FALSE);
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.getClientAppInheritance(clientCode, appCode)
-						.flatMap(appInherit -> Mono.justOrEmpty(
-								Boolean.TRUE.equals(appInherit.getT3()) ? appInherit.getT2() : null)),
-
-				app -> this.dao.getLatestOtp(app.getId(), emailId, phoneNumber, purpose),
-
-				(app, lotp) -> {
-					if (lotp == null || lotp.isExpired() || !encoder.matches(uniqueCode, lotp.getUniqueCode()))
-						return Mono.just(Boolean.FALSE);
-
-					return this.delete(lotp.getId()).flatMap(deleted -> Mono.just(Boolean.TRUE));
-				})
-				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtp"));
-	}
-
-	public Mono<Boolean> verifyOtpInternal(String appCode, User user, OtpPurpose purpose,
-			String uniqueCode) {
-
-		if (StringUtil.safeIsBlank(appCode) || purpose == null || StringUtil.safeIsBlank(uniqueCode))
-			return Mono.just(Boolean.FALSE);
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.appService.getAppByCode(appCode),
-
-				app -> this.dao.getLatestOtp(app.getId(), user.getId(), purpose),
-
-				(app, lotp) -> {
-					if (lotp == null || lotp.isExpired() || !encoder.matches(uniqueCode, lotp.getUniqueCode()))
-						return Mono.just(Boolean.FALSE);
-
-					return this.delete(lotp.getId()).flatMap(deleted -> Mono.just(Boolean.TRUE));
-				})
-				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [user]"));
-	}
-
-	public Mono<Boolean> verifyOtpInternal(String appCode, String emailId, String phoneNumber,
-			OtpPurpose purpose, String uniqueCode) {
-
-		if (StringUtil.safeIsBlank(appCode) || purpose == null || StringUtil.safeIsBlank(uniqueCode)
-				|| (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
-			return Mono.just(Boolean.FALSE);
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.appService.getAppByCode(appCode),
-
-				app -> this.dao.getLatestOtp(app.getId(), emailId, phoneNumber, purpose),
-
-				(app, lotp) -> {
-					if (lotp == null || lotp.isExpired() || !encoder.matches(uniqueCode, lotp.getUniqueCode()))
-						return Mono.just(Boolean.FALSE);
-
-					return this.delete(lotp.getId()).flatMap(deleted -> Mono.just(Boolean.TRUE));
-				})
-				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [emailId, phoneNumber]"));
-	}
-
 	private Mono<String> getOtpForResend(OtpGenerationRequestInternal request) {
 
 		if (request.isWithUser())
@@ -207,6 +160,22 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 
 		return this.dao.getLatestOtpCode(request.getAppId(), request.getEmailId(), request.getPhoneNumber(),
 				request.getPurpose());
+	}
+
+	private Mono<Tuple3<Client, App, Boolean>> getClientAppInheritance(String clientCode, String appCode) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.clientService.getClientBy(clientCode),
+
+				client -> this.appService.getAppByCode(appCode),
+
+				(client, app) -> this.appService.appInheritance(appCode, clientCode, clientCode),
+
+				(client, app, appInherit) -> appInherit.contains(clientCode)
+						? Mono.just(Tuples.of(client, app, Boolean.TRUE))
+						: Mono.just(Tuples.of(client, app, Boolean.FALSE)))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.getClientAppInheritance"));
 	}
 
 	private Mono<Boolean> sendOtp(OtpGenerationRequestInternal request, SecurityOtpTargetType targetType,
@@ -283,6 +252,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				.setUniqueCode(encoder.encode(uniqueCode))
 				.setExpiresAt(LocalDateTime.now().plusMinutes(expireInterval))
 				.setIpAddress(request.getIpAddress())
+				.setVerifyLegsCounts(request.getVerifyLegsCounts())
 				.setCreatedBy(request.getUserId())
 				.setCreatedAt(LocalDateTime.now());
 
@@ -298,19 +268,68 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.createOtp"));
 	}
 
-	private Mono<Tuple3<Client, App, Boolean>> getClientAppInheritance(String clientCode, String appCode) {
+	public Mono<Boolean> verifyOtp(String clientCode, String appCode, String emailId, String phoneNumber,
+			OtpPurpose purpose, String uniqueCode) {
+
+		if (StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(appCode) || purpose == null ||
+				StringUtil.safeIsBlank(uniqueCode)
+				|| (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
+			return Mono.just(Boolean.FALSE);
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.clientService.getClientBy(clientCode),
+				() -> this.getClientAppInheritance(clientCode, appCode)
+						.flatMap(appInherit -> Mono.justOrEmpty(
+								Boolean.TRUE.equals(appInherit.getT3()) ? appInherit.getT2() : null)),
 
-				client -> this.appService.getAppByCode(appCode),
+				app -> this.dao.getLatestOtp(app.getId(), emailId, phoneNumber, purpose),
 
-				(client, app) -> this.appService.appInheritance(appCode, clientCode, clientCode),
+				(app, lotp) -> verifyOtp(uniqueCode, lotp))
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtp"));
+	}
 
-				(client, app, appInherit) -> appInherit.contains(clientCode)
-						? Mono.just(Tuples.of(client, app, Boolean.TRUE))
-						: Mono.just(Tuples.of(client, app, Boolean.FALSE)))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.getClientAppInheritance"));
+	public Mono<Boolean> verifyOtpInternal(String appCode, User user, OtpPurpose purpose,
+			String uniqueCode) {
+
+		if (StringUtil.safeIsBlank(appCode) || purpose == null || StringUtil.safeIsBlank(uniqueCode))
+			return Mono.just(Boolean.FALSE);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppByCode(appCode),
+
+				app -> this.dao.getLatestOtp(app.getId(), user.getId(), purpose),
+
+				(app, lotp) -> verifyOtp(uniqueCode, lotp))
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [user]"));
+	}
+
+	public Mono<Boolean> verifyOtpInternal(String appCode, String emailId, String phoneNumber,
+			OtpPurpose purpose, String uniqueCode) {
+
+		if (StringUtil.safeIsBlank(appCode) || purpose == null || StringUtil.safeIsBlank(uniqueCode)
+				|| (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
+			return Mono.just(Boolean.FALSE);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppByCode(appCode),
+
+				app -> this.dao.getLatestOtp(app.getId(), emailId, phoneNumber, purpose),
+
+				(app, lotp) -> verifyOtp(uniqueCode, lotp))
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [emailId, phoneNumber]"));
+	}
+
+	private Mono<Boolean> verifyOtp(String uniqueCode, Otp latestOtp) {
+
+		if (latestOtp == null || latestOtp.isExpired() || !encoder.matches(uniqueCode, latestOtp.getUniqueCode()))
+			return Mono.just(Boolean.FALSE);
+
+		return this.dao.decreaseVerifyCounts(latestOtp.getId())
+				.switchIfEmpty(this.delete(latestOtp.getId()).flatMap(deleted -> Mono.just(Boolean.TRUE)));
 	}
 }

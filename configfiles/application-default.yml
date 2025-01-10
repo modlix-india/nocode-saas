@@ -8,6 +8,9 @@ security:
   subdomain:
     endings: .local.modlix.com
   appCodeSuffix: .local
+  register:
+    legs:
+      counts: 1
 
 files:
   db:

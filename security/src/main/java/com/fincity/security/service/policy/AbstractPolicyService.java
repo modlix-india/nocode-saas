@@ -98,8 +98,6 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 		fields.remove("clientId");
 		fields.remove("appId");
-		fields.remove("updatedAt");
-		fields.remove("updatedBy");
 		fields.remove("createdAt");
 		fields.remove("createdBy");
 

@@ -100,4 +100,10 @@ public class OtpGenerationRequestInternal extends OtpGenerationRequest implement
 		super.setPurpose(otpPurpose);
 		return this;
 	}
+
+	@Override
+	public OtpGenerationRequestInternal setVerifyLegsCounts(Short verifyLegsCounts) {
+		super.setVerifyLegsCounts(verifyLegsCounts);
+		return this;
+	}
 }

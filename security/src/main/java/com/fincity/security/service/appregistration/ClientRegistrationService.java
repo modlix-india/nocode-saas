@@ -1,5 +1,7 @@
 package com.fincity.security.service.appregistration;
 
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -25,7 +27,6 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
@@ -87,6 +88,11 @@ public class ClientRegistrationService {
 	@Value("${security.subdomain.endings}")
 	private String subDomainEndings;
 
+	@Value("${security.register.legs.counts}")
+	private Short registerLegsCount;
+
+	private static final String FEATURE_NOT_SUPPORTED = "Feature not supported";
+
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
 			ClientHierarchyService clientHierarchyService, EventCreationService ecService,
@@ -131,16 +137,21 @@ public class ClientRegistrationService {
 				(client, regProp) -> {
 
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
-						return regError("Feature not supported");
+						return this.regError(FEATURE_NOT_SUPPORTED);
 
-					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION),
+					return otpService.generateOtp(
+							otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION)
+									.setVerifyLegsCounts(registerLegsCount),
 							request);
 				})
 				.switchIfEmpty(regError("Feature not supported"))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));
 	}
 
-	public Mono<Boolean> preRegisterCheck(ClientRegistrationRequest registrationRequest) {
+	public Mono<Boolean> preRegisterCheckOne(ClientRegistrationRequest registrationRequest) {
+
+		if (registerLegsCount == null || registerLegsCount > 1)
+			return this.regError(FEATURE_NOT_SUPPORTED);
 
 		return FlatMapUtil.flatMapMono(
 
