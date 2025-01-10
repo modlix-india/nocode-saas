@@ -124,6 +124,13 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
     public final TableField<SecurityOtpRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.CHAR(45), this, "IP address of the user to track OTP generation or use, supports both IPv4 and IPv6");
 
     /**
+     * The column <code>security.security_otp.VERIFY_LEGS_COUNTS</code>. Number
+     * of legs in otp verification. If 0 this otp will be completely verified
+     * and deleted
+     */
+    public final TableField<SecurityOtpRecord, Short> VERIFY_LEGS_COUNTS = createField(DSL.name("VERIFY_LEGS_COUNTS"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "Number of legs in otp verification. If 0 this otp will be completely verified and deleted");
+
+    /**
      * The column <code>security.security_otp.CREATED_BY</code>.
      */
     public final TableField<SecurityOtpRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "");
@@ -132,6 +139,18 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
      * The column <code>security.security_otp.CREATED_AT</code>.
      */
     public final TableField<SecurityOtpRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "");
+
+    /**
+     * The column <code>security.security_otp.UPDATED_BY</code>. ID of the user
+     * who last updated this row
+     */
+    public final TableField<SecurityOtpRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who last updated this row");
+
+    /**
+     * The column <code>security.security_otp.UPDATED_AT</code>. Time when this
+     * row is last updated
+     */
+    public final TableField<SecurityOtpRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is last updated");
 
     private SecurityOtp(Name alias, Table<SecurityOtpRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

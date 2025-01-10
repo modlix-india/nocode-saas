@@ -193,10 +193,29 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
     }
 
     /**
+     * Setter for <code>security.security_otp.VERIFY_LEGS_COUNTS</code>. Number
+     * of legs in otp verification. If 0 this otp will be completely verified
+     * and deleted
+     */
+    public SecurityOtpRecord setVerifyLegsCounts(Short value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.VERIFY_LEGS_COUNTS</code>. Number
+     * of legs in otp verification. If 0 this otp will be completely verified
+     * and deleted
+     */
+    public Short getVerifyLegsCounts() {
+        return (Short) get(10);
+    }
+
+    /**
      * Setter for <code>security.security_otp.CREATED_BY</code>.
      */
     public SecurityOtpRecord setCreatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -204,14 +223,14 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * Getter for <code>security.security_otp.CREATED_BY</code>.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
      * Setter for <code>security.security_otp.CREATED_AT</code>.
      */
     public SecurityOtpRecord setCreatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -219,7 +238,41 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * Getter for <code>security.security_otp.CREATED_AT</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
+    }
+
+    /**
+     * Setter for <code>security.security_otp.UPDATED_BY</code>. ID of the user
+     * who last updated this row
+     */
+    public SecurityOtpRecord setUpdatedBy(ULong value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.UPDATED_BY</code>. ID of the user
+     * who last updated this row
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(13);
+    }
+
+    /**
+     * Setter for <code>security.security_otp.UPDATED_AT</code>. Time when this
+     * row is last updated
+     */
+    public SecurityOtpRecord setUpdatedAt(LocalDateTime value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.UPDATED_AT</code>. Time when this
+     * row is last updated
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -245,7 +298,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
     /**
      * Create a detached, initialised SecurityOtpRecord
      */
-    public SecurityOtpRecord(ULong id, ULong appId, ULong userId, String emailId, String phoneNumber, String purpose, SecurityOtpTargetType targetType, String uniqueCode, LocalDateTime expiresAt, String ipAddress, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityOtpRecord(ULong id, ULong appId, ULong userId, String emailId, String phoneNumber, String purpose, SecurityOtpTargetType targetType, String uniqueCode, LocalDateTime expiresAt, String ipAddress, Short verifyLegsCounts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityOtp.SECURITY_OTP);
 
         setId(id);
@@ -258,8 +311,11 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
         setUniqueCode(uniqueCode);
         setExpiresAt(expiresAt);
         setIpAddress(ipAddress);
+        setVerifyLegsCounts(verifyLegsCounts);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
+        setUpdatedBy(updatedBy);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }
