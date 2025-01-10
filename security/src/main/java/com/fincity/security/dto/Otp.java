@@ -47,4 +47,15 @@ public class Otp extends AbstractDTO<ULong, ULong> {
 	public boolean isExpired() {
 		return this.expiresAt.isBefore(LocalDateTime.now());
 	}
+
+	public Otp setTargetOptions(String emailId, String phoneNumber) {
+		if (this.targetType != null) {
+			return switch (this.targetType) {
+				case EMAIL -> this.setEmailId(emailId);
+				case PHONE -> this.setPhoneNumber(phoneNumber);
+				case BOTH -> this.setEmailId(emailId).setPhoneNumber(phoneNumber);
+			};
+		}
+		return this;
+	}
 }

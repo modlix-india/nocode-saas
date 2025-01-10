@@ -122,6 +122,11 @@ public class ClientController
 				.map(ResponseEntity::ok);
 	}
 
+	@PostMapping("/register/otp/verify")
+	public Mono<ResponseEntity<Boolean>> register(@RequestBody ClientRegistrationRequest registrationRequest) {
+		return this.clientRegistrationService.preRegisterCheck(registrationRequest).map(ResponseEntity::ok);
+	}
+
 	@PostMapping("/register")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> register(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {

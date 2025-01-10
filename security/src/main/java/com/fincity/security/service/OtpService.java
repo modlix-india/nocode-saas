@@ -83,7 +83,8 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 					OtpGenerationRequestInternal targetReq = new OtpGenerationRequestInternal()
 							.setClientOption(appInherit.getT1())
 							.setAppOption(appInherit.getT2())
-							.setWithoutUserOption(otpGenerationRequest.getEmailId(), otpGenerationRequest.getEmailId())
+							.setWithoutUserOption(otpGenerationRequest.getEmailId(),
+									otpGenerationRequest.getPhoneNumber())
 							.setIpAddress(request.getRemoteAddress())
 							.setResend(otpGenerationRequest.isResend())
 							.setPurpose(otpGenerationRequest.getPurpose());
@@ -278,6 +279,7 @@ public class OtpService extends AbstractJOOQDataService<SecurityOtpRecord, ULong
 				.setUserId(request.getUserId())
 				.setPurpose(request.getPurpose().name())
 				.setTargetType(targetType)
+				.setTargetOptions(request.getEmailId(), request.getPhoneNumber())
 				.setUniqueCode(encoder.encode(uniqueCode))
 				.setExpiresAt(LocalDateTime.now().plusMinutes(expireInterval))
 				.setIpAddress(request.getIpAddress())
