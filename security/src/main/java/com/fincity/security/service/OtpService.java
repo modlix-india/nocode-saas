@@ -241,7 +241,7 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 		Otp otp = (Otp) new Otp()
 				.setAppId(request.getAppId())
 				.setUserId(request.getUserId())
-				.setPurpose(request.getPurpose())
+				.setPurpose(request.getPurpose().name())
 				.setTargetType(targetType)
 				.setTargetOptions(request.getEmailId(), request.getPhoneNumber())
 				.setUniqueCode(encoder.encode(uniqueCode))
@@ -278,7 +278,7 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 
 				app -> this.dao.getLatestOtp(app.getId(), emailId, phoneNumber, purpose),
 
-				(app, lotp) -> verifyOtp(uniqueCode, lotp))
+				(app, lotp) -> verifyOtp(uniqueCode, lotp, purpose))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtp"));
 	}
@@ -295,7 +295,7 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 
 				app -> this.dao.getLatestOtp(app.getId(), user.getId(), purpose),
 
-				(app, lotp) -> verifyOtp(uniqueCode, lotp))
+				(app, lotp) -> verifyOtp(uniqueCode, lotp, purpose))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [user]"));
 	}
@@ -313,17 +313,18 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 
 				app -> this.dao.getLatestOtp(app.getId(), emailId, phoneNumber, purpose),
 
-				(app, lotp) -> verifyOtp(uniqueCode, lotp))
+				(app, lotp) -> verifyOtp(uniqueCode, lotp, purpose))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [emailId, phoneNumber]"));
 	}
 
-	private Mono<Boolean> verifyOtp(String uniqueCode, Otp latestOtp) {
+	private Mono<Boolean> verifyOtp(String uniqueCode, Otp latestOtp, OtpPurpose purpose) {
 
 		if (latestOtp == null || latestOtp.isExpired() || !encoder.matches(uniqueCode, latestOtp.getUniqueCode()))
 			return Mono.just(Boolean.FALSE);
 
-		return this.dao.decreaseVerifyCounts(latestOtp.getId())
-				.switchIfEmpty(this.delete(latestOtp.getId()).flatMap(deleted -> Mono.just(Boolean.TRUE)));
+		return latestOtp.getVerifyLegsCounts().equals(purpose.getVerifyLegsCounts()) ?
+				this.delete(latestOtp.getId()).flatMap(deleted -> Mono.just(Boolean.TRUE)) :
+				this.dao.increaseVerifyCounts(latestOtp.getId()).flatMap(updated -> Mono.just(Boolean.TRUE));
 	}
 }

@@ -60,10 +60,4 @@ public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
 		}
 		return this;
 	}
-
-	public Otp setPurpose(OtpPurpose otpPurpose) {
-		this.purpose = otpPurpose.toString();
-		this.verifyLegsCounts = otpPurpose.getVerifyLegsCounts();
-		return this;
-	}
 }

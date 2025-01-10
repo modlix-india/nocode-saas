@@ -23,20 +23,11 @@ public class OtpDAO extends AbstractUpdatableDAO<SecurityOtpRecord, ULong, Otp> 
 		super(Otp.class, SECURITY_OTP, SECURITY_OTP.ID);
 	}
 
-	public Mono<Boolean> decreaseVerifyCounts(ULong otpId) {
-
-		return Mono.from(this.dslContext.select(SECURITY_OTP.VERIFY_LEGS_COUNTS)
-						.from(SECURITY_OTP)
+	public Mono<Boolean> increaseVerifyCounts(ULong otpId) {
+		return Mono.from(this.dslContext.update(SECURITY_OTP)
+						.set(SECURITY_OTP.VERIFY_LEGS_COUNTS, SECURITY_OTP.VERIFY_LEGS_COUNTS.add(1))
 						.where(SECURITY_OTP.ID.eq(otpId)))
-				.flatMap(count -> {
-					if (count == null || count.value1() == 0)
-						return Mono.empty();
-
-					return Mono.from(this.dslContext.update(SECURITY_OTP)
-									.set(SECURITY_OTP.VERIFY_LEGS_COUNTS, SECURITY_OTP.VERIFY_LEGS_COUNTS.sub(1))
-									.where(SECURITY_OTP.ID.eq(otpId)))
-							.map(rowsUpdated -> rowsUpdated > 0);
-				});
+				.map(rowsUpdated -> rowsUpdated > 0);
 	}
 
 	public Mono<Otp> getLatestOtp(ULong appId, ULong userId, OtpPurpose purpose) {
