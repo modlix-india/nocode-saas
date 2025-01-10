@@ -123,7 +123,7 @@ public class ClientController
 	}
 
 	@PostMapping("/register/otp/verify")
-	public Mono<ResponseEntity<Boolean>> register(@RequestBody ClientRegistrationRequest registrationRequest) {
+	public Mono<ResponseEntity<Boolean>> preRegisterCheckOne(@RequestBody ClientRegistrationRequest registrationRequest) {
 		return this.clientRegistrationService.preRegisterCheckOne(registrationRequest).map(ResponseEntity::ok);
 	}
 
