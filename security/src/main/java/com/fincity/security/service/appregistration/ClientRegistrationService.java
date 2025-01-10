@@ -88,9 +88,6 @@ public class ClientRegistrationService {
 	@Value("${security.subdomain.endings}")
 	private String subDomainEndings;
 
-	@Value("${security.register.legs.counts}")
-	private Short registerLegsCount;
-
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
 			ClientHierarchyService clientHierarchyService, EventCreationService ecService,
@@ -129,18 +126,14 @@ public class ClientRegistrationService {
 		return FlatMapUtil.flatMapMono(
 				() -> clientService.getClientBy(clientCode),
 
-				client -> this.fetchAppProp(client.getId(), null,
-						appCode, AppService.APP_PROP_REG_TYPE),
+				client -> this.fetchAppProp(client.getId(), null, appCode, AppService.APP_PROP_REG_TYPE),
 
 				(client, regProp) -> {
 
 					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
 						return this.regError("Feature not supported");
 
-					return otpService.generateOtp(
-							otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION)
-									.setVerifyLegsCounts(registerLegsCount),
-							request);
+					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION), request);
 				})
 				.switchIfEmpty(regError("Feature not supported"))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));

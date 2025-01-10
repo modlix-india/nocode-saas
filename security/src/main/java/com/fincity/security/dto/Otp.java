@@ -7,11 +7,10 @@ import java.io.Serial;
 import java.time.LocalDateTime;
 
 import org.jooq.types.ULong;
-import org.jooq.types.UShort;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreType;
-import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecurityOtpTargetType;
 
 import lombok.Data;
@@ -35,7 +34,7 @@ public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
 	private String uniqueCode;
 	private LocalDateTime expiresAt;
 	private String ipAddress;
-	private Short verifyLegsCounts = 5;
+	private Short verifyLegsCounts = 0;
 
 	@Serial
 	private void writeObject(ObjectOutputStream out) throws NotSerializableException {
@@ -59,6 +58,12 @@ public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
 				case BOTH -> this.setEmailId(emailId).setPhoneNumber(phoneNumber);
 			};
 		}
+		return this;
+	}
+
+	public Otp setPurpose(OtpPurpose otpPurpose) {
+		this.purpose = otpPurpose.toString();
+		this.verifyLegsCounts = otpPurpose.getVerifyLegsCounts();
 		return this;
 	}
 }

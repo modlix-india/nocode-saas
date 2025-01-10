@@ -71,12 +71,8 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 
 	@Override
 	protected Mono<Otp> updatableEntity(Otp entity) {
-
 		return this.read(entity.getId())
-				.map(e -> {
-					e.setVerifyLegsCounts(entity.getVerifyLegsCounts());
-					return e;
-				});
+				.map(e -> e.setVerifyLegsCounts(entity.getVerifyLegsCounts()));
 	}
 
 	@Override
@@ -110,8 +106,7 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 									otpGenerationRequest.getPhoneNumber())
 							.setIpAddress(request.getRemoteAddress())
 							.setResend(otpGenerationRequest.isResend())
-							.setPurpose(otpGenerationRequest.getPurpose())
-							.setVerifyLegsCounts(otpGenerationRequest.getVerifyLegsCounts());
+							.setPurpose(otpGenerationRequest.getPurpose());
 
 					return this.generateOtpInternal(targetReq);
 				})
@@ -246,13 +241,12 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 		Otp otp = (Otp) new Otp()
 				.setAppId(request.getAppId())
 				.setUserId(request.getUserId())
-				.setPurpose(request.getPurpose().name())
+				.setPurpose(request.getPurpose())
 				.setTargetType(targetType)
 				.setTargetOptions(request.getEmailId(), request.getPhoneNumber())
 				.setUniqueCode(encoder.encode(uniqueCode))
 				.setExpiresAt(LocalDateTime.now().plusMinutes(expireInterval))
 				.setIpAddress(request.getIpAddress())
-				.setVerifyLegsCounts(request.getVerifyLegsCounts())
 				.setCreatedBy(request.getUserId())
 				.setCreatedAt(LocalDateTime.now());
 

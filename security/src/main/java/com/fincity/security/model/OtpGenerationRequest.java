@@ -1,6 +1,5 @@
 package com.fincity.security.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.security.enums.otp.OtpPurpose;
 
 import lombok.AllArgsConstructor;
@@ -18,7 +17,4 @@ public class OtpGenerationRequest {
 	private String phoneNumber;
 	private boolean isResend = Boolean.FALSE;
 	private OtpPurpose purpose;
-
-	@JsonIgnore
-	private Short verifyLegsCounts = 0;
 }
