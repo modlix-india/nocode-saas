@@ -9,8 +9,11 @@ import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
+import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 
@@ -103,5 +106,41 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 
 		clientIds.remove(null);
 		return clientIds;
+	}
+
+	public ULong getManageClientLevel_0() {
+		return manageClientLevel0;
+	}
+
+	public ClientHierarchy setManageClientLevel_0(ULong manageClientLevel0) {
+		this.manageClientLevel0 = manageClientLevel0;
+		return this;
+	}
+
+	public ULong getManageClientLevel_1() {
+		return manageClientLevel1;
+	}
+
+	public ClientHierarchy setManageClientLevel_1(ULong manageClientLevel1) {
+		this.manageClientLevel1 = manageClientLevel1;
+		return this;
+	}
+
+	public ULong getManageClientLevel_2() {
+		return manageClientLevel2;
+	}
+
+	public ClientHierarchy setManageClientLevel_2(ULong manageClientLevel2) {
+		this.manageClientLevel2 = manageClientLevel2;
+		return this;
+	}
+
+	public ULong getManageClientLevel_3() {
+		return manageClientLevel3;
+	}
+
+	public ClientHierarchy setManageClientLevel_3(ULong manageClientLevel3) {
+		this.manageClientLevel3 = manageClientLevel3;
+		return this;
 	}
 }
