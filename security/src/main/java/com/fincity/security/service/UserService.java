@@ -384,7 +384,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						: super.update(key, fields),
 
 				(clientId, clientType, userExists, updated) -> this.evictTokens(updated.getId())
-						.map(evicted -> updated))
+						.<User>map(evicted -> updated))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
@@ -401,7 +401,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 					case "INDV" ->
 						this.clientHierarchyService.getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
 								.flatMap(managingClientId -> this.dao.checkUserExistsExclude(managingClientId,
-										entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber(), "INDV", entity.getId()));
+										entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber(), "INDV",
+										entity.getId()));
 					case "BUS" ->
 						this.dao.checkUserExists(entity.getClientId(), entity.getUserName(), entity.getEmailId(),
 								entity.getPhoneNumber(), null);
@@ -412,7 +413,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						: super.update(entity),
 
 				(clientType, userExists, updated) -> this.evictTokens(updated.getId())
-						.map(evicted -> updated))
+						.<User>map(evicted -> updated))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
@@ -941,7 +942,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								.flatMap(e -> this.clientService.isBeingManagedBy(
 										ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
 
-				(ca, id, sysOrManaged) -> !sysOrManaged.booleanValue() ? Mono.empty()
+				(ca, id, sysOrManaged) -> !BooleanUtil.safeValueOf(sysOrManaged) ? Mono.empty()
 						: this.dao.makeUserActiveIfInActive(id))
 
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"))
