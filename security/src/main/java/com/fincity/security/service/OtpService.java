@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ import com.fincity.security.model.OtpMessageVars;
 import com.fincity.security.service.message.MessageService;
 import com.fincity.security.service.policy.ClientOtpPolicyService;
 
+import lombok.Getter;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple3;
@@ -41,26 +43,35 @@ import reactor.util.function.Tuples;
 @Service
 public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpRecord, ULong, Otp, OtpDAO> {
 
-	@Autowired
-	private ClientService clientService;
+	private final ClientService clientService;
 
-	@Autowired
-	private AppService appService;
+	private final AppService appService;
 
-	@Autowired
+	private final EventCreationService ecService;
+
+	private final MessageService messageService;
+
+	private final ClientOtpPolicyService clientOtpPolicyService;
+
+	private final PasswordEncoder encoder;
+
+	@Getter
 	private UserService userService;
 
-	@Autowired
-	private EventCreationService ecService;
+	public OtpService(ClientService clientService, AppService appService, EventCreationService ecService,
+			MessageService messageService, ClientOtpPolicyService clientOtpPolicyService, PasswordEncoder encoder) {
+		this.clientService = clientService;
+		this.appService = appService;
+		this.ecService = ecService;
+		this.messageService = messageService;
+		this.clientOtpPolicyService = clientOtpPolicyService;
+		this.encoder = encoder;
+	}
 
 	@Autowired
-	private MessageService messageService;
-
-	@Autowired
-	private ClientOtpPolicyService clientOtpPolicyService;
-
-	@Autowired
-	private PasswordEncoder encoder;
+	public void setUserService(@Lazy UserService userService) {
+		this.userService = userService;
+	}
 
 	private static final SecurityOtpTargetType DEFAULT_TARGET = SecurityOtpTargetType.EMAIL;
 
@@ -138,11 +149,11 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 					return Mono.just(otpPolicy.generate());
 				},
 
-				(app, otpPolicy, target, otpCode) -> sendOtp(request, target, otpPolicy.getExpireInterval().longValue(),
+				(app, otpPolicy, target, otpCode) -> sendOtp(request, target, otpPolicy.getExpireInterval(),
 						otpCode),
 
 				(app, otpPolicy, target, otpCode, otpSent) -> Boolean.TRUE.equals(otpSent)
-						? this.createOtp(request, target, otpCode, otpPolicy.getExpireInterval().longValue())
+						? this.createOtp(request, target, otpCode, otpPolicy.getExpireInterval())
 						: Mono.just(Boolean.FALSE))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtpInternal"));

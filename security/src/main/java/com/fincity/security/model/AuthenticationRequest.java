@@ -55,4 +55,14 @@ public class AuthenticationRequest {
 
 		return null;
 	}
+
+	@JsonIgnore
+	public AuthenticationRequest setIdentifierType() {
+		if (this.identifierType == null)
+			this.identifierType = StringUtil.safeIsBlank(this.getUserName()) || this.getUserName()
+					.indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
+					: AuthenticationIdentifierType.EMAIL_ID;
+
+		return this;
+	}
 }

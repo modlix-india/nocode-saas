@@ -1,25 +1,33 @@
 package com.fincity.security.service.policy;
 
 import org.jooq.types.ULong;
-import org.jooq.types.UShort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.policy.ClientOtpPolicyDAO;
 import com.fincity.security.dto.policy.ClientOtpPolicy;
 import com.fincity.security.jooq.enums.SecurityClientOtpPolicyTargetType;
 import com.fincity.security.jooq.tables.records.SecurityClientOtpPolicyRecord;
 import com.fincity.security.model.AuthenticationPasswordType;
+import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Mono;
 
 @Service
-public class ClientOtpPolicyService extends AbstractPolicyService<SecurityClientOtpPolicyRecord, ClientOtpPolicy, ClientOtpPolicyDAO>
+public class ClientOtpPolicyService
+		extends AbstractPolicyService<SecurityClientOtpPolicyRecord, ClientOtpPolicy, ClientOtpPolicyDAO>
 		implements IPolicyService<ClientOtpPolicy> {
 
 	private static final String CLIENT_OTP_POLICY = "client_otp_policy";
 
 	private static final String CACHE_NAME_CLIENT_OTP_POLICY = "clientOtpPolicy";
+
+	protected ClientOtpPolicyService(SecurityMessageResourceService securityMessageResourceService,
+			CacheService cacheService) {
+		super(securityMessageResourceService, cacheService);
+	}
 
 	@Override
 	public String getPolicyName() {
@@ -39,16 +47,15 @@ public class ClientOtpPolicyService extends AbstractPolicyService<SecurityClient
 						.setConstant(false)
 						.setNumeric(true)
 						.setAlphanumeric(false)
-						.setLength(UShort.valueOf(4))
+						.setLength((short) 4)
 						.setResendSameOtp(false)
-						.setNoResendAttempts(UShort.valueOf(3))
-						.setExpireInterval(ULong.valueOf(5))
-						.setClientId(ULong.valueOf(0))
-						.setAppId(ULong.valueOf(0))
-						.setNoFailedAttempts(UShort.valueOf(3))
-						.setUserLockTimeMin(ULong.valueOf(30))
-						.setId(DEFAULT_POLICY_ID)
-		);
+						.setNoResendAttempts((short) 3)
+						.setExpireInterval(5L)
+						.setClientId(ULongUtil.valueOf(0))
+						.setAppId(ULongUtil.valueOf(0))
+						.setNoFailedAttempts((short) 3)
+						.setUserLockTimeMin(30L)
+						.setId(DEFAULT_POLICY_ID));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_Password_Policy_READ')")

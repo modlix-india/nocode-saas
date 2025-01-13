@@ -29,7 +29,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
-import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
@@ -207,8 +206,7 @@ public class ClientRegistrationService {
 					if (safeIsBlank(subDomain))
 						return Mono.just(res);
 
-					return this.clientUrlService.createForRegistration(
-							new ClientUrl().setAppCode(ca.getUrlAppCode())
+					return this.clientUrlService.createForRegistration(new ClientUrl().setAppCode(ca.getUrlAppCode())
 									.setUrlPattern(subDomain).setClientId(client.getId()))
 							.map(e -> res.setRedirectURL(subDomain));
 				})
@@ -232,37 +230,30 @@ public class ClientRegistrationService {
 		if (ca.isAuthenticated())
 			return this.regError("Signout to register");
 
-		Mono<App> appMono = this.appService.getAppByCode(ca.getUrlAppCode());
-
-		Mono<Client> clientMono = this.clientService.getClientBy(ca.getLoggedInFromClientCode());
-
-		Mono<ClientLevelType> clientLevelTypeMono = appMono.flatMap(app -> this.clientService
-				.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()));
-
-		Mono<Boolean> checkIfUserExists = registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
-				: this.userService
-						.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
-						.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.CONFLICT, msg),
-								SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
-
 		return FlatMapUtil.flatMapMono(
 
-				() -> checkIfUserExists,
+				() -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
+						: this.userService
+								.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
+								.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
+										msg -> new GenericException(HttpStatus.CONFLICT, msg),
+										SecurityMessageResourceService.USER_ALREADY_EXISTS,
+										registrationRequest.getEmailId())),
 
-				exists -> appMono,
+				userExists -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-				(exists, app) -> clientMono,
+				(userExists, app) -> this.clientService.getClientBy(ca.getLoggedInFromClientCode()),
 
-				(exists, app, client) -> clientLevelTypeMono,
+				(userExists, app, client) -> this.clientService
+						.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()),
 
-				(exists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
+				(userExists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
 						levelType, registrationRequest.isBusinessClient()),
 
-				(exists, app, client, levelType, usageType) -> this.fetchAppProp(
+				(userExists, app, client, levelType, usageType) -> this.fetchAppProp(
 						ULong.valueOf(ca.getLoggedInFromClientId()), app.getId(), null, AppService.APP_PROP_URL_SUFFIX),
 
-				(exists, app, client, levelType, usageType, suffix) -> this
+				(userExists, app, client, levelType, usageType, suffix) -> this
 						.checkSubDomainAvailability(this.subDomainEndings, registrationRequest.getSubDomain(),
 								registrationRequest.isBusinessClient()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
@@ -445,7 +436,7 @@ public class ClientRegistrationService {
 
 		return this.otpService
 				.verifyOtpInternal(ca.getUrlAppCode(), emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
-				.flatMap(isVerified -> Mono.justOrEmpty(Boolean.TRUE.equals(isVerified) ? Boolean.TRUE : null))
+				.filter(isVerified -> isVerified).map(isVerified -> Boolean.TRUE)
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 						SecurityMessageResourceService.USER_PASSWORD_INVALID, AuthenticationPasswordType.OTP.getName(),

@@ -1,14 +1,13 @@
 package com.fincity.security.service.policy;
 
 import org.jooq.types.ULong;
-import org.jooq.types.UShort;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.policy.ClientPinPolicyDAO;
 import com.fincity.security.dto.PastPin;
@@ -29,8 +28,13 @@ public class ClientPinPolicyService
 
 	private static final String CACHE_NAME_CLIENT_PIN_POLICY = "clientPinPolicy";
 
-	@Autowired
-	private PasswordEncoder encoder;
+	private final PasswordEncoder encoder;
+
+	protected ClientPinPolicyService(SecurityMessageResourceService securityMessageResourceService,
+			CacheService cacheService, PasswordEncoder encoder) {
+		super(securityMessageResourceService, cacheService);
+		this.encoder = encoder;
+	}
 
 	@Override
 	public String getPolicyName() {
@@ -46,15 +50,15 @@ public class ClientPinPolicyService
 	protected Mono<ClientPinPolicy> getDefaultPolicy() {
 		return Mono.just(
 				(ClientPinPolicy) new ClientPinPolicy()
-						.setLength(UShort.valueOf(4))
-						.setReLoginAfterInterval(ULong.valueOf(120))
-						.setExpiryInDays(UShort.valueOf(30))
-						.setExpiryWarnInDays(UShort.valueOf(25))
-						.setPinHistoryCount(UShort.valueOf(3))
+						.setLength((short) 4)
+						.setReLoginAfterInterval(120L)
+						.setExpiryInDays((short) 30)
+						.setExpiryWarnInDays((short) 25)
+						.setPinHistoryCount((short) 3)
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
-						.setNoFailedAttempts(UShort.valueOf(3))
-						.setUserLockTimeMin(ULong.valueOf(30))
+						.setNoFailedAttempts((short) 3)
+						.setUserLockTimeMin(30L)
 						.setId(DEFAULT_POLICY_ID));
 	}
 

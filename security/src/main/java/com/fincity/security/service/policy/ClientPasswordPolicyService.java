@@ -5,8 +5,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jooq.types.ULong;
-import org.jooq.types.UShort;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.policy.ClientPasswordPolicyDAO;
@@ -38,8 +37,13 @@ public class ClientPasswordPolicyService
 	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 			'_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
 
-	@Autowired
-	private PasswordEncoder encoder;
+	private final PasswordEncoder encoder;
+
+	protected ClientPasswordPolicyService(SecurityMessageResourceService securityMessageResourceService,
+			CacheService cacheService, PasswordEncoder encoder) {
+		super(securityMessageResourceService, cacheService);
+		this.encoder = encoder;
+	}
 
 	@Override
 	public String getPolicyName() {
@@ -66,15 +70,15 @@ public class ClientPasswordPolicyService
 						.setAtleastOneSpecialChar(true)
 						.setSpacesAllowed(false)
 						.setRegex(null)
-						.setPassExpiryInDays(UShort.valueOf(10))
-						.setPassExpiryWarnInDays(UShort.valueOf(8))
-						.setPassMinLength(UShort.valueOf(12))
-						.setPassMaxLength(UShort.valueOf(20))
-						.setPassHistoryCount(UShort.valueOf(5))
+						.setPassExpiryInDays((short) 10)
+						.setPassExpiryWarnInDays((short) 8)
+						.setPassMinLength((short) 12)
+						.setPassMaxLength((short) 20)
+						.setPassHistoryCount((short) 5)
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
-						.setNoFailedAttempts(UShort.valueOf(3))
-						.setUserLockTimeMin(ULong.valueOf(30))
+						.setNoFailedAttempts((short) 3)
+						.setUserLockTimeMin(30L)
 						.setId(DEFAULT_POLICY_ID));
 	}
 
