@@ -10,7 +10,6 @@ import java.util.stream.Stream;
 
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
-import org.springframework.aop.framework.AopContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -19,11 +18,13 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dao.PermissionDAO;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
@@ -44,8 +45,8 @@ public class PermissionService
 
 	private static final String PERMISSION = "Permission";
 
-	private ClientService clientService;
-	private SecurityMessageResourceService messageResourceService;
+	private final ClientService clientService;
+	private final SecurityMessageResourceService messageResourceService;
 
 	public PermissionService(ClientService clientService,
 			SecurityMessageResourceService messageResourceService) {
@@ -88,12 +89,12 @@ public class PermissionService
 					return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
 							.getClientId()), p.getClientId())
 							.flatMap(managed -> {
-								if (managed.booleanValue())
+								if (BooleanUtil.safeValueOf(managed))
 									return Mono.just(p);
 
 								return messageResourceService.throwMessage(
 										msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-										SecurityMessageResourceService.OBJECT_NOT_FOUND, PERMISSION, id);
+										AbstractMessageService.OBJECT_NOT_FOUND, PERMISSION, id);
 							});
 
 				}));
@@ -122,11 +123,11 @@ public class PermissionService
 							return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
 									.getClientId()), existing.getClientId())
 									.flatMap(managed -> {
-										if (managed.booleanValue())
+										if (BooleanUtil.safeValueOf(managed))
 											return Mono.just(existing);
 
 										return messageResourceService
-												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+												.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
 												.flatMap(msg -> Mono.error(() -> new GenericException(
 														HttpStatus.NOT_FOUND,
 														StringFormatter.format(msg, PERMISSION, entity.getId()))));
@@ -152,11 +153,11 @@ public class PermissionService
 							return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
 									.getClientId()), existing.getClientId())
 									.flatMap(managed -> {
-										if (managed.booleanValue())
+										if (BooleanUtil.safeValueOf(managed))
 											return Mono.just(newMap);
 
 										return messageResourceService
-												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+												.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
 												.flatMap(msg -> Mono
 														.error(() -> new GenericException(HttpStatus.NOT_FOUND,
 																StringFormatter.format(msg, PERMISSION, key))));
@@ -191,11 +192,11 @@ public class PermissionService
 							return this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
 									.getClientId()), existing.getClientId())
 									.flatMap(managed -> {
-										if (managed.booleanValue())
+										if (BooleanUtil.safeValueOf(managed))
 											return super.delete(id);
 
 										return this.messageResourceService
-												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+												.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
 												.flatMap(msg -> Mono
 														.error(() -> new GenericException(HttpStatus.NOT_FOUND,
 																StringFormatter.format(msg, PERMISSION, id))));
