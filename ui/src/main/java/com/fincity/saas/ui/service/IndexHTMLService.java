@@ -9,8 +9,6 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -30,8 +28,6 @@ import reactor.util.function.Tuples;
 
 @Service
 public class IndexHTMLService {
-
-	private static final Logger logger = LoggerFactory.getLogger(IndexHTMLService.class);
 
 	private static final String[] LINK_FIELDS = new String[] { "crossorigin", "href", "hreflang", "media",
 			"referrerpolicy", "rel", "sizes", "title", "type" };

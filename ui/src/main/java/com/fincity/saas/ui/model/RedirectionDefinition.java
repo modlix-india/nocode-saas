@@ -5,7 +5,6 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 
 import com.fincity.saas.commons.mongo.difference.IDifferentiable;
 import com.fincity.saas.commons.util.CommonsUtil;
