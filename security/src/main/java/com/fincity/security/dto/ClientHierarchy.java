@@ -104,4 +104,43 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 		clientIds.remove(null);
 		return clientIds;
 	}
+
+	// 	These Methods are for JOOQ Compatibility.
+	// 	Jooq uses {@code org.jooq.tools.StringUtils.toCamelCase()} to get getter and setter of a Entity
+
+	public ULong getManageClientLevel_0() { //NOSONAR
+		return manageClientLevel0;
+	}
+
+	public ClientHierarchy setManageClientLevel_0(ULong manageClientLevel0) { //NOSONAR
+		this.manageClientLevel0 = manageClientLevel0;
+		return this;
+	}
+
+	public ULong getManageClientLevel_1() { //NOSONAR
+		return manageClientLevel1;
+	}
+
+	public ClientHierarchy setManageClientLevel_1(ULong manageClientLevel1) { //NOSONAR
+		this.manageClientLevel1 = manageClientLevel1;
+		return this;
+	}
+
+	public ULong getManageClientLevel_2() { //NOSONAR
+		return manageClientLevel2;
+	}
+
+	public ClientHierarchy setManageClientLevel_2(ULong manageClientLevel2) { //NOSONAR
+		this.manageClientLevel2 = manageClientLevel2;
+		return this;
+	}
+
+	public ULong getManageClientLevel_3() { //NOSONAR
+		return manageClientLevel3;
+	}
+
+	public ClientHierarchy setManageClientLevel_3(ULong manageClientLevel3) { //NOSONAR
+		this.manageClientLevel3 = manageClientLevel3;
+		return this;
+	}
 }
