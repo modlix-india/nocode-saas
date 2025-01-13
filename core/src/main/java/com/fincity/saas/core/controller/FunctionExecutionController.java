@@ -1,6 +1,5 @@
 package com.fincity.saas.core.controller;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,25 +18,17 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.service.CoreFunctionService;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -55,8 +46,8 @@ public class FunctionExecutionController {
 	private static final String PATH_VARIABLE_NAMESPACE = "namespace";
 	private static final String PATH_VARIABLE_NAME = "name";
 
-	private CoreFunctionService functionService;
-	private CoreMessageResourceService msgService;
+	private final CoreFunctionService functionService;
+	private final CoreMessageResourceService msgService;
 
 	private final Gson gson;
 
@@ -143,7 +134,7 @@ public class FunctionExecutionController {
 	private Mono<ResponseEntity<String>> extractOutputEvent(FunctionOutput e) {
 
 		List<EventResult> list = new ArrayList<>();
-		EventResult er = null;
+		EventResult er;
 
 		while ((er = e.next()) != null) {
 

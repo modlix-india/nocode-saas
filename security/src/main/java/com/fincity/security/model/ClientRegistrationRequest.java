@@ -34,6 +34,7 @@ public class ClientRegistrationRequest implements Serializable {
 	private String businessType;
 	private String uniqueCode;
 	private String subDomain;
+	private String subDomainSuffix;
 	private String socialRegisterState;
 
 	/**
@@ -59,6 +60,5 @@ public class ClientRegistrationRequest implements Serializable {
 
 		return null;
 	}
-
 
 }
