@@ -1,8 +1,5 @@
 package com.fincity.saas.core.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -10,21 +7,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
 import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
-import com.fincity.saas.commons.model.ObjectWithUniqueID;
-import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -38,7 +27,6 @@ import com.fincity.saas.core.model.StorageRelation;
 import com.fincity.saas.core.repository.StorageRepository;
 import com.fincity.saas.core.service.connection.appdata.IAppDataService;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
 import reactor.core.publisher.Flux;
@@ -88,7 +76,7 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 							return this.securityService.hasWriteAccess(entity.getAppCode(), entity.getClientCode())
 									.flatMap(access -> {
 
-										if (!access.booleanValue())
+										if (!BooleanUtil.safeValueOf(access))
 											return coreMsgService.throwMessage(
 													msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 													CoreMessageResourceService.STORAGE_IS_APP_LEVEL);
@@ -119,7 +107,8 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.localCreate"));
 	}
 
-	public Mono<Storage> validate(Storage storage) {
+	public Mono<Storage> validate(Storage storage) { // NOSONAR
+		// Cannot split for just one point increase in complexity.
 
 		return FlatMapUtil.flatMapMono(
 				() -> this.coreSchemaService
