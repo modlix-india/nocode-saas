@@ -91,7 +91,7 @@ public class ClientRegistrationService {
 	private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
 
 	@Value("${security.subdomain.endings}")
-	private String subDomainEndings;
+	private String[] subDomainEndings;
 
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
@@ -271,7 +271,8 @@ public class ClientRegistrationService {
 						ULong.valueOf(ca.getLoggedInFromClientId()), app.getId(), null, AppService.APP_PROP_URL_SUFFIX),
 
 				(exists, app, client, levelType, usageType, suffix) -> this
-						.checkSubDomainAvailability(this.subDomainEndings, registrationRequest.getSubDomain(),
+						.checkSubDomainAvailability(registrationRequest.getSubDomain(),
+								registrationRequest.getSubDomainSuffix(),
 								registrationRequest.isBusinessClient()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
 	}
@@ -369,16 +370,35 @@ public class ClientRegistrationService {
 				});
 	}
 
-	private Mono<String> checkSubDomainAvailability(String suffix, String subDomain, boolean isBusinessClient) {
+	private Mono<String> checkSubDomainAvailability(String subDomain, String subDomainSuffix,
+			boolean isBusinessClient) {
 
 		if (!isBusinessClient || safeIsBlank(subDomain))
 			return Mono.just("");
 
-		String subDomainWithSuffix = safeIsBlank(suffix) ? subDomain + this.subDomainEndings
-				: subDomain + suffix;
+		String finalSubDomainSuffix;
 
-		return this.clientUrlService.checkSubDomainAvailability(subDomainWithSuffix).filter(e -> e)
-				.map(e -> subDomainWithSuffix)
+		if (StringUtil.safeIsBlank(subDomainSuffix)) {
+			finalSubDomainSuffix = this.subDomainEndings[0];
+		} else {
+			boolean found = false;
+			for (String subDomainEnding : subDomainEndings) {
+				if (subDomainEnding.equals(subDomainSuffix)) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				return this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.SUBDOMAIN_SUFFIX_FORBIDDEN, subDomainSuffix);
+			}
+			finalSubDomainSuffix = subDomainSuffix;
+		}
+		String fullURL = subDomain + (finalSubDomainSuffix.startsWith(".") ? "" : ".") + finalSubDomainSuffix;
+
+		return this.clientUrlService.checkSubDomainAvailability(subDomain, fullURL).filter(e -> e)
+				.map(e -> fullURL)
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.CONFLICT, msg),
 						SecurityMessageResourceService.SUBDOMAIN_ALREADY_EXISTS, subDomain));
