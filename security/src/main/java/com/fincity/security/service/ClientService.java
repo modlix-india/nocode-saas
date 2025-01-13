@@ -30,6 +30,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.Client;
@@ -100,11 +101,11 @@ public class ClientService
 	@Autowired
 	private ClientOtpPolicyService clientOtpPolicyService;
 
-	private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
-			AuthenticationPasswordType.class);
-
 	@Value("${security.subdomain.endings}")
 	private String[] subDomainURLEndings;
+
+	private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
+			AuthenticationPasswordType.class);
 
 	@PostConstruct
 	public void init() {
@@ -293,6 +294,15 @@ public class ClientService
 			AuthenticationPasswordType passwordType, String password) {
 		return policyServices.get(passwordType).checkAllConditions(clientId, appId, userId, password)
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T extends AbstractPolicy> Mono<Boolean> validatePasswordPolicy(T policy, ULong userId,
+			AuthenticationPasswordType passType, String password) {
+
+		IPolicyService<T> service = (IPolicyService<T>) this.policyServices.get(passType);
+
+		return service.checkAllConditions(policy, userId, password).switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
 	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String appCode, ULong userId,

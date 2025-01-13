@@ -84,6 +84,11 @@ public class ClientOtpPolicyService
 
 	@Override
 	public Mono<Boolean> checkAllConditions(ULong clientId, ULong appId, ULong userId, String otp) {
-		return Mono.just(Boolean.FALSE);
+		return Mono.just(Boolean.TRUE);
+	}
+
+	@Override
+	public Mono<Boolean> checkAllConditions(ClientOtpPolicy policy, ULong userId, String password) {
+		return Mono.just(Boolean.TRUE);
 	}
 }

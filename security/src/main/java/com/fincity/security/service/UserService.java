@@ -754,7 +754,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				(ca, userTup, userCheck, app, targetReq) -> this.otpService.generateOtpInternal(targetReq))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"UserService.generateOtpResetPassword : [" + authRequest.getPasswordType() + "]"))
+						"UserService.generateOtpResetPassword : [" + authRequest.getInputPassType() + "]"))
 				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
 	}
 
@@ -797,7 +797,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				(ca, userTup, userCheck, isUpdatable, otpVerified) -> this.updateNewPassword(ca, userTup.getT3(),
 						reqPassword, Boolean.TRUE, reqPassword.getPassType()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"UserService.resetPassword  : [" + authRequest.getPasswordType() + "]"))
+						"UserService.resetPassword  : [" + authRequest.getInputPassType() + "]"))
 				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
 	}
 
@@ -996,7 +996,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	public Mono<User> createForRegistration(ULong appId, ULong appClientId, ULong urlClientId, Client client,
 			User user, AuthenticationPasswordType passwordType) {
 
-		String password = user.getPassword();
+		String password = user.getInputPass(passwordType);
 		user.setPassword(null);
 		user.setPasswordHashed(false);
 		user.setAccountNonExpired(true);
@@ -1005,23 +1005,20 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.passwordPolicyCheck(urlClientId, appId, null, null, passwordType, password),
-
-				passwordCheck -> this.dao
-						.checkUserExists(user.getClientId(), user.getUserName(), user.getEmailId(),
-								user.getPhoneNumber(), "INDV")
+				() -> this.dao.checkUserExists(user.getClientId(), user.getUserName(), user.getEmailId(),
+						user.getPhoneNumber(), "INDV")
 						.filter(userExists -> !userExists).map(userExists -> Boolean.FALSE),
 
-				(passwordCheck, userExists) -> this.dao.create(user),
+				userExists -> this.dao.create(user),
 
-				(passwordCheck, userExists, createdUser) -> {
+				(userExists, createdUser) -> {
 					this.soxLogService.createLog(createdUser.getId(), CREATE, getSoxObjectName(), "User created");
 
 					return this.setPassword(createdUser.getId(), createdUser.getId(), password,
 							AuthenticationPasswordType.PASSWORD);
 				},
 
-				(passwordCheck, userExists, createdUser, passSet) -> {
+				(userExists, createdUser, passSet) -> {
 					Mono<Boolean> roleUser = FlatMapUtil.flatMapMono(
 
 							SecurityContextUtil::getUsersContextAuthentication,

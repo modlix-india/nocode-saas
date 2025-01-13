@@ -87,14 +87,21 @@ public class ClientPinPolicyService
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+				() -> this.getClientAppPolicy(clientId, appId),
 
-				ca -> this.getClientAppPolicy(clientId, appId),
+				pinPolicy-> this.checkAllConditions(pinPolicy, userId, password))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPinPolicyService.checkAllConditions[clientId, AppId]"))
+				.defaultIfEmpty(Boolean.TRUE);
+	}
 
-				(ca, pinPolicy) -> this.checkLength(pinPolicy, password),
+	@Override
+	public Mono<Boolean> checkAllConditions(ClientPinPolicy policy, ULong userId, String password) {
+		return FlatMapUtil.flatMapMono(
 
-				(ca, pinPolicy, lengthCheck) -> this.checkPastPins(pinPolicy, userId, password))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPinPolicyService.checkAllConditions"))
+				()-> this.checkLength(policy, password),
+
+						 lengthCheck -> this.checkPastPins(policy, userId, password))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPinPolicyService.checkAllConditions[policy]"))
 				.defaultIfEmpty(Boolean.TRUE);
 	}
 

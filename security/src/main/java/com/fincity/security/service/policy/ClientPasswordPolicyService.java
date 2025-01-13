@@ -112,40 +112,48 @@ public class ClientPasswordPolicyService
 
 				() -> this.getClientAppPolicy(clientId, appId),
 
-				passwordPolicy -> checkPastPasswords(passwordPolicy, userId, password),
-
-				(passwordPolicy, pastPassCheck) -> checkAlphanumericExists(passwordPolicy, password),
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric) -> checkInSpecialCharacters(password),
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial) -> {
-
-					if (passwordPolicy.isSpacesAllowed())
-						return Mono.just(Boolean.TRUE);
-
-					if (password.indexOf(' ') != -1)
-						return securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								SecurityMessageResourceService.SPACES_MISSING);
-
-					return Mono.just(Boolean.TRUE);
-				},
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
-
-					String regex = passwordPolicy.getRegex();
-
-					if (StringUtil.safeIsBlank(regex))
-						return Mono.just(Boolean.TRUE);
-
-					return checkRegexPattern(password, regex);
-
-				},
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this
-						.checkStrengthOfPassword(passwordPolicy, password))
+				passwordPolicy -> this.checkAllConditions(passwordPolicy, userId, password))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
 				.defaultIfEmpty(true);
+	}
+
+	@Override
+	public Mono<Boolean> checkAllConditions(ClientPasswordPolicy policy, ULong userId, String password) {
+		return FlatMapUtil.flatMapMono(
+
+						() -> this.checkPastPasswords(policy, userId, password),
+
+						 pastPassCheck -> this.checkAlphanumericExists(policy, password),
+
+						(pastPassCheck, isAlphaNumeric) -> this.checkInSpecialCharacters(password),
+
+						(pastPassCheck, isAlphaNumeric, isSpecial) -> {
+
+							if (policy.isSpacesAllowed())
+								return Mono.just(Boolean.TRUE);
+
+							if (password.indexOf(' ') != -1)
+								return securityMessageResourceService.throwMessage(
+										msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+										SecurityMessageResourceService.SPACES_MISSING);
+
+							return Mono.just(Boolean.TRUE);
+						},
+
+						(pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
+
+							String regex = policy.getRegex();
+
+							if (StringUtil.safeIsBlank(regex))
+								return Mono.just(Boolean.TRUE);
+
+							return checkRegexPattern(password, regex);
+
+						},
+
+						(pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this.checkStrengthOfPassword(policy, password))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
+				.defaultIfEmpty(Boolean.TRUE);
 	}
 
 	private Mono<Boolean> checkPastPasswords(ClientPasswordPolicy passwordPolicy, ULong userId, String password) {

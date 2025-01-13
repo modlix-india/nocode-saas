@@ -192,7 +192,7 @@ public class AuthenticationService implements IAuthenticationService {
 		if (authRequest.getIdentifierType() == null)
 			authRequest.setIdentifierType();
 
-		AuthenticationPasswordType passwordType = authRequest.getPasswordType();
+		AuthenticationPasswordType passwordType = authRequest.getInputPassType();
 
 		if (passwordType == null) {
 			return this.authError(SecurityMessageResourceService.UNKNOWN_ERROR);
@@ -211,7 +211,7 @@ public class AuthenticationService implements IAuthenticationService {
 				(tup, linCCheck, user) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), appCode,
 						passwordType),
 
-				(tup, linCCheck, user, policy) -> this.checkPassword(authRequest.getInputPassword(), appCode, user,
+				(tup, linCCheck, user, policy) -> this.checkPassword(authRequest.getInputPass(), appCode, user,
 						policy, passwordType),
 
 				(tup, linCCheck, user, policy, passwordChecked) -> this.resetUserAttempts(user, passwordType),
