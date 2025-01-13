@@ -39,6 +39,9 @@ public class AppRegistrationIntegrationService
         extends
         AbstractJOOQUpdatableDataService<SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration, AppRegistrationIntegrationDAO> {
 
+    private static final String REDIRECT_URI = "redirect_uri";
+    private static final String CLIENT_ID = "client_id";
+    private static final String ACCESS_TOKEN = "access_token";
     private static final String LOGIN_URI = "loginUri";
     private static final String INTG_ID = "intgId";
     private static final String INTG_SECRET = "intgSecret";
@@ -63,18 +66,13 @@ public class AppRegistrationIntegrationService
     }
 
     @Override
-    public Mono<AppRegistrationIntegration> read(ULong id) {
-        return super.read(id);
-    }
-
-    @Override
     @PreAuthorize("hasAuthority('Authorities.Integration_UPDATE')")
     public Mono<AppRegistrationIntegration> update(AppRegistrationIntegration entity) {
 
         return super.update(entity)
                 .flatMap(
                         this.cacheService.evictFunctionWithKeyFunction(
-                            CACHE_NAME_INTEGRATION_PLATFORM, this::getCacheKeys));
+                                CACHE_NAME_INTEGRATION_PLATFORM, this::getCacheKeys));
     }
 
     @Override
@@ -83,8 +81,9 @@ public class AppRegistrationIntegrationService
 
         return FlatMapUtil.flatMapMono(
                 () -> this.read(id),
-                e -> super.delete(id).flatMap(this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_PLATFORM,
-                        getCacheKeys(e))))
+                e -> super.delete(id).flatMap(
+                        this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_PLATFORM,
+                                getCacheKeys(e))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "AppRegistrationIntegrationService.delete"));
     }
@@ -95,6 +94,7 @@ public class AppRegistrationIntegrationService
         return super.readPageFilter(pageable, condition);
     }
 
+    @Override
     protected Mono<AppRegistrationIntegration> updatableEntity(AppRegistrationIntegration entity) {
 
         return FlatMapUtil.flatMapMono(
@@ -153,8 +153,8 @@ public class AppRegistrationIntegrationService
                 () -> {
                     URI authUri = UriComponentsBuilder
                             .fromHttpUrl("https://accounts.google.com/o/oauth2/v2/auth")
-                            .queryParam("client_id", appRegIntg.getIntgId())
-                            .queryParam("redirect_uri", callBackURL)
+                            .queryParam(CLIENT_ID, appRegIntg.getIntgId())
+                            .queryParam(REDIRECT_URI, callBackURL)
                             .queryParam("scope", "email profile openid")
                             .queryParam("response_type", "code")
                             .queryParam("state", state).queryParam("access_type", "offline")
@@ -178,8 +178,8 @@ public class AppRegistrationIntegrationService
                 () -> {
                     URI authUri = UriComponentsBuilder
                             .fromHttpUrl("https://www.facebook.com/dialog/oauth")
-                            .queryParam("client_id", appRegIntg.getIntgId())
-                            .queryParam("redirect_uri", callBackURL)
+                            .queryParam(CLIENT_ID, appRegIntg.getIntgId())
+                            .queryParam(REDIRECT_URI, callBackURL)
                             .queryParam("scope", "public_profile,email")
                             .queryParam("response_type", "code")
                             .queryParam("state", state).build().toUri();
@@ -204,19 +204,19 @@ public class AppRegistrationIntegrationService
 
                 () -> webClient.post().uri(baseTokenURL)
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .body(BodyInserters.fromFormData("client_id", appRegIntg.getIntgId())
+                        .body(BodyInserters.fromFormData(CLIENT_ID, appRegIntg.getIntgId())
                                 .with("client_secret", appRegIntg.getIntgSecret())
                                 .with("grant_type", "authorization_code")
                                 .with("code", request.getQueryParams().getFirst("code"))
-                                .with("redirect_uri", callBackURL))
+                                .with(REDIRECT_URI, callBackURL))
                         .retrieve().bodyToMono(JsonNode.class),
 
-                tokenObj -> this.getGoogleUserInfo(tokenObj.get("access_token").toString()),
+                tokenObj -> this.getGoogleUserInfo(tokenObj.get(ACCESS_TOKEN).toString()),
 
                 (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
                         .update(appRegIntgToken
                                 .setAuthCode(request.getQueryParams().getFirst("code"))
-                                .setToken(tokenObj.get("access_token").asText())
+                                .setToken(tokenObj.get(ACCESS_TOKEN).asText())
                                 .setRefreshToken(tokenObj.get("refresh_token").asText())
                                 .setExpiresAt(
                                         LocalDateTime.now().plusSeconds(Long
@@ -251,19 +251,19 @@ public class AppRegistrationIntegrationService
 
                 () -> webClient.post().uri(baseTokenURL)
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .body(BodyInserters.fromFormData("client_id", appRegIntg.getIntgId())
+                        .body(BodyInserters.fromFormData(CLIENT_ID, appRegIntg.getIntgId())
                                 .with("client_secret", appRegIntg.getIntgSecret())
                                 .with("grant_type", "authorization_code")
                                 .with("code", request.getQueryParams().getFirst("code"))
-                                .with("redirect_uri", callBackURL))
+                                .with(REDIRECT_URI, callBackURL))
                         .retrieve().bodyToMono(JsonNode.class),
 
-                tokenObj -> this.getMetaUserInfo(tokenObj.get("access_token").asText()),
+                tokenObj -> this.getMetaUserInfo(tokenObj.get(ACCESS_TOKEN).asText()),
 
                 (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
                         .update(appRegIntgToken
                                 .setAuthCode(request.getQueryParams().getFirst("code"))
-                                .setToken(tokenObj.get("access_token").asText())
+                                .setToken(tokenObj.get(ACCESS_TOKEN).asText())
                                 .setExpiresAt(
                                         LocalDateTime.now().plusSeconds(Long
                                                 .parseLong(tokenObj.get(
@@ -304,7 +304,7 @@ public class AppRegistrationIntegrationService
                         .host("graph.facebook.com")
                         .path("/me")
                         .queryParam("fields", fields)
-                        .queryParam("access_token", token)
+                        .queryParam(ACCESS_TOKEN, token)
                         .build())
                 .retrieve()
                 .bodyToMono(JsonNode.class);
