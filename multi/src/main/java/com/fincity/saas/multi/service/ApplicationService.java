@@ -1,21 +1,7 @@
 package com.fincity.saas.multi.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.security.dto.App;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.multi.dto.MultiApp;
-import com.fincity.saas.multi.dto.MultiAppUpdate;
-import com.fincity.saas.multi.fiegn.IFeignCoreService;
-import com.fincity.saas.multi.fiegn.IFeignUIService;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.file.FileSystem;
@@ -27,17 +13,33 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import org.checkerframework.checker.units.qual.s;
-import org.jooq.meta.derby.sys.Sys;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.dto.App;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.multi.dto.ApplicationTransportParameters;
+import com.fincity.saas.multi.dto.MultiApp;
+import com.fincity.saas.multi.dto.MultiAppUpdate;
+import com.fincity.saas.multi.fiegn.IFeignCoreService;
+import com.fincity.saas.multi.fiegn.IFeignUIService;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -45,6 +47,8 @@ import reactor.util.function.Tuple2;
 @Service
 public class ApplicationService {
 
+	private static final String APPLICATION = "Application";
+	private static final String TRANSPORT = "transport";
 	private static final String CLIENT_CODE = "clientCode";
 	private static final String APP_CODE = "appCode";
 
@@ -70,9 +74,7 @@ public class ApplicationService {
 			String headerAppCode,
 			String appCode, ServerHttpResponse response) {
 
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
+		return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication,
 
 				ca -> this.securityService.makeTransport(ca.getAccessToken(), forwardedHost,
 						forwardedPort, clientCode,
@@ -87,41 +89,34 @@ public class ApplicationService {
 						forwardedPort,
 						clientCode, headerAppCode,
 						Map.of(APP_CODE, appCode, CLIENT_CODE, ca.getClientCode())),
-
 				(ca, security, core, ui) -> {
-
 					ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
 					HttpHeaders headers = response.getHeaders();
 					headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
 					headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + appCode + "_"
 							+ clientCode + ".modl");
-
 					try {
-						Path tempDir = Files.createTempDirectory("transport");
+						Path tempDir = Files.createTempDirectory(TRANSPORT);
 						Path path = tempDir.resolve("transport.zip");
-
 						File file = path.toFile();
-
-						FileSystem zipfs = FileSystems.newFileSystem(URI.create("jar:" + path.toUri().toString()),
-								Map.of("create", "true"));
-
-						Files.write(zipfs.getPath("/security.json"), this.objectMapper.writeValueAsBytes(security));
-						Files.write(zipfs.getPath("/core.cmodl"), core.array());
-						Files.write(zipfs.getPath("/ui.umodl"), ui.array());
-
-						zipfs.close();
-
+						try (FileSystem zipfs = FileSystems.newFileSystem(
+								URI.create("jar:" + path.toUri().toString()),
+								Map.of("create", "true"))) {
+							Files.write(zipfs.getPath("/security.json"),
+									ApplicationService.this.objectMapper.writeValueAsBytes(security));
+							Files.write(zipfs.getPath("/core.cmodl"), core.array());
+							Files.write(zipfs.getPath("/ui.umodl"), ui.array());
+						}
 						return zeroCopyResponse.writeWith(file, 0, file.length()).doFinally(e -> {
 							try {
 								Files.deleteIfExists(path);
-							} catch (Exception ex) {
+							} catch (IOException ex) {
 								throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
 							}
 						});
-					} catch (Exception e) {
+					} catch (IOException e) {
 						throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
 					}
-
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.transport"));
 	}
@@ -143,7 +138,7 @@ public class ApplicationService {
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								MultiMessageResourceService.FORBIDDEN_CREATE,
-								"Application");
+								APPLICATION);
 					}
 
 					if (application.getAppId() == null)
@@ -204,12 +199,12 @@ public class ApplicationService {
 		if (!hasDefinition)
 			return Mono.just(false);
 
-		Mono<Path> fileMono = null;
+		Mono<Path> fileMono;
 
-		Path tempDir = null;
+		Path tempDir;
 		try {
-			tempDir = Files.createTempDirectory("transport");
-		} catch (Exception ex) {
+			tempDir = Files.createTempDirectory(TRANSPORT);
+		} catch (IOException ex) {
 			return this.messageResourceService.throwMessage(
 					msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
 					MultiMessageResourceService.MULTI_TRANSPORT_ERROR);
@@ -258,24 +253,42 @@ public class ApplicationService {
 				(f, cc) -> {
 					try {
 						return Mono.just(Files.readString(f).trim().startsWith("{"));
-					} catch (Exception ex) {
+					} catch (IOException ex) {
 						FlatMapUtil.logValue(ex.toString());
 						return Mono.just(false);
 					}
 				},
 
-				(f, cc, isJson) -> isJson.booleanValue()
-						? this.startJSONTransport(f, accessToken, forwardedHost, forwardedPort, clientCode,
-								headerAppCode, true, cc, application.getAppCode())
-						: this.startZipTransport(f, accessToken, forwardedHost, forwardedPort, clientCode,
-								headerAppCode, true, cc, application.getAppCode()))
+				(f, cc, isJson) -> {
+					ApplicationTransportParameters params = new ApplicationTransportParameters()
+							.setFile(f)
+							.setAccessToken(accessToken)
+							.setForwardedHost(forwardedHost)
+							.setForwardedPort(forwardedPort)
+							.setClientCode(clientCode)
+							.setHeaderAppCode(headerAppCode)
+							.setIsBaseApp(true)
+							.setCc(cc).setAppCode(application.getAppCode());
+
+					return BooleanUtil.safeValueOf(isJson)
+							? this.startJSONTransport(params)
+							: this.startZipTransport(params);
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.addDefinition"));
 
 	}
 
 	@SuppressWarnings("unchecked")
-	public Mono<Boolean> startJSONTransport(Path file, String accessToken, String forwardedHost, String forwardedPort,
-			String clientCode, String headerAppCode, Boolean isBaseApp, String cc, String appCode) {
+	public Mono<Boolean> startJSONTransport(ApplicationTransportParameters params) {
+		Path file = params.getFile();
+		String accessToken = params.getAccessToken();
+		String forwardedHost = params.getForwardedHost();
+		String forwardedPort = params.getForwardedPort();
+		String clientCode = params.getClientCode();
+		String headerAppCode = params.getHeaderAppCode();
+		Boolean isBaseApp = params.getIsBaseApp();
+		String cc = params.getCc();
+		String appCode = params.getAppCode();
 
 		try {
 			Map<String, Object> definition = this.objectMapper.readValue(file.toFile(), Map.class);
@@ -311,7 +324,7 @@ public class ApplicationService {
 
 			return FlatMapUtil.flatMapMonoWithNull(() -> security, x -> core, (x, y) -> ui).contextWrite(Context.of(
 					LogUtil.METHOD_NAME, "ApplicationService.startJSONTransport"));
-		} catch (Exception ex) {
+		} catch (IOException ex) {
 			return this.messageResourceService.throwMessage(
 					msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
 					MultiMessageResourceService.MULTI_TRANSPORT_ERROR);
@@ -319,8 +332,16 @@ public class ApplicationService {
 	}
 
 	@SuppressWarnings("unchecked")
-	public Mono<Boolean> startZipTransport(Path file, String accessToken, String forwardedHost, String forwardedPort,
-			String clientCode, String headerAppCode, Boolean isBaseApp, String cc, String appCode) {
+	public Mono<Boolean> startZipTransport(ApplicationTransportParameters params) {
+		Path file = params.getFile();
+		String accessToken = params.getAccessToken();
+		String forwardedHost = params.getForwardedHost();
+		String forwardedPort = params.getForwardedPort();
+		String clientCode = params.getClientCode();
+		String headerAppCode = params.getHeaderAppCode();
+		Boolean isBaseApp = params.getIsBaseApp();
+		String cc = params.getCc();
+		String appCode = params.getAppCode();
 
 		try {
 			FileSystem zipfs = FileSystems.newFileSystem(URI.create("jar:" + file.toUri().toString()), Map.of());
@@ -349,7 +370,7 @@ public class ApplicationService {
 
 			return FlatMapUtil.flatMapMonoWithNull(() -> security, x -> core, (x, y) -> ui).contextWrite(Context.of(
 					LogUtil.METHOD_NAME, "ApplicationService.startZipTransport"));
-		} catch (Exception ex) {
+		} catch (IOException ex) {
 			return this.messageResourceService.throwMessage(
 					msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
 					MultiMessageResourceService.MULTI_TRANSPORT_ERROR);
@@ -363,56 +384,41 @@ public class ApplicationService {
 
 		try {
 
-			// Path newModlFile = folder.resolve("new" +
-			// fileInZip.getFileName().toString());
-
 			Files.copy(fileInZip, modlFile);
 
-			FileSystem zipfs = FileSystems.newFileSystem(URI.create("jar:" + modlFile.toUri().toString()),
-					Map.of("create", "true"));
-			// FileSystem newZipfs = FileSystems.newFileSystem(URI.create("jar:" +
-			// newModlFile.toUri().toString()),
-			// Map.of("create", "true"));
+			try (FileSystem zipfs = FileSystems.newFileSystem(URI.create("jar:" + modlFile.toUri().toString()),
+					Map.of("create", "true"))) {
+				Path root = zipfs.getPath("/");
+				List<Path> files = Files.walk(root).toList();
+				for (Path p : files) {
+					if (Files.isDirectory(p))
+						continue;
 
-			Path root = zipfs.getPath("/");
+					Map<String, Object> m = this.objectMapper.readValue(Files.readString(p), Map.class);
+					if (m.containsKey(APP_CODE))
+						m.put(APP_CODE, appCode);
 
-			List<Path> files = Files.walk(root).collect(Collectors.toList());
+					if (m.containsKey(CLIENT_CODE))
+						m.put(CLIENT_CODE, clientCode);
 
-			for (Path p : files) {
+					if (p.getParent().getFileName() != null
+							&& (p.getParent().getFileName().toString().equals(APPLICATION) ||
+									p.getParent().getFileName().toString().equals("Filler")))
+						m.put("name", appCode);
 
-				if (Files.isDirectory(p)) {
-					// if (p.getFileName() != null && !p.getFileName().toString().equals("/"))
-
-					continue;
+					Files.write(p, this.objectMapper.writeValueAsBytes(m),
+							StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE,
+							StandardOpenOption.CREATE);
 				}
-
-				Map<String, Object> m = this.objectMapper.readValue(Files.readString(p), Map.class);
-				if (m.containsKey(APP_CODE))
-					m.put(APP_CODE, appCode);
-
-				if (m.containsKey(CLIENT_CODE))
-					m.put(CLIENT_CODE, clientCode);
-
-				if (p.getParent().getFileName() != null
-						&& (p.getParent().getFileName().toString().equals("Application") ||
-								p.getParent().getFileName().toString().equals("Filler")))
-					m.put("name", appCode);
-
-				Files.write(p, this.objectMapper.writeValueAsBytes(m),
-						StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE,
-						StandardOpenOption.CREATE);
 			}
 
-			// newZipfs.close();
-			zipfs.close();
-
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
 		}
 
 		try {
 			return ByteBuffer.wrap(Files.readAllBytes(modlFile));
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
 		}
 	}
@@ -429,13 +435,13 @@ public class ApplicationService {
 		if (!hasDefinition)
 			return Mono.just(false);
 
-		Mono<Path> fileMono = null;
+		Mono<Path> fileMono;
 
-		Path tempDir = null;
+		Path tempDir;
 
 		try {
-			tempDir = Files.createTempDirectory("transport");
-		} catch (Exception ex) {
+			tempDir = Files.createTempDirectory(TRANSPORT);
+		} catch (IOException ex) {
 			return this.messageResourceService.throwMessage(
 					msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
 					MultiMessageResourceService.MULTI_TRANSPORT_ERROR);
@@ -488,17 +494,28 @@ public class ApplicationService {
 				(f, accessToken, cc) -> {
 					try {
 						return Mono.just(Files.readString(f).trim().startsWith("{"));
-					} catch (Exception ex) {
+					} catch (IOException ex) {
 						FlatMapUtil.logValue(ex.toString());
 						return Mono.just(false);
 					}
 				},
 
-				(f, accessToken, cc, isJson) -> isJson.booleanValue()
-						? this.startJSONTransport(f, accessToken, forwardedHost, forwardedPort, clientCode,
-								headerAppCode, application.getIsBaseUpdate(), cc, application.getAppCode())
-						: this.startZipTransport(f, accessToken, forwardedHost, forwardedPort, clientCode,
-								headerAppCode, application.getIsBaseUpdate(), cc, application.getAppCode()))
+				(f, accessToken, cc, isJson) -> {
+					ApplicationTransportParameters params = new ApplicationTransportParameters()
+							.setFile(f)
+							.setAccessToken(accessToken)
+							.setForwardedHost(forwardedHost)
+							.setForwardedPort(forwardedPort)
+							.setClientCode(clientCode)
+							.setHeaderAppCode(headerAppCode)
+							.setIsBaseApp(application.getIsBaseUpdate())
+							.setCc(cc)
+							.setAppCode(application.getAppCode());
+
+					return BooleanUtil.safeValueOf(isJson)
+							? this.startJSONTransport(params)
+							: this.startZipTransport(params);
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.updateApplication"));
 	}
 
@@ -519,7 +536,7 @@ public class ApplicationService {
 					inMap.put(APP_CODE, appCode);
 					inMap.put(CLIENT_CODE, clientCode);
 
-					if ("Application".equals(exMap.get("objectType")) || "Filler".equals(exMap.get("objectType"))) {
+					if (APPLICATION.equals(exMap.get("objectType")) || "Filler".equals(exMap.get("objectType"))) {
 						inMap.put("name", appCode);
 					}
 				}

@@ -29,6 +29,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
+import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
@@ -64,6 +65,12 @@ import reactor.util.function.Tuples;
 @Service
 public class ClientRegistrationService {
 
+	private static final String HTTP = "http://";
+	private static final String HTTPS = "https://";
+	private static final String X_FORWARDED_PORT = "X-Forwarded-Port";
+	private static final String X_FORWARDED_PROTO = "X-Forwarded-Proto";
+	private static final String X_FORWARDED_HOST = "X-Forwarded-Host";
+
 	private final ClientDAO dao;
 	private final AppService appService;
 	private final UserService userService;
@@ -85,7 +92,7 @@ public class ClientRegistrationService {
 	private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
 
 	@Value("${security.subdomain.endings}")
-	private String subDomainEndings;
+	private String[] subDomainEndings;
 
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
@@ -165,7 +172,7 @@ public class ClientRegistrationService {
 
 		String urlPrefix = getUrlPrefix(request);
 
-		return FlatMapUtil.flatMapMono(
+		Mono<ClientRegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
@@ -206,20 +213,24 @@ public class ClientRegistrationService {
 					if (safeIsBlank(subDomain))
 						return Mono.just(res);
 
-					return this.clientUrlService.createForRegistration(new ClientUrl().setAppCode(ca.getUrlAppCode())
+					res.setRedirectURL(subDomain);
+
+					return this.clientUrlService.createForRegistration(
+							new ClientUrl().setAppCode(ca.getUrlAppCode())
 									.setUrlPattern(subDomain).setClientId(client.getId()))
-							.map(e -> res.setRedirectURL(subDomain));
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
+							.<ClientRegistrationResponse>map(e -> res);
+				});
+
+		return monoResponse.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
 	}
 
 	private String getUrlPrefix(ServerHttpRequest request) {
 
-		String host = request.getHeaders().getFirst("X-Forwarded-Host");
-		String scheme = request.getHeaders().getFirst("X-Forwarded-Proto");
-		String port = request.getHeaders().getFirst("X-Forwarded-Port");
+		String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+		String scheme = request.getHeaders().getFirst(X_FORWARDED_PROTO);
+		String port = request.getHeaders().getFirst(X_FORWARDED_PORT);
 
-		return (scheme != null && scheme.contains("https")) ? "https://" + host : "http://" + host + ":" + port;
+		return (scheme != null && scheme.contains("https")) ? HTTPS + host : HTTP + host + ":" + port;
 	}
 
 	private Mono<String> preRegisterCheck(ClientRegistrationRequest registrationRequest, ContextAuthentication ca) {
@@ -230,107 +241,114 @@ public class ClientRegistrationService {
 		if (ca.isAuthenticated())
 			return this.regError("Signout to register");
 
+		Mono<App> appMono = this.appService.getAppByCode(ca.getUrlAppCode());
+
+		Mono<Client> clientMono = this.clientService.getClientBy(ca.getLoggedInFromClientCode());
+
+		Mono<ClientLevelType> clientLevelTypeMono = appMono.flatMap(app -> this.clientService
+				.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()));
+
+		Mono<Boolean> checkIfUserExists = registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
+				: this.userService
+						.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
+						.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.CONFLICT, msg),
+								SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
+
 		return FlatMapUtil.flatMapMono(
 
-				() -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
-						: this.userService
-								.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
-								.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
-										msg -> new GenericException(HttpStatus.CONFLICT, msg),
-										SecurityMessageResourceService.USER_ALREADY_EXISTS,
-										registrationRequest.getEmailId())),
+				() -> checkIfUserExists,
 
-				userExists -> this.appService.getAppByCode(ca.getUrlAppCode()),
+				exists -> appMono,
 
-				(userExists, app) -> this.clientService.getClientBy(ca.getLoggedInFromClientCode()),
+				(exists, app) -> clientMono,
 
-				(userExists, app, client) -> this.clientService
-						.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()),
+				(exists, app, client) -> clientLevelTypeMono,
 
-				(userExists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
+				(exists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
 						levelType, registrationRequest.isBusinessClient()),
 
-				(userExists, app, client, levelType, usageType) -> this.fetchAppProp(
+				(exists, app, client, levelType, usageType) -> this.fetchAppProp(
 						ULong.valueOf(ca.getLoggedInFromClientId()), app.getId(), null, AppService.APP_PROP_URL_SUFFIX),
 
-				(userExists, app, client, levelType, usageType, suffix) -> this
-						.checkSubDomainAvailability(this.subDomainEndings, registrationRequest.getSubDomain(),
+				(exists, app, client, levelType, usageType, suffix) -> this
+						.checkSubDomainAvailability(registrationRequest.getSubDomain(),
+								registrationRequest.getSubDomainSuffix(),
 								registrationRequest.isBusinessClient()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
 	}
 
-	private Mono<Boolean> checkUsageType(SecurityAppAppUsageType usageType, ClientLevelType levelType,
+	private Mono<Boolean> checkUsageType(SecurityAppAppUsageType usageType, ClientLevelType levelType, // NOSONAR
 			boolean isBusinessClient) {
 
-		switch (usageType) {
+		// Need to put everything in one function to process all the types of the App
+		// usage type.
 
-			case S:
-				return this.regError("Not allowed for Standalone Applications");
-			case B:
-				return this.regError("Not allowed for Business Applications");
-			case B2C:
-				if (levelType != ClientLevelType.OWNER)
-					return this.regError("Only Applications owner can register for B2C Applications");
+		if (usageType == SecurityAppAppUsageType.S)
+			return this.regError("Not allowed for Standalone Applications");
 
-				if (isBusinessClient)
-					return this.regError("Business clients are not allowed for B2C Applications");
+		if (usageType == SecurityAppAppUsageType.B)
+			return this.regError("Not allowed for Business Applications");
 
-				break;
-			case B2B:
-				if (levelType != ClientLevelType.OWNER)
-					return this.regError("Only Applications owner can register for B2B Applications");
+		if (usageType == SecurityAppAppUsageType.B2C) {
+			if (levelType != ClientLevelType.OWNER)
+				return this.regError("Only Applications owner can register for B2C Applications");
 
-				if (!isBusinessClient)
-					return this.regError("Individual clients are not allowed for B2B Applications");
+			if (isBusinessClient)
+				return this.regError("Business clients are not allowed for B2C Applications");
+		}
 
-				break;
-			case B2X:
-				if (levelType != ClientLevelType.OWNER)
-					return this.regError("Only Applications owner can register for B2X Applications");
+		if (usageType == SecurityAppAppUsageType.B2B) {
+			if (levelType != ClientLevelType.OWNER)
+				return this.regError("Only Applications owner can register for B2B Applications");
 
-				break;
-			case B2B2B:
-				if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-					return this.regError("Only Applications owner can register for B2B2B Applications");
+			if (!isBusinessClient)
+				return this.regError("Individual clients are not allowed for B2B Applications");
+		}
 
-				if (!isBusinessClient)
-					return this.regError("Individual clients are not allowed for B2B2B Applications");
+		if (usageType == SecurityAppAppUsageType.B2X && levelType != ClientLevelType.OWNER) {
+			return this.regError("Only Applications owner can register for B2X Applications");
+		}
 
-				break;
-			case B2B2C:
-				if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-					return this.regError("Only Applications owner can register for B2B2C Applications");
+		if (usageType == SecurityAppAppUsageType.B2B2B) {
 
-				if (levelType == ClientLevelType.OWNER && !isBusinessClient)
-					return this.regError("Business clients are required for B2B2C Applications at owner level");
+			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+				return this.regError("Only Applications owner can register for B2B2B Applications");
 
-				if (levelType == ClientLevelType.CLIENT && isBusinessClient)
-					return this.regError("Business clients are not allowed for B2B2C Applications");
+			if (!isBusinessClient)
+				return this.regError("Individual clients are not allowed for B2B2B Applications");
+		}
 
-				break;
-			case B2B2X:
-				if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-					return this.regError("Only Applications owner can register for B2B2X Applications");
+		if (usageType == SecurityAppAppUsageType.B2B2C) {
+			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+				return this.regError("Only Applications owner can register for B2B2C Applications");
 
-				if (levelType == ClientLevelType.OWNER && !isBusinessClient)
-					return this.regError("Business clients are required for B2B2X Applications at owner level");
+			if (levelType == ClientLevelType.OWNER && !isBusinessClient)
+				return this.regError("Business clients are required for B2B2C Applications at owner level");
 
-				break;
-			case B2X2C:
-				if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-					return this.regError("Only Applications owner can register for B2X2C Applications");
+			if (levelType == ClientLevelType.CLIENT && isBusinessClient)
+				return this.regError("Business clients are not allowed for B2B2C Applications");
+		}
 
-				if (levelType == ClientLevelType.CLIENT && isBusinessClient)
-					return this.regError("Business clients are not allowed for B2X2C Applications");
+		if (usageType == SecurityAppAppUsageType.B2B2X) {
+			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+				return this.regError("Only Applications owner can register for B2B2X Applications");
 
-				break;
-			case B2X2X:
-				if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-					return this.regError("Only Applications owner can register for B2X2X Applications");
+			if (levelType == ClientLevelType.OWNER && !isBusinessClient)
+				return this.regError("Business clients are required for B2B2X Applications at owner level");
+		}
 
-				break;
-			default:
-				return this.regError("Invalid Application Usage Type");
+		if (usageType == SecurityAppAppUsageType.B2X2C) {
+			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+				return this.regError("Only Applications owner can register for B2X2C Applications");
+
+			if (levelType == ClientLevelType.CLIENT && isBusinessClient)
+				return this.regError("Business clients are not allowed for B2X2C Applications");
+		}
+
+		if (usageType == SecurityAppAppUsageType.B2X2X && levelType != ClientLevelType.OWNER
+				&& levelType != ClientLevelType.CLIENT) {
+			return this.regError("Only Applications owner can register for B2X2X Applications");
 		}
 
 		return Mono.just(Boolean.TRUE);
@@ -353,16 +371,35 @@ public class ClientRegistrationService {
 				});
 	}
 
-	private Mono<String> checkSubDomainAvailability(String suffix, String subDomain, boolean isBusinessClient) {
+	private Mono<String> checkSubDomainAvailability(String subDomain, String subDomainSuffix,
+			boolean isBusinessClient) {
 
 		if (!isBusinessClient || safeIsBlank(subDomain))
 			return Mono.just("");
 
-		String subDomainWithSuffix = safeIsBlank(suffix) ? subDomain + this.subDomainEndings
-				: subDomain + suffix;
+		String finalSubDomainSuffix;
 
-		return this.clientUrlService.checkSubDomainAvailability(subDomainWithSuffix).filter(e -> e)
-				.map(e -> subDomainWithSuffix)
+		if (StringUtil.safeIsBlank(subDomainSuffix)) {
+			finalSubDomainSuffix = this.subDomainEndings[0];
+		} else {
+			boolean found = false;
+			for (String subDomainEnding : subDomainEndings) {
+				if (subDomainEnding.equals(subDomainSuffix)) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				return this.securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.SUBDOMAIN_SUFFIX_FORBIDDEN, subDomainSuffix);
+			}
+			finalSubDomainSuffix = subDomainSuffix;
+		}
+		String fullURL = subDomain + (finalSubDomainSuffix.startsWith(".") ? "" : ".") + finalSubDomainSuffix;
+
+		return this.clientUrlService.checkSubDomainAvailability(subDomain, fullURL).filter(e -> e)
+				.map(e -> fullURL)
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.CONFLICT, msg),
 						SecurityMessageResourceService.SUBDOMAIN_ALREADY_EXISTS, subDomain));
@@ -639,9 +676,9 @@ public class ClientRegistrationService {
 
 					String state = UUID.randomUUID().toString();
 
-					String host = request.getHeaders().getFirst("X-Forwarded-Host");
+					String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
 
-					String urlPrefix = "https://" + host;
+					String urlPrefix = HTTPS + host;
 
 					String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
 
@@ -660,9 +697,9 @@ public class ClientRegistrationService {
 
 	public Mono<Void> registerWSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
 
-		String host = request.getHeaders().getFirst("X-Forwarded-Host");
+		String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
 
-		String urlPrefix = "https://" + host;
+		String urlPrefix = HTTPS + host;
 
 		return FlatMapUtil.flatMapMono(
 

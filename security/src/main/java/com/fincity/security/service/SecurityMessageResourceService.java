@@ -110,6 +110,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String SOCIAL_LOGIN_FAILED = "social_login_failed";
 	public static final String UNSUPPORTED_PLATFORM = "unsupported_platform";
 	public static final String CRT_KEY_ISSUE = "crt_key_issue";
+	public static final String SUBDOMAIN_SUFFIX_FORBIDDEN = "subdomain_suffix_forbidden";
 
 	public SecurityMessageResourceService() {
 

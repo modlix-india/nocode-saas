@@ -380,7 +380,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						: super.update(key, fields),
 
 				(clientId, clientType, userExists, updated) -> this.evictTokens(updated.getId())
-						.map(evicted -> updated))
+						.<User>map(evicted -> updated))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
@@ -409,7 +409,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						: super.update(entity),
 
 				(clientType, userExists, updated) -> this.evictTokens(updated.getId())
-						.map(evicted -> updated))
+						.<User>map(evicted -> updated))
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
