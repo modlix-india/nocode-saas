@@ -77,16 +77,16 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	protected final Logger logger;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected DSLContext dslContext;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected AbstractMessageService messageResourceService;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected DatabaseClient dbClient;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected ReactiveTransactionManager transactionManager;
 
 	protected final Table<R> table;
