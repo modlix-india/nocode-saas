@@ -720,9 +720,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		OtpPurpose purpose = OtpPurpose.PASSWORD_RESET;
 
-		if (authRequest.getIdentifierType() == null)
-			authRequest.setIdentifierType();
-
 		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
@@ -735,7 +732,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 								SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
 
 					return this.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-							ca.getUrlClientCode(), ca.getUrlAppCode(), authRequest.getIdentifierType());
+							ca.getUrlClientCode(), ca.getUrlAppCode(), authRequest.setIdentifierType().getIdentifierType());
 				},
 
 				(ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
@@ -755,6 +752,40 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				(ca, userTup, userCheck, app, targetReq) -> this.otpService.generateOtpInternal(targetReq))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
 						"UserService.generateOtpResetPassword : [" + authRequest.getInputPassType() + "]"))
+				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
+	}
+
+	public Mono<Boolean> verifyOtpResetPassword(AuthenticationRequest authRequest) {
+
+		OtpPurpose purpose = OtpPurpose.PASSWORD_RESET;
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> {
+
+					if (ca.isAuthenticated())
+						return this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								SecurityMessageResourceService.PASS_RESET_REQ_ERROR);
+
+					return this.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
+							ca.getUrlClientCode(), ca.getUrlAppCode(), authRequest.setIdentifierType().getIdentifierType());
+				},
+
+				(ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
+						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE),
+
+				(ca, userTup, userCheck) -> this.otpService
+						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), purpose, authRequest.getOtp())
+						.filter(otpVerified -> userCheck).map(otpVerified -> Boolean.TRUE)
+						.switchIfEmpty(this.securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.USER_PASSWORD_INVALID,
+								AuthenticationPasswordType.OTP.getName(), AuthenticationPasswordType.OTP.getName())))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"UserService.verifyOtpResetPassword  : [" + authRequest.getInputPassType() + "]"))
 				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
 	}
 

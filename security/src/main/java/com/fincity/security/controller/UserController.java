@@ -134,6 +134,13 @@ public class UserController
 				.map(ResponseEntity::ok);
 	}
 
+	@PostMapping("/reset/password/otp/verify")
+	public Mono<ResponseEntity<Boolean>> verifyOtpResetPassword(@RequestBody AuthenticationRequest authRequest) {
+
+		return this.userService.verifyOtpResetPassword(authRequest)
+				.map(ResponseEntity::ok);
+	}
+
 	@PostMapping("/reset/password")
 	public Mono<ResponseEntity<Boolean>> resetPassword(@RequestBody RequestUpdatePassword reqPassword) {
 

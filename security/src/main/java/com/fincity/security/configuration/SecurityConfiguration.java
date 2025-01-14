@@ -69,6 +69,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/users/reset/password/otp/generate",
 
+				"/api/security/users/reset/password/otp/verify",
+
 				"/api/security/users/reset/password",
 
 				"/api/security/clients/register/otp/generate",
