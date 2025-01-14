@@ -104,8 +104,8 @@ public class ClientHierarchyService
 		if (managingClientId.equals(clientId))
 			return Mono.just(Boolean.TRUE);
 
-		return this.getClientHierarchy(managingClientId)
-				.flatMap(clientHierarchy -> Mono.just(clientHierarchy.isManagedBy(clientId)))
+		return this.getClientHierarchy(clientId)
+				.flatMap(clientHierarchy -> Mono.just(clientHierarchy.isManagedBy(managingClientId)))
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
@@ -118,9 +118,9 @@ public class ClientHierarchyService
 
 				() -> this.clientService.getClientId(clientCode),
 
-				clientId -> this.getClientHierarchy(managingClientCode),
+				clientId -> this.clientService.getClientId(managingClientCode),
 
-				(clientId, clientHierarchy) -> Mono.just(clientHierarchy.isManagedBy(clientId)))
+				(clientId, managingClientId) -> this.isBeingManagedBy(managingClientId, clientId))
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
