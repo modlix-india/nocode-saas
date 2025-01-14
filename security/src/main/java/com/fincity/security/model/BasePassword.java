@@ -32,7 +32,6 @@ public interface BasePassword<T extends BasePassword<T>> {
 		throw new GenericException(HttpStatus.BAD_REQUEST, "OTP is not supported for this implementation.");
 	}
 
-	@JsonIgnore
 	default AuthenticationPasswordType getPassType() {
 		return null;
 	}
