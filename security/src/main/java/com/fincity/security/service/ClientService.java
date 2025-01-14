@@ -19,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -29,6 +30,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.Client;
@@ -58,6 +60,7 @@ public class ClientService
 	public static final String CACHE_CLIENT_URL_LIST = "list";
 	public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
 	public static final String CACHE_NAME_CLIENT_URI = "uri";
+	public static final String CC = "clientCode";
 
 	private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
 	private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
@@ -98,11 +101,11 @@ public class ClientService
 	@Autowired
 	private ClientOtpPolicyService clientOtpPolicyService;
 
-	private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
-			AuthenticationPasswordType.class);
-
 	@Value("${security.subdomain.endings}")
 	private String[] subDomainURLEndings;
+
+	private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
+			AuthenticationPasswordType.class);
 
 	@PostConstruct
 	public void init() {
@@ -293,14 +296,19 @@ public class ClientService
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
+	@SuppressWarnings("unchecked")
+	public <T extends AbstractPolicy> Mono<Boolean> validatePasswordPolicy(T policy, ULong userId,
+			AuthenticationPasswordType passType, String password) {
+
+		IPolicyService<T> service = (IPolicyService<T>) this.policyServices.get(passType);
+
+		return service.checkAllConditions(policy, userId, password).switchIfEmpty(Mono.just(Boolean.TRUE));
+	}
+
 	public Mono<Boolean> validatePasswordPolicy(ULong clientId, String appCode, ULong userId,
 			AuthenticationPasswordType passwordType, String password) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> appService.getAppByCode(appCode),
-
-				app -> validatePasswordPolicy(clientId, app.getId(), userId, passwordType, password))
+		return this.appService.getAppByCode(appCode)
+				.flatMap(app -> this.validatePasswordPolicy(clientId, app.getId(), userId, passwordType, password))
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
 
@@ -425,7 +433,7 @@ public class ClientService
 			if (Boolean.FALSE.equals(result))
 				return securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-						SecurityMessageResourceService.OBJECT_NOT_FOUND, clientId, packageId);
+						AbstractMessageService.OBJECT_NOT_FOUND, clientId, packageId);
 
 			return FlatMapUtil.flatMapMono(
 
@@ -590,6 +598,17 @@ public class ClientService
 				(levelType, packageIds, results) -> Mono.just(true)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"));
+	}
+
+	public Mono<Client> getActiveClient(ULong clientId) {
+		return this.isClientActive(clientId)
+				.flatMap(isActive -> Boolean.TRUE.equals(isActive)
+						? this.getClientInfoById(clientId)
+						: Mono.empty())
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"))
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+						SecurityMessageResourceService.INACTIVE_CLIENT));
 	}
 
 	public Mono<Boolean> isClientActive(ULong clientId) {

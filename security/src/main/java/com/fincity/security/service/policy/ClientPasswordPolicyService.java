@@ -5,8 +5,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jooq.types.ULong;
-import org.jooq.types.UShort;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.policy.ClientPasswordPolicyDAO;
@@ -38,8 +37,13 @@ public class ClientPasswordPolicyService
 	private final Set<Character> specialCharacters = Set.of('~', '`', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 			'_', '-', '+', '=', '{', '}', '[', ']', '|', '\\', '/', ':', ';', '\"', '\'', '<', '>', ',', '.', '?');
 
-	@Autowired
-	private PasswordEncoder encoder;
+	private final PasswordEncoder encoder;
+
+	protected ClientPasswordPolicyService(SecurityMessageResourceService securityMessageResourceService,
+			CacheService cacheService, PasswordEncoder encoder) {
+		super(securityMessageResourceService, cacheService);
+		this.encoder = encoder;
+	}
 
 	@Override
 	public String getPolicyName() {
@@ -66,15 +70,15 @@ public class ClientPasswordPolicyService
 						.setAtleastOneSpecialChar(true)
 						.setSpacesAllowed(false)
 						.setRegex(null)
-						.setPassExpiryInDays(UShort.valueOf(10))
-						.setPassExpiryWarnInDays(UShort.valueOf(8))
-						.setPassMinLength(UShort.valueOf(12))
-						.setPassMaxLength(UShort.valueOf(20))
-						.setPassHistoryCount(UShort.valueOf(5))
+						.setPassExpiryInDays((short) 10)
+						.setPassExpiryWarnInDays((short) 8)
+						.setPassMinLength((short) 12)
+						.setPassMaxLength((short) 20)
+						.setPassHistoryCount((short) 5)
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
-						.setNoFailedAttempts(UShort.valueOf(3))
-						.setUserLockTimeMin(ULong.valueOf(30))
+						.setNoFailedAttempts((short) 3)
+						.setUserLockTimeMin(30L)
 						.setId(DEFAULT_POLICY_ID));
 	}
 
@@ -108,40 +112,48 @@ public class ClientPasswordPolicyService
 
 				() -> this.getClientAppPolicy(clientId, appId),
 
-				passwordPolicy -> checkPastPasswords(passwordPolicy, userId, password),
-
-				(passwordPolicy, pastPassCheck) -> checkAlphanumericExists(passwordPolicy, password),
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric) -> checkInSpecialCharacters(password),
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial) -> {
-
-					if (passwordPolicy.isSpacesAllowed())
-						return Mono.just(Boolean.TRUE);
-
-					if (password.indexOf(' ') != -1)
-						return securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								SecurityMessageResourceService.SPACES_MISSING);
-
-					return Mono.just(Boolean.TRUE);
-				},
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
-
-					String regex = passwordPolicy.getRegex();
-
-					if (StringUtil.safeIsBlank(regex))
-						return Mono.just(Boolean.TRUE);
-
-					return checkRegexPattern(password, regex);
-
-				},
-
-				(passwordPolicy, pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this
-						.checkStrengthOfPassword(passwordPolicy, password))
+				passwordPolicy -> this.checkAllConditions(passwordPolicy, userId, password))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
 				.defaultIfEmpty(true);
+	}
+
+	@Override
+	public Mono<Boolean> checkAllConditions(ClientPasswordPolicy policy, ULong userId, String password) {
+		return FlatMapUtil.flatMapMono(
+
+						() -> this.checkPastPasswords(policy, userId, password),
+
+						 pastPassCheck -> this.checkAlphanumericExists(policy, password),
+
+						(pastPassCheck, isAlphaNumeric) -> this.checkInSpecialCharacters(password),
+
+						(pastPassCheck, isAlphaNumeric, isSpecial) -> {
+
+							if (policy.isSpacesAllowed())
+								return Mono.just(Boolean.TRUE);
+
+							if (password.indexOf(' ') != -1)
+								return securityMessageResourceService.throwMessage(
+										msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+										SecurityMessageResourceService.SPACES_MISSING);
+
+							return Mono.just(Boolean.TRUE);
+						},
+
+						(pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
+
+							String regex = policy.getRegex();
+
+							if (StringUtil.safeIsBlank(regex))
+								return Mono.just(Boolean.TRUE);
+
+							return checkRegexPattern(password, regex);
+
+						},
+
+						(pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this.checkStrengthOfPassword(policy, password))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
+				.defaultIfEmpty(Boolean.TRUE);
 	}
 
 	private Mono<Boolean> checkPastPasswords(ClientPasswordPolicy passwordPolicy, ULong userId, String password) {

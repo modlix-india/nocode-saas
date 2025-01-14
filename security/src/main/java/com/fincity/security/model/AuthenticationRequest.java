@@ -6,11 +6,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
+@EqualsAndHashCode(callSuper = false)
 @Data
 @Accessors(chain = true)
-public class AuthenticationRequest {
+public class AuthenticationRequest implements BasePassword<AuthenticationRequest> {
 
 	private String userName;
 	private String password;
@@ -27,32 +29,15 @@ public class AuthenticationRequest {
 	private boolean generateOtp = false;
 
 	@JsonIgnore
-	public String getInputPassword() {
-
-		if (!StringUtil.safeIsBlank(password))
-			return password;
-
-		if (!StringUtil.safeIsBlank(pin))
-			return pin;
-
-		if (!StringUtil.safeIsBlank(otp))
-			return otp;
-
-		return null;
-	}
+	private AuthenticationPasswordType passType;
 
 	@JsonIgnore
-	public AuthenticationPasswordType getPasswordType() {
+	public AuthenticationRequest setIdentifierType() {
+		if (this.identifierType == null)
+			this.identifierType = StringUtil.safeIsBlank(this.getUserName()) || this.getUserName()
+					.indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
+							: AuthenticationIdentifierType.EMAIL_ID;
 
-		if (!StringUtil.safeIsBlank(password))
-			return AuthenticationPasswordType.PASSWORD;
-
-		if (!StringUtil.safeIsBlank(pin))
-			return AuthenticationPasswordType.PIN;
-
-		if (!StringUtil.safeIsBlank(otp))
-			return AuthenticationPasswordType.OTP;
-
-		return null;
+		return this;
 	}
 }
