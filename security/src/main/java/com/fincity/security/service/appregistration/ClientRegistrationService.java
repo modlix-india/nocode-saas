@@ -1,5 +1,7 @@
 package com.fincity.security.service.appregistration;
 
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -25,10 +27,8 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
-import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
@@ -150,11 +150,14 @@ public class ClientRegistrationService {
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.preRegisterCheck(registrationRequest, ca),
+				ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+						ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
-				(ca, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+				(ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
+
+				(ca, policy, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
 						ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
-				(ca, subDomain, regProp) -> {
+				(ca, policy, subDomain, regProp) -> {
 
 					if (safeIsBlank(regProp) || AppService.APP_PROP_REG_TYPE_NO_REGISTRATION.equals(regProp))
 						return this.securityMessageResourceService.throwMessage(
@@ -169,44 +172,46 @@ public class ClientRegistrationService {
 	public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
 			ServerHttpRequest request, ServerHttpResponse response) {
 
-		String urlPrefix = getUrlPrefix(request);
+		String urlPrefix = this.getUrlPrefix(request);
+
+		if (registrationRequest.getPassType() == null)
+			return this.regError("Type of password for app is required");
 
 		Mono<ClientRegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.preRegisterCheck(registrationRequest, ca),
+				ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+						ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
-				(ca, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+				(ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
+
+				(ca, policy, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
 						ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
 
-				(ca, subDomain, regProp) -> this.registerClient(registrationRequest, ca, regProp),
+				(ca, policy, subDomain, regProp) -> this.registerClient(registrationRequest, ca, regProp),
 
-				(ca, subDomain, regProp, client) -> this.clientService.getClientAppPolicy(
-						ULong.valueOf(ca.getLoggedInFromClientId()), ca.getUrlAppCode(),
-						registrationRequest.getPasswordType()),
-
-				(ca, subDomain, regProp, client, policy) -> this.registerUser(
+				(ca, policy, subDomain, regProp, client) -> this.registerUser(
 						ca.getUrlAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), registrationRequest, client,
 						policy),
 
-				(ca, subDomain, regProp, client, policy, userTuple) -> {
+				(ca, policy, subDomain, regProp, client, userTuple) -> {
 					if (safeIsBlank(registrationRequest.getSocialRegisterState())
-							&& registrationRequest.getPasswordType() != null)
+							&& registrationRequest.getInputPassType() != null)
 						return this.userService.makeOneTimeToken(request, ca, userTuple.getT1(),
 								ULong.valueOf(ca.getLoggedInFromClientId())).map(TokenObject::getToken);
 
 					return Mono.just("");
 				},
-				(ca, subDomain, regProp, client, policy, userTuple, token) -> this.addFilesAccessPath(ca, client),
+				(ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client),
 
-				(ca, subDomain, regProp, client, policy, userTuple, token, filesAccessCreated) -> this
+				(ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated) -> this
 						.createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
 								userTuple.getT2())
 						.flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
 								userTuple.getT1().getId(), userTuple.getT2(), request, response)),
 
-				(ca, subDomain, regProp, client, policy, userTuple, token, filesAccessCreated,
+				(ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated,
 						res) -> {
 
 					if (safeIsBlank(subDomain))
@@ -232,7 +237,8 @@ public class ClientRegistrationService {
 		return (scheme != null && scheme.contains("https")) ? HTTPS + host : HTTP + host + ":" + port;
 	}
 
-	private Mono<String> preRegisterCheck(ClientRegistrationRequest registrationRequest, ContextAuthentication ca) {
+	private Mono<String> preRegisterCheck(ClientRegistrationRequest registrationRequest, ContextAuthentication ca,
+			AbstractPolicy policy) {
 
 		if (registrationRequest.isBusinessClient() && safeIsBlank(registrationRequest.getBusinessType()))
 			registrationRequest.setBusinessType(AppRegistrationService.DEFAULT_BUSINESS_TYPE);
@@ -240,40 +246,37 @@ public class ClientRegistrationService {
 		if (ca.isAuthenticated())
 			return this.regError("Signout to register");
 
-		Mono<App> appMono = this.appService.getAppByCode(ca.getUrlAppCode());
-
-		Mono<Client> clientMono = this.clientService.getClientBy(ca.getLoggedInFromClientCode());
-
-		Mono<ClientLevelType> clientLevelTypeMono = appMono.flatMap(app -> this.clientService
-				.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()));
-
-		Mono<Boolean> checkIfUserExists = registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
-				: this.userService
-						.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
-						.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.CONFLICT, msg),
-								SecurityMessageResourceService.USER_ALREADY_EXISTS, registrationRequest.getEmailId()));
+		String password = registrationRequest.getInputPass();
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> checkIfUserExists,
+				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null?
+						this.clientService.validatePasswordPolicy(policy, null, registrationRequest.getInputPassType(),
+						password) : Mono.just(Boolean.TRUE),
 
-				exists -> appMono,
+				passValid -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
+						: this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
+								.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
+										msg -> new GenericException(HttpStatus.CONFLICT, msg),
+										SecurityMessageResourceService.USER_ALREADY_EXISTS,
+										registrationRequest.getEmailId())),
 
-				(exists, app) -> clientMono,
+				(passValid, exists) -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-				(exists, app, client) -> clientLevelTypeMono,
+				(passValid, exists, app) -> this.clientService.getClientBy(ca.getLoggedInFromClientCode()),
 
-				(exists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
+				(passValid, exists, app, client) -> this.clientService
+						.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()),
+
+				(passValid, exists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
 						levelType, registrationRequest.isBusinessClient()),
 
-				(exists, app, client, levelType, usageType) -> this.fetchAppProp(
+				(passValid, exists, app, client, levelType, usageType) -> this.fetchAppProp(
 						ULong.valueOf(ca.getLoggedInFromClientId()), app.getId(), null, AppService.APP_PROP_URL_SUFFIX),
 
-				(exists, app, client, levelType, usageType, suffix) -> this
+				(passValid, exists, app, client, levelType, usageType, suffix) -> this
 						.checkSubDomainAvailability(registrationRequest.getSubDomain(),
-								registrationRequest.getSubDomainSuffix(),
-								registrationRequest.isBusinessClient()))
+								registrationRequest.getSubDomainSuffix(), registrationRequest.isBusinessClient()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
 	}
 
@@ -472,7 +475,7 @@ public class ClientRegistrationService {
 
 		return this.otpService
 				.verifyOtpInternal(ca.getUrlAppCode(), emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
-				.flatMap(isVerified -> Mono.justOrEmpty(Boolean.TRUE.equals(isVerified) ? Boolean.TRUE : null))
+				.filter(isVerified -> isVerified).map(isVerified -> Boolean.TRUE)
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 						SecurityMessageResourceService.USER_PASSWORD_INVALID, AuthenticationPasswordType.OTP.getName(),
@@ -510,7 +513,7 @@ public class ClientRegistrationService {
 		user.setUserName(request.getUserName());
 		user.setPhoneNumber(request.getPhoneNumber());
 
-		String pass = generatePassword(request, clientPolicy, user);
+		String pass = this.generatePassword(request, clientPolicy, user);
 
 		if (pass == null)
 			return regError("Client password cannot be blank");
@@ -520,13 +523,13 @@ public class ClientRegistrationService {
 		return this.appService.getAppByCode(appCode)
 				.flatMap(app -> this.userService
 						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user,
-								request.getPasswordType())
+								request.getInputPassType())
 						.map(usr -> Tuples.of(usr, pass)));
 	}
 
 	private String generatePassword(ClientRegistrationRequest request, AbstractPolicy clientPasswordPolicy, User user) {
 
-		return switch (request.getPasswordType()) {
+		return switch (request.getInputPassType()) {
 			case PASSWORD:
 				String password = safeIsBlank(request.getPassword()) ? clientPasswordPolicy.generate()
 						: request.getPassword();
@@ -610,8 +613,8 @@ public class ClientRegistrationService {
 
 		AuthenticationRequest authRequest = new AuthenticationRequest().setUserId(userId);
 
-		if (registrationRequest.getPasswordType() != null)
-			return switch (registrationRequest.getPasswordType()) {
+		if (registrationRequest.getInputPassType() != null)
+			return switch (registrationRequest.getInputPassType()) {
 				case PASSWORD ->
 					this.authenticationService.authenticate(authRequest.setPassword(password), request, response);
 				case PIN -> this.authenticationService.authenticate(authRequest.setPin(password), request, response);
@@ -753,7 +756,7 @@ public class ClientRegistrationService {
 
 		String urlPrefix = getUrlPrefix(request);
 
-		AuthenticationPasswordType passType = registrationRequest.getPasswordType();
+		AuthenticationPasswordType passType = registrationRequest.getInputPassType();
 
 		return FlatMapUtil.flatMapMono(
 
@@ -764,20 +767,12 @@ public class ClientRegistrationService {
 				(ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
 
 				(ca, user, client) -> this.getClientAuthenticationResponse(registrationRequest, user.getId(),
-						getUserPasswordType((passType), user), request, response),
+						user.getInputPass(passType), request, response),
 
 				(ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(), ca.getUrlAppCode()),
 
 				(ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain, urlPrefix,
-						user, auth.getAccessToken(), getUserPasswordType(registrationRequest.getPasswordType(), user))
+						user, auth.getAccessToken(), user.getInputPass(passType))
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents")));
-	}
-
-	private String getUserPasswordType(AuthenticationPasswordType passType, User user) {
-		return switch (passType) {
-			case PASSWORD -> user.getPassword();
-			case PIN -> user.getPin();
-			default -> null;
-		};
 	}
 }
