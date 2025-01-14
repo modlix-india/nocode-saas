@@ -22,6 +22,7 @@ import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
 
+import lombok.Getter;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -30,19 +31,30 @@ import reactor.util.function.Tuples;
 public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractPolicyDao<R, D>>
 		extends AbstractJOOQUpdatableDataService<R, ULong, D, O> {
 
-	@Autowired
-	protected SecurityMessageResourceService securityMessageResourceService;
+	protected final SecurityMessageResourceService securityMessageResourceService;
+	private final CacheService cacheService;
 
-	@Autowired
-	@Lazy
+	@Getter
 	private ClientService clientService;
 
-	@Autowired
-	@Lazy
+	@Getter
 	private AppService appService;
 
+	protected AbstractPolicyService(SecurityMessageResourceService securityMessageResourceService,
+			CacheService cacheService) {
+		this.securityMessageResourceService = securityMessageResourceService;
+		this.cacheService = cacheService;
+	}
+
 	@Autowired
-	private CacheService cacheService;
+	public void setClientService(@Lazy ClientService clientService) {
+		this.clientService = clientService;
+	}
+
+	@Autowired
+	public void setAppService(@Lazy AppService appService) {
+		this.appService = appService;
+	}
 
 	protected static final ULong DEFAULT_POLICY_ID = ULong.MIN;
 

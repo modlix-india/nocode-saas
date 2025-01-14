@@ -401,7 +401,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(value -> value > 0);
 	}
 
-	public Mono<List<User>> getBy(String userName, ULong userId, String clientCode, String appCode,
+	public Mono<List<User>> getUsersBy(String userName, ULong userId, String clientCode, String appCode,
 			AuthenticationIdentifierType authenticationIdentifierType, SecurityUserStatusCode... userStatusCodes) {
 
 		SelectConditionStep<Record> query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode,

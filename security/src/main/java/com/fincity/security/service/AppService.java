@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -23,6 +24,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
@@ -63,8 +65,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_DEPENDENCIES = "appDependencies";
 	private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
 
+	public static final String AC = "appCode";
 	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
-	public static final String APP_PROP_REG_TYPE_VERIFICATION  = "REGISTRATION_TYPE_VERIFICATION";
+	public static final String APP_PROP_REG_TYPE_VERIFICATION = "REGISTRATION_TYPE_VERIFICATION";
 	public static final String APP_PROP_REG_TYPE_NO_VERIFICATION = "REGISTRATION_TYPE_NO_VERIFICATION";
 	public static final String APP_PROP_REG_TYPE_NO_REGISTRATION = "REGISTRATION_TYPE_NO_REGISTRATION";
 
@@ -77,7 +80,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	public static final String THUMB_URL = "thumbUrl";
 
 	public AppService(ClientService clientService, SecurityMessageResourceService messageResourceService,
-	                  CacheService cacheService, AppRegistrationDAO appRegistrationDao) {
+			CacheService cacheService, AppRegistrationDAO appRegistrationDao) {
 
 		this.clientService = clientService;
 		this.messageResourceService = messageResourceService;
@@ -111,7 +114,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 						return Mono.just(entity);
 
 					return this.clientService.isBeingManagedBy(clientId, entity.getClientId())
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(entity) : Mono.empty());
+							.flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(entity) : Mono.empty());
 				},
 
 				(ca, app) -> app.getAppCode() == null ? this.dao.generateAppCode(app)
@@ -154,7 +157,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				.flatMap(e -> super.update(entity))
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity
+								AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION, entity
 										.getId()))
 
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
@@ -171,7 +174,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				.flatMap(e -> super.update(key, fields))
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION,
+								AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION,
 								key))
 
 				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
@@ -222,7 +225,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		return what
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id))
+								AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION, id))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.delete"));
 	}
 
@@ -246,7 +249,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 					return Mono.just(false);
 				},
 
-				(ca, app, hasAccess) -> hasAccess.booleanValue() ? Mono.just(true) : Mono.empty(),
+				(ca, app, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(true) : Mono.empty(),
 
 				(ca, app, hasAccess, delete) -> this.dao.deleteEverythingRelated(id, app.getAppCode())
 
@@ -260,7 +263,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		return what
 				.switchIfEmpty(
 						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id))
+								AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION, id))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteEverything"));
 	}
 
@@ -286,11 +289,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 							return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
 									.getClientId()), existing.getClientId())
 									.flatMap(managed -> {
-										if (managed.booleanValue())
+										if (BooleanUtil.safeValueOf(managed))
 											return Mono.just(existing);
 
 										return messageResourceService
-												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
+												.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
 												.flatMap(msg -> Mono.error(() -> new GenericException(
 														HttpStatus.NOT_FOUND,
 														StringFormatter.format(msg, APPLICATION, entity.getId()))));
@@ -304,23 +307,22 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 		return FlatMapUtil.flatMapMono(
 
-		        () -> this.read(key),
+				() -> this.read(key),
 
-		        app -> validateFields(fields),
+				app -> validateFields(fields),
 
-		        (app, updatableFields) -> SecurityContextUtil.getUsersContextAuthentication(),
+				(app, updatableFields) -> SecurityContextUtil.getUsersContextAuthentication(),
 
-		        (app, updatableFields, ca) ->
-				{
+				(app, updatableFields, ca) -> {
 
-			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				        return Mono.just(updatableFields);
+					if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+						return Mono.just(updatableFields);
 
-			        return messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-			                .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
-			                        StringFormatter.format(msg, APPLICATION, key))));
+					return messageResourceService.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
+							.flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+									StringFormatter.format(msg, APPLICATION, key))));
 
-		        }
+				}
 
 		);
 
@@ -397,7 +399,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 					return this.clientService.isBeingManagedBy(app.getClientId(), clientId)
 							.flatMap(managed -> {
 
-								if (!managed.booleanValue())
+								if (!BooleanUtil.safeValueOf(managed))
 									return Mono.empty();
 
 								if (!usersClientId.equals(app.getClientId())
@@ -528,7 +530,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 						return Mono.just(app);
 
 					return this.hasReadAccess(appCode, ca.getClientCode())
-							.flatMap(hasAccess -> hasAccess.booleanValue() ? Mono.just(app) : Mono.empty());
+							.flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(app) : Mono.empty());
 				}
 
 		);
@@ -543,7 +545,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 				ca -> ca.isSystemClient() ? Mono.just(true) : this.hasWriteAccess(appCode, ca.getClientCode()),
 
 				(ca, hasAccess) -> {
-					if (!hasAccess.booleanValue())
+					if (!BooleanUtil.safeValueOf(hasAccess))
 						return Mono.just(Page.empty(pageable));
 
 					return this.dao.getAppClients(appCode, onlyWriteAccess, name,
@@ -599,7 +601,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 						return Mono.just(List.of(userClientId));
 
 					return this.clientService.isBeingManagedBy(userClientId, clientId)
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(List.of(clientId)) : Mono.empty());
+							.flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(List.of(clientId))
+									: Mono.empty());
 				},
 
 				(ca, idList) -> this.dao.getProperties(idList, appId, appCode, propName))
@@ -655,14 +658,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 						return Mono.just(Boolean.TRUE);
 
 					return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
+							.flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
+									: Mono.empty());
 				},
 
 				(ca, hasAccess) -> this.dao.hasWriteAccess(property.getAppId(), property.getClientId()),
 
 				(ca, hasAccess, writeAccess) -> {
 
-					if (!writeAccess.booleanValue())
+					if (!BooleanUtil.safeValueOf(writeAccess))
 						return this.messageResourceService.throwMessage(
 								e -> new GenericException(HttpStatus.FORBIDDEN, e),
 								SecurityMessageResourceService.FORBIDDEN_CREATE, "Application property");
@@ -692,14 +696,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 						return Mono.just(Boolean.TRUE);
 
 					return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
+							.flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
+									: Mono.empty());
 				},
 
 				(ca, property, hasAccess) -> this.dao.hasWriteAccess(property.getAppId(), property.getClientId()),
 
 				(ca, property, hasAccess, writeAccess) -> {
 
-					if (!writeAccess.booleanValue())
+					if (!BooleanUtil.safeValueOf(writeAccess))
 						return Mono.just(false);
 
 					return this.dao.deletePropertyById(propertyId);
@@ -730,14 +735,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 						return Mono.just(Boolean.TRUE);
 
 					return this.clientService.isBeingManagedBy(userClientId, clientId)
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
+							.flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
+									: Mono.empty());
 				},
 
 				(ca, hasAccess) -> this.dao.hasWriteAccess(appId, clientId),
 
 				(ca, hasAccess, writeAccess) -> {
 
-					if (!writeAccess.booleanValue())
+					if (!BooleanUtil.safeValueOf(writeAccess))
 						return Mono.just(false);
 
 					return this.dao.deleteProperty(clientId, appId, name);
@@ -776,7 +782,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 					if (app.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT) {
 						return this.hasWriteAccess(applicationCode, ca.getClientCode()).flatMap(
-								e -> e.booleanValue() ? Mono.just(Tuples.of(appClient.getCode(), true)) : Mono.empty());
+								e -> BooleanUtil.safeValueOf(e) ? Mono.just(Tuples.of(appClient.getCode(), true))
+										: Mono.empty());
 					}
 
 					return Mono.just(Tuples.of(appClient.getCode(), false));
@@ -807,7 +814,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 		Mono<com.fincity.saas.commons.security.dto.App> appMono = FlatMapUtil.flatMapMono(
 				() -> this.dao.getByAppCodeExplicitInfo(appCode),
 
-				(app) -> Mono.just(app.getClientId()).map(ULong::valueOf)
+				app -> Mono.just(app.getClientId()).map(ULong::valueOf)
 						.flatMap(this.clientService::readInternal)
 						.map(Client::getCode)
 						.map(app::setClientCode),
@@ -851,7 +858,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 					return this.clientService
 							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
-							.flatMap(e -> e.booleanValue() ? Mono.just(true) : Mono.empty());
+							.flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
 				},
 
 				(ca, app, depApp, hasAccess) -> this.dao.addAppDependency(app.getId(), depApp.getId()))
@@ -882,7 +889,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
 					return this.clientService
 							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
-							.flatMap(e -> e.booleanValue() ? Mono.just(true) : Mono.empty());
+							.flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
 				},
 
 				(ca, app, depApp, hasAccess) -> this.dao.removeAppDependency(app.getId(), depApp.getId()))
