@@ -125,8 +125,8 @@ public class ClientRegistrationService {
 
 	public Mono<Boolean> generateOtp(OtpGenerationRequest otpGenerationRequest, ServerHttpRequest request) {
 
-		String appCode = request.getHeaders().getFirst("appCode");
-		String clientCode = request.getHeaders().getFirst("clientCode");
+		String appCode = request.getHeaders().getFirst(AppService.AC);
+		String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
 		return FlatMapUtil.flatMapMono(
 				() -> clientService.getClientBy(clientCode),
@@ -165,7 +165,7 @@ public class ClientRegistrationService {
 								SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
 
 					return this.verifyClient(ca, regProp, registrationRequest.getEmailId(),
-							registrationRequest.getPhoneNumber(), registrationRequest.getUniqueCode());
+							registrationRequest.getPhoneNumber(), registrationRequest.getOtp());
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
 	}
 
@@ -436,7 +436,7 @@ public class ClientRegistrationService {
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(),
-						request.getUniqueCode()),
+						request.getOtp()),
 
 				isVerified -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
@@ -465,7 +465,7 @@ public class ClientRegistrationService {
 	 * client.
 	 */
 	private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
-			String uniqueCode) {
+			String otp) {
 
 		if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
 			return Mono.just(Boolean.TRUE);
@@ -474,7 +474,7 @@ public class ClientRegistrationService {
 			return Mono.just(Boolean.TRUE);
 
 		return this.otpService
-				.verifyOtpInternal(ca.getUrlAppCode(), emailId, phoneNumber, OtpPurpose.REGISTRATION, uniqueCode)
+				.verifyOtpInternal(ca.getUrlAppCode(), emailId, phoneNumber, OtpPurpose.REGISTRATION, otp)
 				.filter(isVerified -> isVerified).map(isVerified -> Boolean.TRUE)
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),

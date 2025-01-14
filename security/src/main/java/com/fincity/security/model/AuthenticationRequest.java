@@ -6,10 +6,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
 
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
-@EqualsAndHashCode(callSuper = false)
 @Data
 @Accessors(chain = true)
 public class AuthenticationRequest implements BasePassword<AuthenticationRequest> {
