@@ -151,6 +151,18 @@ public class ClientService
 		return this.dao.getClientsBy(ids);
 	}
 
+	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
+		return this.clientHierarchyService.isBeingManagedBy(managingClientId, clientId);
+	}
+
+	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
+		return this.clientHierarchyService.isBeingManagedBy(managingClientCode, clientCode);
+	}
+
+	public Mono<Boolean> isUserBeingManaged(String managingClientCode, ULong userId) {
+		return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
+	}
+
 	public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> this.readAllAsClientURLPattern()
@@ -188,10 +200,6 @@ public class ClientService
 	public Mono<List<ClientUrlPattern>> readAllAsClientURLPattern() {
 		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_CLIENT_URL, () -> this.dao.readClientPatterns()
 				.collectList(), CACHE_CLIENT_URL_LIST);
-	}
-
-	public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
-		return this.clientHierarchyService.isBeingManagedBy(clientId, managingClientId);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -404,14 +412,6 @@ public class ClientService
 
 	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
 		return this.dao.checkPermissionExistsOrCreatedForClient(clientId, permissionId);
-	}
-
-	public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
-		return this.clientHierarchyService.isBeingManagedBy(managingClientCode, clientCode);
-	}
-
-	public Mono<Boolean> isUserBeingManaged(String managingClientCode, ULong userId) {
-		return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
 	}
 
 	public Mono<Client> getClientBy(String clientCode) {
