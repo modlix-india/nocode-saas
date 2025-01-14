@@ -6,10 +6,8 @@ import java.io.Serializable;
 import org.jooq.types.ULong;
 
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
-@EqualsAndHashCode(callSuper = false)
 @Data
 @Accessors(chain = true)
 public class ClientRegistrationRequest implements BasePassword<ClientRegistrationRequest>, Serializable {
@@ -28,10 +26,10 @@ public class ClientRegistrationRequest implements BasePassword<ClientRegistratio
 	private String middleName;
 	private AuthenticationPasswordType passType;
 	private String password;
-	private String pin;
+	private String pin = null;
+	private String otp = null;
 	private boolean businessClient;
 	private String businessType;
-	private String uniqueCode;
 	private String subDomain;
 	private String subDomainSuffix;
 	private String socialRegisterState;

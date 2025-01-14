@@ -149,11 +149,11 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 					return Mono.just(otpPolicy.generate());
 				},
 
-				(app, otpPolicy, target, otpCode) -> sendOtp(request, target, otpPolicy.getExpireInterval(),
-						otpCode),
+				(app, otpPolicy, target, otp) -> sendOtp(request, target, otpPolicy.getExpireInterval(),
+						otp),
 
-				(app, otpPolicy, target, otpCode, otpSent) -> Boolean.TRUE.equals(otpSent)
-						? this.createOtp(request, target, otpCode, otpPolicy.getExpireInterval())
+				(app, otpPolicy, target, otp, otpSent) -> Boolean.TRUE.equals(otpSent)
+						? this.createOtpEntity(request, target, otp, otpPolicy.getExpireInterval())
 						: Mono.just(Boolean.FALSE))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtpInternal"));
@@ -246,10 +246,10 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.sendPhoneOtp"));
 	}
 
-	private Mono<Boolean> createOtp(OtpGenerationRequestInternal request, SecurityOtpTargetType targetType,
+	private Mono<Boolean> createOtpEntity(OtpGenerationRequestInternal request, SecurityOtpTargetType targetType,
 			String uniqueCode, Long expireInterval) {
 
-		Otp otp = (Otp) new Otp()
+		Otp otpEntity = (Otp) new Otp()
 				.setAppId(request.getAppId())
 				.setUserId(request.getUserId())
 				.setPurpose(request.getPurpose().name())
@@ -267,7 +267,7 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 						? userService.increaseResendAttempt(request.getUserId())
 						: Mono.just((short) 0),
 
-				attempts -> this.create(otp),
+				attempts -> this.create(otpEntity),
 				(attempts, created) -> Mono.just(Boolean.TRUE))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.createOtp"));
@@ -312,9 +312,9 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 	}
 
 	public Mono<Boolean> verifyOtpInternal(String appCode, String emailId, String phoneNumber,
-			OtpPurpose purpose, String uniqueCode) {
+			OtpPurpose purpose, String otp) {
 
-		if (StringUtil.safeIsBlank(appCode) || purpose == null || StringUtil.safeIsBlank(uniqueCode)
+		if (StringUtil.safeIsBlank(appCode) || purpose == null || StringUtil.safeIsBlank(otp)
 				|| (StringUtil.safeIsBlank(emailId) && StringUtil.safeIsBlank(phoneNumber)))
 			return Mono.just(Boolean.FALSE);
 
@@ -324,14 +324,14 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 
 				app -> this.dao.getLatestOtp(app.getId(), emailId, phoneNumber, purpose),
 
-				(app, lotp) -> verifyOtp(uniqueCode, lotp, purpose))
+				(app, lotp) -> verifyOtp(otp, lotp, purpose))
 				.switchIfEmpty(Mono.just(Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.verifyOtpInternal : [emailId, phoneNumber]"));
 	}
 
-	private Mono<Boolean> verifyOtp(String uniqueCode, Otp latestOtp, OtpPurpose purpose) {
+	private Mono<Boolean> verifyOtp(String otp, Otp latestOtp, OtpPurpose purpose) {
 
-		if (latestOtp == null || latestOtp.isExpired() || !encoder.matches(uniqueCode, latestOtp.getUniqueCode()))
+		if (latestOtp == null || latestOtp.isExpired() || !encoder.matches(otp, latestOtp.getUniqueCode()))
 			return Mono.just(Boolean.FALSE);
 
 		return latestOtp.getVerifyLegsCounts().equals(purpose.getVerifyLegsCounts()) ?
