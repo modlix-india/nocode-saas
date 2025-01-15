@@ -112,6 +112,7 @@ public class UserController
 	@PostMapping("{userId}/updatePassword")
 	public Mono<ResponseEntity<Boolean>> updatePassword(@PathVariable ULong userId,
 			@RequestBody RequestUpdatePassword passwordRequest) {
+
 		return this.userService.updatePassword(userId, passwordRequest)
 				.map(ResponseEntity::ok);
 	}
