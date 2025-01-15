@@ -815,7 +815,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				(ca, userTup, userCheck) -> this.otpService
 						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), purpose, authRequest.getOtp())
-						.filter(otpVerified -> userCheck).map(otpVerified -> Boolean.TRUE)
+						.filter(otpVerified -> otpVerified).map(otpVerified -> Boolean.TRUE)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_PASSWORD_INVALID,
 								AuthenticationPasswordType.OTP.getName(), AuthenticationPasswordType.OTP.getName())))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
@@ -1037,7 +1037,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
+				ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
 						.getId()))),
 
 				(ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
@@ -1059,7 +1059,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
+				ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
 						.getId()))),
 
 				(ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
@@ -1081,7 +1081,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
+				ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(userId, ULong.valueOf(ca.getUser()
 						.getId()))),
 
 				(ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
