@@ -724,19 +724,34 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.isPasswordUpdatable(ca, userId, reqPassword)
-						.filter(isUpdatable -> isUpdatable).map(isUpdatable -> Boolean.TRUE),
+				() -> this.dao.readInternal(userId),
 
-				isUpdatable -> this.dao.readInternal(userId),
+				user -> this.isPasswordUpdatable(ca, user, reqPassword, Boolean.TRUE),
 
-				(isUpdatable, user) -> this.checkHierarchy(ca, user),
+				(user, isUpdatable) -> this.checkHierarchy(ca, user),
 
-				(isUpdatable, user, inHierarchy) -> this.updatePasswordInternal(ca, user,
+				(user, isUpdatable, inHierarchy) -> this.updatePasswordInternal(ca, user,
 						ULongUtil.valueOf(ca.getUser().getId()), reqPassword.getPassType(),
 						reqPassword.getNewPassword(), Boolean.FALSE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
 						"UserService.updateNewPassword : [" + reqPassword.getPassType() + "]"))
 				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
+	}
+
+	private Mono<Boolean> checkHierarchy(ContextAuthentication ca, User user) {
+
+		ULong loggedInUserClientId = ULong.valueOf(ca.getUser().getClientId());
+
+		if (ca.isSystemClient() || user.getClientId().equals(loggedInUserClientId))
+			return Mono.just(Boolean.TRUE);
+
+		return Mono
+				.zip(SecurityContextUtil.hasAuthority("Authorities.User_UPDATE"),
+						this.clientService.isBeingManagedBy(loggedInUserClientId, user.getClientId()),
+						(hasAuthority, isManaged) -> hasAuthority && isManaged)
+				.filter(inHie -> inHie).map(inHie -> Boolean.TRUE)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"))
+				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.HIERARCHY_ERROR)).log();
 	}
 
 	public Mono<Boolean> generateOtpResetPassword(AuthenticationRequest authRequest, ServerHttpRequest request) {
@@ -834,20 +849,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_NOT_ACTIVE)),
 
-				(ca, userTup, userCheck) -> this.isPasswordUpdatable(ca, userTup.getT3().getId(), reqPassword)
-						.filter(isUpdatable -> isUpdatable).map(isUpdatable -> Boolean.TRUE),
+				(ca, userTup, userCheck) -> this.isPasswordUpdatable(ca, userTup.getT3(), reqPassword, Boolean.FALSE),
 
-				(ca, userTup, userCheck, isUpdatable) -> this.checkPasswordEquality(userTup.getT3(), reqPassword)
-						.filter(areEqual -> areEqual).map(areEqual -> Boolean.TRUE)
-						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)),
-
-				(ca, userTup, userCheck, isUpdatable, areEqual) -> this.otpService
+				(ca, userTup, userCheck, isUpdatable) -> this.otpService
 						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), purpose, authRequest.getOtp())
 						.filter(otpVerified -> userCheck).map(otpVerified -> Boolean.TRUE)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_PASSWORD_INVALID,
 								AuthenticationPasswordType.OTP.getName(), AuthenticationPasswordType.OTP.getName())),
 
-				(ca, userTup, userCheck, isUpdatable, areEqual, otpVerified) -> this.updatePasswordInternal(ca,
+				(ca, userTup, userCheck, isUpdatable, otpVerified) -> this.updatePasswordInternal(ca,
 						userTup.getT3(), userTup.getT3().getId(), reqPassword.getPassType(),
 						reqPassword.getNewPassword(), Boolean.TRUE))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
@@ -855,30 +865,49 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
 	}
 
-	private Mono<Boolean> isPasswordUpdatable(ContextAuthentication ca, ULong userId,
-			RequestUpdatePassword reqPassword) {
+	private Mono<Boolean> isPasswordUpdatable(ContextAuthentication ca, User user,
+			RequestUpdatePassword reqPassword, boolean isUpdate) {
 
 		if (StringUtil.safeIsBlank(reqPassword.getNewPassword()))
 			return this.forbiddenError(SecurityMessageResourceService.NEW_PASSWORD_MISSING);
 
-		return this.passwordPolicyCheck(ULongUtil.valueOf(ca.getLoggedInFromClientId()), null,
-				ca.getUrlAppCode(), userId, reqPassword.getPassType(), reqPassword.getNewPassword());
+		boolean isSameUser = user.getClientId().equals(ULongUtil.valueOf(ca.getLoggedInFromClientId()));
+
+		return FlatMapUtil.flatMapMono(
+				() -> (isUpdate && isSameUser ? this.checkPasswordEquality(user, reqPassword) : Mono.just(Boolean.TRUE))
+						.filter(areEqual -> areEqual).map(areEqual -> Boolean.TRUE)
+						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)),
+
+				areEqual -> this.passwordPolicyCheck(ULongUtil.valueOf(ca.getLoggedInFromClientId()), null,
+						ca.getUrlAppCode(), user.getId(), reqPassword.getPassType(), reqPassword.getNewPassword())
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.isPasswordUpdatable"));
 	}
 
-	private Mono<Boolean> checkHierarchy(ContextAuthentication ca, User user) {
+	private Mono<Boolean> checkPasswordEquality(User user, RequestUpdatePassword reqPassword) {
 
-		ULong loggedInUserClientId = ULong.valueOf(ca.getUser().getClientId());
+		switch (reqPassword.getPassType()) {
+			case PASSWORD -> {
+				if (user.isPasswordHashed())
+					return Mono.just(
+							passwordEncoder.matches(user.getId() + reqPassword.getOldPassword(), user.getPassword())
+									&& !passwordEncoder.matches(user.getId() + reqPassword.getNewPassword(),
+											user.getPassword()));
 
-		if (ca.isSystemClient() || user.getClientId().equals(loggedInUserClientId))
-			return Mono.just(Boolean.TRUE);
+				return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), user.getPassword())
+						&& StringUtil.safeEquals(reqPassword.getOldPassword(), user.getPassword()));
+			}
+			case PIN -> {
+				if (user.isPinHashed())
+					return Mono.just(passwordEncoder.matches(user.getId() + reqPassword.getOldPassword(), user.getPin())
+							&& !passwordEncoder.matches(user.getId() + reqPassword.getNewPassword(), user.getPin()));
 
-		return Mono
-				.zip(SecurityContextUtil.hasAuthority("Authorities.User_UPDATE"),
-						this.clientService.isBeingManagedBy(loggedInUserClientId, user.getClientId()),
-						(hasAuthority, isManaged) -> hasAuthority && isManaged)
-				.filter(inHie -> inHie).map(inHie -> Boolean.TRUE)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"))
-				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.HIERARCHY_ERROR)).log();
+				return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), user.getPin())
+						&& StringUtil.safeEquals(reqPassword.getOldPassword(), user.getPin()));
+			}
+			default -> {
+				return Mono.just(Boolean.FALSE);
+			}
+		}
 	}
 
 	private Mono<Boolean> updatePasswordInternal(ContextAuthentication ca, User user, ULong currentUserId,
@@ -915,33 +944,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.map(result -> result > 0)
 				.flatMap(BooleanUtil::safeValueOfWithEmpty)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setPassword"));
-	}
-
-	private Mono<Boolean> checkPasswordEquality(User user, RequestUpdatePassword reqPassword) {
-
-		switch (reqPassword.getPassType()) {
-			case PASSWORD -> {
-				if (user.isPasswordHashed())
-					return Mono.just(
-							passwordEncoder.matches(user.getId() + reqPassword.getOldPassword(), user.getPassword())
-									&& !passwordEncoder.matches(user.getId() + reqPassword.getNewPassword(),
-											user.getPassword()));
-
-				return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), user.getPassword())
-						&& StringUtil.safeEquals(reqPassword.getOldPassword(), user.getPassword()));
-			}
-			case PIN -> {
-				if (user.isPinHashed())
-					return Mono.just(passwordEncoder.matches(user.getId() + reqPassword.getOldPassword(), user.getPin())
-							&& !passwordEncoder.matches(user.getId() + reqPassword.getNewPassword(), user.getPin()));
-
-				return Mono.just(!StringUtil.safeEquals(reqPassword.getNewPassword(), user.getPin())
-						&& StringUtil.safeEquals(reqPassword.getOldPassword(), user.getPin()));
-			}
-			default -> {
-				return Mono.just(Boolean.FALSE);
-			}
-		}
 	}
 
 	public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
