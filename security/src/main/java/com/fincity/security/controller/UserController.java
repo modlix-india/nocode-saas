@@ -20,7 +20,6 @@ import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.service.UserService;
@@ -67,22 +66,6 @@ public class UserController
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("{userId}/updatePassword")
-	public Mono<ResponseEntity<Boolean>> updatePasswordForUser(@PathVariable ULong userId,
-			@RequestBody RequestUpdatePassword passwordRequest) {
-
-		return this.userService.updateNewPassword(userId, passwordRequest, AuthenticationPasswordType.PASSWORD)
-				.map(ResponseEntity::ok);
-	}
-
-	@PostMapping("{userId}/updatePin")
-	public Mono<ResponseEntity<Boolean>> updatePinForUser(@PathVariable ULong userId,
-			@RequestBody RequestUpdatePassword passwordRequest) {
-
-		return this.userService.updateNewPassword(userId, passwordRequest, AuthenticationPasswordType.PIN)
-				.map(ResponseEntity::ok);
-	}
-
 	@PostMapping("/findUserClients")
 	public Mono<ResponseEntity<List<UserClient>>> findUserClients(@RequestBody AuthenticationRequest authRequest,
 			ServerHttpRequest request) {
@@ -123,6 +106,21 @@ public class UserController
 	public Mono<ResponseEntity<List<Role>>> getRolesFromUser(@PathVariable ULong userId) {
 
 		return this.userService.getRolesFromGivenUser(userId)
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("{userId}/updatePassword")
+	public Mono<ResponseEntity<Boolean>> updatePassword(@PathVariable ULong userId,
+			@RequestBody RequestUpdatePassword passwordRequest) {
+
+		return this.userService.updatePassword(userId, passwordRequest)
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("updatePassword")
+	public Mono<ResponseEntity<Boolean>> updatePassword(@RequestBody RequestUpdatePassword passwordRequest) {
+
+		return this.userService.updatePassword(passwordRequest)
 				.map(ResponseEntity::ok);
 	}
 
