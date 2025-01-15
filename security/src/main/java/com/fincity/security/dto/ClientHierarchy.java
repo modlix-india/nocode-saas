@@ -2,7 +2,6 @@ package com.fincity.security.dto;
 
 import java.io.Serial;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 
 import org.jooq.types.ULong;
@@ -55,12 +54,7 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 	public boolean isManagedBy(ULong clientId) {
 		if (clientId == null)
 			return false;
-
-		return this.clientId.equals(clientId)
-				|| Objects.equals(this.manageClientLevel0, clientId)
-				|| Objects.equals(this.manageClientLevel1, clientId)
-				|| Objects.equals(this.manageClientLevel2, clientId)
-				|| Objects.equals(this.manageClientLevel3, clientId);
+		return this.inClientHierarchy(clientId);
 	}
 
 	// Always use this through service
