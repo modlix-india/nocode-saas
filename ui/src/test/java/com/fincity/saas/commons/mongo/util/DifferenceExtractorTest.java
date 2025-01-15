@@ -2,7 +2,6 @@ package com.fincity.saas.commons.mongo.util;
 
 import java.util.Map;
 
-import org.apache.commons.jxpath.ri.compiler.Step;
 import org.junit.jupiter.api.Test;
 
 import com.fincity.saas.ui.model.ComponentDefinition;
@@ -21,7 +20,8 @@ class DifferenceExtractorTest {
         base.setName("Home");
         base.setType("Link");
         base.setProperties(
-                Map.of("linkPath", Map.of("value", "/#wMvpDZzOZNVcEcc0d62yn"), "label", Map.of("value", "Home")));
+                Map.of("linkPath", Map.of("value", "/#wMvpDZzOZNVcEcc0d62yn"), "label",
+                        Map.of("value", "Home")));
 
         base.setOverride(true);
         base.setDisplayOrder(1);
@@ -31,12 +31,14 @@ class DifferenceExtractorTest {
         ovr.setName("Home");
         ovr.setType("Link");
         ovr.setProperties(
-                Map.of("linkPath", Map.of("value", "/#wMvpDZzOZNVcEcc0d62yn"), "label", Map.of("value", "Test")));
+                Map.of("linkPath", Map.of("value", "/#wMvpDZzOZNVcEcc0d62yn"), "label",
+                        Map.of("value", "Test")));
 
         ovr.setOverride(true);
         ovr.setDisplayOrder(4);
 
-        Mono<ComponentDefinition> diff = DifferenceExtractor.extract(ovr, base).map(ComponentDefinition.class::cast);
+        Mono<ComponentDefinition> diff = DifferenceExtractor.extract(ovr, base)
+                .map(ComponentDefinition.class::cast);
 
         StepVerifier.create(diff.map(e -> e.getProperties()))
                 .expectNext(Map.of("label", Map.of("value", "Test")))

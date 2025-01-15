@@ -10,7 +10,6 @@ import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreType;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecurityOtpTargetType;
 
 import lombok.Data;
@@ -37,12 +36,12 @@ public class Otp extends AbstractUpdatableDTO<ULong, ULong> {
 	private Short verifyLegsCounts = 0;
 
 	@Serial
-	private void writeObject(ObjectOutputStream out) throws NotSerializableException {
+	private void writeObject(ObjectOutputStream out) throws NotSerializableException { // NOSONAR
 		throw new NotSerializableException("OTP class is not Serializable");
 	}
 
 	@Serial
-	private void readObject(ObjectInputStream in) throws NotSerializableException {
+	private void readObject(ObjectInputStream in) throws NotSerializableException { // NOSONAR
 		throw new NotSerializableException("OTP class is not Serializable");
 	}
 

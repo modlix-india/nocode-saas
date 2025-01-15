@@ -1,5 +1,7 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.Tables.SECURITY_OTP;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,7 +13,6 @@ import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Otp;
 import com.fincity.security.enums.otp.OtpPurpose;
-import static com.fincity.security.jooq.Tables.SECURITY_OTP;
 import com.fincity.security.jooq.tables.records.SecurityOtpRecord;
 
 import reactor.core.publisher.Mono;

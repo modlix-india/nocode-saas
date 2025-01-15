@@ -20,7 +20,6 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
-import com.fincity.security.service.OtpService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;

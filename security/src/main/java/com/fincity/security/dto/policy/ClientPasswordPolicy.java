@@ -2,8 +2,6 @@ package com.fincity.security.dto.policy;
 
 import java.io.Serial;
 
-import org.jooq.types.UShort;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.commons.util.CodeUtil;
@@ -28,18 +26,18 @@ public class ClientPasswordPolicy extends AbstractPolicy {
 	private boolean atleastOneSpecialChar;
 	private boolean spacesAllowed;
 	private String regex;
-	private UShort percentageName;
+	private Short percentageName;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	private UShort passExpiryInDays;
+	private Short passExpiryInDays;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	private UShort passExpiryWarnInDays;
-	private UShort passMinLength;
-	private UShort passMaxLength;
+	private Short passExpiryWarnInDays;
+	private Short passMinLength;
+	private Short passMaxLength;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	private UShort passHistoryCount;
+	private Short passHistoryCount;
 
 	@Override
 	@JsonIgnore

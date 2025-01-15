@@ -17,7 +17,6 @@ import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -275,7 +274,9 @@ public class SSLCertificateService {
 								break;
 							}
 
-							Thread.sleep(3000L);
+							// Because of network issue we will retry automatically.
+							Thread.sleep(3000L); // NO SONAR
+
 							order.update();
 						}
 					} catch (InterruptedException ex) {
@@ -394,7 +395,8 @@ public class SSLCertificateService {
 
 		while ((status = auth.getStatus()) != Status.VALID && count > 0) {
 
-			Thread.sleep(3000L);
+			// Because of network issue we retry automatically.
+			Thread.sleep(3000L); // NOSONAR
 			auth.update();
 			count--;
 		}

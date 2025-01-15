@@ -19,7 +19,6 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String FORBIDDEN_CREATE = "forbidden_create";
 	public static final String FORBIDDEN_UPDATE = "forbidden_update";
 	public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
-	public static final String FORBIDDEN_CREATE_INVALID_PASS = "forbidden_create_user_invalid_password";
 	public static final String UNABLE_TO_DELETE = "unable_to_delete";
 	public static final String OBJECT_NOT_UPDATABLE = "object_not_updatable";
 	public static final String USER_IDENTIFICATION_NOT_FOUND = "user_identification_not_found";
@@ -32,6 +31,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String UNKNOWN_ERROR = "unknown_error";
 	public static final String UNKONWN_ERROR_INSERT = "unkonwn_error_insert";
 	public static final String TOKEN_EXPIRED = "token_expired";
+	public static final String LOGIN_REQUIRED = "login_required";
 	public static final String UNKNOWN_TOKEN = "unknown_token";
 	public static final String ALREADY_EXISTS = "already_exists";
 	public static final String ROLE_FORBIDDEN = "role_forbidden_for_selected_user";
@@ -62,6 +62,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String DELETE_PACKAGE_ERROR = "delete_package_error";
 	public static final String DELETE_ROLE_ERROR = "delete_role_error";
 	public static final String UNKNOWN_CLIENT = "unknown_client";
+	public static final String INACTIVE_CLIENT = "inactive_client";
 	public static final String APP_CODE_NO_SPL_CHAR = "app_code_no_spl_char";
 	public static final String CLIENT_REGISTRATION_ERROR = "client_registration_error";
 	public static final String USER_ALREADY_EXISTS = "user_already_exists";
@@ -110,6 +111,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String SOCIAL_LOGIN_FAILED = "social_login_failed";
 	public static final String UNSUPPORTED_PLATFORM = "unsupported_platform";
 	public static final String CRT_KEY_ISSUE = "crt_key_issue";
+	public static final String SUBDOMAIN_SUFFIX_FORBIDDEN = "subdomain_suffix_forbidden";
 
 	public SecurityMessageResourceService() {
 
