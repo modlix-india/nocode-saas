@@ -435,8 +435,9 @@ public class ClientRegistrationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(),
-						request.getOtp()),
+				() -> !StringUtil.safeIsBlank(request.getSocialRegisterState()) ?
+						Mono.just(Boolean.TRUE) :
+						this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(), request.getOtp()),
 
 				isVerified -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
