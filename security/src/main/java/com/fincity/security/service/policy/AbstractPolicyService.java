@@ -243,12 +243,13 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				() -> this.appService.getAppById(appId),
 
-				app -> Mono.zip(
-						this.clientService.isBeingManagedBy(loggedInClientId, app.getClientId()),
-						this.appService.hasWriteAccess(appId, loggedInClientId),
-						(isManaged, canEditApp) -> isManaged || canEditApp),
+				app -> FlatMapUtil.flatMapMonoConsolidate(
+						() -> this.clientService.isBeingManagedBy(loggedInClientId, app.getClientId()),
+						isManaged -> this.appService.hasWriteAccess(appId, loggedInClientId),
+						(isManaged, hasEditAccess) -> Mono.just(ca.isSystemClient())),
 
-				(app, managedOrEdit) -> Mono.just(ca.isSystemClient() || managedOrEdit))
+				(app, managedOrEdit) -> Mono
+						.just(managedOrEdit.getT1() || managedOrEdit.getT2() || managedOrEdit.getT3()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractPolicyService.canUpdatePolicy"))
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
