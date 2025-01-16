@@ -84,6 +84,10 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				messageId, params);
 	}
 
+	private String getCacheKeys(ULong clientId, ULong appId) {
+		return clientId + ":" + appId;
+	}
+
 	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
 	@Override
 	public Mono<D> create(D entity) {
@@ -92,17 +96,53 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
+				ca -> this.updateClientIdAndAppId(ca, entity),
 
-				(ca, canCreate) -> super.create(entity),
+				(ca, uEntity) -> this.canUpdatePolicy(ca, uEntity.getAppId())
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				(ca, canCreate, created) -> cacheService.evict(getPolicyCacheName(),
+				(ca, uEntity, canCreate) -> super.create(uEntity),
+
+				(ca, uEntity, canCreate, created) -> cacheService.evict(getPolicyCacheName(),
 						getCacheKeys(created.getClientId(), created.getAppId())),
 
-				(ca, canCreate, created, evicted) -> Mono.just(created))
+				(ca, uEntity, canCreate, created, evicted) -> Mono.just(created))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
+	}
+
+	private Mono<D> updateClientIdAndAppId(ContextAuthentication ca, D entity) {
+
+		return FlatMapUtil.flatMapMonoWithNull(
+
+				() -> this.appService.getAppByCode(ca.getUrlAppCode()),
+
+				app -> {
+
+					if (entity.getAppId() == null)
+						entity.setAppId(app.getId());
+
+					if (entity.getClientId() == null)
+						entity.setClientId(ULongUtil.valueOf(ca.getLoggedInFromClientId()));
+
+					return Mono.just(entity);
+				},
+				(app, uEntity) -> this.getClientAppPolicyInternal(uEntity.getClientId(), uEntity.getAppId()),
+
+				(app, uEntity, policy) -> {
+
+					if (policy != null && !this.isDefaultPolicy(policy))
+						return securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName());
+
+					return Mono.just(uEntity);
+				});
+	}
+
+	private boolean isDefaultPolicy(D policy) {
+		return policy.getId() == null || policy.getId().equals(DEFAULT_POLICY_ID);
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_READ')")
@@ -133,7 +173,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.read(key),
+				ca -> key != null ? this.read(key)
+						: this.getClientAppPolicy(ca.getLoggedInFromClientCode(), ca.getUrlAppCode()),
 
 				(ca, entity) -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
 
@@ -177,7 +218,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.read(id),
+				ca -> id != null ? this.read(id)
+						: this.getClientAppPolicy(ca.getLoggedInFromClientCode(), ca.getUrlAppCode()),
 
 				(ca, entity) -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
 
@@ -211,46 +253,16 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
-	public Mono<D> create(String clientCode, String appCode, D entity) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.getClientAndAppId(clientCode, appCode),
-
-				clientAppIds -> this.getClientAppPolicy(clientAppIds.getT1(), clientAppIds.getT2()),
-
-				(clientAppIds, policy) -> {
-
-					if (policy != null && !isDefaultPolicy(policy))
-						return securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName());
-
-					entity.setClientId(clientAppIds.getT1());
-					entity.setAppId(clientAppIds.getT2());
-
-					return this.create(entity);
-				});
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
-	public Mono<D> update(String clientCode, String appCode, Map<String, Object> fields) {
-		return this.getClientAppPolicy(clientCode, appCode)
-				.flatMap(policy -> this.isDefaultPolicy(policy) ? Mono.just(policy)
-						: this.update(policy.getId(), fields));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
-	public Mono<Integer> delete(String clientCode, String appCode) {
-		return this.getClientAppPolicy(clientCode, appCode)
-				.flatMap(policy -> this.isDefaultPolicy(policy) ? Mono.just(0)
-						: this.delete(policy.getId()));
-	}
-
 	public Mono<D> getClientAppPolicy(String clientCode, String appCode) {
 		return this.getClientAndAppId(clientCode, appCode)
 				.flatMap(clientAppIds -> this.getClientAppPolicy(clientAppIds.getT1(), clientAppIds.getT2()));
+	}
+
+	private Mono<Tuple2<ULong, ULong>> getClientAndAppId(String clientCode, String appCode) {
+		return FlatMapUtil.flatMapMono(
+				() -> clientService.getClientId(clientCode),
+				clientId -> appService.getAppByCode(appCode),
+				(clientId, app) -> Mono.just(Tuples.of(clientId, app.getId())));
 	}
 
 	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
@@ -273,20 +285,5 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 	public Mono<String> generatePolicyPassword(ULong clientId, ULong appId) {
 		return this.getClientAppPolicy(clientId, appId).map(AbstractPolicy::generate);
-	}
-
-	private Mono<Tuple2<ULong, ULong>> getClientAndAppId(String clientCode, String appCode) {
-		return FlatMapUtil.flatMapMono(
-				() -> clientService.getClientId(clientCode),
-				clientId -> appService.getAppByCode(appCode),
-				(clientId, app) -> Mono.just(Tuples.of(clientId, app.getId())));
-	}
-
-	private boolean isDefaultPolicy(D policy) {
-		return policy.getId() == null || policy.getId().equals(DEFAULT_POLICY_ID);
-	}
-
-	private String getCacheKeys(ULong clientId, ULong appId) {
-		return clientId + ":" + appId;
 	}
 }
