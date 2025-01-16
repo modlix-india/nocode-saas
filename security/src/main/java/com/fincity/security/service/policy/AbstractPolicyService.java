@@ -197,14 +197,18 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
+				ca -> this.dao.readById(entity.getId()),
 
-				(ca, canUpdate) -> this.dao.canBeUpdated(entity.getId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
+				(ca, uEntity) -> this.canUpdatePolicy(ca, uEntity.getAppId())
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				(ca, canUpdate, canEntityUpdate) -> super.update(entity),
+				(ca, uEntity, canUpdate) -> this.dao.canBeUpdated(uEntity.getId())
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-				(ca, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
-						getCacheKeys(entity.getClientId(), entity.getAppId())).map(evicted -> updated))
+				(ca, uEntity, canUpdate, canEntityUpdate) -> super.update(entity),
+
+				(ca, uEntity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
+						getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).map(evicted -> updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
