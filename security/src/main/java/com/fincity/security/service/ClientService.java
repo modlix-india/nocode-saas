@@ -30,7 +30,6 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.Client;
@@ -486,7 +485,7 @@ public class ClientService
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+				ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
 						.getClientId()))),
 
 				(ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
@@ -510,7 +509,7 @@ public class ClientService
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+				ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
 						.getClientId()))),
 
 				(ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)

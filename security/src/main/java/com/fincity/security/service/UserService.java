@@ -749,7 +749,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.zip(SecurityContextUtil.hasAuthority("Authorities.User_UPDATE"),
 						this.clientService.isBeingManagedBy(loggedInUserClientId, user.getClientId()),
 						(hasAuthority, isManaged) -> hasAuthority && isManaged)
-				.filter(inHie -> inHie).map(inHie -> Boolean.TRUE)
+				.flatMap(BooleanUtil::safeValueOfWithEmpty)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"))
 				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.HIERARCHY_ERROR)).log();
 	}
@@ -773,7 +773,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				},
 
 				(ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
-						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE),
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(ca, userTup, userCheck) -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
@@ -811,7 +811,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				},
 
 				(ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
-						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE),
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(ca, userTup, userCheck) -> this.otpService
 						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), purpose, authRequest.getOtp())
@@ -846,14 +846,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						this.checkUserAndClient(userTup, ca.getUrlClientCode()),
 						this.checkUserStatus(userTup.getT3(), SecurityUserStatusCode.ACTIVE),
 						(userClientCheck, userStatusCheck) -> userClientCheck && userStatusCheck)
-						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_NOT_ACTIVE)),
 
 				(ca, userTup, userCheck) -> this.isPasswordUpdatable(ca, userTup.getT3(), reqPassword, Boolean.FALSE),
 
 				(ca, userTup, userCheck, isUpdatable) -> this.otpService
 						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), purpose, authRequest.getOtp())
-						.filter(otpVerified -> userCheck).map(otpVerified -> Boolean.TRUE)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_PASSWORD_INVALID,
 								AuthenticationPasswordType.OTP.getName(), AuthenticationPasswordType.OTP.getName())),
 
@@ -875,7 +875,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 		return FlatMapUtil.flatMapMono(
 				() -> (isUpdate && isSameUser ? this.checkPasswordEquality(user, reqPassword) : Mono.just(Boolean.TRUE))
-						.filter(areEqual -> areEqual).map(areEqual -> Boolean.TRUE)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)),
 
 				areEqual -> this.passwordPolicyCheck(ULongUtil.valueOf(ca.getLoggedInFromClientId()), null,
