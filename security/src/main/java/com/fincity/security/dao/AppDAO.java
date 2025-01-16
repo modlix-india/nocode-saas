@@ -115,22 +115,19 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.switchIfEmpty(condition);
 	}
 
-	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
-
-		return hasOnlyInternalAccess(appCode, clientCode, 1);
-	}
-
 	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
 		return hasOnlyInternalAccess(appCode, clientCode, 0);
 	}
 
 	public Mono<Boolean> hasReadAccess(ULong appId, ULong clientId) {
-
 		return hasOnlyInternalAccess(appId, clientId, 0);
 	}
 
-	public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
+	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
+		return hasOnlyInternalAccess(appCode, clientCode, 1);
+	}
 
+	public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
 		return hasOnlyInternalAccess(appId, clientId, 1);
 	}
 
@@ -189,19 +186,6 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.map(e -> e != 0);
 	}
 
-	public Mono<Boolean> hasAppEditAccess(ULong appId, ULong clientId) {
-
-		return Mono.from(
-
-				this.dslContext.select(SECURITY_APP_ACCESS.EDIT_ACCESS)
-						.from(SECURITY_APP_ACCESS)
-						.where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
-								.and(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))))
-				.map(Record1::value1)
-				.map(e -> e.equals(UByte.valueOf(1)));
-
-	}
-
 	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
 
 		UByte edit = UByte.valueOf(writeAccess ? 1 : 0);
@@ -233,12 +217,6 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 				.set(SECURITY_APP_ACCESS.EDIT_ACCESS, UByte.valueOf(writeAccess ? 1 : 0))
 				.where(SECURITY_APP_ACCESS.ID.eq(accessId)))
 				.map(e -> e == 1);
-	}
-
-	public Mono<SecurityAppAccessRecord> readClientAccess(ULong accessId) {
-
-		return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
-				.where(SECURITY_APP_ACCESS.ID.eq(accessId)));
 	}
 
 	public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
@@ -318,7 +296,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 							return Mono.just(UniqueUtil.uniqueNameOnlyLetters(36, n));
 						}))
 				.collectList()
-				.map(lst -> lst.get(lst.size() - 1));
+				.map(List::getLast);
 	}
 
 	public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(List<ULong> clientIds, ULong appId, String appCode,
@@ -428,7 +406,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 	}
 
 	public Mono<Boolean> isNoneUsingTheAppOtherThan(ULong appId, BigInteger bigInteger) {
-		return Mono.just(
+		return Mono.justOrEmpty(
 				this.dslContext.selectCount()
 						.from(SECURITY_APP_ACCESS)
 						.where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
