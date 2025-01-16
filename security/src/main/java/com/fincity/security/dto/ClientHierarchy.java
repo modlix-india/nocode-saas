@@ -1,7 +1,7 @@
 package com.fincity.security.dto;
 
 import java.io.Serial;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.jooq.types.ULong;
@@ -87,15 +87,23 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 
 	public Set<ULong> getClientIds() {
 
-		Set<ULong> clientIds = new HashSet<>();
-		clientIds.add(this.clientId);
+		Set<ULong> clientIds = new LinkedHashSet<>();
 
-		clientIds.add(this.manageClientLevel0);
-		clientIds.add(this.manageClientLevel1);
-		clientIds.add(this.manageClientLevel2);
-		clientIds.add(this.manageClientLevel3);
+		if (this.clientId != null)
+			clientIds.add(this.clientId);
 
-		clientIds.remove(null);
+		if (this.manageClientLevel0 != null)
+			clientIds.add(this.manageClientLevel0);
+
+		if (this.manageClientLevel1 != null)
+			clientIds.add(this.manageClientLevel1);
+
+		if (this.manageClientLevel2 != null)
+			clientIds.add(this.manageClientLevel2);
+
+		if (this.manageClientLevel3 != null)
+			clientIds.add(this.manageClientLevel3);
+
 		return clientIds;
 	}
 
