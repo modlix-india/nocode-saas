@@ -26,31 +26,8 @@ public class AbstractPolicyController<R extends UpdatableRecord<R>, D extends Ab
 
 	@GetMapping("/codes/policy")
 	public Mono<ResponseEntity<D>> getClientAppPolicy(ServerHttpRequest request) {
-		return getClientCodeAppCode(request)
+		return this.getClientCodeAppCode(request)
 				.flatMap(code -> this.service.getClientAppPolicy(code.getT1(), code.getT2())
-						.map(ResponseEntity::ok));
-	}
-
-	@PostMapping("/codes")
-	public Mono<ResponseEntity<D>> create(ServerHttpRequest request,
-			@RequestBody D entity) {
-		return getClientCodeAppCode(request)
-				.flatMap(code -> this.service.create(code.getT1(), code.getT2(), entity)
-						.map(ResponseEntity::ok));
-	}
-
-	@PatchMapping("/codes")
-	public Mono<ResponseEntity<D>> patch(ServerHttpRequest request,
-			@RequestBody Map<String, Object> entityMap) {
-		return getClientCodeAppCode(request)
-				.flatMap(code -> this.service.update(code.getT1(), code.getT2(), entityMap)
-						.map(ResponseEntity::ok));
-	}
-
-	@DeleteMapping("/codes")
-	public Mono<ResponseEntity<Integer>> delete(ServerHttpRequest request) {
-		return getClientCodeAppCode(request)
-				.flatMap(code -> this.service.delete(code.getT1(), code.getT2())
 						.map(ResponseEntity::ok));
 	}
 
