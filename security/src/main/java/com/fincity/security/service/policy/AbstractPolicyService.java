@@ -269,11 +269,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
 		return this.clientHierarchyService.getClientHierarchyIds(clientId)
 				.flatMap(
-						client -> {
-							Integer s = client.intValue();
-							return this.getClientAppPolicyInternal(client, appId)
-									.filter(Objects::nonNull);
-						})
+						client -> this.getClientAppPolicyInternal(client, appId)
+								.filter(Objects::nonNull))
 				.next()
 				.switchIfEmpty(this.getDefaultPolicy()).log();
 	}
