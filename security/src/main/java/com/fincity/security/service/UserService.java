@@ -257,7 +257,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	private Mono<Boolean> checkUserIdentificationKeys(User entity) {
-		if (!entity.checkIdentificationKeys())
+		if (entity.checkIdentificationKeys())
 			return this.forbiddenError(SecurityMessageResourceService.USER_IDENTIFICATION_NOT_FOUND);
 
 		return Mono.just(Boolean.TRUE);
