@@ -68,9 +68,9 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePass
 	}
 
 	public boolean checkIdentificationKeys() {
-		return PLACEHOLDER.equals(this.userName)
-				&& PLACEHOLDER.equals(this.emailId)
-				&& PLACEHOLDER.equals(this.phoneNumber);
+		return (this.userName == null || PLACEHOLDER.equals(this.userName))
+				&& (this.emailId == null || PLACEHOLDER.equals(this.emailId))
+				&& (this.phoneNumber == null || PLACEHOLDER.equals(this.phoneNumber));
 	}
 
 	@Override
