@@ -10,6 +10,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -37,7 +38,7 @@ public class IndexHTMLService {
 
 	private static final String[] META_FIELDS = new String[] { "charset", "name", "http-equiv", "content" };
 
-	public static final String CACHE_NAME_INDEX = "indexCache";
+	public static final String CACHE_NAME_INDEX = "indexNewCache";
 
 	private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
 			2, "BEFORE_BODY", 3);
@@ -84,27 +85,57 @@ public class IndexHTMLService {
 
 	private final ApplicationService appService;
 	private final CacheService cacheService;
+	private final IndexHTMLCacheService indexHTMLCacheService;
 
-	public IndexHTMLService(ApplicationService appService, CacheService cacheService) {
+	public IndexHTMLService(ApplicationService appService, CacheService cacheService,
+			IndexHTMLCacheService indexHTMLCacheService) {
 
 		this.appService = appService;
 		this.cacheService = cacheService;
+		this.indexHTMLCacheService = indexHTMLCacheService;
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
+	public Mono<ObjectWithUniqueID<String>> getIndexHTML(ServerHttpRequest request, String appCode, String clientCode) {
 
-		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode),
+		String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
 
-				() -> FlatMapUtil
-						.flatMapMonoWithNull(
+		String fullURL = request.getHeaders().getFirst("X-Full-URL");
 
-								() -> appService.read(appCode, appCode, clientCode),
+		if (this.indexHTMLCacheService.dontHaveCache() || fullURL == null || fullURL.isBlank()) {
+			return cacheService.cacheValueOrGet(cacheName,
 
-								app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode))
+					() -> FlatMapUtil
+							.flatMapMonoWithNull(
 
-						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
+									() -> appService.read(appCode, appCode, clientCode),
 
-				clientCode);
+									app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode))
+							.contextWrite(Context.of(LogUtil.METHOD_NAME,
+									"IndexHTMLService.getIndexHTML (without HTML cache)")),
+
+					clientCode);
+		}
+
+		if (fullURL.startsWith("https:")) // NOSONAR
+			// Null check is done the previous IF
+			fullURL = "https" + fullURL.substring(7);
+		else if (fullURL.startsWith("http:"))
+			fullURL = "http" + fullURL.substring(6);
+
+		String finalURL = fullURL;
+
+		return FlatMapUtil.flatMapMonoWithNull(
+				() -> this.indexHTMLCacheService.get(finalURL, appCode, clientCode),
+
+				response -> {
+
+					if (response != null)
+						return Mono.just(response);
+
+					return appService.read(appCode, appCode, clientCode)
+							.flatMap(app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"IndexHTMLService.getIndexHTML (with HTML cache)"));
 	}
 
 	@SuppressWarnings("unchecked")
