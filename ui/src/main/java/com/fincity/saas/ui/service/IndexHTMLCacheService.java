@@ -42,13 +42,14 @@ public class IndexHTMLCacheService {
         return this.htmlCacheClient == null;
     }
 
-    public Mono<ObjectWithUniqueID<String>> get(String fullURL, String appCode, String clientCode) {
+    public Mono<ObjectWithUniqueID<String>> get(String fullURL, String appCode, String clientCode, String device) {
 
         return FlatMapUtil.flatMapMono(
 
                 () -> this.htmlCacheClient.get().uri(uriBuilder -> uriBuilder.path("/" + fullURL)
                         .queryParam("appCode", appCode)
                         .queryParam("clientCode", clientCode)
+                        .queryParam("device", device)
                         .queryParam("env", this.htmlCacheEnvironment)
                         .queryParam("waitTime", this.waitTime).build())
                         .retrieve().bodyToMono(String.class)

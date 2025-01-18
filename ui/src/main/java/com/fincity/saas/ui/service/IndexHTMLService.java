@@ -125,7 +125,8 @@ public class IndexHTMLService {
 		String finalURL = fullURL;
 
 		return FlatMapUtil.flatMapMonoWithNull(
-				() -> this.indexHTMLCacheService.get(finalURL, appCode, clientCode),
+				() -> this.indexHTMLCacheService.get(finalURL, appCode, clientCode,
+						deviceType(request.getHeaders().getFirst("user-agent"))),
 
 				response -> {
 
@@ -136,6 +137,23 @@ public class IndexHTMLService {
 							.flatMap(app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode));
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME,
 						"IndexHTMLService.getIndexHTML (with HTML cache)"));
+	}
+
+	private String deviceType(String userAgent) {
+		userAgent = userAgent.toLowerCase();
+
+		if (
+
+		userAgent.contains("mobi") ||
+				userAgent.contains("iphone") ||
+				userAgent.contains("android") ||
+				userAgent.contains("windows phone") ||
+				userAgent.contains("blackberry")
+
+		)
+			return "mobile";
+
+		return "desktop";
 	}
 
 	@SuppressWarnings("unchecked")
