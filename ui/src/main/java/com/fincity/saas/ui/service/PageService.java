@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -22,7 +21,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class PageService extends AbstractOverridableDataService<Page, PageRepository> {
+public class PageService extends AbstractUIOverridableDataService<Page, PageRepository> {
 
 	private ApplicationService appServiceForProps;
 
