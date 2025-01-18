@@ -44,6 +44,8 @@ ui:
   cdnReplacePlus: true
   # Don't forget to add slash in the end.
   jsURL: https://cdn-local.modlix.com/js/dist/
+  # htmlCacheUrl: http://localhost:6101/
+  htmlCacheEnv: OTHER
 
 core:
   mongo:
