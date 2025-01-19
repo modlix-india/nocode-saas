@@ -44,6 +44,9 @@ public class IndexHTMLCacheService {
 
     public Mono<ObjectWithUniqueID<String>> get(String fullURL, String appCode, String clientCode, String device) {
 
+        if (this.dontHaveCache())
+            return Mono.just(new ObjectWithUniqueID<>(""));
+
         return FlatMapUtil.flatMapMono(
 
                 () -> this.htmlCacheClient.get().uri(uriBuilder -> uriBuilder.path("/" + fullURL)
@@ -73,6 +76,9 @@ public class IndexHTMLCacheService {
     }
 
     public Mono<String> evict(String appCode) {
+
+        if (this.dontHaveCache())
+            return Mono.just(new ObjectWithUniqueID<>(""));
 
         return this.htmlCacheClient.delete().uri(uriBuilder -> uriBuilder.path("/all")
                 .queryParam("appCode", appCode)
