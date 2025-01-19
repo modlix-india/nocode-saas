@@ -74,6 +74,38 @@ public class IndexHTMLService {
 
 	);
 
+	private static final String DEFAULT_LOADER = """
+			<style>
+				._initloaderContainer {
+					width: 100vw;
+					height: 100vh;
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					position: fixed;
+					left:0;
+					top:0;
+				}
+				._initloader {
+						width: 2vmax;
+						height: 2vmax;
+						border: 0.5vmin solid rgb(224, 224, 224);
+						border-top: 0.5vmin solid rgb(173, 173, 173);
+						border-radius: 50%;
+						animation: _loaderspin 3s linear infinite;
+					}
+					@keyframes _loaderspin {
+						0% {
+						transform: rotate(0deg);
+						}
+						100% {
+						transform: rotate(360deg);
+						}
+					}
+			</style>
+			<div class="_initloaderContainer"><div class="_initloader"></div></div>
+								""";
+
 	@Value("${ui.cdnHostName:}")
 	private String cdnHostName;
 
@@ -224,7 +256,9 @@ public class IndexHTMLService {
 		str.append(codeParts.get(1));
 		str.append("</head><body>");
 		str.append(codeParts.get(2));
-		str.append("<div id=\"app\"></div>");
+		str.append("<div id=\"app\">");
+		str.append(appProps.getOrDefault("loader", DEFAULT_LOADER));
+		str.append("</div>");
 
 		// Here the preference will be for the style from the style service.
 		str.append("<link rel=\"stylesheet\" href=\"/")
