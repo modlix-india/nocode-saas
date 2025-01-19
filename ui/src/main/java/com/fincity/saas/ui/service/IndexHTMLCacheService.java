@@ -78,7 +78,7 @@ public class IndexHTMLCacheService {
     public Mono<String> evict(String appCode) {
 
         if (this.dontHaveCache())
-            return Mono.just(new ObjectWithUniqueID<>(""));
+            return Mono.just("");
 
         return this.htmlCacheClient.delete().uri(uriBuilder -> uriBuilder.path("/all")
                 .queryParam("appCode", appCode)
