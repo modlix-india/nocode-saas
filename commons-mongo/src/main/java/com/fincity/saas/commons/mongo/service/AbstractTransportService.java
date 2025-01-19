@@ -445,8 +445,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.makeJSONTransport"));
     }
 
-    @SuppressWarnings("rawtypes")
-    public abstract List<AbstractOverridableDataService> getServieMap();
+    public abstract List<AbstractOverridableDataService<?, ?>> getServieMap(); // NOSONAR
+    // This is a generic service and requires wildcard
 
     protected abstract String getTransportType();
 
