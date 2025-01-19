@@ -8,7 +8,7 @@ public enum OtpPurpose {
 	REGISTRATION("registration", (short) 1),
 	LOGIN("login", (short) 0),
 	VERIFICATION("verification", (short) 0),
-	PASSWORD_RESET("password reset", (short) 0);
+	PASSWORD_RESET("password reset", (short) 1);
 
 	private final String displayName;
 

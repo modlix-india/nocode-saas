@@ -10,7 +10,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class AuthenticationRequest {
+public class AuthenticationRequest implements BasePassword<AuthenticationRequest> {
 
 	private String userName;
 	private String password;
@@ -27,32 +27,12 @@ public class AuthenticationRequest {
 	private boolean generateOtp = false;
 
 	@JsonIgnore
-	public String getInputPassword() {
+	public AuthenticationRequest setIdentifierType() {
+		if (this.identifierType == null)
+			this.identifierType = StringUtil.safeIsBlank(this.getUserName()) || this.getUserName()
+					.indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
+							: AuthenticationIdentifierType.EMAIL_ID;
 
-		if (!StringUtil.safeIsBlank(password))
-			return password;
-
-		if (!StringUtil.safeIsBlank(pin))
-			return pin;
-
-		if (!StringUtil.safeIsBlank(otp))
-			return otp;
-
-		return null;
-	}
-
-	@JsonIgnore
-	public AuthenticationPasswordType getPasswordType() {
-
-		if (!StringUtil.safeIsBlank(password))
-			return AuthenticationPasswordType.PASSWORD;
-
-		if (!StringUtil.safeIsBlank(pin))
-			return AuthenticationPasswordType.PIN;
-
-		if (!StringUtil.safeIsBlank(otp))
-			return AuthenticationPasswordType.OTP;
-
-		return null;
+		return this;
 	}
 }

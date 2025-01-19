@@ -1,6 +1,7 @@
 package com.fincity.security.dto;
 
 import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.model.BasePassword;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -21,7 +23,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class User extends AbstractUpdatableDTO<ULong, ULong> {
+public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePassword<User>, Serializable {
 
 	@Serial
 	private static final long serialVersionUID = 754028768624617709L;
@@ -66,11 +68,12 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	public boolean checkIdentificationKeys() {
-		return PLACEHOLDER.equals(this.userName)
-				&& PLACEHOLDER.equals(this.emailId)
-				&& PLACEHOLDER.equals(this.phoneNumber);
+		return (this.userName == null || PLACEHOLDER.equals(this.userName))
+				&& (this.emailId == null || PLACEHOLDER.equals(this.emailId))
+				&& (this.phoneNumber == null || PLACEHOLDER.equals(this.phoneNumber));
 	}
 
+	@Override
 	@JsonIgnore
 	public String getPassword() {
 		return this.password;
@@ -81,6 +84,7 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> {
 		return this.passwordHashed;
 	}
 
+	@Override
 	@JsonIgnore
 	public String getPin() {
 		return this.pin;
