@@ -1,8 +1,7 @@
 package com.fincity.security.dto;
 
 import java.io.Serial;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.jooq.types.ULong;
@@ -46,21 +45,16 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 
 	public boolean inClientHierarchy(ULong clientId) {
 		return this.clientId.equals(clientId)
-				|| this.manageClientLevel3.equals(clientId)
-				|| this.manageClientLevel2.equals(clientId)
-				|| this.manageClientLevel1.equals(clientId)
-				|| this.manageClientLevel0.equals(clientId);
+				|| (this.manageClientLevel3 != null && this.manageClientLevel3.equals(clientId))
+				|| (this.manageClientLevel2 != null &&  this.manageClientLevel2.equals(clientId))
+				|| (this.manageClientLevel1 != null &&  this.manageClientLevel1.equals(clientId))
+				|| (this.manageClientLevel0 != null &&  this.manageClientLevel0.equals(clientId));
 	}
 
 	public boolean isManagedBy(ULong clientId) {
 		if (clientId == null)
 			return false;
-
-		return this.clientId.equals(clientId)
-				|| Objects.equals(this.manageClientLevel0, clientId)
-				|| Objects.equals(this.manageClientLevel1, clientId)
-				|| Objects.equals(this.manageClientLevel2, clientId)
-				|| Objects.equals(this.manageClientLevel3, clientId);
+		return this.inClientHierarchy(clientId);
 	}
 
 	// Always use this through service
@@ -93,15 +87,62 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
 
 	public Set<ULong> getClientIds() {
 
-		Set<ULong> clientIds = new HashSet<>();
-		clientIds.add(this.clientId);
+		Set<ULong> clientIds = new LinkedHashSet<>();
 
-		clientIds.add(this.manageClientLevel0);
-		clientIds.add(this.manageClientLevel1);
-		clientIds.add(this.manageClientLevel2);
-		clientIds.add(this.manageClientLevel3);
+		if (this.clientId != null)
+			clientIds.add(this.clientId);
 
-		clientIds.remove(null);
+		if (this.manageClientLevel0 != null)
+			clientIds.add(this.manageClientLevel0);
+
+		if (this.manageClientLevel1 != null)
+			clientIds.add(this.manageClientLevel1);
+
+		if (this.manageClientLevel2 != null)
+			clientIds.add(this.manageClientLevel2);
+
+		if (this.manageClientLevel3 != null)
+			clientIds.add(this.manageClientLevel3);
+
 		return clientIds;
+	}
+
+	// 	These Methods are for JOOQ Compatibility.
+	// 	Jooq uses {@code org.jooq.tools.StringUtils.toCamelCase()} to get getter and setter of a Entity
+
+	public ULong getManageClientLevel_0() { //NOSONAR
+		return manageClientLevel0;
+	}
+
+	public ClientHierarchy setManageClientLevel_0(ULong manageClientLevel0) { //NOSONAR
+		this.manageClientLevel0 = manageClientLevel0;
+		return this;
+	}
+
+	public ULong getManageClientLevel_1() { //NOSONAR
+		return manageClientLevel1;
+	}
+
+	public ClientHierarchy setManageClientLevel_1(ULong manageClientLevel1) { //NOSONAR
+		this.manageClientLevel1 = manageClientLevel1;
+		return this;
+	}
+
+	public ULong getManageClientLevel_2() { //NOSONAR
+		return manageClientLevel2;
+	}
+
+	public ClientHierarchy setManageClientLevel_2(ULong manageClientLevel2) { //NOSONAR
+		this.manageClientLevel2 = manageClientLevel2;
+		return this;
+	}
+
+	public ULong getManageClientLevel_3() { //NOSONAR
+		return manageClientLevel3;
+	}
+
+	public ClientHierarchy setManageClientLevel_3(ULong manageClientLevel3) { //NOSONAR
+		this.manageClientLevel3 = manageClientLevel3;
+		return this;
 	}
 }

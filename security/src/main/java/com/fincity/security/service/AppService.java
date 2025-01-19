@@ -65,6 +65,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 	private static final String CACHE_NAME_APP_DEPENDENCIES = "appDependencies";
 	private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
 
+	public static final String AC = "appCode";
 	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
 	public static final String APP_PROP_REG_TYPE_VERIFICATION = "REGISTRATION_TYPE_VERIFICATION";
 	public static final String APP_PROP_REG_TYPE_NO_VERIFICATION = "REGISTRATION_TYPE_NO_VERIFICATION";
