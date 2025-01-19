@@ -108,7 +108,7 @@ public class UniversalController {
 
 				(ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
 				.switchIfEmpty(Mono
-						.defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode)
+						.defer(() -> indexHTMLService.getIndexHTML(request, appCode, clientCode)
 								.flatMap(e -> ResponseEntityUtils
 										.makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
 	}
