@@ -10,6 +10,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -37,7 +38,7 @@ public class IndexHTMLService {
 
 	private static final String[] META_FIELDS = new String[] { "charset", "name", "http-equiv", "content" };
 
-	public static final String CACHE_NAME_INDEX = "indexCache";
+	public static final String CACHE_NAME_INDEX = "indexNewCache";
 
 	private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
 			2, "BEFORE_BODY", 3);
@@ -73,6 +74,38 @@ public class IndexHTMLService {
 
 	);
 
+	private static final String DEFAULT_LOADER = """
+			<style>
+				._initloaderContainer {
+					width: 100vw;
+					height: 100vh;
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					position: fixed;
+					left:0;
+					top:0;
+				}
+				._initloader {
+						width: 2vmax;
+						height: 2vmax;
+						border: 0.5vmin solid rgb(224, 224, 224);
+						border-top: 0.5vmin solid rgb(173, 173, 173);
+						border-radius: 50%;
+						animation: _loaderspin 3s linear infinite;
+					}
+					@keyframes _loaderspin {
+						0% {
+						transform: rotate(0deg);
+						}
+						100% {
+						transform: rotate(360deg);
+						}
+					}
+			</style>
+			<div class="_initloaderContainer"><div class="_initloader"></div></div>
+								""";
+
 	@Value("${ui.cdnHostName:}")
 	private String cdnHostName;
 
@@ -84,27 +117,75 @@ public class IndexHTMLService {
 
 	private final ApplicationService appService;
 	private final CacheService cacheService;
+	private final IndexHTMLCacheService indexHTMLCacheService;
 
-	public IndexHTMLService(ApplicationService appService, CacheService cacheService) {
+	public IndexHTMLService(ApplicationService appService, CacheService cacheService,
+			IndexHTMLCacheService indexHTMLCacheService) {
 
 		this.appService = appService;
 		this.cacheService = cacheService;
+		this.indexHTMLCacheService = indexHTMLCacheService;
 	}
 
-	public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
+	public Mono<ObjectWithUniqueID<String>> getIndexHTML(ServerHttpRequest request, String appCode, String clientCode) {
 
-		return cacheService.cacheValueOrGet(this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode),
+		String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
 
-				() -> FlatMapUtil
-						.flatMapMonoWithNull(
+		String fullURL = request.getHeaders().getFirst("X-Full-URL");
 
-								() -> appService.read(appCode, appCode, clientCode),
+		if (this.indexHTMLCacheService.dontHaveCache() || fullURL == null || fullURL.isBlank()) {
+			return cacheService.cacheValueOrGet(cacheName,
 
-								app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode))
+					() -> FlatMapUtil
+							.flatMapMonoWithNull(
 
-						.contextWrite(Context.of(LogUtil.METHOD_NAME, "IndexHTMLService.getIndexHTML")),
+									() -> appService.read(appCode, appCode, clientCode),
 
-				clientCode);
+									app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode))
+							.contextWrite(Context.of(LogUtil.METHOD_NAME,
+									"IndexHTMLService.getIndexHTML (without HTML cache)")),
+
+					clientCode);
+		}
+
+		if (fullURL.startsWith("https:")) // NOSONAR
+			// Null check is done the previous IF
+			fullURL = "https" + fullURL.substring(7);
+		else if (fullURL.startsWith("http:"))
+			fullURL = "http" + fullURL.substring(6);
+
+		String finalURL = fullURL;
+
+		return FlatMapUtil.flatMapMonoWithNull(
+				() -> this.indexHTMLCacheService.get(finalURL, appCode, clientCode,
+						deviceType(request.getHeaders().getFirst("user-agent"))),
+
+				response -> {
+
+					if (response != null)
+						return Mono.just(response);
+
+					return appService.read(appCode, appCode, clientCode)
+							.flatMap(app -> this.indexFromApp(new Application(app.getObject()), appCode, clientCode));
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"IndexHTMLService.getIndexHTML (with HTML cache)"));
+	}
+
+	private String deviceType(String userAgent) {
+		userAgent = userAgent.toLowerCase();
+
+		if (
+
+		userAgent.contains("mobi") ||
+				userAgent.contains("iphone") ||
+				userAgent.contains("android") ||
+				userAgent.contains("windows phone") ||
+				userAgent.contains("blackberry")
+
+		)
+			return "mobile";
+
+		return "desktop";
 	}
 
 	@SuppressWarnings("unchecked")
@@ -175,7 +256,9 @@ public class IndexHTMLService {
 		str.append(codeParts.get(1));
 		str.append("</head><body>");
 		str.append(codeParts.get(2));
-		str.append("<div id=\"app\"></div>");
+		str.append("<div id=\"app\">");
+		str.append(appProps.getOrDefault("loader", DEFAULT_LOADER));
+		str.append("</div>");
 
 		// Here the preference will be for the style from the style service.
 		str.append("<link rel=\"stylesheet\" href=\"/")
