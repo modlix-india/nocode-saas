@@ -4,7 +4,6 @@ import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 
 import org.jooq.Condition;
-import org.jooq.Record;
 import org.jooq.TableField;
 import org.jooq.TableRecord;
 import org.jooq.types.ULong;
