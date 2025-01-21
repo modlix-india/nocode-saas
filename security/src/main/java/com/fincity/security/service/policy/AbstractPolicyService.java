@@ -183,7 +183,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				(ca, entity, canUpdate, canEntityUpdate) -> super.update(key, fields),
 
 				(ca, entity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
-						getCacheKeys(updated.getClientId(), updated.getAppId())).map(evicted -> updated))
+						getCacheKeys(updated.getClientId(), updated.getAppId())).<D>map(evicted -> updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -208,7 +208,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				(ca, uEntity, canUpdate, canEntityUpdate) -> super.update(entity),
 
 				(ca, uEntity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
-						getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).map(evicted -> updated))
+						getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).<D>map(evicted -> updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -233,7 +233,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				(ca, entity, canDelete, canEntityDelete) -> super.delete(id),
 
 				(ca, entity, canDelete, canEntityDelete, deleted) -> cacheService.evict(getPolicyCacheName(),
-						getCacheKeys(entity.getClientId(), entity.getAppId())).map(evicted -> deleted))
+						getCacheKeys(entity.getClientId(), entity.getAppId())).<Integer>map(evicted -> deleted))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));

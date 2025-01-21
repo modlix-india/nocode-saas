@@ -118,7 +118,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId,
 			String clientCode, String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
-		return findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType,
+		return this.findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType,
 				this.getNonDeletedUserStatusCodes());
 	}
 
