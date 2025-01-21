@@ -165,7 +165,7 @@ public class AuthenticationService implements IAuthenticationService {
 						clientCode, appCode, authRequest.getIdentifierType()),
 
 				tup -> this.userService.checkUserAndClient(tup, clientCode)
-						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE),
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(tup, linCCheck) -> this.appService.getAppByCode(appCode),
 
@@ -204,7 +204,7 @@ public class AuthenticationService implements IAuthenticationService {
 						clientCode, appCode, authRequest.getIdentifierType()),
 
 				tup -> this.userService.checkUserAndClient(tup, clientCode)
-						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE),
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -242,7 +242,7 @@ public class AuthenticationService implements IAuthenticationService {
 						authRequest.getUserId(), clientCode, appCode, authRequest.getIdentifierType()),
 
 				tup -> this.userService.checkUserAndClient(tup, clientCode)
-						.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE),
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -503,7 +503,7 @@ public class AuthenticationService implements IAuthenticationService {
 							AuthenticationIdentifierType.USER_NAME),
 
 					tup -> this.userService.checkUserAndClient(tup, clientCode)
-							.filter(userCheck -> userCheck).map(userCheck -> Boolean.TRUE),
+							.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 					(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 

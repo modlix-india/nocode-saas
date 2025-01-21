@@ -4,6 +4,9 @@ import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 
 import org.jooq.Condition;
+import org.jooq.Record;
+import org.jooq.TableField;
+import org.jooq.TableRecord;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -40,6 +43,14 @@ public class ClientHierarchyDAO extends AbstractDAO<SecurityClientHierarchyRecor
 	}
 
 	public static Condition getManageClientCondition(ULong clientId) {
+		return SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(clientId)
+				.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(clientId))
+				.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1.eq(clientId))
+				.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2.eq(clientId))
+				.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_3.eq(clientId));
+	}
+
+	public static <T extends TableRecord<T>> Condition getManageClientCondition(TableField<T, ULong> clientId) {
 		return SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(clientId)
 				.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(clientId))
 				.or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1.eq(clientId))
