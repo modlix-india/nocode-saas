@@ -404,7 +404,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 	public Mono<List<User>> getUsersBy(String userName, ULong userId, String clientCode, String appCode,
 			AuthenticationIdentifierType authenticationIdentifierType, SecurityUserStatusCode... userStatusCodes) {
 
-		SelectConditionStep<Record> query = getAllUsersPerAppQuery(userName, userId, clientCode, appCode,
+		SelectConditionStep<Record> query = this.getAllUsersPerAppQuery(userName, userId, clientCode, appCode,
 				authenticationIdentifierType, userStatusCodes, SECURITY_USER.fields());
 
 		SelectLimitPercentStep<Record> limitQuery = query.limit(2);
@@ -443,12 +443,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				SECURITY_APP.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)
 						.or(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)));
 
-		conditions.add(
-				SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
-						.or(SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0))
-						.or(SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1))
-						.or(SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2))
-						.or(SECURITY_USER.CLIENT_ID.eq(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_3)));
+		conditions.add(ClientHierarchyDAO.getManageClientCondition(SECURITY_CLIENT.ID));
 
 		return this.dslContext.select(fields).from(SECURITY_USER)
 				.leftJoin(SECURITY_APP).on(SECURITY_APP.APP_CODE.eq(appCode))
