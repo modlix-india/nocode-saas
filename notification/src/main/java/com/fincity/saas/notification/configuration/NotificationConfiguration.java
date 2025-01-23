@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
+import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
@@ -18,7 +18,7 @@ import com.fincity.saas.notification.service.NotificationMessageResourceService;
 import jakarta.annotation.PostConstruct;
 
 @Configuration
-public class NotificationConfiguration extends AbstractBaseConfiguration implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
+public class NotificationConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
 
 	private final NotificationMessageResourceService messageService;
 
@@ -41,6 +41,8 @@ public class NotificationConfiguration extends AbstractBaseConfiguration impleme
 	public void initialize() {
 
 		super.initialize();
+		this.objectMapper.registerModule(
+				new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageService));
 		Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
 		FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 			if (name != null)
@@ -48,6 +50,11 @@ public class NotificationConfiguration extends AbstractBaseConfiguration impleme
 			else
 				log.debug(v);
 		}));
+	}
+
+	@Override
+	public String getProtocol() {
+		return "postgresql";
 	}
 
 	@Override
