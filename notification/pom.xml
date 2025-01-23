@@ -227,7 +227,7 @@
                         <configuration>
                             <jdbc>
                                 <driver>org.postgresql.Driver</driver>
-                                <url>jdbc:mysql://localhost:3306/security</url>
+                                <url>jdbc:postgres://localhost:5432/notification</url>
                                 <user>postgres</user>
                                 <password>Kiran@123</password>
                             </jdbc>
