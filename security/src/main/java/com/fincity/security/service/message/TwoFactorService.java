@@ -26,6 +26,7 @@ import com.google.gson.JsonObject;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -33,21 +34,17 @@ public class TwoFactorService implements MessageService {
 
 	private static final Logger logger = LoggerFactory.getLogger(TwoFactorService.class);
 
-	@Autowired
+	@Getter
 	private SecurityMessageResourceService messageResourceService;
 
-	@Autowired
+	@Getter
 	private Gson gson;
 
 	private static final String TWO_FACTOR_API_URL = "https://2factor.in/API/R1/";
 
-	private static final String SENDER_ID = "MODLIX";
+	private static final String SENDER_ID = "APYAFI";
 
-	private static final String TEMPLATE_NAME = "MODLIXOTP";
-
-	private static final String OTP_PEID = "PEID";
-
-	private static final String OTP_CTID = "CTID";
+	private static final String TEMPLATE_NAME = "APYACXFININVOTP";
 
 	private static final String ERROR = "Error";
 
@@ -60,6 +57,16 @@ public class TwoFactorService implements MessageService {
 		this.webClient = WebClient.create(TWO_FACTOR_API_URL);
 	}
 
+	@Autowired()
+	public void setMessageResourceService(SecurityMessageResourceService messageResourceService) {
+		this.messageResourceService = messageResourceService;
+	}
+
+	@Autowired()
+	public void setGson(Gson gson) {
+		this.gson = gson;
+	}
+
 	@Override
 	public Mono<Boolean> sendOtpMessage(String phoneNumber, OtpMessageVars otpMessageVars) {
 
@@ -70,14 +77,11 @@ public class TwoFactorService implements MessageService {
 
 		TransactionalSms request = TransactionalSms.builder()
 				.apikey(apiKey)
-				.to(new String[]{phoneNumber})
+				.to(new String[] { phoneNumber })
 				.templateName(TEMPLATE_NAME)
 				.var1(otpMessageVars.getOtpPurpose().getDisplayName())
 				.var2(otpMessageVars.getOtpCode())
 				.var3(otpMessageVars.getExpireInterval() + "mins")
-				.var4(StringUtil.capitalize(otpMessageVars.getAppName()))
-				.peid(OTP_PEID)
-				.ctid(OTP_CTID)
 				.build();
 
 		return FlatMapUtil.flatMapMono(
@@ -94,7 +98,8 @@ public class TwoFactorService implements MessageService {
 					if (response.getStatusCode().isError()) {
 						logger.debug("SMS otp failed: {}", response.getBody());
 						return messageResourceService.getMessage(SecurityMessageResourceService.SMS_OTP_ERROR)
-								.flatMap(msg -> Mono.error(new GenericException(HttpStatus.resolve(response.getStatusCode().value()), msg)));
+								.flatMap(msg -> Mono.error(new GenericException(
+										HttpStatus.resolve(response.getStatusCode().value()), msg)));
 					}
 
 					JsonObject res = gson.fromJson(response.getBody(), JsonElement.class).getAsJsonObject();
@@ -102,14 +107,15 @@ public class TwoFactorService implements MessageService {
 					if (res.isEmpty() || res.get("Status").getAsString().equals(ERROR)) {
 						logger.debug("SMS otp failed: {}", res);
 						return messageResourceService.getMessage(SecurityMessageResourceService.SMS_OTP_ERROR)
-								.flatMap(msg -> Mono.error(new GenericException(HttpStatus.resolve(response.getStatusCode().value()), msg)));
+								.flatMap(msg -> Mono.error(new GenericException(
+										HttpStatus.resolve(response.getStatusCode().value()), msg)));
 					}
 
 					return Mono.just(Boolean.TRUE);
 				}).onErrorResume(error -> {
-			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-					SecurityMessageResourceService.SMS_OTP_ERROR);
-		});
+					throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+							SecurityMessageResourceService.SMS_OTP_ERROR);
+				});
 	}
 
 	@Data
