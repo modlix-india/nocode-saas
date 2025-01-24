@@ -59,8 +59,9 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
 	public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
 			FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
-			FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client) {
-		super(filesAccessPathService, msgService);
+			FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
+			FilesUploadDownloadService fileUploadDownloadService) {
+		super(filesAccessPathService, msgService, fileUploadDownloadService);
 		this.fileSecuredAccessService = fileSecuredAccessService;
 		this.fileSystemDao = fileSystemDao;
 		this.cacheService = cacheService;

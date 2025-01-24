@@ -1,7 +1,5 @@
 package com.fincity.saas.files.service;
 
-import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
-
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -23,13 +21,19 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import javax.annotation.PreDestroy;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.imgscalr.Scalr;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -54,15 +58,21 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.files.dto.FilesUploadDownloadDTO;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.ImageDetails;
+import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 import com.fincity.saas.files.util.FileExtensionUtil;
 import com.fincity.saas.files.util.ImageTransformUtil;
 
@@ -97,11 +107,24 @@ public abstract class AbstractFilesResourceService {
 
 	protected final FilesMessageResourceService msgService;
 	protected final FilesAccessPathService fileAccessService;
+	protected final FilesUploadDownloadService filesUploadDownloadService;
+
+	private final ExecutorService virtualThreadExecutor;
 
 	protected AbstractFilesResourceService(
-			FilesAccessPathService fileAccessService, FilesMessageResourceService msgService) {
+			FilesAccessPathService fileAccessService, FilesMessageResourceService msgService,
+			FilesUploadDownloadService filesUploadDownloadService) {
 		this.msgService = msgService;
 		this.fileAccessService = fileAccessService;
+		this.filesUploadDownloadService = filesUploadDownloadService;
+
+		this.virtualThreadExecutor = new ThreadPoolExecutor(
+				30,
+				300,
+				10L,
+				TimeUnit.MINUTES,
+				new LinkedBlockingQueue<>(),
+				Thread.ofVirtual().factory());
 	}
 
 	private String uriPart;
@@ -979,6 +1002,66 @@ public abstract class AbstractFilesResourceService {
 
 		return makeMatchesStartDownload(downloadOptions, request, response, false, resourcePath, fileMillis,
 				fileETag);
+	}
+
+	public Mono<ULong> asyncExportFolder(String clientCode, ServerHttpRequest request) {
+
+		String uri = request.getPath().toString();
+		String resourcePath = this.resolvePathWithoutClientCode("export", uri).getT1();
+
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> ca.isAuthenticated() ? Mono.just(ObjectUtils.firstNonNull(clientCode, ca.getClientCode()))
+						: Mono.empty(),
+
+				(ca, cc) -> this.fileAccessService.hasReadAccess(resourcePath, cc,
+						FilesAccessPathResourceType.valueOf(this.getResourceType())),
+
+				(ca, cc, hasAccess) -> {
+					if (!BooleanUtil.safeValueOf(hasAccess))
+						return Mono.<FilesUploadDownloadDTO>empty();
+
+					FilesUploadDownloadDTO dto = new FilesUploadDownloadDTO();
+					dto.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
+
+					return this.filesUploadDownloadService.create(dto.setDone(false)
+							.setClientCode(cc)
+							.setCdnUrl("_downloads/" + UniqueUtil.shortUUID() + ".zip")
+							.setPath(resourcePath)
+							.setType(FilesUploadDownloadType.DOWNLOAD)
+							.setResourceType(FilesUploadDownloadResourceType.valueOf(this.getResourceType())));
+				},
+
+				(ca, cc, hasAccess, fud) -> {
+
+					this.virtualThreadExecutor.submit(
+							new FilesDownloadRunnable(this.getFSService(), fud, this.filesUploadDownloadService));
+
+					return Mono.just(fud.getId());
+				}
+
+		)
+				.switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath))
+
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.asyncExportFolder"));
+	}
+
+	@PreDestroy
+	public void shutdownExecutor() {
+		logger.info("Shutting down executor...");
+		virtualThreadExecutor.shutdown();
+		try {
+			if (!virtualThreadExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+				logger.error("Executor did not terminate in the specified time.");
+				virtualThreadExecutor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			logger.error("Shutdown interrupted.", e);
+			virtualThreadExecutor.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	public abstract FileSystemService getFSService();

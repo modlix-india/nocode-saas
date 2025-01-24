@@ -1,5 +1,6 @@
 package com.fincity.saas.files.controller;
 
+import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -137,6 +138,13 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 								fp, overrideValue))
 				.map(ResponseEntity::ok)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.createWithZip"));
+	}
+
+	@GetMapping("/export/**")
+	public Mono<ResponseEntity<ULong>> export(@RequestParam(required = false) String clientCode,
+			ServerHttpRequest request) {
+
+		return this.service.asyncExportFolder(clientCode, request).map(ResponseEntity::ok);
 	}
 
 }

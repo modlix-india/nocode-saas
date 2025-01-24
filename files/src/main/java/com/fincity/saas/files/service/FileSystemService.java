@@ -258,7 +258,7 @@ public class FileSystemService {
         Flux<ByteBuffer> byteBuffer = fp.content().flatMapSequential(
                 dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
 
-        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override);
+        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override, "inline");
     }
 
     public Mono<FileDetail> createFileFromFluxDataBuffer(String clientCode, String path, String fileName,
@@ -267,22 +267,29 @@ public class FileSystemService {
         Flux<ByteBuffer> byteBuffer = dataBuffer.flatMapSequential(
                 d -> Flux.fromIterable(d::readableByteBuffers));
 
-        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override);
+        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override, "inline");
     }
 
     public Mono<FileDetail> createFileFromFile(String clientCode, String path, String fileName, Path file,
-            boolean override) {
+            boolean override, String contentDisposition) {
 
         Flux<ByteBuffer> byteBuffer = DataBufferUtils.readAsynchronousFileChannel(
                 () -> AsynchronousFileChannel.open(file, StandardOpenOption.READ),
                 DefaultDataBufferFactory.sharedInstance,
                 4096).flatMapSequential(
                         dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
-        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override);
+        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override,
+                contentDisposition);
+    }
+
+    public Mono<FileDetail> createFileFromFile(String clientCode, String path, String fileName, Path file,
+            boolean override) {
+
+        return this.createFileFromFile(clientCode, path, fileName, file, override, "inline");
     }
 
     private Mono<FileDetail> createFileFromFluxDataBufferInternal(String clientCode, String path, String fileName,
-            Flux<ByteBuffer> byteBuffer, boolean override) {
+            Flux<ByteBuffer> byteBuffer, boolean override, String contentDisposition) {
 
         String filePath = fileName == null ? path : (path + R2_FILE_SEPARATOR_STRING + fileName);
 
@@ -314,7 +321,7 @@ public class FileSystemService {
                                     .bucket(bucketName)
                                     .contentLength(length)
                                     .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)
-                                    .contentDisposition("inline")
+                                    .contentDisposition(contentDisposition)
                                     .key(key)
                                     .build(),
                             AsyncRequestBody.fromPublisher(byteBuffer)))

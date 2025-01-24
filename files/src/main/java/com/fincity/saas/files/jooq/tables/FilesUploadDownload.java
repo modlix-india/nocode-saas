@@ -6,6 +6,7 @@ package com.fincity.saas.files.jooq.tables;
 
 import com.fincity.saas.files.jooq.Files;
 import com.fincity.saas.files.jooq.Keys;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
 import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.fincity.saas.files.jooq.tables.records.FilesUploadDownloadRecord;
 
@@ -64,10 +65,16 @@ public class FilesUploadDownload extends TableImpl<FilesUploadDownloadRecord> {
     public final TableField<FilesUploadDownloadRecord, FilesUploadDownloadType> TYPE = createField(DSL.name("TYPE"), SQLDataType.VARCHAR(8).nullable(false).asEnumDataType(FilesUploadDownloadType.class), this, "Type of the ZIP");
 
     /**
-     * The column <code>files.files_upload_download.USER_ID</code>. ID of the
-     * user who uploaded or downloaded the ZIP
+     * The column <code>files.files_upload_download.RESOURCE_TYPE</code>.
+     * Resource type
      */
-    public final TableField<FilesUploadDownloadRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "ID of the user who uploaded or downloaded the ZIP");
+    public final TableField<FilesUploadDownloadRecord, FilesUploadDownloadResourceType> RESOURCE_TYPE = createField(DSL.name("RESOURCE_TYPE"), SQLDataType.VARCHAR(7).nullable(false).asEnumDataType(FilesUploadDownloadResourceType.class), this, "Resource type");
+
+    /**
+     * The column <code>files.files_upload_download.CLIENT_CODE</code>. Client
+     * Code to whom the folder belongs to
+     */
+    public final TableField<FilesUploadDownloadRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code to whom the folder belongs to");
 
     /**
      * The column <code>files.files_upload_download.PATH</code>. Path of the
@@ -76,10 +83,10 @@ public class FilesUploadDownload extends TableImpl<FilesUploadDownloadRecord> {
     public final TableField<FilesUploadDownloadRecord, String> PATH = createField(DSL.name("PATH"), SQLDataType.VARCHAR(1024).nullable(false), this, "Path of the folder");
 
     /**
-     * The column <code>files.files_upload_download.CDN_URL</code>. CDN URL of
-     * the ZIP
+     * The column <code>files.files_upload_download.CDN_URL</code>. URL in the
+     * CDN
      */
-    public final TableField<FilesUploadDownloadRecord, String> CDN_URL = createField(DSL.name("CDN_URL"), SQLDataType.VARCHAR(1024), this, "CDN URL of the ZIP");
+    public final TableField<FilesUploadDownloadRecord, String> CDN_URL = createField(DSL.name("CDN_URL"), SQLDataType.VARCHAR(1024).nullable(false), this, "URL in the CDN");
 
     /**
      * The column <code>files.files_upload_download.IS_DONE</code>. Flag to

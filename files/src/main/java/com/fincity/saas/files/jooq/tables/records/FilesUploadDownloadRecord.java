@@ -4,6 +4,7 @@
 package com.fincity.saas.files.jooq.tables.records;
 
 
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
 import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.fincity.saas.files.jooq.tables.FilesUploadDownload;
 
@@ -53,20 +54,37 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
     }
 
     /**
-     * Setter for <code>files.files_upload_download.USER_ID</code>. ID of the
-     * user who uploaded or downloaded the ZIP
+     * Setter for <code>files.files_upload_download.RESOURCE_TYPE</code>.
+     * Resource type
      */
-    public FilesUploadDownloadRecord setUserId(ULong value) {
+    public FilesUploadDownloadRecord setResourceType(FilesUploadDownloadResourceType value) {
         set(2, value);
         return this;
     }
 
     /**
-     * Getter for <code>files.files_upload_download.USER_ID</code>. ID of the
-     * user who uploaded or downloaded the ZIP
+     * Getter for <code>files.files_upload_download.RESOURCE_TYPE</code>.
+     * Resource type
      */
-    public ULong getUserId() {
-        return (ULong) get(2);
+    public FilesUploadDownloadResourceType getResourceType() {
+        return (FilesUploadDownloadResourceType) get(2);
+    }
+
+    /**
+     * Setter for <code>files.files_upload_download.CLIENT_CODE</code>. Client
+     * Code to whom the folder belongs to
+     */
+    public FilesUploadDownloadRecord setClientCode(String value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>files.files_upload_download.CLIENT_CODE</code>. Client
+     * Code to whom the folder belongs to
+     */
+    public String getClientCode() {
+        return (String) get(3);
     }
 
     /**
@@ -74,7 +92,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * folder
      */
     public FilesUploadDownloadRecord setPath(String value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -83,24 +101,24 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * folder
      */
     public String getPath() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
-     * Setter for <code>files.files_upload_download.CDN_URL</code>. CDN URL of
-     * the ZIP
+     * Setter for <code>files.files_upload_download.CDN_URL</code>. URL in the
+     * CDN
      */
     public FilesUploadDownloadRecord setCdnUrl(String value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
     /**
-     * Getter for <code>files.files_upload_download.CDN_URL</code>. CDN URL of
-     * the ZIP
+     * Getter for <code>files.files_upload_download.CDN_URL</code>. URL in the
+     * CDN
      */
     public String getCdnUrl() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
@@ -108,7 +126,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * indicate if the ZIP is done
      */
     public FilesUploadDownloadRecord setIsDone(Byte value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -117,7 +135,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * indicate if the ZIP is done
      */
     public Byte getIsDone() {
-        return (Byte) get(5);
+        return (Byte) get(6);
     }
 
     /**
@@ -125,7 +143,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who created this row
      */
     public FilesUploadDownloadRecord setCreatedBy(ULong value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -134,7 +152,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(6);
+        return (ULong) get(7);
     }
 
     /**
@@ -142,7 +160,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is created
      */
     public FilesUploadDownloadRecord setCreatedAt(LocalDateTime value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -151,7 +169,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(8);
     }
 
     /**
@@ -159,7 +177,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who updated this row
      */
     public FilesUploadDownloadRecord setUpdatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -168,7 +186,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -176,7 +194,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is updated
      */
     public FilesUploadDownloadRecord setUpdatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -185,7 +203,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -211,12 +229,13 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
     /**
      * Create a detached, initialised FilesUploadDownloadRecord
      */
-    public FilesUploadDownloadRecord(ULong id, FilesUploadDownloadType type, ULong userId, String path, String cdnUrl, Byte isDone, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public FilesUploadDownloadRecord(ULong id, FilesUploadDownloadType type, FilesUploadDownloadResourceType resourceType, String clientCode, String path, String cdnUrl, Byte isDone, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD);
 
         setId(id);
         setType(type);
-        setUserId(userId);
+        setResourceType(resourceType);
+        setClientCode(clientCode);
         setPath(path);
         setCdnUrl(cdnUrl);
         setIsDone(isDone);
