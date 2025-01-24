@@ -13,6 +13,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -58,6 +59,9 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
@@ -72,9 +76,12 @@ import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.ImageDetails;
+import com.fincity.saas.files.tasks.FilesUploadDownloadRunnable;
+
 import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 import com.fincity.saas.files.util.FileExtensionUtil;
 import com.fincity.saas.files.util.ImageTransformUtil;
+import com.thoughtworks.xstream.core.SecurityUtils;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -233,26 +240,31 @@ public abstract class AbstractFilesResourceService {
 
 	}
 
-	private Mono<Void> downloadDirectory(DownloadOptions downloadOptions, ServerHttpRequest request,
-			ServerHttpResponse response, String rp, long fileMillis, String fileETag) {
-		int ind = rp.charAt(0) == '/' ? 1 : 0;
-		int secondInd = rp.indexOf('/', ind);
+	// private Mono<Void> downloadDirectory(DownloadOptions downloadOptions,
+	// ServerHttpRequest request,
+	// ServerHttpResponse response, String rp, long fileMillis, String fileETag) {
+	// int ind = rp.charAt(0) == '/' ? 1 : 0;
+	// int secondInd = rp.indexOf('/', ind);
 
-		String sp = secondInd == -1 ? rp.substring(ind) : rp.substring(ind, secondInd);
-		final long finFileMillis = fileMillis;
+	// String sp = secondInd == -1 ? rp.substring(ind) : rp.substring(ind,
+	// secondInd);
+	// final long finFileMillis = fileMillis;
 
-		return this.fileAccessService
-				.hasReadAccess(secondInd == -1 && secondInd < rp.length() ? "" : rp.substring(secondInd + 1), sp,
-						FilesAccessPathResourceType.valueOf(this.getResourceType()))
-				.flatMap(e -> {
-					if (!BooleanUtil.safeValueOf(e)) {
-						return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
-					}
-					return makeMatchesStartDownload(downloadOptions, request, response, true, rp, finFileMillis,
-							fileETag);
-				});
-	}
+	// return this.fileAccessService
+	// .hasReadAccess(secondInd == -1 && secondInd < rp.length() ? "" :
+	// rp.substring(secondInd + 1), sp,
+	// FilesAccessPathResourceType.valueOf(this.getResourceType()))
+	// .flatMap(e -> {
+	// if (!BooleanUtil.safeValueOf(e)) {
+	// return this.msgService.throwMessage(msg -> new
+	// GenericException(HttpStatus.FORBIDDEN, msg),
+	// FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
+	// }
+	// return makeMatchesStartDownload(downloadOptions, request, response, true, rp,
+	// finFileMillis,
+	// fileETag);
+	// });
+	// }
 
 	/**
 	 *
@@ -706,7 +718,7 @@ public abstract class AbstractFilesResourceService {
 				FilesMessageResourceService.IMAGE_TRANSFORM_ERROR);
 	}
 
-	public Mono<Boolean> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
+	public Mono<ULong> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
 
 		boolean ovr = override == null || BooleanUtil.safeValueOf(override);
 		Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPartImport, uri);
@@ -735,8 +747,31 @@ public abstract class AbstractFilesResourceService {
 							.then(Mono.just(Tuples.of(tmpFile, tmpFolder)));
 				},
 
-				tmpTup -> this.deflateAndProcess(tmpTup, resourcePath, clientCode, ovr))
-				.flatMap(this.getFSService().evictCache(clientCode))
+				tmpTup -> SecurityContextUtil.getUsersContextAuthentication(),
+
+				(tmpTup, ca) -> {
+
+					FilesUploadDownloadDTO dto = new FilesUploadDownloadDTO();
+					dto.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
+
+					return this.filesUploadDownloadService.create(dto
+							.setClientCode(clientCode)
+							.setCdnUrl("_downloads/" + UniqueUtil.shortUUID() + ".zip")
+							.setPath(resourcePath)
+							.setType(FilesUploadDownloadType.UPLOAD)
+							.setResourceType(FilesUploadDownloadResourceType.valueOf(this.getResourceType())));
+				},
+
+				(tmpTup, ca, fud) -> {
+
+					Mono<?> deflateMono = this.deflateAndProcess(tmpTup, resourcePath, clientCode, ovr);
+					Mono<?> cacheEviction = Mono.fromRunnable(() -> this.getFSService().evictCache(clientCode));
+
+					this.virtualThreadExecutor.submit(new FilesUploadDownloadRunnable(deflateMono, fud,
+							this.filesUploadDownloadService, cacheEviction));
+
+					return Mono.just(fud.getId());
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
 				.subscribeOn(Schedulers.boundedElastic());
 	}
@@ -987,6 +1022,9 @@ public abstract class AbstractFilesResourceService {
 	private Mono<Void> downloadFileByFileDetails(FileDetail fileDetail, DownloadOptions downloadOptions,
 			String resourcePath, ServerHttpRequest request, ServerHttpResponse response) {
 
+		if (fileDetail.isDirectory())
+			return Mono.empty();
+
 		long fileMillis = fileDetail.getLastModifiedTime();
 		String fileETag = new StringBuilder().append('"')
 				.append(fileDetail.getName().hashCode())
@@ -996,9 +1034,6 @@ public abstract class AbstractFilesResourceService {
 				.append(downloadOptions.eTagCode())
 				.append('"')
 				.toString();
-
-		if (fileDetail.isDirectory())
-			return downloadDirectory(downloadOptions, request, response, resourcePath, fileMillis, fileETag);
 
 		return makeMatchesStartDownload(downloadOptions, request, response, false, resourcePath, fileMillis,
 				fileETag);
@@ -1025,7 +1060,7 @@ public abstract class AbstractFilesResourceService {
 					FilesUploadDownloadDTO dto = new FilesUploadDownloadDTO();
 					dto.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
 
-					return this.filesUploadDownloadService.create(dto.setDone(false)
+					return this.filesUploadDownloadService.create(dto
 							.setClientCode(cc)
 							.setCdnUrl("_downloads/" + UniqueUtil.shortUUID() + ".zip")
 							.setPath(resourcePath)
@@ -1035,8 +1070,28 @@ public abstract class AbstractFilesResourceService {
 
 				(ca, cc, hasAccess, fud) -> {
 
+					Mono<FileDetail> taskMono = this.getFSService()
+							.getDirectoryAsArchive(
+									fud.getClientCode() + FileSystemService.R2_FILE_SEPARATOR_STRING + fud.getPath())
+							.flatMap(archive -> {
+
+								Path path = Paths.get(archive.getAbsolutePath());
+
+								int lastIndex = fud.getPath().lastIndexOf('/');
+								String name = fud.getPath().substring(lastIndex + 1);
+
+								lastIndex = fud.getCdnUrl().lastIndexOf('/');
+								String cdnFileName = fud.getCdnUrl().substring(lastIndex + 1);
+
+								String cdnPath = fud.getCdnUrl().substring(0, lastIndex);
+
+								return this.getFSService().createFileFromFile(fud.getClientCode(),
+										cdnPath, cdnFileName, path, true,
+										"attachment; filename=\"" + name + ".zip\"");
+							});
+
 					this.virtualThreadExecutor.submit(
-							new FilesDownloadRunnable(this.getFSService(), fud, this.filesUploadDownloadService));
+							new FilesUploadDownloadRunnable(taskMono, fud, this.filesUploadDownloadService));
 
 					return Mono.just(fud.getId());
 				}
@@ -1062,6 +1117,27 @@ public abstract class AbstractFilesResourceService {
 			virtualThreadExecutor.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
+	}
+
+	public Mono<Page<FilesUploadDownloadDTO>> listExportsImports(FilesUploadDownloadType type, String clientCode,
+			Pageable page) {
+
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> ca.isAuthenticated() ? Mono.just(ObjectUtils.firstNonNull(clientCode, ca.getClientCode()))
+						: Mono.empty(),
+
+				(ca, cc) -> this.filesUploadDownloadService.readPageFilter(page,
+						new ComplexCondition().setOperator(ComplexConditionOperator.AND).setConditions(List.of(
+
+								new FilterCondition().setField("clientCode").setValue(cc),
+								new FilterCondition().setField("type")
+										.setValue(type),
+								new FilterCondition().setField("resourceType").setValue(this.getResourceType()),
+								new FilterCondition().setField("createdBy").setValue(ca.getUser().getId()))))
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.listExports"));
 	}
 
 	public abstract FileSystemService getFSService();

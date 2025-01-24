@@ -7,6 +7,7 @@ package com.fincity.saas.files.jooq.tables;
 import com.fincity.saas.files.jooq.Files;
 import com.fincity.saas.files.jooq.Keys;
 import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadStatus;
 import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.fincity.saas.files.jooq.tables.records.FilesUploadDownloadRecord;
 
@@ -89,10 +90,16 @@ public class FilesUploadDownload extends TableImpl<FilesUploadDownloadRecord> {
     public final TableField<FilesUploadDownloadRecord, String> CDN_URL = createField(DSL.name("CDN_URL"), SQLDataType.VARCHAR(1024).nullable(false), this, "URL in the CDN");
 
     /**
-     * The column <code>files.files_upload_download.IS_DONE</code>. Flag to
-     * indicate if the ZIP is done
+     * The column <code>files.files_upload_download.STATUS</code>. Status of the
+     * process
      */
-    public final TableField<FilesUploadDownloadRecord, Byte> IS_DONE = createField(DSL.name("IS_DONE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to indicate if the ZIP is done");
+    public final TableField<FilesUploadDownloadRecord, FilesUploadDownloadStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(FilesUploadDownloadStatus.class), this, "Status of the process");
+
+    /**
+     * The column <code>files.files_upload_download.EXCEPTION</code>. Exception
+     * message if any
+     */
+    public final TableField<FilesUploadDownloadRecord, String> EXCEPTION = createField(DSL.name("EXCEPTION"), SQLDataType.CLOB, this, "Exception message if any");
 
     /**
      * The column <code>files.files_upload_download.CREATED_BY</code>. ID of the

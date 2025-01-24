@@ -21,9 +21,9 @@ public class FilesUploadDownloadDTO extends AbstractUpdatableDTO<ULong, ULong> {
 
     private FilesUploadDownloadType type;
     private FilesUploadDownloadResourceType resourceType;
-    private ULong userId;
     private String clientCode;
-    private String cdnUrl;
     private String path;
-    private boolean isDone;
+    private String cdnUrl;
+    private String status;
+    private String exception;
 }

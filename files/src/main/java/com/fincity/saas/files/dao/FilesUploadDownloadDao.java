@@ -4,8 +4,8 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
-import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.files.dto.FilesUploadDownloadDTO;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadStatus;
 import com.fincity.saas.files.jooq.tables.FilesUploadDownload;
 import com.fincity.saas.files.jooq.tables.records.FilesUploadDownloadRecord;
 
@@ -23,7 +23,16 @@ public class FilesUploadDownloadDao
     public Mono<Boolean> updateDone(ULong id) {
 
         return Mono.from(this.dslContext.update(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD)
-                .set(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD.IS_DONE, ByteUtil.ONE)
+                .set(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD.STATUS, FilesUploadDownloadStatus.DONE)
+                .where(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD.ID.eq(id)))
+                .map(count -> count == 1);
+    }
+
+    public Mono<Boolean> updateFailed(Throwable e, ULong id) {
+
+        return Mono.from(this.dslContext.update(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD)
+                .set(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD.STATUS, FilesUploadDownloadStatus.ERROR)
+                .set(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD.EXCEPTION, e.getMessage())
                 .where(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD.ID.eq(id)))
                 .map(count -> count == 1);
     }

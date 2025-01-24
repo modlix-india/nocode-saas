@@ -5,6 +5,7 @@ package com.fincity.saas.files.jooq.tables.records;
 
 
 import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadStatus;
 import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.fincity.saas.files.jooq.tables.FilesUploadDownload;
 
@@ -122,20 +123,37 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
     }
 
     /**
-     * Setter for <code>files.files_upload_download.IS_DONE</code>. Flag to
-     * indicate if the ZIP is done
+     * Setter for <code>files.files_upload_download.STATUS</code>. Status of the
+     * process
      */
-    public FilesUploadDownloadRecord setIsDone(Byte value) {
+    public FilesUploadDownloadRecord setStatus(FilesUploadDownloadStatus value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>files.files_upload_download.IS_DONE</code>. Flag to
-     * indicate if the ZIP is done
+     * Getter for <code>files.files_upload_download.STATUS</code>. Status of the
+     * process
      */
-    public Byte getIsDone() {
-        return (Byte) get(6);
+    public FilesUploadDownloadStatus getStatus() {
+        return (FilesUploadDownloadStatus) get(6);
+    }
+
+    /**
+     * Setter for <code>files.files_upload_download.EXCEPTION</code>. Exception
+     * message if any
+     */
+    public FilesUploadDownloadRecord setException(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>files.files_upload_download.EXCEPTION</code>. Exception
+     * message if any
+     */
+    public String getException() {
+        return (String) get(7);
     }
 
     /**
@@ -143,7 +161,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who created this row
      */
     public FilesUploadDownloadRecord setCreatedBy(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -152,7 +170,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -160,7 +178,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is created
      */
     public FilesUploadDownloadRecord setCreatedAt(LocalDateTime value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -169,7 +187,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -177,7 +195,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who updated this row
      */
     public FilesUploadDownloadRecord setUpdatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -186,7 +204,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -194,7 +212,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is updated
      */
     public FilesUploadDownloadRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -203,7 +221,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -229,7 +247,7 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
     /**
      * Create a detached, initialised FilesUploadDownloadRecord
      */
-    public FilesUploadDownloadRecord(ULong id, FilesUploadDownloadType type, FilesUploadDownloadResourceType resourceType, String clientCode, String path, String cdnUrl, Byte isDone, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public FilesUploadDownloadRecord(ULong id, FilesUploadDownloadType type, FilesUploadDownloadResourceType resourceType, String clientCode, String path, String cdnUrl, FilesUploadDownloadStatus status, String exception, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD);
 
         setId(id);
@@ -238,7 +256,8 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
         setClientCode(clientCode);
         setPath(path);
         setCdnUrl(cdnUrl);
-        setIsDone(isDone);
+        setStatus(status);
+        setException(exception);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
