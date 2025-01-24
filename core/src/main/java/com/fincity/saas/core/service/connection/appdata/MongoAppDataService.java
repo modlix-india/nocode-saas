@@ -60,7 +60,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Storage;
 import com.fincity.saas.core.document.Storage.StorageIndex;
-import com.fincity.saas.core.exception.StorageException;
+import com.fincity.saas.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.model.StorageRelation;
@@ -180,7 +180,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	private <T> Mono<T> mongoObjectNotFound(String messageId, Object... params) {
-		return this.msgService.throwMessage(msg -> new StorageException(HttpStatus.NOT_FOUND, msg), messageId, params);
+		return this.msgService.throwMessage(msg -> new StorageObjectNotFoundException(HttpStatus.NOT_FOUND, msg), messageId, params);
 	}
 
 	@Override

@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -132,11 +131,10 @@ public class AppDataService {
 	@Autowired
 	private Gson gson;
 
-	private final EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
+	private EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
 
 	private static final Logger logger = LoggerFactory.getLogger(AppDataService.class);
 
-	private static final String APP_DATA_CONNECTION = "appData";
 	private static final String DATA_OBJECT_KEY = "dataObject";
 	private static final String EXISTING_DATA_OBJECT_KEY = "existingDataObject";
 
@@ -153,7 +151,7 @@ public class AppDataService {
 	@PostConstruct
 	public void init() {
 
-		this.services.put(ConnectionSubType.MONGO, mongoAppDataService);
+		this.services.putAll(Map.of(ConnectionSubType.MONGO, (IAppDataService) mongoAppDataService));
 	}
 
 	public Mono<Map<String, Object>> create(String appCode, String clientCode, String storageName,
@@ -167,7 +165,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -202,7 +200,8 @@ public class AppDataService {
 	}
 
 	private Mono<Map<String, Object>> fillRelatedObjects(String appCode, String clientCode, Storage storage,
-			Map<String, Object> created, IAppDataService dataService, Connection conn, List<String> eagerFields) {
+			Map<String, Object> created, IAppDataService dataService, Connection conn,
+			List<String> eagerFields) {
 
 		if ((storage.getRelations() == null
 				|| storage.getRelations().isEmpty()) ||
@@ -226,13 +225,13 @@ public class AppDataService {
 							List<String> oldList = (List<String>) created.get(tuple.getT1());
 							created.put(tuple.getT1(),
 									tuple.getT3().stream().sorted(
-											Comparator.comparingInt(a -> oldList.indexOf(a.get("_id"))))
+											(a, b) -> oldList.indexOf(a.get("_id")) - oldList.indexOf(b.get("_id")))
 											.toList());
 						} else {
 							if (tuple.getT3().isEmpty())
 								created.remove(tuple.getT1());
 							else
-								created.put(tuple.getT1(), tuple.getT3().getFirst());
+								created.put(tuple.getT1(), tuple.getT3().get(0));
 						}
 					}
 
@@ -242,7 +241,8 @@ public class AppDataService {
 	}
 
 	private List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> prepareMonosForPage(
-			String appCode, String clientCode, Storage storage, IAppDataService dataService, Connection conn,
+			String appCode,
+			String clientCode, Storage storage, IAppDataService dataService, Connection conn,
 			List<String> eagerFields, Map<String, Object> created) {
 		List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> relationList = new ArrayList<>();
 
@@ -266,15 +266,17 @@ public class AppDataService {
 
 							storageObj -> dataService.readPageAsFlux(conn, storageObj, query).collectList()
 									.map(e -> Tuples.of(key, relation.getRelationType(), e)))
+
 			);
 		}
 		return relationList;
 	}
 
 	private Mono<Map<String, Object>> generateEvent(ContextAuthentication ca, String appCode, String clientCode,
-			Storage storage, String operation, Map<String, Object> data, Map<String, Object> existing) {
+			Storage storage,
+			String operation, Map<String, Object> data, Map<String, Object> existing) {
 
-		if (storage.getGenerateEvents() == null || !storage.getGenerateEvents())
+		if (storage.getGenerateEvents() == null || !storage.getGenerateEvents().booleanValue())
 			return Mono.just(data);
 
 		String eventName = "Storage." + storage.getName() + "." + operation;
@@ -367,7 +369,7 @@ public class AppDataService {
 					if (!StringUtil.safeIsBlank(map.get("_id")))
 						return dataService.checkifExists(conn, storage, map.get("_id").toString())
 								.flatMap(e -> {
-									if (Boolean.TRUE.equals(e))
+									if (e.booleanValue())
 										return Mono.just(Tuples.of(false, map.get("_id").toString()));
 
 									return this.msgService.throwMessage(
@@ -423,7 +425,7 @@ public class AppDataService {
 							List<String> ids = e.getValue().stream().map(RelationDataObject::getId).toList();
 							dob.put(e.getKey(), ids);
 						} else {
-							dob.put(e.getKey(), e.getValue().getFirst().getId());
+							dob.put(e.getKey(), e.getValue().get(0).getId());
 						}
 					}
 
@@ -443,13 +445,14 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				storage -> dataService.delete(conn, storage, id))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteCreatedRelatedObject"));
+
+				.contextWrite(
+						Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteCreatedRelatedObject"));
 	}
 
 	private Mono<DataObject> checkAndDeleteCreatedObjects(String appCode, String clientCode, Storage storage,
 			IAppDataService dataService, Connection conn, List<RelationDataObject> list,
 			List<RelationDataObject> errorObjects) {
-
 		List<RelationDataObject> createdList = list.stream()
 				.filter(e -> Objects.isNull(e.getException())).filter(RelationDataObject::isNew)
 				.toList();
@@ -457,9 +460,9 @@ public class AppDataService {
 		if (createdList.isEmpty())
 			return this.msgService.throwMessage(
 					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg,
-							errorObjects.getFirst().getException()),
+							errorObjects.get(0).getException()),
 					CoreMessageResourceService.INVALID_RELATION_DATA,
-					errorObjects.getFirst().getFieldName(), errorObjects.getFirst().getData().toString());
+					errorObjects.get(0).getFieldName(), errorObjects.get(0).getData().toString());
 
 		return Flux.fromIterable(createdList)
 				.flatMap(e -> this.deleteCreatedRelatedObject(appCode, clientCode, dataService, conn,
@@ -470,7 +473,7 @@ public class AppDataService {
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg,
 								errorObjects.get(0).getException()),
 						CoreMessageResourceService.INVALID_RELATION_DATA,
-						errorObjects.getFirst().getFieldName(), errorObjects.getFirst().getData().toString()));
+						errorObjects.get(0).getFieldName(), errorObjects.get(0).getData().toString()));
 	}
 
 	private List<Mono<RelationDataObject>> getRelationDataObjectList(String appCode, String clientCode, Storage storage,
@@ -536,7 +539,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -551,10 +554,12 @@ public class AppDataService {
 										override),
 
 								updatedDataObject -> this.updateWithTriggers(ac, cc, dataService, conn, storage,
-										updatedDataObject, override),
+										updatedDataObject,
+										override),
 
 								(updatedDataObject, e) -> this.generateEvent(ca, appCode, clientCode,
-										storage, "Update", e.getT1(), e.getT2().orElse(null))),
+										storage, "Update",
+										e.getT1(), e.getT2().orElse(null))),
 						Storage::getUpdateAuth, CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE),
 
 				(ca, ac, cc, conn, dataService, storage, updated) -> this.fillRelatedObjects(ac, cc, storage, updated,
@@ -566,7 +571,8 @@ public class AppDataService {
 	}
 
 	private Mono<DataObject> processRelationsForUpdate(String appCode, String clientCode, IAppDataService dataService,
-			Connection conn, Storage storage, DataObject dataObject, Boolean override) {
+			Connection conn,
+			Storage storage, DataObject dataObject, Boolean override) {
 
 		if (storage.getRelations() == null || storage.getRelations().isEmpty())
 			return Mono.just(dataObject);
@@ -641,7 +647,7 @@ public class AppDataService {
 							List<String> ids = e.getValue().stream().map(RelationDataObject::getId).toList();
 							dob.put(e.getKey(), ids);
 						} else {
-							dob.put(e.getKey(), e.getValue().getFirst().getId());
+							dob.put(e.getKey(), e.getValue().get(0).getId());
 						}
 					}
 
@@ -652,29 +658,30 @@ public class AppDataService {
 	}
 
 	private Mono<Tuple2<Map<String, Object>, Optional<Map<String, Object>>>> updateWithTriggers(String appCode,
-			String clientCode, IAppDataService dataService, Connection conn, Storage storage, DataObject dataObject,
-			Boolean override) {
+			String clientCode, IAppDataService dataService,
+			Connection conn, Storage storage,
+			DataObject dataObject, Boolean override) {
 
 		boolean noBeforeUpdate = storage.getTriggers() == null
 				|| storage.getTriggers().get(StorageTriggerType.BEFORE_UPDATE) == null
-				|| storage.getTriggers().get(StorageTriggerType.BEFORE_UPDATE).isEmpty();
+				|| storage.getTriggers().get(StorageTriggerType.BEFORE_UPDATE)
+						.isEmpty();
 
 		boolean noAfterUpdate = storage.getTriggers() == null
 				|| storage.getTriggers().get(StorageTriggerType.AFTER_UPDATE) == null
-				|| storage.getTriggers().get(StorageTriggerType.AFTER_UPDATE).isEmpty();
+				|| storage.getTriggers().get(StorageTriggerType.AFTER_UPDATE)
+						.isEmpty();
 
 		if (noBeforeUpdate && noAfterUpdate && !BooleanUtil.safeValueOf(storage.getGenerateEvents()))
-			return dataService.update(conn, storage, dataObject, override)
-					.onErrorResume(e -> Mono.just(Map.of()))
-					.map(e -> Tuples.of(e, Optional.empty()));
+			return dataService.update(conn, storage, dataObject, override).map(e -> Tuples.of(e, Optional.empty()));
 
 		String id = StringUtil.safeValueOf(dataObject.getData().get("_id"));
 
 		if (noBeforeUpdate && noAfterUpdate) {
+
 			return this.read(appCode, clientCode, storage.getName(), id, false, List.of())
-					.flatMap(existing -> dataService.update(conn, storage, dataObject, override)
-							.onErrorResume(e -> Mono.just(Map.of()))
-							.map(e -> Tuples.of(e, Optional.of(existing))));
+					.flatMap(existing -> dataService
+							.update(conn, storage, dataObject, override).map(e -> Tuples.of(e, Optional.of(existing))));
 		}
 
 		return FlatMapUtil.flatMapMono(
@@ -691,13 +698,13 @@ public class AppDataService {
 						return Mono.just(true);
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, this.gson.toJsonTree(dataObject.getData()),
-							EXISTING_DATA_OBJECT_KEY, this.gson.toJsonTree(existing));
+							EXISTING_DATA_OBJECT_KEY,
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_UPDATE, args);
 				},
 
-				(existing, beforeUpdate) -> dataService.update(conn, storage, dataObject, override)
-						.onErrorResume(e -> Mono.just(Map.of())),
+				(existing, beforeUpdate) -> dataService.update(conn, storage, dataObject, override),
 
 				(existing, beforeUpdate, updated) -> {
 
@@ -706,7 +713,8 @@ public class AppDataService {
 								Optional.of(existing)));
 
 					Map<String, JsonElement> args = Map.of(DATA_OBJECT_KEY, this.gson.toJsonTree(updated),
-							EXISTING_DATA_OBJECT_KEY, this.gson.toJsonTree(existing));
+							EXISTING_DATA_OBJECT_KEY,
+							this.gson.toJsonTree(existing));
 
 					return this.executeTriggers(storage, StorageTriggerType.AFTER_UPDATE, args)
 							.map(e -> Tuples.<Map<String, Object>, Optional<Map<String, Object>>>of(updated,
@@ -725,7 +733,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -756,7 +764,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -784,7 +792,7 @@ public class AppDataService {
 									.collectList(),
 
 							list -> Mono.just(PageableExecutionUtils.getPage(list, page.getPageable(),
-									page::getTotalElements)));
+									() -> page.getTotalElements())));
 				});
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
@@ -799,7 +807,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -815,7 +823,7 @@ public class AppDataService {
 								deleted -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage, id),
 
 								(deleted, e) -> {
-									if (e.getT2().isEmpty())
+									if (!e.getT2().isPresent())
 										return Mono.just(e.getT1());
 
 									return this.generateEvent(ca, appCode, clientCode, storage, "Delete",
@@ -827,35 +835,37 @@ public class AppDataService {
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.delete"));
 	}
 
-	public Mono<Long> deleteByFilter(String appCode, String clientCode, String storageName, Query query,
-			Boolean devMode) {
+	
+	public Mono<Long> deleteByFilter(String appCode, String clientCode, String storageName, Query query, Boolean devMode) {
 
-		Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
+        Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
 
-				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+                (ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+                (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
-				(ca, ac, cc, conn) -> Mono
-						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+                (ca, ac, cc, conn) -> Mono.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
 
-				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
-						.map(ObjectWithUniqueID::getObject),
+                (ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc).map(ObjectWithUniqueID::getObject),
 
-				(ca, ac, cc, conn, dataService, storage) -> this.<Long>genericOperation(storage,
+                (ca, ac, cc, conn, dataService, storage) -> this.<Long>genericOperation(storage,
 
-						(cona, hasAccess) -> dataService.deleteByFilter(conn, storage, query, devMode),
+                        (cona, hasAccess) -> dataService.deleteByFilter(conn, storage, query, devMode), 
 
-						Storage::getDeleteAuth, CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE),
+                        Storage::getDeleteAuth, CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE),
 
-				(ca, ac, cc, conn, dataService, storage, deletedCount) -> Mono.just(deletedCount));
+                (ca, ac, cc, conn, dataService, storage, deletedCount) -> {
 
-		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteByFilter"));
-	}
+                        return Mono.just(deletedCount);
+                });
+
+        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteByFilter"));
+    }
+	
 
 	private Mono<Boolean> deleteRelatedObjects(String appCode, String clientCode, IAppDataService dataService,
 			Connection conn, Storage storage, String id) {
@@ -900,7 +910,7 @@ public class AppDataService {
 					return Flux.fromIterable(restrictList).flatMap(e -> e).collectList().flatMap(lst -> {
 
 						List<Tuple3<Boolean, String, String>> errorList = lst.stream()
-								.filter(Tuple2::getT1).toList();
+								.filter(e -> e.getT1().booleanValue()).toList();
 
 						if (errorList.isEmpty())
 							return Mono.just(true);
@@ -938,7 +948,8 @@ public class AppDataService {
 	}
 
 	private Mono<Tuple2<Boolean, Optional<Map<String, Object>>>> deleteWithTriggers(String appCode, String clientCode,
-			IAppDataService dataService, Connection conn, Storage storage, String id) {
+			IAppDataService dataService,
+			Connection conn, Storage storage, String id) {
 
 		boolean noBeforeDelete = storage.getTriggers() == null
 				|| storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE) == null
@@ -1004,7 +1015,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1103,7 +1114,7 @@ public class AppDataService {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> connectionService.read(APP_DATA_CONNECTION, appCode, clientCode)
+				() -> connectionService.read("appData", appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject),
 
 				conn -> Mono
@@ -1115,6 +1126,7 @@ public class AppDataService {
 				(conn, dataService, storage) -> this
 						.genericOperation(storage, (ca, hasAccess) -> downloadTemplate(storage, fileType, "notghjin"),
 								Storage::getCreateAuth, CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE)
+
 						.switchIfEmpty(
 								this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 										CoreMessageResourceService.NOT_ABLE_TO_OPEN_FILE_ERROR)))
@@ -1133,7 +1145,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1229,14 +1241,19 @@ public class AppDataService {
 
 				(appSchemaRepo, rSchema) -> {
 
-					if (rSchema.getType().contains(SchemaType.OBJECT)) {
+					if (rSchema.getType()
+							.contains(SchemaType.OBJECT)) {
+
 						return getSchemaHeadersIfObject(prefix, storage, level, rSchema);
 
-					} else if (rSchema.getType().contains(SchemaType.ARRAY)) {
+					} else if (rSchema.getType()
+							.contains(SchemaType.ARRAY)) {
+
 						return getSchemaHeadersIfArray(prefix, storage, level, rSchema);
 					}
 
-					return Mono.just(Map.of(prefix, rSchema.getType().getAllowedSchemaTypes()));
+					return Mono.just(Map.of(prefix, rSchema.getType()
+							.getAllowedSchemaTypes()));
 				});
 	}
 
@@ -1262,7 +1279,7 @@ public class AppDataService {
 			return Flux.<Tuple2<Integer, Schema>>create(sink -> {
 				for (int i = 0; i < aType.getTupleSchema()
 						.size(); i++)
-					sink.next(Tuples.of(i, aType.getTupleSchema()
+					sink.next(Tuples.of(Integer.valueOf(i), aType.getTupleSchema()
 							.get(i)));
 
 				sink.complete();
@@ -1428,7 +1445,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1454,7 +1471,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
@@ -1479,7 +1496,7 @@ public class AppDataService {
 
 				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
 
-				(ca, ac, cc) -> connectionService.read(APP_DATA_CONNECTION, ac, cc, ConnectionType.APP_DATA),
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
 
 				(ca, ac, cc, conn) -> Mono
 						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
