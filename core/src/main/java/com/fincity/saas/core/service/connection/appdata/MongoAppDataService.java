@@ -797,13 +797,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	private void convertBisonId(Document document, String key) {
 		String id = document.getObjectId(key).toHexString();
-		this.removeBisonKey(document, key);
-		document.append(key, id);
-	}
-
-	private Document removeBisonKey(Document document, String key) {
 		document.remove(key);
-		return document;
+		document.append(key, id);
 	}
 
 	private Map<String, Object> updateDocWithIds(Storage storage, Document doc) {
