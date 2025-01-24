@@ -336,7 +336,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Override
 	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id) {
 
-		if (ObjectId.isValid(id))
+		if (!ObjectId.isValid(id))
 			return this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND,
 					storage.getName(), id);
 
@@ -394,7 +394,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Override
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id) {
 
-		if (ObjectId.isValid(id))
+		if (!ObjectId.isValid(id))
 			return this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND,
 					storage.getName(), id);
 
@@ -430,7 +430,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Override
 	public Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId) {
 
-		if (ObjectId.isValid(versionId))
+		if (!ObjectId.isValid(versionId))
 			return this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(),
 					versionId);
 
@@ -485,7 +485,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	@Override
 	public Mono<Boolean> checkifExists(Connection conn, Storage storage, String id) {
 
-		if (ObjectId.isValid(id))
+		if (!ObjectId.isValid(id))
 			return Mono.just(Boolean.FALSE);
 
 		BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
@@ -914,5 +914,4 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	private String getConnectionString(Connection conn) {
 		return "Connection : " + conn.getId();
 	}
-
 }
