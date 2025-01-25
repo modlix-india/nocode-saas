@@ -492,19 +492,16 @@ public abstract class AbstractFilesResourceService {
                         return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                             FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 
-                    if (fileParts == null) {
-                        return this.getFSService().createFolder(clientCode, resourcePath).map(Object.class::cast);
-                    }
-
                     return fileParts.flatMap(fp -> {
                         String fn = fileName == null ? fp.filename()
                             : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName);
 
                         return this.getFSService().createFilesFromFilePart(clientCode, resourcePath, fn, fp, ovr)
                             .map(d -> this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, d));
-                    }).collectList().map(e -> {
-                        if (e.size() > 1) return e;
-                        return e.getFirst();
+                    }).collectList().flatMap(e -> {
+                        if (e.isEmpty()) return this.getFSService().createFolder(clientCode, resourcePath)
+                            .map(Object.class::cast);
+                        return Mono.just(e.size() > 1 ? e : e.getFirst());
                     });
                 })
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
@@ -1064,6 +1061,11 @@ public abstract class AbstractFilesResourceService {
                     new FilterCondition().setField("createdBy").setValue(ca.getUser().getId()))))
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.listExports"));
+    }
+
+    public Mono<FileDetail> createDirectory(String clientCode, String uri) {
+        Tuple2<String, String> uriPath = this.resolvePathWithoutClientCode("directory", uri);
+        return this.getFSService().createFolder(clientCode, uriPath.getT1());
     }
 
     public abstract FileSystemService getFSService();
