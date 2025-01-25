@@ -97,33 +97,33 @@ public class FileSystemService {
             return Mono.just(true);
 
         return cacheService.cacheValueOrGet(CACHE_NAME_EXISTS + "-" + clientCode,
-                () -> this.fileSystemDao.exists(this.fileSystemType, clientCode, path),
-                path);
+            () -> this.fileSystemDao.exists(this.fileSystemType, clientCode, path),
+            path);
     }
 
     public Mono<Page<FileDetail>> list(String clientCode, String path, FileType[] fileType, String filter,
                                        Pageable page) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> {
+                () -> {
 
-                            if ((fileType != null && fileType.length > 0)
-                                    || !StringUtil.safeIsBlank(filter)
-                                    || (page.getSort() != null && (page.getSort().isEmpty() || page.getSort().isUnsorted()))
-                                    || page.getPageNumber() != 0
-                                    || page.getPageSize() != 200)
-                                return this.fileSystemDao.list(this.fileSystemType, clientCode, path, fileType, filter, page);
+                    if ((fileType != null && fileType.length > 0)
+                        || !StringUtil.safeIsBlank(filter)
+                        || (page.getSort().isEmpty() || page.getSort().isUnsorted())
+                        || page.getPageNumber() != 0
+                        || page.getPageSize() != 200)
+                        return this.fileSystemDao.list(this.fileSystemType, clientCode, path, fileType, filter, page);
 
-                            return cacheService.<FilesPage>cacheValueOrGet(CACHE_NAME_LIST + "-" + clientCode,
-                                    () -> this.fileSystemDao.list(this.fileSystemType, clientCode, path, null, null, page),
-                                    path);
-                        },
-                        filesPage -> Mono
-                                .just(PageableExecutionUtils.getPage(
-                                        filesPage.content().stream().map(FileDetail::clone).toList(), page,
-                                        filesPage::totalElements)))
-                .switchIfEmpty(Mono.just(PageableExecutionUtils.getPage(new ArrayList<>(), page, () -> 0l)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, SERVICE_NAME_PREFIX + this.bucketName + ").list"));
+                    return cacheService.<FilesPage>cacheValueOrGet(CACHE_NAME_LIST + "-" + clientCode,
+                        () -> this.fileSystemDao.list(this.fileSystemType, clientCode, path, null, null, page),
+                        path);
+                },
+                filesPage -> Mono
+                    .just(PageableExecutionUtils.getPage(
+                        filesPage.content().stream().map(FileDetail::clone).toList(), page,
+                        filesPage::totalElements)))
+            .switchIfEmpty(Mono.just(PageableExecutionUtils.getPage(new ArrayList<>(), page, () -> 0l)))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, SERVICE_NAME_PREFIX + this.bucketName + ").list"));
     }
 
     public Mono<FileDetail> getFileDetail(String path) {
@@ -141,7 +141,7 @@ public class FileSystemService {
             return Mono.just(new FileDetail().setFileName("").setDirectory(true));
 
         return cacheService.cacheValueOrGet(CACHE_NAME_GET_DETAIL + "-" + clientCode,
-                () -> this.fileSystemDao.getFileDetail(this.fileSystemType, clientCode, path), path);
+            () -> this.fileSystemDao.getFileDetail(this.fileSystemType, clientCode, path), path);
     }
 
     public Mono<File> getAsFile(String path) {
@@ -159,10 +159,10 @@ public class FileSystemService {
                 fileName = pathParts[pathParts.length - 2];
             Path filePath = folder.resolve(fileName);
             return Mono.fromFuture(s3Client.getObject(GetObjectRequest.builder().bucket(bucketName).key(path).build(),
-                    AsyncResponseTransformer.toFile(filePath))).thenReturn(filePath.toFile());
+                AsyncResponseTransformer.toFile(filePath))).thenReturn(filePath.toFile());
         } catch (IOException ex) {
             return Mono.error(
-                    new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to download file : " + path, ex));
+                new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to download file : " + path, ex));
         }
     }
 
@@ -171,7 +171,7 @@ public class FileSystemService {
             return Mono.empty();
 
         folderPath = folderPath.endsWith(R2_FILE_SEPARATOR_STRING) ? folderPath
-                : (folderPath + R2_FILE_SEPARATOR_STRING);
+            : (folderPath + R2_FILE_SEPARATOR_STRING);
         if (folderPath.startsWith(R2_FILE_SEPARATOR_STRING))
             folderPath = folderPath.substring(1);
 
@@ -181,45 +181,45 @@ public class FileSystemService {
             Path filePath = folder.resolve("directory.zip");
 
             return Flux.from(s3Client.listObjectsV2Paginator(
-                            ListObjectsV2Request.builder().bucket(bucketName)
-                                    .prefix(relPath)
-                                    .build()))
-                    .flatMap(e -> Flux.fromIterable(e.contents()))
-                    .index()
-                    .flatMap(e -> Mono
-                            .fromFuture(s3Client.getObject(
-                                    GetObjectRequest.builder().bucket(bucketName).key(e.getT2().key()).build(),
-                                    AsyncResponseTransformer.toFile
-                                            (folder.resolve(e.getT1().toString()))))
-                            .map(resp -> e), 5)
-                    .buffer(20)
-                    .flatMap(lst -> {
+                    ListObjectsV2Request.builder().bucket(bucketName)
+                        .prefix(relPath)
+                        .build()))
+                .flatMap(e -> Flux.fromIterable(e.contents()))
+                .index()
+                .flatMap(e -> Mono
+                    .fromFuture(s3Client.getObject(
+                        GetObjectRequest.builder().bucket(bucketName).key(e.getT2().key()).build(),
+                        AsyncResponseTransformer.toFile
+                            (folder.resolve(e.getT1().toString()))))
+                    .map(resp -> e), 5)
+                .buffer(20)
+                .flatMap(lst -> {
 
-                        logger.info("lst : {}", lst);
+                    logger.info("lst : {}", lst);
 
-                        int index = relPath.length();
-                        if (relPath.endsWith(R2_FILE_SEPARATOR_STRING))
-                            index--;
+                    int index = relPath.length();
+                    if (relPath.endsWith(R2_FILE_SEPARATOR_STRING))
+                        index--;
 
-                        try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + filePath.toUri().toString()),
-                                Map.of("create", "true"));) {
-                            for (Tuple2<Long, S3Object> tup : lst) {
-                                Path here = fs.getPath(tup.getT2().key().substring(index));
-                                Files.createDirectories(here.getParent());
-                                Files.copy(folder.resolve(tup.getT1().toString()), here, StandardCopyOption.REPLACE_EXISTING);
-                            }
-
-                            return Mono.just(true);
-                        } catch (IOException ex) {
-                            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                    "Failed to download directory : " + relPath, ex);
+                    try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + filePath.toUri().toString()),
+                        Map.of("create", "true"));) {
+                        for (Tuple2<Long, S3Object> tup : lst) {
+                            Path here = fs.getPath(tup.getT2().key().substring(index));
+                            Files.createDirectories(here.getParent());
+                            Files.copy(folder.resolve(tup.getT1().toString()), here, StandardCopyOption.REPLACE_EXISTING);
                         }
-                    }).subscribeOn(Schedulers.boundedElastic())
-                    .then(Mono.just(filePath.toFile()));
+
+                        return Mono.just(true);
+                    } catch (IOException ex) {
+                        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Failed to download directory : " + relPath, ex);
+                    }
+                }).subscribeOn(Schedulers.boundedElastic())
+                .then(Mono.just(filePath.toFile()));
         } catch (IOException ex) {
             return Mono.error(
-                    new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-                            "Failed to download directory : " + folderPath, ex));
+                new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to download directory : " + folderPath, ex));
         }
     }
 
@@ -239,22 +239,22 @@ public class FileSystemService {
         String finPath = folderPath;
 
         return Flux.from(s3Client.listObjectsV2Paginator(
-                        ListObjectsV2Request.builder().bucket(bucketName)
-                                .prefix(path)
-                                .build()))
-                .flatMap(e -> Flux.fromIterable(e.contents()))
-                .flatMap(e -> Mono.fromFuture(
-                        s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(e.key()).build())))
-                .then(Mono.just(true))
-                .flatMap(e -> this.fileSystemDao.deleteFile(this.fileSystemType, clientCode, finPath))
-                .flatMap(this.evictCache(clientCode));
+                ListObjectsV2Request.builder().bucket(bucketName)
+                    .prefix(path)
+                    .build()))
+            .flatMap(e -> Flux.fromIterable(e.contents()))
+            .flatMap(e -> Mono.fromFuture(
+                s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(e.key()).build())))
+            .then(Mono.just(true))
+            .flatMap(e -> this.fileSystemDao.deleteFile(this.fileSystemType, clientCode, finPath))
+            .flatMap(this.evictCache(clientCode));
     }
 
-    public Mono<FileDetail> createFileFromFilePart(String clientCode, String path, String fileName, FilePart fp,
-                                                   boolean override) {
+    public Mono<FileDetail> createFilesFromFilePart(String clientCode, String path, String fileName, FilePart fp,
+                                                    boolean override) {
 
         Flux<ByteBuffer> byteBuffer = fp.content().flatMapSequential(
-                dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
+            dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
 
         return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override, "inline");
     }
@@ -263,7 +263,7 @@ public class FileSystemService {
                                                          Flux<DataBuffer> dataBuffer, boolean override) {
 
         Flux<ByteBuffer> byteBuffer = dataBuffer.flatMapSequential(
-                d -> Flux.fromIterable(d::readableByteBuffers));
+            d -> Flux.fromIterable(d::readableByteBuffers));
 
         return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override, "inline");
     }
@@ -272,12 +272,12 @@ public class FileSystemService {
                                                boolean override, String contentDisposition) {
 
         Flux<ByteBuffer> byteBuffer = DataBufferUtils.readAsynchronousFileChannel(
-                () -> AsynchronousFileChannel.open(file, StandardOpenOption.READ),
-                DefaultDataBufferFactory.sharedInstance,
-                4096).flatMapSequential(
-                dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
+            () -> AsynchronousFileChannel.open(file, StandardOpenOption.READ),
+            DefaultDataBufferFactory.sharedInstance,
+            4096).flatMapSequential(
+            dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
         return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override,
-                contentDisposition);
+            contentDisposition);
     }
 
     public Mono<FileDetail> createFileFromFile(String clientCode, String path, String fileName, Path file,
@@ -293,91 +293,91 @@ public class FileSystemService {
 
         return FlatMapUtil.flatMapMono(
 
-                        () -> this.exists(clientCode, filePath),
+                () -> this.exists(clientCode, filePath),
 
-                        exists -> {
-                            Mono<Long> length = byteBuffer.reduce(0L, (acc, bb) -> acc + bb.remaining());
-                            byteBuffer.repeat();
-                            return length;
-                        },
+                exists -> {
+                    Mono<Long> length = byteBuffer.reduce(0L, (acc, bb) -> acc + bb.remaining());
+                    byteBuffer.repeat();
+                    return length;
+                },
 
-                        (exists, length) -> {
-                            if (BooleanUtil.safeValueOf(exists) && !override)
-                                return this.getFileDetail(clientCode, filePath);
+                (exists, length) -> {
+                    if (BooleanUtil.safeValueOf(exists) && !override)
+                        return this.getFileDetail(clientCode, filePath);
 
-                            String key = clientCode;
+                    String key = clientCode;
 
-                            if (filePath.startsWith(R2_FILE_SEPARATOR_STRING))
-                                key += filePath;
-                            else
-                                key += R2_FILE_SEPARATOR_STRING + filePath;
+                    if (filePath.startsWith(R2_FILE_SEPARATOR_STRING))
+                        key += filePath;
+                    else
+                        key += R2_FILE_SEPARATOR_STRING + filePath;
 
-                            String mimeType = URLConnection.guessContentTypeFromName(fileName);
+                    String mimeType = URLConnection.guessContentTypeFromName(fileName);
 
-                            return Mono.fromFuture(s3Client.putObject(
-                                            PutObjectRequest.builder()
-                                                    .bucket(bucketName)
-                                                    .contentLength(length)
-                                                    .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)
-                                                    .contentDisposition(contentDisposition)
-                                                    .key(key)
-                                                    .build(),
-                                            AsyncRequestBody.fromPublisher(byteBuffer)))
-                                    .then(this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
-                                            fileName, ULong.valueOf(length),
-                                            exists && override))
-                                    .flatMap(this.evictCache(clientCode));
-                        })
-                .flatMap(this.evictCache(clientCode))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        SERVICE_NAME_PREFIX + this.bucketName + ").createFileFromFluxDataBuffer"));
+                    return Mono.fromFuture(s3Client.putObject(
+                            PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .contentLength(length)
+                                .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)
+                                .contentDisposition(contentDisposition)
+                                .key(key)
+                                .build(),
+                            AsyncRequestBody.fromPublisher(byteBuffer)))
+                        .then(this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
+                            fileName, ULong.valueOf(length),
+                            exists && override))
+                        .flatMap(this.evictCache(clientCode));
+                })
+            .flatMap(this.evictCache(clientCode))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                SERVICE_NAME_PREFIX + this.bucketName + ").createFileFromFluxDataBuffer"));
     }
 
     public Mono<Boolean> createFileForZipUpload(String clientCode, ULong folderId, String path, Path file,
                                                 boolean override) {
 
         return FlatMapUtil.<Boolean, software.amazon.awssdk.services.s3.model.PutObjectResponse, Boolean>flatMapMonoWithNull(
-                        () -> this.exists(clientCode, path),
+                () -> this.exists(clientCode, path),
 
-                        exists -> {
-                            if (BooleanUtil.safeValueOf(exists) && !override)
-                                return Mono.empty();
+                exists -> {
+                    if (BooleanUtil.safeValueOf(exists) && !override)
+                        return Mono.empty();
 
-                            return Mono.fromFuture(s3Client.putObject(
-                                    PutObjectRequest.builder()
-                                            .bucket(bucketName)
-                                            .contentDisposition(
-                                                    "attachment; filename=\"" + file.getFileName().toString() + "\"")
-                                            .key((clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"))
-                                            .build(),
-                                    AsyncRequestBody.fromFile(file)));
-                        },
+                    return Mono.fromFuture(s3Client.putObject(
+                        PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .contentDisposition(
+                                "attachment; filename=\"" + file.getFileName().toString() + "\"")
+                            .key((clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"))
+                            .build(),
+                        AsyncRequestBody.fromFile(file)));
+                },
 
-                        (exits, response) -> {
-                            if (response == null)
-                                return Mono.just(true);
+                (exits, response) -> {
+                    if (response == null)
+                        return Mono.just(true);
 
-                            long fileLength = 0l;
+                    long fileLength = 0l;
 
-                            try {
-                                fileLength = Files.size(file);
-                            } catch (IOException ex) {
-                                logger.error("Failed to get file size : {}", file.getFileName(), ex);
-                            }
+                    try {
+                        fileLength = Files.size(file);
+                    } catch (IOException ex) {
+                        logger.error("Failed to get file size : {}", file.getFileName(), ex);
+                    }
 
-                            return this.fileSystemDao
-                                    .createOrUpdateFileForZipUpload(this.fileSystemType, clientCode, folderId, path,
-                                            file.getFileName().toString(), ULong.valueOf(fileLength));
-                        })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        SERVICE_NAME_PREFIX + this.bucketName + ").createFileForZipUpload"));
+                    return this.fileSystemDao
+                        .createOrUpdateFileForZipUpload(this.fileSystemType, clientCode, folderId, path,
+                            file.getFileName().toString(), ULong.valueOf(fileLength));
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                SERVICE_NAME_PREFIX + this.bucketName + ").createFileForZipUpload"));
     }
 
     public <T> Function<T, Mono<T>> evictCache(String clientCode) {
         return (T t) -> this.cacheService.evictAll(CACHE_NAME_EXISTS + "-" + clientCode)
-                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_GET_DETAIL + "-" + clientCode))
-                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_LIST + "-" + clientCode))
-                .map(e -> t);
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_GET_DETAIL + "-" + clientCode))
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_LIST + "-" + clientCode))
+            .map(e -> t);
     }
 
     public Mono<FileDetail> createFolder(String clientCode, String path) {
@@ -400,18 +400,18 @@ public class FileSystemService {
         }
 
         return Flux.fromIterable(paths)
-                .flatMapSequential(e -> this.fileSystemDao.getId(this.fileSystemType, clientCode, e)
-                        .map(opId -> Tuples.of(e, opId)))
-                .flatMap(tup -> {
-                    if (tup.getT2().isPresent())
-                        return Mono.just(tup.mapT2(Optional::get));
-                    return this.fileSystemDao.createFolder(this.fileSystemType, clientCode, tup.getT1())
-                            .map(id -> Tuples.of(tup.getT1(), id));
-                }).collectList().flatMap(lst -> {
-                    if (lst.isEmpty())
-                        return Mono.empty();
-                    return this.fileSystemDao.getFileDetail(this.fileSystemType, clientCode, path);
-                });
+            .flatMapSequential(e -> this.fileSystemDao.getId(this.fileSystemType, clientCode, e)
+                .map(opId -> Tuples.of(e, opId)))
+            .flatMap(tup -> {
+                if (tup.getT2().isPresent())
+                    return Mono.just(tup.mapT2(Optional::get));
+                return this.fileSystemDao.createFolder(this.fileSystemType, clientCode, tup.getT1())
+                    .map(id -> Tuples.of(tup.getT1(), id));
+            }).collectList().flatMap(lst -> {
+                if (lst.isEmpty())
+                    return Mono.empty();
+                return this.fileSystemDao.getFileDetail(this.fileSystemType, clientCode, path);
+            });
     }
 
     public Mono<Map<String, ULong>> createFolders(String clientCode, List<String> paths) {

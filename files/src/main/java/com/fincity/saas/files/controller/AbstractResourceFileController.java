@@ -79,8 +79,8 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
     }
 
     @PostMapping("/**")
-    public Mono<ResponseEntity<FileDetail>> create(
-        @RequestPart(name = "file", required = false) Mono<FilePart> filePart,
+    public Mono<ResponseEntity<Object>> create(
+        @RequestPart(name = "file", required = false) Flux<FilePart> fileParts,
         @RequestParam(required = false) String clientCode,
         @RequestPart(required = false, name = "override") String override,
         @RequestPart(required = false, name = "name") String fileName, ServerHttpRequest request) {
@@ -89,13 +89,11 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> filePart,
-
-                (ca, fp) -> this.service.create(
+                ca -> this.service.create(
                     CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
                     request.getPath()
                         .toString(),
-                    fp, fileName, override != null ? BooleanUtil.safeValueOf(override)
+                    fileParts, fileName, override != null ? BooleanUtil.safeValueOf(override)
                         : null))
             .map(ResponseEntity::ok)
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.create"));
