@@ -68,6 +68,17 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.delete"));
     }
 
+    @PostMapping("/directory/**")
+    public Mono<ResponseEntity<FileDetail>> createDirectory(@RequestParam(required = false) String clientCode, ServerHttpRequest request) {
+        return FlatMapUtil.flatMapMonoWithNull(
+
+            SecurityContextUtil::getUsersContextAuthentication,
+
+            ca -> this.service.createDirectory(CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()), request.getPath()
+                .toString()).map(ResponseEntity::ok)
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractResourceFileController.createDirectory"));
+    }
+
     @PostMapping("/**")
     public Mono<ResponseEntity<Object>> create(
         @RequestPart(name = "file", required = false) Flux<FilePart> fileParts,
