@@ -13,6 +13,7 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
+import com.fincity.saas.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.core.model.DataObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.common.reflect.TypeToken;
@@ -145,11 +146,15 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
 		DataObject dataObject = new DataObject().setData(updatableDataObject);
 
-		return appDataService.update(StringUtil.isNullOrBlank(appCode) ? null : appCode,
-				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObject, !isPartial, eager,
-				eagerFields)
+		return appDataService
+				.update(StringUtil.isNullOrBlank(appCode) ? null : appCode,
+						StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObject, !isPartial,
+						eager, eagerFields)
+				.onErrorResume(exception -> exception instanceof StorageObjectNotFoundException ? Mono.just(Map.of())
+						: Mono.error(exception))
 				.map(updatedObject -> new FunctionOutput(
-						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(updatedObject))))));
+						List.of(EventResult.outputOf(
+								Map.of(EVENT_RESULT, gson.toJsonTree(updatedObject))))));
 	}
 
 }

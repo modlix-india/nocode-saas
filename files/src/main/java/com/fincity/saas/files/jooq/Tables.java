@@ -7,6 +7,7 @@ package com.fincity.saas.files.jooq;
 import com.fincity.saas.files.jooq.tables.FilesAccessPath;
 import com.fincity.saas.files.jooq.tables.FilesFileSystem;
 import com.fincity.saas.files.jooq.tables.FilesSecuredAccessKeys;
+import com.fincity.saas.files.jooq.tables.FilesUploadDownload;
 
 
 /**
@@ -29,4 +30,9 @@ public class Tables {
      * The table <code>files.files_secured_access_keys</code>.
      */
     public static final FilesSecuredAccessKeys FILES_SECURED_ACCESS_KEYS = FilesSecuredAccessKeys.FILES_SECURED_ACCESS_KEYS;
+
+    /**
+     * The table <code>files.files_upload_download</code>.
+     */
+    public static final FilesUploadDownload FILES_UPLOAD_DOWNLOAD = FilesUploadDownload.FILES_UPLOAD_DOWNLOAD;
 }

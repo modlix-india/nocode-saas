@@ -15,6 +15,7 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutio
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -46,7 +47,7 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 	private final Gson gson;
 
 	public DeleteStorageObjectWithFilter(AppDataService appDataService, ObjectMapper mapper, Gson gson) {
-		
+
 		this.appDataService = appDataService;
 		this.mapper = mapper;
 		this.gson = gson;
@@ -55,7 +56,8 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 	@Override
 	public FunctionSignature getSignature() {
 
-		Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_RESULT, Schema.ofInteger(EVENT_RESULT)));
+		Event event = new Event().setName(Event.OUTPUT)
+				.setParameters(Map.of(EVENT_RESULT, Schema.ofLong(EVENT_RESULT)));
 
 		Event errorEvent = new Event().setName(Event.ERROR)
 				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
@@ -76,7 +78,7 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
 						CLIENT_CODE,
 						Parameter.of(CLIENT_CODE, Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))))
-						
+
 				.setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
 	}
 
@@ -97,23 +99,17 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
 		boolean devMode = context.getArguments().get(DEV_MODE).getAsBoolean();
 
-		AbstractCondition absc = null;
+		AbstractCondition condition = filter.isEmpty() ? null :
+				this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
 
-		if (filter.size() != 0) {
-			absc = this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
-		}
-
-		Query dsq = new Query().setExcludeFields(false).setFields(List.of()).setCondition(absc);
+		Query dsq = new Query().setExcludeFields(false).setFields(List.of()).setCondition(condition);
 
 		return this.appDataService.deleteByFilter(StringUtil.isNullOrBlank(appCode) ? null : appCode,
-
 				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dsq, devMode)
-				.map(deletedCount -> {
-
-					Map<String, Object> result = Map.of("deletedCount", deletedCount);
-
-					return new FunctionOutput(
-							List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(result)))));
-				});
+				.onErrorResume(exception -> exception instanceof StorageObjectNotFoundException ? Mono.just(0L)
+						: Mono.error(exception))
+				.map(deletedCount -> new FunctionOutput(
+						List.of(EventResult.outputOf(
+								Map.of(EVENT_RESULT, gson.toJsonTree(Map.of("deletedCount", deletedCount)))))));
 	}
 }

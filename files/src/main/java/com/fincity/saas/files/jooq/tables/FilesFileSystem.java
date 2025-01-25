@@ -9,6 +9,7 @@ import com.fincity.saas.files.jooq.Indexes;
 import com.fincity.saas.files.jooq.Keys;
 import com.fincity.saas.files.jooq.enums.FilesFileSystemFileType;
 import com.fincity.saas.files.jooq.enums.FilesFileSystemType;
+import com.fincity.saas.files.jooq.tables.FilesFileSystem.FilesFileSystemPath;
 import com.fincity.saas.files.jooq.tables.records.FilesFileSystemRecord;
 
 import java.time.LocalDateTime;
@@ -18,11 +19,15 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -149,6 +154,39 @@ public class FilesFileSystem extends TableImpl<FilesFileSystemRecord> {
         this(DSL.name("files_file_system"), null);
     }
 
+    public <O extends Record> FilesFileSystem(Table<O> path, ForeignKey<O, FilesFileSystemRecord> childPath, InverseForeignKey<O, FilesFileSystemRecord> parentPath) {
+        super(path, childPath, parentPath, FILES_FILE_SYSTEM);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class FilesFileSystemPath extends FilesFileSystem implements Path<FilesFileSystemRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> FilesFileSystemPath(Table<O> path, ForeignKey<O, FilesFileSystemRecord> childPath, InverseForeignKey<O, FilesFileSystemRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private FilesFileSystemPath(Name alias, Table<FilesFileSystemRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public FilesFileSystemPath as(String alias) {
+            return new FilesFileSystemPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public FilesFileSystemPath as(Name alias) {
+            return new FilesFileSystemPath(alias, this);
+        }
+
+        @Override
+        public FilesFileSystemPath as(Table<?> alias) {
+            return new FilesFileSystemPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Files.FILES;
@@ -156,7 +194,7 @@ public class FilesFileSystem extends TableImpl<FilesFileSystemRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_NAME, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_TYPE_FILE_TYPE, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_TYPE_FILE_TYPE_PARENT_ID);
+        return Arrays.asList(Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_NAME, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_TYPE_FILE_TYPE, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_TYPE_FILE_TYPE_PARENT_ID, Indexes.FILES_FILE_SYSTEM_PARENT_ID);
     }
 
     @Override
@@ -167,6 +205,24 @@ public class FilesFileSystem extends TableImpl<FilesFileSystemRecord> {
     @Override
     public UniqueKey<FilesFileSystemRecord> getPrimaryKey() {
         return Keys.KEY_FILES_FILE_SYSTEM_PRIMARY;
+    }
+
+    @Override
+    public List<ForeignKey<FilesFileSystemRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FILES_FILE_SYSTEM_IBFK_1);
+    }
+
+    private transient FilesFileSystemPath _filesFileSystem;
+
+    /**
+     * Get the implicit join path to the <code>files.files_file_system</code>
+     * table.
+     */
+    public FilesFileSystemPath filesFileSystem() {
+        if (_filesFileSystem == null)
+            _filesFileSystem = new FilesFileSystemPath(this, Keys.FILES_FILE_SYSTEM_IBFK_1, null);
+
+        return _filesFileSystem;
     }
 
     @Override

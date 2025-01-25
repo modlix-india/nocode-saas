@@ -238,7 +238,6 @@ public class OtpService extends AbstractJOOQUpdatableDataService<SecurityOtpReco
 		return this.messageService.sendOtpMessage(
 				request.getPhoneNumber(),
 				new OtpMessageVars()
-						.setAppName(request.getAppName())
 						.setOtpCode(otp)
 						.setOtpPurpose(request.getPurpose())
 						.setExpireInterval(expireInterval))
