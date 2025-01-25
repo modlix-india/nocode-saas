@@ -1,37 +1,27 @@
 package com.fincity.saas.files.controller;
 
-import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.http.codec.multipart.FormFieldPart;
-import org.springframework.http.codec.multipart.Part;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.web.bind.annotation.*;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.FileType;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.files.dto.FilesUploadDownloadDTO;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.fincity.saas.files.model.DownloadOptions;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.service.AbstractFilesResourceService;
-
+import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
-
-import com.fincity.saas.files.dto.FilesUploadDownloadDTO;
-import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
-
-import java.time.Duration;
-import java.util.List;
 
 public abstract class AbstractResourceFileController<T extends AbstractFilesResourceService> {
 
@@ -121,12 +111,12 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
     @PostMapping("/import/**")
     public Mono<ResponseEntity<ULong>> createWithZip(
-        @RequestPart(name = "file", required = true) Mono<FilePart> filePart,
+        @RequestPart(name = "file") Mono<FilePart> filePart,
         @RequestParam(required = false) String clientCode,
         @RequestPart(required = false, name = "override") String override, ServerHttpRequest request) {
 
         // Default value is true
-        final boolean overrideValue = override == null ? true : BooleanUtil.safeValueOf(override); // NOSONAR
+        final boolean overrideValue = override == null || BooleanUtil.safeValueOf(override);
 
         return FlatMapUtil.flatMapMonoWithNull(
 
@@ -154,8 +144,7 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
     @GetMapping("/exports")
     public Mono<ResponseEntity<Page<FilesUploadDownloadDTO>>> listExports(Pageable page,
-                                                                          @RequestParam(required = false) String clientCode,
-                                                                          ServerHttpRequest request) {
+                                                                          @RequestParam(required = false) String clientCode) {
 
         return this.service.listExportsImports(FilesUploadDownloadType.DOWNLOAD, clientCode, page)
             .map(ResponseEntity::ok);
@@ -163,10 +152,10 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
 
     @GetMapping("/imports")
     public Mono<ResponseEntity<Page<FilesUploadDownloadDTO>>> listExportsImports(Pageable page,
-                                                                                 @RequestParam(required = false) String clientCode,
-                                                                                 ServerHttpRequest request) {
+                                                                                 @RequestParam(required = false) String clientCode) {
 
         return this.service.listExportsImports(FilesUploadDownloadType.UPLOAD, clientCode, page)
             .map(ResponseEntity::ok);
     }
 }
+
