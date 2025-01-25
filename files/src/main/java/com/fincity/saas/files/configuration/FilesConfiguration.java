@@ -14,33 +14,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
-import org.springframework.http.codec.ServerCodecConfigurer;
-import org.springframework.http.codec.json.Jackson2JsonDecoder;
-import org.springframework.http.codec.json.Jackson2JsonEncoder;
-import org.springframework.http.codec.multipart.MultipartHttpMessageReader;
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
-import org.springframework.web.reactive.config.EnableWebFlux;
-import org.springframework.web.reactive.config.WebFluxConfigurer;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.client.config.SdkClientOption;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
-
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 
 @Configuration
 public class FilesConfiguration extends AbstractJooqBaseConfiguration
@@ -129,17 +119,4 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
     protected int getInMemorySize() {
         return 500 * 1024 * 1024;
     }
-
-    //    @Override
-//    public void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
-//
-//        MultipartHttpMessageReader multipartReader = new MultipartHttpMessageReader(configurer.getReaders());
-//
-//        // Set the maximum in-memory size for multipart files (10MB in this case)
-//        multipartReader.setMaxInMemorySize(10 * 1024 * 1024); // 10 MB for in-memory buffer
-//        multipartReader.setStreaming(true); // Enable streaming for large files
-//
-//        configurer.defaultCodecs().
-//            super.configureHttpMessageCodecs(configurer);
-//    }
 }

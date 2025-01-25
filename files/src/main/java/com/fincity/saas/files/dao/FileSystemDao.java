@@ -1,6 +1,6 @@
 package com.fincity.saas.files.dao;
 
-import static com.fincity.saas.files.jooq.tables.FilesFileSystem.*;
+import static com.fincity.saas.files.jooq.tables.FilesFileSystem.FILES_FILE_SYSTEM;
 import static com.fincity.saas.files.service.FileSystemService.*;
 
 import java.time.Duration;
