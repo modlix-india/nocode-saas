@@ -1,0 +1,2 @@
+ALTER TABLE `files`.`files_upload_download`
+    CHANGE COLUMN `CDN_URL` `CDN_URL` VARCHAR(1024) NULL DEFAULT NULL COMMENT 'URL in the CDN' ;

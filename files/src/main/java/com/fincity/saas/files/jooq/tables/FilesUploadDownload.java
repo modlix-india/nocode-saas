@@ -87,7 +87,7 @@ public class FilesUploadDownload extends TableImpl<FilesUploadDownloadRecord> {
      * The column <code>files.files_upload_download.CDN_URL</code>. URL in the
      * CDN
      */
-    public final TableField<FilesUploadDownloadRecord, String> CDN_URL = createField(DSL.name("CDN_URL"), SQLDataType.VARCHAR(1024).nullable(false), this, "URL in the CDN");
+    public final TableField<FilesUploadDownloadRecord, String> CDN_URL = createField(DSL.name("CDN_URL"), SQLDataType.VARCHAR(1024), this, "URL in the CDN");
 
     /**
      * The column <code>files.files_upload_download.STATUS</code>. Status of the
