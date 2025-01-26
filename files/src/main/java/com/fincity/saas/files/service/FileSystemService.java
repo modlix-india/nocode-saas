@@ -285,10 +285,7 @@ public class FileSystemService {
 
                 () -> this.exists(clientCode, filePath),
 
-                exists -> {
-                    Mono<Long> length = byteBuffer.reduce(0L, (acc, bb) -> acc + bb.remaining());
-                    return byteBuffer.repeat().then(length);
-                },
+                exists -> byteBuffer.reduce(0L, (acc, bb) -> acc + bb.remaining()),
 
                 (exists, length) -> {
                     if (BooleanUtil.safeValueOf(exists) && !override)
