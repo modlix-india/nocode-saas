@@ -1,16 +1,12 @@
 package com.fincity.saas.files.dao;
 
-import static com.fincity.saas.files.jooq.tables.FilesFileSystem.*;
+import static com.fincity.saas.files.jooq.tables.FilesFileSystem.FILES_FILE_SYSTEM;
 import static com.fincity.saas.files.service.FileSystemService.*;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -55,11 +51,11 @@ public class FileSystemDao {
     private final DSLContext context;
 
     private static final Map<String, Field<?>> SORTABLE_FIELDS = Map.of(
-            "TYPE", FILES_FILE_SYSTEM.FILE_TYPE,
-            "NAME", FILES_FILE_SYSTEM.NAME,
-            "SIZE", FILES_FILE_SYSTEM.SIZE,
-            "LASTMODIFIED", FILES_FILE_SYSTEM.UPDATED_AT,
-            "CREATED", FILES_FILE_SYSTEM.CREATED_AT);
+        "TYPE", FILES_FILE_SYSTEM.FILE_TYPE,
+        "NAME", FILES_FILE_SYSTEM.NAME,
+        "SIZE", FILES_FILE_SYSTEM.SIZE,
+        "LASTMODIFIED", FILES_FILE_SYSTEM.UPDATED_AT,
+        "CREATED", FILES_FILE_SYSTEM.CREATED_AT);
 
     public FileSystemDao(DSLContext context) {
         this.context = context;
@@ -68,12 +64,11 @@ public class FileSystemDao {
     public Mono<Boolean> exists(FilesFileSystemType type, String clientCode, String path) {
 
         return getId(type, clientCode, path)
-                .map(Optional::isPresent)
-                .defaultIfEmpty(false);
+            .map(Optional::isPresent)
+            .defaultIfEmpty(false);
     }
 
-    private ULong checkIfPathExists(int index, String[] pathParts, ULong parentId,
-            MultiValuedMap<String, FilesFileSystemRecord> nameIndex, Map<ULong, FilesFileSystemRecord> idIndex) {
+    private ULong checkIfPathExists(int index, String[] pathParts, ULong parentId, MultiValuedMap<String, FilesFileSystemRecord> nameIndex) {
 
         if (index == pathParts.length)
             return parentId;
@@ -87,8 +82,8 @@ public class FileSystemDao {
 
         for (FilesFileSystemRecord rec : records) {
             if ((parentId == null && rec.getParentId() == null)
-                    || (parentId != null && parentId.equals(rec.getParentId())))
-                return checkIfPathExists(index + 1, pathParts, rec.getId(), nameIndex, idIndex);
+                || (parentId != null && parentId.equals(rec.getParentId())))
+                return checkIfPathExists(index + 1, pathParts, rec.getId(), nameIndex);
         }
 
         return null;
@@ -97,7 +92,7 @@ public class FileSystemDao {
     public Mono<Optional<ULong>> getId(FilesFileSystemType type, String clientCode, String path) {
 
         return this.getFileRecord(type, clientCode, path, FilesFileSystemRecord::getId).map(Optional::ofNullable)
-                .defaultIfEmpty(Optional.empty());
+            .defaultIfEmpty(Optional.empty());
     }
 
     public Mono<Optional<ULong>> getFolderId(FilesFileSystemType type, String clientCode, String path) {
@@ -112,94 +107,94 @@ public class FileSystemDao {
             if (StringUtil.safeIsBlank(part))
                 continue;
 
-            parts.add(parts.isEmpty() ? part : (parts.get(parts.size() - 1) + R2_FILE_SEPARATOR_STRING + part));
+            parts.add(parts.isEmpty() ? part : (parts.getLast() + R2_FILE_SEPARATOR_STRING + part));
         }
 
         return Flux.fromIterable(parts)
-                .flatMap(p -> Flux.from(this.getId(type, clientCode, p).map(e -> Tuples.of(p, e)))).collectList()
-                .flatMap(e -> {
-                    if (e.isEmpty())
-                        return Mono.just(Optional.empty());
+            .flatMap(p -> Flux.from(this.getId(type, clientCode, p).map(e -> Tuples.of(p, e)))).collectList()
+            .flatMap(e -> {
+                if (e.isEmpty())
+                    return Mono.just(Optional.empty());
 
-                    Mono<Optional<ULong>> folderId = Mono.just(Optional.empty());
-                    int i = 0;
-                    for (; i < e.size(); i++) {
-                        folderId = Mono.just(e.get(i).getT2());
-                        if (e.get(i).getT2().isEmpty())
-                            break;
-                    }
+                Mono<Optional<ULong>> folderId = Mono.just(Optional.empty());
+                int i = 0;
+                for (; i < e.size(); i++) {
+                    folderId = Mono.just(e.get(i).getT2());
+                    if (e.get(i).getT2().isEmpty())
+                        break;
+                }
 
-                    for (; i < e.size(); i++) {
-                        final int currentIteration = i;
-                        folderId = folderId.flatMap(parentId -> this
-                                .createFolder(type, clientCode, e.get(currentIteration).getT1()).map(Optional::of));
-                    }
+                for (; i < e.size(); i++) {
+                    final int currentIteration = i;
+                    folderId = folderId.flatMap(parentId -> this
+                        .createFolder(type, clientCode, e.get(currentIteration).getT1()).map(Optional::of));
+                }
 
-                    return folderId;
-                });
+                return folderId;
+            });
     }
 
     public Mono<FileDetail> getFileDetail(FilesFileSystemType type, String clientCode, String path) {
         String[] pathParts = (path.startsWith(R2_FILE_SEPARATOR_STRING) ? path.substring(1) : path)
-                .split(R2_FILE_SEPARATOR_STRING);
+            .split(R2_FILE_SEPARATOR_STRING);
 
         if (pathParts.length == 0)
             return Mono.empty();
 
         return this.getFileRecord(type, clientCode, pathParts,
-                r -> new FileDetail()
-                        .setId(r.getId())
-                        .setName(r.getName())
-                        .setDirectory(r.getFileType() == FilesFileSystemFileType.DIRECTORY)
-                        .setSize(r.getSize() == null ? 0l : r.getSize().longValue())
-                        .setCreatedDate(r.getCreatedAt().toEpochSecond(ZoneOffset.UTC))
-                        .setLastModifiedTime(r.getUpdatedAt().toEpochSecond(ZoneOffset.UTC)));
+            r -> new FileDetail()
+                .setId(r.getId())
+                .setName(r.getName())
+                .setDirectory(r.getFileType() == FilesFileSystemFileType.DIRECTORY)
+                .setSize(r.getSize() == null ? 0L : r.getSize().longValue())
+                .setCreatedDate(r.getCreatedAt().toEpochSecond(ZoneOffset.UTC))
+                .setLastModifiedTime(r.getUpdatedAt().toEpochSecond(ZoneOffset.UTC)));
     }
 
     private <T> Mono<T> getFileRecord(FilesFileSystemType type, String clientCode, String path,
-            Function<FilesFileSystemRecord, T> mapper) {
+                                      Function<FilesFileSystemRecord, T> mapper) {
 
         if (StringUtil.safeIsBlank(path))
             return Mono.empty();
 
         String[] pathParts = (path.startsWith(R2_FILE_SEPARATOR_STRING) ? path.substring(1) : path)
-                .split(R2_FILE_SEPARATOR_STRING);
+            .split(R2_FILE_SEPARATOR_STRING);
 
         return this.getFileRecord(type, clientCode, pathParts, mapper);
     }
 
     private <T> Mono<T> getFileRecord(FilesFileSystemType type, String clientCode, String[] pathParts,
-            Function<FilesFileSystemRecord, T> mapper) {
+                                      Function<FilesFileSystemRecord, T> mapper) {
 
         return Flux.from(this.context.selectFrom(FILES_FILE_SYSTEM)
                 .where(DSL.and(FILES_FILE_SYSTEM.CODE.eq(clientCode), FILES_FILE_SYSTEM.NAME.in(pathParts),
-                        FILES_FILE_SYSTEM.TYPE.eq(type))))
-                .collectList()
-                .flatMap(list -> {
-                    if (list.isEmpty() || pathParts.length > list.size())
-                        return Mono.empty();
+                    FILES_FILE_SYSTEM.TYPE.eq(type))))
+            .collectList()
+            .flatMap(list -> {
+                if (list.isEmpty() || pathParts.length > list.size())
+                    return Mono.empty();
 
-                    MultiValuedMap<String, FilesFileSystemRecord> nameIndex = new ArrayListValuedHashMap<>();
-                    Map<ULong, FilesFileSystemRecord> idIndex = new HashMap<>();
+                MultiValuedMap<String, FilesFileSystemRecord> nameIndex = new ArrayListValuedHashMap<>();
+                Map<ULong, FilesFileSystemRecord> idIndex = new HashMap<>();
 
-                    for (FilesFileSystemRecord rec : list) {
-                        nameIndex.put(rec.getName(), rec);
-                        idIndex.put(rec.getId(), rec);
-                    }
+                for (FilesFileSystemRecord rec : list) {
+                    nameIndex.put(rec.getName(), rec);
+                    idIndex.put(rec.getId(), rec);
+                }
 
-                    ULong id = checkIfPathExists(0, pathParts, null, nameIndex, idIndex);
+                ULong id = checkIfPathExists(0, pathParts, null, nameIndex);
 
-                    if (id == null)
-                        return Mono.empty();
+                if (id == null)
+                    return Mono.empty();
 
-                    return Mono.just(idIndex.get(id));
-                })
-                .map(mapper);
+                return Mono.just(idIndex.get(id));
+            })
+            .map(mapper);
     }
 
     public Mono<FilesPage> list(FilesFileSystemType type, String clientCode, String path, FileType[] fileType,
-            String filter,
-            Pageable page) {
+                                String filter,
+                                Pageable page) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -208,17 +203,17 @@ public class FileSystemDao {
                 folderId -> {
 
                     if (folderId.isEmpty() && !StringUtil.safeIsBlank(path))
-                        return Mono.just(new FilesPage(new ArrayList<>(), page.getPageNumber(), 0l));
+                        return Mono.just(new FilesPage(new ArrayList<>(), page.getPageNumber(), 0L));
 
                     return this.listInternal(type, clientCode, folderId.orElse(null),
-                            fileType, filter, page);
+                        fileType, filter, page);
                 })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.list (with path)"));
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.list (with path)"));
     }
 
     private Mono<FilesPage> listInternal(FilesFileSystemType type, String clientCode, ULong folderId,
-            FileType[] fileType,
-            String filter, Pageable page) {
+                                         FileType[] fileType,
+                                         String filter, Pageable page) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -242,41 +237,41 @@ public class FileSystemDao {
                         .orderBy(getOrderList(page))
                         .limit(page.getPageSize())
                         .offset(page.getPageNumber() * page.getPageSize()))
-                        .map(r -> r.into(FilesFileSystemRecord.class))
-                        .map(r -> new FileDetail()
-                                .setName(r.getName())
-                                .setDirectory(r.getFileType() == FilesFileSystemFileType.DIRECTORY)
-                                .setSize(r.getSize() == null ? 0l : r.getSize().longValue())
-                                .setCreatedDate(r.getCreatedAt().toEpochSecond(ZoneOffset.UTC))
-                                .setLastModifiedTime(r.getUpdatedAt().toEpochSecond(ZoneOffset.UTC)))
-                        .collectList(),
+                    .map(r -> r.into(FilesFileSystemRecord.class))
+                    .map(r -> new FileDetail()
+                        .setName(r.getName())
+                        .setDirectory(r.getFileType() == FilesFileSystemFileType.DIRECTORY)
+                        .setSize(r.getSize() == null ? 0L : r.getSize().longValue())
+                        .setCreatedDate(r.getCreatedAt().toEpochSecond(ZoneOffset.UTC))
+                        .setLastModifiedTime(r.getUpdatedAt().toEpochSecond(ZoneOffset.UTC)))
+                    .collectList(),
 
                 files -> Mono.from(this.context.selectCount()
                         .from(FILES_FILE_SYSTEM)
                         .where(DSL.and(conditions)))
-                        .map(Record1::value1).map(Long::valueOf),
+                    .map(Record1::value1).map(Long::valueOf),
 
                 (files, count) -> Mono.just(new FilesPage(files, page.getPageNumber(), count)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.list (with folder Id)"));
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.list (with folder Id)"));
     }
 
     private List<SortField<?>> getOrderList(Pageable page) {
 
         if (page == null || page.getSort()
-                .isEmpty() || page.getSort()
-                        .isUnsorted()) {
+            .isEmpty() || page.getSort()
+            .isUnsorted()) {
 
             return List.of(FILES_FILE_SYSTEM.FILE_TYPE.desc(), FILES_FILE_SYSTEM.NAME.asc());
         }
 
         return page.getSort().stream().filter(e -> SORTABLE_FIELDS.containsKey(e.getProperty().toUpperCase()))
-                .map(e -> {
-                    if (e.getDirection().isDescending()) {
-                        return SORTABLE_FIELDS.get(e.getProperty().toUpperCase()).desc();
-                    }
-                    return SORTABLE_FIELDS.get(e.getProperty().toUpperCase()).asc();
-                })
-                .collect(Collectors.toList());
+            .map(e -> {
+                if (e.getDirection().isDescending()) {
+                    return SORTABLE_FIELDS.get(e.getProperty().toUpperCase()).desc();
+                }
+                return SORTABLE_FIELDS.get(e.getProperty().toUpperCase()).asc();
+            })
+            .collect(Collectors.toList());
     }
 
     private Condition getConditionForFileTypes(FileType[] fileType) {
@@ -291,7 +286,7 @@ public class FileSystemDao {
                 case DIRECTORIES -> conditions.add(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY));
                 case FILES -> conditions.add(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.FILE));
                 default -> conditions.add(DSL.or(ft.getAvailableFileExtensions().stream()
-                        .map(e -> FILES_FILE_SYSTEM.NAME.like("%." + e)).toList()));
+                    .map(e -> FILES_FILE_SYSTEM.NAME.like("%." + e)).toList()));
             }
         }
 
@@ -311,12 +306,12 @@ public class FileSystemDao {
                     return Mono.from(query).map(e -> e > 0);
                 }
 
-        )
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.deleteFile"));
+            )
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.deleteFile"));
     }
 
     public Mono<FileDetail> createOrUpdateFile(FilesFileSystemType fileSystemType, String clientCode, String path,
-            String fileName, ULong fileLength, boolean exists) {
+                                               String fileName, ULong fileLength, boolean exists) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
         String parentPath = index == -1 ? "" : path.substring(0, index);
@@ -339,30 +334,29 @@ public class FileSystemDao {
                         return Mono.from(this.context.update(FILES_FILE_SYSTEM)
                                 .set(FILES_FILE_SYSTEM.UPDATED_AT, LocalDateTime.now(ZoneOffset.UTC))
                                 .where(DSL.and(
-                                        parentId.isPresent() ? FILES_FILE_SYSTEM.PARENT_ID.eq(parentId.get())
-                                                : FILES_FILE_SYSTEM.PARENT_ID.isNull(),
-                                        FILES_FILE_SYSTEM.NAME.eq(name))))
-                                .map(e -> e > 0);
+                                    parentId.map(FILES_FILE_SYSTEM.PARENT_ID::eq).orElseGet(FILES_FILE_SYSTEM.PARENT_ID::isNull),
+                                    FILES_FILE_SYSTEM.NAME.eq(name))))
+                            .map(e -> e > 0);
                     }
 
                     return Mono.from(this.context.insertInto(FILES_FILE_SYSTEM)
-                            .set(FILES_FILE_SYSTEM.CODE, clientCode)
-                            .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.orElse(
-                                    null))
-                            .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
-                            .set(FILES_FILE_SYSTEM.NAME, name)
-                            .set(FILES_FILE_SYSTEM.SIZE, fileLength)
-                            .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)).map(e -> e > 0);
+                        .set(FILES_FILE_SYSTEM.CODE, clientCode)
+                        .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.orElse(
+                            null))
+                        .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
+                        .set(FILES_FILE_SYSTEM.NAME, name)
+                        .set(FILES_FILE_SYSTEM.SIZE, fileLength)
+                        .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)).map(e -> e > 0);
                 },
                 (parentId, updatedCreated) -> BooleanUtil.safeValueOf(updatedCreated)
-                        ? this.getFileDetail(fileSystemType, clientCode, key)
-                        : Mono.empty())
+                    ? this.getFileDetail(fileSystemType, clientCode, key)
+                    : Mono.empty())
 
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.createOrUpdateFile"));
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.createOrUpdateFile"));
     }
 
     public Mono<Boolean> createOrUpdateFileForZipUpload(FilesFileSystemType fileSystemType, String clientCode,
-            ULong folderId, String path, String fileName, ULong fileLength) {
+                                                        ULong folderId, String path, String fileName, ULong fileLength) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
         String parentPath = index == -1 ? "" : path.substring(0, index);
@@ -389,22 +383,21 @@ public class FileSystemDao {
                                 .set(FILES_FILE_SYSTEM.UPDATED_AT, LocalDateTime.now(ZoneOffset.UTC))
                                 .set(FILES_FILE_SYSTEM.SIZE, fileLength)
                                 .where(DSL.and(
-                                        parentId.isPresent() ? FILES_FILE_SYSTEM.PARENT_ID.eq(parentId.get())
-                                                : FILES_FILE_SYSTEM.PARENT_ID.isNull(),
-                                        FILES_FILE_SYSTEM.NAME.eq(name))))
-                                .<Boolean>map(e -> e > 0);
+                                    parentId.map(FILES_FILE_SYSTEM.PARENT_ID::eq).orElseGet(FILES_FILE_SYSTEM.PARENT_ID::isNull),
+                                    FILES_FILE_SYSTEM.NAME.eq(name))))
+                            .<Boolean>map(e -> e > 0);
                     }
 
                     return Mono.<Integer>from(this.context.insertInto(FILES_FILE_SYSTEM)
-                            .set(FILES_FILE_SYSTEM.CODE, clientCode)
-                            .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.orElse(
-                                    null))
-                            .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
-                            .set(FILES_FILE_SYSTEM.NAME, name)
-                            .set(FILES_FILE_SYSTEM.SIZE, fileLength)
-                            .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)).<Boolean>map(e -> e > 0);
+                        .set(FILES_FILE_SYSTEM.CODE, clientCode)
+                        .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.orElse(
+                            null))
+                        .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
+                        .set(FILES_FILE_SYSTEM.NAME, name)
+                        .set(FILES_FILE_SYSTEM.SIZE, fileLength)
+                        .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)).<Boolean>map(e -> e > 0);
                 })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.createOrUpdateFileForZipUpload"));
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.createOrUpdateFileForZipUpload"));
     }
 
     public Mono<ULong> createFolder(FilesFileSystemType fileSystemType, String clientCode, String path) {
@@ -417,21 +410,22 @@ public class FileSystemDao {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> {
+            () -> {
 
-                    if (parentPath == null)
-                        return Mono.just(Optional.empty());
+                if (parentPath == null)
+                    return Mono.just(Optional.empty());
 
-                    return this.getId(fileSystemType, clientCode, parentPath);
-                },
-                parentId -> Mono.from(this.context.transactionPublisher(tp -> tp.dsl().insertInto(FILES_FILE_SYSTEM)
-                        .set(FILES_FILE_SYSTEM.CODE, clientCode)
-                        .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.isPresent() ? parentId.get() : null)
-                        .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.DIRECTORY)
-                        .set(FILES_FILE_SYSTEM.NAME, name)
-                        .set(FILES_FILE_SYSTEM.TYPE, fileSystemType).returningResult(FILES_FILE_SYSTEM.ID)))
-                        .publish(e -> e.map(Record1::value1)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.createFolder"));
+                return this.getId(fileSystemType, clientCode, parentPath);
+            },
+            parentId -> Mono.from(this.context.transactionPublisher(tp -> Mono.from(tp.dsl().insertInto(FILES_FILE_SYSTEM)
+                .set(FILES_FILE_SYSTEM.CODE, clientCode)
+                .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.orElse(null))
+                .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.DIRECTORY)
+                .set(FILES_FILE_SYSTEM.NAME, name)
+                .set(FILES_FILE_SYSTEM.TYPE, fileSystemType).returningResult(FILES_FILE_SYSTEM.ID))
+            )).delayElement(Duration.ofMillis(1000L)).map(Record1::value1)
+
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "FileSystemDao.createFolder"));
     }
 
     @Data
@@ -439,7 +433,7 @@ public class FileSystemDao {
     @NoArgsConstructor
     @Accessors(chain = true)
     @ToString
-    private class Node {
+    private static class Node {
         private ULong id;
         private String name;
         private String path;
@@ -447,7 +441,7 @@ public class FileSystemDao {
     }
 
     public Mono<Map<String, ULong>> createFolders(FilesFileSystemType fileSystemType, String clientCode,
-            List<String> paths) {
+                                                  List<String> paths) {
 
         Map<String, Node> nodeMap = new HashMap<>();
 
@@ -464,7 +458,7 @@ public class FileSystemDao {
                 sb.append(part);
                 if (!nodeMap.containsKey(sb.toString())) {
                     nodeMap.put(sb.toString(),
-                            new Node(null, part, sb.toString(), parentNode));
+                        new Node(null, part, sb.toString(), parentNode));
                 }
             }
         }
@@ -477,41 +471,40 @@ public class FileSystemDao {
             nodes.add(node);
         }
 
-        return Flux.fromIterable(nodes)
-                .expandDeep(x -> Flux.fromStream(nodeMap.values().stream().filter(y -> y.getParent() == x)))
-                .flatMap(n -> {
+        var nodeFlux = Flux.fromIterable(nodes)
+            .expandDeep(x -> Flux.fromStream(nodeMap.values().stream().filter(y -> y.getParent() == x)))
+            .mapNotNull(n -> {
 
-                    if (n.getId() != null)
-                        return Mono.just(n);
+                if (n.getId() != null)
+                    return n;
 
-                    Node node = Mono.defer(() -> this.selectFolderId(fileSystemType, clientCode, n))
-                            .switchIfEmpty(Mono.defer(() -> this.insertFolder(fileSystemType, clientCode, n)))
-                            .map(id -> n.setId(id)).block();
+                return Mono.defer(() -> this.selectFolderId(fileSystemType, clientCode, n))
+                    .switchIfEmpty(Mono.defer(() -> this.insertFolder(fileSystemType, clientCode, n)))
+                    .map(n::setId).block();
+            })
+            .subscribeOn(Schedulers.boundedElastic());
 
-                    return Mono.just(node);
-                })
-                .parallel(1)
-                .collectSortedList((a, b) -> a.getPath().compareTo(b.getPath()))
-                .map(ns -> {
-                    Map<String, ULong> map = new HashMap<>();
-                    for (String p : paths) {
-                        Node n = nodeMap.get(p);
-                        map.put(p, n.getId());
-                    }
-                    return map;
-                })
-                .subscribeOn(Schedulers.boundedElastic());
+        return nodeFlux.parallel(1)
+            .collectSortedList(Comparator.comparing(Node::getPath))
+            .map(ns -> {
+                Map<String, ULong> map = new HashMap<>();
+                for (String p : paths) {
+                    Node n = nodeMap.get(p);
+                    map.put(p, n.getId());
+                }
+                return map;
+            });
     }
 
     private Mono<ULong> selectFolderId(FilesFileSystemType fileSystemType, String clientCode, Node node) {
 
         return Mono.from(this.context.select(FILES_FILE_SYSTEM.ID).from(FILES_FILE_SYSTEM).where(DSL.and(
-                FILES_FILE_SYSTEM.CODE.eq(clientCode),
-                FILES_FILE_SYSTEM.NAME.eq(node.getName()),
-                FILES_FILE_SYSTEM.TYPE.eq(fileSystemType),
-                node.getParent() == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull()
-                        : FILES_FILE_SYSTEM.PARENT_ID.eq(node.getParent().getId()),
-                FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY)))).map(Record1::value1);
+            FILES_FILE_SYSTEM.CODE.eq(clientCode),
+            FILES_FILE_SYSTEM.NAME.eq(node.getName()),
+            FILES_FILE_SYSTEM.TYPE.eq(fileSystemType),
+            node.getParent() == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull()
+                : FILES_FILE_SYSTEM.PARENT_ID.eq(node.getParent().getId()),
+            FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY)))).map(Record1::value1);
     }
 
     private Mono<ULong> insertFolder(FilesFileSystemType fileSystemType, String clientCode, Node node) {
@@ -522,6 +515,6 @@ public class FileSystemDao {
                 .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.DIRECTORY)
                 .set(FILES_FILE_SYSTEM.NAME, node.getName())
                 .set(FILES_FILE_SYSTEM.TYPE, fileSystemType).returningResult(FILES_FILE_SYSTEM.ID))
-                .map(Record1::value1);
+            .map(Record1::value1);
     }
 }
