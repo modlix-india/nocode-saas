@@ -25,8 +25,9 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 
 	public StaticFileResourceService(
 			FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
-			FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client) {
-		super(filesAccessPathService, msgService);
+			FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
+			FilesUploadDownloadService fileUploadDownloadService) {
+		super(filesAccessPathService, msgService, fileUploadDownloadService);
 		this.fileSystemDao = fileSystemDao;
 		this.cacheService = cacheService;
 		this.s3Client = s3Client;
