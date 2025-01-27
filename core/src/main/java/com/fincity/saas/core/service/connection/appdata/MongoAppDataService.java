@@ -198,7 +198,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				(ca, collection, schema) -> schemaService.getSchemaRepository(storage.getAppCode(),
 						storage.getClientCode()),
 
-				(ca, collection, schema, appSchemaRepo) -> this.handleRelationsAndValidate(dataObject, storage, schema,
+				(ca, collection, schema, appSchemaRepo) -> this.handleRelationsAndValidate(dataObject.getData(), storage, schema,
 						appSchemaRepo),
 
 				(ca, collection, schema, appSchemaRepo, je) -> Mono.from(collection.insertOne(BJsonUtil.from(
@@ -219,6 +219,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.create"));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override) {
 
@@ -256,13 +257,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 					return Mono.from(collection.find(Filters.eq(ID, objectId)).first())
 							.switchIfEmpty(this.mongoObjectNotFound(
 									AbstractMongoMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, storage.getName(), key))
+							.map(doc -> this.removeKey(doc, ID))
 							.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE))
 							.flatMap(oDocument -> DifferenceApplicator.apply(oDocument, overridableObject))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
 				},
 
 				(ca, collection, schema, appSchemaRepo, overridableObject) -> this.handleRelationsAndValidate(
-						dataObject, storage, schema, appSchemaRepo),
+						(Map<String, Object>) overridableObject, storage, schema, appSchemaRepo),
 
 				(ca, collection, schema, appSchemaRepo, overridableObject, je) -> Mono.from(collection.replaceOne(
 						Filters.eq(ID, objectId),
@@ -284,10 +286,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
 	}
 
-	private Mono<JsonObject> handleRelationsAndValidate(DataObject dataObject, Storage storage, Schema schema,
+	private Mono<JsonObject> handleRelationsAndValidate(Map<String, Object> objectMap, Storage storage, Schema schema,
 			ReactiveRepository<Schema> appSchemaRepo) {
 
-		JsonObject job = this.gson.toJsonTree(dataObject.getData()).getAsJsonObject();
+		JsonObject job = this.gson.toJsonTree(objectMap).getAsJsonObject();
 
 		Map<String, JsonElement> relations = new HashMap<>();
 		if (storage.getRelations() != null && !storage.getRelations().isEmpty())
@@ -797,8 +799,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	private void convertBisonId(Document document, String key) {
 		String id = document.getObjectId(key).toHexString();
-		document.remove(key);
+		this.removeKey(document, key);
 		document.append(key, id);
+	}
+
+	private Document removeKey(Document document, String key) {
+		document.remove(key);
+		return document;
 	}
 
 	private Map<String, Object> updateDocWithIds(Storage storage, Document doc) {
