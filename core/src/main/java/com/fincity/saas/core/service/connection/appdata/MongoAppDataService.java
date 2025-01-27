@@ -258,6 +258,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							.switchIfEmpty(this.mongoObjectNotFound(
 									AbstractMongoMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, storage.getName(), key))
 							.map(doc -> this.removeKey(doc, ID))
+							.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE))
 							.flatMap(oDocument -> DifferenceApplicator.apply(oDocument, overridableObject))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
 				},
