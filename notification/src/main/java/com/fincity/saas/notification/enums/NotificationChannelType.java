@@ -1,6 +1,7 @@
 package com.fincity.saas.notification.enums;
 
-public enum NotificationChannel {
+public enum NotificationChannelType {
+
 	EMAIL,
 	IN_APP,
 	SMS,

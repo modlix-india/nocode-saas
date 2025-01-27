@@ -1,5 +1,7 @@
 package com.fincity.saas.notification.model;
 
+import com.fincity.saas.notification.enums.NotificationChannelType;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -7,8 +9,8 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class SendRequest {
 
-	Integer userId;
-
-
+	private Integer userId;
+	private String notificationTypeId;
+	private NotificationChannelType channels;
 
 }
