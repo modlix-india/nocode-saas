@@ -13,4 +13,6 @@ public class SendRequest {
 	private String notificationTypeId;
 	private NotificationChannelType channels;
 
+
+
 }

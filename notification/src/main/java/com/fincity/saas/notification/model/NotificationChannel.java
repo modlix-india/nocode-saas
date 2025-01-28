@@ -31,22 +31,25 @@ public class NotificationChannel {
 
 		public NotificationChannelBuilder preferences(NotificationPreference preferences) {
 			this.preference = preferences;
-
-			if (preferences.has(NotificationChannelType.DISABLED))
-				this.notificationEnabled = false;
-
+			this.notificationEnabled = !preferences.has(NotificationChannelType.DISABLED);
 			return this;
 		}
 
 		public <T extends AbstractNotificationMessage> NotificationChannelBuilder addMessageInfo(T message) {
 			if (preference == null || !this.notificationEnabled)
 				return this;
-			if (preference.has(NotificationChannelType.EMAIL) && message instanceof EmailMessage emailMessage)
+
+			if (preference.has(NotificationChannelType.EMAIL)
+					&& message.getNotificationChannelType().equals(NotificationChannelType.EMAIL)
+					&& message instanceof EmailMessage emailMessage)
 				this.email = emailMessage;
-			if (preference.has(NotificationChannelType.IN_APP) && message instanceof InAppMessage inAppMessage)
+
+			if (preference.has(NotificationChannelType.IN_APP)
+					&& message.getNotificationChannelType().equals(NotificationChannelType.IN_APP)
+					&& message instanceof InAppMessage inAppMessage)
 				this.inApp = inAppMessage;
 
-			this.notificationEnabled = true;
+			this.notificationEnabled = this.email != null || this.inApp != null;
 			return this;
 		}
 
