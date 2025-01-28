@@ -1,6 +1,5 @@
 package com.fincity.saas.notification.dto;
 
-import java.util.EnumMap;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -25,24 +24,72 @@ public class NotificationPreference extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private ULong userId;
 	private ULong notificationTypeId;
-	private boolean isEnabled;
+
+	private boolean isDisabled;
 	private boolean isEmailEnabled;
 	private boolean isInAppEnabled;
 	private boolean isSmsEnabled;
 	private boolean isPushEnabled;
 
 	public Map<NotificationChannelType, Boolean> getPreferences() {
-		Map<NotificationChannelType, Boolean> preferences = new EnumMap<>(NotificationChannelType.class);
-		preferences.put(NotificationChannelType.EMAIL, this.isEmailEnabled);
-		preferences.put(NotificationChannelType.IN_APP, this.isInAppEnabled);
-		preferences.put(NotificationChannelType.SMS, this.isSmsEnabled);
-		preferences.put(NotificationChannelType.PUSH, this.isPushEnabled);
-		return preferences;
+		return Map.of(
+				NotificationChannelType.DISABLED, this.isDisabled,
+				NotificationChannelType.EMAIL, this.isEmailEnabled,
+				NotificationChannelType.IN_APP, this.isInAppEnabled,
+				NotificationChannelType.SMS, this.isSmsEnabled,
+				NotificationChannelType.PUSH, this.isPushEnabled
+		);
 	}
 
-	public boolean getPreference(NotificationChannelType notificationChannelType) {
-		return notificationChannelType != null ?
-				this.getPreferences().getOrDefault(notificationChannelType, Boolean.FALSE) :
-				Boolean.FALSE;
+	public boolean has(NotificationChannelType notificationChannelType) {
+		return switch (notificationChannelType) {
+			case DISABLED -> this.isDisabled;
+			case EMAIL -> this.isEmailEnabled;
+			case IN_APP -> this.isInAppEnabled;
+			case SMS -> this.isSmsEnabled;
+			case PUSH -> this.isPushEnabled;
+		};
+	}
+
+	public NotificationPreference setDisabled(boolean disabled) {
+		if (disabled)
+			disableAll();
+		this.isDisabled = disabled;
+		return this;
+	}
+
+	public NotificationPreference setEmailEnabled(boolean emailEnabled) {
+		this.isEmailEnabled = emailEnabled;
+		changeDisabled();
+		return this;
+	}
+
+	public NotificationPreference setInAppEnabled(boolean inAppEnabled) {
+		this.isInAppEnabled = inAppEnabled;
+		changeDisabled();
+		return this;
+	}
+
+	public NotificationPreference setPushEnabled(boolean pushEnabled) {
+		this.isPushEnabled = pushEnabled;
+		changeDisabled();
+		return this;
+	}
+
+	public NotificationPreference setSmsEnabled(boolean smsEnabled) {
+		this.isSmsEnabled = smsEnabled;
+		changeDisabled();
+		return this;
+	}
+
+	private void disableAll() {
+		this.isEmailEnabled = false;
+		this.isInAppEnabled = false;
+		this.isSmsEnabled = false;
+		this.isPushEnabled = false;
+	}
+
+	private void changeDisabled() {
+		this.isDisabled = !this.isEmailEnabled && !this.isInAppEnabled && !this.isSmsEnabled && !this.isPushEnabled;
 	}
 }
