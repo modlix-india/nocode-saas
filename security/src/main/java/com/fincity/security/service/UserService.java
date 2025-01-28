@@ -993,8 +993,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				(userExists, createdUser) -> {
 					this.soxLogService.createLog(createdUser.getId(), CREATE, getSoxObjectName(), "User created");
 
-					return this.setPassword(createdUser.getId(), createdUser.getId(), password,
-							AuthenticationPasswordType.PASSWORD);
+					return this.setPassword(createdUser.getId(), createdUser.getId(), password, passwordType);
 				},
 
 				(userExists, createdUser, passSet) -> {
