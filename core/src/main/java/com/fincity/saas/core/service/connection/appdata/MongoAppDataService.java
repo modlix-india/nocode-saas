@@ -798,6 +798,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	private void convertBisonId(Document document, String key) {
+
+		if (!document.containsKey(key))
+			return;
+
 		String id = document.getObjectId(key).toHexString();
 		this.removeKey(document, key);
 		document.append(key, id);
