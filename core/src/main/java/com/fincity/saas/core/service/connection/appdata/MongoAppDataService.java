@@ -180,7 +180,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	private <T> Mono<T> mongoObjectNotFound(String messageId, Object... params) {
-		return this.msgService.throwMessage(msg -> new StorageObjectNotFoundException(HttpStatus.NOT_FOUND, msg), messageId, params);
+		return this.msgService.throwMessage(msg -> new StorageObjectNotFoundException(HttpStatus.NOT_FOUND, msg),
+				messageId, params);
 	}
 
 	@Override
@@ -198,8 +199,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 				(ca, collection, schema) -> schemaService.getSchemaRepository(storage.getAppCode(),
 						storage.getClientCode()),
 
-				(ca, collection, schema, appSchemaRepo) -> this.handleRelationsAndValidate(dataObject.getData(), storage, schema,
-						appSchemaRepo),
+				(ca, collection, schema, appSchemaRepo) -> this.handleRelationsAndValidate(dataObject.getData(),
+						storage, schema, appSchemaRepo),
 
 				(ca, collection, schema, appSchemaRepo, je) -> Mono.from(collection.insertOne(BJsonUtil.from(
 						storage.getRelations() != null ? storage.getRelations().keySet() : Set.of(), je))),
@@ -256,7 +257,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 					return Mono.from(collection.find(Filters.eq(ID, objectId)).first())
 							.switchIfEmpty(this.mongoObjectNotFound(
-									AbstractMongoMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, storage.getName(), key))
+									AbstractMongoMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, storage.getName(),
+									key))
 							.map(doc -> this.removeKey(doc, ID))
 							.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE))
 							.flatMap(oDocument -> DifferenceApplicator.apply(oDocument, overridableObject))
