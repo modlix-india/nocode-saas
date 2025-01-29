@@ -43,177 +43,181 @@ import reactor.util.context.Context;
 
 public abstract class AbstractVersionService extends AbstractMongoDataService<String, Version, VersionRepository> {
 
-	protected static final String READ = "READ";
+    protected static final String READ = "READ";
 
-	@Autowired
-	protected FeignAuthenticationService securityService;
+    @Autowired
+    protected FeignAuthenticationService securityService;
 
-	@Autowired
-	protected com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
+    @Autowired
+    protected com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
 
-	@Autowired
-	protected ObjectMapper om;
+    @Autowired
+    protected ObjectMapper om;
 
-	protected AbstractVersionService() {
-		super(Version.class);
-	}
+    protected AbstractVersionService() {
+        super(Version.class);
+    }
 
-	@Override
-	public Mono<Version> read(String id) {
+    @Override
+    public Mono<Version> read(String id) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> super.read(id),
+                ca -> super.read(id),
 
-				this::accessCheck,
+                this::accessCheck,
 
-				(ca, v, access) -> Mono.<Version>justOrEmpty(access.booleanValue() ? v : null))
+                (ca, v, access) -> Mono.<Version>justOrEmpty(access.booleanValue() ? v : null))
 
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "VersionService.read"));
-	}
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "VersionService.read"));
+    }
 
-	protected Mono<Boolean> accessCheck(ContextAuthentication ca, Version v) {
+    protected Mono<Boolean> accessCheck(ContextAuthentication ca, Version v) {
 
-		if (StringUtil.safeIsBlank(v.getObjectType()))
-			return Mono.just(false);
+        if (StringUtil.safeIsBlank(v.getObjectType()))
+            return Mono.just(false);
 
-		return FlatMapUtil.flatMapMono(
-				() -> SecurityContextUtil.hasAuthority(
-						"Authorities." + this.mapAuthName(v.getObjectType()) + "_" + READ, ca.getAuthorities())
-								? Mono.just(true)
-								: Mono.empty(),
+        return FlatMapUtil.flatMapMono(
+                () -> SecurityContextUtil.hasAuthority(
+                    "Authorities." + this.mapAuthName(v.getObjectType()) + "_" + READ, ca.getAuthorities())
+                    ? Mono.just(true)
+                    : Mono.empty(),
 
-				access -> {
-					if (ca.getClientCode()
-							.equals(v.getClientCode()))
-						return Mono.just(true);
+                access -> {
+                    if (ca.getClientCode()
+                        .equals(v.getClientCode()))
+                        return Mono.just(true);
 
-					return this.inheritanceService
-							.order(v.getObjectAppCode(), ca.getUrlClientCode(), ca.getClientCode())
-							.map(e -> e.contains(ca.getClientCode()));
-				},
+                    return this.inheritanceService
+                        .order(v.getObjectAppCode(), ca.getUrlClientCode(), ca.getClientCode())
+                        .map(e -> e.contains(ca.getClientCode()));
+                },
 
-				(access, managed) -> {
+                (access, managed) -> {
 
-					if (!managed.booleanValue())
-						return Mono.empty();
+                    if (!managed.booleanValue())
+                        return Mono.empty();
 
-					return this.securityService.hasReadAccess(v.getObjectAppCode(), ca.getClientCode());
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "VersionService.accessCheck"))
-				.defaultIfEmpty(false);
-	}
+                    return this.securityService.hasReadAccess(v.getObjectAppCode(), ca.getClientCode());
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "VersionService.accessCheck"))
+            .defaultIfEmpty(false);
+    }
 
-	protected abstract String mapAuthName(String objectType);
+    protected abstract String mapAuthName(String objectType);
 
-	@Override
-	protected Mono<String> getLoggedInUserId() {
+    @Override
+    protected Mono<String> getLoggedInUserId() {
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.map(ContextAuthentication::getUser)
-				.map(ContextUser::getId)
-				.map(Object::toString);
-	}
+        return SecurityContextUtil.getUsersContextAuthentication()
+            .map(ContextAuthentication::getUser)
+            .map(ContextUser::getId)
+            .map(Object::toString);
+    }
 
-	public Mono<Page<Version>> readPagePerObjectId(String id, Query query) {
+    public Mono<Page<Version>> readPagePerObjectId(String id, Query query) {
 
-		FilterCondition idCondition = new FilterCondition().setField("object.id")
-				.setValue(id)
-				.setOperator(FilterConditionOperator.EQUALS);
+        FilterCondition idCondition = new FilterCondition().setField("object.id")
+            .setValue(id)
+            .setOperator(FilterConditionOperator.EQUALS);
 
-		AbstractCondition condition = query.getCondition() == null || query.getCondition()
-				.isEmpty() ? idCondition
-						: new ComplexCondition().setConditions(List.of(idCondition, query.getCondition()))
-								.setOperator(ComplexConditionOperator.AND);
+        AbstractCondition condition = query.getCondition() == null || query.getCondition()
+            .isEmpty() ? idCondition
+            : new ComplexCondition().setConditions(List.of(idCondition, query.getCondition()))
+            .setOperator(ComplexConditionOperator.AND);
 
-		var sort = query.getSort()
-				.equals(Query.DEFAULT_SORT) ? Sort.by(Order.desc("createdAt")) : query.getSort();
+        var sort = query.getSort()
+            .equals(Query.DEFAULT_SORT) ? Sort.by(Order.desc("createdAt")) : query.getSort();
 
-		Pageable page = PageRequest.of(query.getPage(), query.getSize(), sort);
+        Pageable page = PageRequest.of(query.getPage(), query.getSize(), sort);
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> this.filter(condition),
+                () -> this.filter(condition),
 
-				crit -> Mono.just((new org.springframework.data.mongodb.core.query.Query(crit)).skip(page.getOffset())
-						.limit(page.getPageSize())
-						.with(page.getSort())),
+                crit -> Mono.just((new org.springframework.data.mongodb.core.query.Query(crit)).skip(page.getOffset())
+                    .limit(page.getPageSize())
+                    .with(page.getSort())),
 
-				(crit, dataQuery) -> this.mongoTemplate
-						.getCollection(this.mongoTemplate.getCollectionName(Version.class)),
+                (crit, dataQuery) -> this.mongoTemplate
+                    .getCollection(this.mongoTemplate.getCollectionName(Version.class)),
 
-				(crit, dataQuery, collection) -> {
+                (crit, dataQuery, collection) -> {
 
-					var bsonCondition = dataQuery.getQueryObject();
+                    var bsonCondition = dataQuery.getQueryObject();
 
-					Flux<Document> findFlux = makeResultFlux(query, page, collection, bsonCondition);
+                    Flux<Document> findFlux = makeResultFlux(query, page, collection, bsonCondition);
 
-					return findFlux.map(e -> this.mongoTemplate.getConverter()
-							.read(Version.class, e))
-							.collectList();
-				},
+                    return findFlux.map(e -> this.mongoTemplate.getConverter()
+                            .read(Version.class, e))
+                        .collectList();
+                },
 
-				(crit, dataQuery, collection, list) -> Mono
-						.just((new org.springframework.data.mongodb.core.query.Query(crit)).with(page.getSort())),
+                (crit, dataQuery, collection, list) -> Mono
+                    .just((new org.springframework.data.mongodb.core.query.Query(crit)).with(page.getSort())),
 
-				(crit, dataQuery, collection, list, countQuery) -> this.mongoTemplate.count(countQuery, Version.class),
+                (crit, dataQuery, collection, list, countQuery) -> this.mongoTemplate.count(countQuery, Version.class),
 
-				(crit, dataQuery, collection, list, countQuery, count) -> Mono
-						.just(PageableExecutionUtils.<Version>getPage(list, page, () -> count)))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "versionService.readPagePerObjectId"));
-	}
+                (crit, dataQuery, collection, list, countQuery, count) -> Mono
+                    .just(PageableExecutionUtils.<Version>getPage(list, page, () -> count)))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "versionService.readPagePerObjectId"));
+    }
 
-	private Flux<Document> makeResultFlux(Query query, Pageable page, MongoCollection<Document> collection,
-			Document bsonCondition) {
+    private Flux<Document> makeResultFlux(Query query, Pageable page, MongoCollection<Document> collection,
+                                          Document bsonCondition) {
 
-		Flux<Document> findFlux;
+        Flux<Document> findFlux;
 
-		if (query.getFields() == null || query.getFields()
-				.isEmpty()) {
-			FindPublisher<Document> publisher = collection.find(bsonCondition);
+        if (query.getFields() == null || query.getFields()
+            .isEmpty()) {
+            FindPublisher<Document> publisher = collection.find(bsonCondition);
 
-			if (!Query.DEFAULT_SORT.equals(page.getSort()))
-				publisher.sort(this.sort(page.getSort()));
+            if (!Query.DEFAULT_SORT.equals(page.getSort()))
+                publisher.sort(this.sort(page.getSort()));
 
-			findFlux = Flux.from(publisher.skip((int) page.getOffset())
-					.limit(page.getPageSize()));
-		} else {
+            findFlux = Flux.from(publisher.skip((int) page.getOffset())
+                .limit(page.getPageSize()));
+        } else {
 
-			List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition)));
+            List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition)));
 
-			Bson sort = null;
-			if (!Query.DEFAULT_SORT.equals(page.getSort()))
-				sort = this.sort(page.getSort());
+            Bson sort = null;
+            if (!Query.DEFAULT_SORT.equals(page.getSort()))
+                sort = this.sort(page.getSort());
 
-			if (sort != null)
-				pipeLines.add(Aggregates.sort(sort));
+            if (sort != null)
+                pipeLines.add(Aggregates.sort(sort));
 
-			pipeLines.add(Aggregates.project(Projections.fields(query.getExcludeFields()
-					.booleanValue() ? Projections.exclude(query.getFields())
-							: Projections.include(query.getFields()))));
-			pipeLines.add(Aggregates.skip((int) page.getOffset()));
-			pipeLines.add(Aggregates.limit(page.getPageSize()));
+            pipeLines.add(Aggregates.project(Projections.fields(query.getExcludeFields()
+                .booleanValue() ? Projections.exclude(query.getFields())
+                : Projections.include(query.getFields()))));
+            pipeLines.add(Aggregates.skip((int) page.getOffset()));
+            pipeLines.add(Aggregates.limit(page.getPageSize()));
 
-			var agg = collection.aggregate(pipeLines);
+            var agg = collection.aggregate(pipeLines);
 
-			findFlux = Flux.from(agg);
-		}
-		return findFlux;
-	}
+            findFlux = Flux.from(agg);
+        }
+        return findFlux;
+    }
 
-	private Bson sort(Sort sort) {
-		if (sort == null)
-			return null;
+    private Bson sort(Sort sort) {
+        if (sort == null)
+            return null;
 
-		if (sort.equals(Query.DEFAULT_SORT))
-			return null;
+        if (sort.equals(Query.DEFAULT_SORT))
+            return null;
 
-		BsonDocument document = new BsonDocument();
-		for (Order e : sort.toList()) {
-			document.append(e.getProperty(), new BsonInt32(e.getDirection() == Direction.DESC ? -1 : 1));
-		}
-		return document;
-	}
+        BsonDocument document = new BsonDocument();
+        for (Order e : sort.toList()) {
+            document.append(e.getProperty(), new BsonInt32(e.getDirection() == Direction.DESC ? -1 : 1));
+        }
+        return document;
+    }
+
+    public Mono<Long> deleteBy(String appCode, String clientCode, String objectType) {
+        return this.repo.deleteByObjectAppCodeAndClientCodeAndObjectType(appCode, clientCode, objectType);
+    }
 }
