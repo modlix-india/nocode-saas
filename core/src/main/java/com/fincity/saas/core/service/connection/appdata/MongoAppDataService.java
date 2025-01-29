@@ -261,7 +261,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 									key))
 							.map(doc -> this.removeKey(doc, ID))
 							.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE))
-							.flatMap(oDocument -> DifferenceApplicator.apply(oDocument, overridableObject))
+							.flatMap(oDocument -> DifferenceApplicator.apply(overridableObject, oDocument))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.update"));
 				},
 
