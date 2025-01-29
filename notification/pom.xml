@@ -234,7 +234,7 @@
                         <configuration>
                             <jdbc>
                                 <driver>org.postgresql.Driver</driver>
-                                <url>jdbc:postgres://localhost:5432/notification</url>
+                                <url>jdbc:postgresql://localhost:5432/notification</url>
                                 <user>postgres</user>
                                 <password>Kiran@123</password>
                             </jdbc>
