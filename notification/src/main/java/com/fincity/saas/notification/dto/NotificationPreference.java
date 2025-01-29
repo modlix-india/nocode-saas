@@ -1,11 +1,11 @@
 package com.fincity.saas.notification.dto;
 
+import java.io.Serial;
 import java.util.Map;
 
 import org.jooq.types.ULong;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.notification.dto.base.AbstractIdsDto;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 
 import lombok.Data;
@@ -17,10 +17,10 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class NotificationPreference extends AbstractUpdatableDTO<ULong, ULong> {
+public class NotificationPreference extends AbstractIdsDto<NotificationPreference> {
 
-	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	private ULong appId;
+	@Serial
+	private static final long serialVersionUID = 2999999794759806228L;
 
 	private ULong userId;
 	private ULong notificationTypeId;

@@ -1,9 +1,9 @@
 package com.fincity.saas.notification.dto;
 
-import org.jooq.types.ULong;
+import java.io.Serial;
+import java.util.Map;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.notification.dto.base.AbstractBaseDto;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,10 +14,10 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class Connection extends AbstractUpdatableDTO<ULong, ULong> {
+public class Connection extends AbstractBaseDto<Connection> {
 
-	private ULong clientId;
-	private ULong appId;
+	@Serial
+	private static final long serialVersionUID = 2999999794759806228L;
 
-	private JsonNode connectionDetails;
+	private Map<String, Object> connectionDetails;
 }
