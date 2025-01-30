@@ -69,8 +69,16 @@
             <artifactId>r2dbc-pool</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>r2dbc-postgresql</artifactId>
+            <groupId>io.asyncer</groupId>
+            <artifactId>r2dbc-mysql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
         </dependency>
 
         <!-- Template Engine -->
@@ -216,9 +224,9 @@
                         </executions>
                         <dependencies>
                             <dependency>
-                                <groupId>org.postgresql</groupId>
-                                <artifactId>postgresql</artifactId>
-                                <version>42.7.5</version>
+                                <groupId>com.mysql</groupId>
+                                <artifactId>mysql-connector-j</artifactId>
+                                <version>9.2.0</version>
                             </dependency>
                             <dependency>
                                 <groupId>javax.xml.bind</groupId>
@@ -233,8 +241,8 @@
                         </dependencies>
                         <configuration>
                             <jdbc>
-                                <driver>org.postgresql.Driver</driver>
-                                <url>jdbc:postgresql://localhost:5432/notification</url>
+                                <driver>com.mysql.cj.jdbc.Driver</driver>
+                                <url>jdbc:mysql://localhost:3306/notification</url>
                                 <user>postgres</user>
                                 <password>Kiran@123</password>
                             </jdbc>
