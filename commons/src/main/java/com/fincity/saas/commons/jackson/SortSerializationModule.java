@@ -22,70 +22,78 @@ import com.fincity.saas.commons.util.BooleanUtil;
 
 public class SortSerializationModule extends Module {
 
-	@Override
-	public String getModuleName() {
-		return "SortModule";
-	}
+    @Override
+    public String getModuleName() {
+        return "SortModule";
+    }
 
-	@Override
-	public Version version() {
-		return new Version(0, 1, 0, "", null, null);
-	}
+    @Override
+    public Version version() {
+        return new Version(0, 1, 0, "", null, null);
+    }
 
-	@Override
-	public void setupModule(SetupContext context) {
-		SimpleSerializers serializers = new SimpleSerializers();
-		serializers.addSerializer(Sort.class, new SortJsonComponent.SortSerializer());
-		context.addSerializers(serializers);
+    @Override
+    public void setupModule(SetupContext context) {
+        SimpleSerializers serializers = new SimpleSerializers();
+        serializers.addSerializer(Sort.class, new SortJsonComponent.SortSerializer());
+        context.addSerializers(serializers);
 
-		SimpleDeserializers deserializers = new SimpleDeserializers();
-		deserializers.addDeserializer(Sort.class, new SortDeserializer());
-		context.addDeserializers(deserializers);
-	}
+        SimpleDeserializers deserializers = new SimpleDeserializers();
+        deserializers.addDeserializer(Sort.class, new SortDeserializer());
+        context.addDeserializers(deserializers);
+    }
 
-	public static class SortDeserializer extends JsonDeserializer<Sort> {
+    public static class SortDeserializer extends JsonDeserializer<Sort> {
 
-		@Override
-		public Sort deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-		        throws IOException {
+        @Override
+        public Sort deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+            throws IOException {
 
-			TreeNode treeNode = jsonParser.getCodec()
-			        .readTree(jsonParser);
+            TreeNode treeNode = jsonParser.getCodec()
+                .readTree(jsonParser);
 
-			if (!treeNode.isArray())
-				return null;
+            if (treeNode.isObject()) {
+                return Sort.by(this.makeOrderFromNode((JsonNode) treeNode));
+            }
 
-			ArrayNode arrayNode = (ArrayNode) treeNode;
-			List<Sort.Order> orders = new ArrayList<>();
-			for (JsonNode jsonNode : arrayNode) {
+            if (!treeNode.isArray())
+                return null;
 
-				Sort.Direction direction = jsonNode.has("direction") ? Sort.Direction.valueOf(jsonNode.get("direction")
-				        .textValue()) : Sort.DEFAULT_DIRECTION;
+            ArrayNode arrayNode = (ArrayNode) treeNode;
+            List<Sort.Order> orders = new ArrayList<>();
+            for (JsonNode jsonNode : arrayNode)
+                orders.add(makeOrderFromNode(jsonNode));
 
-				NullHandling nullHandling = jsonNode.has("nullHandling")
-				        ? NullHandling.valueOf(jsonNode.get("nullHandling")
-				                .textValue())
-				        : null;
+            return Sort.by(orders);
+        }
 
-				String property = jsonNode.get("property")
-				        .textValue();
+        private Sort.Order makeOrderFromNode(JsonNode jsonNode) {
 
-				Sort.Order order = nullHandling == null ? new Sort.Order(direction, property)
-				        : new Sort.Order(direction, property, nullHandling);
+            Sort.Direction direction = jsonNode.has("direction") ? Sort.Direction.valueOf(jsonNode.get("direction")
+                .textValue()) : Sort.DEFAULT_DIRECTION;
 
-				if (jsonNode.has("ignoreCase") && BooleanUtil.safeValueOf(jsonNode.get("ignoreCase")
-				        .textValue()))
-					order = order.ignoreCase();
+            NullHandling nullHandling = jsonNode.has("nullHandling")
+                ? NullHandling.valueOf(jsonNode.get("nullHandling")
+                .textValue())
+                : null;
 
-				orders.add(order);
-			}
-			return Sort.by(orders);
-		}
+            String property = jsonNode.get("property")
+                .textValue();
 
-		@Override
-		public Class<Sort> handledType() {
-			return Sort.class;
-		}
+            Sort.Order order = nullHandling == null ? new Sort.Order(direction, property)
+                : new Sort.Order(direction, property, nullHandling);
 
-	}
+            if (jsonNode.has("ignoreCase") && BooleanUtil.safeValueOf(jsonNode.get("ignoreCase")
+                .textValue()))
+                order = order.ignoreCase();
+
+            return order;
+        }
+
+        @Override
+        public Class<Sort> handledType() {
+            return Sort.class;
+        }
+
+    }
 }
