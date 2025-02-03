@@ -69,7 +69,8 @@ public class ClientRegistrationService {
 	private static final String X_FORWARDED_PORT = "X-Forwarded-Port";
 	private static final String X_FORWARDED_PROTO = "X-Forwarded-Proto";
 	private static final String X_FORWARDED_HOST = "X-Forwarded-Host";
-
+	private static final int VALIDITY_MINUTES = 30;
+	private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
 	private final ClientDAO dao;
 	private final AppService appService;
 	private final UserService userService;
@@ -83,13 +84,7 @@ public class ClientRegistrationService {
 	private final IFeignFilesService filesService;
 	private final AppRegistrationIntegrationService appRegistrationIntegrationService;
 	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
-
 	private final SecurityMessageResourceService securityMessageResourceService;
-
-	private static final int VALIDITY_MINUTES = 30;
-
-	private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
-
 	@Value("${security.subdomain.endings}")
 	private String[] subDomainEndings;
 
@@ -148,9 +143,11 @@ public class ClientRegistrationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+				() -> SecurityContextUtil.getUsersContextAuthentication()
+						.flatMap(ca -> ca.isAuthenticated() ? Mono.empty() : Mono.just(ca))
+						.switchIfEmpty(this.regError("Signout to register")),
 
-				ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+				(ca) -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
 						ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
 				(ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
@@ -166,7 +163,9 @@ public class ClientRegistrationService {
 
 					return this.verifyClient(ca, regProp, registrationRequest.getEmailId(),
 							registrationRequest.getPhoneNumber(), registrationRequest.getOtp());
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
+				})
+				.switchIfEmpty(Mono.just(Boolean.FALSE))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
 	}
 
 	public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
@@ -243,14 +242,11 @@ public class ClientRegistrationService {
 		if (registrationRequest.isBusinessClient() && safeIsBlank(registrationRequest.getBusinessType()))
 			registrationRequest.setBusinessType(AppRegistrationService.DEFAULT_BUSINESS_TYPE);
 
-		if (ca.isAuthenticated())
-			return this.regError("Signout to register");
-
 		String password = registrationRequest.getInputPass();
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null?
+				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null ?
 						this.clientService.validatePasswordPolicy(policy, null, registrationRequest.getInputPassType(),
 						password) : Mono.just(Boolean.TRUE),
 
@@ -435,9 +431,9 @@ public class ClientRegistrationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> !StringUtil.safeIsBlank(request.getSocialRegisterState()) ?
-						Mono.just(Boolean.TRUE) :
-						this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(), request.getOtp()),
+				() -> !StringUtil.safeIsBlank(request.getSocialRegisterState()) ? Mono.just(Boolean.TRUE)
+						: this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(),
+								request.getOtp()),
 
 				isVerified -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
