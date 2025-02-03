@@ -147,7 +147,7 @@ public class ClientRegistrationService {
 						.flatMap(ca -> ca.isAuthenticated() ? Mono.empty() : Mono.just(ca))
 						.switchIfEmpty(this.regError("Signout to register")),
 
-				(ca) -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+				ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
 						ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
 				(ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
