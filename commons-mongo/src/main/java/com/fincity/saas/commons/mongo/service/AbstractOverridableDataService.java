@@ -89,7 +89,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     @Autowired // NOSONAR
     protected com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
 
-    private static final Set<String> READ_LRO_PARAMETERS_IGNORE = Set.of(CLIENT_CODE, APP_CODE, "size", "page");
+    private static final Set<String> READ_LRO_PARAMETERS_IGNORE = Set.of(CLIENT_CODE, APP_CODE, "size", "page", "sort");
 
     protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
     };
@@ -508,6 +508,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
             ignoreCount++;
         if (params.containsKey("size"))
             ignoreCount++;
+        if (params.containsKey("sort"))
+            ignoreCount++;
 
         Mono<Tuple2<Boolean, String>> accessCheck = FlatMapUtil.flatMapMono(
 
@@ -591,7 +593,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                     ":",
                     "" + pageable.getPageNumber(),
                     ":",
-                    "" + pageable.getPageSize()));
+                    "" + pageable.getPageSize(),
+                    ":",
+                    pageable.getSort().toString()));
 
         return returnList;
     }
