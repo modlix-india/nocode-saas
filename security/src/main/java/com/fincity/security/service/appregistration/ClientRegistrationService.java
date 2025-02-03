@@ -71,6 +71,7 @@ public class ClientRegistrationService {
 	private static final String X_FORWARDED_HOST = "X-Forwarded-Host";
 	private static final int VALIDITY_MINUTES = 30;
 	private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
+
 	private final ClientDAO dao;
 	private final AppService appService;
 	private final UserService userService;
@@ -85,6 +86,7 @@ public class ClientRegistrationService {
 	private final AppRegistrationIntegrationService appRegistrationIntegrationService;
 	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 	private final SecurityMessageResourceService securityMessageResourceService;
+
 	@Value("${security.subdomain.endings}")
 	private String[] subDomainEndings;
 
