@@ -38,9 +38,10 @@ public class DifferenceApplicator {
 				.distinct()
 				.subscribeOn(Schedulers.boundedElastic())
 				.flatMap(e -> {
-					if (!override.containsKey(e))
+
+					if (!override.containsKey(e) && base.get(e) != null)
 						return Mono.just(Tuples.of(e, base.get(e)));
-					if (!base.containsKey(e))
+					if (!base.containsKey(e) && override.get(e) != null)
 						return Mono.just(Tuples.of(e, override.get(e)));
 
 					return apply(override.get(e), base.get(e)).map(d -> Tuples.of(e, d));

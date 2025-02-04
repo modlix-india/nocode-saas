@@ -14,26 +14,27 @@ import reactor.core.publisher.Mono;
 
 public interface IAppDataService {
 
-	public static final String CACHE_SUFFIX_FOR_INDEX_CREATION = "_index_creation";
+	String CACHE_SUFFIX_FOR_INDEX_CREATION = "_index_creation";
 
-	public Mono<Map<String, Object>> create(Connection conn, Storage storage, DataObject dataObject);
+	Mono<Map<String, Object>> create(Connection conn, Storage storage, DataObject dataObject);
 
-	public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override);
+	Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override);
 
-	public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id);
+	Mono<Map<String, Object>> read(Connection conn, Storage storage, String id);
 
-	public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Query query);
+	Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Query query);
 
-	public Flux<Map<String, Object>> readPageAsFlux(Connection conn, Storage storage, Query query);
+	Flux<Map<String, Object>> readPageAsFlux(Connection conn, Storage storage, Query query);
 
-	public Mono<Boolean> delete(Connection conn, Storage storage, String id);
+	Mono<Boolean> delete(Connection conn, Storage storage, String id);
 
-	public Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId);
+	Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode);
 
-	public Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String versionId,
-			Query query);
+	Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId);
 
-	public Mono<Boolean> checkifExists(Connection conn, Storage storage, String id);
+	Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String versionId, Query query);
 
-	public Mono<Boolean> deleteStorage(Connection conn, Storage storage);
+	Mono<Boolean> checkifExists(Connection conn, Storage storage, String id);
+
+	Mono<Boolean> deleteStorage(Connection conn, Storage storage);
 }

@@ -15,12 +15,15 @@ import reactor.core.publisher.Mono;
 public class SecurityMessageResourceService extends AbstractMessageService {
 
 	public static final String OBJECT_NOT_FOUND_TO_UPDATE = "object_not_found_to_update";
+	public static final String PARAMS_NOT_FOUND = "params_not_found";
 	public static final String FORBIDDEN_CREATE = "forbidden_create";
+	public static final String FORBIDDEN_UPDATE = "forbidden_update";
 	public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
-	public static final String FORBIDDEN_CREATE_INVALID_PASS = "forbidden_create_user_invalid_password";
 	public static final String UNABLE_TO_DELETE = "unable_to_delete";
 	public static final String OBJECT_NOT_UPDATABLE = "object_not_updatable";
+	public static final String USER_IDENTIFICATION_NOT_FOUND = "user_identification_not_found";
 	public static final String USER_CREDENTIALS_MISMATCHED = "user_credentials_mismatched";
+	public static final String USER_PASSWORD_INVALID_ATTEMPTS = "user_password_invalid_attempts";
 	public static final String USER_PASSWORD_INVALID = "user_password_invalid";
 	public static final String USER_ACCOUNT_BLOCKED = "user_account_blocked";
 	public static final String USER_ACCOUNT_BLOCKED_LIMIT = "user_account_blocked_limit";
@@ -28,6 +31,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String UNKNOWN_ERROR = "unknown_error";
 	public static final String UNKONWN_ERROR_INSERT = "unkonwn_error_insert";
 	public static final String TOKEN_EXPIRED = "token_expired";
+	public static final String LOGIN_REQUIRED = "login_required";
 	public static final String UNKNOWN_TOKEN = "unknown_token";
 	public static final String ALREADY_EXISTS = "already_exists";
 	public static final String ROLE_FORBIDDEN = "role_forbidden_for_selected_user";
@@ -49,6 +53,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String REGEX_MISMATCH = "regex_mismatch";
 	public static final String MIN_LENGTH_ERROR = "min_length_error";
 	public static final String MAX_LENGTH_ERROR = "max_length_error";
+	public static final String LENGTH_ERROR = "length_error";
 	public static final String USER_NOT_ACTIVE = "user_not_active";
 	public static final String OLD_NEW_PASSWORD_MATCH = "old_new_password_match";
 	public static final String NEW_PASSWORD_MISSING = "new_password_missing";
@@ -57,6 +62,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String DELETE_PACKAGE_ERROR = "delete_package_error";
 	public static final String DELETE_ROLE_ERROR = "delete_role_error";
 	public static final String UNKNOWN_CLIENT = "unknown_client";
+	public static final String INACTIVE_CLIENT = "inactive_client";
 	public static final String APP_CODE_NO_SPL_CHAR = "app_code_no_spl_char";
 	public static final String CLIENT_REGISTRATION_ERROR = "client_registration_error";
 	public static final String USER_ALREADY_EXISTS = "user_already_exists";
@@ -87,7 +93,6 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String NO_REGISTRATION_AVAILABLE = "no_registration_available";
 	public static final String CANNOT_DELETE_APP = "cannot_delete_app";
 	public static final String MAIL_CANNOT_BE_TRIGGERED = "mail_cannot_be_triggered";
-	public static final String ACCESS_CODE_INCORRECT = "access_code_incorrect";
 	public static final String USER_ALREADY_CREATED = "user_already_created";
 	public static final String MISSING_PASSWORD = "missing_password";
 	public static final String FIELDS_MISSING = "fields_missing";
@@ -106,6 +111,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String SOCIAL_LOGIN_FAILED = "social_login_failed";
 	public static final String UNSUPPORTED_PLATFORM = "unsupported_platform";
 	public static final String CRT_KEY_ISSUE = "crt_key_issue";
+	public static final String SUBDOMAIN_SUFFIX_FORBIDDEN = "subdomain_suffix_forbidden";
 
 	public SecurityMessageResourceService() {
 

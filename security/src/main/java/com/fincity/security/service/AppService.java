@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -23,6 +24,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
@@ -46,859 +48,860 @@ import reactor.util.function.Tuples;
 @Service
 public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppRecord, ULong, App, AppDAO> {
 
-	private static final String APPLICATION = "Application";
-	private static final String APPLICATION_ACCESS = "Application access";
-
-	private final ClientService clientService;
-	private final SecurityMessageResourceService messageResourceService;
-	private final CacheService cacheService;
-	private final PackageService packageService;
-	private final RoleService roleService;
-	private final AppRegistrationDAO appRegistrationDao;
-
-	private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
-	private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
-	private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
-	private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
-	private static final String CACHE_NAME_APP_BY_APPID = "byAppId";
-	private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
-	private static final String CACHE_NAME_APP_DEPENDENCIES = "appDependencies";
-	private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
-
-	public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
-	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE";
-	public static final String APP_PROP_REG_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE = "REGISTRATION_TYPE_CODE_IMMEDIATE_LOGIN_IMMEDIATE";
-	public static final String APP_PROP_REG_TYPE_CODE_ON_REQUEST = "REGISTRATION_TYPE_CODE_ON_REQUEST";
-	public static final String APP_PROP_REG_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE = "REGISTRATION_TYPE_CODE_ON_REQUEST_LOGIN_IMMEDIATE";
-	public static final String APP_PROP_REG_TYPE_EMAIL_VERIFY = "REGISTRATION_TYPE_EMAIL_VERIFY";
-	public static final String APP_PROP_REG_TYPE_PHONE_VERIFY_OTP = "REGISTRATION_TYPE_PHONE_VERIFY_OTP";
-	public static final String APP_PROP_REG_TYPE_EMAIL_PASSWORD = "REGISTRATION_TYPE_EMAIL_PASSWORD";
-	public static final String APP_PROP_REG_TYPE_NO_VERIFICATION = "REGISTRATION_TYPE_NO_VERIFICATION";
-	public static final String APP_PROP_REG_TYPE_NO_REGISTRATION = "REGISTRATION_TYPE_NO_REGISTRATION";
-
-	public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
-	public static final String APP_PROP_URL = "URL";
-
-	public static final String APP_ACCESS_TYPE = "appAccessType";
-	public static final String APP_USAGE_TYPE = "appUsageType";
-	public static final String APP_NAME = "appName";
-	public static final String THUMB_URL = "thumbUrl";
-
-	public AppService(ClientService clientService, PackageService packageService, RoleService roleService,
-			SecurityMessageResourceService messageResourceService, CacheService cacheService,
-			AppRegistrationDAO appRegistrationDao) {
-
-		this.clientService = clientService;
-		this.packageService = packageService;
-		this.roleService = roleService;
-		this.messageResourceService = messageResourceService;
-		this.cacheService = cacheService;
-		this.appRegistrationDao = appRegistrationDao;
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
-	@Override
-	public Mono<App> create(App entity) {
-
-		if (entity.getAppCode() != null && !StringUtil.onlyAlphabetAllowed(entity.getAppCode())) {
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
-		}
-
-		Mono<App> normalFlow = FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> {
-
-					ULong clientId = ULong.valueOf(ca.getUser()
-							.getClientId());
-
-					if (entity.getClientId() == null)
-						entity.setClientId(clientId);
-
-					if (ca.isSystemClient() || entity.getClientId()
-							.equals(clientId))
-						return Mono.just(entity);
-
-					return this.clientService.isBeingManagedBy(clientId, entity.getClientId())
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(entity) : Mono.empty());
-				},
-
-				(ca, app) -> app.getAppCode() == null ? this.dao.generateAppCode(app)
-						.map(app::setAppCode) : Mono.just(app),
-
-				(ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp));
-
-		Mono<App> explicitAppCreationFlow = FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
-						.getClientId())).map(Client::getId).switchIfEmpty(this.clientService.getSystemClientId()),
-
-				(ca, managedClientId) -> entity.getAppCode() == null
-						? this.dao.generateAppCode(entity).map(entity::setAppCode)
-						: Mono.just(entity),
-
-				(ca, managedClientId, appCodeAddedApp) -> super.create(appCodeAddedApp.setClientId(managedClientId)),
-
-				(ca, mci, ac, created) -> this.dao.addClientAccess(created.getId(), ULongUtil.valueOf(ca.getUser()
-						.getClientId()), true)
-						.flatMap(x -> Mono.just(created)));
-
-		return (entity.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT ? explicitAppCreationFlow : normalFlow)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.create"))
-				.switchIfEmpty(
-						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								SecurityMessageResourceService.FORBIDDEN_CREATE,
-								APPLICATION))
-
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-				.flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
-	@Override
-	public Mono<App> update(App entity) {
-		return this.read(entity.getId())
-				.flatMap(e -> super.update(entity))
-				.switchIfEmpty(
-						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, entity
-										.getId()))
-
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-				.flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI))
-				.flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
-						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, e.getId()))
-						.map(x -> e));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
-	@Override
-	public Mono<App> update(ULong key, Map<String, Object> fields) {
-		return this.read(key)
-				.flatMap(e -> super.update(key, fields))
-				.switchIfEmpty(
-						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION,
-								key))
-
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-				.flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
-						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, e.getId()))
-						.map(x -> e));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_READ')")
-	@Override
-	public Mono<App> read(ULong id) {
-		return super.read(id);
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_READ')")
-	@Override
-	public Mono<Page<App>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-		return super.readPageFilter(pageable, condition);
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
-	@Override
-	public Mono<Integer> delete(ULong id) {
-
-		Mono<Integer> what = FlatMapUtil.flatMapMono(
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.read(id),
-
-				(ca, app) -> {
-					if (ca.isSystemClient())
-						return Mono.just(true);
-
-					if (app.getClientId().equals(id))
-						return Mono.just(true);
-
-					return this.clientService
-							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
-				},
-
-				(ca, app, hasAccess) -> super.delete(id)
-
-						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
-								.flatMap(z -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, app.getId()))
-								.map(y -> x)));
-
-		return what
-				.switchIfEmpty(
-						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.delete"));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
-	public Mono<Boolean> deleteEverything(ULong id, boolean forceDelete) {
+    private static final String APPLICATION = "Application";
+    private static final String APPLICATION_ACCESS = "Application access";
 
-		Mono<Boolean> what = FlatMapUtil.flatMapMono(
+    private final ClientService clientService;
+    private final SecurityMessageResourceService messageResourceService;
+    private final CacheService cacheService;
+    private final AppRegistrationDAO appRegistrationDao;
 
-				SecurityContextUtil::getUsersContextAuthentication,
+    private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
+    private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
+    private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
+    private static final String CACHE_NAME_APP_BY_APPCODE = "byAppCode";
+    private static final String CACHE_NAME_APP_BY_APPID = "byAppId";
+    private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
+    private static final String CACHE_NAME_APP_DEPENDENCIES = "appDependencies";
+    private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
+
+    public static final String AC = "appCode";
+    public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
+    public static final String APP_PROP_REG_TYPE_VERIFICATION = "REGISTRATION_TYPE_VERIFICATION";
+    public static final String APP_PROP_REG_TYPE_NO_VERIFICATION = "REGISTRATION_TYPE_NO_VERIFICATION";
+    public static final String APP_PROP_REG_TYPE_NO_REGISTRATION = "REGISTRATION_TYPE_NO_REGISTRATION";
+
+    public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
+    public static final String APP_PROP_URL = "URL";
+
+    public static final String APP_ACCESS_TYPE = "appAccessType";
+    public static final String APP_USAGE_TYPE = "appUsageType";
+    public static final String APP_NAME = "appName";
+    public static final String THUMB_URL = "thumbUrl";
+
+    public AppService(ClientService clientService, SecurityMessageResourceService messageResourceService,
+                      CacheService cacheService, AppRegistrationDAO appRegistrationDao) {
+
+        this.clientService = clientService;
+        this.messageResourceService = messageResourceService;
+        this.cacheService = cacheService;
+        this.appRegistrationDao = appRegistrationDao;
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
+    @Override
+    public Mono<App> create(App entity) {
+
+        if (entity.getAppCode() != null && !StringUtil.onlyAlphabetAllowed(entity.getAppCode())) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                SecurityMessageResourceService.APP_CODE_NO_SPL_CHAR);
+        }
+
+        Mono<App> normalFlow = FlatMapUtil.flatMapMono(
+
+            SecurityContextUtil::getUsersContextAuthentication,
+
+            ca -> {
+
+                ULong clientId = ULong.valueOf(ca.getUser()
+                    .getClientId());
+
+                if (entity.getClientId() == null)
+                    entity.setClientId(clientId);
+
+                if (ca.isSystemClient() || entity.getClientId()
+                    .equals(clientId))
+                    return Mono.just(entity);
+
+                return this.clientService.isBeingManagedBy(clientId, entity.getClientId())
+                    .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(entity) : Mono.empty());
+            },
+
+            (ca, app) -> app.getAppCode() == null ? this.dao.generateAppCode(app)
+                .map(app::setAppCode) : Mono.just(app),
+
+            (ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp));
+
+        Mono<App> explicitAppCreationFlow = FlatMapUtil.flatMapMono(
+
+            SecurityContextUtil::getUsersContextAuthentication,
+
+            ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
+                .getClientId())).map(Client::getId).switchIfEmpty(this.clientService.getSystemClientId()),
+
+            (ca, managedClientId) -> entity.getAppCode() == null
+                ? this.dao.generateAppCode(entity).map(entity::setAppCode)
+                : Mono.just(entity),
+
+            (ca, managedClientId, appCodeAddedApp) -> super.create(appCodeAddedApp.setClientId(managedClientId)),
+
+            (ca, mci, ac, created) -> this.dao.addClientAccess(created.getId(), ULongUtil.valueOf(ca.getUser()
+                    .getClientId()), true)
+                .flatMap(x -> Mono.just(created)));
+
+        return (entity.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT ? explicitAppCreationFlow : normalFlow)
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.create"))
+            .switchIfEmpty(
+                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    SecurityMessageResourceService.FORBIDDEN_CREATE,
+                    APPLICATION))
+
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+            .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
+    @Override
+    public Mono<App> update(App entity) {
+        return this.read(entity.getId())
+            .flatMap(e -> super.update(entity))
+            .switchIfEmpty(
+                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION, entity
+                        .getId()))
+
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+            .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI))
+            .flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
+                .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, e.getId()))
+                .map(x -> e));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
+    @Override
+    public Mono<App> update(ULong key, Map<String, Object> fields) {
+        return this.read(key)
+            .flatMap(e -> super.update(key, fields))
+            .switchIfEmpty(
+                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION,
+                    key))
+
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+            .flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
+                .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, e.getId()))
+                .map(x -> e));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_READ')")
+    @Override
+    public Mono<App> read(ULong id) {
+        return super.read(id);
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_READ')")
+    @Override
+    public Mono<Page<App>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return super.readPageFilter(pageable, condition);
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
+    @Override
+    public Mono<Integer> delete(ULong id) {
+
+        Mono<Integer> what = FlatMapUtil.flatMapMono(
+            SecurityContextUtil::getUsersContextAuthentication,
+
+            ca -> this.read(id),
+
+            (ca, app) -> {
+                if (ca.isSystemClient())
+                    return Mono.just(true);
+
+                if (app.getClientId().equals(id))
+                    return Mono.just(true);
+
+                return this.clientService
+                    .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
+            },
+
+            (ca, app, hasAccess) -> super.delete(id)
+
+                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+                .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
+                    .flatMap(z -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, app.getId()))
+                    .map(y -> x)));
+
+        return what
+            .switchIfEmpty(
+                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION, id))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.delete"));
+    }
 
-				ca -> this.read(id),
+    @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
+    public Mono<Boolean> deleteEverything(ULong id, boolean forceDelete) {
 
-				(ca, app) -> {
-					if (ca.isSystemClient() || app.getClientId().equals(id)
-							|| app.getClientId().toBigInteger().equals(ca.getLoggedInFromClientId())) {
-						if (forceDelete)
-							return Mono.just(true);
-						return this.isNoneUsingTheAppOtherThan(id, ca.getUser().getClientId());
-					}
+        Mono<Boolean> what = FlatMapUtil.flatMapMono(
 
-					return Mono.just(false);
-				},
+            SecurityContextUtil::getUsersContextAuthentication,
 
-				(ca, app, hasAccess) -> hasAccess.booleanValue() ? Mono.just(true) : Mono.empty(),
+            ca -> this.read(id),
 
-				(ca, app, hasAccess, delete) -> this.dao.deleteEverythingRelated(id, app.getAppCode())
+            (ca, app) -> {
+                if (ca.isSystemClient() || app.getClientId().equals(id)
+                    || app.getClientId().toBigInteger().equals(ca.getLoggedInFromClientId())) {
+                    if (forceDelete)
+                        return Mono.just(true);
+                    return this.isNoneUsingTheAppOtherThan(id, ca.getUser().getClientId());
+                }
 
-						.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-						.flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
-								.flatMap(z -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, app.getId()))
-								.map(y -> x))
+                return Mono.just(false);
+            },
 
-		);
+            (ca, app, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(true) : Mono.empty(),
 
-		return what
-				.switchIfEmpty(
-						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND, APPLICATION, id))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteEverything"));
-	}
+            (ca, app, hasAccess, delete) -> this.dao.deleteEverythingRelated(id, app.getAppCode())
 
-	public Mono<Boolean> isNoneUsingTheAppOtherThan(ULong id, BigInteger clientId) {
-		return this.dao.isNoneUsingTheAppOtherThan(id, clientId);
-	}
+                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+                .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
+                    .flatMap(z -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, app.getId()))
+                    .map(y -> x))
 
-	@Override
-	protected Mono<App> updatableEntity(App entity) {
+        );
 
-		return this.read(entity.getId())
-				.flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-						.flatMap(ca -> {
+        return what
+            .switchIfEmpty(
+                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    AbstractMessageService.OBJECT_NOT_FOUND, APPLICATION, id))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteEverything"));
+    }
 
-							existing.setAppName(entity.getAppName());
-							existing.setAppAccessType(entity.getAppAccessType());
-							existing.setThumbUrl(entity.getThumbUrl());
-							existing.setAppUsageType(entity.getAppUsageType());
+    public Mono<Boolean> isNoneUsingTheAppOtherThan(ULong id, BigInteger clientId) {
+        return this.dao.isNoneUsingTheAppOtherThan(id, clientId);
+    }
 
-							if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-								return Mono.just(existing);
+    @Override
+    protected Mono<App> updatableEntity(App entity) {
 
-							return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-									.getClientId()), existing.getClientId())
-									.flatMap(managed -> {
-										if (managed.booleanValue())
-											return Mono.just(existing);
+        return this.read(entity.getId())
+            .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
 
-										return messageResourceService
-												.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-												.flatMap(msg -> Mono.error(() -> new GenericException(
-														HttpStatus.NOT_FOUND,
-														StringFormatter.format(msg, APPLICATION, entity.getId()))));
-									});
+                    existing.setAppName(entity.getAppName());
+                    existing.setAppAccessType(entity.getAppAccessType());
+                    existing.setThumbUrl(entity.getThumbUrl());
+                    existing.setAppUsageType(entity.getAppUsageType());
 
-						}));
-	}
+                    if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+                        return Mono.just(existing);
 
-	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+                    return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
+                            .getClientId()), existing.getClientId())
+                        .flatMap(managed -> {
+                            if (BooleanUtil.safeValueOf(managed))
+                                return Mono.just(existing);
 
-		return FlatMapUtil.flatMapMono(
+                            return messageResourceService
+                                .getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
+                                .flatMap(msg -> Mono.error(() -> new GenericException(
+                                    HttpStatus.NOT_FOUND,
+                                    StringFormatter.format(msg, APPLICATION, entity.getId()))));
+                        });
 
-		        () -> this.read(key),
+                }));
+    }
 
-		        app -> validateFields(fields),
+    @Override
+    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
 
-		        (app, updatableFields) -> SecurityContextUtil.getUsersContextAuthentication(),
+        return FlatMapUtil.flatMapMono(
 
-		        (app, updatableFields, ca) ->
-				{
+            () -> this.read(key),
 
-			        if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-				        return Mono.just(updatableFields);
+            app -> validateFields(fields),
 
-			        return messageResourceService.getMessage(SecurityMessageResourceService.OBJECT_NOT_FOUND)
-			                .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
-			                        StringFormatter.format(msg, APPLICATION, key))));
+            (app, updatableFields) -> SecurityContextUtil.getUsersContextAuthentication(),
 
-		        }
+            (app, updatableFields, ca) -> {
 
-		);
+                if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+                    return Mono.just(updatableFields);
 
-	}
+                return messageResourceService.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
+                    .flatMap(msg -> Mono.error(() -> new GenericException(HttpStatus.NOT_FOUND,
+                        StringFormatter.format(msg, APPLICATION, key))));
 
-	private Mono<Map<String, Object>> validateFields(Map<String, Object> fields) {
+            }
 
-		Map<String, Object> updatableFields = new HashMap<>();
+        );
 
-		if (fields.containsKey(APP_NAME))
-			updatableFields.put(APP_NAME, fields.get(APP_NAME));
+    }
 
-		if (fields.containsKey(THUMB_URL))
-			updatableFields.put(THUMB_URL, fields.get(THUMB_URL));
+    private Mono<Map<String, Object>> validateFields(Map<String, Object> fields) {
 
-		if (fields.containsKey(APP_ACCESS_TYPE))
-			updatableFields.put(APP_ACCESS_TYPE, fields.get(APP_ACCESS_TYPE));
+        Map<String, Object> updatableFields = new HashMap<>();
 
-		if (fields.containsKey(APP_USAGE_TYPE))
-			updatableFields.put(APP_USAGE_TYPE, fields.get(APP_USAGE_TYPE));
+        if (fields.containsKey(APP_NAME))
+            updatableFields.put(APP_NAME, fields.get(APP_NAME));
 
-		return Mono.just(updatableFields);
+        if (fields.containsKey(THUMB_URL))
+            updatableFields.put(THUMB_URL, fields.get(THUMB_URL));
 
-	}
+        if (fields.containsKey(APP_ACCESS_TYPE))
+            updatableFields.put(APP_ACCESS_TYPE, fields.get(APP_ACCESS_TYPE));
 
-	public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
-		return this.dao.hasReadAccess(appCode, clientCode);
-	}
+        if (fields.containsKey(APP_USAGE_TYPE))
+            updatableFields.put(APP_USAGE_TYPE, fields.get(APP_USAGE_TYPE));
 
-	public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
-		return this.dao.hasWriteAccess(appCode, clientCode);
-	}
+        return Mono.just(updatableFields);
 
-	public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
-		return this.dao.hasWriteAccess(appId, clientId);
-	}
+    }
 
-	public Mono<Boolean> hasDeleteAccess(String appCode) {
-		return FlatMapUtil.flatMapMono(
-				SecurityContextUtil::getUsersContextAuthentication,
+    public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
+        return this.dao.hasReadAccess(appCode, clientCode);
+    }
 
-				ca -> this.getAppByCode(appCode),
+    public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
+        return this.dao.hasWriteAccess(appCode, clientCode);
+    }
 
-				(ca, app) -> {
-					if (ca.isSystemClient())
-						return Mono.just(true);
+    public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
+        return this.dao.hasWriteAccess(appId, clientId);
+    }
 
-					if (app.getClientId().equals(ULongUtil.valueOf(ca.getUser().getClientId())))
-						return Mono.just(true);
+    public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
 
-					return this.clientService
-							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasDeleteAccess"));
-	}
+        return FlatMapUtil.flatMapMono(
 
-	public Mono<Boolean> addClientAccess(ULong appId, ULong clientId, boolean writeAccess) {
+                SecurityContextUtil::getUsersContextAuthentication,
 
-		return FlatMapUtil.flatMapMono(
+                ca -> this.read(appId),
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                (ca, app) -> {
 
-				ca -> this.read(appId),
+                    ULong usersClientId = ULongUtil.valueOf(ca.getUser()
+                        .getClientId());
 
-				(ca, app) -> {
+                    if (ca.isSystemClient()
+                        && app.getClientId().equals(usersClientId)) {
+                        return this.dao.addClientAccess(appId, clientId, writeAccess);
+                    }
 
-					ULong usersClientId = ULongUtil.valueOf(ca.getUser()
-							.getClientId());
+                    return this.clientService.isBeingManagedBy(app.getClientId(), clientId)
+                        .flatMap(managed -> {
 
-					if (ca.isSystemClient()
-							&& app.getClientId().equals(usersClientId)) {
-						return this.dao.addClientAccess(appId, clientId, writeAccess);
-					}
+                            if (!BooleanUtil.safeValueOf(managed))
+                                return Mono.empty();
 
-					return this.clientService.isBeingManagedBy(app.getClientId(), clientId)
-							.flatMap(managed -> {
+                            if (!usersClientId.equals(app.getClientId())
+                                && SecurityAppAppAccessType.ANY != app.getAppAccessType())
+                                return Mono.empty();
 
-								if (!managed.booleanValue())
-									return Mono.empty();
+                            return this.dao.addClientAccess(appId, clientId,
+                                writeAccess);
+                        });
 
-								if (!usersClientId.equals(app.getClientId())
-										&& SecurityAppAppAccessType.ANY != app.getAppAccessType())
-									return Mono.empty();
+                },
 
-								return this.dao.addClientAccess(appId, clientId,
-										writeAccess);
-							});
+                (ca, cliAccess, changed) -> this.evict(appId, clientId))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccess"))
+            .switchIfEmpty(messageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS))
 
-				},
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
+    }
 
-				(ca, cliAccess, changed) -> this.evict(appId, clientId))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccess"))
-				.switchIfEmpty(messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.FORBIDDEN_CREATE, APPLICATION_ACCESS))
+    public Mono<Boolean> evict(ULong appId, ULong clientId) {
 
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
-	}
+        return FlatMapUtil.flatMapMono(
 
-	public Mono<Boolean> evict(ULong appId, ULong clientId) {
+                () -> this.read(appId),
 
-		return FlatMapUtil.flatMapMono(
+                app -> this.clientService.getClientTypeNCode(clientId),
 
-				() -> this.read(appId),
+                (app, typNCode) -> cacheService.evict(CACHE_NAME_APP_WRITE_ACCESS, app.getAppCode(), ":",
+                    typNCode.getT2()),
 
-				app -> this.clientService.getClientTypeNCode(clientId),
+                (app, typNCode, removed) -> cacheService.evict(CACHE_NAME_APP_READ_ACCESS, app.getAppCode(), ":",
+                    typNCode.getT2()))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.evict"));
+    }
 
-				(app, typNCode) -> cacheService.evict(CACHE_NAME_APP_WRITE_ACCESS, app.getAppCode(), ":",
-						typNCode.getT2()),
+    public Mono<Boolean> removeClient(ULong appId, ULong accessId) {
 
-				(app, typNCode, removed) -> cacheService.evict(CACHE_NAME_APP_READ_ACCESS, app.getAppCode(), ":",
-						typNCode.getT2()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.evict"));
-	}
+        return SecurityContextUtil.getUsersContextAuthentication()
+            .flatMap(ca -> {
 
-	public Mono<Boolean> removeClient(ULong appId, ULong accessId) {
+                if (ca.isSystemClient()) {
+                    return this.dao.removeClientAccess(appId, accessId);
+                }
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> {
+                return this.dao.readById(appId)
+                    .flatMap(e -> {
 
-					if (ca.isSystemClient()) {
-						return this.dao.removeClientAccess(appId, accessId);
-					}
+                        if (!e.getClientId()
+                            .toBigInteger()
+                            .equals(ca.getUser()
+                                .getClientId()))
+                            return Mono.empty();
 
-					return this.dao.readById(appId)
-							.flatMap(e -> {
+                        return this.dao.removeClientAccess(appId, accessId);
+                    });
+            })
+            .switchIfEmpty(messageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg), APPLICATION_ACCESS,
+                accessId))
 
-								if (!e.getClientId()
-										.toBigInteger()
-										.equals(ca.getUser()
-												.getClientId()))
-									return Mono.empty();
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
+    }
 
-								return this.dao.removeClientAccess(appId, accessId);
-							});
-				})
-				.switchIfEmpty(messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg), APPLICATION_ACCESS,
-						accessId))
+    public Mono<Boolean> updateClientAccess(ULong accessId, boolean writeAccess) {
 
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
-	}
+        return SecurityContextUtil.getUsersContextAuthentication()
+            .flatMap(ca -> {
 
-	public Mono<Boolean> updateClientAccess(ULong accessId, boolean writeAccess) {
+                if (ca.isSystemClient()) {
+                    return this.dao.updateClientAccess(accessId, writeAccess);
+                }
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> {
+                return this.dao.readById(accessId)
+                    .flatMap(e -> {
 
-					if (ca.isSystemClient()) {
-						return this.dao.updateClientAccess(accessId, writeAccess);
-					}
+                        if (!e.getClientId()
+                            .toBigInteger()
+                            .equals(ca.getUser()
+                                .getClientId()))
+                            return Mono.empty();
 
-					return this.dao.readById(accessId)
-							.flatMap(e -> {
+                        return this.dao.updateClientAccess(accessId, writeAccess);
+                    });
+            })
+            .switchIfEmpty(
+                messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS,
+                    accessId))
 
-								if (!e.getClientId()
-										.toBigInteger()
-										.equals(ca.getUser()
-												.getClientId()))
-									return Mono.empty();
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
+    }
 
-								return this.dao.updateClientAccess(accessId, writeAccess);
-							});
-				})
-				.switchIfEmpty(
-						messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS,
-								accessId))
+    public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
 
-				.flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
-	}
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_INHERITANCE,
+            () -> this.dao.appInheritance(appCode, urlClientCode, clientCode), appCode, ":", urlClientCode, ":",
+            clientCode);
+    }
 
-	public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
+    public Mono<App> getAppByCode(String appCode) {
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE, () -> this.dao.getByAppCode(appCode),
+            appCode);
+    }
 
-		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_INHERITANCE,
-				() -> this.dao.appInheritance(appCode, urlClientCode, clientCode), appCode, ":", urlClientCode, ":",
-				clientCode);
-	}
+    public Mono<ULong> getAppId(String appCode) {
+        return this.getAppByCode(appCode).map(App::getId);
+    }
 
-	public Mono<App> getAppByCode(String appCode) {
-		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE, () -> this.dao.getByAppCode(appCode),
-				appCode);
-	}
+    public Mono<App> getAppById(ULong appId) {
+        if (appId == null)
+            return Mono.empty();
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> this.read(appId), appId);
+    }
 
-	public Mono<App> getAppById(ULong appId) {
-		if (appId == null)
-			return Mono.empty();
-		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> this.read(appId), appId);
-	}
+    public Mono<App> getAppByCodeCheckAccess(String appCode) {
 
-	public Mono<App> getAppByCodeCheckAccess(String appCode) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+            SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+            ca -> this.getAppByCode(appCode),
 
-				ca -> this.getAppByCode(appCode),
+            (ca, app) -> {
 
-				(ca, app) -> {
+                if (ca.isSystemClient())
+                    return Mono.just(app);
 
-					if (ca.isSystemClient())
-						return Mono.just(app);
+                return this.hasReadAccess(appCode, ca.getClientCode())
+                    .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(app) : Mono.empty());
+            }
 
-					return this.hasReadAccess(appCode, ca.getClientCode())
-							.flatMap(hasAccess -> hasAccess.booleanValue() ? Mono.just(app) : Mono.empty());
-				}
+        );
+    }
 
-		);
-	}
+    public Mono<Page<Client>> getAppClients(String appCode, boolean onlyWriteAccess, String name, Pageable pageable) {
 
-	public Mono<Page<Client>> getAppClients(String appCode, boolean onlyWriteAccess, String name, Pageable pageable) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> ca.isSystemClient() ? Mono.just(true) : this.hasWriteAccess(appCode, ca.getClientCode()),
 
-				ca -> ca.isSystemClient() ? Mono.just(true) : this.hasWriteAccess(appCode, ca.getClientCode()),
+                (ca, hasAccess) -> {
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return Mono.just(Page.empty(pageable));
 
-				(ca, hasAccess) -> {
-					if (!hasAccess.booleanValue())
-						return Mono.just(Page.empty(pageable));
+                    return this.dao.getAppClients(appCode, onlyWriteAccess, name,
+                        ca.isSystemClient() ? null : ULong.valueOf(ca.getUser().getClientId()), pageable);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppClients"));
+    }
 
-					return this.dao.getAppClients(appCode, onlyWriteAccess, name,
-							ca.isSystemClient() ? null : ULong.valueOf(ca.getUser().getClientId()), pageable);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppClients"));
-	}
+    public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong urlClientId, Client client) {
 
-	public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong urlClientId, Client client) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+            () -> this.getAppByCode(urlAppCode),
 
-				() -> this.getAppByCode(urlAppCode),
+            app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
 
-				app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
+            (app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(app.getId(),
+                app.getClientId(), urlClientId, client.getTypeCode(), levelType, client.getBusinessType()),
 
-				(app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(app.getId(),
-						app.getClientId(), urlClientId, client.getTypeCode(), levelType, client.getBusinessType()),
+            (app, levelType, appAccessTuples) -> {
 
-				(app, levelType, appAccessTuples) -> {
+                Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
+                    .flatMap(tup -> this.dao.addClientAccess(tup.getT1(), client.getId(), tup.getT2()))
+                    .collectList();
 
-					Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
-							.flatMap(tup -> this.dao.addClientAccess(tup.getT1(), client.getId(), tup.getT2()))
-							.collectList();
+                return mons.map(e -> true);
+            }
 
-					return mons.map(e -> true);
-				}
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
+    }
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
-	}
+    public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,
+                                                                    String propName) {
 
-	public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,
-			String propName) {
+        if (appId == null && StringUtil.safeIsBlank(appCode)) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
+        }
 
-		if (appId == null && StringUtil.safeIsBlank(appCode)) {
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
-		}
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
 
-				ca -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(clientId == null ? List.<ULong>of() : List.of(clientId));
 
-					if (ca.isSystemClient())
-						return Mono.just(clientId == null ? List.<ULong>of() : List.of(clientId));
+                    ULong userClientId = ULongUtil.valueOf(ca.getUser()
+                        .getClientId());
 
-					ULong userClientId = ULongUtil.valueOf(ca.getUser()
-							.getClientId());
+                    if (clientId == null || userClientId.equals(clientId))
+                        return Mono.just(List.of(userClientId));
 
-					if (clientId == null || userClientId.equals(clientId))
-						return Mono.just(List.of(userClientId));
+                    return this.clientService.isBeingManagedBy(userClientId, clientId)
+                        .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(List.of(clientId))
+                            : Mono.empty());
+                },
 
-					return this.clientService.isBeingManagedBy(userClientId, clientId)
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(List.of(clientId)) : Mono.empty());
-				},
+                (ca, idList) -> this.dao.getProperties(idList, appId, appCode, propName))
+            .defaultIfEmpty(Map.of())
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getProperties"));
+    }
 
-				(ca, idList) -> this.dao.getProperties(idList, appId, appCode, propName))
-				.defaultIfEmpty(Map.of())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getProperties"));
-	}
+    public Mono<PropertiesResponse> getPropertiesWithClients(ULong clientId, ULong appId, String appCode,
+                                                             String propName) {
 
-	public Mono<PropertiesResponse> getPropertiesWithClients(ULong clientId, ULong appId, String appCode,
-			String propName) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                () -> this.getProperties(clientId, appId, appCode, propName),
 
-				() -> this.getProperties(clientId, appId, appCode, propName),
+                props -> {
 
-				props -> {
+                    if (props.isEmpty())
+                        return Mono.just(Map.<ULong, Client>of());
 
-					if (props.isEmpty())
-						return Mono.just(Map.<ULong, Client>of());
+                    Mono<List<Client>> clients = this.clientService.getClientsBy(new ArrayList<>(props.keySet()));
 
-					Mono<List<Client>> clients = this.clientService.getClientsBy(new ArrayList<>(props.keySet()));
+                    return clients
+                        .map(lst -> lst.stream().collect(Collectors.toMap(Client::getId, Functions.identity())));
+                },
 
-					return clients
-							.map(lst -> lst.stream().collect(Collectors.toMap(Client::getId, Functions.identity())));
-				},
+                (props, clients) -> Mono.just(new PropertiesResponse().setProperties(props).setClients(clients))
 
-				(props, clients) -> Mono.just(new PropertiesResponse().setProperties(props).setClients(clients))
+            )
+            .defaultIfEmpty(new PropertiesResponse())
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getPropertiesWithClients"));
+    }
 
-		)
-				.defaultIfEmpty(new PropertiesResponse())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getPropertiesWithClients"));
-	}
+    public Mono<Boolean> updateProperty(AppProperty property) {
 
-	public Mono<Boolean> updateProperty(AppProperty property) {
+        if (property.getAppId() == null || StringUtil.safeIsBlank(property.getName())) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                SecurityMessageResourceService.MANDATORY_APP_ID_NAME);
+        }
 
-		if (property.getAppId() == null || StringUtil.safeIsBlank(property.getName())) {
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.MANDATORY_APP_ID_NAME);
-		}
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
 
-				ca -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(Boolean.TRUE);
 
-					if (ca.isSystemClient())
-						return Mono.just(Boolean.TRUE);
+                    ULong userClientId = ULongUtil.valueOf(ca.getUser()
+                        .getClientId());
 
-					ULong userClientId = ULongUtil.valueOf(ca.getUser()
-							.getClientId());
+                    if (userClientId.equals(property.getClientId()))
+                        return Mono.just(Boolean.TRUE);
 
-					if (userClientId.equals(property.getClientId()))
-						return Mono.just(Boolean.TRUE);
+                    return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
+                        .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
+                            : Mono.empty());
+                },
 
-					return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
-				},
+                (ca, hasAccess) -> this.dao.hasWriteAccess(property.getAppId(), property.getClientId()),
 
-				(ca, hasAccess) -> this.dao.hasWriteAccess(property.getAppId(), property.getClientId()),
+                (ca, hasAccess, writeAccess) -> {
 
-				(ca, hasAccess, writeAccess) -> {
+                    if (!BooleanUtil.safeValueOf(writeAccess))
+                        return this.messageResourceService.throwMessage(
+                            e -> new GenericException(HttpStatus.FORBIDDEN, e),
+                            SecurityMessageResourceService.FORBIDDEN_CREATE, "Application property");
 
-					if (!writeAccess.booleanValue())
-						return this.messageResourceService.throwMessage(
-								e -> new GenericException(HttpStatus.FORBIDDEN, e),
-								SecurityMessageResourceService.FORBIDDEN_CREATE, "Application property");
+                    return this.dao.updateProperty(property);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.updateProperty"));
+    }
 
-					return this.dao.updateProperty(property);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.updateProperty"));
-	}
+    public Mono<Boolean> deletePropertyById(ULong propertyId) {
 
-	public Mono<Boolean> deletePropertyById(ULong propertyId) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.dao.getPropertyById(propertyId),
 
-				ca -> this.dao.getPropertyById(propertyId),
+                (ca, property) -> {
 
-				(ca, property) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(Boolean.TRUE);
 
-					if (ca.isSystemClient())
-						return Mono.just(Boolean.TRUE);
+                    ULong userClientId = ULongUtil.valueOf(ca.getUser()
+                        .getClientId());
 
-					ULong userClientId = ULongUtil.valueOf(ca.getUser()
-							.getClientId());
+                    if (userClientId.equals(property.getClientId()))
+                        return Mono.just(Boolean.TRUE);
 
-					if (userClientId.equals(property.getClientId()))
-						return Mono.just(Boolean.TRUE);
+                    return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
+                        .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
+                            : Mono.empty());
+                },
 
-					return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
-				},
+                (ca, property, hasAccess) -> this.dao.hasWriteAccess(property.getAppId(), property.getClientId()),
 
-				(ca, property, hasAccess) -> this.dao.hasWriteAccess(property.getAppId(), property.getClientId()),
+                (ca, property, hasAccess, writeAccess) -> {
 
-				(ca, property, hasAccess, writeAccess) -> {
+                    if (!BooleanUtil.safeValueOf(writeAccess))
+                        return Mono.just(false);
 
-					if (!writeAccess.booleanValue())
-						return Mono.just(false);
+                    return this.dao.deletePropertyById(propertyId);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deletePropertyById"));
+    }
 
-					return this.dao.deletePropertyById(propertyId);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deletePropertyById"));
-	}
+    public Mono<Boolean> deleteProperty(ULong clientId, ULong appId, String name) {
 
-	public Mono<Boolean> deleteProperty(ULong clientId, ULong appId, String name) {
+        if (appId == null) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
+        }
 
-		if (appId == null) {
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
-		}
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
 
-				ca -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(Boolean.TRUE);
 
-					if (ca.isSystemClient())
-						return Mono.just(Boolean.TRUE);
+                    ULong userClientId = ULongUtil.valueOf(ca.getUser()
+                        .getClientId());
 
-					ULong userClientId = ULongUtil.valueOf(ca.getUser()
-							.getClientId());
+                    if (userClientId.equals(clientId))
+                        return Mono.just(Boolean.TRUE);
 
-					if (userClientId.equals(clientId))
-						return Mono.just(Boolean.TRUE);
+                    return this.clientService.isBeingManagedBy(userClientId, clientId)
+                        .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
+                            : Mono.empty());
+                },
 
-					return this.clientService.isBeingManagedBy(userClientId, clientId)
-							.flatMap(managed -> managed.booleanValue() ? Mono.just(Boolean.TRUE) : Mono.empty());
-				},
+                (ca, hasAccess) -> this.dao.hasWriteAccess(appId, clientId),
 
-				(ca, hasAccess) -> this.dao.hasWriteAccess(appId, clientId),
+                (ca, hasAccess, writeAccess) -> {
 
-				(ca, hasAccess, writeAccess) -> {
+                    if (!BooleanUtil.safeValueOf(writeAccess))
+                        return Mono.just(false);
 
-					if (!writeAccess.booleanValue())
-						return Mono.just(false);
+                    return this.dao.deleteProperty(clientId, appId, name);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteProperty"));
+    }
 
-					return this.dao.deleteProperty(clientId, appId, name);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deleteProperty"));
-	}
+    public Mono<Boolean> createPropertiesFromTransport(ULong appId, List<AppTransportProperty> properties) {
 
-	public Mono<Boolean> createPropertiesFromTransport(ULong appId, List<AppTransportProperty> properties) {
+        if (properties == null || properties.isEmpty())
+            return Mono.just(true);
 
-		if (properties == null || properties.isEmpty())
-			return Mono.just(true);
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+            SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+            ca -> Flux.fromIterable(properties)
+                .flatMap(p -> this.dao.createPropertyFromTransport(appId,
+                    ULongUtil.valueOf(ca.getUser().getClientId()), p.getPropertyName(),
+                    p.getPropertyValue()))
+                .map(e -> true).collectList().map(e -> true));
+    }
 
-				ca -> Flux.fromIterable(properties)
-						.flatMap(p -> this.dao.createPropertyFromTransport(appId,
-								ULongUtil.valueOf(ca.getUser().getClientId()), p.getPropertyName(),
-								p.getPropertyValue()))
-						.map(e -> true).collectList().map(e -> true));
-	}
+    public Mono<Tuple2<String, Boolean>> findBaseClientCodeForOverride(String applicationCode) {
 
-	public Mono<Tuple2<String, Boolean>> findBaseClientCodeForOverride(String applicationCode) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.getAppByCode(applicationCode),
 
-				ca -> this.getAppByCode(applicationCode),
+                (ca, app) -> (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()) ? Mono.empty()
+                    : this.clientService.readInternal(app.getClientId())),
 
-				(ca, app) -> (ca.getUser().getClientId().equals(app.getClientId().toBigInteger()) ? Mono.empty()
-						: this.clientService.readInternal(app.getClientId())),
+                (ca, app, appClient) -> {
 
-				(ca, app, appClient) -> {
+                    if (app.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT) {
+                        return this.hasWriteAccess(applicationCode, ca.getClientCode()).flatMap(
+                            e -> BooleanUtil.safeValueOf(e) ? Mono.just(Tuples.of(appClient.getCode(), true))
+                                : Mono.empty());
+                    }
 
-					if (app.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT) {
-						return this.hasWriteAccess(applicationCode, ca.getClientCode()).flatMap(
-								e -> e.booleanValue() ? Mono.just(Tuples.of(appClient.getCode(), true)) : Mono.empty());
-					}
+                    return Mono.just(Tuples.of(appClient.getCode(), false));
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findBaseClientCodeForOverride"));
+    }
 
-					return Mono.just(Tuples.of(appClient.getCode(), false));
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findBaseClientCodeForOverride"));
-	}
+    public Mono<Page<App>> findAnyAppsByPage(Pageable pageable, AbstractCondition condition) {
 
-	public Mono<Page<App>> findAnyAppsByPage(Pageable pageable, AbstractCondition condition) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
 
-				ca -> {
+                    if (ca.isSystemClient() || ca.getLoggedInFromClientId().equals(ca.getUser().getClientId()))
+                        return Mono.just(Page.empty());
 
-					if (ca.isSystemClient() || ca.getLoggedInFromClientId().equals(ca.getUser().getClientId()))
-						return Mono.just(Page.empty());
+                    return this.dao.readAnyAppsPageFilter(pageable, condition,
+                        ULongUtil.valueOf(ca.getLoggedInFromClientId()));
 
-					return this.dao.readAnyAppsPageFilter(pageable, condition,
-							ULongUtil.valueOf(ca.getLoggedInFromClientId()));
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findAnyAppsByPage"));
+    }
 
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.findAnyAppsByPage"));
-	}
+    public Mono<com.fincity.saas.commons.security.dto.App> getAppExplicitInfoByCode(String appCode) {
 
-	public Mono<com.fincity.saas.commons.security.dto.App> getAppExplicitInfoByCode(String appCode) {
+        Mono<com.fincity.saas.commons.security.dto.App> appMono = FlatMapUtil.flatMapMono(
+            () -> this.dao.getByAppCodeExplicitInfo(appCode),
 
-		Mono<com.fincity.saas.commons.security.dto.App> appMono = FlatMapUtil.flatMapMono(
-				() -> this.dao.getByAppCodeExplicitInfo(appCode),
+            app -> Mono.just(app.getClientId()).map(ULong::valueOf)
+                .flatMap(this.clientService::readInternal)
+                .map(Client::getCode)
+                .map(app::setClientCode),
 
-				(app) -> Mono.just(app.getClientId()).map(ULong::valueOf)
-						.flatMap(this.clientService::readInternal)
-						.map(Client::getCode)
-						.map(app::setClientCode),
+            (x, app) -> Mono.justOrEmpty(app.getExplicitClientId()).map(ULong::valueOf)
+                .flatMap(this.clientService::readInternal)
+                .map(Client::getCode)
+                .map(app::setExplicitOwnerClientCode)
+                .defaultIfEmpty(app));
 
-				(x, app) -> Mono.justOrEmpty(app.getExplicitClientId()).map(ULong::valueOf)
-						.flatMap(this.clientService::readInternal)
-						.map(Client::getCode)
-						.map(app::setExplicitOwnerClientCode)
-						.defaultIfEmpty(app));
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE_EXPLICIT, () -> appMono, appCode);
+    }
 
-		return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE_EXPLICIT, () -> appMono, appCode);
-	}
+    public Mono<List<AppDependency>> getAppDependencies(String appCode) {
 
-	public Mono<List<AppDependency>> getAppDependencies(String appCode) {
+        return this.cacheService.cacheEmptyValueOrGet(CACHE_NAME_APP_DEPENDENCIES,
+            () -> this.dao.getByAppCode(appCode).map(App::getId).flatMap(this.dao::getAppDependencies), appCode);
+    }
 
-		return this.cacheService.cacheEmptyValueOrGet(CACHE_NAME_APP_DEPENDENCIES,
-				() -> this.dao.getByAppCode(appCode).map(App::getId).flatMap(this.dao::getAppDependencies), appCode);
-	}
+    public Mono<AppDependency> addAppDependency(String appCode, String dependentAppCode) {
 
-	public Mono<AppDependency> addAppDependency(String appCode, String dependentAppCode) {
+        if (appCode.equals(dependentAppCode) || StringUtil.safeIsBlank(appCode)
+            || StringUtil.safeIsBlank(dependentAppCode))
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                SecurityMessageResourceService.APP_DEPENDENCY_SAME_APP_CODE);
 
-		if (appCode.equals(dependentAppCode) || StringUtil.safeIsBlank(appCode)
-				|| StringUtil.safeIsBlank(dependentAppCode))
-			return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.APP_DEPENDENCY_SAME_APP_CODE);
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.dao.getByAppCode(appCode),
 
-				ca -> this.dao.getByAppCode(appCode),
+                (ca, app) -> this.dao.getByAppCode(dependentAppCode),
 
-				(ca, app) -> this.dao.getByAppCode(dependentAppCode),
+                (ca, app, depApp) -> {
+                    if (!app.getClientId().equals(depApp.getClientId()))
+                        return Mono.empty();
 
-				(ca, app, depApp) -> {
-					if (!app.getClientId().equals(depApp.getClientId()))
-						return Mono.empty();
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
 
-					if (ca.isSystemClient())
-						return Mono.just(true);
+                    return this.clientService
+                        .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
+                        .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
+                },
 
-					return this.clientService
-							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
-							.flatMap(e -> e.booleanValue() ? Mono.just(true) : Mono.empty());
-				},
+                (ca, app, depApp, hasAccess) -> this.dao.addAppDependency(app.getId(), depApp.getId()))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addAppDependency"))
+            .flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEPENDENCIES, appCode))
+            .flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEP_LIST, appCode))
+            .switchIfEmpty(
+                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    SecurityMessageResourceService.FORBIDDEN_CREATE, "App Dependency"));
+    }
 
-				(ca, app, depApp, hasAccess) -> this.dao.addAppDependency(app.getId(), depApp.getId()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addAppDependency"))
-				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEPENDENCIES, appCode))
-				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEP_LIST, appCode))
-				.switchIfEmpty(
-						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								SecurityMessageResourceService.FORBIDDEN_CREATE, "App Dependency"));
-	}
+    public Mono<Boolean> removeAppDependency(String appCode, String dependentAppCode) {
 
-	public Mono<Boolean> removeAppDependency(String appCode, String dependentAppCode) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.dao.getByAppCode(appCode),
 
-				ca -> this.dao.getByAppCode(appCode),
+                (ca, app) -> this.dao.getByAppCode(dependentAppCode),
 
-				(ca, app) -> this.dao.getByAppCode(dependentAppCode),
+                (ca, app, depApp) -> {
+                    if (!app.getClientId().equals(depApp.getClientId()))
+                        return Mono.empty();
 
-				(ca, app, depApp) -> {
-					if (!app.getClientId().equals(depApp.getClientId()))
-						return Mono.empty();
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
 
-					if (ca.isSystemClient())
-						return Mono.just(true);
+                    return this.clientService
+                        .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
+                        .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
+                },
 
-					return this.clientService
-							.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
-							.flatMap(e -> e.booleanValue() ? Mono.just(true) : Mono.empty());
-				},
+                (ca, app, depApp, hasAccess) -> this.dao.removeAppDependency(app.getId(), depApp.getId()))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removeAppDependency"))
+            .flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEP_LIST, appCode))
+            .flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEPENDENCIES, appCode))
+            .switchIfEmpty(
+                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    SecurityMessageResourceService.FORBIDDEN_CREATE, "App Dependency"));
+    }
 
-				(ca, app, depApp, hasAccess) -> this.dao.removeAppDependency(app.getId(), depApp.getId()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removeAppDependency"))
-				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEP_LIST, appCode))
-				.flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_DEPENDENCIES, appCode))
-				.switchIfEmpty(
-						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								SecurityMessageResourceService.FORBIDDEN_CREATE, "App Dependency"));
-	}
+    public Mono<Boolean> hasDeleteAccess(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
 
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.hasWriteAccess(appCode, clientCode).filter(BooleanUtil::safeValueOf),
+
+                (ca, access) -> {
+                    if (ca.isSystemClient()) Mono.just(true);
+
+                    return this.clientService.isBeingManagedBy(ca.getClientCode(), clientCode)
+                        .filter(BooleanUtil::safeValueOf)
+                        .flatMap(e -> this.hasWriteAccess(appCode, ca.getClientCode()))
+                        .filter(BooleanUtil::safeValueOf);
+                },
+
+                (ca, access, access2) -> this.dao.noOneHasWriteAccessExcept(appCode, clientCode)
+            )
+            .defaultIfEmpty(Boolean.FALSE)
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasDeleteAccess"));
+    }
 }

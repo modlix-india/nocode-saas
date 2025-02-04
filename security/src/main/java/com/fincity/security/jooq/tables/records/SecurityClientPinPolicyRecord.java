@@ -190,11 +190,30 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
     }
 
     /**
+     * Setter for
+     * <code>security.security_client_pin_policy.USER_LOCK_TIME</code>. Time in
+     * minutes for which user need to be locked it policy violates
+     */
+    public SecurityClientPinPolicyRecord setUserLockTime(ULong value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_client_pin_policy.USER_LOCK_TIME</code>. Time in
+     * minutes for which user need to be locked it policy violates
+     */
+    public ULong getUserLockTime() {
+        return (ULong) get(9);
+    }
+
+    /**
      * Setter for <code>security.security_client_pin_policy.CREATED_BY</code>.
      * ID of the user who created this row
      */
     public SecurityClientPinPolicyRecord setCreatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -203,7 +222,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -211,7 +230,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public SecurityClientPinPolicyRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -220,7 +239,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -228,7 +247,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public SecurityClientPinPolicyRecord setUpdatedBy(ULong value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -237,7 +256,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * ID of the user who last updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(12);
     }
 
     /**
@@ -245,7 +264,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public SecurityClientPinPolicyRecord setUpdatedAt(LocalDateTime value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -254,7 +273,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
      * Time when this row is last updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -280,7 +299,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
     /**
      * Create a detached, initialised SecurityClientPinPolicyRecord
      */
-    public SecurityClientPinPolicyRecord(ULong id, ULong clientId, ULong appId, UShort length, ULong reLoginAfterInterval, UShort expiryInDays, UShort expiryWarnInDays, UShort pinHistoryCount, UShort noFailedAttempts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientPinPolicyRecord(ULong id, ULong clientId, ULong appId, UShort length, ULong reLoginAfterInterval, UShort expiryInDays, UShort expiryWarnInDays, UShort pinHistoryCount, UShort noFailedAttempts, ULong userLockTime, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY);
 
         setId(id);
@@ -292,6 +311,7 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
         setExpiryWarnInDays(expiryWarnInDays);
         setPinHistoryCount(pinHistoryCount);
         setNoFailedAttempts(noFailedAttempts);
+        setUserLockTime(userLockTime);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

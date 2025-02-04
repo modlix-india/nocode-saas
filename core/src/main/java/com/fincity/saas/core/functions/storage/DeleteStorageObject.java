@@ -12,6 +12,7 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
+import com.fincity.saas.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -34,21 +35,17 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 
 	private static final String CLIENT_CODE = "clientCode";
 
-	private AppDataService appDataService;
+	private final AppDataService appDataService;
 
 	public DeleteStorageObject(AppDataService appDataService) {
 		this.appDataService = appDataService;
-	}
-
-	public AppDataService getAppDataService() {
-		return appDataService;
 	}
 
 	@Override
 	public FunctionSignature getSignature() {
 
 		Event event = new Event().setName(Event.OUTPUT)
-				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
+				.setParameters(Map.of(EVENT_RESULT, Schema.ofBoolean(EVENT_RESULT)));
 
 		Event errorEvent = new Event().setName(Event.ERROR)
 				.setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
@@ -95,8 +92,12 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 
 		return appDataService.delete(StringUtil.isNullOrBlank(appCode) ? null : appCode,
 				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObjectId)
-				.map(result -> new FunctionOutput(List.of(EventResult.outputOf(
-						Map.of(EVENT_RESULT, new JsonPrimitive(dataObjectId + " deleted this data object"))))));
+				.onErrorResume(
+						exception -> exception instanceof StorageObjectNotFoundException ? Mono.just(Boolean.FALSE)
+								: Mono.error(exception))
+				.map(result -> new FunctionOutput(
+						List.of(EventResult.outputOf(
+								Map.of(EVENT_RESULT, new JsonPrimitive(result))))));
 	}
 
 }

@@ -48,6 +48,7 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.model.OtpGenerationRequestInternal;
 import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
 
 import reactor.core.publisher.Mono;
@@ -57,15 +58,11 @@ import reactor.util.function.Tuple2;
 @Service
 public class AuthenticationService implements IAuthenticationService {
 
-	private static final String AC = "appCode";
-
-	private static final String CC = "clientCode";
-
-	private static final String SYSTEM_CC = "SYSTEM";
-
 	private final UserService userService;
 
 	private final ClientService clientService;
+
+	private final AppService appService;
 
 	private final TokenService tokenService;
 
@@ -83,13 +80,14 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
-	public AuthenticationService(UserService userService, ClientService clientService, TokenService tokenService,
-			OtpService otpService, SecurityMessageResourceService resourceService, SoxLogService soxLogService,
-			PasswordEncoder pwdEncoder, CacheService cacheService,
+	public AuthenticationService(UserService userService, ClientService clientService, AppService appService,
+			TokenService tokenService, OtpService otpService, SecurityMessageResourceService resourceService,
+			SoxLogService soxLogService, PasswordEncoder pwdEncoder, CacheService cacheService,
 			AppRegistrationIntegrationTokenDao integrationTokenDao,
 			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
 		this.userService = userService;
 		this.clientService = clientService;
+		this.appService = appService;
 		this.tokenService = tokenService;
 		this.otpService = otpService;
 		this.resourceService = resourceService;
@@ -148,38 +146,72 @@ public class AuthenticationService implements IAuthenticationService {
 				.defaultIfEmpty(1);
 	}
 
-	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
-			ServerHttpResponse response) {
+	public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
 
-		String appCode = request.getHeaders().getFirst(AC);
+		if (!authRequest.isGenerateOtp())
+			return Mono.just(Boolean.FALSE);
 
-		String clientCode = request.getHeaders().getFirst(CC);
+		String appCode = request.getHeaders().getFirst(AppService.AC);
+		String clientCode = request.getHeaders().getFirst(ClientService.CC);
+
+		OtpPurpose purpose = OtpPurpose.LOGIN;
 
 		if (authRequest.getIdentifierType() == null)
-			authRequest.setIdentifierType(
-					StringUtil.safeIsBlank(authRequest.getUserName()) || authRequest.getUserName().indexOf('@') == -1
-							? AuthenticationIdentifierType.USER_NAME
-							: AuthenticationIdentifierType.EMAIL_ID);
-
-		AuthenticationPasswordType passwordType = authRequest.getPasswordType();
+			authRequest.setIdentifierType();
 
 		return FlatMapUtil.flatMapMono(
 
 				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-						clientCode,
-						appCode, authRequest.getIdentifierType()),
+						clientCode, appCode, authRequest.getIdentifierType()),
 
-				tup -> Mono.justOrEmpty(
-						tup.getT1().getCode().equals(SYSTEM_CC) ||
-								clientCode.equals(tup.getT1().getCode()) ||
-								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+				tup -> this.userService.checkUserAndClient(tup, clientCode)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+				(tup, linCCheck) -> this.appService.getAppByCode(appCode),
+
+				(tup, linCCheck, app) -> Mono.just(
+						new OtpGenerationRequestInternal()
+								.setClientOption(tup.getT1())
+								.setAppOption(app)
+								.setWithUserOption(tup.getT3())
+								.setIpAddress(request.getRemoteAddress())
+								.setResend(authRequest.isResend())
+								.setPurpose(purpose)),
+
+				(app, tup, linCCheck, targetReq) -> this.otpService.generateOtpInternal(targetReq))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [" + purpose.name() + "]"))
+				.switchIfEmpty(Mono.just(Boolean.FALSE)).log();
+	}
+
+	public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
+			ServerHttpResponse response) {
+
+		String appCode = request.getHeaders().getFirst(AppService.AC);
+		String clientCode = request.getHeaders().getFirst(ClientService.CC);
+
+		if (authRequest.getIdentifierType() == null)
+			authRequest.setIdentifierType();
+
+		AuthenticationPasswordType passwordType = authRequest.getInputPassType();
+
+		if (passwordType == null) {
+			return this.authError(SecurityMessageResourceService.UNKNOWN_ERROR);
+		}
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
+						clientCode, appCode, authRequest.getIdentifierType()),
+
+				tup -> this.userService.checkUserAndClient(tup, clientCode)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
 				(tup, linCCheck, user) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), appCode,
 						passwordType),
 
-				(tup, linCCheck, user, policy) -> this.checkPassword(authRequest.getInputPassword(), appCode, user,
+				(tup, linCCheck, user, policy) -> this.checkPassword(authRequest.getInputPass(), appCode, user,
 						policy, passwordType),
 
 				(tup, linCCheck, user, policy, passwordChecked) -> this.resetUserAttempts(user, passwordType),
@@ -198,9 +230,8 @@ public class AuthenticationService implements IAuthenticationService {
 					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					SecurityMessageResourceService.SOCIAL_LOGIN_FAILED);
 
-		String appCode = request.getHeaders().getFirst(AC);
-
-		String clientCode = request.getHeaders().getFirst(CC);
+		String appCode = request.getHeaders().getFirst(AppService.AC);
+		String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
 		if (authRequest.getIdentifierType() == null)
 			authRequest.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
@@ -210,10 +241,8 @@ public class AuthenticationService implements IAuthenticationService {
 				() -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(),
 						authRequest.getUserId(), clientCode, appCode, authRequest.getIdentifierType()),
 
-				tup -> Mono.justOrEmpty(
-						tup.getT1().getCode().equals(SYSTEM_CC) ||
-								clientCode.equals(tup.getT1().getCode()) ||
-								tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+				tup -> this.userService.checkUserAndClient(tup, clientCode)
+						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -238,7 +267,6 @@ public class AuthenticationService implements IAuthenticationService {
 	}
 
 	private Mono<User> checkUserStatus(User user) {
-
 		return switch (user.getStatusCode()) {
 			case ACTIVE -> Mono.just(user);
 			case LOCKED -> this.checkUserLockStatus(user);
@@ -250,11 +278,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<User> checkUserLockStatus(User user) {
 
-		if (user.getLockedUntil().isBefore(LocalDateTime.now())) {
+		if (user.getLockedUntil().isBefore(LocalDateTime.now()))
 			return this.userService.unlockUserInternal(user.getId())
 					.flatMap(unblocked -> Boolean.TRUE.equals(unblocked) ? Mono.just(user)
 							: this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED));
-		}
 
 		return this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED_LIMIT, user.getLockedDueTo(),
 				user.getLockedUntil() == null ? 5
@@ -275,7 +302,7 @@ public class AuthenticationService implements IAuthenticationService {
 							? Mono.just(
 									pwdEncoder.matches(user.getId() + passwordString, user.getPin()))
 							: Mono.just(StringUtil.safeEquals(passwordString, user.getPin()));
-					case OTP -> otpService.verifyOtp(appCode, user, OtpPurpose.LOGIN.name(), passwordString);
+					case OTP -> this.otpService.verifyOtpInternal(appCode, user, OtpPurpose.LOGIN, passwordString);
 				},
 				isValid -> Boolean.FALSE.equals(isValid) ? checkFailedAttempts(user, policy, passwordType)
 						: Mono.just(Boolean.TRUE))
@@ -291,7 +318,7 @@ public class AuthenticationService implements IAuthenticationService {
 					"Failed password attempts are more than the configuration");
 
 			return FlatMapUtil.flatMapMono(
-					() -> this.lockUser(user, LocalDateTime.now().plusMinutes(policy.getUserLockTimeMin().longValue()),
+					() -> this.lockUser(user, LocalDateTime.now().plusMinutes(policy.getUserLockTimeMin()),
 							passwordType.getName()),
 					userLocked -> this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED));
 		}
@@ -302,9 +329,9 @@ public class AuthenticationService implements IAuthenticationService {
 			AuthenticationPasswordType passwordType) {
 
 		return switch (passwordType) {
-			case PASSWORD -> user.getNoFailedAttempt().compareTo(policy.getNoFailedAttempts().shortValue());
-			case PIN -> user.getNoPinFailedAttempt().compareTo(policy.getNoFailedAttempts().shortValue());
-			case OTP -> user.getNoOtpFailedAttempt().compareTo(policy.getNoFailedAttempts().shortValue());
+			case PASSWORD -> user.getNoFailedAttempt().compareTo(policy.getNoFailedAttempts());
+			case PIN -> user.getNoPinFailedAttempt().compareTo(policy.getNoFailedAttempts());
+			case OTP -> user.getNoOtpFailedAttempt().compareTo(policy.getNoFailedAttempts());
 		};
 	}
 
@@ -322,11 +349,10 @@ public class AuthenticationService implements IAuthenticationService {
 					int remainingAttempts = Math.max(policy.getNoFailedAttempts().intValue() - increasedAttempts, 0);
 
 					soxLogService.createLog(user.getId(), SecuritySoxLogActionName.UPDATE,
-							SecuritySoxLogObjectName.USER,
-							"Given Password is mismatching with existing.");
+							SecuritySoxLogObjectName.USER, "Given Password is mismatching with existing.");
 
-					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID, passwordType.getName(),
-							remainingAttempts);
+					return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID_ATTEMPTS,
+							passwordType.getName(), remainingAttempts);
 				});
 	}
 
@@ -337,11 +363,10 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<Boolean> resetUserAttempts(User user, AuthenticationPasswordType passwordType) {
 
-		if (passwordType.equals(AuthenticationPasswordType.OTP)) {
+		if (passwordType.equals(AuthenticationPasswordType.OTP))
 			return userService.resetFailedAttempt(user.getId(), passwordType)
 					.flatMap(reset -> userService.resetResendAttempt(user.getId()))
 					.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
-		}
 
 		return userService.resetFailedAttempt(user.getId(), passwordType)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
@@ -469,18 +494,16 @@ public class AuthenticationService implements IAuthenticationService {
 			String username = token.substring(0, token.indexOf(':'));
 			String password = token.substring(token.indexOf(':') + 1);
 
-			String appCode = request.getHeaders().getFirst(AC);
-			String clientCode = request.getHeaders().getFirst(CC);
+			String appCode = request.getHeaders().getFirst(AppService.AC);
+			String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
 			return FlatMapUtil.flatMapMono(
 
 					() -> this.userService.findNonDeletedUserNClient(username, null, clientCode, appCode,
 							AuthenticationIdentifierType.USER_NAME),
 
-					tup -> Mono.justOrEmpty(
-							tup.getT1().getCode().equals(SYSTEM_CC) ||
-									clientCode.equals(tup.getT1().getCode()) ||
-									tup.getT1().getId().equals(tup.getT2().getId()) ? true : null),
+					tup -> this.userService.checkUserAndClient(tup, clientCode)
+							.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 					(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
@@ -540,7 +563,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {
 
-		List<String> clientCode = request.getHeaders().get(CC);
+		List<String> clientCode = request.getHeaders().get(ClientService.CC);
 
 		Mono<Client> loggedInClient = ((clientCode != null && !clientCode.isEmpty())
 				? this.clientService.getClientBy(clientCode.getFirst())

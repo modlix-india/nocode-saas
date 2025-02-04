@@ -6,7 +6,7 @@ security:
     flyway:
       url: jdbc:mysql://localhost:3306/security
   subdomain:
-    endings: .local.modlix.com
+    endings: .local.modlix.com, .local.sitezump.ai
   appCodeSuffix: .local
 
 files:
@@ -44,6 +44,8 @@ ui:
   cdnReplacePlus: true
   # Don't forget to add slash in the end.
   jsURL: https://cdn-local.modlix.com/js/dist/
+  # htmlCacheUrl: http://localhost:6101/html/
+  htmlCacheEnv: OTHER
 
 core:
   mongo:
@@ -71,6 +73,7 @@ logging:
     com.fincity: DEBUG
     org.jooq: DEBUG
     org.jooq.tools.LoggerListener: DEBUG
+    io.asyncer.r2dbc.mysql.QUERY: DEBUG
     sun.rmi: INFO
     javax.management.remote.rmi: INFO
     org.springframework.beans.factory.support: INFO

@@ -79,7 +79,19 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
      * The column <code>security.security_otp.USER_ID</code>. Identifier for the
      * user for whom this OTP is generated. References security_user table
      */
-    public final TableField<SecurityOtpRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the user for whom this OTP is generated. References security_user table");
+    public final TableField<SecurityOtpRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the user for whom this OTP is generated. References security_user table");
+
+    /**
+     * The column <code>security.security_otp.EMAIL_ID</code>. Email ID to which
+     * otp was sent
+     */
+    public final TableField<SecurityOtpRecord, String> EMAIL_ID = createField(DSL.name("EMAIL_ID"), SQLDataType.VARCHAR(320), this, "Email ID to which otp was sent");
+
+    /**
+     * The column <code>security.security_otp.PHONE_NUMBER</code>. Phone Number
+     * to which otp was sent
+     */
+    public final TableField<SecurityOtpRecord, String> PHONE_NUMBER = createField(DSL.name("PHONE_NUMBER"), SQLDataType.CHAR(32), this, "Phone Number to which otp was sent");
 
     /**
      * The column <code>security.security_otp.PURPOSE</code>. Purpose or reason
@@ -112,6 +124,13 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
     public final TableField<SecurityOtpRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.CHAR(45), this, "IP address of the user to track OTP generation or use, supports both IPv4 and IPv6");
 
     /**
+     * The column <code>security.security_otp.VERIFY_LEGS_COUNTS</code>. Number
+     * of legs in otp verification. If 0 this otp will be completely verified
+     * and deleted
+     */
+    public final TableField<SecurityOtpRecord, Short> VERIFY_LEGS_COUNTS = createField(DSL.name("VERIFY_LEGS_COUNTS"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "Number of legs in otp verification. If 0 this otp will be completely verified and deleted");
+
+    /**
      * The column <code>security.security_otp.CREATED_BY</code>.
      */
     public final TableField<SecurityOtpRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "");
@@ -120,6 +139,18 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
      * The column <code>security.security_otp.CREATED_AT</code>.
      */
     public final TableField<SecurityOtpRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "");
+
+    /**
+     * The column <code>security.security_otp.UPDATED_BY</code>. ID of the user
+     * who last updated this row
+     */
+    public final TableField<SecurityOtpRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who last updated this row");
+
+    /**
+     * The column <code>security.security_otp.UPDATED_AT</code>. Time when this
+     * row is last updated
+     */
+    public final TableField<SecurityOtpRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is last updated");
 
     private SecurityOtp(Name alias, Table<SecurityOtpRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -190,7 +221,7 @@ public class SecurityOtp extends TableImpl<SecurityOtpRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.SECURITY_OTP_APP_ID, Indexes.SECURITY_OTP_CREATED_AT, Indexes.SECURITY_OTP_EXPIRES_AT);
+        return Arrays.asList(Indexes.SECURITY_OTP_APP_ID, Indexes.SECURITY_OTP_APP_ID_2, Indexes.SECURITY_OTP_CREATED_AT, Indexes.SECURITY_OTP_EXPIRES_AT);
     }
 
     @Override

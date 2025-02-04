@@ -124,6 +124,13 @@ public class SecurityClientPinPolicy extends TableImpl<SecurityClientPinPolicyRe
     public final TableField<SecurityClientPinPolicyRecord, UShort> NO_FAILED_ATTEMPTS = createField(DSL.name("NO_FAILED_ATTEMPTS"), SQLDataType.SMALLINTUNSIGNED.nullable(false).defaultValue(DSL.inline("3", SQLDataType.SMALLINTUNSIGNED)), this, "Maximum number of failed attempts allowed before PIN login is blocked");
 
     /**
+     * The column
+     * <code>security.security_client_pin_policy.USER_LOCK_TIME</code>. Time in
+     * minutes for which user need to be locked it policy violates
+     */
+    public final TableField<SecurityClientPinPolicyRecord, ULong> USER_LOCK_TIME = createField(DSL.name("USER_LOCK_TIME"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("30", SQLDataType.BIGINTUNSIGNED)), this, "Time in minutes for which user need to be locked it policy violates");
+
+    /**
      * The column <code>security.security_client_pin_policy.CREATED_BY</code>.
      * ID of the user who created this row
      */

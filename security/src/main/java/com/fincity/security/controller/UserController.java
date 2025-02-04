@@ -3,7 +3,6 @@ package com.fincity.security.controller;
 import java.util.List;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,14 +14,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.service.UserService;
@@ -34,8 +31,11 @@ import reactor.core.publisher.Mono;
 public class UserController
 		extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAO, UserService> {
 
-	@Autowired
-	private UserService userService;
+	private final UserService userService;
+
+	public UserController(UserService userService) {
+		this.userService = userService;
+	}
 
 	@GetMapping("{userId}/removePermission/{permissionId}")
 	public Mono<ResponseEntity<Boolean>> removePermission(@PathVariable ULong userId,
@@ -66,26 +66,6 @@ public class UserController
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("{userId}/updatePassword")
-	public Mono<ResponseEntity<Boolean>> updatePasswordForUser(@PathVariable ULong userId,
-			@RequestBody RequestUpdatePassword passwordRequest) {
-
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(), userId,
-						passwordRequest, false, AuthenticationPasswordType.PASSWORD))
-				.map(ResponseEntity::ok);
-	}
-
-	@PostMapping("{userId}/updatePin")
-	public Mono<ResponseEntity<Boolean>> updatePinForUser(@PathVariable ULong userId,
-			@RequestBody RequestUpdatePassword passwordRequest) {
-
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(), userId,
-						passwordRequest, false, AuthenticationPasswordType.PIN))
-				.map(ResponseEntity::ok);
-	}
-
 	@PostMapping("/findUserClients")
 	public Mono<ResponseEntity<List<UserClient>>> findUserClients(@RequestBody AuthenticationRequest authRequest,
 			ServerHttpRequest request) {
@@ -96,69 +76,73 @@ public class UserController
 
 	@GetMapping("/makeUserActive")
 	public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
+
 		return this.service.makeUserActive(userId)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/makeUserInActive")
 	public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
+
 		return this.service.makeUserInActive(userId)
 				.map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/unblockUser")
 	public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
+
 		return this.service.unblockUser(userId)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/availablePermissions/{userId}")
 	public Mono<ResponseEntity<List<Permission>>> getPermissionsFromUser(@PathVariable ULong userId) {
+
 		return this.userService.getPermissionsFromGivenUser(userId)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/availableRoles/{userId}")
 	public Mono<ResponseEntity<List<Role>>> getRolesFromUser(@PathVariable ULong userId) {
+
 		return this.userService.getRolesFromGivenUser(userId)
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/resetPassword")
-	public Mono<ResponseEntity<Boolean>> changePassword(@RequestBody RequestUpdatePassword passwordRequest) {
+	@PostMapping("{userId}/updatePassword")
+	public Mono<ResponseEntity<Boolean>> updatePassword(@PathVariable ULong userId,
+			@RequestBody RequestUpdatePassword passwordRequest) {
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
-						ULong.valueOf(ca.getUser()
-								.getId()),
-						passwordRequest, true, AuthenticationPasswordType.PASSWORD))
+		return this.userService.updatePassword(userId, passwordRequest)
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/resetPin")
-	public Mono<ResponseEntity<Boolean>> changePin(@RequestBody RequestUpdatePassword passwordRequest) {
+	@PostMapping("updatePassword")
+	public Mono<ResponseEntity<Boolean>> updatePassword(@RequestBody RequestUpdatePassword passwordRequest) {
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.flatMap(ca -> this.userService.updateNewPassword(ca.getUrlAppCode(), ca.getUrlClientCode(),
-						ULong.valueOf(ca.getUser()
-								.getId()),
-						passwordRequest, true, AuthenticationPasswordType.PIN))
+		return this.userService.updatePassword(passwordRequest)
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/requestResetPassword")
-	public Mono<ResponseEntity<Boolean>> requestResetPassword(@RequestBody AuthenticationRequest authRequest,
+	@PostMapping("/reset/password/otp/generate")
+	public Mono<ResponseEntity<Boolean>> generateOtpResetPassword(@RequestBody AuthenticationRequest authRequest,
 			ServerHttpRequest request) {
 
-		return this.userService.resetPasswordRequest(authRequest, request, AuthenticationPasswordType.PASSWORD)
+		return this.userService.generateOtpResetPassword(authRequest, request)
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/requestResetPin")
-	public Mono<ResponseEntity<Boolean>> requestResetPin(@RequestBody AuthenticationRequest authRequest,
-			ServerHttpRequest request) {
+	@PostMapping("/reset/password/otp/verify")
+	public Mono<ResponseEntity<Boolean>> verifyOtpResetPassword(@RequestBody AuthenticationRequest authRequest) {
 
-		return this.userService.resetPasswordRequest(authRequest, request, AuthenticationPasswordType.PIN)
+		return this.userService.verifyOtpResetPassword(authRequest)
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/reset/password")
+	public Mono<ResponseEntity<Boolean>> resetPassword(@RequestBody RequestUpdatePassword reqPassword) {
+
+		return this.userService.resetPassword(reqPassword)
 				.map(ResponseEntity::ok);
 	}
 
@@ -166,6 +150,7 @@ public class UserController
 	public Mono<ResponseEntity<Boolean>> copyUserAccess(@RequestParam ULong userId,
 			@RequestParam ULong referenceUserId) {
 
-		return this.userService.copyUserRolesNPermissions(userId, referenceUserId).map(ResponseEntity::ok);
+		return this.userService.copyUserRolesNPermissions(userId, referenceUserId)
+				.map(ResponseEntity::ok);
 	}
 }

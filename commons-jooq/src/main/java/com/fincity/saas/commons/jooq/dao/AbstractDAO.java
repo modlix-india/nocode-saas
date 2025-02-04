@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.fincity.saas.commons.model.condition.*;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
@@ -50,10 +51,6 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
-import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 import io.r2dbc.spi.Row;
@@ -77,16 +74,16 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	protected final Logger logger;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected DSLContext dslContext;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected AbstractMessageService messageResourceService;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected DatabaseClient dbClient;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected ReactiveTransactionManager transactionManager;
 
 	protected final Table<R> table;
@@ -267,59 +264,58 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		Field field = this.getField(fc.getField()); // NOSONAR
 		// Field has to be a raw type because we are generalising
 
-		if (field == null || field.getDataType() == null)
+		if (field == null)
 			return DSL.noCondition();
 
-		switch (fc.getOperator()) {
-			case BETWEEN:
-				return field
-						.between(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-								: this.fieldValue(field, fc.getValue()))
-						.and(fc.isToValueField() ? (Field<?>) this.getField(fc.getField())
-								: this.fieldValue(field, fc.getToValue()));
-
-			case EQUALS:
-				return field.eq(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-						: this.fieldValue(field, fc.getValue()));
-
-			case GREATER_THAN:
-				return field.gt(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-						: this.fieldValue(field, fc.getValue()));
-
-			case GREATER_THAN_EQUAL:
-				return field.ge(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-						: this.fieldValue(field, fc.getValue()));
-
-			case LESS_THAN:
-				return field.lt(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-						: this.fieldValue(field, fc.getValue()));
-
-			case LESS_THAN_EQUAL:
-				return field.le(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-						: this.fieldValue(field, fc.getValue()));
-
-			case IS_FALSE:
-				return field.isFalse();
-
-			case IS_TRUE:
-				return field.isTrue();
-
-			case IS_NULL:
-				return field.isNull();
-
-			case IN:
-				return field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
-
-			case LIKE:
-				return field.like(fc.getValue()
-						.toString());
-
-			case STRING_LOOSE_EQUAL:
-				return field.like("%" + fc.getValue() + "%");
-
-			default:
-				return DSL.noCondition();
+		if (fc.getOperator() == FilterConditionOperator.BETWEEN) {
+			return field
+					.between(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
+							: this.fieldValue(field, fc.getValue()))
+					.and(fc.isToValueField() ? (Field<?>) this.getField(fc.getField())
+							: this.fieldValue(field, fc.getToValue()));
 		}
+
+		if (fc.getOperator() == FilterConditionOperator.EQUALS ||
+			fc.getOperator() == FilterConditionOperator.GREATER_THAN ||
+			fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL ||
+			fc.getOperator() == FilterConditionOperator.LESS_THAN ||
+				fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL
+		) {
+			if (fc.isValueField()) {
+				if (fc.getField() == null) return DSL.noCondition();
+				return switch (fc.getOperator()) {
+					case EQUALS -> field.eq(this.getField(fc.getField()));
+					case GREATER_THAN -> field.gt(this.getField(fc.getField()));
+					case GREATER_THAN_EQUAL -> field.ge(this.getField(fc.getField()));
+					case LESS_THAN -> field.lt(this.getField(fc.getField()));
+					case LESS_THAN_EQUAL -> field.le(this.getField(fc.getField()));
+					default -> DSL.noCondition();
+				};
+			}
+
+			if (fc.getValue() == null) return DSL.noCondition();
+			Object v = this.fieldValue(field, fc.getValue());
+			return switch(fc.getOperator()) {
+				case EQUALS -> field.eq(this.fieldValue(field, v));
+				case GREATER_THAN -> field.gt(this.fieldValue(field, v));
+				case GREATER_THAN_EQUAL -> field.ge(this.fieldValue(field, v));
+				case LESS_THAN -> field.lt(this.fieldValue(field, v));
+				case LESS_THAN_EQUAL -> field.le(this.fieldValue(field, v));
+				default -> DSL.noCondition();
+			};
+		}
+
+        return switch (fc.getOperator()) {
+
+            case IS_FALSE -> field.isFalse();
+            case IS_TRUE -> field.isTrue();
+            case IS_NULL -> field.isNull();
+            case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
+            case LIKE -> field.like(fc.getValue()
+                    .toString());
+            case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
+            default -> DSL.noCondition();
+        };
 	}
 
 	private List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) {
@@ -358,6 +354,8 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 	}
 
 	private Object fieldValue(Field<?> field, Object value) {
+
+		if (value == null) return null;
 
 		DataType<?> dt = field.getDataType();
 

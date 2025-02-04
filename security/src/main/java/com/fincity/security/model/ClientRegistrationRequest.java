@@ -1,14 +1,18 @@
 package com.fincity.security.model;
 
+import java.io.Serial;
 import java.io.Serializable;
+
+import org.jooq.types.ULong;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
-public class ClientRegistrationRequest implements Serializable {
+public class ClientRegistrationRequest implements BasePassword<ClientRegistrationRequest>, Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 2510675233197533873L;
 
 	private String clientName;
@@ -20,12 +24,14 @@ public class ClientRegistrationRequest implements Serializable {
 	private String firstName;
 	private String lastName;
 	private String middleName;
+	private AuthenticationPasswordType passType;
 	private String password;
+	private String pin = null;
+	private String otp = null;
 	private boolean businessClient;
 	private String businessType;
-	private String code;
 	private String subDomain;
+	private String subDomainSuffix;
 	private String socialRegisterState;
 
 }
-	

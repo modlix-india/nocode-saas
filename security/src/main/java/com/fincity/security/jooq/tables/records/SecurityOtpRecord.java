@@ -74,11 +74,45 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
     }
 
     /**
+     * Setter for <code>security.security_otp.EMAIL_ID</code>. Email ID to which
+     * otp was sent
+     */
+    public SecurityOtpRecord setEmailId(String value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.EMAIL_ID</code>. Email ID to which
+     * otp was sent
+     */
+    public String getEmailId() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>security.security_otp.PHONE_NUMBER</code>. Phone Number
+     * to which otp was sent
+     */
+    public SecurityOtpRecord setPhoneNumber(String value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.PHONE_NUMBER</code>. Phone Number
+     * to which otp was sent
+     */
+    public String getPhoneNumber() {
+        return (String) get(4);
+    }
+
+    /**
      * Setter for <code>security.security_otp.PURPOSE</code>. Purpose or reason
      * for the OTP (e.g., authentication, password reset, etc.)
      */
     public SecurityOtpRecord setPurpose(String value) {
-        set(3, value);
+        set(5, value);
         return this;
     }
 
@@ -87,7 +121,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * for the OTP (e.g., authentication, password reset, etc.)
      */
     public String getPurpose() {
-        return (String) get(3);
+        return (String) get(5);
     }
 
     /**
@@ -95,7 +129,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * medium for the OTP delivery: EMAIL, PHONE, or BOTH
      */
     public SecurityOtpRecord setTargetType(SecurityOtpTargetType value) {
-        set(4, value);
+        set(6, value);
         return this;
     }
 
@@ -104,7 +138,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * medium for the OTP delivery: EMAIL, PHONE, or BOTH
      */
     public SecurityOtpTargetType getTargetType() {
-        return (SecurityOtpTargetType) get(4);
+        return (SecurityOtpTargetType) get(6);
     }
 
     /**
@@ -112,7 +146,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * code used for verification
      */
     public SecurityOtpRecord setUniqueCode(String value) {
-        set(5, value);
+        set(7, value);
         return this;
     }
 
@@ -121,7 +155,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * code used for verification
      */
     public String getUniqueCode() {
-        return (String) get(5);
+        return (String) get(7);
     }
 
     /**
@@ -129,7 +163,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * indicating when the OTP expires and becomes invalid
      */
     public SecurityOtpRecord setExpiresAt(LocalDateTime value) {
-        set(6, value);
+        set(8, value);
         return this;
     }
 
@@ -138,7 +172,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * indicating when the OTP expires and becomes invalid
      */
     public LocalDateTime getExpiresAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(8);
     }
 
     /**
@@ -146,7 +180,7 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * the user to track OTP generation or use, supports both IPv4 and IPv6
      */
     public SecurityOtpRecord setIpAddress(String value) {
-        set(7, value);
+        set(9, value);
         return this;
     }
 
@@ -155,14 +189,33 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * the user to track OTP generation or use, supports both IPv4 and IPv6
      */
     public String getIpAddress() {
-        return (String) get(7);
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>security.security_otp.VERIFY_LEGS_COUNTS</code>. Number
+     * of legs in otp verification. If 0 this otp will be completely verified
+     * and deleted
+     */
+    public SecurityOtpRecord setVerifyLegsCounts(Short value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.VERIFY_LEGS_COUNTS</code>. Number
+     * of legs in otp verification. If 0 this otp will be completely verified
+     * and deleted
+     */
+    public Short getVerifyLegsCounts() {
+        return (Short) get(10);
     }
 
     /**
      * Setter for <code>security.security_otp.CREATED_BY</code>.
      */
     public SecurityOtpRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(11, value);
         return this;
     }
 
@@ -170,14 +223,14 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * Getter for <code>security.security_otp.CREATED_BY</code>.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(11);
     }
 
     /**
      * Setter for <code>security.security_otp.CREATED_AT</code>.
      */
     public SecurityOtpRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(12, value);
         return this;
     }
 
@@ -185,7 +238,41 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
      * Getter for <code>security.security_otp.CREATED_AT</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(12);
+    }
+
+    /**
+     * Setter for <code>security.security_otp.UPDATED_BY</code>. ID of the user
+     * who last updated this row
+     */
+    public SecurityOtpRecord setUpdatedBy(ULong value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.UPDATED_BY</code>. ID of the user
+     * who last updated this row
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(13);
+    }
+
+    /**
+     * Setter for <code>security.security_otp.UPDATED_AT</code>. Time when this
+     * row is last updated
+     */
+    public SecurityOtpRecord setUpdatedAt(LocalDateTime value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_otp.UPDATED_AT</code>. Time when this
+     * row is last updated
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -211,19 +298,24 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
     /**
      * Create a detached, initialised SecurityOtpRecord
      */
-    public SecurityOtpRecord(ULong id, ULong appId, ULong userId, String purpose, SecurityOtpTargetType targetType, String uniqueCode, LocalDateTime expiresAt, String ipAddress, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityOtpRecord(ULong id, ULong appId, ULong userId, String emailId, String phoneNumber, String purpose, SecurityOtpTargetType targetType, String uniqueCode, LocalDateTime expiresAt, String ipAddress, Short verifyLegsCounts, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityOtp.SECURITY_OTP);
 
         setId(id);
         setAppId(appId);
         setUserId(userId);
+        setEmailId(emailId);
+        setPhoneNumber(phoneNumber);
         setPurpose(purpose);
         setTargetType(targetType);
         setUniqueCode(uniqueCode);
         setExpiresAt(expiresAt);
         setIpAddress(ipAddress);
+        setVerifyLegsCounts(verifyLegsCounts);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
+        setUpdatedBy(updatedBy);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

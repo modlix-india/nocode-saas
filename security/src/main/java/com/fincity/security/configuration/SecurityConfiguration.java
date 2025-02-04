@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
@@ -14,9 +15,8 @@ import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.SecurityMessageResourceService;
-import jakarta.annotation.PostConstruct;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 
 @Configuration
 public class SecurityConfiguration extends AbstractJooqBaseConfiguration
@@ -67,6 +67,16 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/users/findUserClients",
 
+				"/api/security/users/reset/password/otp/generate",
+
+				"/api/security/users/reset/password/otp/verify",
+
+				"/api/security/users/reset/password",
+
+				"/api/security/clients/register/otp/generate",
+
+				"/api/security/clients/register/otp/verify",
+
 				"/api/security/clients/register",
 
 				"/api/security/clients/socialRegister",
@@ -74,10 +84,6 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 				"/api/security/clients/socialRegister/callback",
 
 				"/api/security/clients/socialRegister/evoke",
-
-				"/api/security/clients/generateCode",
-
-				"/api/security/users/requestResetPassword",
 
 				"/api/security/applications/applyAppCodeSuffix",
 
@@ -87,7 +93,15 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
 				"/api/security/applications/internal/dependencies",
 
-				"/api/security/clients/register/events");
+				"/api/security/clients/register/events",
+
+				"api/security/clientOtpPolicy/codes/policy",
+
+				"api/security/clientPasswordPolicy/codes/policy",
+
+				"api/security/clientPinPolicy/codes/policy"
+
+		);
 	}
 
 }

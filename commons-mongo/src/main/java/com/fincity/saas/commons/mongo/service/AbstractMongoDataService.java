@@ -1,19 +1,13 @@
 package com.fincity.saas.commons.mongo.service;
 
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.BETWEEN;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IN;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_FALSE;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_NULL;
-import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_TRUE;
+import static com.fincity.saas.commons.model.condition.FilterConditionOperator.*;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -29,7 +23,6 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.LogUtil;
 
@@ -39,10 +32,10 @@ import reactor.util.context.Context;
 
 public abstract class AbstractMongoDataService<I extends Serializable, D extends AbstractDTO<I, I>, R extends ReactiveCrudRepository<D, I>> {
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected R repo;
 
-	@Autowired
+	@Autowired // NOSONAR
 	protected ReactiveMongoTemplate mongoTemplate;
 
 	protected Class<D> pojoClass;
@@ -106,7 +99,7 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 		if (condition == null)
 			return Mono.just(new Criteria());
 
-		Mono<Criteria> cond = null;
+		Mono<Criteria> cond;
 		if (condition instanceof ComplexCondition cc)
 			cond = complexConditionFilter(cc);
 		else
@@ -157,41 +150,24 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 				return Mono.just(crit.orOperator(first, second));
 		}
 
-		switch (fc.getOperator()) {
-
-			case EQUALS:
-				return Mono.just(fc.isNegate() ? crit.ne(fc.getValue()) : crit.is(fc.getValue()));
-
-			case GREATER_THAN:
-				return Mono.just(fc.isNegate() ? crit.lte(fc.getValue()) : crit.gt(fc.getValue()));
-
-			case GREATER_THAN_EQUAL:
-				return Mono.just(fc.isNegate() ? crit.lt(fc.getValue()) : crit.gte(fc.getValue()));
-
-			case LESS_THAN:
-				return Mono.just(fc.isNegate() ? crit.gte(fc.getValue()) : crit.lt(fc.getValue()));
-
-			case LESS_THAN_EQUAL:
-				return Mono.just(fc.isNegate() ? crit.gt(fc.getValue()) : crit.lte(fc.getValue()));
-
-			case LIKE:
-				return Mono.just(fc.isNegate() ? crit.not()
-						.regex(fc.getValue()
-								.toString())
-						: crit.regex(fc.getValue()
-								.toString(), ""));
-
-			case STRING_LOOSE_EQUAL:
-
-				return Mono.just(fc.isNegate() ? crit.not()
-						.regex(fc.getValue()
-								.toString())
-						: crit.regex(fc.getValue()
-								.toString()));
-
-			default:
-				return Mono.empty();
-		}
+		return switch (fc.getOperator()) {
+			case EQUALS -> Mono.just(fc.isNegate() ? crit.ne(fc.getValue()) : crit.is(fc.getValue()));
+			case GREATER_THAN -> Mono.just(fc.isNegate() ? crit.lte(fc.getValue()) : crit.gt(fc.getValue()));
+			case GREATER_THAN_EQUAL -> Mono.just(fc.isNegate() ? crit.lt(fc.getValue()) : crit.gte(fc.getValue()));
+			case LESS_THAN -> Mono.just(fc.isNegate() ? crit.gte(fc.getValue()) : crit.lt(fc.getValue()));
+			case LESS_THAN_EQUAL -> Mono.just(fc.isNegate() ? crit.gt(fc.getValue()) : crit.lte(fc.getValue()));
+			case LIKE -> Mono.just(fc.isNegate() ? crit.not()
+					.regex(fc.getValue()
+							.toString())
+					: crit.regex(fc.getValue()
+							.toString(), ""));
+			case STRING_LOOSE_EQUAL -> Mono.just(fc.isNegate() ? crit.not()
+					.regex(fc.getValue()
+							.toString())
+					: crit.regex(fc.getValue()
+							.toString()));
+			default -> Mono.empty();
+		};
 
 	}
 

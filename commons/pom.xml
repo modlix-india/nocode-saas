@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.0</version>
+        <version>3.4.1</version>
         <relativePath />
         <!-- lookup parent from repository -->
     </parent>
@@ -18,7 +19,7 @@
         <java.version>21</java.version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
-        <nocode-kirun-version>3.7.1</nocode-kirun-version>
+        <nocode-kirun-version>3.8.0</nocode-kirun-version>
         <xlsx-streamer.version>2.1.0</xlsx-streamer.version>
     </properties>
     <dependencies>

@@ -12,36 +12,30 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 @Service
 public class TransportService extends AbstractTransportService {
 
-	@Autowired
-	private TemplateService templateService;
+	private final List<AbstractOverridableDataService<?, ?>> serviceList;
 
-	@Autowired
-	private StorageService storageService;
-
-	@Autowired
-	private CoreFunctionService funService;
-
-	@Autowired
-	private CoreSchemaService schemaService;
-
-	@Autowired
-	private EventActionService evaService;
-
-	@Autowired
-	private EventDefinitionService edService;
-
-	@Autowired
-	private CoreFillerService fillerService;
-
-	public TransportService(IFeignSecurityService feignSecurityService) {
+	public TransportService(IFeignSecurityService feignSecurityService,
+			TemplateService templateService,
+			StorageService storageService,
+			CoreFunctionService funService,
+			CoreSchemaService schemaService,
+			EventActionService evaService,
+			EventDefinitionService edService,
+			CoreFillerService fillerService) {
 		super(feignSecurityService);
+		this.serviceList = List.of(
+				templateService,
+				storageService,
+				funService,
+				schemaService,
+				evaService,
+				edService,
+				fillerService);
 	}
 
-	@SuppressWarnings("rawtypes")
 	@Override
-	public List<AbstractOverridableDataService> getServieMap() {
-		return List.of(funService, schemaService, storageService, templateService, evaService, edService,
-				fillerService);
+	public List<AbstractOverridableDataService<?, ?>> getServieMap() {
+		return this.serviceList;
 	}
 
 	@Override

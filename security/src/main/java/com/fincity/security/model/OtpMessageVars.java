@@ -20,7 +20,7 @@ public class OtpMessageVars implements Serializable {
 	private static final long serialVersionUID = 8389793285676512877L;
 
 	private String otpCode;
-	private String appName;
 	private OtpPurpose otpPurpose;
+	private Long expireInterval = 5L;
 
 }

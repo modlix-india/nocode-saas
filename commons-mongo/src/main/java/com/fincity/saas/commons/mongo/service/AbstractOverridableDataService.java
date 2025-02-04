@@ -45,6 +45,7 @@ import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
@@ -56,816 +57,863 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public abstract class AbstractOverridableDataService<D extends AbstractOverridableDTO<D>, R extends IOverridableDataRepository<D>>
-		extends AbstractMongoUpdatableDataService<String, D, R> {
+    extends AbstractMongoUpdatableDataService<String, D, R> {
 
-	private static final String READ_PAGE = "_READ_PAGE";
-	private static final String CLIENT_CODE = "clientCode";
-	private static final String APP_CODE = "appCode";
+    private static final String ABSTRACT_OVERRIDABLE_SERVICE = "AbstractOverridableService (";
+    private static final String READ_PAGE = "_READ_PAGE";
+    private static final String CLIENT_CODE = "clientCode";
+    private static final String APP_CODE = "appCode";
 
-	protected static final String CREATE = "CREATE";
-	protected static final String UPDATE = "UPDATE";
-	protected static final String READ = "READ";
-	protected static final String DELETE = "DELETE";
+    protected static final String CREATE = "CREATE";
+    protected static final String UPDATE = "UPDATE";
+    protected static final String READ = "READ";
+    protected static final String DELETE = "DELETE";
 
-	protected static final String CACHE_NAME = "Cache";
+    protected static final String CACHE_NAME = "Cache";
 
-	@Autowired
-	protected CacheService cacheService;
+    @Autowired // NOSONAR
+    protected CacheService cacheService;
 
-	@Autowired
-	protected ObjectMapper objectMapper;
+    @Autowired // NOSONAR
+    protected ObjectMapper objectMapper;
 
-	@Autowired
-	protected AbstractMongoMessageResourceService messageResourceService;
+    @Autowired // NOSONAR
+    protected AbstractMongoMessageResourceService messageResourceService;
 
-	@Autowired
-	protected AbstractVersionService versionService;
+    @Autowired // NOSONAR
+    protected AbstractVersionService versionService;
 
-	@Autowired
-	protected FeignAuthenticationService securityService;
+    @Autowired // NOSONAR
+    protected FeignAuthenticationService securityService;
 
-	@Autowired
-	protected com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
+    @Autowired // NOSONAR
+    protected com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
 
-	private static final Set<String> READ_LRO_PARAMETERS_IGNORE = Set.of(CLIENT_CODE, APP_CODE, "size", "page");
+    private static final Set<String> READ_LRO_PARAMETERS_IGNORE = Set.of(CLIENT_CODE, APP_CODE, "size", "page", "sort");
 
-	protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
-	};
+    protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
+    };
 
-	protected AbstractOverridableDataService(Class<D> pojoClass) {
-		super(pojoClass);
-	}
+    protected AbstractOverridableDataService(Class<D> pojoClass) {
+        super(pojoClass);
+    }
 
-	@Override
-	public Mono<D> create(D entity) {
+    @Override
+    public Mono<D> create(D entity) {
 
-		@SuppressWarnings("unchecked")
-		Mono<D> crtEnt = FlatMapUtil.flatMapMono(
+        @SuppressWarnings("unchecked")
+        Mono<D> crtEnt = FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> (entity.getClientCode() == null) ? Mono.just((D) entity.setClientCode(ca.getClientCode()))
-						: Mono.just(entity),
+                ca -> (entity.getClientCode() == null) ? Mono.just((D) entity.setClientCode(ca.getClientCode()))
+                    : Mono.just(entity),
 
-				(ca, ent) -> this.checkIfExists(ent),
+                (ca, ent) -> this.checkIfExists(ent),
 
-				(ca, ent, cent) -> this.accessCheck(ca, CREATE, ent.getAppCode(), ent.getClientCode(), true),
+                (ca, ent, cent) -> this.accessCheck(ca, CREATE, ent.getAppCode(), ent.getClientCode(), true),
 
-				(ca, ent, cent, hasSecurity) -> hasSecurity.booleanValue() ? Mono.just(cent) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).create (accessCheck)"))
-				.switchIfEmpty(messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
-						this.getObjectName()));
+                (ca, ent, cent, hasSecurity) -> BooleanUtil.safeValueOf(hasSecurity) ? Mono.just(cent) : Mono.empty())
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).create (accessCheck)"))
+            .switchIfEmpty(messageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
+                this.getObjectName()));
 
-		return FlatMapUtil.flatMapMonoWithNull(
+        return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> crtEnt,
+                () -> crtEnt,
 
-				this::getMergedSources,
+                this::getMergedSources,
 
-				this::extractOverride,
+                this::extractOverride,
 
-				(cEntity, merged, overridden) -> super.create(overridden),
+                (cEntity, merged, overridden) -> super.create(overridden),
 
-				(cEntity, merged, overridden,
-						created) -> isVersionable()
-								? versionService.create(new Version().setClientCode(cEntity.getClientCode())
-										.setObjectName(entity.getName())
-										.setObjectAppCode(entity.getAppCode())
-										.setObjectType(this.getObjectName()
-												.toUpperCase())
-										.setVersionNumber(created.getVersion())
-										.setMessage(entity.getMessage())
-										.setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
-								: Mono.empty(),
+                (cEntity, merged, overridden,
+                 created) -> isVersionable()
+                    ? versionService.create(new Version().setClientCode(cEntity.getClientCode())
+                    .setObjectName(entity.getName())
+                    .setObjectAppCode(entity.getAppCode())
+                    .setObjectType(this.getObjectName()
+                        .toUpperCase())
+                    .setVersionNumber(created.getVersion())
+                    .setMessage(entity.getMessage())
+                    .setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
+                    : Mono.empty(),
 
-				(cEntity, merged, overridden, created, version) -> this.read(created.getId()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).create"))
-				.flatMap(this::evictRecursively)
-				.switchIfEmpty(messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
-						this.getObjectName()));
-	}
+                (cEntity, merged, overridden, created, version) -> this.read(created.getId()))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).create"))
+            .flatMap(this::evictRecursively)
+            .switchIfEmpty(messageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
+                this.getObjectName()));
+    }
 
-	protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, String appCode, String clientCode,
-			boolean checkAppWriteAccess) {
+    protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, String appCode, String clientCode, // NOSONAR
+                                        boolean checkAppWriteAccess) {
 
-		if (StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(appCode))
-			return Mono.just(false);
+        // Just two complexity points is not a reason to break this function
 
-		return FlatMapUtil.flatMapMono(
-				() -> SecurityContextUtil.hasAuthority("Authorities." + this.getAccessCheckName() + "_" + method,
-						ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
+        if (StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(appCode))
+            return Mono.just(false);
 
-				access -> this.securityService.getAppExplicitInfoByCode(appCode),
+        return FlatMapUtil.flatMapMono(
+                () -> SecurityContextUtil.hasAuthority("Authorities." + this.getAccessCheckName() + "_" + method,
+                    ca.getAuthorities()) ? Mono.just(true) : Mono.empty(),
 
-				(access, explicitApp) -> {
-					if (ca.getClientCode()
-							.equals(clientCode))
-						return Mono.just(true);
+                access -> this.securityService.getAppExplicitInfoByCode(appCode),
 
-					if ("EXPLICIT".equals(explicitApp.getAppAccessType())) {
+                (access, explicitApp) -> {
+                    if (ca.getClientCode()
+                        .equals(clientCode))
+                        return Mono.just(true);
 
-						return Mono.just(clientCode.equals(explicitApp.getClientCode())
-								|| clientCode.equals(explicitApp.getExplicitOwnerClientCode()));
-					}
+                    if ("EXPLICIT".equals(explicitApp.getAppAccessType())) {
 
-					if (checkAppWriteAccess)
-						return this.securityService.isBeingManaged(ca.getClientCode(), clientCode);
-					else
-						return this.inheritanceService
-								.order(appCode, ca.getUrlClientCode(), ca.getClientCode())
-								.map(e -> e.contains(ca.getClientCode()) && e.contains(clientCode));
-				},
+                        return Mono.just(clientCode.equals(explicitApp.getClientCode())
+                            || clientCode.equals(explicitApp.getExplicitOwnerClientCode()));
+                    }
 
-				(access, explicitApp, managed) -> {
+                    if (checkAppWriteAccess)
+                        return this.securityService.isBeingManaged(ca.getClientCode(), clientCode);
+                    else
+                        return this.inheritanceService
+                            .order(appCode, ca.getUrlClientCode(), ca.getClientCode())
+                            .map(e -> e.contains(ca.getClientCode()) && e.contains(clientCode));
+                },
 
-					if (!managed.booleanValue())
-						return Mono.empty();
+                (access, explicitApp, managed) -> {
 
-					return checkAppWriteAccess
-							? this.securityService.hasWriteAccess(appCode, ca.getClientCode())
-							: this.securityService.hasReadAccess(appCode, ca.getClientCode());
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).accessCheck"))
-				.defaultIfEmpty(false);
-	}
+                    if (!BooleanUtil.safeValueOf(managed))
+                        return Mono.empty();
 
-	public String getAccessCheckName() {
-		return this.getObjectName();
-	}
+                    return checkAppWriteAccess
+                        ? this.securityService.hasWriteAccess(appCode, ca.getClientCode())
+                        : this.securityService.hasReadAccess(appCode, ca.getClientCode());
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).accessCheck"))
+            .defaultIfEmpty(false);
+    }
 
-	public String getObjectName() {
-		return this.pojoClass.getSimpleName();
-	}
+    public String getAccessCheckName() {
+        return this.getObjectName();
+    }
 
-	private Mono<D> checkIfExists(D cca) {
+    public String getObjectName() {
+        return this.pojoClass.getSimpleName();
+    }
 
-		return this.mongoTemplate.count(new Query(new Criteria().andOperator(
+    private Mono<D> checkIfExists(D cca) {
 
-				Criteria.where("name")
-						.is(cca.getName()),
-				Criteria.where(APP_CODE)
-						.is(cca.getAppCode()),
-				Criteria.where(CLIENT_CODE)
-						.is(cca.getClientCode())
+        return this.mongoTemplate.count(new Query(new Criteria().andOperator(
 
-		)), this.pojoClass)
-				.flatMap(c -> c > 0
-						? messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT,
-								msg), AbstractMongoMessageResourceService.ALREADY_EXISTS, this.getObjectName(),
-								cca.getName())
-						: Mono.just(cca));
-	}
+                Criteria.where("name")
+                    .is(cca.getName()),
+                Criteria.where(APP_CODE)
+                    .is(cca.getAppCode()),
+                Criteria.where(CLIENT_CODE)
+                    .is(cca.getClientCode())
 
-	@Override
-	public Mono<D> read(String id) {
+            )), this.pojoClass)
+            .flatMap(c -> c > 0
+                ? messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT,
+                    msg), AbstractMongoMessageResourceService.ALREADY_EXISTS, this.getObjectName(),
+                cca.getName())
+                : Mono.just(cca));
+    }
 
-		return FlatMapUtil.flatMapMonoWithNull(
+    @Override
+    public Mono<D> read(String id) {
 
-				() -> super.read(id),
+        return FlatMapUtil.flatMapMonoWithNull(
 
-				entity -> SecurityContextUtil.getUsersContextAuthentication(),
+                () -> super.read(id),
 
-				(entity, ca) -> this.accessCheck(ca, READ, entity == null ? null : entity.getAppCode(),
-						entity == null ? null : entity.getClientCode(), false),
+                entity -> SecurityContextUtil.getUsersContextAuthentication(),
 
-				(entity, ca, hasAccess) -> hasAccess.booleanValue() ? this.getMergedSources(entity) : Mono.empty(),
+                (entity, ca) -> this.accessCheck(ca, READ, entity == null ? null : entity.getAppCode(),
+                    entity == null ? null : entity.getClientCode(), false),
 
-				(entity, ca, hasAccess, merged) -> hasAccess.booleanValue() ? this.applyOverride(entity, merged)
-						: Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).read"))
-				.switchIfEmpty(
-						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
-								msg), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
-	}
+                (entity, ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? this.getMergedSources(entity)
+                    : Mono.empty(),
 
-	public Mono<D> readInternal(String id) {
+                (entity, ca, hasAccess, merged) -> BooleanUtil.safeValueOf(hasAccess)
+                    ? this.applyOverride(entity, merged)
+                    : Mono.empty())
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read"))
+            .switchIfEmpty(
+                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
+                    msg), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
+    }
 
-		return flatMapMonoWithNull(
+    public Mono<D> readInternal(String id) {
 
-				() -> super.read(id),
+        return flatMapMonoWithNull(
 
-				this::getMergedSources,
+            () -> super.read(id),
 
-				this::applyOverride)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).readInternal"));
-	}
+            this::getMergedSources,
 
-	@Override
-	public Mono<D> update(D entity) {
+            this::applyOverride)
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
+    }
 
-		Mono<D> crtEnt = flatMapMono(
+    @Override
+    public Mono<D> update(D entity) {
 
-				SecurityContextUtil::getUsersContextAuthentication,
+        Mono<D> crtEnt = flatMapMono(
 
-				ca -> this.accessCheck(ca, UPDATE, entity == null ? null : entity.getAppCode(),
-						entity == null ? null : entity.getClientCode(), true),
+            SecurityContextUtil::getUsersContextAuthentication,
 
-				(ca, hasAccess) -> hasAccess.booleanValue() ? Mono.just(entity) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).update"));
+            ca -> this.accessCheck(ca, UPDATE, entity == null ? null : entity.getAppCode(),
+                entity == null ? null : entity.getClientCode(), true),
 
-		return crtEnt.flatMap(e -> flatMapMonoWithNull(
+            (ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(entity) : Mono.empty())
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).update"));
 
-				() -> this.getMergedSources(e),
+        return crtEnt.flatMap(e -> flatMapMonoWithNull(
 
-				merged -> this.extractOverride(e, merged),
+            () -> this.getMergedSources(e),
 
-				(merged, overridden) -> super.update(overridden),
+            merged -> this.extractOverride(e, merged),
 
-				(merged, overridden,
-						created) -> isVersionable()
-								? versionService.create(new Version().setClientCode(entity.getClientCode())
-										.setObjectName(entity.getName())
-										.setObjectAppCode(entity.getAppCode())
-										.setObjectType(this.getObjectName()
-												.toUpperCase())
-										.setVersionNumber(created.getVersion())
-										.setMessage(entity.getMessage())
-										.setObject(this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP)))
-								: Mono.empty(),
+            (merged, overridden) -> super.update(overridden),
 
-				(merged, overridden, created, version) -> this.read(created.getId()),
+            (merged, overridden,
+             created) -> isVersionable()
+                ? versionService.create(new Version().setClientCode(e.getClientCode())
+                .setObjectName(e.getName())
+                .setObjectAppCode(e.getAppCode())
+                .setObjectType(this.getObjectName()
+                    .toUpperCase())
+                .setVersionNumber(created.getVersion())
+                .setMessage(e.getMessage())
+                .setObject(this.objectMapper.convertValue(e, TYPE_REFERENCE_MAP)))
+                : Mono.empty(),
 
-				(m, o, c, v, f) -> this.evictRecursively(f))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).update")));
-	}
+            (merged, overridden, created, version) -> this.read(created.getId()),
 
-	protected Mono<D> evictRecursively(D f) {
+            (m, o, c, v, f) -> this.evictRecursively(f))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).update")));
+    }
 
-		return FlatMapUtil.flatMapMono(() -> cacheService.evictAll(this.getCacheName(f.getAppCode(), f.getName())),
+    protected Mono<D> evictRecursively(D f) {
+        return this.evictRecursively(f.getAppCode(), f.getClientCode(), f.getName()).map(e -> f);
+    }
 
-				(evict1) -> cacheService
-						.evictAll(this.getCacheName(f.getAppCode(), this.getObjectName()) + READ_PAGE),
+    protected Mono<Boolean> evictRecursively(String appCode, String clientCode, String name) {
+        return FlatMapUtil.flatMapMono(() -> cacheService.evictAll(this.getCacheName(appCode, name)),
 
-				(evict1, evict2) -> Mono.just(evict1 && evict2).map(e -> f));
-	}
+                evict1 -> cacheService
+                    .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
 
-	@Override
-	public Mono<Boolean> delete(String id) {
+                (evict1, evict2) -> Mono.just(evict1 && evict2))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).evictRecursively"));
+    }
 
-		Mono<D> exists = this.repo.findById(id)
-				.switchIfEmpty(messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
-						msg), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
 
-		return FlatMapUtil.flatMapMono(
+    @Override
+    public Mono<Boolean> delete(String id) {
 
-				() -> exists,
+        Mono<D> exists = this.repo.findById(id)
+            .switchIfEmpty(messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND,
+                msg), AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id));
 
-				entity -> this.repo.countByNameAndAppCodeAndBaseClientCode(entity.getName(), entity.getAppCode(),
-						entity.getClientCode()),
+        return FlatMapUtil.flatMapMono(
 
-				(entity, count) -> SecurityContextUtil.getUsersContextAuthentication(),
+                () -> exists,
 
-				(entity, count, ca) -> this.accessCheck(ca, DELETE, entity == null ? null : entity.getAppCode(),
-						entity == null ? null : entity.getClientCode(), true),
+                entity -> this.repo.countByNameAndAppCodeAndBaseClientCode(entity.getName(), entity.getAppCode(),
+                    entity.getClientCode()),
 
-				(entity, count, ca, hasAccess) -> {
+                (entity, count) -> SecurityContextUtil.getUsersContextAuthentication(),
 
-					if (!hasAccess.booleanValue())
-						return Mono.empty();
+                (entity, count, ca) -> this.accessCheck(ca, DELETE, entity == null ? null : entity.getAppCode(),
+                    entity == null ? null : entity.getClientCode(), true),
 
-					if (count > 0l)
-						return messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id);
+                (entity, count, ca, hasAccess) -> {
 
-					return super.delete(id)
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return Mono.empty();
 
-							.flatMap(e -> cacheService
-									.evict(this.getCacheName(entity.getAppCode(), entity.getName()),
-											entity.getClientCode())
-									.map(x -> e))
+                    if (count > 0l)
+                        return messageResourceService.throwMessage(
+                            msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                            AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id);
 
-							.flatMap(e -> cacheService
-									.evictAll(this.getCacheName(entity.getAppCode(), this.getObjectName()) + READ_PAGE)
-									.map(x -> e));
-				})
+                    return super.delete(id)
 
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).delete"))
-				.switchIfEmpty(
-						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
-	}
+                        .flatMap(e -> cacheService
+                            .evict(this.getCacheName(entity.getAppCode(), entity.getName()),
+                                entity.getClientCode())
+                            .map(x -> e))
 
-	protected Mono<D> getMergedSources(D entity) {
+                        .flatMap(e -> cacheService
+                            .evictAll(this.getCacheName(entity.getAppCode(), this.getObjectName()) + READ_PAGE)
+                            .map(x -> e));
+                })
 
-		if (entity == null)
-			return Mono.empty();
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).delete"))
+            .switchIfEmpty(
+                this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
+    }
 
-		if (entity.getBaseClientCode() == null)
-			return Mono.empty();
+    protected Mono<D> getMergedSources(D entity) {
 
-		Flux<D> x = Mono.just(entity)
-				.expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
-						: this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(),
-								e.getAppCode(),
-								e.getBaseClientCode()));
+        if (entity == null)
+            return Mono.empty();
 
-		return x.collectList()
-				.flatMap(list -> {
-					if (list.size() == 1)
-						return Mono.empty();
+        if (entity.getBaseClientCode() == null)
+            return Mono.empty();
 
-					if (list.size() == 2)
-						return Mono.just(list.get(1));
+        Flux<D> x = Mono.just(entity)
+            .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
+                : this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(),
+                e.getAppCode(),
+                e.getBaseClientCode()));
 
-					Mono<D> current = Mono.just(list.get(list.size() - 2));
+        return x.collectList()
+            .flatMap(list -> {
+                if (list.size() == 1)
+                    return Mono.empty();
 
-					for (int i = list.size() - 3; i >= 0; i--) {
-						final int fi = i;
-						current = current.flatMap(b -> list.get(fi)
-								.applyActualOverride(b));
-					}
+                if (list.size() == 2)
+                    return Mono.just(list.get(1));
 
-					return current;
-				});
-	}
+                Mono<D> current = Mono.just(list.get(list.size() - 2));
 
-	protected boolean isVersionable() {
-		return true;
-	}
+                for (int i = list.size() - 3; i >= 0; i--) {
+                    final int fi = i;
+                    current = current.flatMap(b -> list.get(fi)
+                        .applyActualOverride(b));
+                }
 
-	protected Mono<D> extractOverride(D entity, D mergedSources) {
-		if (entity == null)
-			return Mono.empty();
+                return current;
+            });
+    }
 
-		if (mergedSources == null)
-			return Mono.just(entity);
+    protected boolean isVersionable() {
+        return true;
+    }
 
-		return entity.makeActualOverride(mergedSources);
-	}
+    protected Mono<D> extractOverride(D entity, D mergedSources) {
+        if (entity == null)
+            return Mono.empty();
 
-	protected Mono<D> applyOverride(D entity, D mergedSources) {
-		if (entity == null)
-			return Mono.empty();
+        if (mergedSources == null)
+            return Mono.just(entity);
 
-		if (mergedSources == null)
-			return Mono.just(entity);
+        return entity.makeActualOverride(mergedSources);
+    }
 
-		return entity.applyActualOverride(mergedSources);
-	}
+    protected Mono<D> applyOverride(D entity, D mergedSources) {
+        if (entity == null)
+            return Mono.empty();
 
-	@Override
-	protected Mono<String> getLoggedInUserId() {
+        if (mergedSources == null)
+            return Mono.just(entity);
 
-		return SecurityContextUtil.getUsersContextAuthentication()
-				.map(ContextAuthentication::getUser)
-				.map(ContextUser::getId)
-				.map(Object::toString);
-	}
+        return entity.applyActualOverride(mergedSources);
+    }
 
-	// While making the transport object, we are converting the entity to a map
-	public Flux<D> readForTransport(String appCode, String clientCode, List<String> names) {
+    @Override
+    protected Mono<String> getLoggedInUserId() {
 
-		if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank((clientCode)))
-			return this.messageResourceService.throwFluxMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-					AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode);
+        return SecurityContextUtil.getUsersContextAuthentication()
+            .map(ContextAuthentication::getUser)
+            .map(ContextUser::getId)
+            .map(Object::toString);
+    }
 
-		Mono<Tuple2<Boolean, String>> accessCheck = accessCheckForTransport(appCode, clientCode);
+    // While making the transport object, we are converting the entity to a map
+    public Flux<D> readForTransport(String appCode, String clientCode, List<String> names) {
 
-		LinkedMultiValueMap<String, String> mMap = new LinkedMultiValueMap<>();
-		mMap.put(CLIENT_CODE, List.of(clientCode));
-		mMap.put(APP_CODE, List.of(appCode));
-		if (names != null && !names.isEmpty())
-			mMap.put("name", names);
+        if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank((clientCode)))
+            return this.messageResourceService.throwFluxMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode);
 
-		return accessCheck.flatMap(e -> this.paramToConditionLRO(mMap, appCode))
-				.flatMap(e -> this.filter(e.getT1()))
-				.flatMapMany(e -> this.mongoTemplate.find(new Query(new Criteria().andOperator(e,
-						new Criteria().orOperator(Criteria.where("notOverridable")
-								.ne(Boolean.TRUE),
-								Criteria.where(CLIENT_CODE)
-										.is(clientCode)))),
-						this.pojoClass, this.getCollectionName()))
-				.flatMap(e -> this.readInternal(e.getId()))
-				.filter(e -> e.getClientCode()
-						.equals(clientCode));
-	}
+        Mono<Tuple2<Boolean, String>> accessCheck = accessCheckForTransport(appCode, clientCode);
 
-	private Mono<Tuple2<Boolean, String>> accessCheckForTransport(String appCode, String clientCode) {
-		return FlatMapUtil.flatMapMono(
+        LinkedMultiValueMap<String, String> mMap = new LinkedMultiValueMap<>();
+        mMap.put(CLIENT_CODE, List.of(clientCode));
+        mMap.put(APP_CODE, List.of(appCode));
+        if (names != null && !names.isEmpty())
+            mMap.put("name", names);
 
-				SecurityContextUtil::getUsersContextAuthentication,
+        return accessCheck.flatMap(e -> this.paramToConditionLRO(mMap, appCode))
+            .flatMap(e -> this.filter(e.getT1()))
+            .flatMapMany(e -> this.mongoTemplate.find(new Query(new Criteria().andOperator(e,
+                    new Criteria().orOperator(Criteria.where("notOverridable")
+                            .ne(Boolean.TRUE),
+                        Criteria.where(CLIENT_CODE)
+                            .is(clientCode)))),
+                this.pojoClass, this.getCollectionName()))
+            .flatMap(e -> this.readInternal(e.getId()))
+            .filter(e -> e.getClientCode()
+                .equals(clientCode));
+    }
 
-				ca -> {
-					if (!ca.isAuthenticated())
-						return Mono.empty();
+    private Mono<Tuple2<Boolean, String>> accessCheckForTransport(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
 
-					if (ca.isSystemClient())
-						return Mono.just(Tuples.of(true, clientCode));
+                SecurityContextUtil::getUsersContextAuthentication,
 
-					if (clientCode == null || ca.getClientCode()
-							.equals(clientCode))
-						return this.securityService.hasReadAccess(appCode, ca.getClientCode())
-								.map(e -> Tuples.of(e, ca.getClientCode()));
+                ca -> {
+                    if (!ca.isAuthenticated())
+                        return Mono.empty();
 
-					return this.securityService.isBeingManaged(ca.getClientCode(), clientCode)
-							.flatMap(e -> !e.booleanValue() ? Mono.empty()
-									: this.securityService.hasReadAccess(appCode, clientCode))
-							.map(e -> Tuples.of(e, clientCode));
-				},
+                    if (ca.isSystemClient())
+                        return Mono.just(Tuples.of(true, clientCode));
 
-				(ca, access) -> access.getT1()
-						.booleanValue() ? Mono.just(access) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).accessCheckForTransport"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
-	}
+                    if (clientCode == null || ca.getClientCode()
+                        .equals(clientCode))
+                        return this.securityService.hasReadAccess(appCode, ca.getClientCode())
+                            .map(e -> Tuples.of(e, ca.getClientCode()));
 
-	protected String getCollectionName() {
-		String cName = this.getObjectName();
-		return Character.toLowerCase(cName.charAt(0)) + cName.substring(1);
-	}
+                    return this.securityService.isBeingManaged(ca.getClientCode(), clientCode)
+                        .flatMap(e -> !BooleanUtil.safeValueOf(e) ? Mono.empty()
+                            : this.securityService.hasReadAccess(appCode, clientCode))
+                        .map(e -> Tuples.of(e, clientCode));
+                },
 
-	public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) { // NOSONAR
+                (ca, access) -> BooleanUtil.safeValueOf(access.getT1()) ? Mono.just(access) : Mono.empty())
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).accessCheckForTransport"))
+            .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
+    }
 
-		final String appCode = params.getFirst(APP_CODE) == null ? "" : params.getFirst(APP_CODE);
-		final String clientCode = params.getFirst(CLIENT_CODE);
+    protected String getCollectionName() {
+        String cName = this.getObjectName();
+        return Character.toLowerCase(cName.charAt(0)) + cName.substring(1);
+    }
 
-		int ignoreCount = 1;
-		if (params.containsKey("page"))
-			ignoreCount++;
-		if (params.containsKey("size"))
-			ignoreCount++;
+    public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) { // NOSONAR
 
-		Mono<Tuple2<Boolean, String>> accessCheck = FlatMapUtil.flatMapMono(
+        final String appCode = params.getFirst(APP_CODE) == null ? "" : params.getFirst(APP_CODE);
+        final String clientCode = params.getFirst(CLIENT_CODE);
 
-				SecurityContextUtil::getUsersContextAuthentication,
+        int ignoreCount = 1;
+        if (params.containsKey("page"))
+            ignoreCount++;
+        if (params.containsKey("size"))
+            ignoreCount++;
+        if (params.containsKey("sort"))
+            ignoreCount++;
 
-				ca -> {
-					if (!ca.isAuthenticated())
-						return Mono.empty();
+        Mono<Tuple2<Boolean, String>> accessCheck = FlatMapUtil.flatMapMono(
 
-					if (clientCode == null || ca.getClientCode()
-							.equals(clientCode))
-						return this.securityService.hasReadAccess(appCode, ca.getClientCode())
-								.map(e -> Tuples.of(e, ca.getClientCode()));
+                SecurityContextUtil::getUsersContextAuthentication,
 
-					return this.securityService.isBeingManaged(ca.getClientCode(), clientCode)
-							.flatMap(e -> !e.booleanValue() ? Mono.empty()
-									: this.securityService.hasReadAccess(appCode, clientCode))
-							.map(e -> Tuples.of(e, clientCode));
-				},
+                ca -> {
+                    if (!ca.isAuthenticated())
+                        return Mono.empty();
 
-				(ca, access) -> access.getT1()
-						.booleanValue() ? Mono.just(access) : Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName()
-								+ "Service).readPageFilterLRO (accessCheck)"))
-				.switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
+                    if (clientCode == null || ca.getClientCode()
+                        .equals(clientCode))
+                        return this.securityService.hasReadAccess(appCode, ca.getClientCode())
+                            .map(e -> Tuples.of(e, ca.getClientCode()));
 
-		Mono<Page<ListResultObject>> returnList = FlatMapUtil.flatMapMono(
+                    return this.securityService.isBeingManaged(ca.getClientCode(), clientCode)
+                        .flatMap(e -> !BooleanUtil.safeValueOf(e) ? Mono.empty()
+                            : this.securityService.hasReadAccess(appCode, clientCode))
+                        .map(e -> Tuples.of(e, clientCode));
+                },
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                (ca, access) -> BooleanUtil.safeValueOf(access.getT1()) ? Mono.just(access) : Mono.empty())
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName()
+                    + "Service).readPageFilterLRO (accessCheck)"))
+            .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
 
-				ca -> accessCheck,
+        Mono<Page<ListResultObject>> returnList = FlatMapUtil.flatMapMono(
 
-				(ca, ac) -> this.paramToConditionLRO(params, appCode),
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				(ca, ac, tup) -> this.filter(tup.getT1()),
+                ca -> accessCheck,
 
-				(ca, ac, tup, crit) -> this.mongoTemplate.find(
-						new Query(new Criteria().andOperator(crit,
-								new Criteria().orOperator(Criteria.where("notOverridable").ne(Boolean.TRUE),
-										Criteria.where(CLIENT_CODE).is(ac.getT2()))))
-								.with(pageable.getSort()),
-						ListResultObject.class, this.getCollectionName()).collectList(),
+                (ca, ac) -> this.paramToConditionLRO(params, appCode),
 
-				(ca, ac, tup, crit, list) -> {
+                (ca, ac, tup) -> this.filter(tup.getT1()),
 
-					Map<String, ListResultObject> things = new HashMap<>();
+                (ca, ac, tup, crit) -> this.mongoTemplate.find(
+                    new Query(new Criteria().andOperator(crit,
+                        new Criteria().orOperator(Criteria.where("notOverridable").ne(Boolean.TRUE),
+                            Criteria.where(CLIENT_CODE).is(ac.getT2()))))
+                        .with(pageable.getSort()),
+                    ListResultObject.class, this.getCollectionName()).collectList(),
 
-					String inClientCode = tup.getT2().isEmpty() ? null : tup.getT2().get(tup.getT2().size() - 1);
+                (ca, ac, tup, crit, list) -> {
 
-					for (ListResultObject lro : list) {
+                    Map<String, ListResultObject> things = new HashMap<>();
 
-						if (!things.containsKey(lro.getName())) {
-							things.put(lro.getName(), lro);
-							continue;
-						}
+                    String inClientCode = tup.getT2().isEmpty() ? null : tup.getT2().get(tup.getT2().size() - 1);
 
-						if (lro.getClientCode().equals(inClientCode)) {
-							things.put(lro.getName(), lro);
-						}
-					}
+                    for (ListResultObject lro : list) {
 
-					Tuple2<Integer, List<ListResultObject>> nList = filterBasedOnPageSize(pageable, list, things);
+                        if (!things.containsKey(lro.getName())) {
+                            things.put(lro.getName(), lro);
+                            continue;
+                        }
 
-					return Mono.just((Page<ListResultObject>) new PageImpl<>(nList.getT2(), pageable, nList.getT1()));
+                        if (lro.getClientCode().equals(inClientCode)) {
+                            things.put(lro.getName(), lro);
+                        }
+                    }
 
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).readPageFilterLRO"))
-				.defaultIfEmpty(new PageImpl<>(List.of(), pageable, 0));
+                    Tuple2<Integer, List<ListResultObject>> nList = filterBasedOnPageSize(pageable, list, things);
 
-		if (((params.size() == ignoreCount) || params.isEmpty()))
-			return FlatMapUtil.flatMapMono(
+                    return Mono.just((Page<ListResultObject>) new PageImpl<>(nList.getT2(), pageable, nList.getT1()));
 
-					SecurityContextUtil::getUsersContextAuthentication,
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readPageFilterLRO"))
+            .defaultIfEmpty(new PageImpl<>(List.of(), pageable, 0));
 
-					ca -> this.cacheService.cacheValueOrGet(
-							this.getCacheName(appCode, this.getObjectName()) + READ_PAGE, () -> returnList,
-							ca.getClientCode(),
-							":",
-							"" + pageable.getPageNumber(),
-							":",
-							"" + pageable.getPageSize()));
+        if (((params.size() == ignoreCount) || params.isEmpty()))
+            return FlatMapUtil.flatMapMono(
 
-		return returnList;
-	}
+                SecurityContextUtil::getUsersContextAuthentication,
 
-	private Tuple2<Integer, List<ListResultObject>> filterBasedOnPageSize(Pageable pageable,
-			List<ListResultObject> list,
-			Map<String, ListResultObject> things) {
+                ca -> this.cacheService.cacheValueOrGet(
+                    this.getCacheName(appCode, this.getObjectName()) + READ_PAGE, () -> returnList,
+                    ca.getClientCode(),
+                    ":",
+                    "" + pageable.getPageNumber(),
+                    ":",
+                    "" + pageable.getPageSize(),
+                    ":",
+                    pageable.getSort().toString()));
 
-		Set<String> ids = things.values()
-				.stream()
-				.map(ListResultObject::getId)
-				.collect(Collectors.toSet());
+        return returnList;
+    }
 
-		List<ListResultObject> nList = list.stream()
-				.sequential()
-				.filter(e -> ids.contains(e.getId()))
-				.toList();
+    private Tuple2<Integer, List<ListResultObject>> filterBasedOnPageSize(Pageable pageable,
+                                                                          List<ListResultObject> list,
+                                                                          Map<String, ListResultObject> things) {
 
-		int from = (int) pageable.getOffset();
-		int to = (int) pageable.getOffset() + pageable.getPageSize();
+        Set<String> ids = things.values()
+            .stream()
+            .map(ListResultObject::getId)
+            .collect(Collectors.toSet());
 
-		int size = nList.size();
+        List<ListResultObject> nList = list.stream()
+            .sequential()
+            .filter(e -> ids.contains(e.getId()))
+            .toList();
 
-		if (nList.size() > from)
-			return Tuples.of(size, nList.subList(from, to >= nList.size() ? nList.size() : to));
+        int from = (int) pageable.getOffset();
+        int to = (int) pageable.getOffset() + pageable.getPageSize();
 
-		return Tuples.of(size, List.of());
-	}
+        int size = nList.size();
 
-	private Mono<Tuple2<ComplexCondition, List<String>>> paramToConditionLRO(MultiValueMap<String, String> params,
-			final String appCode) {
+        if (nList.size() > from)
+            return Tuples.of(size, nList.subList(from, to >= nList.size() ? nList.size() : to));
 
-		return FlatMapUtil.flatMapMono(
+        return Tuples.of(size, List.of());
+    }
 
-				SecurityContextUtil::getUsersContextAuthentication,
+    private Mono<Tuple2<ComplexCondition, List<String>>> paramToConditionLRO(MultiValueMap<String, String> params,
+                                                                             final String appCode) {
 
-				ca -> {
-					if (params.containsKey(CLIENT_CODE) && !ca.isSystemClient())
-						return this.securityService.isBeingManaged(ca.getClientCode(), params.getFirst(CLIENT_CODE));
+        return FlatMapUtil.flatMapMono(
 
-					return Mono.just(Boolean.TRUE);
-				},
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				(ca, isBeingManaged) -> {
+                ca -> {
+                    if (params.containsKey(CLIENT_CODE) && !ca.isSystemClient())
+                        return this.securityService.isBeingManaged(ca.getClientCode(), params.getFirst(CLIENT_CODE));
 
-					if (!isBeingManaged.booleanValue())
-						return Mono.empty();
+                    return Mono.just(Boolean.TRUE);
+                },
 
-					String cc = params.getFirst(CLIENT_CODE);
-					return Mono.just(cc == null ? ca.getClientCode() : cc);
-				},
+                (ca, isBeingManaged) -> {
 
-				(ca, isBeingManaged, finClientCode) -> this.inheritanceService.order(appCode, ca.getClientCode(),
-						finClientCode),
+                    if (!BooleanUtil.safeValueOf(isBeingManaged))
+                        return Mono.empty();
 
-				(ca, isBeingManaged, finClientCode, inheritance) -> {
+                    String cc = params.getFirst(CLIENT_CODE);
+                    return Mono.just(cc == null ? ca.getClientCode() : cc);
+                },
 
-					List<AbstractCondition> conditions = new ArrayList<>();
+                (ca, isBeingManaged, finClientCode) -> this.inheritanceService.order(appCode, ca.getClientCode(),
+                    finClientCode),
 
-					if (inheritance.size() == 1)
-						conditions.add(new FilterCondition().setField(CLIENT_CODE)
-								.setOperator(FilterConditionOperator.EQUALS)
-								.setValue(inheritance.get(0)));
-					else
-						conditions.add(new FilterCondition().setField(CLIENT_CODE)
-								.setOperator(FilterConditionOperator.IN)
-								.setValue(inheritance.stream()
-										.collect(Collectors.joining(","))));
+                (ca, isBeingManaged, finClientCode, inheritance) -> {
 
-					String applicationName = params.getFirst(APP_CODE);
-					conditions.add(new FilterCondition().setField(APP_CODE)
-							.setOperator(FilterConditionOperator.EQUALS)
-							.setValue(applicationName));
+                    List<AbstractCondition> conditions = new ArrayList<>();
 
-					conditions.addAll(params.entrySet()
-							.stream()
-							.filter(e -> !READ_LRO_PARAMETERS_IGNORE.contains(e.getKey()))
-							.filter(e -> Objects.nonNull(e.getValue()))
-							.filter(e -> !e.getValue()
-									.isEmpty())
-							.map(e -> {
-								FilterCondition fc = new FilterCondition().setField(e.getKey());
-								if (e.getValue()
-										.size() == 1)
-									return fc.setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL)
-											.setValue(e.getValue()
-													.get(0));
-								List<Object> values = e.getValue()
-										.stream()
-										.map(Object.class::cast)
-										.toList();
-								return fc.setOperator(FilterConditionOperator.IN)
-										.setMultiValue(values);
-							})
-							.toList());
+                    if (inheritance.size() == 1)
+                        conditions.add(new FilterCondition().setField(CLIENT_CODE)
+                            .setOperator(FilterConditionOperator.EQUALS)
+                            .setValue(inheritance.get(0)));
+                    else
+                        conditions.add(new FilterCondition().setField(CLIENT_CODE)
+                            .setOperator(FilterConditionOperator.IN)
+                            .setValue(inheritance.stream()
+                                .collect(Collectors.joining(","))));
 
-					Tuple2<ComplexCondition, List<String>> tup = Tuples
-							.of(new ComplexCondition().setConditions(conditions)
-									.setOperator(ComplexConditionOperator.AND), inheritance);
-					return Mono.just(tup);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).paramToConditionLRO"));
-	}
+                    String applicationName = params.getFirst(APP_CODE);
+                    conditions.add(new FilterCondition().setField(APP_CODE)
+                        .setOperator(FilterConditionOperator.EQUALS)
+                        .setValue(applicationName));
 
-	// While transporting the object to find the actual object.
-	public Mono<Tuple2<Integer, String>> readToTransport(String name, String appCode, String clientCode) {
+                    conditions.addAll(params.entrySet()
+                        .stream()
+                        .filter(e -> !READ_LRO_PARAMETERS_IGNORE.contains(e.getKey()))
+                        .filter(e -> Objects.nonNull(e.getValue()))
+                        .filter(e -> !e.getValue()
+                            .isEmpty())
+                        .map(e -> {
+                            FilterCondition fc = new FilterCondition().setField(e.getKey());
+                            if (e.getValue()
+                                .size() == 1)
+                                return fc.setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL)
+                                    .setValue(e.getValue()
+                                        .get(0));
+                            List<Object> values = e.getValue()
+                                .stream()
+                                .map(Object.class::cast)
+                                .toList();
+                            return fc.setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(values);
+                        })
+                        .toList());
 
-		return FlatMapUtil.flatMapMono(
+                    Tuple2<ComplexCondition, List<String>> tup = Tuples
+                        .of(new ComplexCondition().setConditions(conditions)
+                            .setOperator(ComplexConditionOperator.AND), inheritance);
+                    return Mono.just(tup);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).paramToConditionLRO"));
+    }
 
-				SecurityContextUtil::getUsersContextAuthentication,
+    // While transporting the object to find the actual object.
+    public Mono<Tuple2<Integer, String>> readToTransport(String name, String appCode, String clientCode) {
 
-				ca -> this.accessCheck(ca, CREATE, appCode, clientCode, true),
+        return FlatMapUtil.flatMapMono(
 
-				(ca, hasAccess) -> {
+                SecurityContextUtil::getUsersContextAuthentication,
 
-					if (!hasAccess.booleanValue())
-						return Mono.empty();
+                ca -> this.accessCheck(ca, CREATE, appCode, clientCode, true),
 
-					return this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode);
-				},
+                (ca, hasAccess) -> {
 
-				(ca, hasAccess, entity) -> Mono.just(Tuples.of(entity.getVersion(), entity.getId())))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).readToTrasnport"));
-	}
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return Mono.empty();
 
-	public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) {
+                    return this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, clientCode);
+                },
 
-		return FlatMapUtil.flatMapMonoWithNull(
+                (ca, hasAccess, entity) -> Mono.just(Tuples.of(entity.getVersion(), entity.getId())))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readToTrasnport"));
+    }
 
-				() -> Mono.just(clientCode),
+    public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) { // NOSONAR
+        // Just one complexity point is not a reason to break this function
 
-				key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
+        return FlatMapUtil.flatMapMonoWithNull(
 
-				(key, cApp) -> {
+                () -> Mono.just(clientCode),
 
-					if (cApp != null)
-						return Mono.just(cApp.getObject());
+                key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
 
-					return SecurityContextUtil.getUsersContextAuthentication()
-							.map(ContextAuthentication::getUrlClientCode)
-							.defaultIfEmpty(clientCode)
-							.flatMap(cc -> readIfExistsInBase(name, appCode, cc, clientCode));
-				},
+                (key, cApp) -> {
 
-				(key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
-						.flatMap(da -> this.readInternal(da.getId())).map(this.pojoClass::cast),
+                    if (cApp != null)
+                        return Mono.just(cApp.getObject());
 
-				(key, cApp, dbApp, mergedApp) -> {
+                    return SecurityContextUtil.getUsersContextAuthentication()
+                        .map(ContextAuthentication::getUrlClientCode)
+                        .defaultIfEmpty(clientCode)
+                        .flatMap(cc -> readIfExistsInBase(name, appCode, cc, clientCode));
+                },
 
-					if (cApp == null && mergedApp == null)
-						return Mono.empty();
+                (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
+                    .flatMap(da -> this.readInternal(da.getId())).map(this.pojoClass::cast),
 
-					try {
-						return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
-								.newInstance(cApp != null ? cApp.getObject() : mergedApp));
-					} catch (IllegalAccessException | IllegalArgumentException | InstantiationException
-							| NoSuchMethodException | SecurityException | InvocationTargetException e) {
+                (key, cApp, dbApp, mergedApp) -> {
 
-						return this.messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
-								AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT, this.getObjectName());
-					}
-				},
+                    if (cApp == null && mergedApp == null)
+                        return Mono.empty();
 
-				(key, cApp, dbApp, mergedApp, clonedApp) -> {
+                    try {
+                        return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
+                            .newInstance(cApp != null ? cApp.getObject() : mergedApp));
+                    } catch (IllegalAccessException | IllegalArgumentException | InstantiationException
+                             | NoSuchMethodException | SecurityException | InvocationTargetException e) {
 
-					if (clonedApp == null)
-						return Mono.<ObjectWithUniqueID<D>>empty();
+                        return this.messageResourceService.throwMessage(
+                            msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+                            AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT, this.getObjectName());
+                    }
+                },
 
-					String checksumCode = cApp == null ? UniqueUtil.shortUUID() : cApp.getUniqueId();
+                (key, cApp, dbApp, mergedApp, clonedApp) -> {
 
-					if (cApp == null && mergedApp != null) {
-						cacheService.put(this.getCacheName(appCode, name),
-								new ObjectWithUniqueID<>(mergedApp, checksumCode), key);
-					}
+                    if (clonedApp == null)
+                        return Mono.<ObjectWithUniqueID<D>>empty();
 
-					return this.applyChange(name, appCode, clientCode, clonedApp, checksumCode);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).read"));
-	}
+                    String checksumCode = cApp == null ? UniqueUtil.shortUUID() : cApp.getUniqueId();
 
-	protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
+                    if (cApp == null && mergedApp != null) {
+                        cacheService.put(this.getCacheName(appCode, name),
+                            new ObjectWithUniqueID<>(mergedApp, checksumCode), key);
+                    }
 
-		return FlatMapUtil.flatMapMono(() -> this.inheritanceService.order(appCode, urlClientCode, clientCode),
+                    return this.applyChange(name, appCode, clientCode, clonedApp, checksumCode);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read"));
+    }
 
-				clientCodes -> this.repo.findByNameAndAppCodeAndClientCodeIn(name, appCode, clientCodes)
-						.collectList(),
+    protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
 
-				(clientCodes, lst) -> {
-					if (lst.isEmpty())
-						return Mono.empty();
-					if (lst.size() == 1)
-						return Mono.just(lst.get(0));
+        return FlatMapUtil.flatMapMono(() -> this.inheritanceService.order(appCode, urlClientCode, clientCode),
 
-					for (D item : lst) {
-						if (clientCode.equals(item.getClientCode()))
-							return Mono.just(item);
-					}
+                clientCodes -> this.repo.findByNameAndAppCodeAndClientCodeIn(name, appCode, clientCodes)
+                    .collectList(),
 
-					return Mono.empty();
-				},
+                (clientCodes, lst) -> {
+                    if (lst.isEmpty())
+                        return Mono.empty();
+                    if (lst.size() == 1)
+                        return Mono.just(lst.get(0));
 
-				(clientCodes, lst, found) -> Mono.just(this.pojoClass.cast(found)))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).readIfExistsInBase"));
-	}
+                    for (D item : lst) {
+                        if (clientCode.equals(item.getClientCode()))
+                            return Mono.just(item);
+                    }
 
-	protected Mono<ObjectWithUniqueID<D>> applyChange(String name, String appCode, String clientCode, D object,
-			String checksumString) { // NOSONAR
+                    return Mono.empty();
+                },
 
-		return Mono.just(new ObjectWithUniqueID<>(object, checksumString));
-	}
+                (clientCodes, lst, found) -> Mono.just(this.pojoClass.cast(found)))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readIfExistsInBase"));
+    }
 
-	public String getCacheName(String appCode, String name) {
+    // These parameters are required for the exteneded classes.
+    protected Mono<ObjectWithUniqueID<D>> applyChange(String name, String appCode, String clientCode, D object, // NOSONAR
+                                                      String checksumString) { // NOSONAR
 
-		return new StringBuilder(this.getObjectName()).append(CACHE_NAME)
-				.append("_")
-				.append(appCode)
-				.append("_")
-				.append(name)
-				.toString();
-	}
+        return Mono.just(new ObjectWithUniqueID<>(object, checksumString));
+    }
 
-	@SuppressWarnings("unchecked")
-	public Mono<D> createForClient(String id, String clientCode) {
+    public String getCacheName(String appCode, String name) {
 
-		return flatMapMono(
+        return new StringBuilder(this.getObjectName()).append(CACHE_NAME)
+            .append("_")
+            .append(appCode)
+            .append("_")
+            .append(name)
+            .toString();
+    }
 
-				() -> this.readInternal(id),
+    @SuppressWarnings("unchecked")
+    public Mono<D> createForClient(String id, String clientCode) {
 
-				e -> this.create((D) e.setBaseClientCode(e.getClientCode())
-						.setClientCode(clientCode)
-						.setId(null))
+        return flatMapMono(
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME,
-				"AbstractOverridableService (" + this.getObjectName() + "Service).createForClient"));
-	}
+            () -> this.readInternal(id),
 
-	public TransportObject makeTransportObject(Object entity) {
-		return new TransportObject(this.getObjectName(),
-				this.objectMapper.convertValue(this.pojoClass.cast(entity), TYPE_REFERENCE_MAP));
-	}
+            e -> this.create((D) e.setBaseClientCode(e.getClientCode())
+                .setClientCode(clientCode)
+                .setId(null))
 
-	public D makeEntity(String objectType, Map<String, Object> transportObject) {
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME,
+            ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).createForClient"));
+    }
 
-		if (!StringUtil.safeEquals(this.getObjectName(), objectType))
-			return null;
+    public TransportObject makeTransportObject(Object entity) {
+        return new TransportObject(this.getObjectName(),
+            this.objectMapper.convertValue(this.pojoClass.cast(entity), TYPE_REFERENCE_MAP));
+    }
 
-		return this.objectMapper.convertValue(transportObject, this.pojoClass);
-	}
+    public D makeEntity(String objectType, Map<String, Object> transportObject) {
 
-	public Class<D> getPojoClass() {
-		return this.pojoClass;
-	}
+        if (!StringUtil.safeEquals(this.getObjectName(), objectType))
+            return null;
 
-	public Mono<Boolean> updatedBaseAppCode(String appCode, String newBaseAppCode, String clientCode) {
+        return this.objectMapper.convertValue(transportObject, this.pojoClass);
+    }
 
-		return FlatMapUtil.flatMapMono(
+    public Class<D> getPojoClass() {
+        return this.pojoClass;
+    }
 
-				SecurityContextUtil::getUsersContextAuthentication,
+    public Mono<Boolean> updatedBaseAppCode(String appCode, String newBaseAppCode, String clientCode) {
 
-				ca -> this.accessCheck(ca, UPDATE, appCode, clientCode, true),
+        return FlatMapUtil.flatMapMono(
 
-				(ca, hasAccess) -> this.accessCheck(ca, UPDATE, newBaseAppCode, clientCode, true),
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				(ca, hasAccess, hasBaseAppAccess) -> {
+                ca -> this.accessCheck(ca, UPDATE, appCode, clientCode, true),
 
-					if (!hasAccess.booleanValue() || !hasBaseAppAccess.booleanValue())
-						return Mono.just(false);
+                (ca, hasAccess) -> this.accessCheck(ca, UPDATE, newBaseAppCode, clientCode, true),
 
-					Query query = new Query(new Criteria().andOperator(Criteria.where(APP_CODE).is(appCode),
-							Criteria.where(CLIENT_CODE).is(clientCode),
-							Criteria.where("baseAppCode")
-									.exists(true)));
+                (ca, hasAccess, hasBaseAppAccess) -> {
 
-					return this.mongoTemplate.updateMulti(
-							query, Update.update("baseAppCode", newBaseAppCode), this.getCollectionName())
-							.map(e -> true);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME,
-						"AbstractOverridableService (" + this.getObjectName() + "Service).updatedBaseAppCode"));
-	}
+                    if (!BooleanUtil.safeValueOf(hasAccess) || !BooleanUtil.safeValueOf(hasBaseAppAccess))
+                        return Mono.just(false);
+
+                    Query query = new Query(new Criteria().andOperator(Criteria.where(APP_CODE).is(appCode),
+                        Criteria.where(CLIENT_CODE).is(clientCode),
+                        Criteria.where("baseAppCode")
+                            .exists(true)));
+
+                    return this.mongoTemplate.updateMulti(
+                            query, Update.update("baseAppCode", newBaseAppCode), this.getCollectionName())
+                        .map(e -> true);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).updatedBaseAppCode"));
+    }
+
+    public Mono<Boolean> deleteEverything(String appCode, String clientCode) {
+
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.inheritanceService.order(appCode, clientCode, clientCode),
+
+                (ca, order) -> this.securityService.hasWriteAccess(appCode, clientCode),
+
+                (ca, order, hasAccess) -> {
+                    if (!BooleanUtil.safeValueOf(hasAccess)) {
+                        return Mono.empty();
+                    }
+                    return this.repo.findByAppCodeAndClientCode(appCode, clientCode).map(AbstractOverridableDTO::getName).collectList();
+                },
+
+                (ca, order, hasAccess, names) ->
+                    this.repo.deleteByAppCodeAndClientCode(appCode, clientCode),
+
+                (ca, order, hasAccess, names, count) ->
+                    this.versionService.deleteBy(appCode, clientCode, this.getObjectName().toUpperCase()),
+
+                (ca, order, hasAccess, names, count, vCount) ->
+                    cacheService
+                        .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
+
+                (ca, order, hasAccess, names, count, vCount, pageCache) ->
+                    Flux.fromIterable(names).map(n -> cacheService.evictAll(this.getCacheName(appCode, n))).collectList().map(e -> true)
+            )
+            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).deleteEverything"));
+    }
 }

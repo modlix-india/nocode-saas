@@ -3,8 +3,6 @@ package com.fincity.security.controller;
 import java.util.List;
 
 import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -19,12 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.CodeAccess;
 import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
+import com.fincity.security.model.OtpGenerationRequest;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.appregistration.ClientRegistrationService;
 
@@ -73,7 +71,7 @@ public class ClientController
 	public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
 			@RequestParam String clientCode) {
 
-		return this.service.isUserBeingManaged(userId, clientCode).map(ResponseEntity::ok);
+		return this.service.isUserBeingManaged(clientCode, userId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/internal/validateClientCode")
@@ -116,51 +114,42 @@ public class ClientController
 		return this.service.makeClientInActive(clientId).map(ResponseEntity::ok);
 	}
 
+	@PostMapping("/register/otp/generate")
+	public Mono<ResponseEntity<Boolean>> generateCode(
+			@RequestBody OtpGenerationRequest otpGenerationRequest,
+			ServerHttpRequest request) {
+		return this.clientRegistrationService.generateOtp(otpGenerationRequest, request)
+				.map(ResponseEntity::ok);
+	}
+
+	@PostMapping("/register/otp/verify")
+	public Mono<ResponseEntity<Boolean>> preRegisterCheckOne(@RequestBody ClientRegistrationRequest registrationRequest) {
+		return this.clientRegistrationService.preRegisterCheckOne(registrationRequest).map(ResponseEntity::ok);
+	}
+
 	@PostMapping("/register")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> register(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
-
 		return this.clientRegistrationService.register(registrationRequest, request, response).map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/socialRegister")
 	public Mono<ResponseEntity<ClientRegistrationResponse>> socialRegister(ServerHttpRequest request,
 			ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
-
 		return this.clientRegistrationService.registerWSocial(request, response, registrationRequest)
 				.map(ResponseEntity::ok);
 	}
 
 	@PostMapping("/socialRegister/evoke")
-	public Mono<ResponseEntity<String>> evokeSocialRegister(ServerHttpRequest request, ServerHttpResponse response,
-			@RequestParam(required = true) SecurityAppRegIntegrationPlatform platform) {
-
+	public Mono<ResponseEntity<String>> evokeSocialRegister(ServerHttpRequest request,
+			@RequestParam SecurityAppRegIntegrationPlatform platform) {
 		return this.clientRegistrationService.evokeRegisterWSocial(platform, request).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/socialRegister/callback")
 	public Mono<ResponseEntity<Void>> socialRegisterCallback(ServerHttpRequest request, ServerHttpResponse response) {
-
-		return this.clientRegistrationService.registerWSocialCallback(request, response).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/generateCode")
-	public Mono<ResponseEntity<Boolean>> generateCode(@RequestParam String emailId, ServerHttpRequest request) {
-
-		return this.service.generateCodeAndTriggerMail(emailId, request).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/triggerCodeOnRequest/{accessId}")
-	public Mono<ResponseEntity<Boolean>> onRequestTrigger(@PathVariable ULong accessId, ServerHttpRequest request) {
-
-		return this.service.tiggerMailOnRequest(accessId, request).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/fetchCodes")
-	public Mono<ResponseEntity<Page<CodeAccess>>> fetchCodes(Pageable pageable,
-			@RequestParam(required = false) String clientCode, @RequestParam(required = false) String emailId) {
-
-		return this.service.fetchCodesBasedOnClient(pageable, clientCode, emailId).map(ResponseEntity::ok);
+		return this.clientRegistrationService.registerWSocialCallback(request, response)
+				.then(Mono.just(ResponseEntity.ok().build()));
 	}
 
 	@GetMapping("/register/events")

@@ -1,5 +1,7 @@
 package com.fincity.security.dto;
 
+import java.io.Serial;
+
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
@@ -16,6 +18,7 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 
+	@Serial
 	private static final long serialVersionUID = 4312344235572008119L;
 
 	private String code;

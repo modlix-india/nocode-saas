@@ -20,7 +20,6 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
-import com.fincity.security.service.OtpService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -32,12 +31,10 @@ public class AuthenticationController {
 
 	private final AuthenticationService service;
 	private final ClientService clientService;
-	private final OtpService otpService;
 
-	public AuthenticationController(AuthenticationService service, ClientService clientService, OtpService otpService) {
+	public AuthenticationController(AuthenticationService service, ClientService clientService) {
 		this.service = service;
 		this.clientService = clientService;
-		this.otpService = otpService;
 	}
 
 	@PostMapping("authenticate")
@@ -57,9 +54,7 @@ public class AuthenticationController {
 	@PostMapping("authenticate/otp/generate")
 	public Mono<ResponseEntity<Boolean>> generateOtp(@RequestBody AuthenticationRequest authRequest,
 			ServerHttpRequest request) {
-
-		return this.otpService.generateOtp(authRequest, request)
-				.map(ResponseEntity::ok);
+		return this.service.generateOtp(authRequest, request).map(ResponseEntity::ok);
 	}
 
 	@GetMapping(value = "revoke")

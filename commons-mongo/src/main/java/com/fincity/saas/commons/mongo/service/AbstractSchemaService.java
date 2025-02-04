@@ -1,30 +1,20 @@
 package com.fincity.saas.commons.mongo.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
@@ -33,7 +23,6 @@ import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -45,7 +34,7 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 	private static final String NAMESPACE = "namespace";
 	private static final String NAME = "name";
 
-	private Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
+	private final Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
 
 	private final FeignAuthenticationService feignSecurityService;
 	protected final Gson gson;
@@ -149,10 +138,7 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 
 				return read(namespace + "." + name, appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject)
-						.map(s -> {
-
-							return gson.fromJson(gson.toJsonTree(s.getDefinition()), Schema.class);
-						});
+						.map(s -> gson.fromJson(gson.toJsonTree(s.getDefinition()), Schema.class));
 			}
 
 			@Override

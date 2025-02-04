@@ -2,8 +2,8 @@ package com.fincity.security.dto.policy;
 
 import java.io.Serial;
 
-import org.jooq.types.UShort;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.commons.util.CodeUtil;
 
 import lombok.Data;
@@ -26,14 +26,21 @@ public class ClientPasswordPolicy extends AbstractPolicy {
 	private boolean atleastOneSpecialChar;
 	private boolean spacesAllowed;
 	private String regex;
-	private UShort percentageName;
-	private UShort passExpiryInDays;
-	private UShort passExpiryWarnInDays;
-	private UShort passMinLength;
-	private UShort passMaxLength;
-	private UShort passHistoryCount;
+	private Short percentageName;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private Short passExpiryInDays;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private Short passExpiryWarnInDays;
+	private Short passMinLength;
+	private Short passMaxLength;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private Short passHistoryCount;
 
 	@Override
+	@JsonIgnore
 	public String generate() {
 		CodeUtil.CodeGenerationConfiguration config = new CodeUtil.CodeGenerationConfiguration()
 				.setLength(this.passMinLength.intValue())
