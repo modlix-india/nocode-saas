@@ -1,6 +1,7 @@
-package com.fincity.saas.core.util;
+package com.fincity.saas.commons.crypto;
 
-import io.jsonwebtoken.security.SignatureException;
+import com.fincity.saas.commons.exeception.SignatureException;
+
 import reactor.core.publisher.Mono;
 
 public interface ReactiveSigner {
