@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import javax.crypto.SecretKey;
 
+import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.exeception.SignatureException;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -148,61 +149,72 @@ public enum SignatureAlgo {
 	}
 
 	private void isValid(Key key, boolean signing) {
-
 		if (this == NONE) {
 			throw new SignatureException("The 'NONE' signature algorithm does not support cryptographic keys.");
-		} else if (isHmac()) {
+		}
 
-			if (!(key instanceof SecretKey secretKey)) {
-				throw new SignatureException(
-						this.familyName + " " + keyType(signing) + " key's must be SecretKey instances.");
-			}
+		if (isHmac()) {
+			validateHmacKey(key, signing);
+			return;
+		}
 
-			byte[] encoded = secretKey.getEncoded();
+		validateAsymmetricKey(key, signing);
+	}
 
-			if (encoded == null) {
-				throw new SignatureException(
-						this.familyName + " " + keyType(signing) + " key's encoded bytes cannot be null.");
-			}
+	private void validateHmacKey(Key key, boolean signing) {
+		if (!(key instanceof SecretKey secretKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key must be a SecretKey instance.", this.familyName, keyType(signing)));
+		}
 
-			if (secretKey.getAlgorithm() == null) {
-				throw new SignatureException(
-						this.familyName + " " + keyType(signing) + " key's algorithm cannot be null.");
-			}
+		byte[] encoded = secretKey.getEncoded();
+		if (encoded == null || secretKey.getAlgorithm() == null) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key's encoded bytes and algorithm cannot be null.", this.familyName,
+							keyType(signing)));
+		}
 
-			int size = encoded.length * Byte.SIZE;
-			if (size < this.minKeyLength) {
-				throw new SignatureException("The " + keyType(signing) + " key's size is " + size
-						+ " bits which is not secure enough for the " + name() + " algorithm.");
-			}
+		validateKeySize(encoded.length * Byte.SIZE, signing);
+	}
+
+	private void validateAsymmetricKey(Key key, boolean signing) {
+		if (signing && !(key instanceof PrivateKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ signing key must be a PrivateKey instance.", this.familyName));
+		}
+
+		if (isEllipticCurve()) {
+			validateECKey(key, signing);
 		} else {
-			if (signing && !(key instanceof PrivateKey)) {
-				throw new SignatureException(this.familyName + " signing keys must be PrivateKey instances.");
-			}
+			validateRSAKey(key, signing);
+		}
+	}
 
-			if (isEllipticCurve()) {
-				if (!(key instanceof ECKey ecKey)) {
-					throw new SignatureException(
-							this.familyName + " " + keyType(signing) + " key's must be ECKey instances.");
-				}
+	private void validateECKey(Key key, boolean signing) {
+		if (!(key instanceof ECKey ecKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key must be an ECKey instance.", this.familyName, keyType(signing)));
+		}
 
-				int size = ecKey.getParams().getOrder().bitLength();
-				if (size < this.minKeyLength) {
-					throw new SignatureException("The " + keyType(signing) + " key's size (ECParameterSpec order) is "
-							+ size + " bits which is not secure enough for the " + name() + " algorithm.");
-				}
-			} else { // RSA
-				if (!(key instanceof RSAKey rsaKey)) {
-					throw new SignatureException(
-							this.familyName + " " + keyType(signing) + " key's must be RSAKey instances.");
-				}
+		int size = ecKey.getParams().getOrder().bitLength();
+		validateKeySize(size, signing);
+	}
 
-				int size = rsaKey.getModulus().bitLength();
-				if (size < this.minKeyLength) {
-					throw new SignatureException("The " + keyType(signing) + " key's size is " + size
-							+ " bits which is not secure enough for the " + name() + " algorithm.");
-				}
-			}
+	private void validateRSAKey(Key key, boolean signing) {
+		if (!(key instanceof RSAKey rsaKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key must be an RSAKey instance.", this.familyName, keyType(signing)));
+		}
+
+		int size = rsaKey.getModulus().bitLength();
+		validateKeySize(size, signing);
+	}
+
+	private void validateKeySize(int size, boolean signing) {
+		if (size < this.minKeyLength) {
+			throw new SignatureException(
+					StringFormatter.format("The $ key's size is $ bits which is not secure enough for the $ algorithm.",
+							keyType(signing), size, name()));
 		}
 	}
 
