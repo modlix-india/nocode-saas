@@ -116,6 +116,8 @@ public enum SignatureAlgo {
 			throw new SignatureException("The given key is not supported yet.");
 		}
 
+		// TODO check other alg based on keys
+
 		return null;
 
 	}
@@ -141,11 +143,11 @@ public enum SignatureAlgo {
 	}
 
 	public void isValidSigningKey(Key key) {
-		isValid(key, true);
+		this.isValid(key, true);
 	}
 
 	public void isValidVerificationKey(Key key) {
-		isValid(key, false);
+		this.isValid(key, false);
 	}
 
 	private void isValid(Key key, boolean signing) {
@@ -154,11 +156,11 @@ public enum SignatureAlgo {
 		}
 
 		if (isHmac()) {
-			validateHmacKey(key, signing);
+			this.validateHmacKey(key, signing);
 			return;
 		}
 
-		validateAsymmetricKey(key, signing);
+		this.validateAsymmetricKey(key, signing);
 	}
 
 	private void validateHmacKey(Key key, boolean signing) {
@@ -174,7 +176,7 @@ public enum SignatureAlgo {
 							keyType(signing)));
 		}
 
-		validateKeySize(encoded.length * Byte.SIZE, signing);
+		this.validateKeySize(encoded.length * Byte.SIZE, signing);
 	}
 
 	private void validateAsymmetricKey(Key key, boolean signing) {
@@ -184,9 +186,9 @@ public enum SignatureAlgo {
 		}
 
 		if (isEllipticCurve()) {
-			validateECKey(key, signing);
+			this.validateECKey(key, signing);
 		} else {
-			validateRSAKey(key, signing);
+			this.validateRSAKey(key, signing);
 		}
 	}
 
@@ -197,7 +199,7 @@ public enum SignatureAlgo {
 		}
 
 		int size = ecKey.getParams().getOrder().bitLength();
-		validateKeySize(size, signing);
+		this.validateKeySize(size, signing);
 	}
 
 	private void validateRSAKey(Key key, boolean signing) {
@@ -207,7 +209,7 @@ public enum SignatureAlgo {
 		}
 
 		int size = rsaKey.getModulus().bitLength();
-		validateKeySize(size, signing);
+		this.validateKeySize(size, signing);
 	}
 
 	private void validateKeySize(int size, boolean signing) {
