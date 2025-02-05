@@ -31,7 +31,8 @@ public abstract class ReactiveSignatureProvider {
 		try {
 			return getSignatureInstance();
 		} catch (NoSuchAlgorithmException e) {
-			throw new SignatureException(StringFormatter.format("Unavailable $ : Signature algorithm : '$'.", alg.getFamilyName(), alg.getJcaName()));
+			throw new SignatureException(StringFormatter.format("Unavailable $ : Signature algorithm : '$'.",
+					alg.getFamilyName(), alg.getJcaName()));
 		}
 	}
 

@@ -37,9 +37,9 @@ public class MacSigner extends MacProvider implements ReactiveSigner {
 	public Mono<byte[]> sign(byte[] data) throws SignatureException {
 
 		return Mono.fromCallable(() -> {
-					Mac mac = getMacInstance();
-					return mac.doFinal(data);
-				}).subscribeOn(Schedulers.boundedElastic())
+			Mac mac = getMacInstance();
+			return mac.doFinal(data);
+		}).subscribeOn(Schedulers.boundedElastic())
 				.onErrorMap(e -> {
 					if (e instanceof NoSuchAlgorithmException || e instanceof InvalidKeyException)
 						return new SignatureException("Error during signing operation");
@@ -58,9 +58,11 @@ public class MacSigner extends MacProvider implements ReactiveSigner {
 		try {
 			return doGetMacInstance();
 		} catch (NoSuchAlgorithmException e) {
-			throw new SignatureException("Unable to obtain JCA MAC algorithm '" + alg.getJcaName() + "': " + e.getMessage());
+			throw new SignatureException(
+					"Unable to obtain JCA MAC algorithm '" + alg.getJcaName() + "': " + e.getMessage());
 		} catch (InvalidKeyException e) {
-			throw new SignatureException("The specified signing key is not a valid " + alg.name() + " key: " + e.getMessage());
+			throw new SignatureException(
+					"The specified signing key is not a valid " + alg.name() + " key: " + e.getMessage());
 		}
 	}
 

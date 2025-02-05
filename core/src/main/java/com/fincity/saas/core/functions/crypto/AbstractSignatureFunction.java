@@ -38,9 +38,7 @@ public abstract class AbstractSignatureFunction extends AbstractReactiveFunction
 				SignatureAlgo.getAvailableAlgos(
 						SignatureAlgo.HS256,
 						SignatureAlgo.HS384,
-						SignatureAlgo.HS512
-				)
-		);
+						SignatureAlgo.HS512));
 	}
 
 	protected Schema getCharsets() {
@@ -50,53 +48,48 @@ public abstract class AbstractSignatureFunction extends AbstractReactiveFunction
 						new JsonPrimitive(StandardCharsets.UTF_8.name()),
 						new JsonPrimitive(StandardCharsets.UTF_16BE.name()),
 						new JsonPrimitive(StandardCharsets.UTF_16LE.name()),
-						new JsonPrimitive(StandardCharsets.UTF_16.name())
-				)
-		).setDefaultValue(new JsonPrimitive(StandardCharsets.UTF_8.name()));
+						new JsonPrimitive(StandardCharsets.UTF_16.name())))
+				.setDefaultValue(new JsonPrimitive(StandardCharsets.UTF_8.name()));
 	}
 
 	protected Schema getEncoders() {
 		return Schema.ofString(SIGNATURE_ENCODER).setEnums(
-				StringEncoder.getAvailableEncoder()
-		).setDefaultValue(new JsonPrimitive(StringEncoder.BASE64.getName()));
+				StringEncoder.getAvailableEncoder()).setDefaultValue(new JsonPrimitive(StringEncoder.BASE64.getName()));
 	}
 
-	protected Mono<FunctionOutput> sign(ReactiveSigner reactiveSigner, JsonElement data, Charset charset, StringEncoder encoder) {
+	protected Mono<FunctionOutput> sign(ReactiveSigner reactiveSigner, JsonElement data, Charset charset,
+			StringEncoder encoder) {
 
 		if (reactiveSigner == null || data == null || data.isJsonNull() || charset == null || encoder == null)
 			return Mono.just(new FunctionOutput(
 					List.of(EventResult.outputOf(
-							Map.of(EVENT_DATA, new JsonPrimitive("")))
-					)));
+							Map.of(EVENT_DATA, new JsonPrimitive(""))))));
 
 		return reactiveSigner.sign(this.toBytes(data, charset))
 				.map(encoder::encode)
-				.map(encoded ->
-						new FunctionOutput(
-								List.of(EventResult.outputOf(
-										Map.of(EVENT_DATA, new JsonPrimitive(encoded))
-								))));
+				.map(encoded -> new FunctionOutput(
+						List.of(EventResult.outputOf(
+								Map.of(EVENT_DATA, new JsonPrimitive(encoded))))));
 
 	}
 
-	protected Mono<FunctionOutput> isValid(ReactiveSigner reactiveSigner, JsonElement data, String signature, Charset charset, StringEncoder encoder) {
+	protected Mono<FunctionOutput> isValid(ReactiveSigner reactiveSigner, JsonElement data, String signature,
+			Charset charset, StringEncoder encoder) {
 
 		if (reactiveSigner == null || data == null || data.isJsonNull() || signature == null)
 			return Mono.just(new FunctionOutput(
 					List.of(EventResult.outputOf(
-							Map.of(IS_VALID, new JsonPrimitive(Boolean.FALSE)))
-					)));
+							Map.of(IS_VALID, new JsonPrimitive(Boolean.FALSE))))));
 
 		return reactiveSigner.isValid(this.toBytes(data, charset), encoder.decode(signature))
-				.map(isValid ->
-						new FunctionOutput(
-								List.of(EventResult.outputOf(
-										Map.of(IS_VALID, new JsonPrimitive(isValid))
-								))));
+				.map(isValid -> new FunctionOutput(
+						List.of(EventResult.outputOf(
+								Map.of(IS_VALID, new JsonPrimitive(isValid))))));
 	}
 
 	protected byte[] toBytes(JsonElement data, Charset charset) {
-		return data.isJsonPrimitive() ? this.toBytes(data.getAsString(), charset) : this.toBytes(data.toString(), charset);
+		return data.isJsonPrimitive() ? this.toBytes(data.getAsString(), charset)
+				: this.toBytes(data.toString(), charset);
 	}
 
 	protected byte[] toBytes(String data, Charset charset) {

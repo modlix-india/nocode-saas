@@ -65,8 +65,7 @@ public class SignatureValidator extends AbstractSignatureFunction {
 				Parameter.ofEntry(SECRET_KEY, Schema.ofString(SECRET_KEY).setMinimum(0)),
 				Parameter.ofEntry(DATA, Schema.ofAnyNotNull(DATA)),
 				Parameter.ofEntry(SIGNATURE, Schema.ofString(SIGNATURE).setMinimum(0)),
-				Parameter.ofEntry(SIGNATURE_ENCODER, super.getEncoders())
-		);
+				Parameter.ofEntry(SIGNATURE_ENCODER, super.getEncoders()));
 
 		return new FunctionSignature().setName(FUNCTION_NAME).setNamespace(NAMESPACE).setParameters(parameters)
 				.setEvents(Map.of(event.getName(), event));

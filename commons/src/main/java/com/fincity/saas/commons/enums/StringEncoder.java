@@ -1,6 +1,5 @@
 package com.fincity.saas.commons.enums;
 
-
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -39,8 +38,8 @@ public enum StringEncoder {
 
 	public static List<JsonElement> getAvailableEncoder(StringEncoder... encoder) {
 
-		List<StringEncoder> selected = (encoder == null || encoder.length == 0) ?
-				List.of(StringEncoder.values()) : List.of(encoder);
+		List<StringEncoder> selected = (encoder == null || encoder.length == 0) ? List.of(StringEncoder.values())
+				: List.of(encoder);
 
 		return selected.stream().map(algo -> new JsonPrimitive(algo.getName())).collect(Collectors.toList());
 	}

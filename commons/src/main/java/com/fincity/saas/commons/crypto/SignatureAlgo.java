@@ -46,9 +46,9 @@ public enum SignatureAlgo {
 
 	PS512("PS512", "RSASSA-PSS using SHA-512 and MGF1 with SHA-512", "RSA", "RSASSA-PSS", false, 512, 2048);
 
-	//purposefully ordered higher to lower:
+	// purposefully ordered higher to lower:
 	private static final List<SignatureAlgo> PREFERRED_HMAC_ALGS = List.of(HS512, HS384, HS256);
-	//purposefully ordered higher to lower:
+	// purposefully ordered higher to lower:
 	private static final List<SignatureAlgo> PREFERRED_EC_ALGS = List.of(ES512, ES384, ES256);
 	private static final Map<String, SignatureAlgo> BY_NAME = new HashMap<>();
 	private static final Map<String, SignatureAlgo> BY_JCA_NAME = new HashMap<>();
@@ -69,7 +69,7 @@ public enum SignatureAlgo {
 	private final int minKeyLength;
 
 	SignatureAlgo(String value, String description, String familyName, String jcaName, boolean jdkStandard,
-	              int digestLength, int minKeyLength) {
+			int digestLength, int minKeyLength) {
 		this.value = value;
 		this.description = description;
 		this.familyName = familyName;
@@ -99,7 +99,8 @@ public enum SignatureAlgo {
 
 		if (!(key instanceof SecretKey ||
 				(key instanceof PrivateKey && (key instanceof ECKey || key instanceof RSAKey)))) {
-			throw new SignatureException("The specified key is of type " + key.getClass().getName() + ". This key is not supported.");
+			throw new SignatureException(
+					"The specified key is of type " + key.getClass().getName() + ". This key is not supported.");
 		}
 
 		if (key instanceof SecretKey secretKey) {
@@ -120,8 +121,8 @@ public enum SignatureAlgo {
 
 	public static List<JsonElement> getAvailableAlgos(SignatureAlgo... algorithms) {
 
-		List<SignatureAlgo> selected = (algorithms == null || algorithms.length == 0) ?
-				List.of(SignatureAlgo.values()) : List.of(algorithms);
+		List<SignatureAlgo> selected = (algorithms == null || algorithms.length == 0) ? List.of(SignatureAlgo.values())
+				: List.of(algorithms);
 
 		return selected.stream().map(algo -> new JsonPrimitive(algo.getJcaName())).collect(Collectors.toList());
 	}
@@ -153,22 +154,26 @@ public enum SignatureAlgo {
 		} else if (isHmac()) {
 
 			if (!(key instanceof SecretKey secretKey)) {
-				throw new SignatureException(this.familyName + " " + keyType(signing) + " key's must be SecretKey instances.");
+				throw new SignatureException(
+						this.familyName + " " + keyType(signing) + " key's must be SecretKey instances.");
 			}
 
 			byte[] encoded = secretKey.getEncoded();
 
 			if (encoded == null) {
-				throw new SignatureException(this.familyName + " " + keyType(signing) + " key's encoded bytes cannot be null.");
+				throw new SignatureException(
+						this.familyName + " " + keyType(signing) + " key's encoded bytes cannot be null.");
 			}
 
 			if (secretKey.getAlgorithm() == null) {
-				throw new SignatureException(this.familyName + " " + keyType(signing) + " key's algorithm cannot be null.");
+				throw new SignatureException(
+						this.familyName + " " + keyType(signing) + " key's algorithm cannot be null.");
 			}
 
 			int size = encoded.length * Byte.SIZE;
 			if (size < this.minKeyLength) {
-				throw new SignatureException("The " + keyType(signing) + " key's size is " + size + " bits which is not secure enough for the " + name() + " algorithm.");
+				throw new SignatureException("The " + keyType(signing) + " key's size is " + size
+						+ " bits which is not secure enough for the " + name() + " algorithm.");
 			}
 		} else {
 			if (signing && !(key instanceof PrivateKey)) {
@@ -177,25 +182,28 @@ public enum SignatureAlgo {
 
 			if (isEllipticCurve()) {
 				if (!(key instanceof ECKey ecKey)) {
-					throw new SignatureException(this.familyName + " " + keyType(signing) + " key's must be ECKey instances.");
+					throw new SignatureException(
+							this.familyName + " " + keyType(signing) + " key's must be ECKey instances.");
 				}
 
 				int size = ecKey.getParams().getOrder().bitLength();
 				if (size < this.minKeyLength) {
-					throw new SignatureException("The " + keyType(signing) + " key's size (ECParameterSpec order) is " + size + " bits which is not secure enough for the " + name() + " algorithm.");
+					throw new SignatureException("The " + keyType(signing) + " key's size (ECParameterSpec order) is "
+							+ size + " bits which is not secure enough for the " + name() + " algorithm.");
 				}
-			} else { //RSA
+			} else { // RSA
 				if (!(key instanceof RSAKey rsaKey)) {
-					throw new SignatureException(this.familyName + " " + keyType(signing) + " key's must be RSAKey instances.");
+					throw new SignatureException(
+							this.familyName + " " + keyType(signing) + " key's must be RSAKey instances.");
 				}
 
 				int size = rsaKey.getModulus().bitLength();
 				if (size < this.minKeyLength) {
-					throw new SignatureException("The " + keyType(signing) + " key's size is " + size + " bits which is not secure enough for the " + name() + " algorithm.");
+					throw new SignatureException("The " + keyType(signing) + " key's size is " + size
+							+ " bits which is not secure enough for the " + name() + " algorithm.");
 				}
 			}
 		}
 	}
 
 }
-
