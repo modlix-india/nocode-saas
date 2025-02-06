@@ -43,11 +43,6 @@ public class NotificationConfiguration extends AbstractJooqBaseConfiguration imp
 	}
 
 	@Override
-	public String getProtocol() {
-		return "postgresql";
-	}
-
-	@Override
 	public void configureRabbitListeners(RabbitListenerEndpointRegistrar rabbitListenerEndpointRegistrar) {
 
 	}
