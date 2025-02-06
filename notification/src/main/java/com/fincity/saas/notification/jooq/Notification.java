@@ -4,7 +4,10 @@
 package com.fincity.saas.notification.jooq;
 
 
+import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
+import com.fincity.saas.notification.jooq.tables.NotificationConnection;
 import com.fincity.saas.notification.jooq.tables.NotificationType;
+import com.fincity.saas.notification.jooq.tables.NotificationUserPreference;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,9 +31,24 @@ public class Notification extends SchemaImpl {
     public static final Notification NOTIFICATION = new Notification();
 
     /**
+     * The table <code>notification.notification_app_preference</code>.
+     */
+    public final NotificationAppPreference NOTIFICATION_APP_PREFERENCE = NotificationAppPreference.NOTIFICATION_APP_PREFERENCE;
+
+    /**
+     * The table <code>notification.notification_connection</code>.
+     */
+    public final NotificationConnection NOTIFICATION_CONNECTION = NotificationConnection.NOTIFICATION_CONNECTION;
+
+    /**
      * The table <code>notification.notification_type</code>.
      */
     public final NotificationType NOTIFICATION_TYPE = NotificationType.NOTIFICATION_TYPE;
+
+    /**
+     * The table <code>notification.notification_user_preference</code>.
+     */
+    public final NotificationUserPreference NOTIFICATION_USER_PREFERENCE = NotificationUserPreference.NOTIFICATION_USER_PREFERENCE;
 
     /**
      * No further instances allowed
@@ -48,7 +66,10 @@ public class Notification extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
-            NotificationType.NOTIFICATION_TYPE
+            NotificationAppPreference.NOTIFICATION_APP_PREFERENCE,
+            NotificationConnection.NOTIFICATION_CONNECTION,
+            NotificationType.NOTIFICATION_TYPE,
+            NotificationUserPreference.NOTIFICATION_USER_PREFERENCE
         );
     }
 }

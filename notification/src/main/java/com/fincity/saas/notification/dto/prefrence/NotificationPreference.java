@@ -1,11 +1,11 @@
-package com.fincity.saas.notification.dto;
+package com.fincity.saas.notification.dto.prefrence;
 
 import java.io.Serial;
 import java.util.Map;
 
 import org.jooq.types.ULong;
 
-import com.fincity.saas.notification.dto.base.AbstractIdsDto;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 
 import lombok.Data;
@@ -17,12 +17,11 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class NotificationPreference extends AbstractIdsDto<NotificationPreference> {
+public abstract class NotificationPreference<T extends NotificationPreference<T>> extends AbstractUpdatableDTO<ULong, ULong> {
 
 	@Serial
-	private static final long serialVersionUID = 2999999794759806228L;
+	private static final long serialVersionUID = 4007524811937317620L;
 
-	private ULong userId;
 	private ULong notificationTypeId;
 
 	private boolean isDisabled;
@@ -51,32 +50,32 @@ public class NotificationPreference extends AbstractIdsDto<NotificationPreferenc
 		};
 	}
 
-	public NotificationPreference setDisabled(boolean disabled) {
+	public NotificationPreference<T> setDisabled(boolean disabled) {
 		if (disabled)
 			disableAll();
 		this.isDisabled = disabled;
 		return this;
 	}
 
-	public NotificationPreference setEmailEnabled(boolean emailEnabled) {
+	public NotificationPreference<T> setEmailEnabled(boolean emailEnabled) {
 		this.isEmailEnabled = emailEnabled;
 		changeDisabled();
 		return this;
 	}
 
-	public NotificationPreference setInAppEnabled(boolean inAppEnabled) {
+	public NotificationPreference<T> setInAppEnabled(boolean inAppEnabled) {
 		this.isInAppEnabled = inAppEnabled;
 		changeDisabled();
 		return this;
 	}
 
-	public NotificationPreference setPushEnabled(boolean pushEnabled) {
+	public NotificationPreference<T> setPushEnabled(boolean pushEnabled) {
 		this.isPushEnabled = pushEnabled;
 		changeDisabled();
 		return this;
 	}
 
-	public NotificationPreference setSmsEnabled(boolean smsEnabled) {
+	public NotificationPreference<T> setSmsEnabled(boolean smsEnabled) {
 		this.isSmsEnabled = smsEnabled;
 		changeDisabled();
 		return this;

@@ -6,10 +6,11 @@ package com.fincity.saas.notification.jooq.tables.records;
 
 import com.fincity.saas.notification.jooq.tables.NotificationType;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.types.ULong;
 
 
 /**
@@ -21,52 +22,60 @@ public class NotificationTypeRecord extends UpdatableRecordImpl<NotificationType
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>notification.notification_type.id</code>.
+     * Setter for <code>notification.notification_type.ID</code>. Primary key
      */
-    public NotificationTypeRecord setId(Long value) {
+    public NotificationTypeRecord setId(ULong value) {
         set(0, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_type.id</code>.
+     * Getter for <code>notification.notification_type.ID</code>. Primary key
      */
-    public Long getId() {
-        return (Long) get(0);
+    public ULong getId() {
+        return (ULong) get(0);
     }
 
     /**
-     * Setter for <code>notification.notification_type.client_id</code>.
+     * Setter for <code>notification.notification_type.CLIENT_ID</code>.
+     * Identifier for the client to which this OTP policy belongs. References
+     * security_client table
      */
-    public NotificationTypeRecord setClientId(Long value) {
+    public NotificationTypeRecord setClientId(ULong value) {
         set(1, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_type.client_id</code>.
+     * Getter for <code>notification.notification_type.CLIENT_ID</code>.
+     * Identifier for the client to which this OTP policy belongs. References
+     * security_client table
      */
-    public Long getClientId() {
-        return (Long) get(1);
+    public ULong getClientId() {
+        return (ULong) get(1);
     }
 
     /**
-     * Setter for <code>notification.notification_type.app_id</code>.
+     * Setter for <code>notification.notification_type.APP_ID</code>. Identifier
+     * for the application to which this OTP policy belongs. References
+     * security_app table
      */
-    public NotificationTypeRecord setAppId(Long value) {
+    public NotificationTypeRecord setAppId(ULong value) {
         set(2, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_type.app_id</code>.
+     * Getter for <code>notification.notification_type.APP_ID</code>. Identifier
+     * for the application to which this OTP policy belongs. References
+     * security_app table
      */
-    public Long getAppId() {
-        return (Long) get(2);
+    public ULong getAppId() {
+        return (ULong) get(2);
     }
 
     /**
-     * Setter for <code>notification.notification_type.code</code>.
+     * Setter for <code>notification.notification_type.CODE</code>. Code
      */
     public NotificationTypeRecord setCode(String value) {
         set(3, value);
@@ -74,14 +83,15 @@ public class NotificationTypeRecord extends UpdatableRecordImpl<NotificationType
     }
 
     /**
-     * Getter for <code>notification.notification_type.code</code>.
+     * Getter for <code>notification.notification_type.CODE</code>. Code
      */
     public String getCode() {
         return (String) get(3);
     }
 
     /**
-     * Setter for <code>notification.notification_type.name</code>.
+     * Setter for <code>notification.notification_type.NAME</code>. Notification
+     * type name
      */
     public NotificationTypeRecord setName(String value) {
         set(4, value);
@@ -89,14 +99,16 @@ public class NotificationTypeRecord extends UpdatableRecordImpl<NotificationType
     }
 
     /**
-     * Getter for <code>notification.notification_type.name</code>.
+     * Getter for <code>notification.notification_type.NAME</code>. Notification
+     * type name
      */
     public String getName() {
         return (String) get(4);
     }
 
     /**
-     * Setter for <code>notification.notification_type.description</code>.
+     * Setter for <code>notification.notification_type.DESCRIPTION</code>.
+     * Description of notification type
      */
     public NotificationTypeRecord setDescription(String value) {
         set(5, value);
@@ -104,70 +116,79 @@ public class NotificationTypeRecord extends UpdatableRecordImpl<NotificationType
     }
 
     /**
-     * Getter for <code>notification.notification_type.description</code>.
+     * Getter for <code>notification.notification_type.DESCRIPTION</code>.
+     * Description of notification type
      */
     public String getDescription() {
         return (String) get(5);
     }
 
     /**
-     * Setter for <code>notification.notification_type.created_by</code>.
+     * Setter for <code>notification.notification_type.CREATED_BY</code>. ID of
+     * the user who created this row
      */
-    public NotificationTypeRecord setCreatedBy(Long value) {
+    public NotificationTypeRecord setCreatedBy(ULong value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_type.created_by</code>.
+     * Getter for <code>notification.notification_type.CREATED_BY</code>. ID of
+     * the user who created this row
      */
-    public Long getCreatedBy() {
-        return (Long) get(6);
+    public ULong getCreatedBy() {
+        return (ULong) get(6);
     }
 
     /**
-     * Setter for <code>notification.notification_type.created_at</code>.
+     * Setter for <code>notification.notification_type.CREATED_AT</code>. Time
+     * when this row is created
      */
-    public NotificationTypeRecord setCreatedAt(OffsetDateTime value) {
+    public NotificationTypeRecord setCreatedAt(LocalDateTime value) {
         set(7, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_type.created_at</code>.
+     * Getter for <code>notification.notification_type.CREATED_AT</code>. Time
+     * when this row is created
      */
-    public OffsetDateTime getCreatedAt() {
-        return (OffsetDateTime) get(7);
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(7);
     }
 
     /**
-     * Setter for <code>notification.notification_type.updated_by</code>.
+     * Setter for <code>notification.notification_type.UPDATED_BY</code>. ID of
+     * the user who updated this row
      */
-    public NotificationTypeRecord setUpdatedBy(Long value) {
+    public NotificationTypeRecord setUpdatedBy(ULong value) {
         set(8, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_type.updated_by</code>.
+     * Getter for <code>notification.notification_type.UPDATED_BY</code>. ID of
+     * the user who updated this row
      */
-    public Long getUpdatedBy() {
-        return (Long) get(8);
+    public ULong getUpdatedBy() {
+        return (ULong) get(8);
     }
 
     /**
-     * Setter for <code>notification.notification_type.updated_at</code>.
+     * Setter for <code>notification.notification_type.UPDATED_AT</code>. Time
+     * when this row is updated
      */
-    public NotificationTypeRecord setUpdatedAt(OffsetDateTime value) {
+    public NotificationTypeRecord setUpdatedAt(LocalDateTime value) {
         set(9, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_type.updated_at</code>.
+     * Getter for <code>notification.notification_type.UPDATED_AT</code>. Time
+     * when this row is updated
      */
-    public OffsetDateTime getUpdatedAt() {
-        return (OffsetDateTime) get(9);
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(9);
     }
 
     // -------------------------------------------------------------------------
@@ -175,7 +196,7 @@ public class NotificationTypeRecord extends UpdatableRecordImpl<NotificationType
     // -------------------------------------------------------------------------
 
     @Override
-    public Record1<Long> key() {
+    public Record1<ULong> key() {
         return (Record1) super.key();
     }
 
@@ -193,7 +214,7 @@ public class NotificationTypeRecord extends UpdatableRecordImpl<NotificationType
     /**
      * Create a detached, initialised NotificationTypeRecord
      */
-    public NotificationTypeRecord(Long id, Long clientId, Long appId, String code, String name, String description, Long createdBy, OffsetDateTime createdAt, Long updatedBy, OffsetDateTime updatedAt) {
+    public NotificationTypeRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationType.NOTIFICATION_TYPE);
 
         setId(id);

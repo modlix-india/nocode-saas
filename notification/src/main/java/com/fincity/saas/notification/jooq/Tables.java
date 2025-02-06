@@ -4,7 +4,10 @@
 package com.fincity.saas.notification.jooq;
 
 
+import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
+import com.fincity.saas.notification.jooq.tables.NotificationConnection;
 import com.fincity.saas.notification.jooq.tables.NotificationType;
+import com.fincity.saas.notification.jooq.tables.NotificationUserPreference;
 
 
 /**
@@ -14,7 +17,22 @@ import com.fincity.saas.notification.jooq.tables.NotificationType;
 public class Tables {
 
     /**
+     * The table <code>notification.notification_app_preference</code>.
+     */
+    public static final NotificationAppPreference NOTIFICATION_APP_PREFERENCE = NotificationAppPreference.NOTIFICATION_APP_PREFERENCE;
+
+    /**
+     * The table <code>notification.notification_connection</code>.
+     */
+    public static final NotificationConnection NOTIFICATION_CONNECTION = NotificationConnection.NOTIFICATION_CONNECTION;
+
+    /**
      * The table <code>notification.notification_type</code>.
      */
     public static final NotificationType NOTIFICATION_TYPE = NotificationType.NOTIFICATION_TYPE;
+
+    /**
+     * The table <code>notification.notification_user_preference</code>.
+     */
+    public static final NotificationUserPreference NOTIFICATION_USER_PREFERENCE = NotificationUserPreference.NOTIFICATION_USER_PREFERENCE;
 }

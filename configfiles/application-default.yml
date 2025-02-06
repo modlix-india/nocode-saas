@@ -60,11 +60,11 @@ core:
 
 notification:
   db:
-    url: r2dbc:postgresql:localhost:5432/notification
-    username: postgres
-    password: Vishwas123#
+    url: r2dbc:mysql://localhost:3306/notification?serverTimezone=UTC
+    username: root
+    password: Kiran@123
     flyway:
-      url: jdbc:postgres://localhost:5432/notification
+      url: jdbc:mysql://localhost:3306/notification
 
 spring:
   flyway:

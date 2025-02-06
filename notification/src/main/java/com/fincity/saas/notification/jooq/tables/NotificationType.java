@@ -4,22 +4,29 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
+import com.fincity.saas.notification.jooq.Indexes;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
+import com.fincity.saas.notification.jooq.tables.NotificationAppPreference.NotificationAppPreferencePath;
+import com.fincity.saas.notification.jooq.tables.NotificationUserPreference.NotificationUserPreferencePath;
 import com.fincity.saas.notification.jooq.tables.records.NotificationTypeRecord;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,9 +36,9 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
-import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.ULong;
 
 
 /**
@@ -56,54 +63,64 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
     }
 
     /**
-     * The column <code>notification.notification_type.id</code>.
+     * The column <code>notification.notification_type.ID</code>. Primary key
      */
-    public final TableField<NotificationTypeRecord, Long> ID = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).identity(true), this, "");
+    public final TableField<NotificationTypeRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
 
     /**
-     * The column <code>notification.notification_type.client_id</code>.
+     * The column <code>notification.notification_type.CLIENT_ID</code>.
+     * Identifier for the client to which this OTP policy belongs. References
+     * security_client table
      */
-    public final TableField<NotificationTypeRecord, Long> CLIENT_ID = createField(DSL.name("client_id"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<NotificationTypeRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the client to which this OTP policy belongs. References security_client table");
 
     /**
-     * The column <code>notification.notification_type.app_id</code>.
+     * The column <code>notification.notification_type.APP_ID</code>. Identifier
+     * for the application to which this OTP policy belongs. References
+     * security_app table
      */
-    public final TableField<NotificationTypeRecord, Long> APP_ID = createField(DSL.name("app_id"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<NotificationTypeRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application to which this OTP policy belongs. References security_app table");
 
     /**
-     * The column <code>notification.notification_type.code</code>.
+     * The column <code>notification.notification_type.CODE</code>. Code
      */
-    public final TableField<NotificationTypeRecord, String> CODE = createField(DSL.name("code"), SQLDataType.CHAR(36).nullable(false), this, "");
+    public final TableField<NotificationTypeRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(36).nullable(false), this, "Code");
 
     /**
-     * The column <code>notification.notification_type.name</code>.
+     * The column <code>notification.notification_type.NAME</code>. Notification
+     * type name
      */
-    public final TableField<NotificationTypeRecord, String> NAME = createField(DSL.name("name"), SQLDataType.VARCHAR(255).nullable(false), this, "");
+    public final TableField<NotificationTypeRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(125).nullable(false), this, "Notification type name");
 
     /**
-     * The column <code>notification.notification_type.description</code>.
+     * The column <code>notification.notification_type.DESCRIPTION</code>.
+     * Description of notification type
      */
-    public final TableField<NotificationTypeRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.VARCHAR(512), this, "");
+    public final TableField<NotificationTypeRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description of notification type");
 
     /**
-     * The column <code>notification.notification_type.created_by</code>.
+     * The column <code>notification.notification_type.CREATED_BY</code>. ID of
+     * the user who created this row
      */
-    public final TableField<NotificationTypeRecord, Long> CREATED_BY = createField(DSL.name("created_by"), SQLDataType.BIGINT, this, "");
+    public final TableField<NotificationTypeRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
 
     /**
-     * The column <code>notification.notification_type.created_at</code>.
+     * The column <code>notification.notification_type.CREATED_AT</code>. Time
+     * when this row is created
      */
-    public final TableField<NotificationTypeRecord, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
+    public final TableField<NotificationTypeRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
-     * The column <code>notification.notification_type.updated_by</code>.
+     * The column <code>notification.notification_type.UPDATED_BY</code>. ID of
+     * the user who updated this row
      */
-    public final TableField<NotificationTypeRecord, Long> UPDATED_BY = createField(DSL.name("updated_by"), SQLDataType.BIGINT, this, "");
+    public final TableField<NotificationTypeRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
 
     /**
-     * The column <code>notification.notification_type.updated_at</code>.
+     * The column <code>notification.notification_type.UPDATED_AT</code>. Time
+     * when this row is updated
      */
-    public final TableField<NotificationTypeRecord, OffsetDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
+    public final TableField<NotificationTypeRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private NotificationType(Name alias, Table<NotificationTypeRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -136,34 +153,88 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
         this(DSL.name("notification_type"), null);
     }
 
+    public <O extends Record> NotificationType(Table<O> path, ForeignKey<O, NotificationTypeRecord> childPath, InverseForeignKey<O, NotificationTypeRecord> parentPath) {
+        super(path, childPath, parentPath, NOTIFICATION_TYPE);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class NotificationTypePath extends NotificationType implements Path<NotificationTypeRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> NotificationTypePath(Table<O> path, ForeignKey<O, NotificationTypeRecord> childPath, InverseForeignKey<O, NotificationTypeRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private NotificationTypePath(Name alias, Table<NotificationTypeRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public NotificationTypePath as(String alias) {
+            return new NotificationTypePath(DSL.name(alias), this);
+        }
+
+        @Override
+        public NotificationTypePath as(Name alias) {
+            return new NotificationTypePath(alias, this);
+        }
+
+        @Override
+        public NotificationTypePath as(Table<?> alias) {
+            return new NotificationTypePath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Notification.NOTIFICATION;
     }
 
     @Override
-    public Identity<NotificationTypeRecord, Long> getIdentity() {
-        return (Identity<NotificationTypeRecord, Long>) super.getIdentity();
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.NOTIFICATION_TYPE_IDX1_NOTIFICATION_TYPE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_TYPE_IDX2_NOTIFICATION_TYPE_APP_ID);
+    }
+
+    @Override
+    public Identity<NotificationTypeRecord, ULong> getIdentity() {
+        return (Identity<NotificationTypeRecord, ULong>) super.getIdentity();
     }
 
     @Override
     public UniqueKey<NotificationTypeRecord> getPrimaryKey() {
-        return Keys.NOTIFICATION_TYPE_PKEY;
+        return Keys.KEY_NOTIFICATION_TYPE_PRIMARY;
     }
 
     @Override
     public List<UniqueKey<NotificationTypeRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UK1_NOTIFICATION_TYPE_CODE, Keys.UK2_NOTIFICATION_TYPE_CLIENT_ID_APP_ID_NAME);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_TYPE_UK1_NOTIFICATION_TYPE_CODE_CLIENT_ID_APP_ID);
     }
 
-    @Override
-    public List<Check<NotificationTypeRecord>> getChecks() {
-        return Arrays.asList(
-            Internal.createCheck(this, DSL.name("notification_type_app_id_check"), "((app_id > 0))", true),
-            Internal.createCheck(this, DSL.name("notification_type_client_id_check"), "((client_id > 0))", true),
-            Internal.createCheck(this, DSL.name("notification_type_created_by_check"), "((created_by > 0))", true),
-            Internal.createCheck(this, DSL.name("notification_type_updated_by_check"), "((updated_by > 0))", true)
-        );
+    private transient NotificationAppPreferencePath _notificationAppPreference;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>notification.notification_app_preference</code> table
+     */
+    public NotificationAppPreferencePath notificationAppPreference() {
+        if (_notificationAppPreference == null)
+            _notificationAppPreference = new NotificationAppPreferencePath(this, null, Keys.FK1_APP_PREF_NOTIFICATION_TYPE.getInverseKey());
+
+        return _notificationAppPreference;
+    }
+
+    private transient NotificationUserPreferencePath _notificationUserPreference;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>notification.notification_user_preference</code> table
+     */
+    public NotificationUserPreferencePath notificationUserPreference() {
+        if (_notificationUserPreference == null)
+            _notificationUserPreference = new NotificationUserPreferencePath(this, null, Keys.FK1_USER_PREF_NOTIFICATION_TYPE.getInverseKey());
+
+        return _notificationUserPreference;
     }
 
     @Override
