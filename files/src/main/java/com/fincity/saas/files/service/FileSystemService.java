@@ -153,7 +153,7 @@ public class FileSystemService {
                     return folder.resolve(fileName);
                 }).subscribeOn(Schedulers.boundedElastic()),
 
-                filePath -> Mono.fromFuture(s3Client.getObject(GetObjectRequest.builder().bucket(bucketName).key(path).build(),
+                filePath -> Mono.fromFuture(s3Client.getObject(GetObjectRequest.builder().bucket(bucketName).key(finalPath).build(),
                     AsyncResponseTransformer.toFile(filePath))).thenReturn(filePath.toFile())
             ).onErrorMap(ex ->
                 new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to download file : " + path, ex))
@@ -298,7 +298,7 @@ public class FileSystemService {
                     else
                         key += R2_FILE_SEPARATOR_STRING + filePath;
 
-                    String mimeType = URLConnection.guessContentTypeFromName(fileName);
+                    String mimeType = URLConnection.guessContentTypeFromName(filePath);
 
                     return Mono.fromFuture(s3Client.putObject(
                             PutObjectRequest.builder()
