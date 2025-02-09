@@ -41,7 +41,8 @@ public class DownloadOptions {
         auto,
         avif,
         webp,
-        jpeg
+        jpeg,
+        png
     }
 
     public String eTagCode() {
@@ -59,11 +60,11 @@ public class DownloadOptions {
         return download != null && download;
     }
 
-    public boolean hasModification() {
-        return height != null || width != null
-            || fit != null
-            || gravity != Gravity.auto
-            || background != null
-            || format != Format.general;
+    public boolean hasNoModification() {
+        return height == null && width == null
+            && fit == Fit.contain
+            && gravity == Gravity.auto
+            && background == null
+            && format == Format.general;
     }
 }

@@ -38,7 +38,7 @@ public class SecuredResourceFileController extends AbstractResourceFileControlle
                                           @RequestParam(required = false) Integer width,
                                           @RequestParam(required = false) Integer height,
                                           @RequestParam(required = false, defaultValue = "false") Boolean download,
-                                          @RequestParam(required = false) DownloadOptions.Fit fit,
+                                          @RequestParam(required = false, defaultValue = "contain") DownloadOptions.Fit fit,
                                           @RequestParam(required = false) String background,
                                           @RequestParam(required = false, defaultValue = "auto") DownloadOptions.Gravity gravity,
                                           @RequestParam(required = false, defaultValue = "general") DownloadOptions.Format format,
