@@ -42,6 +42,7 @@ public class DownloadOptions {
         avif,
         webp,
         jpeg,
+        jpg,
         png
     }
 
@@ -66,5 +67,9 @@ public class DownloadOptions {
             && gravity == Gravity.auto
             && background == null
             && format == Format.general;
+    }
+
+    public Format getFormat() {
+        return format == Format.jpg ? Format.jpeg : format;
     }
 }
