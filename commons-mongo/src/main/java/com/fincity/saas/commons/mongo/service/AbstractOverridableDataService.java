@@ -911,7 +911,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
 
                 (ca, order, hasAccess, names, count, vCount, pageCache) ->
-                    Flux.fromIterable(names).map(n -> cacheService.evictAll(this.getCacheName(appCode, n))).collectList().map(e -> true)
+                    Flux.fromIterable(names).map(n -> cacheService.evictAll(this.getCacheName(appCode, n))).collectList().<Boolean>map(e -> true)
             )
             .contextWrite(Context.of(LogUtil.METHOD_NAME,
                 ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).deleteEverything"));

@@ -115,6 +115,10 @@ public class IndexHTMLService {
     @Value("${ui.cdnReplacePlus:false}")
     private boolean cdnReplacePlus;
 
+    @Value("${ui.cdnResizeOptionsType:none}")
+    private String cdnResizeOptionsType;
+
+
     private final ApplicationService appService;
     private final CacheService cacheService;
     private final IndexHTMLCacheService indexHTMLCacheService;
@@ -274,6 +278,7 @@ public class IndexHTMLService {
             str.append("window.cdnPrefix='").append(this.cdnHostName).append("';");
             str.append("window.cdnStripAPIPrefix='").append(this.cdnStripAPIPrefix).append("';");
             str.append("window.cdnReplacePlus=").append(this.cdnReplacePlus).append(";");
+            str.append("window.cdnResizeOptionsType='").append(this.cdnResizeOptionsType).append("';");
         }
 
         str.append("window.domainAppCode='").append(appCode).append("';");
