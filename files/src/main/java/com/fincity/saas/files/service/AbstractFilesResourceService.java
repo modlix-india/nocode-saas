@@ -1,22 +1,41 @@
 package com.fincity.saas.files.service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.*;
-import com.fincity.saas.files.dto.FilesUploadDownloadDTO;
-import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
-import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
-import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
-import com.fincity.saas.files.model.DownloadOptions;
-import com.fincity.saas.files.model.FileDetail;
-import com.fincity.saas.files.model.ImageDetails;
-import com.fincity.saas.files.tasks.FilesUploadDownloadRunnable;
-import com.fincity.saas.files.util.FileExtensionUtil;
-import com.fincity.saas.files.util.ImageTransformUtil;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URLConnection;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import javax.annotation.PreDestroy;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+
 import org.apache.commons.lang3.ObjectUtils;
 import org.imgscalr.Scalr;
 import org.jooq.types.ULong;
@@ -28,44 +47,49 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.*;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.http.ZeroCopyHttpOutputMessage;
 import org.springframework.http.codec.ResourceHttpMessageWriter;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.FileType;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.files.dto.FilesUploadDownloadDTO;
+import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
+import com.fincity.saas.files.jooq.enums.FilesUploadDownloadType;
+import com.fincity.saas.files.model.DownloadOptions;
+import com.fincity.saas.files.model.FileDetail;
+import com.fincity.saas.files.model.ImageDetails;
+
+import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
+
+import com.fincity.saas.files.tasks.FilesUploadDownloadRunnable;
+import com.fincity.saas.files.util.FileExtensionUtil;
+import com.fincity.saas.files.util.ImageTransformUtil;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
-
-import javax.annotation.PreDestroy;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.net.URLConnection;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.time.Duration;
-import java.util.List;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-
-import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 
 public abstract class AbstractFilesResourceService {
 
@@ -227,12 +251,12 @@ public abstract class AbstractFilesResourceService {
     }
 
     protected Mono<Void> makeMatchesStartDownload(DownloadOptions downloadOptions, ServerHttpRequest request,
-                                                  ServerHttpResponse response, boolean isDirectory, String path, long fileMillis, String fileETag) {
+                                                  ServerHttpResponse response, String path, long fileMillis, String fileETag) {
         var respHeaders = response.getHeaders();
         var reqHeaders = request.getHeaders();
 
         if (BooleanUtil.safeValueOf(downloadOptions.getNoCache()))
-            return sendFile(downloadOptions, fileETag, fileMillis, isDirectory, path, request, response);
+            return sendFile(downloadOptions, fileETag, fileMillis, path, request, response);
 
         long modifiedSince = reqHeaders.getIfModifiedSince();
         if (modifiedSince != -1 && fileMillis == modifiedSince) {
@@ -249,7 +273,7 @@ public abstract class AbstractFilesResourceService {
         if (fileETag.equals(eTag))
             return sendHitResponse(respHeaders, response);
 
-        return sendFile(downloadOptions, fileETag, fileMillis, isDirectory, path, request, response);
+        return sendFile(downloadOptions, fileETag, fileMillis, path, request, response);
     }
 
     private Mono<Void> sendHitResponse(HttpHeaders respHeaders, ServerHttpResponse response) {
@@ -260,9 +284,8 @@ public abstract class AbstractFilesResourceService {
         return response.setComplete();
     }
 
-    public Mono<Void> sendFile(DownloadOptions downloadOptions, String eTag, long fileMillis, boolean isDirectory,
-                               String path,
-                               ServerHttpRequest request, ServerHttpResponse response) {
+    public Mono<Void> sendFile(DownloadOptions downloadOptions, String eTag, long fileMillis,
+                               String path, ServerHttpRequest request, ServerHttpResponse response) {
 
         HttpHeaders respHeaders = response.getHeaders();
 
@@ -284,23 +307,16 @@ public abstract class AbstractFilesResourceService {
 
         respHeaders.setContentDisposition(
             (BooleanUtil.safeValueOf(downloadOptions.getDownload()) ? ContentDisposition.attachment()
-                : ContentDisposition.inline())
-                .filename(isDirectory ? downloadOptions.getName() + ".zip" : downloadOptions.getName())
-                .build());
+                : ContentDisposition.inline()).filename(downloadOptions.getName()).build());
         String mimeType = URLConnection.guessContentTypeFromName(fileName);
         if (mimeType == null) {
             logger.debug("Unable to find mimetype of file {}", path);
             mimeType = "application/octet-stream";
         }
         respHeaders.setContentType(MediaType.valueOf(mimeType));
+        Mono<File> actualFile = this.getFSService().getAsFile(path, downloadOptions.getNoCache());
 
-        Mono<File> actualFile;
-        if (isDirectory) {
-            downloadOptions.setDownload(true);
-            actualFile = this.getFSService().getDirectoryAsArchive(path);
-        } else {
-            actualFile = this.getFSService().getAsFile(path);
-        }
+        String finalFileName = fileName;
 
         return FlatMapUtil.flatMapMono(
                 () -> actualFile,
@@ -309,13 +325,12 @@ public abstract class AbstractFilesResourceService {
 
                     long length = af.length();
 
-                    List<HttpRange> ranges = request.getHeaders()
-                        .getRange();
+                    List<HttpRange> ranges = request.getHeaders().getRange();
 
                     if (ranges.isEmpty()) {
-                        return sendFileWhenNoRanges(downloadOptions, response, respHeaders, af, length);
+                        return sendFileWhenNoRanges(downloadOptions, response, respHeaders, af, length, finalFileName);
                     } else {
-                        return sendFileWhenRanges(downloadOptions, request, response, af);
+                        return sendFileWhenRanges(downloadOptions, request, response, af, finalFileName);
                     }
                 })
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.sendFile"));
@@ -323,14 +338,14 @@ public abstract class AbstractFilesResourceService {
     }
 
     private Mono<Void> sendFileWhenRanges(DownloadOptions downloadOptions, ServerHttpRequest request,
-                                          ServerHttpResponse response, File actualFile) {
+                                          ServerHttpResponse response, File actualFile, String fileName) {
 
         ResourceHttpMessageWriter writer = new ResourceHttpMessageWriter();
-        if (!downloadOptions.hasModification()) {
+        if (downloadOptions.hasNoModification()) {
             return writer.write(Mono.just(new FileSystemResource(actualFile)), null,
                 ResolvableType.forClass(File.class), null, request, response, Map.of());
         } else {
-            byte[] bytes = this.applyOptionsMakeResource(downloadOptions, actualFile);
+            byte[] bytes = this.applyOptionsMakeResource(downloadOptions, fileName, actualFile);
 
             if (bytes.length == 0)
                 return writer.write(Mono.just(new FileSystemResource(actualFile)), null,
@@ -343,17 +358,17 @@ public abstract class AbstractFilesResourceService {
 
     private Mono<Void> sendFileWhenNoRanges(DownloadOptions downloadOptions,
                                             ServerHttpResponse response,
-                                            HttpHeaders respHeaders, File actualFile, long length) {
+                                            HttpHeaders respHeaders, File actualFile, long length, String fileName) {
 
         ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
-        if (!downloadOptions.hasModification()) {
+        if (downloadOptions.hasNoModification()) {
 
             respHeaders.setRange(List.of(HttpRange.createByteRange(0, length - 1)));
             respHeaders.setContentLength(length);
             return zeroCopyResponse.writeWith(actualFile, 0, length);
         } else {
 
-            byte[] bytes = this.applyOptionsMakeResource(downloadOptions, actualFile);
+            byte[] bytes = this.applyOptionsMakeResource(downloadOptions, fileName, actualFile);
 
             if (bytes.length == 0) {
                 respHeaders.setRange(List.of(HttpRange.createByteRange(0, length - 1)));
@@ -369,22 +384,31 @@ public abstract class AbstractFilesResourceService {
         }
     }
 
-    private String imageType(String fileName) {
+    private DownloadOptions.Format imageType(String fileName, DownloadOptions.Format format) {
+        if (format != DownloadOptions.Format.general && format != DownloadOptions.Format.auto)
+            return format;
         if (StringUtil.safeIsBlank(fileName))
-            return "jpg";
+            return DownloadOptions.Format.jpeg;
         int index = fileName.lastIndexOf('.');
         if (index == -1)
-            return "jpg";
-        return fileName.substring(index + 1);
+            return DownloadOptions.Format.jpeg;
+
+        try {
+            String ext = fileName.substring(index + 1);
+            return DownloadOptions.Format.valueOf(ext.toLowerCase());
+        } catch (Exception ex) {
+            return DownloadOptions.Format.jpeg;
+        }
     }
 
-    private byte[] applyOptionsMakeResource(DownloadOptions options, File file) {
+    private byte[] applyOptionsMakeResource(DownloadOptions options, String fileName, File file) {
 
         try {
 
-            BufferedImage image = makeImage(options, file);
+            DownloadOptions.Format targetFormat = this.imageType(fileName, options.getFormat());
+            BufferedImage image = makeImage(options, file, targetFormat);
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            boolean didItWrite = ImageIO.write(image, imageType(file.getName()), byteArrayOutputStream);
+            boolean didItWrite = ImageIO.write(image, targetFormat.name(), byteArrayOutputStream);
             if (!didItWrite)
                 throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to write the image.");
             image.flush();
@@ -395,58 +419,191 @@ public abstract class AbstractFilesResourceService {
         }
     }
 
-    private BufferedImage makeImage(DownloadOptions options, File file) throws IOException {
+    private BufferedImage makeImage(DownloadOptions options, File file, DownloadOptions.Format targetFormat) throws IOException {
 
-        BufferedImage image = ImageIO.read(file);
+        BufferedImage original = ImageIO.read(file);
+        if (original == null)
+            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to read the image.");
 
-        if (image == null) throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to read the image.");
+        // If width / height are unset, just use the original size
+        int targetWidth = (options.getWidth() != null) ? options.getWidth() : original.getWidth();
+        int targetHeight = (options.getHeight() != null) ? options.getHeight() : original.getHeight();
 
-        Scalr.Mode scalingMode = BooleanUtil.safeValueOf(options.getKeepAspectRatio()) ? Scalr.Mode.FIT_TO_WIDTH
-            : Scalr.Mode.FIT_EXACT;
-        if (scalingMode != Scalr.Mode.FIT_EXACT
-            && options.getResizeDirection() == DownloadOptions.ResizeDirection.VERTICAL) {
-            scalingMode = Scalr.Mode.FIT_TO_HEIGHT;
+        // We'll combine Scalr resize + optional crop + optional pad
+        // apply pad only if background is non-null
+        BufferedImage processed;
+
+        switch (options.getFit()) {
+
+            case scale_down -> processed = scaleDown(original, targetWidth, targetHeight);
+
+            case contain -> // Resize to fit entirely in the target, preserving aspect ratio
+                // If the background is set, pad to fill the rest; otherwise it's just centered
+                // with transparency
+                processed = containWithOptionalPad(original, targetWidth, targetHeight,
+                    options.getGravity(), options.getBackground(), targetFormat);
+
+            case cover -> // Scale to cover entire space, then crop. Gravity determines from which side we
+                // crop
+                processed = coverWithGravity(original, targetWidth, targetHeight, options.getGravity());
+
+            case crop -> // Crop directly, ignoring aspect ratio
+                processed = cropWithGravity(original, targetWidth, targetHeight, options.getGravity());
+
+            case pad -> processed = containWithOptionalPad(original, targetWidth, targetHeight,
+                options.getGravity(), options.getBackground() == null ? "#FFFFFF" : options.getBackground(), targetFormat);
+
+            default -> // If no recognized fit, leave image as-is
+                processed = original;
         }
 
-        BufferedImage resizedImage = Scalr.resize(image, Scalr.Method.ULTRA_QUALITY, scalingMode,
-            options.getWidth() == null ? image.getWidth() : options.getWidth(),
-            options.getHeight() == null ? image.getHeight() : options.getHeight(), Scalr.OP_ANTIALIAS);
-
-        if (!BooleanUtil.safeValueOf(options.getKeepAspectRatio())
-            || StringUtil.safeIsBlank(options.getBandColor()))
-
-            return resizedImage;
-
-        return applyBands(options, resizedImage, scalingMode);
+        return processed;
     }
 
-    private BufferedImage applyBands(DownloadOptions options, BufferedImage image, Scalr.Mode scalingMode) {
+    // Example helper methods using Scalr to handle each fit case:
 
-        if ((scalingMode == Scalr.Mode.FIT_TO_WIDTH && options.getHeight() != null)
-            || (scalingMode == Scalr.Mode.FIT_TO_HEIGHT && options.getWidth() != null)) {
+    private BufferedImage scaleDown(BufferedImage source, int targetWidth, int targetHeight) {
+        // Scale only if larger than requested
+        int newW = source.getWidth();
+        int newH = source.getHeight();
+        if (newW > targetWidth || newH > targetHeight) {
+            double ratioOriginal = (double) newW / (double) newH;
+            double ratioTarget = (double) targetWidth / (double) targetHeight;
+            if (ratioOriginal > ratioTarget) {
+                newW = targetWidth;
+                newH = (int) (targetWidth / ratioOriginal);
+            } else {
+                newH = targetHeight;
+                newW = (int) (targetHeight * ratioOriginal);
+            }
+            return Scalr.resize(source, Scalr.Method.ULTRA_QUALITY, newW, newH);
+        }
+        return source;
+    }
 
-            int optionWidth = options.getWidth() == null ? image.getWidth() : options.getWidth();
-            int optionHeight = options.getHeight() == null ? image.getHeight() : options.getHeight();
+    private BufferedImage containWithOptionalPad(BufferedImage source, int targetWidth, int targetHeight,
+                                                 DownloadOptions.Gravity gravity, String bgHex, DownloadOptions.Format targetFormat) {
+        // Scale to fit fully (like "scale_down" above but always resizing if bigger or
+        // smaller)
+        double ratioOriginal = (double) source.getWidth() / (double) source.getHeight();
+        double ratioTarget = (double) targetWidth / (double) targetHeight;
+        int newW, newH;
+        if (ratioOriginal > ratioTarget) {
+            newW = targetWidth;
+            newH = (int) (targetWidth / ratioOriginal);
+        } else {
+            newH = targetHeight;
+            newW = (int) (targetHeight * ratioOriginal);
+        }
+        BufferedImage scaled = Scalr.resize(source, Scalr.Method.ULTRA_QUALITY, newW, newH);
+        if (bgHex == null) return scaled;
 
-            BufferedImage bImage = new BufferedImage(
-                scalingMode == Scalr.Mode.FIT_TO_HEIGHT ? optionWidth : image.getWidth(),
-                scalingMode == Scalr.Mode.FIT_TO_WIDTH ? optionHeight : image.getHeight(),
-                BufferedImage.TYPE_INT_RGB);
+        return padWithGravity(scaled, targetWidth, targetHeight, gravity, bgHex, targetFormat);
+    }
 
-            Graphics2D g2d = bImage.createGraphics();
+    private BufferedImage coverWithGravity(BufferedImage source, int targetWidth, int targetHeight,
+                                           DownloadOptions.Gravity gravity) {
+        // Scale so that image covers the entire target, then crop
+        double ratioOriginal = (double) source.getWidth() / (double) source.getHeight();
+        double ratioTarget = (double) targetWidth / (double) targetHeight;
+        int scaledW, scaledH;
+        if (ratioOriginal > ratioTarget) {
+            scaledH = targetHeight;
+            scaledW = (int) (scaledH * ratioOriginal);
+        } else {
+            scaledW = targetWidth;
+            scaledH = (int) (scaledW / ratioOriginal);
+        }
+        BufferedImage scaled = Scalr.resize(source, Scalr.Method.ULTRA_QUALITY, scaledW, scaledH);
+        return cropWithGravity(scaled, targetWidth, targetHeight, gravity);
+    }
 
-            g2d.setColor(java.awt.Color.decode(options.getBandColor()
-                .startsWith("#") ? options.getBandColor() : "#" + options.getBandColor()));
-            g2d.fillRect(0, 0, bImage.getWidth(), bImage.getHeight());
-            g2d.drawImage(image,
-                scalingMode == Scalr.Mode.FIT_TO_WIDTH ? 0 : (bImage.getWidth() - image.getWidth()) / 2,
-                scalingMode == Scalr.Mode.FIT_TO_HEIGHT ? 0 : (bImage.getHeight() - image.getHeight()) / 2, null);
+    private BufferedImage cropWithGravity(BufferedImage source, int targetWidth, int targetHeight,
+                                          DownloadOptions.Gravity gravity) {
+        int w = Math.min(targetWidth, source.getWidth());
+        int h = Math.min(targetHeight, source.getHeight());
 
-            g2d.dispose();
-            return bImage;
+        int x, y;
+        switch (gravity) {
+            case top -> {
+                x = (source.getWidth() - w) / 2;
+                y = 0;
+            }
+            case bottom -> {
+                x = (source.getWidth() - w) / 2;
+                y = source.getHeight() - h;
+            }
+            case left -> {
+                x = 0;
+                y = (source.getHeight() - h) / 2;
+            }
+            case right -> {
+                x = source.getWidth() - w;
+                y = (source.getHeight() - h) / 2;
+            }
+            default -> {
+                // center
+                x = (source.getWidth() - w) / 2;
+                y = (source.getHeight() - h) / 2;
+            }
+        }
+        return Scalr.crop(source, x, y, w, h);
+    }
+
+    private BufferedImage padWithGravity(BufferedImage source, int targetWidth, int targetHeight,
+                                         DownloadOptions.Gravity gravity, String bgHex, DownloadOptions.Format targetFormat) {
+        // Use "Scalr.pad" mostly adds a uniform border, so we do manual approach in
+        // case we want
+        // the entire background area exactly targetWidth x targetHeight with image
+        // placed by gravity
+        Color background = parseColorOrWhite(bgHex, targetFormat);
+        BufferedImage canvas = new BufferedImage(targetWidth, targetHeight, targetFormat == DownloadOptions.Format.jpeg ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = canvas.createGraphics();
+        if (background != null) {
+            g2d.setColor(background);
+            g2d.fillRect(0, 0, targetWidth, targetHeight);
+        }
+        int x, y;
+        int diffW = targetWidth - source.getWidth();
+        int diffH = targetHeight - source.getHeight();
+
+        switch (gravity) {
+            case top -> {
+                x = diffW / 2;
+                y = 0;
+            }
+            case bottom -> {
+                x = diffW / 2;
+                y = diffH;
+            }
+            case left -> {
+                x = 0;
+                y = diffH / 2;
+            }
+            case right -> {
+                x = diffW;
+                y = diffH / 2;
+            }
+            default -> {
+                // center
+                x = diffW / 2;
+                y = diffH / 2;
+            }
         }
 
-        return image;
+        g2d.drawImage(source, x, y, null);
+        g2d.dispose();
+        return canvas;
+    }
+
+    private Color parseColorOrWhite(String bgHex, DownloadOptions.Format targetFormat) {
+        if (bgHex == null)
+            return targetFormat == DownloadOptions.Format.jpeg ? Color.WHITE : null;
+        try {
+            return Color.decode(bgHex);
+        } catch (Exception ignored) {
+            return Color.WHITE;
+        }
     }
 
     public Mono<Boolean> delete(String clientCode, String uri) {
@@ -474,7 +631,8 @@ public abstract class AbstractFilesResourceService {
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.delete"));
     }
 
-    public Mono<Object> create(String clientCode, String uri, Flux<FilePart> fileParts, String fileName, Boolean override) {
+    public Mono<Object> create(String clientCode, String uri, Flux<FilePart> fileParts, String fileName,
+                               Boolean override) {
 
         boolean ovr = override == null || BooleanUtil.safeValueOf(override);
         Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
@@ -499,8 +657,9 @@ public abstract class AbstractFilesResourceService {
                         return this.getFSService().createFilesFromFilePart(clientCode, resourcePath, fn, fp, ovr)
                             .map(d -> this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, d));
                     }).collectList().flatMap(e -> {
-                        if (e.isEmpty()) return this.getFSService().createFolder(clientCode, resourcePath)
-                            .map(Object.class::cast);
+                        if (e.isEmpty())
+                            return this.getFSService().createFolder(clientCode, resourcePath)
+                                .map(Object.class::cast);
                         return Mono.just(e.size() > 1 ? e : e.getFirst());
                     });
                 })
@@ -556,7 +715,6 @@ public abstract class AbstractFilesResourceService {
 
         PathParts pathParts = this.extractPathClientCodeFileName(uri, fp, filePath, clientCode);
 
-
         return FlatMapUtil.flatMapMono(
 
             () -> this.fileAccessService.hasWriteAccess(pathParts.resourcePath, pathParts.clientCode,
@@ -578,10 +736,11 @@ public abstract class AbstractFilesResourceService {
                 return this.getFSService()
                     .getAsFile(pathParts.clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING
                         + pathParts.resourcePath + FileSystemService.R2_FILE_SEPARATOR_STRING
-                        + pathParts.fileName);
+                        + pathParts.fileName, true);
             },
 
-            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> this.makeSourceImage(file, pathParts)).subscribeOn(Schedulers.boundedElastic()),
+            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> this.makeSourceImage(file, pathParts))
+                .subscribeOn(Schedulers.boundedElastic()),
 
             (hasPermission, tempDirectory, file, sourceTuple) -> {
 
@@ -607,7 +766,6 @@ public abstract class AbstractFilesResourceService {
                 ovr)
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.imageUpload (File)"));
-
 
     }
 
@@ -637,9 +795,7 @@ public abstract class AbstractFilesResourceService {
             (fileTup, fileDetail) -> Mono.just(this.convertToFileDetailWhileCreation(pathParts.resourcePath,
                 pathParts.clientCode, fileDetail))
 
-
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.finalFileWrite"));
-
 
     }
 
@@ -703,7 +859,8 @@ public abstract class AbstractFilesResourceService {
                 (tmpTup, ca, fud) -> {
 
                     Mono<?> deflateMono = this.deflateAndProcess(tmpTup, resourcePath, clientCode, ovr);
-                    Mono<?> cacheEviction = Mono.defer(() -> this.getFSService().evictCache(clientCode).apply(Boolean.TRUE));
+                    Mono<?> cacheEviction = Mono
+                        .defer(() -> this.getFSService().evictCache(clientCode).apply(Boolean.TRUE));
 
                     this.virtualThreadExecutor.submit(new FilesUploadDownloadRunnable(deflateMono, fud,
                         this.filesUploadDownloadService, cacheEviction));
@@ -733,33 +890,31 @@ public abstract class AbstractFilesResourceService {
                 return this.getFSService().createFolders(clientCode, folderList);
             },
 
-            (filesFoldersTuple, folderMap) ->
-                Flux.fromIterable(filesFoldersTuple.getT1())
-                    .buffer(10)
-                    .delayElements(Duration.ofSeconds(2))
-                    .flatMapSequential(tupList ->
-                        Flux.fromIterable(tupList).flatMap(tup -> {
-                            String parentPath = tup.getT1();
-                            int index = parentPath.lastIndexOf(R2_FILE_SEPARATOR_STRING);
-                            String folderPath = index == -1 ? "" : parentPath.substring(0, index);
-                            if (!isRoot)
-                                folderPath = StringUtil.safeIsBlank(folderPath) ? resourcePath
-                                    : (resourcePath + R2_FILE_SEPARATOR_STRING + folderPath);
+            (filesFoldersTuple, folderMap) -> Flux.fromIterable(filesFoldersTuple.getT1())
+                .buffer(10)
+                .delayElements(Duration.ofSeconds(2))
+                .flatMapSequential(tupList -> Flux.fromIterable(tupList).flatMap(tup -> {
+                    String parentPath = tup.getT1();
+                    int index = parentPath.lastIndexOf(R2_FILE_SEPARATOR_STRING);
+                    String folderPath = index == -1 ? "" : parentPath.substring(0, index);
+                    if (!isRoot)
+                        folderPath = StringUtil.safeIsBlank(folderPath) ? resourcePath
+                            : (resourcePath + R2_FILE_SEPARATOR_STRING + folderPath);
 
-                            ULong folderId = folderMap.get(folderPath);
-                            if (!folderPath.isEmpty() && folderId == null)
-                                return Mono.defer(() -> this.msgService.throwMessage(
-                                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                    FilesMessageResourceService.UNABLE_TO_UPLOAD_ZIP_FILE));
+                    ULong folderId = folderMap.get(folderPath);
+                    if (!folderPath.isEmpty() && folderId == null)
+                        return Mono.defer(() -> this.msgService.throwMessage(
+                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                            FilesMessageResourceService.UNABLE_TO_UPLOAD_ZIP_FILE));
 
-                            return this.getFSService().createFileForZipUpload(clientCode, folderId,
-                                folderPath.isEmpty() ? tup.getT1()
-                                    : (resourcePath + R2_FILE_SEPARATOR_STRING
-                                    + tup.getT1()),
-                                tup.getT2(), override);
-                        }), 3)
-                    .collectList()
-                    .map(e -> true));
+                    return this.getFSService().createFileForZipUpload(clientCode, folderId,
+                        folderPath.isEmpty() ? tup.getT1()
+                            : (resourcePath + R2_FILE_SEPARATOR_STRING
+                            + tup.getT1()),
+                        tup.getT2(), override);
+                }), 3)
+                .collectList()
+                .map(e -> true));
     }
 
     private Tuple2<List<Tuple2<String, Path>>, List<String>> deflateFilesFolders(Path tmpFile, Path tmpFolder) {
@@ -845,8 +1000,8 @@ public abstract class AbstractFilesResourceService {
                 .then(Mono.just(tmpFile))
                 .flatMap(file -> this.getFSService().createFileFromFile(
                     clientCode, filePath, fileName, tmpFile, override))
-                .map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file))
-            ).subscribeOn(Schedulers.boundedElastic());
+                .map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file)))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<String> readFileAsBase64(String clientCode, String uri, boolean metadataRequired) {
@@ -880,7 +1035,7 @@ public abstract class AbstractFilesResourceService {
                 if (fileDetail.isDirectory())
                     return Mono.empty();
 
-                return this.getFSService().getAsFile(uriPath.getT1())
+                return this.getFSService().getAsFile(uriPath.getT1(), true)
                     .flatMap(e -> {
 
                         Path filePath = e.toPath();
@@ -958,7 +1113,7 @@ public abstract class AbstractFilesResourceService {
             downloadOptions.eTagCode() +
             '"';
 
-        return makeMatchesStartDownload(downloadOptions, request, response, false, resourcePath, fileMillis,
+        return makeMatchesStartDownload(downloadOptions, request, response, resourcePath, fileMillis,
             fileETag);
     }
 
