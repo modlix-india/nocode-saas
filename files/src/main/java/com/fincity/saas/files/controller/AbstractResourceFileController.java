@@ -104,17 +104,19 @@ public abstract class AbstractResourceFileController<T extends AbstractFilesReso
     public Mono<Void> downloadFile(@RequestParam(required = false) Integer width,
                                    @RequestParam(required = false) Integer height,
                                    @RequestParam(required = false, defaultValue = "false") Boolean download,
-                                   @RequestParam(required = false, defaultValue = "true") Boolean keepAspectRatio,
-                                   @RequestParam(required = false) String bandColor,
-                                   @RequestParam(required = false, defaultValue = "HORIZONTAL") DownloadOptions.ResizeDirection resizeDirection,
+                                   @RequestParam(required = false) DownloadOptions.Fit fit,
+                                   @RequestParam(required = false) String background,
+                                   @RequestParam(required = false, defaultValue = "auto") DownloadOptions.Gravity gravity,
+                                   @RequestParam(required = false, defaultValue = "general") DownloadOptions.Format format,
                                    @RequestParam(required = false, defaultValue = "false") Boolean noCache, ServerHttpRequest request,
                                    @RequestParam(required = false) String name, ServerHttpResponse response) {
 
         return service.downloadFile(new DownloadOptions().setHeight(height)
             .setWidth(width)
-            .setKeepAspectRatio(keepAspectRatio)
-            .setBandColor(bandColor)
-            .setResizeDirection(resizeDirection)
+            .setFit(fit)
+            .setFormat(format)
+            .setBackground(background)
+            .setGravity(gravity)
             .setNoCache(noCache)
             .setDownload(download)
             .setName(name), request, response);
