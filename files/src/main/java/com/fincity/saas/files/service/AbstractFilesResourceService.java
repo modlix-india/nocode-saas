@@ -457,7 +457,19 @@ public abstract class AbstractFilesResourceService {
                 processed = original;
         }
 
+        if (targetFormat == DownloadOptions.Format.jpeg && processed.getType() != BufferedImage.TYPE_INT_RGB) {
+            return convertToRGB(processed);
+        }
+
         return processed;
+    }
+
+    private BufferedImage convertToRGB(BufferedImage image) {
+        BufferedImage rgbImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = rgbImage.createGraphics();
+        g2d.drawImage(image, 0, 0, null);
+        g2d.dispose();
+        return rgbImage;
     }
 
     // Example helper methods using Scalr to handle each fit case:
