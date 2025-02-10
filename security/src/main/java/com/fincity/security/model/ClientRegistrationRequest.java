@@ -5,6 +5,8 @@ import java.io.Serializable;
 
 import org.jooq.types.ULong;
 
+import com.fincity.saas.commons.util.StringUtil;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -33,5 +35,16 @@ public class ClientRegistrationRequest implements BasePassword<ClientRegistratio
 	private String subDomain;
 	private String subDomainSuffix;
 	private String socialRegisterState;
+
+	public String getIdentifier() {
+
+		if (!StringUtil.safeIsBlank(this.emailId))
+			return this.emailId;
+
+		if (!StringUtil.safeIsBlank(this.phoneNumber))
+			return this.phoneNumber;
+
+		return null;
+	}
 
 }
