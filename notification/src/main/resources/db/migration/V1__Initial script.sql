@@ -1,6 +1,6 @@
 /* Creating Database */
 
--- DROP DATABASE IF EXISTS `notification`;
+DROP DATABASE IF EXISTS `notification`;
 
 CREATE DATABASE IF NOT EXISTS `notification` DEFAULT CHARACTER SET `UTF8MB4` COLLATE `UTF8MB4_UNICODE_CI`;
 
@@ -11,8 +11,8 @@ DROP TABLE IF EXISTS `notification`.`notification_type`;
 CREATE TABLE `notification`.`notification_type` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client to which this OTP policy belongs. References security_client table',
-    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application to which this OTP policy belongs. References security_app table',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
     `CODE` CHAR(36) NOT NULL COMMENT 'Code',
     `NAME` CHAR(125) NOT NULL COMMENT 'Notification type name',
     `DESCRIPTION` TEXT DEFAULT NULL COMMENT 'Description of notification type',
@@ -36,12 +36,12 @@ DROP TABLE IF EXISTS `notification`.`notification_connection`;
 CREATE TABLE `notification`.`notification_connection` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client to which this OTP policy belongs. References security_client table',
-    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application to which this OTP policy belongs. References security_app table',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
     `CODE` CHAR(36) NOT NULL COMMENT 'Code',
     `NAME` CHAR(125) NOT NULL COMMENT 'Connection name',
     `DESCRIPTION` TEXT DEFAULT NULL COMMENT 'Description of notification connection',
-    `CONNECTION_DETAILS` JSON DEFAULT '{}' NOT NULL COMMENT 'Connection details object',
+    `CONNECTION_DETAILS` JSON NOT NULL COMMENT 'Connection details object',
 
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
@@ -62,9 +62,9 @@ DROP TABLE IF EXISTS `notification`.`notification_user_preference`;
 CREATE TABLE `notification`.`notification_user_preference` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Application identifier',
-    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User identifier',
-    `NOTIFICATION_TYPE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Reference to notification type',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
+    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the user. References security_user table',
+    `NOTIFICATION_TYPE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the notification type. References notification_type table',
 
     `IS_DISABLED` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to disable all notifications for this type',
     `IS_EMAIL_ENABLED` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to enable email notifications',
@@ -93,9 +93,9 @@ DROP TABLE IF EXISTS `notification`.`notification_app_preference`;
 CREATE TABLE `notification`.`notification_app_preference` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Client identifier',
-    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Application identifier',
-    `NOTIFICATION_TYPE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Reference to notification type',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
+    `NOTIFICATION_TYPE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the notification type. References notification_type table',
 
     `IS_DISABLED` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to disable all notifications for this type at app level',
     `IS_EMAIL_ENABLED` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to enable email notifications at app level',
@@ -114,6 +114,37 @@ CREATE TABLE `notification`.`notification_app_preference` (
         REFERENCES `notification_type` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `notification`.`notification_template`;
+
+CREATE TABLE `notification`.`notification_template` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
+    `CODE` CHAR(36) NOT NULL COMMENT 'Code',
+    `NAME` CHAR(125) NOT NULL COMMENT 'Template name',
+    `DESCRIPTION` TEXT DEFAULT NULL COMMENT 'Description of notification Template',
+    `TEMPLATE_PARTS` JSON NOT NULL COMMENT 'Notification Template parts object',
+    `RESOURCES` JSON NOT NULL COMMENT 'Notification resources object',
+    `VARIABLES` JSON NOT NULL COMMENT 'Variables for Template',
+    `TEMPLATE_TYPE` CHAR(36) NOT NULL COMMENT 'Type of template',
+    `DEFAULT_LANGUAGE` CHAR(36) NOT NULL COMMENT 'The default language for this template',
+    `LANGUAGE_EXPRESSION` VARCHAR(255) NULL COMMENT 'Language Expression for this template',
+
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_NOTIFICATION_TEMPLATE_CODE_CLIENT_ID_APP_ID` (`CODE`, `CLIENT_ID`, `APP_ID`),
+    INDEX `IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`),
+    INDEX `IDX2_NOTIFICATION_TEMPLATE_APP_ID` (`APP_ID`)
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`

@@ -69,17 +69,15 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
 
     /**
      * The column <code>notification.notification_type.CLIENT_ID</code>.
-     * Identifier for the client to which this OTP policy belongs. References
-     * security_client table
+     * Identifier for the client. References security_client table
      */
-    public final TableField<NotificationTypeRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the client to which this OTP policy belongs. References security_client table");
+    public final TableField<NotificationTypeRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the client. References security_client table");
 
     /**
      * The column <code>notification.notification_type.APP_ID</code>. Identifier
-     * for the application to which this OTP policy belongs. References
-     * security_app table
+     * for the application. References security_app table
      */
-    public final TableField<NotificationTypeRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application to which this OTP policy belongs. References security_app table");
+    public final TableField<NotificationTypeRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
 
     /**
      * The column <code>notification.notification_type.CODE</code>. Code

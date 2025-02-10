@@ -68,23 +68,23 @@ public class NotificationUserPreference extends TableImpl<NotificationUserPrefer
 
     /**
      * The column <code>notification.notification_user_preference.APP_ID</code>.
-     * Application identifier
+     * Identifier for the application. References security_app table
      */
-    public final TableField<NotificationUserPreferenceRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Application identifier");
+    public final TableField<NotificationUserPreferenceRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
 
     /**
      * The column
-     * <code>notification.notification_user_preference.USER_ID</code>. User
-     * identifier
+     * <code>notification.notification_user_preference.USER_ID</code>.
+     * Identifier for the user. References security_user table
      */
-    public final TableField<NotificationUserPreferenceRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User identifier");
+    public final TableField<NotificationUserPreferenceRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the user. References security_user table");
 
     /**
      * The column
      * <code>notification.notification_user_preference.NOTIFICATION_TYPE_ID</code>.
-     * Reference to notification type
+     * Identifier for the notification type. References notification_type table
      */
-    public final TableField<NotificationUserPreferenceRecord, ULong> NOTIFICATION_TYPE_ID = createField(DSL.name("NOTIFICATION_TYPE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Reference to notification type");
+    public final TableField<NotificationUserPreferenceRecord, ULong> NOTIFICATION_TYPE_ID = createField(DSL.name("NOTIFICATION_TYPE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the notification type. References notification_type table");
 
     /**
      * The column

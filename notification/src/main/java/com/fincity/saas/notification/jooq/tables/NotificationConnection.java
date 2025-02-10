@@ -66,17 +66,15 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
 
     /**
      * The column <code>notification.notification_connection.CLIENT_ID</code>.
-     * Identifier for the client to which this OTP policy belongs. References
-     * security_client table
+     * Identifier for the client. References security_client table
      */
-    public final TableField<NotificationConnectionRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the client to which this OTP policy belongs. References security_client table");
+    public final TableField<NotificationConnectionRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the client. References security_client table");
 
     /**
      * The column <code>notification.notification_connection.APP_ID</code>.
-     * Identifier for the application to which this OTP policy belongs.
-     * References security_app table
+     * Identifier for the application. References security_app table
      */
-    public final TableField<NotificationConnectionRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application to which this OTP policy belongs. References security_app table");
+    public final TableField<NotificationConnectionRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
 
     /**
      * The column <code>notification.notification_connection.CODE</code>. Code

@@ -8,7 +8,7 @@ import lombok.experimental.Accessors;
 public class SendRequest {
 
 	private Integer userId;
-	private String notificationTypeId;
+	private String notificationType;
 	private NotificationChannel channels;
 
 }

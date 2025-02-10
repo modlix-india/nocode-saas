@@ -40,7 +40,7 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
 
     /**
      * Setter for <code>notification.notification_user_preference.APP_ID</code>.
-     * Application identifier
+     * Identifier for the application. References security_app table
      */
     public NotificationUserPreferenceRecord setAppId(ULong value) {
         set(1, value);
@@ -49,7 +49,7 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
 
     /**
      * Getter for <code>notification.notification_user_preference.APP_ID</code>.
-     * Application identifier
+     * Identifier for the application. References security_app table
      */
     public ULong getAppId() {
         return (ULong) get(1);
@@ -57,8 +57,8 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
 
     /**
      * Setter for
-     * <code>notification.notification_user_preference.USER_ID</code>. User
-     * identifier
+     * <code>notification.notification_user_preference.USER_ID</code>.
+     * Identifier for the user. References security_user table
      */
     public NotificationUserPreferenceRecord setUserId(ULong value) {
         set(2, value);
@@ -67,8 +67,8 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
 
     /**
      * Getter for
-     * <code>notification.notification_user_preference.USER_ID</code>. User
-     * identifier
+     * <code>notification.notification_user_preference.USER_ID</code>.
+     * Identifier for the user. References security_user table
      */
     public ULong getUserId() {
         return (ULong) get(2);
@@ -77,7 +77,7 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
     /**
      * Setter for
      * <code>notification.notification_user_preference.NOTIFICATION_TYPE_ID</code>.
-     * Reference to notification type
+     * Identifier for the notification type. References notification_type table
      */
     public NotificationUserPreferenceRecord setNotificationTypeId(ULong value) {
         set(3, value);
@@ -87,7 +87,7 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
     /**
      * Getter for
      * <code>notification.notification_user_preference.NOTIFICATION_TYPE_ID</code>.
-     * Reference to notification type
+     * Identifier for the notification type. References notification_type table
      */
     public ULong getNotificationTypeId() {
         return (ULong) get(3);

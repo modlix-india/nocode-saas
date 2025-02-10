@@ -242,7 +242,7 @@
                         <configuration>
                             <jdbc>
                                 <driver>com.mysql.cj.jdbc.Driver</driver>
-                                <url>jdbc:mysql://localhost:3306/security</url>
+                                <url>jdbc:mysql://localhost:3306/notification</url>
                                 <user>root</user>
                                 <password>Kiran@123</password>
                             </jdbc>

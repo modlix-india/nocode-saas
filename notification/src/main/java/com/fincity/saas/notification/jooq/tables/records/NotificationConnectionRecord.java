@@ -41,8 +41,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
 
     /**
      * Setter for <code>notification.notification_connection.CLIENT_ID</code>.
-     * Identifier for the client to which this OTP policy belongs. References
-     * security_client table
+     * Identifier for the client. References security_client table
      */
     public NotificationConnectionRecord setClientId(ULong value) {
         set(1, value);
@@ -51,8 +50,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
 
     /**
      * Getter for <code>notification.notification_connection.CLIENT_ID</code>.
-     * Identifier for the client to which this OTP policy belongs. References
-     * security_client table
+     * Identifier for the client. References security_client table
      */
     public ULong getClientId() {
         return (ULong) get(1);
@@ -60,8 +58,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
 
     /**
      * Setter for <code>notification.notification_connection.APP_ID</code>.
-     * Identifier for the application to which this OTP policy belongs.
-     * References security_app table
+     * Identifier for the application. References security_app table
      */
     public NotificationConnectionRecord setAppId(ULong value) {
         set(2, value);
@@ -70,8 +67,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
 
     /**
      * Getter for <code>notification.notification_connection.APP_ID</code>.
-     * Identifier for the application to which this OTP policy belongs.
-     * References security_app table
+     * Identifier for the application. References security_app table
      */
     public ULong getAppId() {
         return (ULong) get(2);
