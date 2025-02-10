@@ -246,7 +246,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 						.from(SECURITY_CLIENT_HIERARCHY)
 						.where(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(managingClientId))));
 
-		userConditions.add(DSL.or(getUserAvailabilityConditions(userName, emailId, phoneNumber)));
+		userConditions.add(DSL.and(getUserAvailabilityConditions(userName, emailId, phoneNumber)));
 
 		userConditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
 

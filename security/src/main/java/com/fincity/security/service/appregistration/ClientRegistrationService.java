@@ -257,7 +257,7 @@ public class ClientRegistrationService {
 								.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
 										msg -> new GenericException(HttpStatus.CONFLICT, msg),
 										SecurityMessageResourceService.USER_ALREADY_EXISTS,
-										registrationRequest.getInputPass())),
+										registrationRequest.getIdentifier())),
 
 				(passValid, exists) -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
