@@ -16,7 +16,7 @@ import lombok.experimental.Accessors;
 public class UserPreference extends NotificationPreference<UserPreference> {
 
 	@Serial
-	private static final long serialVersionUID = 2999999794759806228L;
+	private static final long serialVersionUID = 5340826954624052288L;
 
 	private ULong appId;
 	private ULong userId;

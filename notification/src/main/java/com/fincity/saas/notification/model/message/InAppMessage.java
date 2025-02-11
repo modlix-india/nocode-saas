@@ -9,12 +9,12 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
-public class InAppMessage extends AbstractNotificationMessage {
+public class InAppMessage extends NotificationMessage {
 
-	String image;
+	private String image;
 
 	@Override
-	public NotificationChannelType getNotificationChannelType() {
+	public NotificationChannelType getChannelType() {
 		return NotificationChannelType.IN_APP;
 	}
 }

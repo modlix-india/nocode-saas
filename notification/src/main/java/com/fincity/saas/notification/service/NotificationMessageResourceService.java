@@ -14,6 +14,8 @@ import reactor.core.publisher.Mono;
 @Service
 public class NotificationMessageResourceService extends AbstractMessageService {
 
+	public static final String TEMPLATE_DATA_NOT_FOUND = "template_data_not_found";
+
 	protected NotificationMessageResourceService() {
 		super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
 	}

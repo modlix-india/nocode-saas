@@ -2,7 +2,7 @@ package com.fincity.saas.notification.model;
 
 import com.fincity.saas.notification.dto.prefrence.UserPreference;
 import com.fincity.saas.notification.enums.NotificationChannelType;
-import com.fincity.saas.notification.model.message.AbstractNotificationMessage;
+import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.EmailMessage;
 import com.fincity.saas.notification.model.message.InAppMessage;
 
@@ -36,17 +36,17 @@ public class NotificationChannel {
 			return this;
 		}
 
-		public <T extends AbstractNotificationMessage> NotificationChannelBuilder addMessage(T message) {
+		public <T extends NotificationMessage> NotificationChannelBuilder addMessage(T message) {
 			if (preference == null || !this.notificationEnabled)
 				return this;
 
 			if (preference.has(NotificationChannelType.EMAIL)
-					&& message.getNotificationChannelType().equals(NotificationChannelType.EMAIL)
+					&& message.getChannelType().equals(NotificationChannelType.EMAIL)
 					&& message instanceof EmailMessage emailMessage)
 				this.email = emailMessage;
 
 			if (preference.has(NotificationChannelType.IN_APP)
-					&& message.getNotificationChannelType().equals(NotificationChannelType.IN_APP)
+					&& message.getChannelType().equals(NotificationChannelType.IN_APP)
 					&& message instanceof InAppMessage inAppMessage)
 				this.inApp = inAppMessage;
 

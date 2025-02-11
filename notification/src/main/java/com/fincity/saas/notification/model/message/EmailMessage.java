@@ -13,7 +13,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
-public class EmailMessage extends AbstractNotificationMessage {
+public class EmailMessage extends NotificationMessage {
 
 	private String fromAddress;
 	private String toAddress;
@@ -28,7 +28,7 @@ public class EmailMessage extends AbstractNotificationMessage {
 	private Priority priority;
 
 	@Override
-	public NotificationChannelType getNotificationChannelType() {
+	public NotificationChannelType getChannelType() {
 		return NotificationChannelType.EMAIL;
 	}
 }

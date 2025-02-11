@@ -13,7 +13,7 @@ CREATE TABLE `notification`.`notification_type` (
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
     `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
-    `CODE` CHAR(36) NOT NULL COMMENT 'Code',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Code',
     `NAME` CHAR(125) NOT NULL COMMENT 'Notification type name',
     `DESCRIPTION` TEXT DEFAULT NULL COMMENT 'Description of notification type',
 
@@ -23,7 +23,7 @@ CREATE TABLE `notification`.`notification_type` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_NOTIFICATION_TYPE_CODE_CLIENT_ID_APP_ID` (`CODE`, `CLIENT_ID`, `APP_ID`),
+    UNIQUE KEY `UK1_NOTIFICATION_TYPE_CODE` (`CODE`),
     INDEX `IDX1_NOTIFICATION_TYPE_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`),
     INDEX `IDX2_NOTIFICATION_TYPE_APP_ID` (`APP_ID`)
 
@@ -38,7 +38,7 @@ CREATE TABLE `notification`.`notification_connection` (
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
     `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
-    `CODE` CHAR(36) NOT NULL COMMENT 'Code',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Code',
     `NAME` CHAR(125) NOT NULL COMMENT 'Connection name',
     `DESCRIPTION` TEXT DEFAULT NULL COMMENT 'Description of notification connection',
     `CONNECTION_DETAILS` JSON NOT NULL COMMENT 'Connection details object',
@@ -49,7 +49,7 @@ CREATE TABLE `notification`.`notification_connection` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_NOTIFICATION_CONN_CODE_CLIENT_ID_APP_ID` (`CODE`, `CLIENT_ID`, `APP_ID`),
+    UNIQUE KEY `UK1_NOTIFICATION_TYPE_CODE` (`CODE`),
     INDEX `IDX1_NOTIFICATION_CONN_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`),
     INDEX `IDX2_NOTIFICATION_CONN_APP_ID` (`APP_ID`)
 
@@ -126,7 +126,7 @@ CREATE TABLE `notification`.`notification_template` (
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
     `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
-    `CODE` CHAR(36) NOT NULL COMMENT 'Code',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Code',
     `NAME` CHAR(125) NOT NULL COMMENT 'Template name',
     `DESCRIPTION` TEXT DEFAULT NULL COMMENT 'Description of notification Template',
     `TEMPLATE_PARTS` JSON NOT NULL COMMENT 'Notification Template parts object',
@@ -142,7 +142,7 @@ CREATE TABLE `notification`.`notification_template` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_NOTIFICATION_TEMPLATE_CODE_CLIENT_ID_APP_ID` (`CODE`, `CLIENT_ID`, `APP_ID`),
+    UNIQUE KEY `UK1_NOTIFICATION_TYPE_CODE` (`CODE`),
     INDEX `IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`),
     INDEX `IDX2_NOTIFICATION_TEMPLATE_APP_ID` (`APP_ID`)
 

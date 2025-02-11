@@ -42,6 +42,7 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 
 	public boolean has(NotificationChannelType notificationChannelType) {
 		return switch (notificationChannelType) {
+			case NONE -> false;
 			case DISABLED -> this.isDisabled;
 			case EMAIL -> this.isEmailEnabled;
 			case IN_APP -> this.isInAppEnabled;

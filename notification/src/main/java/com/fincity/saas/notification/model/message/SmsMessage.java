@@ -2,10 +2,10 @@ package com.fincity.saas.notification.model.message;
 
 import com.fincity.saas.notification.enums.NotificationChannelType;
 
-public class SmsMessage extends AbstractNotificationMessage {
+public class SmsMessage extends NotificationMessage {
 
 	@Override
-	public NotificationChannelType getNotificationChannelType() {
+	public NotificationChannelType getChannelType() {
 		return NotificationChannelType.SMS;
 	}
 }

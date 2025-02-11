@@ -6,6 +6,7 @@ import java.util.Map;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.notification.dto.base.BaseInfo;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,16 +17,11 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class Template extends AbstractUpdatableDTO<ULong, ULong> {
+public class Template extends BaseInfo<Template> {
 
 	@Serial
-	private static final long serialVersionUID = 2999999794759806228L;
+	private static final long serialVersionUID = 6999959337815146234L;
 
-	private ULong clientId;
-	private ULong appId;
-	private String code;
-	private String name;
-	private String description;
 	private Map<String, Map<String, String>> templateParts;
 	private Map<String, String> resources;
 	private Map<String, String> variables;
