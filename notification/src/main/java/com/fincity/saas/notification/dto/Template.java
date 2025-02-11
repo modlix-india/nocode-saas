@@ -3,9 +3,6 @@ package com.fincity.saas.notification.dto;
 import java.io.Serial;
 import java.util.Map;
 
-import org.jooq.types.ULong;
-
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.notification.dto.base.BaseInfo;
 
 import lombok.Data;

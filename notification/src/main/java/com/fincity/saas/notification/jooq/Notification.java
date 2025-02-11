@@ -6,6 +6,7 @@ package com.fincity.saas.notification.jooq;
 
 import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
 import com.fincity.saas.notification.jooq.tables.NotificationConnection;
+import com.fincity.saas.notification.jooq.tables.NotificationNotification;
 import com.fincity.saas.notification.jooq.tables.NotificationTemplate;
 import com.fincity.saas.notification.jooq.tables.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationUserPreference;
@@ -42,6 +43,11 @@ public class Notification extends SchemaImpl {
     public final NotificationConnection NOTIFICATION_CONNECTION = NotificationConnection.NOTIFICATION_CONNECTION;
 
     /**
+     * The table <code>notification.notification_notification</code>.
+     */
+    public final NotificationNotification NOTIFICATION_NOTIFICATION = NotificationNotification.NOTIFICATION_NOTIFICATION;
+
+    /**
      * The table <code>notification.notification_template</code>.
      */
     public final NotificationTemplate NOTIFICATION_TEMPLATE = NotificationTemplate.NOTIFICATION_TEMPLATE;
@@ -74,6 +80,7 @@ public class Notification extends SchemaImpl {
         return Arrays.asList(
             NotificationAppPreference.NOTIFICATION_APP_PREFERENCE,
             NotificationConnection.NOTIFICATION_CONNECTION,
+            NotificationNotification.NOTIFICATION_NOTIFICATION,
             NotificationTemplate.NOTIFICATION_TEMPLATE,
             NotificationType.NOTIFICATION_TYPE,
             NotificationUserPreference.NOTIFICATION_USER_PREFERENCE

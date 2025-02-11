@@ -5,6 +5,7 @@ package com.fincity.saas.notification.jooq;
 
 
 import com.fincity.saas.notification.jooq.tables.NotificationConnection;
+import com.fincity.saas.notification.jooq.tables.NotificationNotification;
 import com.fincity.saas.notification.jooq.tables.NotificationTemplate;
 import com.fincity.saas.notification.jooq.tables.NotificationType;
 
@@ -25,9 +26,11 @@ public class Indexes {
     // -------------------------------------------------------------------------
 
     public static final Index NOTIFICATION_CONNECTION_IDX1_NOTIFICATION_CONN_CLIENT_ID_APP_ID = Internal.createIndex(DSL.name("IDX1_NOTIFICATION_CONN_CLIENT_ID_APP_ID"), NotificationConnection.NOTIFICATION_CONNECTION, new OrderField[] { NotificationConnection.NOTIFICATION_CONNECTION.CLIENT_ID, NotificationConnection.NOTIFICATION_CONNECTION.APP_ID }, false);
-    public static final Index NOTIFICATION_TEMPLATE_IDX1_NOTIFICATION_TYPE_CLIENT_ID_APP_ID = Internal.createIndex(DSL.name("IDX1_NOTIFICATION_TYPE_CLIENT_ID_APP_ID"), NotificationTemplate.NOTIFICATION_TEMPLATE, new OrderField[] { NotificationTemplate.NOTIFICATION_TEMPLATE.CLIENT_ID, NotificationTemplate.NOTIFICATION_TEMPLATE.APP_ID }, false);
+    public static final Index NOTIFICATION_NOTIFICATION_IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID = Internal.createIndex(DSL.name("IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID"), NotificationNotification.NOTIFICATION_NOTIFICATION, new OrderField[] { NotificationNotification.NOTIFICATION_NOTIFICATION.CLIENT_ID, NotificationNotification.NOTIFICATION_NOTIFICATION.APP_ID }, false);
+    public static final Index NOTIFICATION_TEMPLATE_IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID = Internal.createIndex(DSL.name("IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID"), NotificationTemplate.NOTIFICATION_TEMPLATE, new OrderField[] { NotificationTemplate.NOTIFICATION_TEMPLATE.CLIENT_ID, NotificationTemplate.NOTIFICATION_TEMPLATE.APP_ID }, false);
     public static final Index NOTIFICATION_TYPE_IDX1_NOTIFICATION_TYPE_CLIENT_ID_APP_ID = Internal.createIndex(DSL.name("IDX1_NOTIFICATION_TYPE_CLIENT_ID_APP_ID"), NotificationType.NOTIFICATION_TYPE, new OrderField[] { NotificationType.NOTIFICATION_TYPE.CLIENT_ID, NotificationType.NOTIFICATION_TYPE.APP_ID }, false);
     public static final Index NOTIFICATION_CONNECTION_IDX2_NOTIFICATION_CONN_APP_ID = Internal.createIndex(DSL.name("IDX2_NOTIFICATION_CONN_APP_ID"), NotificationConnection.NOTIFICATION_CONNECTION, new OrderField[] { NotificationConnection.NOTIFICATION_CONNECTION.APP_ID }, false);
-    public static final Index NOTIFICATION_TEMPLATE_IDX2_NOTIFICATION_TYPE_APP_ID = Internal.createIndex(DSL.name("IDX2_NOTIFICATION_TYPE_APP_ID"), NotificationTemplate.NOTIFICATION_TEMPLATE, new OrderField[] { NotificationTemplate.NOTIFICATION_TEMPLATE.APP_ID }, false);
+    public static final Index NOTIFICATION_NOTIFICATION_IDX2_NOTIFICATION_TEMPLATE_APP_ID = Internal.createIndex(DSL.name("IDX2_NOTIFICATION_TEMPLATE_APP_ID"), NotificationNotification.NOTIFICATION_NOTIFICATION, new OrderField[] { NotificationNotification.NOTIFICATION_NOTIFICATION.APP_ID }, false);
+    public static final Index NOTIFICATION_TEMPLATE_IDX2_NOTIFICATION_TEMPLATE_APP_ID = Internal.createIndex(DSL.name("IDX2_NOTIFICATION_TEMPLATE_APP_ID"), NotificationTemplate.NOTIFICATION_TEMPLATE, new OrderField[] { NotificationTemplate.NOTIFICATION_TEMPLATE.APP_ID }, false);
     public static final Index NOTIFICATION_TYPE_IDX2_NOTIFICATION_TYPE_APP_ID = Internal.createIndex(DSL.name("IDX2_NOTIFICATION_TYPE_APP_ID"), NotificationType.NOTIFICATION_TYPE, new OrderField[] { NotificationType.NOTIFICATION_TYPE.APP_ID }, false);
 }

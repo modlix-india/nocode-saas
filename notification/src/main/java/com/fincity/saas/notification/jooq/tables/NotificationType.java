@@ -8,6 +8,7 @@ import com.fincity.saas.notification.jooq.Indexes;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.NotificationAppPreference.NotificationAppPreferencePath;
+import com.fincity.saas.notification.jooq.tables.NotificationNotification.NotificationNotificationPath;
 import com.fincity.saas.notification.jooq.tables.NotificationUserPreference.NotificationUserPreferencePath;
 import com.fincity.saas.notification.jooq.tables.records.NotificationTypeRecord;
 
@@ -82,7 +83,7 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
     /**
      * The column <code>notification.notification_type.CODE</code>. Code
      */
-    public final TableField<NotificationTypeRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(36).nullable(false), this, "Code");
+    public final TableField<NotificationTypeRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Code");
 
     /**
      * The column <code>notification.notification_type.NAME</code>. Notification
@@ -206,7 +207,7 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
 
     @Override
     public List<UniqueKey<NotificationTypeRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_TYPE_UK1_NOTIFICATION_TYPE_CODE_CLIENT_ID_APP_ID);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_TYPE_UK1_NOTIFICATION_TYPE_CODE);
     }
 
     private transient NotificationAppPreferencePath _notificationAppPreference;
@@ -220,6 +221,19 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
             _notificationAppPreference = new NotificationAppPreferencePath(this, null, Keys.FK1_APP_PREF_NOTIFICATION_TYPE.getInverseKey());
 
         return _notificationAppPreference;
+    }
+
+    private transient NotificationNotificationPath _notificationNotification;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>notification.notification_notification</code> table
+     */
+    public NotificationNotificationPath notificationNotification() {
+        if (_notificationNotification == null)
+            _notificationNotification = new NotificationNotificationPath(this, null, Keys.FK1_NOTIFICATION_NOTIFICATION_TYPE.getInverseKey());
+
+        return _notificationNotification;
     }
 
     private transient NotificationUserPreferencePath _notificationUserPreference;

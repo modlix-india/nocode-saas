@@ -79,7 +79,7 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
     /**
      * The column <code>notification.notification_connection.CODE</code>. Code
      */
-    public final TableField<NotificationConnectionRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(36).nullable(false), this, "Code");
+    public final TableField<NotificationConnectionRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Code");
 
     /**
      * The column <code>notification.notification_connection.NAME</code>.
@@ -178,7 +178,7 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
 
     @Override
     public List<UniqueKey<NotificationConnectionRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_CONNECTION_UK1_NOTIFICATION_CONN_CODE_CLIENT_ID_APP_ID);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_CONNECTION_UK1_NOTIFICATION_TYPE_CODE);
     }
 
     @Override

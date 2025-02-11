@@ -20,6 +20,7 @@ public class Notification extends BaseInfo<Notification> {
 	@Serial
 	private static final long serialVersionUID = 5488955076177275391L;
 
+	private ULong notificationTypeId;
 	private ULong emailTemplateId;
 	private ULong inAppTemplateId;
 	private ULong smsTemplateId;

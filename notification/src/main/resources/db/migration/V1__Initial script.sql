@@ -149,3 +149,55 @@ CREATE TABLE `notification`.`notification_template` (
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `notification`.`notification_notification`;
+
+CREATE TABLE `notification`.`notification_notification` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
+    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Code',
+    `NAME` CHAR(125) NOT NULL COMMENT 'Template name',
+    `DESCRIPTION` TEXT DEFAULT NULL COMMENT 'Description of notification Template',
+    `NOTIFICATION_TYPE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the notification type. References notification_type table',
+
+    `EMAIL_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'Identifier for the email template. References notification_template table',
+    `IN_APP_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'Identifier for the inApp template. References notification_template table',
+    `SMS_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'Identifier for the sms template. References notification_template table',
+    `PUSH_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'Identifier for the push template. References notification_template table',
+
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_NOTIFICATION_TYPE_CODE` (`CODE`),
+    INDEX `IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`),
+    INDEX `IDX2_NOTIFICATION_TEMPLATE_APP_ID` (`APP_ID`),
+
+    CONSTRAINT `FK1_NOTIFICATION_NOTIFICATION_TYPE` FOREIGN KEY (`NOTIFICATION_TYPE_ID`)
+        REFERENCES `notification_type` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_NOTIFICATION_EMAIL_TEMPLATE` FOREIGN KEY (`EMAIL_TEMPLATE_ID`)
+        REFERENCES `notification_template` (`ID`)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK3_NOTIFICATION_IN_APP_TEMPLATE` FOREIGN KEY (`IN_APP_TEMPLATE_ID`)
+        REFERENCES `notification_template` (`ID`)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK4_NOTIFICATION_SMS_TEMPLATE` FOREIGN KEY (`SMS_TEMPLATE_ID`)
+        REFERENCES `notification_template` (`ID`)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK5_NOTIFICATION_PUSH_TEMPLATE` FOREIGN KEY (`PUSH_TEMPLATE_ID`)
+        REFERENCES `notification_template` (`ID`)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
