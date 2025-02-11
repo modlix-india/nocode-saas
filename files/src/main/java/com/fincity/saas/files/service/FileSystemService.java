@@ -3,10 +3,7 @@ package com.fincity.saas.files.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.FileType;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.*;
 import com.fincity.saas.files.dao.FileSystemDao;
 import com.fincity.saas.files.jooq.enums.FilesFileSystemType;
 import com.fincity.saas.files.model.FileDetail;
@@ -34,6 +31,7 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
@@ -63,6 +61,8 @@ public class FileSystemService {
     private final S3AsyncClient s3Client;
     private final FilesFileSystemType fileSystemType;
 
+    private final Path tempFolder;
+
     private final Logger logger = LoggerFactory.getLogger(FileSystemService.class);
 
     public FileSystemService(FileSystemDao fileSystemDao, CacheService cacheService, String bucketName,
@@ -72,6 +72,11 @@ public class FileSystemService {
         this.bucketName = bucketName;
         this.s3Client = s3Client;
         this.fileSystemType = fileSystemType;
+        try {
+            this.tempFolder = Files.createTempDirectory("download-" + this.bucketName);
+        } catch (IOException e) {
+            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Error in creating temporary folder for : " + this.bucketName, e);
+        }
     }
 
     public Mono<Boolean> exists(String path) {
@@ -136,7 +141,7 @@ public class FileSystemService {
             () -> this.fileSystemDao.getFileDetail(this.fileSystemType, clientCode, path), path);
     }
 
-    public Mono<File> getAsFile(String path) {
+    public Mono<File> getAsFile(String path, boolean forceDownload) {
 
         String finalPath = path.replace("//", "/");
 
@@ -144,17 +149,20 @@ public class FileSystemService {
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                () -> Mono.fromCallable(() -> {
-                    Path folder = Files.createTempDirectory("fileDownload");
-                    String[] pathParts = finalPath.split(R2_FILE_SEPARATOR_STRING);
-                    String fileName = pathParts[pathParts.length - 1];
-                    if (fileName.isBlank())
-                        fileName = pathParts[pathParts.length - 2];
-                    return folder.resolve(fileName);
-                }).subscribeOn(Schedulers.boundedElastic()),
+                () -> Mono.fromCallable(() -> this.tempFolder.resolve(HashUtil.sha256Hash(finalPath)))
+                    .subscribeOn(Schedulers.boundedElastic()),
 
-                filePath -> Mono.fromFuture(s3Client.getObject(GetObjectRequest.builder().bucket(bucketName).key(path).build(),
-                    AsyncResponseTransformer.toFile(filePath))).thenReturn(filePath.toFile())
+                filePath -> forceDownload ? Mono.just(false) :
+                    Mono.fromCallable(() -> Files.exists(filePath)).subscribeOn(Schedulers.boundedElastic()),
+
+                (filePath, exists) -> {
+
+                    if (exists) return Mono.just(filePath.toFile());
+
+                    return Mono.fromFuture(s3Client.getObject(GetObjectRequest.builder().bucket(bucketName)
+                            .key(finalPath).build(),
+                        AsyncResponseTransformer.toFile(filePath))).thenReturn(filePath.toFile());
+                }
             ).onErrorMap(ex ->
                 new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to download file : " + path, ex))
             .contextWrite(Context.of(LogUtil.METHOD_NAME, SERVICE_NAME_PREFIX + this.bucketName + ").getAsFile"));
@@ -298,21 +306,25 @@ public class FileSystemService {
                     else
                         key += R2_FILE_SEPARATOR_STRING + filePath;
 
-                    String mimeType = URLConnection.guessContentTypeFromName(fileName);
+                    String mimeType = URLConnection.guessContentTypeFromName(filePath);
 
+                    String finalKey = key;
                     return Mono.fromFuture(s3Client.putObject(
                             PutObjectRequest.builder()
                                 .bucket(bucketName)
                                 .contentLength(length)
                                 .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)
                                 .contentDisposition(contentDisposition)
-                                .key(key)
+                                .key(finalKey)
                                 .build(),
                             AsyncRequestBody.fromPublisher(byteBuffer)))
                         .then(this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
                             fileName, ULong.valueOf(length),
                             exists && override))
-                        .flatMap(this.evictCache(clientCode));
+                        .flatMap(e -> Mono.fromCallable(() -> {
+                            Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(finalKey)));
+                            return e;
+                        }).subscribeOn(Schedulers.boundedElastic()));
                 })
             .flatMap(this.evictCache(clientCode))
             .contextWrite(Context.of(LogUtil.METHOD_NAME,
@@ -332,13 +344,18 @@ public class FileSystemService {
 
                     logger.info("Uploading the file : {} : ", (clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"));
 
+                    String finalKey = (clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/");
                     return Mono.fromFuture(s3Client.putObject(
-                        PutObjectRequest.builder()
-                            .bucket(bucketName)
-                            .contentDisposition("inline")
-                            .key((clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"))
-                            .build(),
-                        AsyncRequestBody.fromFile(file)));
+                            PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .contentDisposition("inline")
+                                .key(finalKey)
+                                .build(),
+                            AsyncRequestBody.fromFile(file)))
+                        .flatMap(e -> Mono.fromCallable(() -> {
+                            Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(finalKey)));
+                            return e;
+                        }).subscribeOn(Schedulers.boundedElastic()));
                 },
 
                 (exits, response) -> {
