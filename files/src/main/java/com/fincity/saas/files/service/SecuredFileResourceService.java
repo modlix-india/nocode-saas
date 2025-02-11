@@ -147,12 +147,12 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
                 return this.getFSService().getFileDetail(accessPath);
             },
 
-            (accessPath, fileDetail) -> this.getFSService().getAsFile(accessPath),
+            (accessPath, fileDetail) -> this.getFSService().getAsFile(accessPath, downloadOptions.getDownload()),
 
             (accessPath, fileDetail, file) -> {
 
                 String fileETag = generateFileETag(fileDetail, fileDetail.getLastModifiedTime(), downloadOptions);
-                return super.makeMatchesStartDownload(downloadOptions, request, response, fileDetail.isDirectory(),
+                return super.makeMatchesStartDownload(downloadOptions, request, response,
                     accessPath, fileDetail.getLastModifiedTime(),
                     fileETag);
             }).contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.downloadFileByKey"));

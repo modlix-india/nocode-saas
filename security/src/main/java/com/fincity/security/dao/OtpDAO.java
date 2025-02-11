@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jooq.Condition;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -26,8 +27,8 @@ public class OtpDAO extends AbstractUpdatableDAO<SecurityOtpRecord, ULong, Otp> 
 
 	public Mono<Boolean> increaseVerifyCounts(ULong otpId) {
 		return Mono.from(this.dslContext.update(SECURITY_OTP)
-						.set(SECURITY_OTP.VERIFY_LEGS_COUNTS, SECURITY_OTP.VERIFY_LEGS_COUNTS.add(1))
-						.where(SECURITY_OTP.ID.eq(otpId)))
+				.set(SECURITY_OTP.VERIFY_LEGS_COUNTS, SECURITY_OTP.VERIFY_LEGS_COUNTS.add(1))
+				.where(SECURITY_OTP.ID.eq(otpId)))
 				.map(rowsUpdated -> rowsUpdated > 0);
 	}
 
@@ -87,13 +88,18 @@ public class OtpDAO extends AbstractUpdatableDAO<SecurityOtpRecord, ULong, Otp> 
 	private List<Condition> getWithoutUserOtpConditions(ULong appId, String emailId, String phoneNumber,
 			OtpPurpose purpose) {
 
-		List<Condition> conditions = getDefaultOtpConditions(appId, purpose);
+		List<Condition> conditions = this.getDefaultOtpConditions(appId, purpose);
+
+		List<Condition> identifierConditions = new ArrayList<>();
 
 		if (!StringUtil.safeIsBlank(emailId))
-			conditions.add(SECURITY_OTP.EMAIL_ID.eq(emailId));
+			identifierConditions.add(SECURITY_OTP.EMAIL_ID.eq(emailId));
 
 		if (!StringUtil.safeIsBlank(phoneNumber))
-			conditions.add(SECURITY_OTP.PHONE_NUMBER.eq(phoneNumber));
+			identifierConditions.add(SECURITY_OTP.PHONE_NUMBER.eq(phoneNumber));
+
+		if (!identifierConditions.isEmpty())
+			conditions.add(DSL.or(identifierConditions));
 
 		return conditions;
 	}
