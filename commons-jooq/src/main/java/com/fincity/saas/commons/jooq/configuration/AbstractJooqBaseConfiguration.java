@@ -38,14 +38,18 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 				new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageResourceService));
 	}
 
+	public String getProtocol() {
+		return "mysql";
+	}
+
 	@Bean
-	DSLContext context() {
+	public DSLContext context() {
 
 		Builder props = ConnectionFactoryOptions.parse(url)
 				.mutate();
 		ConnectionFactory factory = ConnectionFactories.get(props
 				.option(ConnectionFactoryOptions.DRIVER, "pool")
-				.option(ConnectionFactoryOptions.PROTOCOL, "mysql")
+				.option(ConnectionFactoryOptions.PROTOCOL, getProtocol())
 				.option(ConnectionFactoryOptions.USER, username)
 				.option(ConnectionFactoryOptions.PASSWORD, password)
 				.build());
