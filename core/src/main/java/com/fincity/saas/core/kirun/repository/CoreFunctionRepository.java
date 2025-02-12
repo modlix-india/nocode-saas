@@ -11,6 +11,8 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.core.feign.IFeignFilesService;
+import com.fincity.saas.core.functions.crypto.SignatureValidator;
+import com.fincity.saas.core.functions.crypto.Signer;
 import com.fincity.saas.core.functions.email.SendEmail;
 import com.fincity.saas.core.functions.file.TemplateToPdf;
 import com.fincity.saas.core.functions.file.FileToBase64;
@@ -66,8 +68,8 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		this.makeSecurityContextFunctions(builder.userContextService, builder.clientUrlService, builder.gson);
 		this.makeSecurityFunctions(builder.securityService, builder.gson);
 		this.makeEmailFunctions(builder.emailService);
-		this.makeFileConversionFunctions(builder.templateConversionService, builder.filesService, builder.gson);
-		this.makeFileEncodingFunctions(builder.filesService);
+		this.makeFileFunctions(builder.filesService, builder.templateConversionService, builder.filesService, builder.gson);
+		this.makeCryptoFunctions();
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -148,19 +150,24 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(sendEmail.getSignature().getFullName(), sendEmail);
 	}
 
-	private void makeFileConversionFunctions(TemplateConversionService templateConversionService,
-			IFeignFilesService fileService, Gson gson) {
-
-		ReactiveFunction templateToPdf = new TemplateToPdf(templateConversionService, fileService, gson);
-
-		repoMap.put(templateToPdf.getSignature().getFullName(), templateToPdf);
-	}
-
-	private void makeFileEncodingFunctions(IFeignFilesService filesService){
+	private void makeFileFunctions(IFeignFilesService filesService, TemplateConversionService templateConversionService,
+	                               IFeignFilesService fileService, Gson gson){
 		
 		ReactiveFunction fileToBase64 = new FileToBase64(filesService);
+		ReactiveFunction templateToPdf = new TemplateToPdf(templateConversionService, fileService, gson);
+
 		repoMap.put(fileToBase64.getSignature().getFullName(), fileToBase64);
+		repoMap.put(templateToPdf.getSignature().getFullName(), templateToPdf);
 		
+	}
+
+	private void makeCryptoFunctions() {
+
+		ReactiveFunction signer = new Signer();
+		ReactiveFunction signatureValidator = new SignatureValidator();
+
+		repoMap.put(signer.getSignature().getFullName(), signer);
+		repoMap.put(signatureValidator.getSignature().getFullName(), signatureValidator);
 	}
 
 	@Override

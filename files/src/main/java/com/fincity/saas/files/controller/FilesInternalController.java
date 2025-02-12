@@ -25,7 +25,7 @@ public class FilesInternalController {
     private final SecuredFileResourceService securedService;
 
     public FilesInternalController(StaticFileResourceService staticService,
-            SecuredFileResourceService securedService) {
+                                   SecuredFileResourceService securedService) {
 
         this.staticService = staticService;
         this.securedService = securedService;
@@ -33,48 +33,51 @@ public class FilesInternalController {
 
     @PostMapping(value = "/{resourceType}")
     public Mono<ResponseEntity<FileDetail>> create(
-            @PathVariable String resourceType,
-            @RequestParam String clientCode,
-            @RequestParam(required = false, name = "override", defaultValue = "false") boolean override,
-            @RequestParam(required = false, defaultValue = "/") String filePath,
-            @RequestParam String fileName, ServerHttpRequest request) {
+        @PathVariable String resourceType,
+        @RequestParam String clientCode,
+        @RequestParam(required = false, name = "override", defaultValue = "false") boolean override,
+        @RequestParam(required = false, defaultValue = "/") String filePath,
+        @RequestParam String fileName, ServerHttpRequest request) {
 
         return ("secured".equals(resourceType) ? this.securedService : this.staticService)
-                .createInternal(clientCode, override, filePath, fileName, request).map(ResponseEntity::ok);
+            .createInternal(clientCode, override, filePath, fileName, request).map(ResponseEntity::ok);
     }
 
     @GetMapping(value = "/{resourceType}/file")
     public Mono<Void> downloadFile(
-            @PathVariable String resourceType,
-            @RequestParam String filePath,
-            @RequestParam(required = false) Integer width,
-            @RequestParam(required = false) Integer height,
-            @RequestParam(required = false, defaultValue = "false") Boolean download,
-            @RequestParam(required = false, defaultValue = "true") Boolean keepAspectRatio,
-            @RequestParam(required = false) String bandColor,
-            @RequestParam(required = false, defaultValue = "HORIZONTAL") DownloadOptions.ResizeDirection resizeDirection,
-            @RequestParam(required = false, defaultValue = "false") Boolean noCache, ServerHttpRequest request,
-            @RequestParam(required = false) String name, ServerHttpResponse response) {
+        @PathVariable String resourceType,
+        @RequestParam String filePath,
+        @RequestParam(required = false) Integer width,
+        @RequestParam(required = false) Integer height,
+        @RequestParam(required = false, defaultValue = "false") Boolean download,
+        @RequestParam(required = false, defaultValue = "contain") DownloadOptions.Fit fit,
+        @RequestParam(required = false) String background,
+        @RequestParam(required = false, defaultValue = "auto") DownloadOptions.Gravity gravity,
+        @RequestParam(required = false, defaultValue = "general") DownloadOptions.Format format,
+        @RequestParam(required = false, defaultValue = "false") Boolean noCache, ServerHttpRequest request,
+        @RequestParam(required = false) String name, ServerHttpResponse response
+    ) {
 
         return ("secured".equals(resourceType) ? this.securedService : this.staticService)
-                .readInternal(new DownloadOptions().setHeight(height)
-                        .setWidth(width)
-                        .setKeepAspectRatio(keepAspectRatio)
-                        .setBandColor(bandColor)
-                        .setResizeDirection(resizeDirection)
-                        .setNoCache(noCache)
-                        .setDownload(download)
-                        .setName(name), filePath, request, response);
+            .readInternal(new DownloadOptions().setHeight(height)
+                .setWidth(width)
+                .setFit(fit)
+                .setFormat(format)
+                .setBackground(background)
+                .setGravity(gravity)
+                .setNoCache(noCache)
+                .setDownload(download)
+                .setName(name), filePath, request, response);
     }
 
     @GetMapping(value = "/{resourceType}/convertToBase64")
     public Mono<String> convertToBase64(
-            @PathVariable String resourceType,
-            @RequestParam String clientCode,
-            @RequestParam String url,
-            @RequestParam(required = false) Boolean metadataRequired) {
+        @PathVariable String resourceType,
+        @RequestParam String clientCode,
+        @RequestParam String url,
+        @RequestParam(required = false) Boolean metadataRequired) {
 
         return ("secured".equals(resourceType) ? this.securedService : this.staticService)
-                .readFileAsBase64(clientCode, resourceType.toUpperCase(), url, metadataRequired);
+            .readFileAsBase64(clientCode, url, metadataRequired);
     }
 }

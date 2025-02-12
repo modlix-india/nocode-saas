@@ -51,144 +51,148 @@ import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 
 public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
-	protected static final Logger logger = LoggerFactory.getLogger(AbstractBaseConfiguration.class);
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractBaseConfiguration.class);
 
-	protected ObjectMapper objectMapper;
+    protected ObjectMapper objectMapper;
 
-	@Value("${redis.url:}")
-	private String redisURL;
+    @Value("${redis.url:}")
+    private String redisURL;
 
-	@Value("${redis.codec:object}")
-	private String codecType;
+    @Value("${redis.codec:object}")
+    private String codecType;
 
-	private RedisCodec<String, Object> objectCodec;
+    private RedisCodec<String, Object> objectCodec;
 
-	protected AbstractBaseConfiguration(ObjectMapper objectMapper) {
-		this.objectMapper = objectMapper;
-	}
+    protected AbstractBaseConfiguration(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
-	protected void initialize() {
-		this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-		this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_NULL, Include.ALWAYS));
-		this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_EMPTY, Include.ALWAYS));
-		this.objectMapper.registerModule(new CommonsSerializationModule());
-		this.objectMapper.registerModule(new TupleSerializationModule());
-		this.objectMapper.registerModule(new SortSerializationModule());
+    protected void initialize() {
+        this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_NULL, Include.ALWAYS));
+        this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_EMPTY, Include.ALWAYS));
+        this.objectMapper.registerModule(new CommonsSerializationModule());
+        this.objectMapper.registerModule(new TupleSerializationModule());
+        this.objectMapper.registerModule(new SortSerializationModule());
 
-		this.objectCodec = "object".equals(codecType) ? new RedisObjectCodec() : new RedisJSONCodec(this.objectMapper);
-	}
+        this.objectCodec = "object".equals(codecType) ? new RedisObjectCodec() : new RedisJSONCodec(this.objectMapper);
+    }
 
-	@Bean
-	public Gson makeGson() {
-		ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaTypeAdapter();
+    @Bean
+    public Gson makeGson() {
+        ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaTypeAdapter();
 
-		AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
+        AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
 
-		Gson gson = new GsonBuilder()
-				.registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-				.registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
-				.registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
-				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.create();
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+            .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+            .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+            .create();
 
-		arraySchemaTypeAdapter.setGson(gson);
-		additionalTypeAdapter.setGson(gson);
-		return gson;
-	}
+        arraySchemaTypeAdapter.setGson(gson);
+        additionalTypeAdapter.setGson(gson);
+        return gson;
+    }
 
-	@Override
-	public void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
+    @Override
+    public void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
 
-		configurer.defaultCodecs()
-				.jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
-		configurer.defaultCodecs()
-				.jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
-		configurer.defaultCodecs()
-				.maxInMemorySize(50 * 1024 * 1024);
-		WebFluxConfigurer.super.configureHttpMessageCodecs(configurer);
-	}
+        configurer.defaultCodecs()
+            .jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
+        configurer.defaultCodecs()
+            .jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
+        configurer.defaultCodecs()
+            .maxInMemorySize(this.getInMemorySize());
+        WebFluxConfigurer.super.configureHttpMessageCodecs(configurer);
+    }
 
-	@Override
-	public void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
-		configurer.addCustomResolver(new ReactivePageableHandlerMethodArgumentResolver());
-	}
+    protected int getInMemorySize() {
+        return 1024 * 1024 * 50;
+    }
 
-	@Bean
-	public PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
-		return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
-	}
+    @Override
+    public void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
+        configurer.addCustomResolver(new ReactivePageableHandlerMethodArgumentResolver());
+    }
 
-	@Bean
-	public RedisClient redisClient() {
-		if (redisURL == null || redisURL.isBlank())
-			return null;
+    @Bean
+    public PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
+        return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
+    }
 
-		return RedisClient.create(redisURL);
-	}
+    @Bean
+    public RedisClient redisClient() {
+        if (redisURL == null || redisURL.isBlank())
+            return null;
 
-	@Bean
-	public RedisAsyncCommands<String, Object> asyncCommands(@Autowired(required = false) RedisClient client) {
+        return RedisClient.create(redisURL);
+    }
 
-		if (client == null)
-			return null;
+    @Bean
+    public RedisAsyncCommands<String, Object> asyncCommands(@Autowired(required = false) RedisClient client) {
 
-		StatefulRedisConnection<String, Object> connection = client.connect(objectCodec);
-		return connection.async();
-	}
+        if (client == null)
+            return null;
 
-	@Bean
-	public StatefulRedisPubSubConnection<String, String> subConnection(
-			@Autowired(required = false) RedisClient client) {
+        StatefulRedisConnection<String, Object> connection = client.connect(objectCodec);
+        return connection.async();
+    }
 
-		if (client == null)
-			return null;
+    @Bean
+    public StatefulRedisPubSubConnection<String, String> subConnection(
+        @Autowired(required = false) RedisClient client) {
 
-		return client.connectPubSub();
-	}
+        if (client == null)
+            return null;
 
-	@Bean
-	public RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
-			@Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
+        return client.connectPubSub();
+    }
 
-		if (connection == null)
-			return null;
+    @Bean
+    public RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
+        @Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
 
-		return connection.async();
-	}
+        if (connection == null)
+            return null;
 
-	@Bean
-	public RedisPubSubAsyncCommands<String, String> pubRedisAsyncCommand(
-			@Autowired(required = false) RedisClient client) {
+        return connection.async();
+    }
 
-		if (client == null)
-			return null;
+    @Bean
+    public RedisPubSubAsyncCommands<String, String> pubRedisAsyncCommand(
+        @Autowired(required = false) RedisClient client) {
 
-		return client.connectPubSub()
-				.async();
-	}
+        if (client == null)
+            return null;
 
-	@Override
-	public void addCorsMappings(CorsRegistry registry) {
+        return client.connectPubSub()
+            .async();
+    }
 
-		registry.addMapping("/**")
-				.allowedOriginPatterns("https://*.modlix.com", "https://*.dev.modlix.com",
-						"https://*.stage.modlix.com", "https://modlix.com", "https://dev.modlix.com",
-						"https://stage.modlix.com", "http://localhost:1234", "http://localhost:3000",
-						"http://localhost:8080")
-				.allowedMethods("*")
-				.maxAge(3600);
-	}
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
 
-	@Bean
-	public Caffeine<Object, Object> caffeineConfig() {
-		return Caffeine.newBuilder()
-				.expireAfterAccess(Duration.ofMinutes(5));
-	}
+        registry.addMapping("/**")
+            .allowedOriginPatterns("https://*.modlix.com", "https://*.dev.modlix.com",
+                "https://*.stage.modlix.com", "https://modlix.com", "https://dev.modlix.com",
+                "https://stage.modlix.com", "http://localhost:1234", "http://localhost:3000",
+                "http://localhost:8080")
+            .allowedMethods("*")
+            .maxAge(3600);
+    }
 
-	@Bean
-	public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
-		CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
-		caffeineCacheManager.setCaffeine(caffeine);
-		return caffeineCacheManager;
-	}
+    @Bean
+    public Caffeine<Object, Object> caffeineConfig() {
+        return Caffeine.newBuilder()
+            .expireAfterAccess(Duration.ofMinutes(5));
+    }
+
+    @Bean
+    public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
+        CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
+        caffeineCacheManager.setCaffeine(caffeine);
+        return caffeineCacheManager;
+    }
 }

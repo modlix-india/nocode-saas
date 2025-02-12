@@ -231,19 +231,22 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return this.checkUserExists(clientId, userName, emailId, phoneNumber, conditions);
 	}
 
-	private Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber,
+	private Mono<Boolean> checkUserExists(ULong managingClientId, String userName, String emailId, String phoneNumber,
 			List<Condition> extraConditions) {
 
 		List<Condition> userConditions = new ArrayList<>(extraConditions);
 
-		if (clientId == null)
+		if (managingClientId == null)
 			return messageResourceService
 					.getMessage(SecurityMessageResourceService.PARAMS_NOT_FOUND, "clientId, userId", "checkUserExists")
 					.flatMap(msg -> Mono.error(new GenericException(HttpStatus.CONFLICT, msg)));
 
-		userConditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
+		userConditions.add(SECURITY_USER.CLIENT_ID.in(
+				this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+						.from(SECURITY_CLIENT_HIERARCHY)
+						.where(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(managingClientId))));
 
-		userConditions.add(DSL.or(getUserAvailabilityConditions(userName, emailId, phoneNumber)));
+		userConditions.add(DSL.and(getUserAvailabilityConditions(userName, emailId, phoneNumber)));
 
 		userConditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
 

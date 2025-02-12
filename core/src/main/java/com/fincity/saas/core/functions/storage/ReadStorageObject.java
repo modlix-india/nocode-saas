@@ -13,6 +13,7 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
+import com.fincity.saas.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -44,13 +45,8 @@ public class ReadStorageObject extends AbstractReactiveFunction {
 	private final Gson gson;
 
 	public ReadStorageObject(AppDataService appDataService, Gson gson) {
-
 		this.appDataService = appDataService;
 		this.gson = gson;
-	}
-
-	public AppDataService getAppDataService() {
-		return appDataService;
 	}
 
 	@Override
@@ -115,14 +111,18 @@ public class ReadStorageObject extends AbstractReactiveFunction {
 					Map.of(Event.ERROR, new JsonPrimitive("Please provide the storage name."))))));
 
 		if (dataObjectId == null)
-
 			return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
 					Map.of(Event.ERROR, new JsonPrimitive("Please provide the data object id."))))));
 
-		return this.appDataService.read(StringUtil.isNullOrBlank(appCode) ? null : appCode,
-				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObjectId, eager, eagerFields)
+		return this.appDataService
+				.read(StringUtil.isNullOrBlank(appCode) ? null : appCode,
+						StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObjectId, eager,
+						eagerFields)
+				.onErrorResume(exception -> exception instanceof StorageObjectNotFoundException ? Mono.just(Map.of())
+						: Mono.error(exception))
 				.map(receivedObject -> new FunctionOutput(
-						List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
+						List.of(EventResult.outputOf(
+								Map.of(EVENT_RESULT, gson.toJsonTree(receivedObject))))));
 	}
 
 }
