@@ -70,9 +70,10 @@ public class AppRegistrationIntegrationService
     public Mono<AppRegistrationIntegration> update(AppRegistrationIntegration entity) {
 
         return super.update(entity)
-                .flatMap(
-                        this.cacheService.evictFunctionWithKeyFunction(
-                                CACHE_NAME_INTEGRATION_PLATFORM, this::getCacheKeys));
+                .flatMap(e ->
+                        this.cacheService.evict(
+                                CACHE_NAME_INTEGRATION_PLATFORM, getCacheKeys(e.getClientId().toString(), e.getAppId().toString(),
+                                        e.getPlatform().toString())).map(v -> e));
     }
 
     @Override
@@ -83,7 +84,7 @@ public class AppRegistrationIntegrationService
                 () -> this.read(id),
                 e -> super.delete(id).flatMap(
                         this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_PLATFORM,
-                                getCacheKeys(e))))
+                                getCacheKeys(e.getClientId().toString(), e.getAppId().toString(), e.getPlatform().toString()))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "AppRegistrationIntegrationService.delete"));
     }
@@ -140,7 +141,7 @@ public class AppRegistrationIntegrationService
                 (ca, app) -> this.cacheService.cacheValueOrGet(CACHE_NAME_INTEGRATION_PLATFORM,
                         () -> this.dao.getIntegration(app.getId(),
                                 ULong.valueOf(ca.getLoggedInFromClientId()), platform),
-                        app.getId(), "-", ca.getLoggedInFromClientId(), "-", platform))
+                        getCacheKeys(ca.getLoggedInFromClientId().toString(), app.getId().toString(), platform.toString())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "AppRegistrationIntegrationService.getIntegration"));
     }
@@ -231,7 +232,9 @@ public class AppRegistrationIntegrationService
                     ClientRegistrationRequest clientRegistrationRequest = new ClientRegistrationRequest();
                     clientRegistrationRequest.setEmailId(updatedAppRegIntgToken.getUsername());
                     clientRegistrationRequest.setFirstName(userObj.get("given_name").asText());
-                    clientRegistrationRequest.setLastName(userObj.get("family_name").asText());
+                    if (userObj.has("family_name") && !userObj.get("family_name").isNull()) {
+                        clientRegistrationRequest.setLastName(userObj.get("family_name").asText());
+                    }
                     clientRegistrationRequest.setUserName(updatedAppRegIntgToken.getUsername());
                     clientRegistrationRequest
                             .setSocialRegisterState(updatedAppRegIntgToken.getState());
@@ -310,9 +313,8 @@ public class AppRegistrationIntegrationService
                 .bodyToMono(JsonNode.class);
     }
 
-    private String getCacheKeys(AppRegistrationIntegration entity) {
-        return String.join(entity.getClientId().toString(), ":", entity.getAppId().toString(), ":",
-                entity.getPlatform().toString());
+    private String getCacheKeys(String clientId, String appId, String platform) {
+        return String.join(clientId, ":", appId, ":", platform);
     }
 
 }

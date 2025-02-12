@@ -2,6 +2,9 @@ package com.fincity.saas.multi.fiegn;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -33,4 +36,14 @@ public interface IFeignCoreService {
             @RequestParam String applicationCode,
             @RequestParam String fileName,
             @RequestBody ByteBuffer file);
+
+    @GetMapping("${core.connection.getOAuth2Token:/api/core/connections/oauth2/token/{connectionName}}")
+    public Mono<String> getConnectionOAuth2Token(
+            @RequestHeader(name = "Authorization", required = true) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @PathVariable("connectionName") String connectionName
+    );
 }
