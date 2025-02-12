@@ -3,6 +3,8 @@ package com.fincity.saas.core.kirun.repository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.fincity.saas.core.functions.storage.*;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,12 +26,6 @@ import com.fincity.saas.core.functions.security.IsBeingManagedById;
 import com.fincity.saas.core.functions.securitycontext.GetAuthentication;
 import com.fincity.saas.core.functions.securitycontext.GetUser;
 import com.fincity.saas.core.functions.securitycontext.HasAuthority;
-import com.fincity.saas.core.functions.storage.CreateStorageObject;
-import com.fincity.saas.core.functions.storage.DeleteStorageObjectWithFilter;
-import com.fincity.saas.core.functions.storage.DeleteStorageObject;
-import com.fincity.saas.core.functions.storage.ReadPageStorageObject;
-import com.fincity.saas.core.functions.storage.ReadStorageObject;
-import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
@@ -103,6 +99,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 	private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper, Gson gson) {
 
 		ReactiveFunction createStorage = new CreateStorageObject(appDataService, gson);
+		ReactiveFunction createManyStorage = new CreateManyStorageObject(appDataService,gson);
 		ReactiveFunction deleteStorage = new DeleteStorageObject(appDataService);
 		ReactiveFunction updateStorage = new UpdateStorageObject(appDataService, gson);
 		ReactiveFunction readStorage = new ReadStorageObject(appDataService, gson);
@@ -110,6 +107,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction deleteByFilterStorage = new DeleteStorageObjectWithFilter(appDataService, objectMapper, gson);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
+		repoMap.put(createManyStorage.getSignature().getFullName(), createManyStorage);
 		repoMap.put(deleteStorage.getSignature().getFullName(), deleteStorage);
 		repoMap.put(deleteByFilterStorage.getSignature().getFullName(), deleteByFilterStorage);
 		repoMap.put(updateStorage.getSignature().getFullName(), updateStorage);
