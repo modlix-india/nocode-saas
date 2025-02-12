@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
+import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.jooq.Indexes;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
@@ -36,6 +37,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -96,6 +98,12 @@ public class NotificationTemplate extends TableImpl<NotificationTemplateRecord> 
      * Description of notification Template
      */
     public final TableField<NotificationTemplateRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description of notification Template");
+
+    /**
+     * The column <code>notification.notification_template.CHANNEL_TYPE</code>.
+     * Type of notification channel
+     */
+    public final TableField<NotificationTemplateRecord, NotificationChannelType> CHANNEL_TYPE = createField(DSL.name("CHANNEL_TYPE"), SQLDataType.VARCHAR(11).nullable(false), this, "Type of notification channel", new EnumConverter<String, NotificationChannelType>(String.class, NotificationChannelType.class));
 
     /**
      * The column
@@ -231,7 +239,7 @@ public class NotificationTemplate extends TableImpl<NotificationTemplateRecord> 
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.NOTIFICATION_TEMPLATE_IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_TEMPLATE_IDX2_NOTIFICATION_TEMPLATE_APP_ID);
+        return Arrays.asList(Indexes.NOTIFICATION_TEMPLATE_IDX1_TEMPLATE_CODE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_TEMPLATE_IDX2_TEMPLATE_CLIENT_ID_APP_ID);
     }
 
     @Override
@@ -246,7 +254,7 @@ public class NotificationTemplate extends TableImpl<NotificationTemplateRecord> 
 
     @Override
     public List<UniqueKey<NotificationTemplateRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_TEMPLATE_UK1_NOTIFICATION_TYPE_CODE);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_TEMPLATE_UK1_TEMPLATE_CODE);
     }
 
     private transient NotificationNotificationPath _fk2NotificationEmailTemplate;
@@ -291,18 +299,32 @@ public class NotificationTemplate extends TableImpl<NotificationTemplateRecord> 
         return _fk4NotificationSmsTemplate;
     }
 
-    private transient NotificationNotificationPath _fk5NotificationPushTemplate;
+    private transient NotificationNotificationPath _fk5NotificationMobilePushTemplate;
 
     /**
      * Get the implicit to-many join path to the
      * <code>notification.notification_notification</code> table, via the
-     * <code>FK5_NOTIFICATION_PUSH_TEMPLATE</code> key
+     * <code>FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE</code> key
      */
-    public NotificationNotificationPath fk5NotificationPushTemplate() {
-        if (_fk5NotificationPushTemplate == null)
-            _fk5NotificationPushTemplate = new NotificationNotificationPath(this, null, Keys.FK5_NOTIFICATION_PUSH_TEMPLATE.getInverseKey());
+    public NotificationNotificationPath fk5NotificationMobilePushTemplate() {
+        if (_fk5NotificationMobilePushTemplate == null)
+            _fk5NotificationMobilePushTemplate = new NotificationNotificationPath(this, null, Keys.FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE.getInverseKey());
 
-        return _fk5NotificationPushTemplate;
+        return _fk5NotificationMobilePushTemplate;
+    }
+
+    private transient NotificationNotificationPath _fk5NotificationWebPushTemplate;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>notification.notification_notification</code> table, via the
+     * <code>FK5_NOTIFICATION_WEB_PUSH_TEMPLATE</code> key
+     */
+    public NotificationNotificationPath fk5NotificationWebPushTemplate() {
+        if (_fk5NotificationWebPushTemplate == null)
+            _fk5NotificationWebPushTemplate = new NotificationNotificationPath(this, null, Keys.FK5_NOTIFICATION_WEB_PUSH_TEMPLATE.getInverseKey());
+
+        return _fk5NotificationWebPushTemplate;
     }
 
     @Override

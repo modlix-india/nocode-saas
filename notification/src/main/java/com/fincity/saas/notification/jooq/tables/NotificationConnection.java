@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
+import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.jooq.Indexes;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
@@ -31,6 +32,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -92,6 +94,13 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
      * Description of notification connection
      */
     public final TableField<NotificationConnectionRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description of notification connection");
+
+    /**
+     * The column
+     * <code>notification.notification_connection.CHANNEL_TYPE</code>. Type of
+     * notification channel
+     */
+    public final TableField<NotificationConnectionRecord, NotificationChannelType> CHANNEL_TYPE = createField(DSL.name("CHANNEL_TYPE"), SQLDataType.VARCHAR(11).nullable(false), this, "Type of notification channel", new EnumConverter<String, NotificationChannelType>(String.class, NotificationChannelType.class));
 
     /**
      * The column
@@ -163,7 +172,7 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.NOTIFICATION_CONNECTION_IDX1_NOTIFICATION_CONN_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_CONNECTION_IDX2_NOTIFICATION_CONN_APP_ID);
+        return Arrays.asList(Indexes.NOTIFICATION_CONNECTION_IDX1_CONNECTION_CODE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_CONNECTION_IDX2_CONNECTION_CLIENT_ID_APP_ID);
     }
 
     @Override
@@ -178,7 +187,7 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
 
     @Override
     public List<UniqueKey<NotificationConnectionRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_CONNECTION_UK1_NOTIFICATION_TYPE_CODE);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_CONNECTION_UK1_CONNECTION_CODE);
     }
 
     @Override

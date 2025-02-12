@@ -27,7 +27,8 @@ public class NotificationMessageResourceService extends AbstractMessageService {
 				.flatMap(locale -> Mono.justOrEmpty(this.findResourceBundle(locale)))
 				.defaultIfEmpty(
 						this.bundleMap.get(Locale.ENGLISH))
-				.map(bundle -> bundle.containsKey(messageId) ? bundle.getString(messageId) : bundle.getString(UKNOWN_ERROR));
+				.map(bundle -> bundle.containsKey(messageId) ? bundle.getString(messageId)
+						: bundle.getString(UKNOWN_ERROR));
 	}
 
 	private ResourceBundle findResourceBundle(Locale locale) {

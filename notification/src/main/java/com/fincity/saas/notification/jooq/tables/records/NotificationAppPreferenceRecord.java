@@ -8,6 +8,7 @@ import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
 
 import java.time.LocalDateTime;
 
+import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -95,97 +96,21 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
 
     /**
      * Setter for
-     * <code>notification.notification_app_preference.IS_DISABLED</code>. Flag
-     * to disable all notifications for this type at app level
+     * <code>notification.notification_app_preference.PREFERENCES</code>.
+     * Notification app preferences
      */
-    public NotificationAppPreferenceRecord setIsDisabled(Byte value) {
+    public NotificationAppPreferenceRecord setPreferences(JSON value) {
         set(4, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_app_preference.IS_DISABLED</code>. Flag
-     * to disable all notifications for this type at app level
+     * <code>notification.notification_app_preference.PREFERENCES</code>.
+     * Notification app preferences
      */
-    public Byte getIsDisabled() {
-        return (Byte) get(4);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_app_preference.IS_EMAIL_ENABLED</code>.
-     * Flag to enable email notifications at app level
-     */
-    public NotificationAppPreferenceRecord setIsEmailEnabled(Byte value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_app_preference.IS_EMAIL_ENABLED</code>.
-     * Flag to enable email notifications at app level
-     */
-    public Byte getIsEmailEnabled() {
-        return (Byte) get(5);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_app_preference.IS_IN_APP_ENABLED</code>.
-     * Flag to enable in-app notifications at app level
-     */
-    public NotificationAppPreferenceRecord setIsInAppEnabled(Byte value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_app_preference.IS_IN_APP_ENABLED</code>.
-     * Flag to enable in-app notifications at app level
-     */
-    public Byte getIsInAppEnabled() {
-        return (Byte) get(6);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_app_preference.IS_SMS_ENABLED</code>.
-     * Flag to enable SMS notifications at app level
-     */
-    public NotificationAppPreferenceRecord setIsSmsEnabled(Byte value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_app_preference.IS_SMS_ENABLED</code>.
-     * Flag to enable SMS notifications at app level
-     */
-    public Byte getIsSmsEnabled() {
-        return (Byte) get(7);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_app_preference.IS_PUSH_ENABLED</code>.
-     * Flag to enable push notifications at app level
-     */
-    public NotificationAppPreferenceRecord setIsPushEnabled(Byte value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_app_preference.IS_PUSH_ENABLED</code>.
-     * Flag to enable push notifications at app level
-     */
-    public Byte getIsPushEnabled() {
-        return (Byte) get(8);
+    public JSON getPreferences() {
+        return (JSON) get(4);
     }
 
     /**
@@ -194,7 +119,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * the user who created this row
      */
     public NotificationAppPreferenceRecord setCreatedBy(ULong value) {
-        set(9, value);
+        set(5, value);
         return this;
     }
 
@@ -204,7 +129,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(5);
     }
 
     /**
@@ -213,7 +138,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * when this row is created
      */
     public NotificationAppPreferenceRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(6, value);
         return this;
     }
 
@@ -223,7 +148,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(6);
     }
 
     /**
@@ -232,7 +157,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * the user who updated this row
      */
     public NotificationAppPreferenceRecord setUpdatedBy(ULong value) {
-        set(11, value);
+        set(7, value);
         return this;
     }
 
@@ -242,7 +167,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(7);
     }
 
     /**
@@ -251,7 +176,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * when this row is updated
      */
     public NotificationAppPreferenceRecord setUpdatedAt(LocalDateTime value) {
-        set(12, value);
+        set(8, value);
         return this;
     }
 
@@ -261,7 +186,7 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
      * when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(8);
     }
 
     // -------------------------------------------------------------------------
@@ -287,18 +212,14 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
     /**
      * Create a detached, initialised NotificationAppPreferenceRecord
      */
-    public NotificationAppPreferenceRecord(ULong id, ULong clientId, ULong appId, ULong notificationTypeId, Byte isDisabled, Byte isEmailEnabled, Byte isInAppEnabled, Byte isSmsEnabled, Byte isPushEnabled, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationAppPreferenceRecord(ULong id, ULong clientId, ULong appId, ULong notificationTypeId, JSON preferences, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationAppPreference.NOTIFICATION_APP_PREFERENCE);
 
         setId(id);
         setClientId(clientId);
         setAppId(appId);
         setNotificationTypeId(notificationTypeId);
-        setIsDisabled(isDisabled);
-        setIsEmailEnabled(isEmailEnabled);
-        setIsInAppEnabled(isInAppEnabled);
-        setIsSmsEnabled(isSmsEnabled);
-        setIsPushEnabled(isPushEnabled);
+        setPreferences(preferences);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

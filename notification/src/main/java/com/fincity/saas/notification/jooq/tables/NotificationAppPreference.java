@@ -19,6 +19,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -88,38 +89,10 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
 
     /**
      * The column
-     * <code>notification.notification_app_preference.IS_DISABLED</code>. Flag
-     * to disable all notifications for this type at app level
+     * <code>notification.notification_app_preference.PREFERENCES</code>.
+     * Notification app preferences
      */
-    public final TableField<NotificationAppPreferenceRecord, Byte> IS_DISABLED = createField(DSL.name("IS_DISABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to disable all notifications for this type at app level");
-
-    /**
-     * The column
-     * <code>notification.notification_app_preference.IS_EMAIL_ENABLED</code>.
-     * Flag to enable email notifications at app level
-     */
-    public final TableField<NotificationAppPreferenceRecord, Byte> IS_EMAIL_ENABLED = createField(DSL.name("IS_EMAIL_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to enable email notifications at app level");
-
-    /**
-     * The column
-     * <code>notification.notification_app_preference.IS_IN_APP_ENABLED</code>.
-     * Flag to enable in-app notifications at app level
-     */
-    public final TableField<NotificationAppPreferenceRecord, Byte> IS_IN_APP_ENABLED = createField(DSL.name("IS_IN_APP_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to enable in-app notifications at app level");
-
-    /**
-     * The column
-     * <code>notification.notification_app_preference.IS_SMS_ENABLED</code>.
-     * Flag to enable SMS notifications at app level
-     */
-    public final TableField<NotificationAppPreferenceRecord, Byte> IS_SMS_ENABLED = createField(DSL.name("IS_SMS_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to enable SMS notifications at app level");
-
-    /**
-     * The column
-     * <code>notification.notification_app_preference.IS_PUSH_ENABLED</code>.
-     * Flag to enable push notifications at app level
-     */
-    public final TableField<NotificationAppPreferenceRecord, Byte> IS_PUSH_ENABLED = createField(DSL.name("IS_PUSH_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to enable push notifications at app level");
+    public final TableField<NotificationAppPreferenceRecord, JSON> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON.nullable(false), this, "Notification app preferences");
 
     /**
      * The column
@@ -231,12 +204,12 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
 
     @Override
     public List<UniqueKey<NotificationAppPreferenceRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_APP_PREFERENCE_UK1_USER_PREFERENCE_CLIENT_ID_APP_ID_NOTI_TYPE);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_APP_PREFERENCE_UK1_APP_PREF_CLIENT_ID_APP_ID_NOTI_TYPE_ID);
     }
 
     @Override
     public List<ForeignKey<NotificationAppPreferenceRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_PREF_NOTIFICATION_TYPE);
+        return Arrays.asList(Keys.FK1_APP_PREF_NOTIFICATION_TYPE_ID);
     }
 
     private transient NotificationTypePath _notificationType;
@@ -247,7 +220,7 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
      */
     public NotificationTypePath notificationType() {
         if (_notificationType == null)
-            _notificationType = new NotificationTypePath(this, Keys.FK1_APP_PREF_NOTIFICATION_TYPE, null);
+            _notificationType = new NotificationTypePath(this, Keys.FK1_APP_PREF_NOTIFICATION_TYPE_ID, null);
 
         return _notificationType;
     }

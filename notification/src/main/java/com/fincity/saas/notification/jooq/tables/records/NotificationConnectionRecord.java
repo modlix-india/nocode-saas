@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
+import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.jooq.tables.NotificationConnection;
 
 import java.time.LocalDateTime;
@@ -124,11 +125,30 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
 
     /**
      * Setter for
+     * <code>notification.notification_connection.CHANNEL_TYPE</code>. Type of
+     * notification channel
+     */
+    public NotificationConnectionRecord setChannelType(NotificationChannelType value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_connection.CHANNEL_TYPE</code>. Type of
+     * notification channel
+     */
+    public NotificationChannelType getChannelType() {
+        return (NotificationChannelType) get(6);
+    }
+
+    /**
+     * Setter for
      * <code>notification.notification_connection.CONNECTION_DETAILS</code>.
      * Connection details object
      */
     public NotificationConnectionRecord setConnectionDetails(JSON value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -138,7 +158,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * Connection details object
      */
     public JSON getConnectionDetails() {
-        return (JSON) get(6);
+        return (JSON) get(7);
     }
 
     /**
@@ -146,7 +166,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * ID of the user who created this row
      */
     public NotificationConnectionRecord setCreatedBy(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -155,7 +175,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -163,7 +183,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * Time when this row is created
      */
     public NotificationConnectionRecord setCreatedAt(LocalDateTime value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -172,7 +192,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -180,7 +200,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * ID of the user who updated this row
      */
     public NotificationConnectionRecord setUpdatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -189,7 +209,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * ID of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -197,7 +217,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * Time when this row is updated
      */
     public NotificationConnectionRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -206,7 +226,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -232,7 +252,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
     /**
      * Create a detached, initialised NotificationConnectionRecord
      */
-    public NotificationConnectionRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, JSON connectionDetails, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationConnectionRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, NotificationChannelType channelType, JSON connectionDetails, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationConnection.NOTIFICATION_CONNECTION);
 
         setId(id);
@@ -241,6 +261,7 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
         setCode(code);
         setName(name);
         setDescription(description);
+        setChannelType(channelType);
         setConnectionDetails(connectionDetails);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

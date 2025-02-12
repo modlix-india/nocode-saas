@@ -23,7 +23,8 @@ public class Notification extends BaseInfo<Notification> {
 	private ULong notificationTypeId;
 	private ULong emailTemplateId;
 	private ULong inAppTemplateId;
+	private ULong mobilePushTemplateId;
+	private ULong webPushTemplateId;
 	private ULong smsTemplateId;
-	private ULong pushTemplateId;
 
 }

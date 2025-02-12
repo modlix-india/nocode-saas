@@ -16,7 +16,8 @@ import com.fincity.saas.notification.jooq.tables.records.NotificationTemplateRec
 import reactor.core.publisher.Mono;
 
 @Service
-public class TemplateService extends AbstractJOOQUpdatableDataService<NotificationTemplateRecord, ULong, Template, TemplateDao> {
+public class TemplateService
+		extends AbstractJOOQUpdatableDataService<NotificationTemplateRecord, ULong, Template, TemplateDao> {
 
 	private static final String CACHE_NAME_TEMPLATE = "notificationTemplate";
 	private final CacheService cacheService;
@@ -31,10 +32,10 @@ public class TemplateService extends AbstractJOOQUpdatableDataService<Notificati
 				.map(e -> {
 					e.setName(entity.getName());
 					e.setDescription(entity.getDescription());
+					e.setChannelType(entity.getChannelType());
 					e.setTemplateParts(entity.getTemplateParts());
 					e.setResources(entity.getResources());
 					e.setVariables(entity.getVariables());
-					e.setTemplateType(entity.getTemplateType());
 					e.setDefaultLanguage(entity.getDefaultLanguage());
 					e.setLanguageExpression(entity.getLanguageExpression());
 					e.setUpdatedAt(entity.getUpdatedAt());

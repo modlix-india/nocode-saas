@@ -1,7 +1,11 @@
 package com.fincity.saas.notification.dto.prefrence;
 
 import java.io.Serial;
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 
@@ -22,74 +26,70 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 	@Serial
 	private static final long serialVersionUID = 4007524811937317620L;
 
+	private static final Map<NotificationChannelType, Boolean> DEFAULT_PREF =
+			Arrays.stream(NotificationChannelType.values())
+					.collect(Collectors.toMap(
+							Function.identity(),
+							type -> false,
+							(a, b) -> b,
+							() -> new EnumMap<>(NotificationChannelType.class)
+					));
+
 	private ULong notificationTypeId;
 
-	private boolean isDisabled;
-	private boolean isEmailEnabled;
-	private boolean isInAppEnabled;
-	private boolean isSmsEnabled;
-	private boolean isPushEnabled;
-
-	public Map<NotificationChannelType, Boolean> getPreferences() {
-		return Map.of(
-				NotificationChannelType.DISABLED, this.isDisabled,
-				NotificationChannelType.EMAIL, this.isEmailEnabled,
-				NotificationChannelType.IN_APP, this.isInAppEnabled,
-				NotificationChannelType.SMS, this.isSmsEnabled,
-				NotificationChannelType.PUSH, this.isPushEnabled
-		);
-	}
+	private Map<NotificationChannelType, Boolean> preferences = DEFAULT_PREF;
 
 	public boolean has(NotificationChannelType notificationChannelType) {
-		return switch (notificationChannelType) {
-			case NONE -> false;
-			case DISABLED -> this.isDisabled;
-			case EMAIL -> this.isEmailEnabled;
-			case IN_APP -> this.isInAppEnabled;
-			case SMS -> this.isSmsEnabled;
-			case PUSH -> this.isPushEnabled;
-		};
+		return this.preferences.getOrDefault(notificationChannelType, false);
 	}
 
-	public NotificationPreference<T> setDisabled(boolean disabled) {
-		if (disabled)
-			disableAll();
-		this.isDisabled = disabled;
-		return this;
+	@SuppressWarnings("unchecked")
+	public T setChannelEnabled(NotificationChannelType channelType, boolean enabled) {
+		if (channelType == NotificationChannelType.DISABLED) {
+			if (enabled)
+				disableAll();
+			this.preferences.put(NotificationChannelType.DISABLED, enabled);
+		} else {
+			this.preferences.put(channelType, enabled);
+			updateDisabledState();
+		}
+		return (T) this;
 	}
 
-	public NotificationPreference<T> setEmailEnabled(boolean emailEnabled) {
-		this.isEmailEnabled = emailEnabled;
-		changeDisabled();
-		return this;
+	public T setDisabled(boolean disabled) {
+		return setChannelEnabled(NotificationChannelType.DISABLED, disabled);
 	}
 
-	public NotificationPreference<T> setInAppEnabled(boolean inAppEnabled) {
-		this.isInAppEnabled = inAppEnabled;
-		changeDisabled();
-		return this;
+	public T setEmailEnabled(boolean enabled) {
+		return setChannelEnabled(NotificationChannelType.EMAIL, enabled);
 	}
 
-	public NotificationPreference<T> setPushEnabled(boolean pushEnabled) {
-		this.isPushEnabled = pushEnabled;
-		changeDisabled();
-		return this;
+	public T setInAppEnabled(boolean enabled) {
+		return setChannelEnabled(NotificationChannelType.IN_APP, enabled);
 	}
 
-	public NotificationPreference<T> setSmsEnabled(boolean smsEnabled) {
-		this.isSmsEnabled = smsEnabled;
-		changeDisabled();
-		return this;
+	public T setMobilePushEnabled(boolean enabled) {
+		return setChannelEnabled(NotificationChannelType.MOBILE_PUSH, enabled);
+	}
+
+	public T setWebPushEnabled(boolean enabled) {
+		return setChannelEnabled(NotificationChannelType.WEB_PUSH, enabled);
+	}
+
+	public T setSmsEnabled(boolean enabled) {
+		return setChannelEnabled(NotificationChannelType.SMS, enabled);
 	}
 
 	private void disableAll() {
-		this.isEmailEnabled = false;
-		this.isInAppEnabled = false;
-		this.isSmsEnabled = false;
-		this.isPushEnabled = false;
+		this.preferences.replaceAll((type, value) -> false);
 	}
 
-	private void changeDisabled() {
-		this.isDisabled = !this.isEmailEnabled && !this.isInAppEnabled && !this.isSmsEnabled && !this.isPushEnabled;
+	private void updateDisabledState() {
+
+		boolean allDisabled = this.preferences.entrySet().stream()
+				.filter(entry -> entry.getKey() != NotificationChannelType.DISABLED)
+				.noneMatch(entry -> Boolean.TRUE.equals(entry.getValue()));
+
+		this.preferences.put(NotificationChannelType.DISABLED, allDisabled);
 	}
 }

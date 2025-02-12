@@ -19,6 +19,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -88,38 +89,10 @@ public class NotificationUserPreference extends TableImpl<NotificationUserPrefer
 
     /**
      * The column
-     * <code>notification.notification_user_preference.IS_DISABLED</code>. Flag
-     * to disable all notifications for this type
+     * <code>notification.notification_user_preference.PREFERENCES</code>.
+     * Notification user preferences
      */
-    public final TableField<NotificationUserPreferenceRecord, Byte> IS_DISABLED = createField(DSL.name("IS_DISABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to disable all notifications for this type");
-
-    /**
-     * The column
-     * <code>notification.notification_user_preference.IS_EMAIL_ENABLED</code>.
-     * Flag to enable email notifications
-     */
-    public final TableField<NotificationUserPreferenceRecord, Byte> IS_EMAIL_ENABLED = createField(DSL.name("IS_EMAIL_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to enable email notifications");
-
-    /**
-     * The column
-     * <code>notification.notification_user_preference.IS_IN_APP_ENABLED</code>.
-     * Flag to enable in-app notifications
-     */
-    public final TableField<NotificationUserPreferenceRecord, Byte> IS_IN_APP_ENABLED = createField(DSL.name("IS_IN_APP_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to enable in-app notifications");
-
-    /**
-     * The column
-     * <code>notification.notification_user_preference.IS_SMS_ENABLED</code>.
-     * Flag to enable SMS notifications
-     */
-    public final TableField<NotificationUserPreferenceRecord, Byte> IS_SMS_ENABLED = createField(DSL.name("IS_SMS_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to enable SMS notifications");
-
-    /**
-     * The column
-     * <code>notification.notification_user_preference.IS_PUSH_ENABLED</code>.
-     * Flag to enable push notifications
-     */
-    public final TableField<NotificationUserPreferenceRecord, Byte> IS_PUSH_ENABLED = createField(DSL.name("IS_PUSH_ENABLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to enable push notifications");
+    public final TableField<NotificationUserPreferenceRecord, JSON> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON.nullable(false), this, "Notification user preferences");
 
     /**
      * The column
@@ -231,12 +204,12 @@ public class NotificationUserPreference extends TableImpl<NotificationUserPrefer
 
     @Override
     public List<UniqueKey<NotificationUserPreferenceRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_USER_PREFERENCE_UK1_USER_PREFERENCE_APP_ID_USER_ID_NOTI_TYPE);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_USER_PREFERENCE_UK1_USER_PREF_APP_ID_USER_ID_NOTI_TYPE_ID);
     }
 
     @Override
     public List<ForeignKey<NotificationUserPreferenceRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_USER_PREF_NOTIFICATION_TYPE);
+        return Arrays.asList(Keys.FK1_USER_PREF_NOTIFICATION_TYPE_ID);
     }
 
     private transient NotificationTypePath _notificationType;
@@ -247,7 +220,7 @@ public class NotificationUserPreference extends TableImpl<NotificationUserPrefer
      */
     public NotificationTypePath notificationType() {
         if (_notificationType == null)
-            _notificationType = new NotificationTypePath(this, Keys.FK1_USER_PREF_NOTIFICATION_TYPE, null);
+            _notificationType = new NotificationTypePath(this, Keys.FK1_USER_PREF_NOTIFICATION_TYPE_ID, null);
 
         return _notificationType;
     }

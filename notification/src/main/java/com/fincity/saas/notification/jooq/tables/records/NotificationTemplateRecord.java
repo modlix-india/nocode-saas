@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
+import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.jooq.tables.NotificationTemplate;
 
 import java.time.LocalDateTime;
@@ -123,12 +124,29 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
     }
 
     /**
+     * Setter for <code>notification.notification_template.CHANNEL_TYPE</code>.
+     * Type of notification channel
+     */
+    public NotificationTemplateRecord setChannelType(NotificationChannelType value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>notification.notification_template.CHANNEL_TYPE</code>.
+     * Type of notification channel
+     */
+    public NotificationChannelType getChannelType() {
+        return (NotificationChannelType) get(6);
+    }
+
+    /**
      * Setter for
      * <code>notification.notification_template.TEMPLATE_PARTS</code>.
      * Notification Template parts object
      */
     public NotificationTemplateRecord setTemplateParts(JSON value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -138,7 +156,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Notification Template parts object
      */
     public JSON getTemplateParts() {
-        return (JSON) get(6);
+        return (JSON) get(7);
     }
 
     /**
@@ -146,7 +164,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Notification resources object
      */
     public NotificationTemplateRecord setResources(JSON value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -155,7 +173,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Notification resources object
      */
     public JSON getResources() {
-        return (JSON) get(7);
+        return (JSON) get(8);
     }
 
     /**
@@ -163,7 +181,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Variables for Template
      */
     public NotificationTemplateRecord setVariables(JSON value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -172,7 +190,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Variables for Template
      */
     public JSON getVariables() {
-        return (JSON) get(8);
+        return (JSON) get(9);
     }
 
     /**
@@ -180,7 +198,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Type of template
      */
     public NotificationTemplateRecord setTemplateType(String value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -189,7 +207,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Type of template
      */
     public String getTemplateType() {
-        return (String) get(9);
+        return (String) get(10);
     }
 
     /**
@@ -198,7 +216,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * default language for this template
      */
     public NotificationTemplateRecord setDefaultLanguage(String value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -208,7 +226,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * default language for this template
      */
     public String getDefaultLanguage() {
-        return (String) get(10);
+        return (String) get(11);
     }
 
     /**
@@ -217,7 +235,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Language Expression for this template
      */
     public NotificationTemplateRecord setLanguageExpression(String value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -227,7 +245,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Language Expression for this template
      */
     public String getLanguageExpression() {
-        return (String) get(11);
+        return (String) get(12);
     }
 
     /**
@@ -235,7 +253,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * of the user who created this row
      */
     public NotificationTemplateRecord setCreatedBy(ULong value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -244,7 +262,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(13);
     }
 
     /**
@@ -252,7 +270,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Time when this row is created
      */
     public NotificationTemplateRecord setCreatedAt(LocalDateTime value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -261,7 +279,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(14);
     }
 
     /**
@@ -269,7 +287,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * of the user who updated this row
      */
     public NotificationTemplateRecord setUpdatedBy(ULong value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -278,7 +296,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(15);
     }
 
     /**
@@ -286,7 +304,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Time when this row is updated
      */
     public NotificationTemplateRecord setUpdatedAt(LocalDateTime value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -295,7 +313,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -321,7 +339,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
     /**
      * Create a detached, initialised NotificationTemplateRecord
      */
-    public NotificationTemplateRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, JSON templateParts, JSON resources, JSON variables, String templateType, String defaultLanguage, String languageExpression, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationTemplateRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, NotificationChannelType channelType, JSON templateParts, JSON resources, JSON variables, String templateType, String defaultLanguage, String languageExpression, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationTemplate.NOTIFICATION_TEMPLATE);
 
         setId(id);
@@ -330,6 +348,7 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
         setCode(code);
         setName(name);
         setDescription(description);
+        setChannelType(channelType);
         setTemplateParts(templateParts);
         setResources(resources);
         setVariables(variables);

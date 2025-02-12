@@ -182,11 +182,53 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
 
     /**
      * Setter for
+     * <code>notification.notification_notification.MOBILE_PUSH_TEMPLATE_ID</code>.
+     * Identifier for the mobile push template. References notification_template
+     * table
+     */
+    public NotificationNotificationRecord setMobilePushTemplateId(ULong value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_notification.MOBILE_PUSH_TEMPLATE_ID</code>.
+     * Identifier for the mobile push template. References notification_template
+     * table
+     */
+    public ULong getMobilePushTemplateId() {
+        return (ULong) get(9);
+    }
+
+    /**
+     * Setter for
+     * <code>notification.notification_notification.WEB_PUSH_TEMPLATE_ID</code>.
+     * Identifier for the web push template. References notification_template
+     * table
+     */
+    public NotificationNotificationRecord setWebPushTemplateId(ULong value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_notification.WEB_PUSH_TEMPLATE_ID</code>.
+     * Identifier for the web push template. References notification_template
+     * table
+     */
+    public ULong getWebPushTemplateId() {
+        return (ULong) get(10);
+    }
+
+    /**
+     * Setter for
      * <code>notification.notification_notification.SMS_TEMPLATE_ID</code>.
      * Identifier for the sms template. References notification_template table
      */
     public NotificationNotificationRecord setSmsTemplateId(ULong value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -196,26 +238,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * Identifier for the sms template. References notification_template table
      */
     public ULong getSmsTemplateId() {
-        return (ULong) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_notification.PUSH_TEMPLATE_ID</code>.
-     * Identifier for the push template. References notification_template table
-     */
-    public NotificationNotificationRecord setPushTemplateId(ULong value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_notification.PUSH_TEMPLATE_ID</code>.
-     * Identifier for the push template. References notification_template table
-     */
-    public ULong getPushTemplateId() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -224,7 +247,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who created this row
      */
     public NotificationNotificationRecord setCreatedBy(ULong value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -234,7 +257,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(12);
     }
 
     /**
@@ -243,7 +266,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is created
      */
     public NotificationNotificationRecord setCreatedAt(LocalDateTime value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -253,7 +276,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(13);
     }
 
     /**
@@ -262,7 +285,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who updated this row
      */
     public NotificationNotificationRecord setUpdatedBy(ULong value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -272,7 +295,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(14);
     }
 
     /**
@@ -281,7 +304,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is updated
      */
     public NotificationNotificationRecord setUpdatedAt(LocalDateTime value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -291,7 +314,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -317,7 +340,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
     /**
      * Create a detached, initialised NotificationNotificationRecord
      */
-    public NotificationNotificationRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, ULong notificationTypeId, ULong emailTemplateId, ULong inAppTemplateId, ULong smsTemplateId, ULong pushTemplateId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationNotificationRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, ULong notificationTypeId, ULong emailTemplateId, ULong inAppTemplateId, ULong mobilePushTemplateId, ULong webPushTemplateId, ULong smsTemplateId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationNotification.NOTIFICATION_NOTIFICATION);
 
         setId(id);
@@ -329,8 +352,9 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
         setNotificationTypeId(notificationTypeId);
         setEmailTemplateId(emailTemplateId);
         setInAppTemplateId(inAppTemplateId);
+        setMobilePushTemplateId(mobilePushTemplateId);
+        setWebPushTemplateId(webPushTemplateId);
         setSmsTemplateId(smsTemplateId);
-        setPushTemplateId(pushTemplateId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

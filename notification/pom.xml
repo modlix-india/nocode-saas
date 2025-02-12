@@ -250,6 +250,14 @@
                                 <database>
                                     <includes>notification_.*</includes>
                                     <inputSchema>notification</inputSchema>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.notification.enums.NotificationChannelType</userType>
+                                            <enumConverter>true</enumConverter>
+                                            <includeExpression>.*\.CHANNEL_TYPE</includeExpression>
+                                            <includeTypes>.*</includeTypes>
+                                        </forcedType>
+                                    </forcedTypes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
@@ -31,9 +32,6 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 	protected Logger logger;
 
 	@Getter
-	private TemplateService templateService;
-
-	@Getter
 	private NotificationMessageResourceService msgService;
 
 	protected TemplateProcessor() {
@@ -41,28 +39,32 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 	}
 
 	@Autowired
-	public void setTemplateService(TemplateService templateService) {
-		this.templateService = templateService;
-	}
-
-	@Autowired
 	public void setMsgService(NotificationMessageResourceService msgService) {
 		this.msgService = msgService;
 	}
 
+	public Mono<NotificationMessage> process(Template template, Map<String, Object> templateData) {
+		return this.process(null, template, templateData);
+	}
+
 	public Mono<NotificationMessage> process(String language, Template template, Map<String, Object> templateData) {
 
-		if (template.getTemplateType() == null || template.getTemplateParts().isEmpty())
+		if (template.getChannelType() == null || template.getTemplateParts().isEmpty())
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 					NotificationMessageResourceService.TEMPLATE_DATA_NOT_FOUND, "No template parts found");
 
-		NotificationMessage notificationMessage = NotificationMessage
-				.of(template.getTemplateParts().getOrDefault(this.getDefaultLanguage(language), null));
+		return FlatMapUtil.flatMapMono(
 
-		if (notificationMessage.isNull())
-			notificationMessage = NotificationMessage.of(template.getTemplateParts().values().iterator().next());
+				() -> this.getEffectiveLanguage(language, template, templateData),
 
-		return this.process(template.getCode(), notificationMessage, templateData);
+				lang -> {
+					NotificationMessage notificationMessage = NotificationMessage
+							.of(template.getTemplateParts().getOrDefault(this.getDefaultLanguage(language), null));
+
+					return !notificationMessage.isNull() ? Mono.just(notificationMessage)
+							: Mono.just(NotificationMessage.of(template.getTemplateParts().values().iterator().next()));
+				},
+				(lang, notificationMessage) -> this.process(template.getCode(), notificationMessage, templateData));
 	}
 
 	public Mono<NotificationMessage> process(String templateCode, NotificationMessage notificationMessage,

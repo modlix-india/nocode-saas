@@ -192,7 +192,7 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.NOTIFICATION_TYPE_IDX1_NOTIFICATION_TYPE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_TYPE_IDX2_NOTIFICATION_TYPE_APP_ID);
+        return Arrays.asList(Indexes.NOTIFICATION_TYPE_IDX1_TYPE_CODE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_TYPE_IDX2_TYPE_CLIENT_ID_APP_ID);
     }
 
     @Override
@@ -207,7 +207,7 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
 
     @Override
     public List<UniqueKey<NotificationTypeRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_TYPE_UK1_NOTIFICATION_TYPE_CODE);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_TYPE_UK1_TYPE_CODE);
     }
 
     private transient NotificationAppPreferencePath _notificationAppPreference;
@@ -218,7 +218,7 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
      */
     public NotificationAppPreferencePath notificationAppPreference() {
         if (_notificationAppPreference == null)
-            _notificationAppPreference = new NotificationAppPreferencePath(this, null, Keys.FK1_APP_PREF_NOTIFICATION_TYPE.getInverseKey());
+            _notificationAppPreference = new NotificationAppPreferencePath(this, null, Keys.FK1_APP_PREF_NOTIFICATION_TYPE_ID.getInverseKey());
 
         return _notificationAppPreference;
     }
@@ -244,7 +244,7 @@ public class NotificationType extends TableImpl<NotificationTypeRecord> {
      */
     public NotificationUserPreferencePath notificationUserPreference() {
         if (_notificationUserPreference == null)
-            _notificationUserPreference = new NotificationUserPreferencePath(this, null, Keys.FK1_USER_PREF_NOTIFICATION_TYPE.getInverseKey());
+            _notificationUserPreference = new NotificationUserPreferencePath(this, null, Keys.FK1_USER_PREF_NOTIFICATION_TYPE_ID.getInverseKey());
 
         return _notificationUserPreference;
     }

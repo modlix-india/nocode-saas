@@ -122,17 +122,26 @@ public class NotificationNotification extends TableImpl<NotificationNotification
 
     /**
      * The column
+     * <code>notification.notification_notification.MOBILE_PUSH_TEMPLATE_ID</code>.
+     * Identifier for the mobile push template. References notification_template
+     * table
+     */
+    public final TableField<NotificationNotificationRecord, ULong> MOBILE_PUSH_TEMPLATE_ID = createField(DSL.name("MOBILE_PUSH_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the mobile push template. References notification_template table");
+
+    /**
+     * The column
+     * <code>notification.notification_notification.WEB_PUSH_TEMPLATE_ID</code>.
+     * Identifier for the web push template. References notification_template
+     * table
+     */
+    public final TableField<NotificationNotificationRecord, ULong> WEB_PUSH_TEMPLATE_ID = createField(DSL.name("WEB_PUSH_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the web push template. References notification_template table");
+
+    /**
+     * The column
      * <code>notification.notification_notification.SMS_TEMPLATE_ID</code>.
      * Identifier for the sms template. References notification_template table
      */
     public final TableField<NotificationNotificationRecord, ULong> SMS_TEMPLATE_ID = createField(DSL.name("SMS_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the sms template. References notification_template table");
-
-    /**
-     * The column
-     * <code>notification.notification_notification.PUSH_TEMPLATE_ID</code>.
-     * Identifier for the push template. References notification_template table
-     */
-    public final TableField<NotificationNotificationRecord, ULong> PUSH_TEMPLATE_ID = createField(DSL.name("PUSH_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the push template. References notification_template table");
 
     /**
      * The column
@@ -234,7 +243,7 @@ public class NotificationNotification extends TableImpl<NotificationNotification
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.NOTIFICATION_NOTIFICATION_IDX1_NOTIFICATION_TEMPLATE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_NOTIFICATION_IDX2_NOTIFICATION_TEMPLATE_APP_ID);
+        return Arrays.asList(Indexes.NOTIFICATION_NOTIFICATION_IDX1_NOTIFICATION_CODE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_NOTIFICATION_IDX2_NOTIFICATION_CLIENT_ID_APP_ID);
     }
 
     @Override
@@ -249,12 +258,12 @@ public class NotificationNotification extends TableImpl<NotificationNotification
 
     @Override
     public List<UniqueKey<NotificationNotificationRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_NOTIFICATION_UK1_NOTIFICATION_TYPE_CODE);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_NOTIFICATION_UK1_NOTIFICATION_CODE);
     }
 
     @Override
     public List<ForeignKey<NotificationNotificationRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_NOTIFICATION_NOTIFICATION_TYPE, Keys.FK2_NOTIFICATION_EMAIL_TEMPLATE, Keys.FK3_NOTIFICATION_IN_APP_TEMPLATE, Keys.FK4_NOTIFICATION_SMS_TEMPLATE, Keys.FK5_NOTIFICATION_PUSH_TEMPLATE);
+        return Arrays.asList(Keys.FK1_NOTIFICATION_NOTIFICATION_TYPE, Keys.FK2_NOTIFICATION_EMAIL_TEMPLATE, Keys.FK3_NOTIFICATION_IN_APP_TEMPLATE, Keys.FK4_NOTIFICATION_SMS_TEMPLATE, Keys.FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE, Keys.FK5_NOTIFICATION_WEB_PUSH_TEMPLATE);
     }
 
     private transient NotificationTypePath _notificationType;
@@ -312,18 +321,32 @@ public class NotificationNotification extends TableImpl<NotificationNotification
         return _fk4NotificationSmsTemplate;
     }
 
-    private transient NotificationTemplatePath _fk5NotificationPushTemplate;
+    private transient NotificationTemplatePath _fk5NotificationMobilePushTemplate;
 
     /**
      * Get the implicit join path to the
      * <code>notification.notification_template</code> table, via the
-     * <code>FK5_NOTIFICATION_PUSH_TEMPLATE</code> key.
+     * <code>FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE</code> key.
      */
-    public NotificationTemplatePath fk5NotificationPushTemplate() {
-        if (_fk5NotificationPushTemplate == null)
-            _fk5NotificationPushTemplate = new NotificationTemplatePath(this, Keys.FK5_NOTIFICATION_PUSH_TEMPLATE, null);
+    public NotificationTemplatePath fk5NotificationMobilePushTemplate() {
+        if (_fk5NotificationMobilePushTemplate == null)
+            _fk5NotificationMobilePushTemplate = new NotificationTemplatePath(this, Keys.FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE, null);
 
-        return _fk5NotificationPushTemplate;
+        return _fk5NotificationMobilePushTemplate;
+    }
+
+    private transient NotificationTemplatePath _fk5NotificationWebPushTemplate;
+
+    /**
+     * Get the implicit join path to the
+     * <code>notification.notification_template</code> table, via the
+     * <code>FK5_NOTIFICATION_WEB_PUSH_TEMPLATE</code> key.
+     */
+    public NotificationTemplatePath fk5NotificationWebPushTemplate() {
+        if (_fk5NotificationWebPushTemplate == null)
+            _fk5NotificationWebPushTemplate = new NotificationTemplatePath(this, Keys.FK5_NOTIFICATION_WEB_PUSH_TEMPLATE, null);
+
+        return _fk5NotificationWebPushTemplate;
     }
 
     @Override
