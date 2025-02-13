@@ -22,7 +22,7 @@ import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
-import com.fincity.security.model.OtpGenerationRequest;
+import com.fincity.security.model.otp.OtpGenerationRequest;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.appregistration.ClientRegistrationService;
 
