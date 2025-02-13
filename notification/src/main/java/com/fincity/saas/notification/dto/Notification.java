@@ -33,4 +33,9 @@ public class Notification extends BaseIds<Notification> implements ChannelDetail
 		this.channelDetails.put(channelType, value);
 		return this;
 	}
+
+	@Override
+	public Map<String, Object> getChannelValue(NotificationChannelType channelType) {
+		return this.channelDetails.getOrDefault(channelType, null);
+	}
 }

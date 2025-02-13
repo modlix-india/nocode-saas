@@ -4,8 +4,6 @@ import java.io.Serial;
 
 import org.jooq.types.ULong;
 
-import com.fincity.saas.notification.enums.NotificationChannelType;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

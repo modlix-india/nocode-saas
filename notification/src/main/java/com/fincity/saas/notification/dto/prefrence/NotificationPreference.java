@@ -44,10 +44,6 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 
 	private Map<NotificationChannelType, Boolean> preferences = DEFAULT_PREF;
 
-	public boolean has(NotificationChannelType notificationChannelType) {
-		return this.preferences.getOrDefault(notificationChannelType, false);
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public T setChannelValue(NotificationChannelType channelType, Boolean enabled) {
@@ -60,6 +56,11 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 			updateDisabledState();
 		}
 		return (T) this;
+	}
+
+	@Override
+	public Boolean getChannelValue(NotificationChannelType channelType) {
+		return this.preferences.getOrDefault(channelType, Boolean.FALSE);
 	}
 
 	private void disableAll() {
