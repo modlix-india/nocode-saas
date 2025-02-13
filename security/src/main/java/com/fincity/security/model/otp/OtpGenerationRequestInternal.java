@@ -1,4 +1,4 @@
-package com.fincity.security.model;
+package com.fincity.security.model.otp;
 
 import java.io.Serial;
 import java.io.Serializable;

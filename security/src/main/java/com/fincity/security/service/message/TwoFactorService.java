@@ -18,7 +18,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.model.OtpMessageVars;
+import com.fincity.security.model.otp.OtpMessageVars;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
