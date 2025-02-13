@@ -56,8 +56,8 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
-import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
 import reactor.core.publisher.Flux;
