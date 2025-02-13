@@ -23,7 +23,6 @@ public class EmailMessage extends NotificationMessage {
 
 	private boolean isHtml;
 	private String replyTo;
-	private String messageId;
 	private Map<String, String> headers;
 	private Priority priority;
 

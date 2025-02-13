@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
 
 import java.time.LocalDateTime;
@@ -77,21 +78,21 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
 
     /**
      * Setter for
-     * <code>notification.notification_app_preference.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_app_preference.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public NotificationAppPreferenceRecord setNotificationTypeId(ULong value) {
+    public NotificationAppPreferenceRecord setNotificationType(NotificationType value) {
         set(3, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_app_preference.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_app_preference.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public ULong getNotificationTypeId() {
-        return (ULong) get(3);
+    public NotificationType getNotificationType() {
+        return (NotificationType) get(3);
     }
 
     /**
@@ -212,13 +213,13 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
     /**
      * Create a detached, initialised NotificationAppPreferenceRecord
      */
-    public NotificationAppPreferenceRecord(ULong id, ULong clientId, ULong appId, ULong notificationTypeId, JSON preferences, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationAppPreferenceRecord(ULong id, ULong clientId, ULong appId, NotificationType notificationType, JSON preferences, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationAppPreference.NOTIFICATION_APP_PREFERENCE);
 
         setId(id);
         setClientId(clientId);
         setAppId(appId);
-        setNotificationTypeId(notificationTypeId);
+        setNotificationType(notificationType);
         setPreferences(preferences);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

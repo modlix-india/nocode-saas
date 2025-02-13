@@ -79,9 +79,10 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
     public final TableField<NotificationConnectionRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
 
     /**
-     * The column <code>notification.notification_connection.CODE</code>. Code
+     * The column <code>notification.notification_connection.CODE</code>. Unique
+     * Code to identify this row
      */
-    public final TableField<NotificationConnectionRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Code");
+    public final TableField<NotificationConnectionRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row");
 
     /**
      * The column <code>notification.notification_connection.NAME</code>.

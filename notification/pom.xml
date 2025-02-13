@@ -252,9 +252,16 @@
                                     <inputSchema>notification</inputSchema>
                                     <forcedTypes>
                                         <forcedType>
-                                            <userType>com.fincity.saas.notification.enums.NotificationChannelType</userType>
+                                            <userType>com.fincity.saas.notification.enums.NotificationChannelType
+                                            </userType>
                                             <enumConverter>true</enumConverter>
                                             <includeExpression>.*\.CHANNEL_TYPE</includeExpression>
+                                            <includeTypes>.*</includeTypes>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.notification.enums.NotificationType</userType>
+                                            <enumConverter>true</enumConverter>
+                                            <includeExpression>.*\.NOTIFICATION_TYPE</includeExpression>
                                             <includeTypes>.*</includeTypes>
                                         </forcedType>
                                     </forcedTypes>

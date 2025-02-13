@@ -2,18 +2,26 @@ package com.fincity.saas.notification.model.message;
 
 import java.util.Map;
 
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.ChannelType;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Data
 @Accessors(chain = true)
 public class NotificationMessage implements ChannelType {
 
+	private String messageId;
 	private String subject;
 	private String body;
+
+	public NotificationMessage() {
+		this.messageId = UniqueUtil.shortUUID();
+	}
 
 	public static NotificationMessage of() {
 		return new NotificationMessage();
@@ -41,14 +49,21 @@ public class NotificationMessage implements ChannelType {
 		return NotificationMessage.of(message.getT1(), message.getT2());
 	}
 
-	public static Map<String, String> toMap(NotificationMessage message) {
+	public Map<String, String> toMap() {
 		return Map.of(
-				"subject", message.getSubject(),
-				"body", message.getBody()
+				"subject", this.getSubject(),
+				"body", this.getBody()
+		);
+	}
+
+	public Tuple2<String, String> toTuple() {
+		return Tuples.of(
+				this.getSubject() != null ? this.getSubject() : "",
+				this.getBody() != null ? this.getBody() : ""
 		);
 	}
 
 	public boolean isNull() {
-		return subject == null && body == null;
+		return StringUtil.safeIsBlank(subject) && StringUtil.safeIsBlank(body);
 	}
 }

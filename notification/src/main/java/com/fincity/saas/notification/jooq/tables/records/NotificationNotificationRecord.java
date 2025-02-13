@@ -4,10 +4,12 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationNotification;
 
 import java.time.LocalDateTime;
 
+import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -73,172 +75,75 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
     }
 
     /**
-     * Setter for <code>notification.notification_notification.CODE</code>. Code
+     * Setter for <code>notification.notification_notification.USER_ID</code>.
+     * Identifier for the application. References security_app table
      */
-    public NotificationNotificationRecord setCode(String value) {
+    public NotificationNotificationRecord setUserId(ULong value) {
         set(3, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_notification.CODE</code>. Code
+     * Getter for <code>notification.notification_notification.USER_ID</code>.
+     * Identifier for the application. References security_app table
      */
-    public String getCode() {
-        return (String) get(3);
+    public ULong getUserId() {
+        return (ULong) get(3);
     }
 
     /**
-     * Setter for <code>notification.notification_notification.NAME</code>.
-     * Template name
+     * Setter for <code>notification.notification_notification.CODE</code>.
+     * Unique Code to identify this row
      */
-    public NotificationNotificationRecord setName(String value) {
+    public NotificationNotificationRecord setCode(String value) {
         set(4, value);
         return this;
     }
 
     /**
-     * Getter for <code>notification.notification_notification.NAME</code>.
-     * Template name
+     * Getter for <code>notification.notification_notification.CODE</code>.
+     * Unique Code to identify this row
      */
-    public String getName() {
+    public String getCode() {
         return (String) get(4);
     }
 
     /**
      * Setter for
-     * <code>notification.notification_notification.DESCRIPTION</code>.
-     * Description of notification Template
+     * <code>notification.notification_notification.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public NotificationNotificationRecord setDescription(String value) {
+    public NotificationNotificationRecord setNotificationType(NotificationType value) {
         set(5, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_notification.DESCRIPTION</code>.
-     * Description of notification Template
+     * <code>notification.notification_notification.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public String getDescription() {
-        return (String) get(5);
+    public NotificationType getNotificationType() {
+        return (NotificationType) get(5);
     }
 
     /**
      * Setter for
-     * <code>notification.notification_notification.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_notification.CHANNEL_DETAILS</code>.
+     * Notification details per channel
      */
-    public NotificationNotificationRecord setNotificationTypeId(ULong value) {
+    public NotificationNotificationRecord setChannelDetails(JSON value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_notification.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_notification.CHANNEL_DETAILS</code>.
+     * Notification details per channel
      */
-    public ULong getNotificationTypeId() {
-        return (ULong) get(6);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_notification.EMAIL_TEMPLATE_ID</code>.
-     * Identifier for the email template. References notification_template table
-     */
-    public NotificationNotificationRecord setEmailTemplateId(ULong value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_notification.EMAIL_TEMPLATE_ID</code>.
-     * Identifier for the email template. References notification_template table
-     */
-    public ULong getEmailTemplateId() {
-        return (ULong) get(7);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_notification.IN_APP_TEMPLATE_ID</code>.
-     * Identifier for the inApp template. References notification_template table
-     */
-    public NotificationNotificationRecord setInAppTemplateId(ULong value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_notification.IN_APP_TEMPLATE_ID</code>.
-     * Identifier for the inApp template. References notification_template table
-     */
-    public ULong getInAppTemplateId() {
-        return (ULong) get(8);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_notification.MOBILE_PUSH_TEMPLATE_ID</code>.
-     * Identifier for the mobile push template. References notification_template
-     * table
-     */
-    public NotificationNotificationRecord setMobilePushTemplateId(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_notification.MOBILE_PUSH_TEMPLATE_ID</code>.
-     * Identifier for the mobile push template. References notification_template
-     * table
-     */
-    public ULong getMobilePushTemplateId() {
-        return (ULong) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_notification.WEB_PUSH_TEMPLATE_ID</code>.
-     * Identifier for the web push template. References notification_template
-     * table
-     */
-    public NotificationNotificationRecord setWebPushTemplateId(ULong value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_notification.WEB_PUSH_TEMPLATE_ID</code>.
-     * Identifier for the web push template. References notification_template
-     * table
-     */
-    public ULong getWebPushTemplateId() {
-        return (ULong) get(10);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_notification.SMS_TEMPLATE_ID</code>.
-     * Identifier for the sms template. References notification_template table
-     */
-    public NotificationNotificationRecord setSmsTemplateId(ULong value) {
-        set(11, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_notification.SMS_TEMPLATE_ID</code>.
-     * Identifier for the sms template. References notification_template table
-     */
-    public ULong getSmsTemplateId() {
-        return (ULong) get(11);
+    public JSON getChannelDetails() {
+        return (JSON) get(6);
     }
 
     /**
@@ -247,7 +152,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who created this row
      */
     public NotificationNotificationRecord setCreatedBy(ULong value) {
-        set(12, value);
+        set(7, value);
         return this;
     }
 
@@ -257,7 +162,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(7);
     }
 
     /**
@@ -266,7 +171,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is created
      */
     public NotificationNotificationRecord setCreatedAt(LocalDateTime value) {
-        set(13, value);
+        set(8, value);
         return this;
     }
 
@@ -276,7 +181,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(8);
     }
 
     /**
@@ -285,7 +190,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who updated this row
      */
     public NotificationNotificationRecord setUpdatedBy(ULong value) {
-        set(14, value);
+        set(9, value);
         return this;
     }
 
@@ -295,7 +200,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(9);
     }
 
     /**
@@ -304,7 +209,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is updated
      */
     public NotificationNotificationRecord setUpdatedAt(LocalDateTime value) {
-        set(15, value);
+        set(10, value);
         return this;
     }
 
@@ -314,7 +219,7 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -340,21 +245,16 @@ public class NotificationNotificationRecord extends UpdatableRecordImpl<Notifica
     /**
      * Create a detached, initialised NotificationNotificationRecord
      */
-    public NotificationNotificationRecord(ULong id, ULong clientId, ULong appId, String code, String name, String description, ULong notificationTypeId, ULong emailTemplateId, ULong inAppTemplateId, ULong mobilePushTemplateId, ULong webPushTemplateId, ULong smsTemplateId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationNotificationRecord(ULong id, ULong clientId, ULong appId, ULong userId, String code, NotificationType notificationType, JSON channelDetails, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationNotification.NOTIFICATION_NOTIFICATION);
 
         setId(id);
         setClientId(clientId);
         setAppId(appId);
+        setUserId(userId);
         setCode(code);
-        setName(name);
-        setDescription(description);
-        setNotificationTypeId(notificationTypeId);
-        setEmailTemplateId(emailTemplateId);
-        setInAppTemplateId(inAppTemplateId);
-        setMobilePushTemplateId(mobilePushTemplateId);
-        setWebPushTemplateId(webPushTemplateId);
-        setSmsTemplateId(smsTemplateId);
+        setNotificationType(notificationType);
+        setChannelDetails(channelDetails);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

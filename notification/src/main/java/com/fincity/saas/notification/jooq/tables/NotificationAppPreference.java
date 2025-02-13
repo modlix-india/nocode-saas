@@ -4,9 +4,9 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
-import com.fincity.saas.notification.jooq.tables.NotificationType.NotificationTypePath;
 import com.fincity.saas.notification.jooq.tables.records.NotificationAppPreferenceRecord;
 
 import java.time.LocalDateTime;
@@ -16,15 +16,11 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
-import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -34,6 +30,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -82,10 +79,10 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
 
     /**
      * The column
-     * <code>notification.notification_app_preference.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_app_preference.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public final TableField<NotificationAppPreferenceRecord, ULong> NOTIFICATION_TYPE_ID = createField(DSL.name("NOTIFICATION_TYPE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the notification type. References notification_type table");
+    public final TableField<NotificationAppPreferenceRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false), this, "Type of notification", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
 
     /**
      * The column
@@ -154,39 +151,6 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
         this(DSL.name("notification_app_preference"), null);
     }
 
-    public <O extends Record> NotificationAppPreference(Table<O> path, ForeignKey<O, NotificationAppPreferenceRecord> childPath, InverseForeignKey<O, NotificationAppPreferenceRecord> parentPath) {
-        super(path, childPath, parentPath, NOTIFICATION_APP_PREFERENCE);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class NotificationAppPreferencePath extends NotificationAppPreference implements Path<NotificationAppPreferenceRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> NotificationAppPreferencePath(Table<O> path, ForeignKey<O, NotificationAppPreferenceRecord> childPath, InverseForeignKey<O, NotificationAppPreferenceRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private NotificationAppPreferencePath(Name alias, Table<NotificationAppPreferenceRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public NotificationAppPreferencePath as(String alias) {
-            return new NotificationAppPreferencePath(DSL.name(alias), this);
-        }
-
-        @Override
-        public NotificationAppPreferencePath as(Name alias) {
-            return new NotificationAppPreferencePath(alias, this);
-        }
-
-        @Override
-        public NotificationAppPreferencePath as(Table<?> alias) {
-            return new NotificationAppPreferencePath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : Notification.NOTIFICATION;
@@ -204,25 +168,7 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
 
     @Override
     public List<UniqueKey<NotificationAppPreferenceRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_APP_PREFERENCE_UK1_APP_PREF_CLIENT_ID_APP_ID_NOTI_TYPE_ID);
-    }
-
-    @Override
-    public List<ForeignKey<NotificationAppPreferenceRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_PREF_NOTIFICATION_TYPE_ID);
-    }
-
-    private transient NotificationTypePath _notificationType;
-
-    /**
-     * Get the implicit join path to the
-     * <code>notification.notification_type</code> table.
-     */
-    public NotificationTypePath notificationType() {
-        if (_notificationType == null)
-            _notificationType = new NotificationTypePath(this, Keys.FK1_APP_PREF_NOTIFICATION_TYPE_ID, null);
-
-        return _notificationType;
+        return Arrays.asList(Keys.KEY_NOTIFICATION_APP_PREFERENCE_UK1_APP_PREF_CLIENT_ID_APP_ID_NOTI_TYPE);
     }
 
     @Override

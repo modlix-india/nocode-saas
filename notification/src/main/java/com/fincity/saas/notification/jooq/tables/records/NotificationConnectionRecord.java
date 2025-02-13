@@ -75,7 +75,8 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
     }
 
     /**
-     * Setter for <code>notification.notification_connection.CODE</code>. Code
+     * Setter for <code>notification.notification_connection.CODE</code>. Unique
+     * Code to identify this row
      */
     public NotificationConnectionRecord setCode(String value) {
         set(3, value);
@@ -83,7 +84,8 @@ public class NotificationConnectionRecord extends UpdatableRecordImpl<Notificati
     }
 
     /**
-     * Getter for <code>notification.notification_connection.CODE</code>. Code
+     * Getter for <code>notification.notification_connection.CODE</code>. Unique
+     * Code to identify this row
      */
     public String getCode() {
         return (String) get(3);

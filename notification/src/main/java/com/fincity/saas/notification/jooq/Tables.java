@@ -8,7 +8,6 @@ import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
 import com.fincity.saas.notification.jooq.tables.NotificationConnection;
 import com.fincity.saas.notification.jooq.tables.NotificationNotification;
 import com.fincity.saas.notification.jooq.tables.NotificationTemplate;
-import com.fincity.saas.notification.jooq.tables.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationUserPreference;
 
 
@@ -37,11 +36,6 @@ public class Tables {
      * The table <code>notification.notification_template</code>.
      */
     public static final NotificationTemplate NOTIFICATION_TEMPLATE = NotificationTemplate.NOTIFICATION_TEMPLATE;
-
-    /**
-     * The table <code>notification.notification_type</code>.
-     */
-    public static final NotificationType NOTIFICATION_TYPE = NotificationType.NOTIFICATION_TYPE;
 
     /**
      * The table <code>notification.notification_user_preference</code>.

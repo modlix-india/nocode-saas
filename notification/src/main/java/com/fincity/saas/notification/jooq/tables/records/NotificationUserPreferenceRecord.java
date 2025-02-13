@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationUserPreference;
 
 import java.time.LocalDateTime;
@@ -77,21 +78,21 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
 
     /**
      * Setter for
-     * <code>notification.notification_user_preference.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_user_preference.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public NotificationUserPreferenceRecord setNotificationTypeId(ULong value) {
+    public NotificationUserPreferenceRecord setNotificationType(NotificationType value) {
         set(3, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_user_preference.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_user_preference.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public ULong getNotificationTypeId() {
-        return (ULong) get(3);
+    public NotificationType getNotificationType() {
+        return (NotificationType) get(3);
     }
 
     /**
@@ -212,13 +213,13 @@ public class NotificationUserPreferenceRecord extends UpdatableRecordImpl<Notifi
     /**
      * Create a detached, initialised NotificationUserPreferenceRecord
      */
-    public NotificationUserPreferenceRecord(ULong id, ULong appId, ULong userId, ULong notificationTypeId, JSON preferences, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationUserPreferenceRecord(ULong id, ULong appId, ULong userId, NotificationType notificationType, JSON preferences, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationUserPreference.NOTIFICATION_USER_PREFERENCE);
 
         setId(id);
         setAppId(appId);
         setUserId(userId);
-        setNotificationTypeId(notificationTypeId);
+        setNotificationType(notificationType);
         setPreferences(preferences);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

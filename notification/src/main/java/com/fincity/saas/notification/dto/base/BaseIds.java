@@ -5,6 +5,7 @@ import java.io.Serial;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.util.UniqueUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,4 +23,10 @@ public abstract class BaseIds<I extends BaseIds<I>> extends AbstractUpdatableDTO
 
 	private ULong clientId;
 	private ULong appId;
+	private String code;
+
+	public BaseIds<I> setCode() {
+		this.code = UniqueUtil.shortUUID();
+		return this;
+	}
 }

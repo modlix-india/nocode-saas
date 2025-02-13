@@ -18,7 +18,15 @@ public class UserPreference extends NotificationPreference<UserPreference> {
 	@Serial
 	private static final long serialVersionUID = 5340826954624052288L;
 
-	private ULong appId;
 	private ULong userId;
 
+	@Override
+	public ULong getIdentifierId() {
+		return this.getUserId();
+	}
+
+	@Override
+	public UserPreference setIdentifierId(ULong identifierId) {
+		return this.setUserId(identifierId);
+	}
 }

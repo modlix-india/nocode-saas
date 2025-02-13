@@ -75,7 +75,8 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
     }
 
     /**
-     * Setter for <code>notification.notification_template.CODE</code>. Code
+     * Setter for <code>notification.notification_template.CODE</code>. Unique
+     * Code to identify this row
      */
     public NotificationTemplateRecord setCode(String value) {
         set(3, value);
@@ -83,7 +84,8 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
     }
 
     /**
-     * Getter for <code>notification.notification_template.CODE</code>. Code
+     * Getter for <code>notification.notification_template.CODE</code>. Unique
+     * Code to identify this row
      */
     public String getCode() {
         return (String) get(3);

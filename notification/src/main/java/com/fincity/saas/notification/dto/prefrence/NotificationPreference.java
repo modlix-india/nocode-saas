@@ -10,7 +10,9 @@ import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.notification.dto.base.IdIdentifier;
 import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.NotificationType;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -21,7 +23,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public abstract class NotificationPreference<T extends NotificationPreference<T>> extends AbstractUpdatableDTO<ULong, ULong> {
+public abstract class NotificationPreference<T extends NotificationPreference<T>> extends AbstractUpdatableDTO<ULong, ULong> implements IdIdentifier<T> {
 
 	@Serial
 	private static final long serialVersionUID = 4007524811937317620L;
@@ -35,7 +37,8 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 							() -> new EnumMap<>(NotificationChannelType.class)
 					));
 
-	private ULong notificationTypeId;
+	private ULong appId;
+	private NotificationType notificationTypeId;
 
 	private Map<NotificationChannelType, Boolean> preferences = DEFAULT_PREF;
 

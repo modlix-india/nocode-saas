@@ -4,11 +4,10 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.Indexes;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
-import com.fincity.saas.notification.jooq.tables.NotificationTemplate.NotificationTemplatePath;
-import com.fincity.saas.notification.jooq.tables.NotificationType.NotificationTypePath;
 import com.fincity.saas.notification.jooq.tables.records.NotificationNotificationRecord;
 
 import java.time.LocalDateTime;
@@ -18,15 +17,12 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
-import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -36,6 +32,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -82,66 +79,30 @@ public class NotificationNotification extends TableImpl<NotificationNotification
     public final TableField<NotificationNotificationRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
 
     /**
-     * The column <code>notification.notification_notification.CODE</code>. Code
+     * The column <code>notification.notification_notification.USER_ID</code>.
+     * Identifier for the application. References security_app table
      */
-    public final TableField<NotificationNotificationRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Code");
+    public final TableField<NotificationNotificationRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the application. References security_app table");
 
     /**
-     * The column <code>notification.notification_notification.NAME</code>.
-     * Template name
+     * The column <code>notification.notification_notification.CODE</code>.
+     * Unique Code to identify this row
      */
-    public final TableField<NotificationNotificationRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(125).nullable(false), this, "Template name");
-
-    /**
-     * The column
-     * <code>notification.notification_notification.DESCRIPTION</code>.
-     * Description of notification Template
-     */
-    public final TableField<NotificationNotificationRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description of notification Template");
+    public final TableField<NotificationNotificationRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row");
 
     /**
      * The column
-     * <code>notification.notification_notification.NOTIFICATION_TYPE_ID</code>.
-     * Identifier for the notification type. References notification_type table
+     * <code>notification.notification_notification.NOTIFICATION_TYPE</code>.
+     * Type of notification
      */
-    public final TableField<NotificationNotificationRecord, ULong> NOTIFICATION_TYPE_ID = createField(DSL.name("NOTIFICATION_TYPE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the notification type. References notification_type table");
+    public final TableField<NotificationNotificationRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false), this, "Type of notification", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
 
     /**
      * The column
-     * <code>notification.notification_notification.EMAIL_TEMPLATE_ID</code>.
-     * Identifier for the email template. References notification_template table
+     * <code>notification.notification_notification.CHANNEL_DETAILS</code>.
+     * Notification details per channel
      */
-    public final TableField<NotificationNotificationRecord, ULong> EMAIL_TEMPLATE_ID = createField(DSL.name("EMAIL_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the email template. References notification_template table");
-
-    /**
-     * The column
-     * <code>notification.notification_notification.IN_APP_TEMPLATE_ID</code>.
-     * Identifier for the inApp template. References notification_template table
-     */
-    public final TableField<NotificationNotificationRecord, ULong> IN_APP_TEMPLATE_ID = createField(DSL.name("IN_APP_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the inApp template. References notification_template table");
-
-    /**
-     * The column
-     * <code>notification.notification_notification.MOBILE_PUSH_TEMPLATE_ID</code>.
-     * Identifier for the mobile push template. References notification_template
-     * table
-     */
-    public final TableField<NotificationNotificationRecord, ULong> MOBILE_PUSH_TEMPLATE_ID = createField(DSL.name("MOBILE_PUSH_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the mobile push template. References notification_template table");
-
-    /**
-     * The column
-     * <code>notification.notification_notification.WEB_PUSH_TEMPLATE_ID</code>.
-     * Identifier for the web push template. References notification_template
-     * table
-     */
-    public final TableField<NotificationNotificationRecord, ULong> WEB_PUSH_TEMPLATE_ID = createField(DSL.name("WEB_PUSH_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the web push template. References notification_template table");
-
-    /**
-     * The column
-     * <code>notification.notification_notification.SMS_TEMPLATE_ID</code>.
-     * Identifier for the sms template. References notification_template table
-     */
-    public final TableField<NotificationNotificationRecord, ULong> SMS_TEMPLATE_ID = createField(DSL.name("SMS_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Identifier for the sms template. References notification_template table");
+    public final TableField<NotificationNotificationRecord, JSON> CHANNEL_DETAILS = createField(DSL.name("CHANNEL_DETAILS"), SQLDataType.JSON.nullable(false), this, "Notification details per channel");
 
     /**
      * The column
@@ -203,39 +164,6 @@ public class NotificationNotification extends TableImpl<NotificationNotification
         this(DSL.name("notification_notification"), null);
     }
 
-    public <O extends Record> NotificationNotification(Table<O> path, ForeignKey<O, NotificationNotificationRecord> childPath, InverseForeignKey<O, NotificationNotificationRecord> parentPath) {
-        super(path, childPath, parentPath, NOTIFICATION_NOTIFICATION);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class NotificationNotificationPath extends NotificationNotification implements Path<NotificationNotificationRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> NotificationNotificationPath(Table<O> path, ForeignKey<O, NotificationNotificationRecord> childPath, InverseForeignKey<O, NotificationNotificationRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private NotificationNotificationPath(Name alias, Table<NotificationNotificationRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public NotificationNotificationPath as(String alias) {
-            return new NotificationNotificationPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public NotificationNotificationPath as(Name alias) {
-            return new NotificationNotificationPath(alias, this);
-        }
-
-        @Override
-        public NotificationNotificationPath as(Table<?> alias) {
-            return new NotificationNotificationPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : Notification.NOTIFICATION;
@@ -243,7 +171,7 @@ public class NotificationNotification extends TableImpl<NotificationNotification
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.NOTIFICATION_NOTIFICATION_IDX1_NOTIFICATION_CODE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_NOTIFICATION_IDX2_NOTIFICATION_CLIENT_ID_APP_ID);
+        return Arrays.asList(Indexes.NOTIFICATION_NOTIFICATION_IDX1_NOTIFICATION_CLIENT_ID_APP_ID_NOTI_TYPE, Indexes.NOTIFICATION_NOTIFICATION_IDX1_NOTIFICATION_CODE_NOTI_TYPE, Indexes.NOTIFICATION_NOTIFICATION_IDX2_NOTIFICATION_APP_ID_USER_ID_NOTI_TYPE, Indexes.NOTIFICATION_NOTIFICATION_IDX3_NOTIFICATION_CLIENT_ID_APP_ID_USER_ID_NOTI_TYPE);
     }
 
     @Override
@@ -259,94 +187,6 @@ public class NotificationNotification extends TableImpl<NotificationNotification
     @Override
     public List<UniqueKey<NotificationNotificationRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_NOTIFICATION_NOTIFICATION_UK1_NOTIFICATION_CODE);
-    }
-
-    @Override
-    public List<ForeignKey<NotificationNotificationRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_NOTIFICATION_NOTIFICATION_TYPE, Keys.FK2_NOTIFICATION_EMAIL_TEMPLATE, Keys.FK3_NOTIFICATION_IN_APP_TEMPLATE, Keys.FK4_NOTIFICATION_SMS_TEMPLATE, Keys.FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE, Keys.FK5_NOTIFICATION_WEB_PUSH_TEMPLATE);
-    }
-
-    private transient NotificationTypePath _notificationType;
-
-    /**
-     * Get the implicit join path to the
-     * <code>notification.notification_type</code> table.
-     */
-    public NotificationTypePath notificationType() {
-        if (_notificationType == null)
-            _notificationType = new NotificationTypePath(this, Keys.FK1_NOTIFICATION_NOTIFICATION_TYPE, null);
-
-        return _notificationType;
-    }
-
-    private transient NotificationTemplatePath _fk2NotificationEmailTemplate;
-
-    /**
-     * Get the implicit join path to the
-     * <code>notification.notification_template</code> table, via the
-     * <code>FK2_NOTIFICATION_EMAIL_TEMPLATE</code> key.
-     */
-    public NotificationTemplatePath fk2NotificationEmailTemplate() {
-        if (_fk2NotificationEmailTemplate == null)
-            _fk2NotificationEmailTemplate = new NotificationTemplatePath(this, Keys.FK2_NOTIFICATION_EMAIL_TEMPLATE, null);
-
-        return _fk2NotificationEmailTemplate;
-    }
-
-    private transient NotificationTemplatePath _fk3NotificationInAppTemplate;
-
-    /**
-     * Get the implicit join path to the
-     * <code>notification.notification_template</code> table, via the
-     * <code>FK3_NOTIFICATION_IN_APP_TEMPLATE</code> key.
-     */
-    public NotificationTemplatePath fk3NotificationInAppTemplate() {
-        if (_fk3NotificationInAppTemplate == null)
-            _fk3NotificationInAppTemplate = new NotificationTemplatePath(this, Keys.FK3_NOTIFICATION_IN_APP_TEMPLATE, null);
-
-        return _fk3NotificationInAppTemplate;
-    }
-
-    private transient NotificationTemplatePath _fk4NotificationSmsTemplate;
-
-    /**
-     * Get the implicit join path to the
-     * <code>notification.notification_template</code> table, via the
-     * <code>FK4_NOTIFICATION_SMS_TEMPLATE</code> key.
-     */
-    public NotificationTemplatePath fk4NotificationSmsTemplate() {
-        if (_fk4NotificationSmsTemplate == null)
-            _fk4NotificationSmsTemplate = new NotificationTemplatePath(this, Keys.FK4_NOTIFICATION_SMS_TEMPLATE, null);
-
-        return _fk4NotificationSmsTemplate;
-    }
-
-    private transient NotificationTemplatePath _fk5NotificationMobilePushTemplate;
-
-    /**
-     * Get the implicit join path to the
-     * <code>notification.notification_template</code> table, via the
-     * <code>FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE</code> key.
-     */
-    public NotificationTemplatePath fk5NotificationMobilePushTemplate() {
-        if (_fk5NotificationMobilePushTemplate == null)
-            _fk5NotificationMobilePushTemplate = new NotificationTemplatePath(this, Keys.FK5_NOTIFICATION_MOBILE_PUSH_TEMPLATE, null);
-
-        return _fk5NotificationMobilePushTemplate;
-    }
-
-    private transient NotificationTemplatePath _fk5NotificationWebPushTemplate;
-
-    /**
-     * Get the implicit join path to the
-     * <code>notification.notification_template</code> table, via the
-     * <code>FK5_NOTIFICATION_WEB_PUSH_TEMPLATE</code> key.
-     */
-    public NotificationTemplatePath fk5NotificationWebPushTemplate() {
-        if (_fk5NotificationWebPushTemplate == null)
-            _fk5NotificationWebPushTemplate = new NotificationTemplatePath(this, Keys.FK5_NOTIFICATION_WEB_PUSH_TEMPLATE, null);
-
-        return _fk5NotificationWebPushTemplate;
     }
 
     @Override
