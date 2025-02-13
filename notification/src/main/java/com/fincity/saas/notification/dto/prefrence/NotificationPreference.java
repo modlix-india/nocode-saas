@@ -59,7 +59,7 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 	}
 
 	@Override
-	public Boolean getChannelValue(NotificationChannelType channelType) {
+	public Boolean has(NotificationChannelType channelType) {
 		return this.preferences.getOrDefault(channelType, Boolean.FALSE);
 	}
 
