@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.notification.dto.base.ChannelDetails;
 import com.fincity.saas.notification.dto.base.IdIdentifier;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationType;
@@ -23,7 +24,8 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public abstract class NotificationPreference<T extends NotificationPreference<T>> extends AbstractUpdatableDTO<ULong, ULong> implements IdIdentifier<T> {
+public abstract class NotificationPreference<T extends NotificationPreference<T>> extends AbstractUpdatableDTO<ULong, ULong>
+		implements IdIdentifier<T>, ChannelDetails<Boolean, T> {
 
 	@Serial
 	private static final long serialVersionUID = 4007524811937317620L;
@@ -47,9 +49,10 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 	}
 
 	@SuppressWarnings("unchecked")
-	public T setChannelEnabled(NotificationChannelType channelType, boolean enabled) {
+	@Override
+	public T setChannelValue(NotificationChannelType channelType, Boolean enabled) {
 		if (channelType == NotificationChannelType.DISABLED) {
-			if (enabled)
+			if (Boolean.TRUE.equals(enabled))
 				disableAll();
 			this.preferences.put(NotificationChannelType.DISABLED, enabled);
 		} else {
@@ -57,30 +60,6 @@ public abstract class NotificationPreference<T extends NotificationPreference<T>
 			updateDisabledState();
 		}
 		return (T) this;
-	}
-
-	public T setDisabled(boolean disabled) {
-		return setChannelEnabled(NotificationChannelType.DISABLED, disabled);
-	}
-
-	public T setEmailEnabled(boolean enabled) {
-		return setChannelEnabled(NotificationChannelType.EMAIL, enabled);
-	}
-
-	public T setInAppEnabled(boolean enabled) {
-		return setChannelEnabled(NotificationChannelType.IN_APP, enabled);
-	}
-
-	public T setMobilePushEnabled(boolean enabled) {
-		return setChannelEnabled(NotificationChannelType.MOBILE_PUSH, enabled);
-	}
-
-	public T setWebPushEnabled(boolean enabled) {
-		return setChannelEnabled(NotificationChannelType.WEB_PUSH, enabled);
-	}
-
-	public T setSmsEnabled(boolean enabled) {
-		return setChannelEnabled(NotificationChannelType.SMS, enabled);
 	}
 
 	private void disableAll() {
