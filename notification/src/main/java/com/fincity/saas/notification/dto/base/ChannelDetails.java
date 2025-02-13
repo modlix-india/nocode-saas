@@ -9,47 +9,47 @@ public interface ChannelDetails<V, T extends ChannelDetails<V, T>> {
 	V getChannelValue(NotificationChannelType channelType);
 
 	default V getDisabled() {
-		return getChannelValue(NotificationChannelType.DISABLED);
+		return this.getChannelValue(NotificationChannelType.DISABLED);
 	}
 
 	default T setDisabled(V value) {
-		return setChannelValue(NotificationChannelType.DISABLED, value);
+		return this.setChannelValue(NotificationChannelType.DISABLED, value);
 	}
 
 	default V getEmail() {
-		return getChannelValue(NotificationChannelType.EMAIL);
+		return this.getChannelValue(NotificationChannelType.EMAIL);
 	}
 
 	default T setEmail(V value) {
-		return setChannelValue(NotificationChannelType.EMAIL, value);
+		return this.setChannelValue(NotificationChannelType.EMAIL, value);
 	}
 
 	default V getInApp() {
-		return getChannelValue(NotificationChannelType.IN_APP);
+		return this.getChannelValue(NotificationChannelType.IN_APP);
 	}
 
 	default T setInApp(V value) {
-		return setChannelValue(NotificationChannelType.IN_APP, value);
+		return this.setChannelValue(NotificationChannelType.IN_APP, value);
 	}
 
 	default V getMobilePush() {
-		return getChannelValue(NotificationChannelType.MOBILE_PUSH);
+		return this.getChannelValue(NotificationChannelType.MOBILE_PUSH);
 	}
 
 	default T setMobilePush(V value) {
-		return setChannelValue(NotificationChannelType.MOBILE_PUSH, value);
+		return this.setChannelValue(NotificationChannelType.MOBILE_PUSH, value);
 	}
 
 	default V getWebPush() {
-		return getChannelValue(NotificationChannelType.WEB_PUSH);
+		return this.getChannelValue(NotificationChannelType.WEB_PUSH);
 	}
 
 	default T setWebPush(V value) {
-		return setChannelValue(NotificationChannelType.WEB_PUSH, value);
+		return this.setChannelValue(NotificationChannelType.WEB_PUSH, value);
 	}
 
 	default T setSms(V value) {
-		return setChannelValue(NotificationChannelType.SMS, value);
+		return this.setChannelValue(NotificationChannelType.SMS, value);
 	}
 
 	// TODO : Add channels if necessary
