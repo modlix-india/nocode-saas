@@ -48,7 +48,8 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
-import com.fincity.security.model.OtpGenerationRequestInternal;
+import com.fincity.security.model.otp.OtpGenerationRequestInternal;
+import com.fincity.security.model.otp.OtpVerificationRequest;
 import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
 
 import reactor.core.publisher.Mono;
@@ -302,7 +303,8 @@ public class AuthenticationService implements IAuthenticationService {
 							? Mono.just(
 									pwdEncoder.matches(user.getId() + passwordString, user.getPin()))
 							: Mono.just(StringUtil.safeEquals(passwordString, user.getPin()));
-					case OTP -> this.otpService.verifyOtpInternal(appCode, user, OtpPurpose.LOGIN, passwordString);
+					case OTP -> this.otpService.verifyOtpInternal(appCode, user,
+							new OtpVerificationRequest().setPurpose(OtpPurpose.PASSWORD_RESET).setOtp(passwordString));
 				},
 				isValid -> Boolean.FALSE.equals(isValid) ? checkFailedAttempts(user, policy, passwordType)
 						: Mono.just(Boolean.TRUE))
