@@ -1,5 +1,6 @@
 package com.fincity.saas.notification.service.preferences;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,14 +21,15 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.dao.preference.NotificationPreferenceDao;
 import com.fincity.saas.notification.dto.prefrence.NotificationPreference;
-import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
 import lombok.Getter;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 @Service
 public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>, D extends NotificationPreference<D>,
@@ -56,21 +58,12 @@ public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>
 
 	public abstract boolean isAppLevel();
 
-	private String getCacheKeys(ULong appId, ULong identifierId, NotificationType notificationType) {
-		return appId + ":" + identifierId + ":" + notificationType.getLiteral();
-	}
-
-	private Mono<D> notificationTypeIdError() {
-		return messageResourceService.throwMessage(
-				msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-				NotificationMessageResourceService.NOTIFICATION_TYPE_NOT_FOUND);
+	private String getCacheKeys(ULong appId, ULong identifierId) {
+		return appId + ":" + identifierId;
 	}
 
 	@Override
 	public Mono<D> create(D entity) {
-
-		if (entity.getNotificationTypeId() == null)
-			return this.notificationTypeIdError();
 
 		return FlatMapUtil.flatMapMono(
 
@@ -83,7 +76,7 @@ public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>
 						(ca, uEntity, canCreate) -> super.create(uEntity),
 
 						(ca, uEntity, canCreate, created) -> cacheService.evict(this.getPreferenceCacheName(),
-								this.getCacheKeys(created.getAppId(), created.getIdentifierId(), created.getNotificationTypeId())).map(evicted -> created))
+								this.getCacheKeys(created.getAppId(), created.getIdentifierId())).map(evicted -> created))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_CREATE, getPreferenceName()));
@@ -91,22 +84,81 @@ public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>
 
 	@Override
 	public Mono<D> read(ULong id) {
+
+		if (id == null)
+			return Mono.empty();
+
 		return super.read(id);
+	}
+
+	public Mono<D> read(String code) {
+		if (StringUtil.safeIsBlank(code))
+			return Mono.empty();
+
+		return this.securityService.getAppByCode(code)
+				.flatMap(app -> this.read(ULongUtil.valueOf(app.getId())))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationPreferenceService.read[code]"));
 	}
 
 	@Override
 	public Mono<Integer> delete(ULong id) {
-		return super.delete(id);
+
+		return FlatMapUtil.flatMapMono(
+
+						SecurityContextUtil::getUsersContextAuthentication,
+
+						ca -> this.read(id),
+
+						(ca, entity) -> this.canUpdatePreference(ca),
+
+						(ca, entity, canDelete) -> super.delete(id),
+
+						(ca, entity, canUpdate, deleted) -> cacheService.evict(this.getPreferenceCacheName(),
+								this.getCacheKeys(entity.getAppId(), entity.getIdentifierId())).map(evicted -> deleted))
+				.switchIfEmpty(messageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getPreferenceName()));
 	}
 
 	@Override
 	public Mono<D> update(ULong key, Map<String, Object> fields) {
-		return super.update(key, fields);
+
+		return FlatMapUtil.flatMapMono(
+
+						SecurityContextUtil::getUsersContextAuthentication,
+
+						ca -> key != null ? this.read(key) :
+								this.getNotificationPreference(ca.getUrlAppCode(), this.getIdentifierId(ca)),
+
+						(ca, entity) -> this.canUpdatePreference(ca),
+
+						(ca, entity, canUpdate) -> super.update(key, fields),
+
+						(ca, entity, canUpdate, updated) -> cacheService.evict(this.getPreferenceCacheName(),
+								this.getCacheKeys(updated.getAppId(), updated.getIdentifierId())).map(evicted -> updated))
+				.switchIfEmpty(messageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getPreferenceName()));
 	}
 
 	@Override
 	public Mono<D> update(D entity) {
-		return super.update(entity);
+
+		return FlatMapUtil.flatMapMono(
+
+						SecurityContextUtil::getUsersContextAuthentication,
+
+						ca -> this.read(entity.getId()),
+
+						(ca, uEntity) -> this.canUpdatePreference(ca),
+
+						(ca, uEntity, canUpdate) -> super.update(entity),
+
+						(ca, uEntity, canUpdate, updated) -> cacheService.evict(this.getPreferenceCacheName(),
+								this.getCacheKeys(updated.getAppId(), updated.getIdentifierId())).map(evicted -> updated))
+				.switchIfEmpty(messageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getPreferenceName()));
 	}
 
 	@Override
@@ -146,7 +198,7 @@ public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>
 					return Mono.just(entity);
 				},
 				(appId, uEntity) -> this.getNotificationPreferenceInternal(uEntity.getAppId(),
-						uEntity.getIdentifierId(), uEntity.getNotificationTypeId()),
+						uEntity.getIdentifierId()),
 
 				(appId, uEntity, notificationPreference) -> {
 
@@ -176,20 +228,77 @@ public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
-	public Mono<D> getNotificationPreference(String appCode, ULong identifierId, NotificationType notificationType) {
+	public Mono<D> getNotificationPreference(BigInteger identifierId, boolean current) {
+
+		boolean getCurrent = identifierId == null || current;
+
+		return FlatMapUtil.flatMapMono(
+
+						SecurityContextUtil::getUsersContextAuthentication,
+
+						ca -> getCurrent ? Mono.just(this.getIdentifierId(ca)) : Mono.just(ULongUtil.valueOf(identifierId)),
+
+						(ca, id) -> this.getNotificationPreference(ca.getUrlAppCode(), id))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationPreferenceService.getNotificationPreference[identifierId, current]"));
+	}
+
+	public Mono<D> getNotificationPreference(String clientCode, boolean current) {
+
+		boolean getCurrent = StringUtil.safeIsBlank(clientCode) || current;
+
+		if (!isAppLevel())
+			return Mono.empty();
+
+		return FlatMapUtil.flatMapMono(
+
+						SecurityContextUtil::getUsersContextAuthentication,
+
+						ca -> getCurrent ? Mono.justOrEmpty(this.getIdentifierCode(ca)) : Mono.just(clientCode),
+
+						(ca, id) -> this.getNotificationPreference(ca.getUrlAppCode(), id))
+				.switchIfEmpty(Mono.empty())
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationPreferenceService.getNotificationPreference[clientCode, current]"));
+	}
+
+	public Mono<D> getNotificationPreference(String appCode, String clientCode) {
+		return this.getClientAndAppId(clientCode, appCode)
+				.flatMap(clientAppIds -> this.getNotificationPreferenceInternal(clientAppIds.getT2(), clientAppIds.getT1()));
+	}
+
+	public Mono<D> getNotificationPreference(String appCode, ULong identifierId) {
 		return this.securityService.getAppByCode(appCode)
-				.flatMap(app -> this.getNotificationPreferenceInternal(ULongUtil.valueOf(app.getId()), identifierId, notificationType));
+				.flatMap(app -> this.getNotificationPreferenceInternal(ULongUtil.valueOf(app.getId()), identifierId));
+	}
+
+	public Mono<D> getNotificationPreference(String code) {
+		return this.getNotificationPreferenceInternal(code);
+	}
+
+	private Mono<D> getNotificationPreferenceInternal(String code) {
+		return this.cacheService.cacheValueOrGet(this.getPreferenceCacheName(),
+				() -> this.dao.getByCode(code), code);
+	}
+
+	private Mono<D> getNotificationPreferenceInternal(ULong appId, ULong identifierId) {
+		return this.cacheService.cacheValueOrGet(this.getPreferenceCacheName(),
+				() -> this.dao.getNotificationPreference(appId, identifierId),
+				this.getCacheKeys(appId, identifierId)
+		);
 	}
 
 	private ULong getIdentifierId(ContextAuthentication ca) {
 		return ULongUtil.valueOf(this.isAppLevel() ? ca.getLoggedInFromClientId() : ca.getUser().getClientId());
 	}
 
-	private Mono<D> getNotificationPreferenceInternal(ULong appId, ULong identifierId, NotificationType notificationType) {
-		return this.cacheService.cacheValueOrGet(this.getPreferenceCacheName(),
-				() -> this.dao.getNotificationPreference(appId, identifierId, notificationType),
-				this.getCacheKeys(appId, identifierId, notificationType)
-		);
+	private String getIdentifierCode(ContextAuthentication ca) {
+		//TODO : Get client code for user level and process
+		return this.isAppLevel() ? ca.getLoggedInFromClientCode() : null;
+	}
 
+	private Mono<Tuple2<ULong, ULong>> getClientAndAppId(String clientCode, String appCode) {
+		return FlatMapUtil.flatMapMonoConsolidate(
+				() -> this.securityService.getClientByCode(clientCode).map(client -> ULongUtil.valueOf(client.getId())),
+				clientId -> this.securityService.getAppByCode(appCode).map(app -> ULongUtil.valueOf(app.getId()))
+		);
 	}
 }

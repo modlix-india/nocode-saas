@@ -10,10 +10,10 @@ import com.fincity.saas.notification.jooq.tables.records.NotificationTemplateRec
 
 import reactor.core.publisher.Mono;
 
-public class TemplateDao extends AbstractUpdatableDAO<NotificationTemplateRecord, ULong, Template> {
+public class TemplateDao extends AbstractCodeDao<NotificationTemplateRecord, ULong, Template> {
 
 	protected TemplateDao() {
-		super(Template.class, NOTIFICATION_TEMPLATE, NOTIFICATION_TEMPLATE.ID);
+		super(Template.class, NOTIFICATION_TEMPLATE, NOTIFICATION_TEMPLATE.ID, NOTIFICATION_TEMPLATE.CODE);
 	}
 
 	public Mono<Template> getTemplate(ULong clientId, ULong appId, String templateCode) {

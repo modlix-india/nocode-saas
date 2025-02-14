@@ -27,8 +27,7 @@ CREATE TABLE `notification`.`notification_connection` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_CONNECTION_CODE` (`CODE`),
-    INDEX `IDX1_CONNECTION_CODE_CLIENT_ID_APP_ID` (`CODE`, `CLIENT_ID`, `APP_ID`),
-    INDEX `IDX2_CONNECTION_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`)
+    INDEX `IDX1_CONNECTION_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`)
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
@@ -60,8 +59,7 @@ CREATE TABLE `notification`.`notification_template` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_TEMPLATE_CODE` (`CODE`),
-    INDEX `IDX1_TEMPLATE_CODE_CLIENT_ID_APP_ID` (`CODE`, `CLIENT_ID`, `APP_ID`),
-    INDEX `IDX2_TEMPLATE_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`)
+    INDEX `IDX!_TEMPLATE_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`)
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
@@ -104,8 +102,8 @@ CREATE TABLE `notification`.`notification_user_preference` (
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
     `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the user. References security_user table',
-    `NOTIFICATION_TYPE` ENUM ('ALERT', 'BULK', 'INFO', 'WARNING', 'ERROR', 'SUCCESS', 'REMINDER', 'SCHEDULED', 'SYSTEM', 'PROMOTIONAL', 'UPDATE', 'SECURITY')
-        NOT NULL DEFAULT 'INFO' COMMENT 'Type of notification',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
+
     `PREFERENCES` JSON NULL COMMENT 'Notification user preferences',
 
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
@@ -114,7 +112,8 @@ CREATE TABLE `notification`.`notification_user_preference` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_USER_PREF_APP_ID_USER_ID_NOTI_TYPE` (`APP_ID`, `USER_ID`, `NOTIFICATION_TYPE`)
+    UNIQUE KEY `UK1_USER_PREF_CODE` (`CODE`),
+    UNIQUE KEY `UK2_USER_PREF_APP_ID_USER_ID` (`APP_ID`, `USER_ID`)
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
@@ -127,8 +126,8 @@ CREATE TABLE `notification`.`notification_app_preference` (
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
     `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
-    `NOTIFICATION_TYPE` ENUM ('ALERT', 'BULK', 'INFO', 'WARNING', 'ERROR', 'SUCCESS', 'REMINDER', 'SCHEDULED', 'SYSTEM', 'PROMOTIONAL', 'UPDATE', 'SECURITY')
-        NOT NULL DEFAULT 'INFO' COMMENT 'Type of notification',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
+
     `PREFERENCES` JSON NULL COMMENT 'Notification app preferences',
 
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
@@ -137,7 +136,8 @@ CREATE TABLE `notification`.`notification_app_preference` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_APP_PREF_CLIENT_ID_APP_ID_NOTI_TYPE` (`CLIENT_ID`, `APP_ID`, `NOTIFICATION_TYPE`)
+    UNIQUE KEY `UK1_APP_PREF_CODE` (`CODE`),
+    UNIQUE KEY `UK1_APP_PREF_CLIENT_ID_APP_ID` (`CLIENT_ID`, `APP_ID`)
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`

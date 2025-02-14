@@ -23,10 +23,5 @@ public abstract class BaseIds<I extends BaseIds<I>> extends AbstractUpdatableDTO
 
 	private ULong clientId;
 	private ULong appId;
-	private String code;
-
-	public BaseIds<I> setCode() {
-		this.code = UniqueUtil.shortUUID();
-		return this;
-	}
+	private String code = UniqueUtil.shortUUID();
 }

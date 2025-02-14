@@ -5,33 +5,28 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 
-import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.notification.dao.AbstractCodeDao;
 import com.fincity.saas.notification.dto.prefrence.NotificationPreference;
-import com.fincity.saas.notification.enums.NotificationType;
 
 import reactor.core.publisher.Mono;
 
 public abstract class NotificationPreferenceDao<R extends UpdatableRecord<R>, D extends NotificationPreference<D>>
-		extends AbstractUpdatableDAO<R, ULong, D> {
+		extends AbstractCodeDao<R, ULong, D> {
 
 	private final Field<ULong> appIdField;
-	private final Field<NotificationType> notificationTypeField;
 
-	protected NotificationPreferenceDao(Class<D> pojoClass, Table<R> table, Field<ULong> idField, Field<ULong> appIdField,
-	                                    Field<NotificationType> notificationTypeField) {
-		super(pojoClass, table, idField);
+	protected NotificationPreferenceDao(Class<D> pojoClass, Table<R> table, Field<ULong> idField, Field<ULong> appIdField, Field<String> codeField) {
+		super(pojoClass, table, idField, codeField);
 		this.appIdField = appIdField;
-		this.notificationTypeField = notificationTypeField;
 	}
 
 	protected abstract Field<ULong> getIdentifierField();
 
-	public Mono<D> getNotificationPreference(ULong appId, ULong identifierId, NotificationType notificationTypeId) {
+	public Mono<D> getNotificationPreference(ULong appId, ULong identifierId) {
 		return Mono.from(
 				this.dslContext.selectFrom(this.table)
 						.where(appIdField.eq(appId)
-								.and(this.getIdentifierField().eq(identifierId))
-								.and(notificationTypeField.eq(notificationTypeId)))
+								.and(this.getIdentifierField().eq(identifierId)))
 		).map(result -> result.into(this.pojoClass));
 	}
 }

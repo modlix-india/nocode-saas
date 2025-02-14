@@ -12,7 +12,7 @@ public class UserPreferenceDao extends NotificationPreferenceDao<NotificationUse
 
 	protected UserPreferenceDao() {
 		super(UserPreference.class, NOTIFICATION_USER_PREFERENCE, NOTIFICATION_USER_PREFERENCE.ID,
-				NOTIFICATION_USER_PREFERENCE.APP_ID, NOTIFICATION_USER_PREFERENCE.NOTIFICATION_TYPE);
+				NOTIFICATION_USER_PREFERENCE.APP_ID, NOTIFICATION_USER_PREFERENCE.CODE);
 	}
 
 	@Override

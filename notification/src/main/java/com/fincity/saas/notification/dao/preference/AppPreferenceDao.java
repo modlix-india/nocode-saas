@@ -14,7 +14,7 @@ public class AppPreferenceDao extends NotificationPreferenceDao<NotificationAppP
 
 	protected AppPreferenceDao() {
 		super(AppPreference.class, NOTIFICATION_APP_PREFERENCE, NOTIFICATION_APP_PREFERENCE.ID,
-				NOTIFICATION_APP_PREFERENCE.APP_ID, NOTIFICATION_APP_PREFERENCE.NOTIFICATION_TYPE);
+				NOTIFICATION_APP_PREFERENCE.APP_ID, NOTIFICATION_APP_PREFERENCE.CODE);
 	}
 
 	@Override

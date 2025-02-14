@@ -4,7 +4,6 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
-import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
 
 import java.time.LocalDateTime;
@@ -77,22 +76,20 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
     }
 
     /**
-     * Setter for
-     * <code>notification.notification_app_preference.NOTIFICATION_TYPE</code>.
-     * Type of notification
+     * Setter for <code>notification.notification_app_preference.CODE</code>.
+     * Unique Code to identify this row
      */
-    public NotificationAppPreferenceRecord setNotificationType(NotificationType value) {
+    public NotificationAppPreferenceRecord setCode(String value) {
         set(3, value);
         return this;
     }
 
     /**
-     * Getter for
-     * <code>notification.notification_app_preference.NOTIFICATION_TYPE</code>.
-     * Type of notification
+     * Getter for <code>notification.notification_app_preference.CODE</code>.
+     * Unique Code to identify this row
      */
-    public NotificationType getNotificationType() {
-        return (NotificationType) get(3);
+    public String getCode() {
+        return (String) get(3);
     }
 
     /**
@@ -213,13 +210,13 @@ public class NotificationAppPreferenceRecord extends UpdatableRecordImpl<Notific
     /**
      * Create a detached, initialised NotificationAppPreferenceRecord
      */
-    public NotificationAppPreferenceRecord(ULong id, ULong clientId, ULong appId, NotificationType notificationType, JSON preferences, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationAppPreferenceRecord(ULong id, ULong clientId, ULong appId, String code, JSON preferences, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationAppPreference.NOTIFICATION_APP_PREFERENCE);
 
         setId(id);
         setClientId(clientId);
         setAppId(appId);
-        setNotificationType(notificationType);
+        setCode(code);
         setPreferences(preferences);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

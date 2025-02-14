@@ -4,7 +4,6 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
-import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationAppPreferenceRecord;
@@ -30,7 +29,6 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
-import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -78,11 +76,10 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
     public final TableField<NotificationAppPreferenceRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
 
     /**
-     * The column
-     * <code>notification.notification_app_preference.NOTIFICATION_TYPE</code>.
-     * Type of notification
+     * The column <code>notification.notification_app_preference.CODE</code>.
+     * Unique Code to identify this row
      */
-    public final TableField<NotificationAppPreferenceRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)), this, "Type of notification", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
+    public final TableField<NotificationAppPreferenceRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row");
 
     /**
      * The column
@@ -168,7 +165,7 @@ public class NotificationAppPreference extends TableImpl<NotificationAppPreferen
 
     @Override
     public List<UniqueKey<NotificationAppPreferenceRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_NOTIFICATION_APP_PREFERENCE_UK1_APP_PREF_CLIENT_ID_APP_ID_NOTI_TYPE);
+        return Arrays.asList(Keys.KEY_NOTIFICATION_APP_PREFERENCE_UK1_APP_PREF_CLIENT_ID_APP_ID, Keys.KEY_NOTIFICATION_APP_PREFERENCE_UK1_APP_PREF_CODE);
     }
 
     @Override

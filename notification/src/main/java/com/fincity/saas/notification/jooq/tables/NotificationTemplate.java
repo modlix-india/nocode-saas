@@ -202,7 +202,7 @@ public class NotificationTemplate extends TableImpl<NotificationTemplateRecord> 
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.NOTIFICATION_TEMPLATE_IDX1_TEMPLATE_CODE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_TEMPLATE_IDX2_TEMPLATE_CLIENT_ID_APP_ID);
+        return Arrays.asList(Indexes.NOTIFICATION_TEMPLATE_IDX_21_TEMPLATE_CLIENT_ID_APP_ID);
     }
 
     @Override

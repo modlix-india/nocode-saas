@@ -173,7 +173,7 @@ public class NotificationConnection extends TableImpl<NotificationConnectionReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.NOTIFICATION_CONNECTION_IDX1_CONNECTION_CODE_CLIENT_ID_APP_ID, Indexes.NOTIFICATION_CONNECTION_IDX2_CONNECTION_CLIENT_ID_APP_ID);
+        return Arrays.asList(Indexes.NOTIFICATION_CONNECTION_IDX1_CONNECTION_CLIENT_ID_APP_ID);
     }
 
     @Override

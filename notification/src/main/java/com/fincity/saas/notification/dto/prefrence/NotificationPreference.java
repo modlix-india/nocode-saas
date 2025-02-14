@@ -10,10 +10,10 @@ import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.dto.base.ChannelDetails;
 import com.fincity.saas.notification.dto.base.IdIdentifier;
 import com.fincity.saas.notification.enums.NotificationChannelType;
-import com.fincity.saas.notification.enums.NotificationType;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -24,25 +24,33 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public abstract class NotificationPreference<T extends NotificationPreference<T>> extends AbstractUpdatableDTO<ULong, ULong>
-		implements IdIdentifier<T>, ChannelDetails<Boolean, T> {
+public abstract class NotificationPreference<T extends NotificationPreference<T>>
+		extends AbstractUpdatableDTO<ULong, ULong> implements IdIdentifier<T>, ChannelDetails<Boolean, T> {
 
 	@Serial
 	private static final long serialVersionUID = 4007524811937317620L;
 
-	private static final Map<NotificationChannelType, Boolean> DEFAULT_PREF =
-			Arrays.stream(NotificationChannelType.values())
-					.collect(Collectors.toMap(
-							Function.identity(),
-							type -> false,
-							(a, b) -> b,
-							() -> new EnumMap<>(NotificationChannelType.class)
-					));
+	private static final Map<NotificationChannelType, Boolean> DEFAULT_PREF = Arrays
+			.stream(NotificationChannelType.values())
+			.collect(Collectors.toMap(
+					Function.identity(),
+					type -> false,
+					(a, b) -> b,
+					() -> new EnumMap<>(NotificationChannelType.class)));
 
 	private ULong appId;
-	private NotificationType notificationTypeId;
-
+	private String code = UniqueUtil.shortUUID();
 	private Map<NotificationChannelType, Boolean> preferences = DEFAULT_PREF;
+
+	@SuppressWarnings("unchecked")
+	public T setPreferences(Map<NotificationChannelType, Boolean> preferences) {
+		this.preferences = DEFAULT_PREF;
+		if (preferences != null && !preferences.isEmpty()) {
+			this.preferences.putAll(preferences);
+			updateDisabledState();
+		}
+		return (T) this;
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override

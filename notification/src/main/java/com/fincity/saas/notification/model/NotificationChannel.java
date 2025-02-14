@@ -43,11 +43,13 @@ public class NotificationChannel {
 			if (preference == null || !this.notificationEnabled)
 				return this;
 
-			if (Boolean.TRUE.equals(preference.getEmail() && message.getChannelType().equals(NotificationChannelType.EMAIL))
+			if (Boolean.TRUE
+					.equals(preference.getEmail() && message.getChannelType().equals(NotificationChannelType.EMAIL))
 					&& message instanceof EmailMessage emailMessage)
 				this.email = emailMessage;
 
-			if (Boolean.TRUE.equals(preference.getInApp() && message.getChannelType().equals(NotificationChannelType.IN_APP))
+			if (Boolean.TRUE
+					.equals(preference.getInApp() && message.getChannelType().equals(NotificationChannelType.IN_APP))
 					&& message instanceof InAppMessage inAppMessage)
 				this.inApp = inAppMessage;
 
