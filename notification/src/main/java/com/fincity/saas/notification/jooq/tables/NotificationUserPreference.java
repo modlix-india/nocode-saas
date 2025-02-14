@@ -82,14 +82,14 @@ public class NotificationUserPreference extends TableImpl<NotificationUserPrefer
      * <code>notification.notification_user_preference.NOTIFICATION_TYPE</code>.
      * Type of notification
      */
-    public final TableField<NotificationUserPreferenceRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false), this, "Type of notification", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
+    public final TableField<NotificationUserPreferenceRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)), this, "Type of notification", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
 
     /**
      * The column
      * <code>notification.notification_user_preference.PREFERENCES</code>.
      * Notification user preferences
      */
-    public final TableField<NotificationUserPreferenceRecord, JSON> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON.nullable(false), this, "Notification user preferences");
+    public final TableField<NotificationUserPreferenceRecord, JSON> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON, this, "Notification user preferences");
 
     /**
      * The column

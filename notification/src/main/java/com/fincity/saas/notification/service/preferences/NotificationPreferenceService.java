@@ -1,5 +1,7 @@
 package com.fincity.saas.notification.service.preferences;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.UpdatableRecord;
@@ -107,6 +109,26 @@ public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>
 		return super.update(entity);
 	}
 
+	@Override
+	protected Mono<D> updatableEntity(D entity) {
+		return this.read(entity.getId())
+				.map(e -> {
+					e.setPreferences(entity.getPreferences());
+					return e;
+				});
+	}
+
+	@Override
+	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+
+		if (fields == null || key == null)
+			return Mono.just(new HashMap<>());
+
+		fields.keySet().retainAll(List.of("preferences"));
+
+		return Mono.just(fields);
+	}
+
 	private Mono<D> updateIdentifiers(ContextAuthentication ca, D entity) {
 
 		return FlatMapUtil.flatMapMono(
@@ -154,19 +176,19 @@ public abstract class NotificationPreferenceService<R extends UpdatableRecord<R>
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
-	public Mono<D> getNotificationPreference(String appCode, ULong identifierId, NotificationType notificationTypeId) {
+	public Mono<D> getNotificationPreference(String appCode, ULong identifierId, NotificationType notificationType) {
 		return this.securityService.getAppByCode(appCode)
-				.flatMap(app -> this.getNotificationPreferenceInternal(ULongUtil.valueOf(app.getId()), identifierId, notificationTypeId));
+				.flatMap(app -> this.getNotificationPreferenceInternal(ULongUtil.valueOf(app.getId()), identifierId, notificationType));
 	}
 
 	private ULong getIdentifierId(ContextAuthentication ca) {
 		return ULongUtil.valueOf(this.isAppLevel() ? ca.getLoggedInFromClientId() : ca.getUser().getClientId());
 	}
 
-	private Mono<D> getNotificationPreferenceInternal(ULong appId, ULong identifierId, NotificationType notificationTypeId) {
+	private Mono<D> getNotificationPreferenceInternal(ULong appId, ULong identifierId, NotificationType notificationType) {
 		return this.cacheService.cacheValueOrGet(this.getPreferenceCacheName(),
-				() -> this.dao.getNotificationPreference(appId, identifierId, notificationTypeId),
-				this.getCacheKeys(appId, identifierId, notificationTypeId)
+				() -> this.dao.getNotificationPreference(appId, identifierId, notificationType),
+				this.getCacheKeys(appId, identifierId, notificationType)
 		);
 
 	}

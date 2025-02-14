@@ -6,10 +6,10 @@ public interface ChannelDetails<V, T extends ChannelDetails<V, T>> {
 
 	T setChannelValue(NotificationChannelType channelType, V value);
 
-	V has(NotificationChannelType channelType);
+	V get(NotificationChannelType channelType);
 
 	default V getDisabled() {
-		return this.has(NotificationChannelType.DISABLED);
+		return this.get(NotificationChannelType.DISABLED);
 	}
 
 	default T setDisabled(V value) {
@@ -17,7 +17,7 @@ public interface ChannelDetails<V, T extends ChannelDetails<V, T>> {
 	}
 
 	default V getEmail() {
-		return this.has(NotificationChannelType.EMAIL);
+		return this.get(NotificationChannelType.EMAIL);
 	}
 
 	default T setEmail(V value) {
@@ -25,7 +25,7 @@ public interface ChannelDetails<V, T extends ChannelDetails<V, T>> {
 	}
 
 	default V getInApp() {
-		return this.has(NotificationChannelType.IN_APP);
+		return this.get(NotificationChannelType.IN_APP);
 	}
 
 	default T setInApp(V value) {
@@ -33,7 +33,7 @@ public interface ChannelDetails<V, T extends ChannelDetails<V, T>> {
 	}
 
 	default V getMobilePush() {
-		return this.has(NotificationChannelType.MOBILE_PUSH);
+		return this.get(NotificationChannelType.MOBILE_PUSH);
 	}
 
 	default T setMobilePush(V value) {
@@ -41,11 +41,15 @@ public interface ChannelDetails<V, T extends ChannelDetails<V, T>> {
 	}
 
 	default V getWebPush() {
-		return this.has(NotificationChannelType.WEB_PUSH);
+		return this.get(NotificationChannelType.WEB_PUSH);
 	}
 
 	default T setWebPush(V value) {
 		return this.setChannelValue(NotificationChannelType.WEB_PUSH, value);
+	}
+
+	default V getSms() {
+		return this.get(NotificationChannelType.SMS);
 	}
 
 	default T setSms(V value) {

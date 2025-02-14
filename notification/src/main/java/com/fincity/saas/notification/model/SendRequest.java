@@ -1,5 +1,9 @@
 package com.fincity.saas.notification.model;
 
+import java.math.BigInteger;
+
+import com.fincity.saas.notification.enums.NotificationType;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -7,8 +11,11 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class SendRequest {
 
-	private Integer userId;
-	private String notificationType;
+	private String code;
+	private BigInteger clientId;
+	private BigInteger appId;
+	private BigInteger userId;
+	private NotificationType notificationType;
 	private NotificationChannel channels;
 
 }

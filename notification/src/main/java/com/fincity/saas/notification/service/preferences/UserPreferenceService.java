@@ -1,8 +1,5 @@
 package com.fincity.saas.notification.service.preferences;
 
-import java.util.Map;
-
-import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.service.CacheService;
@@ -10,8 +7,6 @@ import com.fincity.saas.notification.dao.preference.UserPreferenceDao;
 import com.fincity.saas.notification.dto.prefrence.UserPreference;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferenceRecord;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
-
-import reactor.core.publisher.Mono;
 
 @Service
 public class UserPreferenceService
@@ -38,15 +33,5 @@ public class UserPreferenceService
 	@Override
 	public boolean isAppLevel() {
 		return false;
-	}
-
-	@Override
-	protected Mono<UserPreference> updatableEntity(UserPreference entity) {
-		return null;
-	}
-
-	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-		return null;
 	}
 }

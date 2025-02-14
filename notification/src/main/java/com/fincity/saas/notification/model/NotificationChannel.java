@@ -2,9 +2,10 @@ package com.fincity.saas.notification.model;
 
 import com.fincity.saas.notification.dto.prefrence.UserPreference;
 import com.fincity.saas.notification.enums.NotificationChannelType;
-import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.EmailMessage;
 import com.fincity.saas.notification.model.message.InAppMessage;
+import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.message.SmsMessage;
 
 import lombok.Getter;
 
@@ -14,6 +15,7 @@ public class NotificationChannel {
 	private boolean notificationEnabled;
 	private EmailMessage email;
 	private InAppMessage inApp;
+	private SmsMessage sms;
 
 	private NotificationChannel() {
 		// user builder to create NotificationChannel
@@ -29,10 +31,11 @@ public class NotificationChannel {
 		private boolean notificationEnabled;
 		private EmailMessage email = null;
 		private InAppMessage inApp = null;
+		private SmsMessage sms = null;
 
 		public NotificationChannelBuilder preferences(UserPreference preferences) {
 			this.preference = preferences;
-			this.notificationEnabled = !preferences.has(NotificationChannelType.DISABLED);
+			this.notificationEnabled = !preferences.get(NotificationChannelType.DISABLED);
 			return this;
 		}
 
@@ -40,15 +43,17 @@ public class NotificationChannel {
 			if (preference == null || !this.notificationEnabled)
 				return this;
 
-			if (preference.has(NotificationChannelType.EMAIL)
-					&& message.getChannelType().equals(NotificationChannelType.EMAIL)
+			if (Boolean.TRUE.equals(preference.getEmail() && message.getChannelType().equals(NotificationChannelType.EMAIL))
 					&& message instanceof EmailMessage emailMessage)
 				this.email = emailMessage;
 
-			if (preference.has(NotificationChannelType.IN_APP)
-					&& message.getChannelType().equals(NotificationChannelType.IN_APP)
+			if (Boolean.TRUE.equals(preference.getInApp() && message.getChannelType().equals(NotificationChannelType.IN_APP))
 					&& message instanceof InAppMessage inAppMessage)
 				this.inApp = inAppMessage;
+
+			if (Boolean.TRUE.equals(preference.getSms() && message.getChannelType().equals(NotificationChannelType.SMS))
+					&& message instanceof SmsMessage smsMessage)
+				this.sms = smsMessage;
 
 			this.notificationEnabled = this.email != null || this.inApp != null;
 			return this;
@@ -59,6 +64,7 @@ public class NotificationChannel {
 			channel.notificationEnabled = this.notificationEnabled;
 			channel.email = this.email;
 			channel.inApp = this.inApp;
+			channel.sms = this.sms;
 			return channel;
 		}
 	}

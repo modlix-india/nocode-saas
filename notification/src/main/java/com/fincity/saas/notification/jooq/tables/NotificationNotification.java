@@ -95,14 +95,14 @@ public class NotificationNotification extends TableImpl<NotificationNotification
      * <code>notification.notification_notification.NOTIFICATION_TYPE</code>.
      * Type of notification
      */
-    public final TableField<NotificationNotificationRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false), this, "Type of notification", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
+    public final TableField<NotificationNotificationRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)), this, "Type of notification", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
 
     /**
      * The column
      * <code>notification.notification_notification.CHANNEL_DETAILS</code>.
      * Notification details per channel
      */
-    public final TableField<NotificationNotificationRecord, JSON> CHANNEL_DETAILS = createField(DSL.name("CHANNEL_DETAILS"), SQLDataType.JSON.nullable(false), this, "Notification details per channel");
+    public final TableField<NotificationNotificationRecord, JSON> CHANNEL_DETAILS = createField(DSL.name("CHANNEL_DETAILS"), SQLDataType.JSON, this, "Notification details per channel");
 
     /**
      * The column
