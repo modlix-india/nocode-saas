@@ -23,6 +23,7 @@ import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.jooq.Null;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -399,35 +400,69 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	public Mono<Boolean> delete(Connection conn, Storage storage, String id) {
 
 		if (!ObjectId.isValid(id))
-			return this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND,
-					storage.getName(), id);
+			return this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id)
+					.thenReturn(false);
 
 		BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
 
 		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
 
-				() -> this.getCollection(conn, storage),
+				(ca) -> this.getCollection(conn, storage),
 
-				collection -> Mono.from(collection.findOneAndDelete(Filters.eq(ID, objectId))).map(e -> Boolean.TRUE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.delete"))
-				.switchIfEmpty(this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND,
-						storage.getName(), id));
+				(ca, collection) -> Mono.from(collection.find(Filters.eq(ID, objectId)).first())
+						.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE))
+						.switchIfEmpty(this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName())),
+
+				(ca, collection, doc) -> {
+						if (doc == null) return Mono.just(false);
+						return this.addVersion(conn, storage, "Delete", objectId, ca, (Document) doc, "DELETE")
+									.thenReturn(true);
+						},
+
+				(ca, collection, doc,versionResult) -> {
+						if (versionResult == null) return Mono.just(false);
+						return Mono.from(collection.findOneAndDelete(Filters.eq(ID, objectId)))
+								.map(deletedDoc -> deletedDoc != null)
+								.defaultIfEmpty(false);
+						}
+				).contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.delete"))
+				.switchIfEmpty(Mono.just(false));
 	}
 
 	@Override
 	public Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode) {
 
 		AbstractCondition condition = query.getCondition();
+		Pageable page = query.getPageable();
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.getCollection(conn, storage),
+						SecurityContextUtil::getUsersContextAuthentication,
 
-				collection -> this.filter(storage, condition),
+						(ca) -> this.getCollection(conn, storage),
 
-				(collection, bsonCondition) -> BooleanUtil.safeValueOf(devMode)
-						? Mono.from(collection.countDocuments(bsonCondition))
-						: Mono.from(collection.deleteMany(bsonCondition)).map(DeleteResult::getDeletedCount))
+						(ca,collection) -> this.filter(storage, condition),
+
+						(ca,collection, bsonCondition) -> this.applyQueryOnElements(collection, query, bsonCondition, page)
+								.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE)).collectList(),
+
+						(ca, collection, bsonCondition, list) -> {
+							if (list.isEmpty()) {
+								return Mono.just(0L);
+							}
+
+							return Flux.fromIterable(list)
+									.flatMap(doc -> {
+										Object idObj = doc.get(ID);
+										BsonObjectId objectId = (idObj instanceof ObjectId) ? new BsonObjectId((ObjectId) idObj) : null;
+										return this.addVersion(conn, storage, "Delete", objectId, ca, (Document) doc, "DELETE");
+									})
+									.then(Mono.defer(() -> BooleanUtil.safeValueOf(devMode)
+											? Mono.from(collection.countDocuments(bsonCondition))
+											: Mono.from(collection.deleteMany(bsonCondition))
+											.map(DeleteResult::getDeletedCount)));
+						})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteByFilter"));
 	}
 
