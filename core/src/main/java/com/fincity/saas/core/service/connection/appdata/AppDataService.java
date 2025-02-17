@@ -197,8 +197,7 @@ public class AppDataService {
 	}
 
 	public Mono<Map<String, Object>> createMany(String appCode, String clientCode, String storageName,
-												List<DataObject> dataArray, Boolean eager, List<String> eagerFields){
-
+											List<DataObject> dataArray, Boolean eager, List<String> eagerFields) {
 
 		Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
 
@@ -216,34 +215,43 @@ public class AppDataService {
 				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
 						.map(ObjectWithUniqueID::getObject),
 
-				(ca, ac, cc, conn, dataService, storage) -> this.<Map<String, Object>>genericOperation(storage,
-						(cona, hasAccess) ->
-								Flux.fromIterable(dataArray).flatMap(dataobj ->
-								FlatMapUtil.flatMapMono(
+				(ca, ac, cc, conn, dataService, storage) ->
+						this.<List<Map<String, Object>>>genericOperation(
+								storage,
+								(cona, hasAccess) ->
 
-								() -> this.processRelationsForCreate(ac, cc, storage, dataobj, dataService, conn),
+										Flux.fromIterable(dataArray)
+												.flatMapSequential(dataObject ->
+														FlatMapUtil.flatMapMono(
 
-								updatedDataObject -> this.createWithTriggers(dataService, conn, storage,
-										updatedDataObject),
+																() -> this.processRelationsForCreate(ac, cc, storage, dataObject, dataService, conn),
 
-								(updatedDataObject, created) -> {
+																updatedDataObject -> this.createWithTriggers(dataService, conn, storage, updatedDataObject)
+														)
+												)
+												.collectList()
+												.flatMap(createdList -> {
+													if (!BooleanUtil.safeValueOf(storage.getGenerateEvents())) {
+														return Mono.just(createdList);
+													}
+													return this.generateEvent(ca, ac, cc, storage, "Create", Map.of("dataArr",createdList), null)
+															.thenReturn(createdList);
+												}),
+								Storage::getCreateAuth,
+								CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE
+						),
 
-									if (!BooleanUtil.safeValueOf(storage.getGenerateEvents()))
-										return Mono.just(created);
-
-									return this.generateEvent(ca, ac, cc, storage, "Create", created, null);
-								}
-								)).collectList().map(createdList -> Map.of("createdObjects",createdList)),
-						Storage::getCreateAuth,
-						CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE),
-
-				(ca, ac, cc, conn, dataService, storage, created) -> this.fillRelatedObjects(ac, cc, storage, created,
+		(ca, ac, cc, conn, dataService, storage, created) ->
+				Flux.fromIterable(created).flatMapSequential(obj ->
+				this.fillRelatedObjects(ac, cc, storage, obj,
 						dataService, conn,
 						BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
-								: eagerFields));
+								: eagerFields)).collectList().map(filledList -> Map.of("dataArr",filledList)));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.createMany"));
 	}
+
+
 
 	private Mono<Map<String, Object>> fillRelatedObjects(String appCode, String clientCode, Storage storage,
 			Map<String, Object> created, IAppDataService dataService, Connection conn,

@@ -92,6 +92,7 @@ public class CreateManyStorageObject extends AbstractReactiveFunction
         boolean eager = context.getArguments().get(EAGER).getAsBoolean();
 
         List<String> eagerFields = StreamSupport
+
                 .stream(context.getArguments().get(EAGER_FIELDS).getAsJsonArray().spliterator(), false)
                 .map(JsonElement::getAsString).toList();
 
@@ -113,7 +114,7 @@ public class CreateManyStorageObject extends AbstractReactiveFunction
                         StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName,
                         dataArr, eager, eagerFields)
                 .map(arr -> new FunctionOutput(
-                        List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(List.of(arr)))))));
+                        List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(arr))))));
 
     }
 
