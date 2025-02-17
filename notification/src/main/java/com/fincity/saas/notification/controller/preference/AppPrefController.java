@@ -10,6 +10,6 @@ import com.fincity.saas.notification.service.preferences.AppPreferenceService;
 
 @RestController
 @RequestMapping("api/notifications/preferences/app")
-public class AppPreferenceController extends
-		NotificationPreferenceController<NotificationAppPreferenceRecord, AppPreference, AppPreferenceDao, AppPreferenceService> {
+public class AppPrefController extends
+		NotificationPrefController<NotificationAppPreferenceRecord, AppPreference, AppPreferenceDao, AppPreferenceService> {
 }

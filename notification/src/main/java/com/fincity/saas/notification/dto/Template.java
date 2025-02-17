@@ -23,7 +23,6 @@ public class Template extends BaseInfo<Template> {
 	private NotificationChannelType channelType;
 	private Map<String, Map<String, String>> templateParts;
 	private Map<String, String> resources;
-	private Map<String, String> variables;
 	private String defaultLanguage;
 	private String languageExpression;
 }

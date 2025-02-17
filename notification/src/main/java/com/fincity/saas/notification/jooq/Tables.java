@@ -4,11 +4,8 @@
 package com.fincity.saas.notification.jooq;
 
 
-import com.fincity.saas.notification.jooq.tables.NotificationAppPreference;
-import com.fincity.saas.notification.jooq.tables.NotificationConnection;
-import com.fincity.saas.notification.jooq.tables.NotificationNotification;
-import com.fincity.saas.notification.jooq.tables.NotificationTemplate;
-import com.fincity.saas.notification.jooq.tables.NotificationUserPreference;
+import com.fincity.saas.notification.jooq.tables.NotificationUserChannelPref;
+import com.fincity.saas.notification.jooq.tables.NotificationUserNotificationPref;
 
 
 /**
@@ -18,27 +15,12 @@ import com.fincity.saas.notification.jooq.tables.NotificationUserPreference;
 public class Tables {
 
     /**
-     * The table <code>notification.notification_app_preference</code>.
+     * The table <code>notification.notification_user_channel_pref</code>.
      */
-    public static final NotificationAppPreference NOTIFICATION_APP_PREFERENCE = NotificationAppPreference.NOTIFICATION_APP_PREFERENCE;
+    public static final NotificationUserChannelPref NOTIFICATION_USER_CHANNEL_PREF = NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF;
 
     /**
-     * The table <code>notification.notification_connection</code>.
+     * The table <code>notification.notification_user_notification_pref</code>.
      */
-    public static final NotificationConnection NOTIFICATION_CONNECTION = NotificationConnection.NOTIFICATION_CONNECTION;
-
-    /**
-     * The table <code>notification.notification_notification</code>.
-     */
-    public static final NotificationNotification NOTIFICATION_NOTIFICATION = NotificationNotification.NOTIFICATION_NOTIFICATION;
-
-    /**
-     * The table <code>notification.notification_template</code>.
-     */
-    public static final NotificationTemplate NOTIFICATION_TEMPLATE = NotificationTemplate.NOTIFICATION_TEMPLATE;
-
-    /**
-     * The table <code>notification.notification_user_preference</code>.
-     */
-    public static final NotificationUserPreference NOTIFICATION_USER_PREFERENCE = NotificationUserPreference.NOTIFICATION_USER_PREFERENCE;
+    public static final NotificationUserNotificationPref NOTIFICATION_USER_NOTIFICATION_PREF = NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF;
 }

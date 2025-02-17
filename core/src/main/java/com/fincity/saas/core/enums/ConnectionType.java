@@ -16,11 +16,13 @@ public enum ConnectionType {
 
 	REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2),
 
-	;
+	NOTIFICATION(ConnectionSubType.NOTIFICATION_DISABLED, ConnectionSubType.NOTIFICATION_EMAIL,
+			ConnectionSubType.NOTIFICATION_IN_APP, ConnectionSubType.NOTIFICATION_MOBILE_PUSH,
+			ConnectionSubType.NOTIFICATION_WEB_PUSH, ConnectionSubType.NOTIFICATION_SMS);
 
-	private Set<ConnectionSubType> allowedSubtypes;
+	private final Set<ConnectionSubType> allowedSubtypes;
 
-	private ConnectionType(ConnectionSubType... allowedSubtypes) {
+	ConnectionType(ConnectionSubType... allowedSubtypes) {
 
 		this.allowedSubtypes = allowedSubtypes == null ? Set.of() : Set.of(allowedSubtypes);
 	}
