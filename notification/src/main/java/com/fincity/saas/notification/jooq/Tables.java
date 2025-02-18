@@ -4,8 +4,7 @@
 package com.fincity.saas.notification.jooq;
 
 
-import com.fincity.saas.notification.jooq.tables.NotificationUserChannelPref;
-import com.fincity.saas.notification.jooq.tables.NotificationUserNotificationPref;
+import com.fincity.saas.notification.jooq.tables.NotificationUserPreferences;
 
 
 /**
@@ -15,12 +14,7 @@ import com.fincity.saas.notification.jooq.tables.NotificationUserNotificationPre
 public class Tables {
 
     /**
-     * The table <code>notification.notification_user_channel_pref</code>.
+     * The table <code>notification.notification_user_preferences</code>.
      */
-    public static final NotificationUserChannelPref NOTIFICATION_USER_CHANNEL_PREF = NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF;
-
-    /**
-     * The table <code>notification.notification_user_notification_pref</code>.
-     */
-    public static final NotificationUserNotificationPref NOTIFICATION_USER_NOTIFICATION_PREF = NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF;
+    public static final NotificationUserPreferences NOTIFICATION_USER_PREFERENCES = NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES;
 }

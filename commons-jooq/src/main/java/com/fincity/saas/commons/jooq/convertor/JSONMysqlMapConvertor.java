@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.jooq.convertor;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.util.Map;
 
 import org.jooq.Converter;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @SuppressWarnings("rawtypes")
 public class JSONMysqlMapConvertor implements Converter<JSON, Map> {
 
+	@Serial
 	private static final long serialVersionUID = -2036360252040485619L;
 	private static final Logger logger = LoggerFactory.getLogger(JSONMysqlMapConvertor.class);
 
@@ -38,7 +40,7 @@ public class JSONMysqlMapConvertor implements Converter<JSON, Map> {
 	public JSON to(Map map) {
 
 		if (map == null)
-			return JSON.jsonOrNull(null);
+			return null;
 
 		ObjectMapper mapper = new ObjectMapper();
 		String value = null;

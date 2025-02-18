@@ -4,10 +4,8 @@
 package com.fincity.saas.notification.jooq;
 
 
-import com.fincity.saas.notification.jooq.tables.NotificationUserChannelPref;
-import com.fincity.saas.notification.jooq.tables.NotificationUserNotificationPref;
-import com.fincity.saas.notification.jooq.tables.records.NotificationUserChannelPrefRecord;
-import com.fincity.saas.notification.jooq.tables.records.NotificationUserNotificationPrefRecord;
+import com.fincity.saas.notification.jooq.tables.NotificationUserPreferences;
+import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
 
 import org.jooq.TableField;
 import org.jooq.UniqueKey;
@@ -26,10 +24,7 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final UniqueKey<NotificationUserChannelPrefRecord> KEY_NOTIFICATION_USER_CHANNEL_PREF_PRIMARY = Internal.createUniqueKey(NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF, DSL.name("KEY_notification_user_channel_pref_PRIMARY"), new TableField[] { NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF.ID }, true);
-    public static final UniqueKey<NotificationUserChannelPrefRecord> KEY_NOTIFICATION_USER_CHANNEL_PREF_UK1_APP_PREF_CODE = Internal.createUniqueKey(NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF, DSL.name("KEY_notification_user_channel_pref_UK1_APP_PREF_CODE"), new TableField[] { NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF.CODE }, true);
-    public static final UniqueKey<NotificationUserChannelPrefRecord> KEY_NOTIFICATION_USER_CHANNEL_PREF_UK1_USER_CHANNEL_PREF_USER_ID_APP_ID_CHANNEL = Internal.createUniqueKey(NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF, DSL.name("KEY_notification_user_channel_pref_UK1_USER_CHANNEL_PREF_USER_ID_APP_ID_CHANNEL"), new TableField[] { NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF.APP_ID, NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF.USER_ID, NotificationUserChannelPref.NOTIFICATION_USER_CHANNEL_PREF.CHANNEL_TYPE }, true);
-    public static final UniqueKey<NotificationUserNotificationPrefRecord> KEY_NOTIFICATION_USER_NOTIFICATION_PREF_PRIMARY = Internal.createUniqueKey(NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF, DSL.name("KEY_notification_user_notification_pref_PRIMARY"), new TableField[] { NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF.ID }, true);
-    public static final UniqueKey<NotificationUserNotificationPrefRecord> KEY_NOTIFICATION_USER_NOTIFICATION_PREF_UK1_USER_PREF_CODE = Internal.createUniqueKey(NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF, DSL.name("KEY_notification_user_notification_pref_UK1_USER_PREF_CODE"), new TableField[] { NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF.CODE }, true);
-    public static final UniqueKey<NotificationUserNotificationPrefRecord> KEY_NOTIFICATION_USER_NOTIFICATION_PREF_UK2_USER_NOTI_PREF_APP_ID_USER_ID_NAME = Internal.createUniqueKey(NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF, DSL.name("KEY_notification_user_notification_pref_UK2_USER_NOTI_PREF_APP_ID_USER_ID_NAME"), new TableField[] { NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF.APP_ID, NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF.USER_ID, NotificationUserNotificationPref.NOTIFICATION_USER_NOTIFICATION_PREF.NOTIFICATION_NAME }, true);
+    public static final UniqueKey<NotificationUserPreferencesRecord> KEY_NOTIFICATION_USER_PREFERENCES_PRIMARY = Internal.createUniqueKey(NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES, DSL.name("KEY_notification_user_preferences_PRIMARY"), new TableField[] { NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.ID }, true);
+    public static final UniqueKey<NotificationUserPreferencesRecord> KEY_NOTIFICATION_USER_PREFERENCES_UK1_USER_PREF_CODE = Internal.createUniqueKey(NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES, DSL.name("KEY_notification_user_preferences_UK1_USER_PREF_CODE"), new TableField[] { NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.CODE }, true);
+    public static final UniqueKey<NotificationUserPreferencesRecord> KEY_NOTIFICATION_USER_PREFERENCES_UK2_USER_NOTI_PREF_APP_ID_USER_ID_NAME = Internal.createUniqueKey(NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES, DSL.name("KEY_notification_user_preferences_UK2_USER_NOTI_PREF_APP_ID_USER_ID_NAME"), new TableField[] { NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.APP_ID, NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.USER_ID }, true);
 }
