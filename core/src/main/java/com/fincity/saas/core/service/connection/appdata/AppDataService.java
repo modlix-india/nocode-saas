@@ -215,40 +215,32 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) ->
-						this.<List<Map<String, Object>>>genericOperation(
-								storage,
-								(cona, hasAccess) ->
-										Flux.fromIterable(dataArray)
-												.flatMapSequential(dataObject ->
-														FlatMapUtil.flatMapMono(
-																() -> this.processRelationsForCreate(ac, cc, storage, dataObject, dataService, conn),
-																updatedDataObject -> this.createWithTriggers(dataService, conn, storage, updatedDataObject)
-														)
+						Flux.fromIterable(dataArray)
+								.flatMapSequential(dataObject ->
+										FlatMapUtil.flatMapMono(
+														() -> this.processRelationsForCreate(ac, cc, storage, dataObject, dataService, conn),
+
+														updatedDataObject -> this.createWithTriggers(dataService, conn, storage, updatedDataObject)
 												)
-												.collectList()
-												.flatMap(createdList -> {
-													// Only trigger event generation if required
+												.flatMap(createdObj -> {
 													if (BooleanUtil.safeValueOf(storage.getGenerateEvents())) {
-														return this.generateEvent(ca, ac, cc, storage, "Create", Map.of("dataArr", createdList), null)
-																.thenReturn(createdList);
+														return this.generateEvent(ca, ac, cc, storage, "Create", Map.of("dataArr", List.of(createdObj)), null)
+																.thenReturn(createdObj);
 													}
-													return Mono.just(createdList);
-												}),
-								Storage::getCreateAuth,
-								CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE
-						),
-				(ca, ac, cc, conn, dataService, storage, created) ->
-						Flux.fromIterable(created)
-								.flatMapSequential(obj ->
-										this.fillRelatedObjects(ac, cc, storage, obj,
-												dataService, conn,
-												BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
-														: eagerFields))
+													return Mono.just(createdObj);
+												})
+												.flatMap(createdObj ->
+														this.fillRelatedObjects(ac, cc, storage, createdObj,
+																dataService, conn,
+																BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
+																		: eagerFields)
+												)
+								)
 								.collectList()
 		);
-
-		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.createMany"));
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
 	}
+
 
 
 	private Mono<Map<String, Object>> fillRelatedObjects(String appCode, String clientCode, Storage storage,
