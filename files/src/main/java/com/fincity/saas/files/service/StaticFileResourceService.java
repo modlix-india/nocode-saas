@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.ImageDetails;
 import com.fincity.saas.files.util.ImageTransformUtil;
@@ -20,6 +21,7 @@ import com.fincity.saas.files.jooq.enums.FilesFileSystemType;
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
@@ -113,6 +115,6 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
             (ca, cid, temp, file, sTuple, imgTuple, finalFile) ->
                 this.getFSService().createFileFromFile("SYSTEM",
                     "_clientImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
-        );
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StaticFileResourceService.uploadClientImage"));
     }
 }

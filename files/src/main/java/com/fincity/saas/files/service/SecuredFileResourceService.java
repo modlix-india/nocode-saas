@@ -283,6 +283,6 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
              sTuple, imgTuple, finalFile) ->
                 this.getFSService().createFileFromFile("SYSTEM",
                     "_userImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
-        );
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.uploadUserImage"));
     }
 }
