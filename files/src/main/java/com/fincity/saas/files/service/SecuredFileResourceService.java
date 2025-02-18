@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Set;
 
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -51,6 +52,15 @@ import javax.imageio.ImageIO;
 public class SecuredFileResourceService extends AbstractFilesResourceService {
 
     private static final String CREATE_KEY = "/createKey";
+
+    private static final String USER_IMAGES = "_userImages";
+    private static final String WITH_IN_CLIENT = "_withInClient";
+    private static final String WITH_IN_SUB_CLIENT = "_withInSubClient";
+    private static final String ALL_SUB_CLIENTS = "_allSubClients";
+
+    private static final Set<String> SPECIAL_FOLDERS = Set.of(
+        WITH_IN_CLIENT, WITH_IN_SUB_CLIENT, ALL_SUB_CLIENTS
+    );
 
     @Value("${files.timeLimit:365}")
     private Long defaultAccessTimeLimit;
@@ -111,7 +121,26 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
             resourcePath = "";
         }
 
-        return this.fileAccessService.hasReadAccess(resourcePath, clientCode, FilesAccessPathResourceType.SECURED);
+        String finalClientCode = clientCode;
+        index = resourcePath.indexOf('/', index + 1);
+        String firstFolderName = (index != -1) ? resourcePath.substring(resourcePath.startsWith("/") ? 1 : 0, index) : null;
+
+        if (firstFolderName != null && (SPECIAL_FOLDERS.contains(firstFolderName) ||
+            (firstFolderName.equals(USER_IMAGES) && finalClientCode.equals("SYSTEM"))))
+            return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> switch (firstFolderName) {
+                    case USER_IMAGES -> Mono.just(true);
+                    case WITH_IN_CLIENT -> Mono.just(ca.getClientCode().equals(finalClientCode));
+                    case WITH_IN_SUB_CLIENT ->
+                        ca.getClientCode().equals(finalClientCode) ? Mono.just(false) : this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
+                    case ALL_SUB_CLIENTS -> this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
+                    default -> Mono.just(false);
+                }
+            ).contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.checkReadAccessWithClientCode"));
+
+        return this.fileAccessService.hasReadAccess(resourcePath, finalClientCode, FilesAccessPathResourceType.SECURED);
     }
 
     @Override
@@ -253,7 +282,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
             (ca, uid, temp, file,
              sTuple, imgTuple, finalFile) ->
                 this.getFSService().createFileFromFile("SYSTEM",
-                    "_clientImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
+                    "_userImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
         );
     }
 }
