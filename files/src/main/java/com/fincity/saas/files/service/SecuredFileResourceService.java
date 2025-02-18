@@ -2,9 +2,19 @@ package com.fincity.saas.files.service;
 
 import static com.fincity.saas.commons.util.StringUtil.*;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.files.model.ImageDetails;
+import com.fincity.saas.files.util.ImageTransformUtil;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.FilePart;
@@ -29,9 +39,13 @@ import com.fincity.saas.files.model.FileDetail;
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+
+import javax.imageio.ImageIO;
 
 @Service
 public class SecuredFileResourceService extends AbstractFilesResourceService {
@@ -58,15 +72,18 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
     private final CacheService cacheService;
     private final S3AsyncClient s3Client;
 
+    private final IFeignSecurityService securityService;
+
     public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
                                       FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
                                       FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
-                                      FilesUploadDownloadService fileUploadDownloadService) {
+                                      FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService) {
         super(filesAccessPathService, msgService, fileUploadDownloadService);
         this.fileSecuredAccessService = fileSecuredAccessService;
         this.fileSystemDao = fileSystemDao;
         this.cacheService = cacheService;
         this.s3Client = s3Client;
+        this.securityService = securityService;
     }
 
     @Override
@@ -194,5 +211,49 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
     @Override
     public String getResourceType() {
         return FilesAccessPathResourceType.SECURED.name();
+    }
+
+    public Mono<FileDetail> uploadUserImage(FilePart fp, ImageDetails details, ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+
+            SecurityContextUtil::getUsersContextAuthentication,
+
+            ca -> (userId == null) ? Mono.just(ca.getUser().getId()) :
+                this.securityService.isUserBeingManaged(userId.toBigInteger(), ca.getClientCode())
+                    .filter(Boolean::booleanValue).map(e -> userId.toBigInteger()),
+
+            (ca, uid) ->
+                Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
+                    .subscribeOn(Schedulers.boundedElastic()),
+
+            (ca, uid, tempDirectory) -> {
+
+                Path file = tempDirectory.resolve(fp.filename());
+                return fp.transferTo(file).thenReturn(file.toFile());
+            },
+
+            (ca, uid, tempDirectory, file) ->
+                Mono.fromCallable(() -> this.makeSourceImage(file, fp.filename())),
+
+            (ca, uid, temp, file, sourceTuple) ->
+                Mono.defer(() -> Mono.just(Tuples.of(
+                        ImageTransformUtil.transformImage(sourceTuple.getT1(), BufferedImage.TYPE_INT_ARGB, details),
+                        BufferedImage.TYPE_INT_ARGB)))
+                    .subscribeOn(Schedulers.boundedElastic()),
+
+            (ca, uid, temp, file,
+             sTuple, imgTuple) ->
+                Mono.fromCallable(() -> {
+                    File finalFile = temp.resolve(uid + ".png").toFile();
+                    ImageIO.write(imgTuple.getT1(), "png", finalFile);
+                    return finalFile;
+                }).subscribeOn(Schedulers.boundedElastic()),
+
+            (ca, uid, temp, file,
+             sTuple, imgTuple, finalFile) ->
+                this.getFSService().createFileFromFile("SYSTEM",
+                    "_clientImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
+        );
     }
 }

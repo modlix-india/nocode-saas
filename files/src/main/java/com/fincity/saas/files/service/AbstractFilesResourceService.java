@@ -581,7 +581,7 @@ public abstract class AbstractFilesResourceService {
                         + pathParts.fileName);
             },
 
-            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> this.makeSourceImage(file, pathParts)).subscribeOn(Schedulers.boundedElastic()),
+            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> this.makeSourceImage(file, pathParts.fileName)).subscribeOn(Schedulers.boundedElastic()),
 
             (hasPermission, tempDirectory, file, sourceTuple) -> {
 
@@ -643,8 +643,8 @@ public abstract class AbstractFilesResourceService {
 
     }
 
-    private Tuple2<BufferedImage, Integer> makeSourceImage(File file,
-                                                           PathParts pathParts) throws IOException {
+    protected Tuple2<BufferedImage, Integer> makeSourceImage(File file,
+                                                             String fileName) throws IOException {
 
         ImageInputStream iis = ImageIO.createImageInputStream(file);
 
@@ -654,7 +654,7 @@ public abstract class AbstractFilesResourceService {
             ImageReader reader = imageReaders.next();
             reader.setInput(iis);
             return Tuples.of(reader.read(0),
-                pathParts.fileName.toLowerCase().endsWith("png") ? BufferedImage.TYPE_INT_ARGB
+                fileName.toLowerCase().endsWith("png") ? BufferedImage.TYPE_INT_ARGB
                     : BufferedImage.TYPE_INT_RGB);
         }
 
