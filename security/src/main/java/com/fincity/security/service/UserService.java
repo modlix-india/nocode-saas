@@ -874,7 +874,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		if (StringUtil.safeIsBlank(reqPassword.getNewPassword()))
 			return this.forbiddenError(SecurityMessageResourceService.NEW_PASSWORD_MISSING);
 
-		boolean isSameUser = user.getClientId().equals(ULongUtil.valueOf(ca.getLoggedInFromClientId()));
+		boolean isSameUser = user.getId().equals(ULongUtil.valueOf(ca.getUser().getId()));
 
 		return FlatMapUtil.flatMapMono(
 				() -> (isUpdate && isSameUser ? this.checkPasswordEquality(user, reqPassword) : Mono.just(Boolean.TRUE))
