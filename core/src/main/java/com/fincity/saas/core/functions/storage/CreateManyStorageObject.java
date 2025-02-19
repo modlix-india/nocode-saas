@@ -2,6 +2,7 @@ package com.fincity.saas.core.functions.storage;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
 import com.fincity.nocode.kirun.engine.model.*;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
@@ -53,7 +54,7 @@ public class CreateManyStorageObject extends AbstractReactiveFunction
                 .setParameters(Map.of(STORAGE_NAME, new Parameter().setParameterName(STORAGE_NAME)
                                 .setSchema(Schema.ofString(STORAGE_NAME)), DATA_ARRAY,
                         new Parameter().setParameterName(DATA_ARRAY)
-                                .setSchema(Schema.ofArray(DATA_ARRAY)),
+                                .setSchema(Schema.ofArray(DATA_ARRAY).setItems(ArraySchemaType.of(Schema.ofAny(DATA_ARRAY)))),
 
                         APP_CODE,
                         Parameter.of(APP_CODE,
