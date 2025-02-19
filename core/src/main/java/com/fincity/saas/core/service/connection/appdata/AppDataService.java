@@ -224,8 +224,7 @@ public class AppDataService {
 												)
 												.flatMap(createdObj -> {
 													if (BooleanUtil.safeValueOf(storage.getGenerateEvents())) {
-														return this.generateEvent(ca, ac, cc, storage, "Create", Map.of("dataArr", List.of(createdObj)), null)
-																.thenReturn(createdObj);
+														return this.generateEvent(ca, ac, cc, storage, "Create", Map.of("dataArr", List.of(createdObj)), null);
 													}
 													return Mono.just(createdObj);
 												})
@@ -238,7 +237,7 @@ public class AppDataService {
 								)
 								.collectList()
 		);
-		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.createMany"));
 	}
 
 
@@ -840,6 +839,52 @@ public class AppDataService {
 				});
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
+	}
+
+
+	public Mono<Page<Map<String, Object>>> readPageAllVersions(String appCode, String clientCode, String storageName,
+													Query query) {
+
+		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+
+				(ca, ac, cc, conn) -> Mono
+						.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
+
+				(ca, ac, cc, conn, dataService, storage) -> this.<Page<Map<String, Object>>>genericOperation(storage,
+						(cona, hasAccess) -> dataService.readPageAllVersions(conn, storage, query), Storage::getReadAuth,
+						CoreMessageResourceService.FORBIDDEN_READ_STORAGE),
+
+				(ca, ac, cc, conn, dataService, storage, page) -> {
+
+					if (storage.getRelations() == null || storage.getRelations().isEmpty())
+						return Mono.just(page);
+
+					return FlatMapUtil.flatMapMono(
+
+							() -> Flux.fromIterable(page.getContent())
+									.flatMap(e -> this.fillRelatedObjects(ac, cc, storage, e, dataService,
+											conn,
+											BooleanUtil.safeValueOf(query.getEager())
+													? storage.getRelations().keySet().stream().toList()
+													: query.getEagerFields()))
+									.collectList(),
+
+							list -> Mono.just(PageableExecutionUtils.getPage(list, page.getPageable(),
+									() -> page.getTotalElements())));
+				});
+
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPageAllVersions"));
 	}
 
 	public Mono<Boolean> delete(String appCode, String clientCode, String storageName, String id) {
