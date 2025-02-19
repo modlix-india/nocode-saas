@@ -259,8 +259,7 @@ public class UserPreferenceService
 	}
 
 	private Mono<UserPreference> getUserPreferenceInternal(ULong appId, ULong userId) {
-		return this.cacheService.cacheEmptyValueOrGet(this.getUserPreferenceCacheName(),
-				() -> this.dao.getUserPreference(appId, userId), this.getCacheKeys(appId, userId));
+		return this.dao.getUserPreference(appId, userId);
 	}
 
 	private Mono<Tuple2<ULong, ULong>> getAppUserId(String appCode, ULong userId) {

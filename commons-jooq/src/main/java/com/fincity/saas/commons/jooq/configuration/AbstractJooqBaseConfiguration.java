@@ -1,21 +1,15 @@
 package com.fincity.saas.commons.jooq.configuration;
 
 import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.r2dbc.convert.R2dbcCustomConversions;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 
-import io.r2dbc.pool.ConnectionPool;
-import io.r2dbc.pool.ConnectionPoolConfiguration;
-import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
-import io.r2dbc.spi.ConnectionFactoryOptions;
-import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
 
 public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
 
@@ -28,6 +22,8 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 	@Value("${spring.r2dbc.password}")
 	private String password;
 
+	private R2dbcConfiguration r2dbcConfiguration;
+
 	protected AbstractJooqBaseConfiguration(ObjectMapper objectMapper) {
 		super(objectMapper);
 	}
@@ -36,24 +32,32 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 		super.initialize();
 		this.objectMapper.registerModule(
 				new com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule(messageResourceService));
+		this.r2dbcConfiguration = new R2dbcConfiguration(url, username, password);
 	}
 
-	public String getProtocol() {
-		return "mysql";
+	@Override
+	protected void initialize() {
+		super.initialize();
+		this.r2dbcConfiguration = new R2dbcConfiguration(url, username, password);
 	}
 
 	@Bean
-	public DSLContext context() {
+	public R2dbcConfiguration r2dbcConfiguration() {
+		return this.r2dbcConfiguration;
+	}
 
-		Builder props = ConnectionFactoryOptions.parse(url)
-				.mutate();
-		ConnectionFactory factory = ConnectionFactories.get(props
-				.option(ConnectionFactoryOptions.DRIVER, "pool")
-				.option(ConnectionFactoryOptions.PROTOCOL, getProtocol())
-				.option(ConnectionFactoryOptions.USER, username)
-				.option(ConnectionFactoryOptions.PASSWORD, password)
-				.build());
-		return DSL.using(new ConnectionPool(ConnectionPoolConfiguration.builder(factory)
-				.build()));
+	@Bean
+	public ConnectionFactory connectionFactory() {
+		return this.r2dbcConfiguration.connectionFactory();
+	}
+
+	@Bean
+	public DSLContext dslContext() {
+		return this.r2dbcConfiguration.context();
+	}
+
+	@Bean
+	public R2dbcCustomConversions r2dbcCustomConversions() {
+		return this.r2dbcConfiguration.r2dbcCustomConversions();
 	}
 }

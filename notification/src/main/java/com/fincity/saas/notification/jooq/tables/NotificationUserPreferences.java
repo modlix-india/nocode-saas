@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.json.JSONtoMapConvertor;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
@@ -31,7 +32,6 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
-import org.jooq.jackson.extensions.converters.JSONtoJacksonConverter;
 import org.jooq.types.ULong;
 
 
@@ -88,7 +88,7 @@ public class NotificationUserPreferences extends TableImpl<NotificationUserPrefe
      * <code>notification.notification_user_preferences.PREFERENCES</code>.
      * Notification preference
      */
-    public final TableField<NotificationUserPreferencesRecord, Map> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON, this, "Notification preference", new JSONtoJacksonConverter<Map>(Map.class));
+    public final TableField<NotificationUserPreferencesRecord, Map> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON, this, "Notification preference", new JSONtoMapConvertor());
 
     /**
      * The column
