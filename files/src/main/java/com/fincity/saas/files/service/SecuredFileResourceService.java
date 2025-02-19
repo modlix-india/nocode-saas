@@ -250,7 +250,9 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
             ca -> (userId == null) ? Mono.just(ca.getUser().getId()) :
                 this.securityService.isUserBeingManaged(userId.toBigInteger(), ca.getClientCode())
-                    .filter(Boolean::booleanValue).map(e -> userId.toBigInteger()),
+                    .filter(Boolean::booleanValue)
+                    .filter(t -> SecurityContextUtil.hasAuthority("Authorities.User_UPDATE", ca.getUser().getAuthorities()))
+                    .map(e -> userId.toBigInteger()),
 
             (ca, uid) ->
                 Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
@@ -263,7 +265,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
             },
 
             (ca, uid, tempDirectory, file) ->
-                Mono.fromCallable(() -> this.makeSourceImage(file, fp.filename())),
+                Mono.fromCallable(() -> ImageTransformUtil.makeSourceImage(file, fp.filename())),
 
             (ca, uid, temp, file, sourceTuple) ->
                 Mono.defer(() -> Mono.just(Tuples.of(
@@ -282,7 +284,8 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
             (ca, uid, temp, file,
              sTuple, imgTuple, finalFile) ->
                 this.getFSService().createFileFromFile("SYSTEM",
-                    "_userImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
+                        "_userImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
+                    .map(fd -> this.convertToFileDetailWhileCreation("/_userImages", "SYSTEM", fd))
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.uploadUserImage"));
     }
 }

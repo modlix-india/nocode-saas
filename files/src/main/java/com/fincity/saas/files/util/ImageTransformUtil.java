@@ -4,13 +4,24 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import org.imgscalr.Scalr;
 
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.model.ImageDetails;
+import org.springframework.http.HttpStatus;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 public class ImageTransformUtil {
 
@@ -37,19 +48,19 @@ public class ImageTransformUtil {
         }
 
         if (details.getCropAreaX() != null && details.getCropAreaY() != null && details.getCropAreaWidth() != null
-                && details.getCropAreaHeight() != null) {
+            && details.getCropAreaHeight() != null) {
             bi = cropImage(bi, details.getCropAreaX(), details.getCropAreaY(), details.getCropAreaWidth(),
-                    details.getCropAreaHeight(), details.getBackgroundColor(), imageType);
+                details.getCropAreaHeight(), details.getBackgroundColor(), imageType);
         }
 
         return bi;
     }
 
     public static BufferedImage cropImage(BufferedImage sourceImage, int x, int y, int width, int height,
-            String bgColor, int imageType) {
+                                          String bgColor, int imageType) {
 
-        int newX = x < 0 ? 0 : x;
-        int newY = y < 0 ? 0 : y;
+        int newX = Math.max(x, 0);
+        int newY = Math.max(y, 0);
         int newWidth = x < 0 ? width + x : width;
         int newHeight = y < 0 ? height + y : height;
 
@@ -75,13 +86,13 @@ public class ImageTransformUtil {
     }
 
     public static BufferedImage rotateImage(BufferedImage sourceImage, int imageType, Integer rotation,
-            String bgColor) {
+                                            String bgColor) {
 
         double radians = Math.toRadians(rotation);
         int w = (Double.valueOf(Math.abs(sourceImage.getWidth() * Math.cos(radians))
-                + Math.abs(sourceImage.getHeight() * Math.sin(radians)))).intValue();
+            + Math.abs(sourceImage.getHeight() * Math.sin(radians)))).intValue();
         int h = (Double.valueOf(Math.abs(sourceImage.getWidth() * Math.sin(radians))
-                + Math.abs(sourceImage.getHeight() * Math.cos(radians)))).intValue();
+            + Math.abs(sourceImage.getHeight() * Math.cos(radians)))).intValue();
         BufferedImage resultImage = new BufferedImage(w, h, imageType);
         Graphics2D g = resultImage.createGraphics();
 
@@ -92,37 +103,26 @@ public class ImageTransformUtil {
 
         int x = -1 * (sourceImage.getWidth() - w) / 2;
         int y = -1 * (sourceImage.getHeight() - h) / 2;
-        g.rotate(radians, (w / 2), (h / 2));
+        g.rotate(radians, ((double) w / 2), ((double) h / 2));
         g.drawImage(sourceImage, null, x, y);
         return resultImage;
     }
 
     public static BufferedImage scaleImage(BufferedImage sourceImage, Integer width, Integer height) {
 
-        if ((width == null && height == null) || ((width != null && height != null) && sourceImage.getWidth() == width
+        if ((width == null && height == null) ||
+            ((width != null && height != null) && sourceImage.getWidth() == width
                 && sourceImage.getHeight() == height)) {
             return sourceImage;
         }
 
         return Scalr.resize(sourceImage, Scalr.Method.QUALITY, Scalr.Mode.AUTOMATIC,
-                CommonsUtil.nonNullValue(width, sourceImage.getWidth()),
-                CommonsUtil.nonNullValue(height, sourceImage.getHeight()));
-    }
-
-    public static BufferedImage toBufferedImage(Image image) {
-        if (image instanceof BufferedImage) {
-            return (BufferedImage) image;
-        }
-        BufferedImage buff = new BufferedImage(image.getWidth(null), image.getHeight(null),
-                BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = buff.createGraphics();
-        g.drawImage(image, 0, 0, null);
-        g.dispose();
-        return buff;
+            CommonsUtil.nonNullValue(width, sourceImage.getWidth()),
+            CommonsUtil.nonNullValue(height, sourceImage.getHeight()));
     }
 
     public static Color getColorFromString(String colorString) {
-        if (colorString == null || colorString.trim().length() <= 3 || colorString.trim().isEmpty()) {
+        if (colorString == null || colorString.trim().length() <= 3) {
             return new Color(0, 0, 0, 0);
         }
         if (colorString.startsWith("#")) {
@@ -142,5 +142,23 @@ public class ImageTransformUtil {
         int b = rgbValue & 0xFF;
 
         return new Color(r, g, b, alphaValue);
+    }
+
+    public static Tuple2<BufferedImage, Integer> makeSourceImage(File file,
+                                                                 String fileName) throws IOException {
+
+        ImageInputStream iis = ImageIO.createImageInputStream(file);
+
+        Iterator<ImageReader> imageReaders = ImageIO.getImageReaders(iis);
+
+        if (imageReaders.hasNext()) {
+            ImageReader reader = imageReaders.next();
+            reader.setInput(iis);
+            return Tuples.of(reader.read(0),
+                fileName.toLowerCase().endsWith("png") ? BufferedImage.TYPE_INT_ARGB
+                    : BufferedImage.TYPE_INT_RGB);
+        }
+
+        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to find the reader for the image.");
     }
 }

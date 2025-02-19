@@ -11,6 +11,7 @@ import com.fincity.saas.files.util.ImageTransformUtil;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.service.CacheService;
@@ -77,7 +78,7 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
         return FilesAccessPathResourceType.STATIC.name();
     }
 
-
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     public Mono<FileDetail> uploadClientImage(FilePart fp, ImageDetails details, ULong clientId) {
 
         return FlatMapUtil.flatMapMono(
@@ -97,7 +98,7 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
                 return fp.transferTo(file).thenReturn(file.toFile());
             },
 
-            (ca, cid, tempDirectory, file) -> Mono.fromCallable(() -> this.makeSourceImage(file, fp.filename())),
+            (ca, cid, tempDirectory, file) -> Mono.fromCallable(() -> ImageTransformUtil.makeSourceImage(file, fp.filename())),
 
             (ca, cid, temp, file, sourceTuple) ->
                 Mono.defer(() -> Mono.just(Tuples.of(
@@ -114,7 +115,8 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 
             (ca, cid, temp, file, sTuple, imgTuple, finalFile) ->
                 this.getFSService().createFileFromFile("SYSTEM",
-                    "_clientImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
+                        "_clientImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
+                    .map(fd -> this.convertToFileDetailWhileCreation("/_clientImages", "SYSTEM", fd))
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StaticFileResourceService.uploadClientImage"));
     }
 }

@@ -42,8 +42,6 @@ import reactor.util.function.Tuples;
 
 import javax.annotation.PreDestroy;
 import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -175,7 +173,7 @@ public abstract class AbstractFilesResourceService {
 
     }
 
-    private FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, FileDetail fileDetail) {
+    protected FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, FileDetail fileDetail) {
 
         String resourceType = this.getResourceFileType();
 
@@ -581,7 +579,7 @@ public abstract class AbstractFilesResourceService {
                         + pathParts.fileName);
             },
 
-            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> this.makeSourceImage(file, pathParts.fileName)).subscribeOn(Schedulers.boundedElastic()),
+            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> ImageTransformUtil.makeSourceImage(file, pathParts.fileName)).subscribeOn(Schedulers.boundedElastic()),
 
             (hasPermission, tempDirectory, file, sourceTuple) -> {
 
@@ -640,25 +638,6 @@ public abstract class AbstractFilesResourceService {
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.finalFileWrite"));
 
-
-    }
-
-    protected Tuple2<BufferedImage, Integer> makeSourceImage(File file,
-                                                             String fileName) throws IOException {
-
-        ImageInputStream iis = ImageIO.createImageInputStream(file);
-
-        Iterator<ImageReader> imageReaders = ImageIO.getImageReaders(iis);
-
-        if (imageReaders.hasNext()) {
-            ImageReader reader = imageReaders.next();
-            reader.setInput(iis);
-            return Tuples.of(reader.read(0),
-                fileName.toLowerCase().endsWith("png") ? BufferedImage.TYPE_INT_ARGB
-                    : BufferedImage.TYPE_INT_RGB);
-        }
-
-        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to find the reader for the image.");
     }
 
     public Mono<ULong> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
