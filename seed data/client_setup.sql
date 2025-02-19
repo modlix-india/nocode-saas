@@ -2114,6 +2114,19 @@ CREATE TABLE files_upload_download (
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
+
+-- V35__Alter Security Otp UserId Null
+
+  ALTER TABLE `security`.`security_otp`
+    MODIFY COLUMN `USER_ID` BIGINT UNSIGNED NULL COMMENT 'Identifier for the user for whom this OTP is generated. References security_user table';
+
+-- V36__Alter Security Otp Updatable Fields
+
+  ALTER TABLE `security`.`security_otp`
+    ADD COLUMN `VERIFY_LEGS_COUNTS` SMALLINT DEFAULT 0 NOT NULL COMMENT 'Number of legs in otp verification. If 0 this otp will be completely verified and deleted' AFTER `IP_ADDRESS`,
+    ADD COLUMN `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who last updated this row' AFTER `CREATED_AT`,
+    ADD COLUMN `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated' AFTER `UPDATED_BY`;
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....
