@@ -56,8 +56,9 @@ import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
-import com.fincity.security.model.OtpGenerationRequestInternal;
 import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.model.otp.OtpGenerationRequestInternal;
+import com.fincity.security.model.otp.OtpVerificationRequest;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -794,7 +795,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> verifyOtpResetPassword(AuthenticationRequest authRequest) {
 
-		OtpPurpose purpose = OtpPurpose.PASSWORD_RESET;
+		OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest()
+				.setPurpose(OtpPurpose.PASSWORD_RESET).setOtp(authRequest.getOtp());
 
 		return FlatMapUtil.flatMapMono(
 
@@ -814,7 +816,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 				(ca, userTup, userCheck) -> this.otpService
-						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), purpose, authRequest.getOtp())
+						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), otpVerificationRequest)
 						.filter(otpVerified -> otpVerified).map(otpVerified -> Boolean.TRUE)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_PASSWORD_INVALID,
 								AuthenticationPasswordType.OTP.getName(), AuthenticationPasswordType.OTP.getName())))
@@ -825,9 +827,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 	public Mono<Boolean> resetPassword(RequestUpdatePassword reqPassword) {
 
-		OtpPurpose purpose = OtpPurpose.PASSWORD_RESET;
-
 		AuthenticationRequest authRequest = reqPassword.getAuthRequest().setIdentifierType();
+
+		OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest()
+				.setPurpose(OtpPurpose.PASSWORD_RESET).setOtp(authRequest.getOtp());
 
 		return FlatMapUtil.flatMapMono(
 
@@ -852,7 +855,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				(ca, userTup, userCheck) -> this.isPasswordUpdatable(ca, userTup.getT3(), reqPassword, Boolean.FALSE),
 
 				(ca, userTup, userCheck, isUpdatable) -> this.otpService
-						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), purpose, authRequest.getOtp())
+						.verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), otpVerificationRequest)
 						.flatMap(BooleanUtil::safeValueOfWithEmpty)
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_PASSWORD_INVALID,
 								AuthenticationPasswordType.OTP.getName(), AuthenticationPasswordType.OTP.getName())),
@@ -871,7 +874,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		if (StringUtil.safeIsBlank(reqPassword.getNewPassword()))
 			return this.forbiddenError(SecurityMessageResourceService.NEW_PASSWORD_MISSING);
 
-		boolean isSameUser = user.getClientId().equals(ULongUtil.valueOf(ca.getLoggedInFromClientId()));
+		boolean isSameUser = user.getId().equals(ULongUtil.valueOf(ca.getUser().getId()));
 
 		return FlatMapUtil.flatMapMono(
 				() -> (isUpdate && isSameUser ? this.checkPasswordEquality(user, reqPassword) : Mono.just(Boolean.TRUE))
@@ -879,8 +882,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.OLD_NEW_PASSWORD_MATCH)),
 
 				areEqual -> this.passwordPolicyCheck(ULongUtil.valueOf(ca.getLoggedInFromClientId()), null,
-						ca.getUrlAppCode(), user.getId(), reqPassword.getPassType(), reqPassword.getNewPassword())
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.isPasswordUpdatable"));
+						ca.getUrlAppCode(), user.getId(), reqPassword.getPassType(), reqPassword.getNewPassword()))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.isPasswordUpdatable"));
 	}
 
 	private Mono<Boolean> checkPasswordEquality(User user, RequestUpdatePassword reqPassword) {

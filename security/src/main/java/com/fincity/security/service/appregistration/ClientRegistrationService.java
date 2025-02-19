@@ -45,7 +45,8 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.ClientRegistrationResponse;
-import com.fincity.security.model.OtpGenerationRequest;
+import com.fincity.security.model.otp.OtpGenerationRequest;
+import com.fincity.security.model.otp.OtpVerificationRequest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientHierarchyService;
@@ -472,8 +473,11 @@ public class ClientRegistrationService {
 		if (ca.isAuthenticated())
 			return Mono.just(Boolean.TRUE);
 
+		OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest().setEmailId(emailId)
+				.setPhoneNumber(phoneNumber).setPurpose(OtpPurpose.REGISTRATION).setOtp(otp);
+
 		return this.otpService
-				.verifyOtpInternal(ca.getUrlAppCode(), emailId, phoneNumber, OtpPurpose.REGISTRATION, otp)
+				.verifyOtpInternal(ca.getUrlAppCode(), otpVerificationRequest)
 				.filter(isVerified -> isVerified).map(isVerified -> Boolean.TRUE)
 				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
