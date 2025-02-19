@@ -1,7 +1,6 @@
 package com.fincity.saas.files.model;
 
-import com.fincity.saas.commons.util.BooleanUtil;
-
+import com.fincity.saas.commons.util.HashUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -11,34 +10,66 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class DownloadOptions {
 
-	private Integer width;
-	private Integer height;
-	private Boolean keepAspectRatio = Boolean.TRUE;
-	private String bandColor;
-	private ResizeDirection resizeDirection = ResizeDirection.HORIZONTAL;
-	private Boolean noCache;
-	private Boolean download;
-	private String name;
+    private Integer width;
+    private Integer height;
+    private Fit fit;
+    private Gravity gravity;
+    private String background;
+    private Format format;
+    private Boolean noCache;
+    private Boolean download;
+    private String name;
 
-	public enum ResizeDirection {
-		HORIZONTAL, VERTICAL;
-	}
+    public enum Gravity {
+        auto,
+        left,
+        right,
+        top,
+        bottom
+    }
 
-	public String eTagCode() {
-		return "" + new StringBuilder(32)
-				.append(width != null ? width.toString() : "-1")
-				.append(height != null ? height.toString() : "-1")
-				.append(bandColor == null ? "no" : bandColor)
-				.append('-')
-				.append(resizeDirection)
-				.append('-')
-				.append(BooleanUtil.safeValueOf(keepAspectRatio) ? 1 : 0)
-				.toString()
-				.hashCode();
-	}
+    public enum Fit {
+        scale_down,
+        contain,
+        cover,
+        crop,
+        pad,
+    }
 
-	public boolean hasModification() {
+    public enum Format {
+        general,
+        auto,
+        avif,
+        webp,
+        jpeg,
+        jpg,
+        png
+    }
 
-		return !(width == null && height == null);
-	}
+    public String eTagCode() {
+
+        return HashUtil.sha256Hash((width != null ? width.toString() : "-1") +
+            (height != null ? height.toString() : "-1") +
+            (background == null ? "no" : background) +
+            '-' +
+            fit +
+            '-' +
+            gravity + '-' + format);
+    }
+
+    public boolean getDownload() {
+        return download != null && download;
+    }
+
+    public boolean hasNoModification() {
+        return height == null && width == null
+            && fit == Fit.contain
+            && gravity == Gravity.auto
+            && background == null
+            && format == Format.general;
+    }
+
+    public Format getFormat() {
+        return format == Format.jpg ? Format.jpeg : format;
+    }
 }
