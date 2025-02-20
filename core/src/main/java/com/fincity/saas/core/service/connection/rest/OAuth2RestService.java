@@ -99,7 +99,7 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								CoreMessageResourceService.FORBIDDEN_EXECUTION, connection.getName());
 					}
-					return this.getExistingAccessToken(connection, ca.getClientCode(), ca.getUrlAppCode());
+					return this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode());
 				},
 
 				(ca,token) -> {
@@ -119,9 +119,9 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 				});
 	}
 
-	private Mono<String> getExistingAccessToken(Connection connection, String clientCode, String appCode) {
+	private Mono<String> getExistingAccessToken(String connectionName, String clientCode, String appCode) {
 		return cacheService.cacheValueOrGet(CACHE_NAME_REST_OAUTH2, () -> this.coreTokenDAO.getActiveAccessToken(
-				clientCode, appCode, connection.getName()), getCacheKeys(connection, clientCode, appCode));
+				clientCode, appCode, connectionName), getCacheKeys(connectionName, clientCode, appCode));
 	}
 
 	public Mono<String> evokeConsentAuth(String connectionName, ServerHttpRequest request) {
@@ -165,8 +165,8 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 		return basicRestService.call(connection, request, fileDownload);
 	}
 
-	private Object[] getCacheKeys(Connection connection, String clientCode, String appCode) {
-		return new Object[] { connection.getClientCode(), ":", clientCode, ":", appCode };
+	private Object[] getCacheKeys(String connectionName, String clientCode, String appCode) {
+		return new Object[] { connectionName, ":", clientCode, ":", appCode };
 	}
 
 	private Mono<String> getAuthConsentURI(ContextAuthentication ca, Connection connection, String callBackURL) {
@@ -244,7 +244,7 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 						coreToken.getAppCode(), coreToken.getConnectionName()),
 
 				(coreToken, connection, invPrev) -> cacheService.evict(CACHE_NAME_REST_OAUTH2,
-						getCacheKeys(connection, coreToken.getClientCode(), coreToken.getAppCode())),
+						getCacheKeys(connection.getName(), coreToken.getClientCode(), coreToken.getAppCode())),
 
 				(coreToken, connection, invPrev, evictCache) -> {
 
@@ -390,6 +390,19 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "OAuth2RestService.revokeConnectionToken"))
 				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 						CoreMessageResourceService.CANNOT_DELETE_TOKEN_WITH_CLIENT_CODE, connectionName));
+	}
+
+	public Mono<String> getAccessToken(String connectionName) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> connectionService.read(connectionName, ca.getUrlAppCode(), ca.getClientCode(), ConnectionType.REST_API)
+						.flatMap(this::getAccessToken)
+
+		);
+
 	}
 
 }
