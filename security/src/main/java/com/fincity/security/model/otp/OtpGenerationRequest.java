@@ -1,4 +1,7 @@
-package com.fincity.security.model;
+package com.fincity.security.model.otp;
+
+import java.io.Serial;
+import java.io.Serializable;
 
 import com.fincity.security.enums.otp.OtpPurpose;
 
@@ -11,7 +14,10 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class OtpGenerationRequest {
+public class OtpGenerationRequest implements Serializable {
+
+	@Serial
+	private static final long serialVersionUID = 3482978077027364329L;
 
 	private String emailId;
 	private String phoneNumber;

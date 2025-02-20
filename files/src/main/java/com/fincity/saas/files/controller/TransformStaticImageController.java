@@ -1,5 +1,6 @@
 package com.fincity.saas.files.controller;
 
+import com.fincity.saas.files.util.ImageDetailsUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -27,69 +28,48 @@ import reactor.util.context.Context;
 @RequestMapping("api/files/transform/")
 public class TransformStaticImageController {
 
-	private final StaticFileResourceService staticService;
-	private final SecuredFileResourceService securedService;
+    private final StaticFileResourceService staticService;
+    private final SecuredFileResourceService securedService;
 
-	public TransformStaticImageController(StaticFileResourceService staticService,
-			SecuredFileResourceService securedService) {
+    public TransformStaticImageController(StaticFileResourceService staticService,
+                                          SecuredFileResourceService securedService) {
 
-		this.staticService = staticService;
-		this.securedService = securedService;
-	}
+        this.staticService = staticService;
+        this.securedService = securedService;
+    }
 
-	@PostMapping(value = "{resourceType}/**", consumes = { "multipart/form-data" })
-	public Mono<ResponseEntity<FileDetail>> create(
-			@PathVariable String resourceType,
-			@RequestPart(name = "file", required = false) Mono<FilePart> filePart,
-			@RequestParam(required = false) String clientCode,
-			@RequestPart(required = false, name = "override") String override,
-			@RequestPart(required = false) String width, @RequestPart(required = false) String height,
-			@RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
-			@RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
-			@RequestPart(required = false) String cropAreaHeight,
-			@RequestPart(required = false) String flipHorizontal,
-			@RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
-			@RequestPart(name = "path", required = false) String filePath,
-			@RequestPart(required = false) String fileName, ServerHttpRequest request) {
+    @PostMapping(value = "{resourceType}/**", consumes = {"multipart/form-data"})
+    public Mono<ResponseEntity<FileDetail>> create(
+        @PathVariable String resourceType,
+        @RequestPart(name = "file", required = false) Mono<FilePart> filePart,
+        @RequestParam(required = false) String clientCode,
+        @RequestPart(required = false, name = "override") String override,
+        @RequestPart(required = false) String width, @RequestPart(required = false) String height,
+        @RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
+        @RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
+        @RequestPart(required = false) String cropAreaHeight,
+        @RequestPart(required = false) String flipHorizontal,
+        @RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
+        @RequestPart(name = "path", required = false) String filePath,
+        @RequestPart(required = false) String fileName, ServerHttpRequest request) {
 
-		ImageDetails imageDetails = new ImageDetails()
-				.setFlipHorizontal(BooleanUtil.safeValueOf(flipHorizontal))
-				.setFlipVertical(BooleanUtil.safeValueOf(flipVertical))
-				.setBackgroundColor(backgroundColor);
+        ImageDetails imageDetails = ImageDetailsUtil.makeDetails(
+            width, height, rotation, cropAreaX, cropAreaY, cropAreaWidth, cropAreaHeight, flipHorizontal, flipVertical,
+            backgroundColor
+        );
 
-		if (width != null)
-			imageDetails.setWidth(Integer.valueOf(width));
+        return FlatMapUtil.flatMapMonoWithNull(
 
-		if (height != null)
-			imageDetails.setHeight(Integer.valueOf(height));
+                SecurityContextUtil::getUsersContextAuthentication,
 
-		if (rotation != null)
-			imageDetails.setRotation(Integer.valueOf(rotation));
+                ca -> filePart,
 
-		if (cropAreaX != null)
-			imageDetails.setCropAreaX(Integer.valueOf(cropAreaX));
-
-		if (cropAreaY != null)
-			imageDetails.setCropAreaY(Integer.valueOf(cropAreaY));
-
-		if (cropAreaWidth != null)
-			imageDetails.setCropAreaWidth(Integer.valueOf(cropAreaWidth));
-
-		if (cropAreaHeight != null)
-			imageDetails.setCropAreaHeight(Integer.valueOf(cropAreaHeight));
-
-		return FlatMapUtil.flatMapMonoWithNull(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> filePart,
-
-				(ca, fp) -> ("secured".equals(resourceType) ? this.securedService : this.staticService).imageUpload(
-						CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-						request.getPath().toString(), fp, fileName,
-						BooleanUtil.safeValueOf(override), imageDetails, filePath))
-				.map(ResponseEntity::ok)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "TransformStaticImageController.create"));
-	}
+                (ca, fp) -> ("secured".equals(resourceType) ? this.securedService : this.staticService).imageUpload(
+                    CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+                    request.getPath().toString(), fp, fileName,
+                    BooleanUtil.safeValueOf(override), imageDetails, filePath))
+            .map(ResponseEntity::ok)
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "TransformStaticImageController.create"));
+    }
 
 }

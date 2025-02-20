@@ -16,15 +16,14 @@ import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 
-import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
-@ReactiveFeignClient(name = "security")
+@reactivefeign.spring.config.ReactiveFeignClient(name = "security")
 public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
-    public Mono<ContextAuthentication> contextAuthentication(
+    Mono<ContextAuthentication> contextAuthentication(
         @RequestHeader(name = "Authorization", required = false) String authorization,
         @RequestHeader("X-Forwarded-Host") String forwardedHost,
         @RequestHeader("X-Forwarded-Port") String forwardedPort,
@@ -32,60 +31,60 @@ public interface IFeignSecurityService {
         @RequestHeader("appCode") String appCode);
 
     @GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
-    public Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
+    Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
 
     @GetMapping("${security.feign.isBeingManagedById:/api/security/clients/internal/isBeingManagedById}")
-    public Mono<Boolean> isBeingManagedById(@RequestParam BigInteger managingClientId,
-                                            @RequestParam BigInteger clientId);
+    Mono<Boolean> isBeingManagedById(@RequestParam BigInteger managingClientId,
+                                     @RequestParam BigInteger clientId);
 
     @GetMapping("${security.feign.getClientById:/api/security/clients/internal/getClientById}")
-    public Mono<Client> getClientById(@RequestParam BigInteger clientId);
+    Mono<Client> getClientById(@RequestParam BigInteger clientId);
 
     @GetMapping("${security.feign.getClientByCode:/api/security/clients/internal/getClientByCode}")
-    public Mono<Client> getClientByCode(@RequestParam String clientCode);
+    Mono<Client> getClientByCode(@RequestParam String clientCode);
 
     @GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
-    public Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
+    Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
 
     @GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
-    public Mono<Boolean> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode);
+    Mono<Boolean> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode);
 
     @GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/hasWriteAccess}")
-    public Mono<Boolean> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode);
+    Mono<Boolean> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode);
 
     @GetMapping("${security.feign.validClientCode:/api/security/clients/internal/validateClientCode}")
-    public Mono<Boolean> validClientCode(@RequestParam String clientCode);
+    Mono<Boolean> validClientCode(@RequestParam String clientCode);
 
     @GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
-    public Mono<List<String>> appInheritance(@RequestParam String appCode, @RequestParam String urlClientCode,
-                                             @RequestParam String clientCode);
+    Mono<List<String>> appInheritance(@RequestParam String appCode, @RequestParam String urlClientCode,
+                                      @RequestParam String clientCode);
 
     @GetMapping("${security.feign.token:/api/security/ssl/token/{token}}")
-    public Mono<String> token(@PathVariable("token") String token);
+    Mono<String> token(@PathVariable("token") String token);
 
     @GetMapping("${security.feign.getAppByCode:/api/security/applications/internal/appCode/{appCode}}")
-    public Mono<App> getAppByCode(@PathVariable("appCode") String appCode);
+    Mono<App> getAppByCode(@PathVariable("appCode") String appCode);
 
     @GetMapping("${security.feign.getAppByCode:/api/security/applications/internal/explicitInfo/{appCode}}")
-    public Mono<App> getAppExplicitInfoByCode(@PathVariable("appCode") String appCode);
+    Mono<App> getAppExplicitInfoByCode(@PathVariable("appCode") String appCode);
 
     @GetMapping("${security.feign.getAppById:/api/security/applications/{id}}")
-    public Mono<App> getAppById(@RequestHeader(name = "Authorization", required = false) String authorization,
+    Mono<App> getAppById(@RequestHeader(name = "Authorization", required = false) String authorization,
+                         @RequestHeader("X-Forwarded-Host") String forwardedHost,
+                         @RequestHeader("X-Forwarded-Port") String forwardedPort,
+                         @RequestHeader("clientCode") String clientCode,
+                         @RequestHeader("appCode") String headerAppCode, @PathVariable("id") String id);
+
+    @DeleteMapping("${security.feign.deleteByAppId:/api/security/applications/{id}}")
+    Mono<Boolean> deleteByAppId(@RequestHeader(name = "Authorization") String authorization,
                                 @RequestHeader("X-Forwarded-Host") String forwardedHost,
                                 @RequestHeader("X-Forwarded-Port") String forwardedPort,
                                 @RequestHeader("clientCode") String clientCode,
-                                @RequestHeader("appCode") String headerAppCode, @PathVariable("id") String id);
-
-    @DeleteMapping("${security.feign.deleteByAppId:/api/security/applications/{id}}")
-    public Mono<Boolean> deleteByAppId(@RequestHeader(name = "Authorization") String authorization,
-                                       @RequestHeader("X-Forwarded-Host") String forwardedHost,
-                                       @RequestHeader("X-Forwarded-Port") String forwardedPort,
-                                       @RequestHeader("clientCode") String clientCode,
-                                       @RequestHeader("appCode") String headerAppCode,
-                                       @PathVariable("id") BigInteger id);
+                                @RequestHeader("appCode") String headerAppCode,
+                                @PathVariable("id") BigInteger id);
 
     @GetMapping("${security.feign.transport:/api/security/transports/makeTransport}")
-    public Mono<Map<String, Object>> makeTransport(
+    Mono<Map<String, Object>> makeTransport(
         @RequestHeader(name = "Authorization", required = false) String authorization,
         @RequestHeader("X-Forwarded-Host") String forwardedHost,
         @RequestHeader("X-Forwarded-Port") String forwardedPort,
@@ -94,7 +93,7 @@ public interface IFeignSecurityService {
         @RequestParam("applicationCode") String applicationCode);
 
     @PostMapping("${security.feign.createApp:/api/security/applications/}")
-    public Mono<App> createApp(
+    Mono<App> createApp(
         @RequestHeader(name = "Authorization", required = false) String authorization,
         @RequestHeader("X-Forwarded-Host") String forwardedHost,
         @RequestHeader("X-Forwarded-Port") String forwardedPort,
@@ -103,7 +102,7 @@ public interface IFeignSecurityService {
         @RequestBody App application);
 
     @PostMapping("${security.feign.transportApply:/api/security/transports/createAndApply}")
-    public Mono<Boolean> createAndApplyTransport(
+    Mono<Boolean> createAndApplyTransport(
         @RequestHeader(name = "Authorization", required = false) String authorization,
         @RequestHeader("X-Forwarded-Host") String forwardedHost,
         @RequestHeader("X-Forwarded-Port") String forwardedPort,
@@ -112,7 +111,7 @@ public interface IFeignSecurityService {
         @RequestBody Object securityDefinition);
 
     @GetMapping("${security.feign.findBaseClientCodeForOverride:/api/security/applications/findBaseClientCode/{applicationCode}}")
-    public Mono<Tuple2<String, Boolean>> findBaseClientCodeForOverride(
+    Mono<Tuple2<String, Boolean>> findBaseClientCodeForOverride(
         @RequestHeader(name = "Authorization", required = false) String authorization,
         @RequestHeader("X-Forwarded-Host") String forwardedHost,
         @RequestHeader("X-Forwarded-Port") String forwardedPort,
@@ -121,25 +120,25 @@ public interface IFeignSecurityService {
         @PathVariable("applicationCode") String applicationCode);
 
     @GetMapping("${security.feign.dependencies:/api/security/applications/internal/dependencies}")
-    public Mono<List<String>> getDependencies(@RequestParam String appCode);
+    Mono<List<String>> getDependencies(@RequestParam String appCode);
 
     @GetMapping("${security.feign.getAppUrl:/api/security/clienturls/internal/applications/property/url}")
-    public Mono<String> getAppUrl(@RequestParam String appCode,
-                                  @RequestParam(required = false) String clientCode);
+    Mono<String> getAppUrl(@RequestParam String appCode,
+                           @RequestParam(required = false) String clientCode);
 
     @DeleteMapping("${security.feign.deleteEveryting:/api/security/applications/{id}}")
-    public Mono<Boolean> deleteEverything(@RequestHeader(name = "Authorization", required = false) String authorization,
-                                          @RequestHeader("X-Forwarded-Host") String forwardedHost,
-                                          @RequestHeader("X-Forwarded-Port") String forwardedPort,
-                                          @RequestHeader("clientCode") String clientCode,
-                                          @RequestHeader("appCode") String headerAppCode,
-                                          @PathVariable("id") final Long id);
+    Mono<Boolean> deleteEverything(@RequestHeader(name = "Authorization", required = false) String authorization,
+                                   @RequestHeader("X-Forwarded-Host") String forwardedHost,
+                                   @RequestHeader("X-Forwarded-Port") String forwardedPort,
+                                   @RequestHeader("clientCode") String clientCode,
+                                   @RequestHeader("appCode") String headerAppCode,
+                                   @PathVariable("id") final Long id);
 
     @GetMapping("${security.feign.hasDeleteAccess:/api/security/applications/hasDeleteAccess}")
-    public Mono<Boolean> hasDeleteAccess(@RequestHeader(name = "Authorization", required = false) String authorization,
-                                         @RequestHeader("X-Forwarded-Host") String forwardedHost,
-                                         @RequestHeader("X-Forwarded-Port") String forwardedPort,
-                                         @RequestHeader("clientCode") String headerClientCode,
-                                         @RequestHeader("appCode") String headerAppCode,
-                                         @RequestParam("deleteAppCode") String deleteAppCode, @RequestParam("deleteClientCode") String deleteClientCode);
+    Mono<Boolean> hasDeleteAccess(@RequestHeader(name = "Authorization", required = false) String authorization,
+                                  @RequestHeader("X-Forwarded-Host") String forwardedHost,
+                                  @RequestHeader("X-Forwarded-Port") String forwardedPort,
+                                  @RequestHeader("clientCode") String headerClientCode,
+                                  @RequestHeader("appCode") String headerAppCode,
+                                  @RequestParam("deleteAppCode") String deleteAppCode, @RequestParam("deleteClientCode") String deleteClientCode);
 }
