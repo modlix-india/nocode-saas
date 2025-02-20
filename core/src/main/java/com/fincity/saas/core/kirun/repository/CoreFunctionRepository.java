@@ -3,6 +3,8 @@ package com.fincity.saas.core.kirun.repository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.fincity.saas.core.functions.storage.*;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,12 +26,6 @@ import com.fincity.saas.core.functions.security.IsBeingManagedById;
 import com.fincity.saas.core.functions.securitycontext.GetAuthentication;
 import com.fincity.saas.core.functions.securitycontext.GetUser;
 import com.fincity.saas.core.functions.securitycontext.HasAuthority;
-import com.fincity.saas.core.functions.storage.CreateStorageObject;
-import com.fincity.saas.core.functions.storage.DeleteStorageObjectWithFilter;
-import com.fincity.saas.core.functions.storage.DeleteStorageObject;
-import com.fincity.saas.core.functions.storage.ReadPageStorageObject;
-import com.fincity.saas.core.functions.storage.ReadStorageObject;
-import com.fincity.saas.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.core.service.connection.email.EmailService;
 import com.fincity.saas.core.service.connection.rest.RestService;
@@ -108,6 +104,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction readStorage = new ReadStorageObject(appDataService, gson);
 		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper, gson);
 		ReactiveFunction deleteByFilterStorage = new DeleteStorageObjectWithFilter(appDataService, objectMapper, gson);
+		ReactiveFunction getVersionDetailsStorageObject =new GetVersionDetailsStorageObject(appDataService,objectMapper,gson);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
 		repoMap.put(deleteStorage.getSignature().getFullName(), deleteStorage);
@@ -115,6 +112,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(updateStorage.getSignature().getFullName(), updateStorage);
 		repoMap.put(readStorage.getSignature().getFullName(), readStorage);
 		repoMap.put(readPageStorage.getSignature().getFullName(), readPageStorage);
+		repoMap.put(getVersionDetailsStorageObject.getSignature().getFullName(), getVersionDetailsStorageObject);
 	}
 
 	private void makeRESTFunctions(RestService restService, IFeignFilesService filesService,
