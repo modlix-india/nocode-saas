@@ -74,9 +74,9 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
 
     /**
      * The column <code>security.security_client_url.URL_PATTERN</code>. URL
-     * Pattern to identify user's Client ID
+     * Pattern to identify users Client ID
      */
-    public final TableField<SecurityClientUrlRecord, String> URL_PATTERN = createField(DSL.name("URL_PATTERN"), SQLDataType.VARCHAR(512).nullable(false), this, "URL Pattern to identify user's Client ID");
+    public final TableField<SecurityClientUrlRecord, String> URL_PATTERN = createField(DSL.name("URL_PATTERN"), SQLDataType.VARCHAR(512).nullable(false), this, "URL Pattern to identify users Client ID");
 
     /**
      * The column <code>security.security_client_url.APP_CODE</code>.

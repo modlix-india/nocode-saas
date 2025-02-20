@@ -196,7 +196,7 @@ public class SecurityRole extends TableImpl<SecurityRoleRecord> {
 
     @Override
     public List<UniqueKey<SecurityRoleRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_ROLE_UK1_ROLE_NAME_APP_ID);
+        return Arrays.asList(Keys.KEY_SECURITY_ROLE_UK1_ROLE_NAME);
     }
 
     @Override

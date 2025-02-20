@@ -53,7 +53,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
 
     /**
      * Setter for <code>security.security_client_url.URL_PATTERN</code>. URL
-     * Pattern to identify user's Client ID
+     * Pattern to identify users Client ID
      */
     public SecurityClientUrlRecord setUrlPattern(String value) {
         set(2, value);
@@ -62,7 +62,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
 
     /**
      * Getter for <code>security.security_client_url.URL_PATTERN</code>. URL
-     * Pattern to identify user's Client ID
+     * Pattern to identify users Client ID
      */
     public String getUrlPattern() {
         return (String) get(2);
