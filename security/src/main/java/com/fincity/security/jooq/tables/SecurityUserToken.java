@@ -86,7 +86,7 @@ public class SecurityUserToken extends TableImpl<SecurityUserTokenRecord> {
      * The column <code>security.security_user_token.EXPIRES_AT</code>. When the
      * token expires
      */
-    public final TableField<SecurityUserTokenRecord, LocalDateTime> EXPIRES_AT = createField(DSL.name("EXPIRES_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.inline("2021-12-31 19:31:01", SQLDataType.LOCALDATETIME)), this, "When the token expires");
+    public final TableField<SecurityUserTokenRecord, LocalDateTime> EXPIRES_AT = createField(DSL.name("EXPIRES_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.inline("2022-01-01 01:01:01", SQLDataType.LOCALDATETIME)), this, "When the token expires");
 
     /**
      * The column <code>security.security_user_token.IP_ADDRESS</code>. User IP
