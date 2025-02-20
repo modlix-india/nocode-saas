@@ -91,6 +91,31 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import javax.annotation.PreDestroy;
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.net.URLConnection;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.Duration;
+import java.util.List;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
+
 public abstract class AbstractFilesResourceService {
 
     private static final String GENERIC_URI_PART = "api/files/";
@@ -199,7 +224,7 @@ public abstract class AbstractFilesResourceService {
 
     }
 
-    private FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, FileDetail fileDetail) {
+    protected FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode, FileDetail fileDetail) {
 
         String resourceType = this.getResourceFileType();
 
@@ -751,8 +776,8 @@ public abstract class AbstractFilesResourceService {
                         + pathParts.fileName, true);
             },
 
-            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> this.makeSourceImage(file, pathParts))
-                .subscribeOn(Schedulers.boundedElastic()),
+
+            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> ImageTransformUtil.makeSourceImage(file, pathParts.fileName)).subscribeOn(Schedulers.boundedElastic()),
 
             (hasPermission, tempDirectory, file, sourceTuple) -> {
 
@@ -809,24 +834,6 @@ public abstract class AbstractFilesResourceService {
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.finalFileWrite"));
 
-    }
-
-    private Tuple2<BufferedImage, Integer> makeSourceImage(File file,
-                                                           PathParts pathParts) throws IOException {
-
-        ImageInputStream iis = ImageIO.createImageInputStream(file);
-
-        Iterator<ImageReader> imageReaders = ImageIO.getImageReaders(iis);
-
-        if (imageReaders.hasNext()) {
-            ImageReader reader = imageReaders.next();
-            reader.setInput(iis);
-            return Tuples.of(reader.read(0),
-                pathParts.fileName.toLowerCase().endsWith("png") ? BufferedImage.TYPE_INT_ARGB
-                    : BufferedImage.TYPE_INT_RGB);
-        }
-
-        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to find the reader for the image.");
     }
 
     public Mono<ULong> createFromZipFile(String clientCode, String uri, FilePart fp, Boolean override) {
