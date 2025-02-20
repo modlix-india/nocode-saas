@@ -26,7 +26,7 @@ public interface IAppDataService {
 
 	Flux<Map<String, Object>> readPageAsFlux(Connection conn, Storage storage, Query query);
 
-	Mono<Boolean> delete(Connection conn, Storage storage, String id);
+	Mono<Boolean> delete(Connection conn, Storage storage, String id, Boolean deleteVersion);
 
 	Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode);
 
