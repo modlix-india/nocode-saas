@@ -1,6 +1,6 @@
 package com.fincity.saas.commons.jooq.convertor.r2dbc;
 
-import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.springframework.data.convert.WritingConverter;
 
@@ -8,14 +8,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 @WritingConverter
 @SuppressWarnings("rawtypes")
-public class JacksonWritingMapConvertor extends AbstractSpringConverter<LinkedHashMap, String> {
+public class JacksonWritingMapConvertor extends AbstractSpringConverter<Map, String> {
 
 	public JacksonWritingMapConvertor() {
-		super(LinkedHashMap.class, String.class);
+		super(Map.class, String.class);
 	}
 
 	@Override
-	public String convert(LinkedHashMap source) {
+	public String convert(Map source) {
 		try {
 			return mapper.writeValueAsString(source);
 		} catch (JsonProcessingException e) {

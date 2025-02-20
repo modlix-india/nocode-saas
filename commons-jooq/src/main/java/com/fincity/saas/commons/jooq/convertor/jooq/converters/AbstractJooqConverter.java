@@ -1,21 +1,21 @@
-package com.fincity.saas.commons.jooq.convertor.jooq.json;
+package com.fincity.saas.commons.jooq.convertor.jooq.converters;
 
 import org.jooq.impl.AbstractConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fincity.saas.commons.jackson.CommonsSerializationModule;
 import com.fincity.saas.commons.jackson.TupleSerializationModule;
 
-public abstract class AbstractToJacksonConverter<J, U> extends AbstractConverter<J, U> {
+public abstract class AbstractJooqConverter<J, U> extends AbstractConverter<J, U> {
 
-	protected static final Logger logger = LoggerFactory.getLogger(AbstractToJacksonConverter.class);
+	protected static final Logger logger = LoggerFactory.getLogger(AbstractJooqConverter.class);
+
 	protected final ObjectMapper mapper;
 
-	protected AbstractToJacksonConverter(Class<J> fromType, Class<U> toType) {
+	protected AbstractJooqConverter(Class<J> fromType, Class<U> toType) {
 		super(fromType, toType);
 		mapper = JsonMapper
 				.builder()
@@ -24,9 +24,9 @@ public abstract class AbstractToJacksonConverter<J, U> extends AbstractConverter
 				.build();
 	}
 
-	protected abstract String data(J json);
+	protected abstract String toData(J databaseObject);
 
-	protected abstract J json(String string);
+	protected abstract J toJson(String string);
 
 	protected abstract U defaultIfError();
 
@@ -36,8 +36,9 @@ public abstract class AbstractToJacksonConverter<J, U> extends AbstractConverter
 			return null;
 
 		try {
-			return mapper.readValue(data(databaseObject), toType());
-		} catch (JsonProcessingException e) {
+			String data = this.toData(databaseObject);
+			return mapper.readValue(data, toType());
+		} catch (Exception e) {
 			logger.error("Error when converting JSON to {}", toType(), e);
 			return defaultIfError();
 		}
@@ -49,10 +50,11 @@ public abstract class AbstractToJacksonConverter<J, U> extends AbstractConverter
 			return null;
 
 		try {
-			return json(mapper.writeValueAsString(userObject));
-		} catch (JsonProcessingException e) {
-			logger.error("Error when converting object of type " + toType() + " to JSON", e);
-			return json(null);
+			String jsonString = mapper.writeValueAsString(userObject);
+			return this.toJson(jsonString);
+		} catch (Exception e) {
+			logger.error("Error when converting object of type {} to JSON", toType(), e);
+			return this.toJson(null);
 		}
 	}
 }

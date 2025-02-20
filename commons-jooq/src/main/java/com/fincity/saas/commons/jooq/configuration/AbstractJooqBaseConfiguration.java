@@ -3,7 +3,6 @@ package com.fincity.saas.commons.jooq.configuration;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.data.r2dbc.convert.R2dbcCustomConversions;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
@@ -54,10 +53,5 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 	@Bean
 	public DSLContext dslContext() {
 		return this.r2dbcConfiguration.context();
-	}
-
-	@Bean
-	public R2dbcCustomConversions r2dbcCustomConversions() {
-		return this.r2dbcConfiguration.r2dbcCustomConversions();
 	}
 }

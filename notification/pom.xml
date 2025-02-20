@@ -268,7 +268,9 @@
                                     <forcedTypes>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.json.JSONtoMapConvertor</converter>
+                                            <binding>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.bindings.JSONMapBinding
+                                            </binding>
                                             <includeTypes>JSON</includeTypes>
                                         </forcedType>
                                     </forcedTypes>

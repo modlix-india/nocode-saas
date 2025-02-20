@@ -57,8 +57,7 @@ public class R2dbcConfiguration extends AbstractR2dbcConfiguration {
 
 	@Override
 	public R2dbcCustomConversions r2dbcCustomConversions() {
-		R2dbcDialect dialect = DialectResolver.getDialect(connectionFactory());
-		return R2dbcCustomConversions.of(dialect, getCustomConverters());
+		return new R2dbcCustomConversions(getStoreConversions(), getCustomConverters());
 	}
 
 	private String getProtocol() {

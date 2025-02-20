@@ -4,7 +4,7 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.json.JSONtoMapConvertor;
+import com.fincity.saas.commons.jooq.convertor.jooq.bindings.JSONMapBinding;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
@@ -88,7 +88,7 @@ public class NotificationUserPreferences extends TableImpl<NotificationUserPrefe
      * <code>notification.notification_user_preferences.PREFERENCES</code>.
      * Notification preference
      */
-    public final TableField<NotificationUserPreferencesRecord, Map> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON, this, "Notification preference", new JSONtoMapConvertor());
+    public final TableField<NotificationUserPreferencesRecord, Map> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON, this, "Notification preference", new JSONMapBinding());
 
     /**
      * The column
