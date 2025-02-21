@@ -270,7 +270,7 @@ public class AppDataController {
 			@RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_ID) final String versionId,
 			@RequestBody Query query) {
 
-		return this.service.readPageVersion(appCode, clientCode, storageName, versionId, query)
+		return this.service.readPageVersion(appCode, clientCode, storageName, versionId, query,true)
 				.map(ResponseEntity::ok);
 	}
 }

@@ -42,6 +42,8 @@ public class GetVersionDetailsStorageObject extends AbstractReactiveFunction {
 
     private static final String OBJECTID = "objectId";
 
+    private static final String INCLUDE_OBJECT = "includeObject";
+
     private final AppDataService appDataService;
     private final ObjectMapper mapper;
     private final Gson gson;
@@ -86,6 +88,8 @@ public class GetVersionDetailsStorageObject extends AbstractReactiveFunction {
 
                         OBJECTID,Parameter.of(OBJECTID,Schema.ofString(OBJECTID)),
 
+                        INCLUDE_OBJECT,Parameter.of(INCLUDE_OBJECT,Schema.ofBoolean(INCLUDE_OBJECT).setDefaultValue(new JsonPrimitive(true))),
+
                         APP_CODE,
                         Parameter.of(APP_CODE,
                                 Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
@@ -121,6 +125,9 @@ public class GetVersionDetailsStorageObject extends AbstractReactiveFunction {
                 .get(OBJECTID)
                 .getAsString();
 
+        Boolean includeObject = context.getArguments()
+                .get(INCLUDE_OBJECT).getAsBoolean();
+
         JsonElement appCodeJSON = context.getArguments().get(APP_CODE);
         String appCode = appCodeJSON == null || appCodeJSON.isJsonNull() ? null : appCodeJSON.getAsString();
 
@@ -140,9 +147,14 @@ public class GetVersionDetailsStorageObject extends AbstractReactiveFunction {
                 .setSize(size)
                 .setCount(true);
 
+        if (objectId == null)
+            return Mono.just(new FunctionOutput(List.of(EventResult.of(Event.ERROR,
+                    Map.of(Event.ERROR, new JsonPrimitive("Please provide the data object id."))))));
+
+
         return this.appDataService
                 .readPageVersion(StringUtil.isNullOrBlank(appCode) ? null : appCode,
-                        StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName,objectId, dsq)
+                        StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName,objectId, dsq,includeObject)
                 .map(receivedObject -> {
 
                     Map<String, Object> pg = Map.of("content", receivedObject.getContent(),

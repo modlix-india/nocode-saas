@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.xpath.operations.Bool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1461,7 +1462,7 @@ public class AppDataService {
 	}
 
 	public Mono<Page<Map<String, Object>>> readPageVersion(String appCode, String clientCode, String storageName,
-			String versionId, Query query) {
+														   String versionId, Query query, Boolean includeVersion ) {
 
 		Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
 
@@ -1480,7 +1481,7 @@ public class AppDataService {
 						.map(ObjectWithUniqueID::getObject),
 
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
-						(cona, hasAccess) -> dataService.readPageVersion(conn, storage, versionId, query),
+						(cona, hasAccess) -> dataService.readPageVersion(conn, storage, versionId, query,includeVersion),
 						Storage::getReadAuth, CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPageVersion"));
