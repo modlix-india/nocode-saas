@@ -22,7 +22,6 @@ import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOt
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPinPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
-import com.fincity.security.jooq.tables.SecurityCodeAccess.SecurityCodeAccessPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPackage.SecurityPackagePath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
@@ -430,19 +429,6 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityClientPasswordPolicy = new SecurityClientPasswordPolicyPath(this, null, Keys.FK2_CLIENT_PWD_POL_APP_ID.getInverseKey());
 
         return _securityClientPasswordPolicy;
-    }
-
-    private transient SecurityCodeAccessPath _securityCodeAccess;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_code_access</code> table
-     */
-    public SecurityCodeAccessPath securityCodeAccess() {
-        if (_securityCodeAccess == null)
-            _securityCodeAccess = new SecurityCodeAccessPath(this, null, Keys.FK2_CODE_APP_ID.getInverseKey());
-
-        return _securityCodeAccess;
     }
 
     private transient SecurityPackagePath _securityPackage;

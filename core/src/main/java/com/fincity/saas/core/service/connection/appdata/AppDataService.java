@@ -20,6 +20,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.google.gson.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,10 +81,6 @@ import com.fincity.saas.core.service.CoreMessageResourceService;
 import com.fincity.saas.core.service.CoreSchemaService;
 import com.fincity.saas.core.service.EventDefinitionService;
 import com.fincity.saas.core.service.StorageService;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
@@ -198,6 +195,52 @@ public class AppDataService {
 
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
 	}
+
+	public Mono<List<Map<String, Object>>> createMany(String appCode, String clientCode, String storageName,
+													  List<DataObject> dataArray, Boolean eager, List<String> eagerFields) {
+
+		Mono<List<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+
+				(ca, ac, cc, conn) -> Mono.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
+
+				(ca, ac, cc, conn, dataService, storage) ->
+						Flux.fromIterable(dataArray)
+								.flatMapSequential(dataObject ->
+										FlatMapUtil.flatMapMono(
+														() -> this.processRelationsForCreate(ac, cc, storage, dataObject, dataService, conn),
+
+														updatedDataObject -> this.createWithTriggers(dataService, conn, storage, updatedDataObject)
+												)
+												.flatMap(createdObj -> {
+													if (BooleanUtil.safeValueOf(storage.getGenerateEvents())) {
+														return this.generateEvent(ca, ac, cc, storage, "Create", Map.of("dataArr", List.of(createdObj)), null);
+													}
+													return Mono.just(createdObj);
+												})
+												.flatMap(createdObj ->
+														this.fillRelatedObjects(ac, cc, storage, createdObj,
+																dataService, conn,
+																BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
+																		: eagerFields)
+												)
+								)
+								.collectList()
+		);
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.createMany"));
+	}
+
+
 
 	private Mono<Map<String, Object>> fillRelatedObjects(String appCode, String clientCode, Storage storage,
 			Map<String, Object> created, IAppDataService dataService, Connection conn,

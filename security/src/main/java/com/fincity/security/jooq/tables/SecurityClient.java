@@ -17,14 +17,12 @@ import com.fincity.security.jooq.tables.SecurityAppRegPackage.SecurityAppRegPack
 import com.fincity.security.jooq.tables.SecurityAppRegUserRole.SecurityAppRegUserRolePath;
 import com.fincity.security.jooq.tables.SecurityClientAddress.SecurityClientAddressPath;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy.SecurityClientHierarchyPath;
-import com.fincity.security.jooq.tables.SecurityClientManage.SecurityClientManagePath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPackage.SecurityClientPackagePath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPinPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientType.SecurityClientTypePath;
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
-import com.fincity.security.jooq.tables.SecurityCodeAccess.SecurityCodeAccessPath;
 import com.fincity.security.jooq.tables.SecurityOrgStructure.SecurityOrgStructurePath;
 import com.fincity.security.jooq.tables.SecurityPackage.SecurityPackagePath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
@@ -414,34 +412,6 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _fk1ClientHierarchyLevel_3;
     }
 
-    private transient SecurityClientManagePath _fk1ClientManageClientId;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_client_manage</code> table, via the
-     * <code>FK1_CLIENT_MANAGE_CLIENT_ID</code> key
-     */
-    public SecurityClientManagePath fk1ClientManageClientId() {
-        if (_fk1ClientManageClientId == null)
-            _fk1ClientManageClientId = new SecurityClientManagePath(this, null, Keys.FK1_CLIENT_MANAGE_CLIENT_ID.getInverseKey());
-
-        return _fk1ClientManageClientId;
-    }
-
-    private transient SecurityClientManagePath _fk1ClientManageMngClientId;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_client_manage</code> table, via the
-     * <code>FK1_CLIENT_MANAGE_MNG_CLIENT_ID</code> key
-     */
-    public SecurityClientManagePath fk1ClientManageMngClientId() {
-        if (_fk1ClientManageMngClientId == null)
-            _fk1ClientManageMngClientId = new SecurityClientManagePath(this, null, Keys.FK1_CLIENT_MANAGE_MNG_CLIENT_ID.getInverseKey());
-
-        return _fk1ClientManageMngClientId;
-    }
-
     private transient SecurityClientOtpPolicyPath _securityClientOtpPolicy;
 
     /**
@@ -505,19 +475,6 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityClientUrl = new SecurityClientUrlPath(this, null, Keys.FK1_CLIENT_URL_CLIENT_ID.getInverseKey());
 
         return _securityClientUrl;
-    }
-
-    private transient SecurityCodeAccessPath _securityCodeAccess;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_code_access</code> table
-     */
-    public SecurityCodeAccessPath securityCodeAccess() {
-        if (_securityCodeAccess == null)
-            _securityCodeAccess = new SecurityCodeAccessPath(this, null, Keys.FK1_CODE_CLIENT_ID.getInverseKey());
-
-        return _securityCodeAccess;
     }
 
     private transient SecurityOrgStructurePath _securityOrgStructure;
