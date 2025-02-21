@@ -1,19 +1,18 @@
 package com.fincity.saas.commons.jooq.dao;
 
 import java.io.Serializable;
-import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.fincity.saas.commons.model.condition.*;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
@@ -44,15 +43,22 @@ import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec;
-import org.springframework.r2dbc.core.Parameter;
 import org.springframework.transaction.ReactiveTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 
+import io.r2dbc.spi.Parameter;
+import io.r2dbc.spi.Parameters;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 import reactor.core.publisher.Flux;
@@ -65,14 +71,20 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	private static final String OBJECT_NOT_FOUND = AbstractMessageService.OBJECT_NOT_FOUND;
 
-	private static final Map<Class<?>, Function<UNumber, Tuple2<Object, Class<?>>>> CONVERTERS = Map.of(ULong.class,
-			x -> Tuples.of(x == null ? x : x.toBigInteger(), BigInteger.class), UInteger.class,
-			x -> Tuples.of(x == null ? x : x.longValue(), Long.class), UShort.class,
-			x -> Tuples.of(x == null ? x : x.intValue(), Integer.class));
+	private static final Map<Class<?>, Function<UNumber, Object>> CONVERTERS = Map.of(
+			ULong.class, x -> x == null ? x : x.toBigInteger(),
+			UInteger.class, x -> x == null ? x : x.longValue(),
+			UShort.class, x -> x == null ? x : x.intValue());
+
+	private static final JSONtoClassConverter<Object> JSON_CONVERTER = new JSONtoClassConverter<>(Object.class);
 
 	protected final Class<D> pojoClass;
 
 	protected final Logger logger;
+
+	protected final Table<R> table;
+
+	protected final Field<I> idField;
 
 	@Autowired // NOSONAR
 	protected DSLContext dslContext;
@@ -85,9 +97,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	@Autowired // NOSONAR
 	protected ReactiveTransactionManager transactionManager;
-
-	protected final Table<R> table;
-	protected final Field<I> idField;
 
 	protected AbstractDAO(Class<D> pojoClass, Table<R> table, Field<I> idField) {
 
@@ -167,24 +176,19 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		R rec = this.dslContext.newRecord(this.table);
 		rec.from(pojo);
 
-		List<Tuple2<Field<?>, Object>> values = new LinkedList<>();
-
 		InsertSetStep<R> insertQuery = this.dslContext.insertInto(this.table);
 
-		for (Field<?> eachField : this.table.fields()) {
+		List<Tuple2<Field<?>, Object>> values = new LinkedList<>();
 
+		this.table.fieldStream().forEach(eachField -> {
 			Object value = rec.get(eachField);
-			if (value == null)
-				continue;
-			values.add(Tuples.of(eachField, value));
-		}
+			if (value != null)
+				values.add(Tuples.of(eachField, value));
+		});
 
-		InsertValuesStepN<R> query = insertQuery.columns(values.stream()
-				.map(Tuple2::getT1)
-				.toList())
-				.values(values.stream()
-						.map(Tuple2::getT2)
-						.toList());
+		InsertValuesStepN<R> query = insertQuery
+				.columns(values.stream().map(Tuple2::getT1).toList())
+				.values(values.stream().map(Tuple2::getT2).toList());
 
 		String sql = query.getSQL(ParamType.NAMED);
 
@@ -193,40 +197,44 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		return rxtx.execute(action -> {
 
 			GenericExecuteSpec querySpec = this.dbClient.sql(sql)
+					.bindValues(this.createNameFieldParameters(values))
 					.filter((statement, executeFunction) -> statement.returnGeneratedValues(this.idField.getName())
 							.execute());
 
-			for (int i = 0; i < values.size(); i++) {
-
-				Field<?> eachField = values.get(i)
-						.getT1();
-				Object v = values.get(i)
-						.getT2();
-				Class<?> classs = eachField.getType();
-
-				if (CONVERTERS.containsKey(v.getClass())) {
-
-					Tuple2<Object, Class<?>> x = CONVERTERS.get(v.getClass())
-							.apply((UNumber) v);
-					v = x.getT1();
-					classs = x.getT2();
-				}
-
-				querySpec = querySpec.bind(Integer.toString(i + 1), Parameter.fromOrEmpty(v, classs));
-			}
-
-			Mono<I> id = querySpec.fetch()
-					.first()
+			Mono<I> id = querySpec.fetch().first()
 					.map(e -> (I) e.get(this.idField.getName()));
 
-			String selectQuery = this.dslContext.select(this.table.fields())
-					.from(this.table)
-					.getSQL() + " where " + this.idField.getName() + " = ";
+			String selectQuery = this.dslContext.selectFrom(this.table).getSQL()
+					+ " where " + this.idField.getName() + " = ";
 
 			return id.map(i -> dbClient.sql(selectQuery + i + " limit 1"))
 					.flatMap(spec -> spec.map(this::rowMapper)
 							.first());
 		}).next();
+	}
+
+	private Map<String, Object> createNameFieldParameters(List<Tuple2<Field<?>, Object>> values) {
+
+		Map<String, Object> parameters = new LinkedHashMap<>();
+		int index = 1;
+
+		for (Tuple2<Field<?>, Object> tuple : values) {
+			Field<?> eachField = tuple.getT1();
+			Object v = tuple.getT2();
+
+			if (CONVERTERS.containsKey(v.getClass())) {
+				v = CONVERTERS.get(v.getClass()).apply((UNumber) v);
+			} else if (eachField.getDataType().isJSON()) {
+				v = JSON_CONVERTER.to(v).toString();
+			}
+
+			Parameter parameter = eachField.getName().equals(this.idField.getName()) ? Parameters.inOut(v)
+					: Parameters.in(v);
+
+			parameters.put(Integer.toString(index++), parameter);
+		}
+
+		return parameters;
 	}
 
 	public Mono<Integer> delete(I id) {
@@ -248,7 +256,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		if (condition == null)
 			return Mono.just(DSL.noCondition());
 
-		Mono<Condition> cond = null;
+		Mono<Condition> cond;
 		if (condition instanceof ComplexCondition cc)
 			cond = complexConditionFilter(cc);
 		else
@@ -276,13 +284,13 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		}
 
 		if (fc.getOperator() == FilterConditionOperator.EQUALS ||
-			fc.getOperator() == FilterConditionOperator.GREATER_THAN ||
-			fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL ||
-			fc.getOperator() == FilterConditionOperator.LESS_THAN ||
-				fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL
-		) {
+				fc.getOperator() == FilterConditionOperator.GREATER_THAN ||
+				fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL ||
+				fc.getOperator() == FilterConditionOperator.LESS_THAN ||
+				fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL) {
 			if (fc.isValueField()) {
-				if (fc.getField() == null) return DSL.noCondition();
+				if (fc.getField() == null)
+					return DSL.noCondition();
 				return switch (fc.getOperator()) {
 					case EQUALS -> field.eq(this.getField(fc.getField()));
 					case GREATER_THAN -> field.gt(this.getField(fc.getField()));
@@ -293,9 +301,10 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 				};
 			}
 
-			if (fc.getValue() == null) return DSL.noCondition();
+			if (fc.getValue() == null)
+				return DSL.noCondition();
 			Object v = this.fieldValue(field, fc.getValue());
-			return switch(fc.getOperator()) {
+			return switch (fc.getOperator()) {
 				case EQUALS -> field.eq(this.fieldValue(field, v));
 				case GREATER_THAN -> field.gt(this.fieldValue(field, v));
 				case GREATER_THAN_EQUAL -> field.ge(this.fieldValue(field, v));
@@ -305,17 +314,17 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 			};
 		}
 
-        return switch (fc.getOperator()) {
+		return switch (fc.getOperator()) {
 
-            case IS_FALSE -> field.isFalse();
-            case IS_TRUE -> field.isTrue();
-            case IS_NULL -> field.isNull();
-            case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
-            case LIKE -> field.like(fc.getValue()
-                    .toString());
-            case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
-            default -> DSL.noCondition();
-        };
+			case IS_FALSE -> field.isFalse();
+			case IS_TRUE -> field.isTrue();
+			case IS_NULL -> field.isNull();
+			case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
+			case LIKE -> field.like(fc.getValue()
+					.toString());
+			case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
+			default -> DSL.noCondition();
+		};
 	}
 
 	private List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) {
@@ -355,7 +364,8 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
 	private Object fieldValue(Field<?> field, Object value) {
 
-		if (value == null) return null;
+		if (value == null)
+			return null;
 
 		DataType<?> dt = field.getDataType();
 
