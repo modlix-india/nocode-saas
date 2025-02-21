@@ -180,7 +180,10 @@ public class UserPreferenceService
 						(ca, entity, canDelete) -> super.delete(id),
 
 						(ca, entity, canUpdate, deleted) -> cacheService.evict(this.getUserPreferenceCacheName(),
-								this.getCacheKeys(entity.getAppId(), entity.getUserId())).map(evicted -> deleted))
+								this.getCacheKeys(entity.getAppId(), entity.getUserId())).map(evicted -> deleted),
+
+						(ca, entity, canUpdate, deleted, evicted) -> Mono.just(deleted)
+				)
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -193,6 +196,8 @@ public class UserPreferenceService
 						() -> this.securityService.getAppByCode(ca.getUrlAppCode()).map(app -> ULongUtil.valueOf(app.getId())),
 
 						appId -> {
+
+							entity.init();
 
 							if (entity.getAppId() == null)
 								entity.setAppId(appId);
@@ -259,7 +264,8 @@ public class UserPreferenceService
 	}
 
 	private Mono<UserPreference> getUserPreferenceInternal(ULong appId, ULong userId) {
-		return this.dao.getUserPreference(appId, userId);
+		return this.cacheService.cacheEmptyValueOrGet(this.getUserPreferenceCacheName(),
+				() -> this.dao.getUserPreference(appId, userId), this.getCacheKeys(appId, userId));
 	}
 
 	private Mono<Tuple2<ULong, ULong>> getAppUserId(String appCode, ULong userId) {

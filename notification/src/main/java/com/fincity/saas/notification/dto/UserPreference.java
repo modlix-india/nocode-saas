@@ -39,6 +39,10 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private Map<String, Map<String, Boolean>> preferences;
 
+	public UserPreference() {
+		this.init();
+	}
+
 	public UserPreference setEnabled(boolean enabled) {
 		if (!enabled)
 			this.preferences = DEFAULT_PREF;
@@ -47,7 +51,7 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 		return this;
 	}
 
-	public UserPreference setPreference(Map<String, Map<String, Boolean>> preferences) {
+	public UserPreference setPreferences(Map<String, Map<String, Boolean>> preferences) {
 
 		this.initDefault();
 
@@ -62,11 +66,11 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 		return this;
 	}
 
-	public boolean hasPreference(String prefName) {
+	public boolean hasPreference(String pref) {
 
 		for (Map.Entry<String, Map<String, Boolean>> entry : preferences.entrySet()) {
-			if (entry.getValue().containsKey(prefName))
-				return PreferenceLevel.lookupLiteral(entry.getKey()).isAllDisable() ? Boolean.FALSE : entry.getValue().get(prefName);
+			if (entry.getValue().containsKey(pref))
+				return PreferenceLevel.lookupLiteral(entry.getKey()).isAllDisable() ? Boolean.FALSE : entry.getValue().get(pref);
 		}
 		return Boolean.FALSE;
 
@@ -90,5 +94,9 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 	public void initDefault() {
 		this.preferences = DEFAULT_PREF;
 		this.enabled = Boolean.FALSE;
+	}
+
+	public void init() {
+		this.setPreferences(this.preferences);
 	}
 }
