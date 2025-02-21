@@ -3,8 +3,8 @@ package com.fincity.saas.core.kirun.repository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import com.fincity.saas.core.functions.storage.*;
+import com.fincity.saas.core.functions.security.*;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,10 +19,6 @@ import com.fincity.saas.core.functions.email.SendEmail;
 import com.fincity.saas.core.functions.file.TemplateToPdf;
 import com.fincity.saas.core.functions.file.FileToBase64;
 import com.fincity.saas.core.functions.rest.CallRequest;
-import com.fincity.saas.core.functions.security.GetAppUrl;
-import com.fincity.saas.core.functions.security.GetClient;
-import com.fincity.saas.core.functions.security.IsBeingManagedByCode;
-import com.fincity.saas.core.functions.security.IsBeingManagedById;
 import com.fincity.saas.core.functions.securitycontext.GetAuthentication;
 import com.fincity.saas.core.functions.securitycontext.GetUser;
 import com.fincity.saas.core.functions.securitycontext.HasAuthority;
@@ -75,10 +71,12 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 		ReactiveFunction isBeingManagedByCode = new IsBeingManagedByCode(securityService);
 		ReactiveFunction isBeingManagedById = new IsBeingManagedById(securityService);
+		ReactiveFunction isUserBeingManaged = new IsUserBeingManaged(securityService);
 		ReactiveFunction getClient = new GetClient(securityService, gson);
 
 		repoMap.put(isBeingManagedByCode.getSignature().getFullName(), isBeingManagedByCode);
 		repoMap.put(isBeingManagedById.getSignature().getFullName(), isBeingManagedById);
+		repoMap.put(isUserBeingManaged.getSignature().getFullName(), isUserBeingManaged);
 		repoMap.put(getClient.getSignature().getFullName(), getClient);
 	}
 
@@ -99,6 +97,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 	private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper, Gson gson) {
 
 		ReactiveFunction createStorage = new CreateStorageObject(appDataService, gson);
+		ReactiveFunction createManyStorage = new CreateManyStorageObject(appDataService,gson);
 		ReactiveFunction deleteStorage = new DeleteStorageObject(appDataService);
 		ReactiveFunction updateStorage = new UpdateStorageObject(appDataService, gson);
 		ReactiveFunction readStorage = new ReadStorageObject(appDataService, gson);
@@ -107,6 +106,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction getVersionDetailsStorageObject =new GetVersionDetailsStorageObject(appDataService,objectMapper,gson);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
+		repoMap.put(createManyStorage.getSignature().getFullName(), createManyStorage);
 		repoMap.put(deleteStorage.getSignature().getFullName(), deleteStorage);
 		repoMap.put(deleteByFilterStorage.getSignature().getFullName(), deleteByFilterStorage);
 		repoMap.put(updateStorage.getSignature().getFullName(), updateStorage);
