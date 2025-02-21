@@ -219,17 +219,17 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 		int index = 1;
 
 		for (Tuple2<Field<?>, Object> tuple : values) {
-			Field<?> eachField = tuple.getT1();
-			Object v = tuple.getT2();
+			Field<?> field = tuple.getT1();
+			Object value = tuple.getT2();
 
-			if (CONVERTERS.containsKey(v.getClass())) {
-				v = CONVERTERS.get(v.getClass()).apply((UNumber) v);
-			} else if (eachField.getDataType().isJSON()) {
-				v = JSON_CONVERTER.to(v).toString();
+			if (CONVERTERS.containsKey(value.getClass())) {
+				value = CONVERTERS.get(value.getClass()).apply((UNumber) value);
+			} else if (field.getDataType().isJSON()) {
+				value = JSON_CONVERTER.to(value).toString();
 			}
 
-			Parameter parameter = eachField.getName().equals(this.idField.getName()) ? Parameters.inOut(v)
-					: Parameters.in(v);
+			Parameter parameter = field.getName().equals(this.idField.getName()) ?
+					Parameters.inOut(value) : Parameters.in(value);
 
 			parameters.put(Integer.toString(index++), parameter);
 		}
