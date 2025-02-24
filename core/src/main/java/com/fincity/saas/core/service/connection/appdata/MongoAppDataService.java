@@ -453,12 +453,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 	@Override
 	public Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String objectId,
-			Query query) {
+			Query query,Boolean includeVersion) {
 
 		Pageable page = query.getPageable();
 
 		FilterCondition objectIdFilterCondition = new FilterCondition().setField(OBJECT_ID)
-				.setValue(new ObjectId(objectId)).setOperator(FilterConditionOperator.EQUALS);
+				.setValue(new ObjectId(objectId).toString()).setOperator(FilterConditionOperator.EQUALS);
 
 		AbstractCondition condition = query.getCondition() == null ? objectIdFilterCondition
 				: new ComplexCondition().setConditions(List.of(objectIdFilterCondition, query.getCondition()))
@@ -474,7 +474,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 				(vCollection, bsonCondition) -> this
 						.applyQueryOnElements(vCollection, query, bsonCondition, page)
-						.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE)).collectList(),
+						.map(doc ->
+						{
+							if(!includeVersion){
+								doc.remove("object");
+							}
+
+							return this.convertBisonIds(storage, doc, Boolean.FALSE);
+						}).collectList(),
 
 				(vCollection, bsonCondition, list) -> BooleanUtil.safeValueOf(count)
 						? Mono.from(vCollection.countDocuments(bsonCondition))
