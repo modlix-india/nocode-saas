@@ -38,6 +38,8 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
 	private static final String DEV_MODE = "devMode";
 
+	private static final String DELETE_VERSION = "deleteVersion";
+
 	private static final String APP_CODE = "appCode";
 
 	private static final String CLIENT_CODE = "clientCode";
@@ -73,6 +75,9 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 						DEV_MODE,
 						Parameter.of(DEV_MODE, Schema.ofBoolean(DEV_MODE).setDefaultValue(new JsonPrimitive(false))),
 
+						DELETE_VERSION,
+						Parameter.of(DELETE_VERSION, Schema.ofBoolean(DELETE_VERSION).setDefaultValue(new JsonPrimitive(false))),
+
 						APP_CODE,
 						Parameter.of(APP_CODE, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
 
@@ -99,13 +104,15 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
 		boolean devMode = context.getArguments().get(DEV_MODE).getAsBoolean();
 
+		boolean  deleteVersion = context.getArguments().get(DELETE_VERSION).getAsBoolean();
+
 		AbstractCondition condition = filter.isEmpty() ? null :
 				this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
 
 		Query dsq = new Query().setExcludeFields(false).setFields(List.of()).setCondition(condition);
 
 		return this.appDataService.deleteByFilter(StringUtil.isNullOrBlank(appCode) ? null : appCode,
-				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dsq, devMode)
+				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dsq, devMode, deleteVersion)
 				.onErrorResume(exception -> exception instanceof StorageObjectNotFoundException ? Mono.just(0L)
 						: Mono.error(exception))
 				.map(deletedCount -> new FunctionOutput(

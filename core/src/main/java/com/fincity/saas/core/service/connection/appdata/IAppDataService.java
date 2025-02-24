@@ -28,7 +28,7 @@ public interface IAppDataService {
 
 	Mono<Boolean> delete(Connection conn, Storage storage, String id, Boolean deleteVersion);
 
-	Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode);
+	Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode, Boolean deleteVersion);
 
 	Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId);
 

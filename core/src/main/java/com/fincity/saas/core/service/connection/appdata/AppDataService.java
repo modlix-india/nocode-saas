@@ -879,7 +879,7 @@ public class AppDataService {
 	}
 
 	
-	public Mono<Long> deleteByFilter(String appCode, String clientCode, String storageName, Query query, Boolean devMode) {
+	public Mono<Long> deleteByFilter(String appCode, String clientCode, String storageName, Query query, Boolean devMode, Boolean deleteVersion) {
 
         Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
 
@@ -897,7 +897,7 @@ public class AppDataService {
 
                 (ca, ac, cc, conn, dataService, storage) -> this.<Long>genericOperation(storage,
 
-                        (cona, hasAccess) -> dataService.deleteByFilter(conn, storage, query, devMode), 
+                        (cona, hasAccess) -> dataService.deleteByFilter(conn, storage, query, devMode, deleteVersion),
 
                         Storage::getDeleteAuth, CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE),
 

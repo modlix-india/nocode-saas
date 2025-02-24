@@ -410,27 +410,17 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
 						(ca) -> this.getCollection(conn, storage),
 
-						(ca, collection) -> Mono.from(collection.find(Filters.eq(ID, objectId)).first())
-								.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE))
-								.switchIfEmpty(this.mongoObjectNotFound(AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName())
-										.then(Mono.empty())),
+						(ca, collection) -> Mono.from(collection.find(Filters.eq(ID, objectId)).first()),
 
 						(ca, collection, doc) -> {
 							if (doc == null) return Mono.just(false);
-							if (!deleteVersion) {
-								return this.addVersion(conn, storage, null, objectId, ca, (Document) doc, "DELETE").thenReturn(true);
-							}
-							return Mono.just(true);
+
+							return BooleanUtil.safeValueOf(deleteVersion)
+									? this.deleteVersions(conn, storage, Filters.eq(OBJECT_ID, id)).thenReturn(true)
+									: this.addVersion(conn, storage, null, objectId, ca, doc, "DELETE").thenReturn(true);
 						},
 
-						(ca, collection, doc, versionResult) -> {
-							if (!deleteVersion) return Mono.just(true);
-							return this.getVersionCollection(conn, storage)
-									.flatMap(vCollection -> Mono.from(vCollection.deleteMany(Filters.eq("objectId", id))).thenReturn(true))
-									.defaultIfEmpty(true);
-						},
-
-						(ca, collection, doc, versionResult, vDelete) ->
+						(ca, collection, doc,  result) ->
 								Mono.from(collection.findOneAndDelete(Filters.eq(ID, objectId)))
 										.map(Objects::nonNull)
 										.defaultIfEmpty(false)
@@ -440,39 +430,58 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 	}
 
 	@Override
-	public Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode) {
-
+	public Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode, Boolean deleteVersion) {
 		AbstractCondition condition = query.getCondition();
-		Pageable page = query.getPageable();
 
 		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
 
-			SecurityContextUtil::getUsersContextAuthentication,
+				(ca) -> this.getCollection(conn, storage),
 
-			(ca) -> this.getCollection(conn, storage),
+				(ca, collection) -> this.filter(storage, condition),
 
-			(ca,collection) -> this.filter(storage, condition),
+				(ca, collection, bsonCondition) ->
+						Flux.from(collection.find(bsonCondition)).collectList(),
 
-			(ca,collection, bsonCondition) -> this.applyQueryOnElements(collection, query, bsonCondition, page)
-					.map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE)).collectList(),
-
-			(ca, collection, bsonCondition, list) -> {
+				(ca, collection, bsonCondition, list) -> {
 					if (list.isEmpty()) {
 						return Mono.just(0L);
 					}
-					return Flux.fromIterable(list)
 
-							.flatMap(doc -> {
-							Object idObj = doc.get(ID);
-							BsonObjectId objectId = (idObj instanceof ObjectId) ? new BsonObjectId((ObjectId) idObj) : null;
-								return this.addVersion(conn, storage, null, objectId, ca, (Document) doc, "DELETE");
-						})
-							.then(Mono.defer(() -> BooleanUtil.safeValueOf(devMode)
-								? Mono.from(collection.countDocuments(bsonCondition))
-								: Mono.from(collection.deleteMany(bsonCondition))
-								.map(DeleteResult::getDeletedCount)));
-					})
-		.contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteByFilter"));
+					if (BooleanUtil.safeValueOf(devMode)) {
+						return Mono.from(collection.countDocuments(bsonCondition));
+					}
+
+					Bson versionFilter = Filters.in(OBJECT_ID, list.stream().map(doc -> doc.get(ID)).map(Object::toString)
+							.collect(Collectors.toList()));
+
+					return BooleanUtil.safeValueOf(deleteVersion)
+							? this.deleteVersions(conn, storage, versionFilter)
+							.then(Mono.from(collection.deleteMany(bsonCondition))
+									.map(DeleteResult::getDeletedCount))
+							: this.addVersionsAndDeleteMainDocs(conn, storage, collection, bsonCondition, ca, list);
+				}
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteByFilter"));
+	}
+
+	private Mono<DeleteResult> deleteVersions(Connection conn, Storage storage, Bson bsonCondition) {
+
+		return this.getVersionCollection(conn, storage)
+				.flatMap(vCollection -> Mono.from(vCollection.deleteMany(bsonCondition)))
+				.defaultIfEmpty(DeleteResult.acknowledged(0));
+	}
+
+	private Mono<Long> addVersionsAndDeleteMainDocs(Connection conn, Storage storage, MongoCollection<Document> collection,
+													Bson bsonCondition, ContextAuthentication ca, List<Document> list) {
+
+		return Flux.fromIterable(list)
+				.flatMapSequential(doc -> {
+					ObjectId idObj = doc.getObjectId(ID);
+					BsonObjectId objectId = new BsonObjectId(idObj);
+					return this.addVersion(conn, storage, null, objectId, ca, doc, "DELETE");
+				})
+				.then(Mono.from(collection.deleteMany(bsonCondition)))
+				.map(DeleteResult::getDeletedCount);
 	}
 
 	@Override
