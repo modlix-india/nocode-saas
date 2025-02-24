@@ -78,7 +78,7 @@ public class ClientPasswordPolicyService
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts((short) 3)
-						.setUserLockTimeMin(30L)
+						.setUserLockTimeMin(15L)
 						.setId(DEFAULT_POLICY_ID));
 	}
 
@@ -100,6 +100,9 @@ public class ClientPasswordPolicyService
 					e.setPassMinLength(entity.getPassMinLength());
 					e.setPassMaxLength(entity.getPassMaxLength());
 					e.setPassHistoryCount(entity.getPassHistoryCount());
+					e.setNoFailedAttempts(
+							entity.getNoFailedAttempts() != null ? entity.getNoFailedAttempts() : (short) 3);
+					e.setUserLockTimeMin(entity.getUserLockTimeMin() != null ? entity.getUserLockTimeMin() : 15L);
 
 					return e;
 				});
@@ -121,37 +124,38 @@ public class ClientPasswordPolicyService
 	public Mono<Boolean> checkAllConditions(ClientPasswordPolicy policy, ULong userId, String password) {
 		return FlatMapUtil.flatMapMono(
 
-						() -> this.checkPastPasswords(policy, userId, password),
+				() -> this.checkPastPasswords(policy, userId, password),
 
-						 pastPassCheck -> this.checkAlphanumericExists(policy, password),
+				pastPassCheck -> this.checkAlphanumericExists(policy, password),
 
-						(pastPassCheck, isAlphaNumeric) -> this.checkInSpecialCharacters(password),
+				(pastPassCheck, isAlphaNumeric) -> this.checkInSpecialCharacters(password),
 
-						(pastPassCheck, isAlphaNumeric, isSpecial) -> {
+				(pastPassCheck, isAlphaNumeric, isSpecial) -> {
 
-							if (policy.isSpacesAllowed())
-								return Mono.just(Boolean.TRUE);
+					if (policy.isSpacesAllowed())
+						return Mono.just(Boolean.TRUE);
 
-							if (password.indexOf(' ') != -1)
-								return securityMessageResourceService.throwMessage(
-										msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-										SecurityMessageResourceService.SPACES_MISSING);
+					if (password.indexOf(' ') != -1)
+						return securityMessageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+								SecurityMessageResourceService.SPACES_MISSING);
 
-							return Mono.just(Boolean.TRUE);
-						},
+					return Mono.just(Boolean.TRUE);
+				},
 
-						(pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
+				(pastPassCheck, isAlphaNumeric, isSpecial, isSpace) -> {
 
-							String regex = policy.getRegex();
+					String regex = policy.getRegex();
 
-							if (StringUtil.safeIsBlank(regex))
-								return Mono.just(Boolean.TRUE);
+					if (StringUtil.safeIsBlank(regex))
+						return Mono.just(Boolean.TRUE);
 
-							return checkRegexPattern(password, regex);
+					return checkRegexPattern(password, regex);
 
-						},
+				},
 
-						(pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this.checkStrengthOfPassword(policy, password))
+				(pastPassCheck, isAlphaNumeric, isSpecial, isSpace, isRegex) -> this.checkStrengthOfPassword(policy,
+						password))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPasswordPolicyService.checkAllConditions"))
 				.defaultIfEmpty(Boolean.TRUE);
 	}
