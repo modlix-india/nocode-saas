@@ -38,6 +38,7 @@ import reactor.util.function.Tuples;
 public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractPolicyDao<R, D>>
 		extends AbstractJOOQUpdatableDataService<R, ULong, D, O> {
 
+	protected static final ULong DEFAULT_POLICY_ID = ULong.MIN;
 	protected final SecurityMessageResourceService securityMessageResourceService;
 	private final CacheService cacheService;
 
@@ -70,8 +71,6 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	public void setAppService(@Lazy AppService appService) {
 		this.appService = appService;
 	}
-
-	protected static final ULong DEFAULT_POLICY_ID = ULong.MIN;
 
 	protected abstract String getPolicyName();
 
@@ -119,6 +118,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 				() -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
 				app -> {
+
+					entity.initDefaults();
 
 					if (entity.getAppId() == null)
 						entity.setAppId(app.getId());
