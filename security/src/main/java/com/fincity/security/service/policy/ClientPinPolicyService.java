@@ -57,7 +57,7 @@ public class ClientPinPolicyService
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts((short) 3)
-						.setUserLockTimeMin(30L)
+						.setUserLockTimeMin(15L)
 						.setId(DEFAULT_POLICY_ID));
 	}
 
@@ -72,6 +72,9 @@ public class ClientPinPolicyService
 					e.setExpiryInDays(entity.getExpiryInDays());
 					e.setExpiryWarnInDays(entity.getExpiryWarnInDays());
 					e.setPinHistoryCount(entity.getPinHistoryCount());
+					e.setNoFailedAttempts(
+							entity.getNoFailedAttempts() != null ? entity.getNoFailedAttempts() : (short) 3);
+					e.setUserLockTimeMin(entity.getUserLockTimeMin() != null ? entity.getUserLockTimeMin() : 15L);
 					return e;
 				});
 	}
@@ -88,8 +91,9 @@ public class ClientPinPolicyService
 
 				() -> this.getClientAppPolicy(clientId, appId),
 
-				pinPolicy-> this.checkAllConditions(pinPolicy, userId, password))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPinPolicyService.checkAllConditions[clientId, AppId]"))
+				pinPolicy -> this.checkAllConditions(pinPolicy, userId, password))
+				.contextWrite(
+						Context.of(LogUtil.METHOD_NAME, "ClientPinPolicyService.checkAllConditions[clientId, AppId]"))
 				.defaultIfEmpty(Boolean.TRUE);
 	}
 
@@ -97,9 +101,9 @@ public class ClientPinPolicyService
 	public Mono<Boolean> checkAllConditions(ClientPinPolicy policy, ULong userId, String password) {
 		return FlatMapUtil.flatMapMono(
 
-				()-> this.checkLength(policy, password),
+				() -> this.checkLength(policy, password),
 
-						 lengthCheck -> this.checkPastPins(policy, userId, password))
+				lengthCheck -> this.checkPastPins(policy, userId, password))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientPinPolicyService.checkAllConditions[policy]"))
 				.defaultIfEmpty(Boolean.TRUE);
 	}
