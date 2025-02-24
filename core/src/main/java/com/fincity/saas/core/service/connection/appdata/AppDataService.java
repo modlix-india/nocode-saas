@@ -487,7 +487,7 @@ public class AppDataService {
 				() -> this.getStorageWithKIRunValidation(storageName, appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject),
 
-				storage -> dataService.delete(conn, storage, id,false))
+				storage -> dataService.delete(conn, storage, id, null))
 
 				.contextWrite(
 						Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteCreatedRelatedObject"));
