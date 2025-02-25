@@ -2,7 +2,6 @@ package com.fincity.saas.core.document;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigInteger;
 import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
@@ -14,6 +13,7 @@ import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import lombok.Data;
@@ -27,8 +27,8 @@ import reactor.util.context.Context;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document
-@CompoundIndex(def = "{'appCode': 1, 'userId': 1, 'name': 1, }", name = "notificationFilteringIndex", unique = true)
-@CompoundIndex(def = "{'appCode': 1, 'userId': 1, 'notificationType': 1, }", name = "notificationFilteringIndex", unique = true)
+@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'name': 1, }", name = "notificationFilteringIndex", unique = true)
+@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'notificationType': 1, }", name = "notificationFilteringIndex", unique = true)
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)
@@ -37,7 +37,6 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	@Serial
 	private static final long serialVersionUID = 4924671644117461908L;
 
-	private BigInteger userId;
 	private String notificationType;
 	private Map<String, NotificationTemplate> channelDetails;
 
@@ -98,7 +97,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
 		public NotificationTemplate(NotificationTemplate template) {
 			this.templateParts = CloneUtil.cloneMapObject(template.templateParts);
-			this.variableSchema = template.variableSchema;
+			this.variableSchema = template.variableSchema.deepCopy();
 			this.resources = CloneUtil.cloneMapObject(template.resources);
 			this.defaultLanguage = template.defaultLanguage;
 			this.languageExpression = template.languageExpression;

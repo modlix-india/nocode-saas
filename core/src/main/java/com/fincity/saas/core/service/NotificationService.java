@@ -10,11 +10,11 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationType;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Notification;
 import com.fincity.saas.core.repository.NotificationRepository;
-import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -22,17 +22,8 @@ import reactor.util.context.Context;
 @Service
 public class NotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
 
-	public static final String CACHE_NAME_NOTIFICATION = "notification";
-
-	private final CoreSchemaService coreSchemaService;
-
-	private final Gson gson;
-
-	protected NotificationService(CoreSchemaService coreSchemaService, Gson gson) {
+	protected NotificationService() {
 		super(Notification.class);
-
-		this.gson = gson;
-		this.coreSchemaService = coreSchemaService;
 	}
 
 	@Override
@@ -63,19 +54,21 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 		entity.setName(UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getName()));
 
-		return super.create(entity);
-	}
+		return FlatMapUtil.flatMapMono(
 
-	private Mono<Notification> localCreate(Notification entity) {
+				() -> this.validate(entity),
 
-		return null;
+				super::create
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
 	}
 
 	public Mono<Notification> validate(Notification entity) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> {
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> {
 					if (entity.getNotificationType() == null || !NotificationType.isLiteralValid(entity.getNotificationType()))
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.BAD_REQUEST,
@@ -84,7 +77,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 					return Mono.just(entity);
 				},
 
-				vEntity -> {
+				(ca, vEntity) -> {
 
 					for (Map.Entry<String, Notification.NotificationTemplate> channelEntry : vEntity.getChannelDetails().entrySet()) {
 						if (!channelEntry.getValue().isValidSchema())
@@ -94,16 +87,17 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 					}
 
 					return Mono.just(vEntity);
-				});
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.updatableEntity"));
 	}
 
 	@Override
 	public Mono<Notification> update(Notification entity) {
-		return super.update(entity);
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.validate(entity),
+
+				super::update
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
 	}
 
-	@Override
-	public Mono<Boolean> delete(String id) {
-		return super.delete(id);
-	}
 }
