@@ -39,7 +39,7 @@ import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.Permission;
-import com.fincity.security.dto.Role;
+import com.fincity.security.dto.RoleV2;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -532,7 +532,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.collectList();
 	}
 
-	public Mono<List<Role>> fetchRolesFromGivenUser(ULong userId) {
+	public Mono<List<RoleV2>> fetchRolesFromGivenUser(ULong userId) {
 
 		return Flux.from(
 				this.dslContext.select(SECURITY_ROLE.fields())
@@ -543,7 +543,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 												.from(SECURITY_USER_ROLE_PERMISSION)
 												.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
 														.and(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.isNotNull())))))
-				.map(e -> e.into(Role.class))
+				.map(e -> e.into(RoleV2.class))
 				.collectList();
 	}
 

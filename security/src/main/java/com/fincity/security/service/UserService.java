@@ -43,7 +43,7 @@ import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Permission;
-import com.fincity.security.dto.Role;
+import com.fincity.security.dto.RoleV2;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
@@ -499,7 +499,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Role_READ') and hasAuthority('Authorities.User_READ')")
-	public Mono<List<Role>> getRolesFromGivenUser(ULong userId) {
+	public Mono<List<RoleV2>> getRolesFromGivenUser(ULong userId) {
 
 		return FlatMapUtil.flatMapMono(
 

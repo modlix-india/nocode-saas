@@ -13,5 +13,5 @@ public class AppRegistrationRole extends AbstractAppRegistration {
 
     private ULong roleId;
 
-    private Role role;
+    private RoleV2 role;
 }
