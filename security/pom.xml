@@ -292,6 +292,17 @@
                                 <database>
                                     <includes>security_.*</includes>
                                     <inputSchema>security</inputSchema>
+                                    <excludes>
+                                        security_package |
+                                        security_package_role |
+                                        security_user_role |
+                                        security_role_permission |
+                                        security_user_role_permission |
+                                        security_app_reg_package |
+                                        security_app_reg_user_role |
+                                        security_org_structure |
+                                        security_role 
+                                    </excludes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>

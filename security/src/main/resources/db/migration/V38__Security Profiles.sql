@@ -5,11 +5,11 @@ use security;
 -- [X] Need to add security_profile_user table to represent the users assigned to a profile, even though the user is assigned a profile all roles in profile not be assigned to the user
 -- [X] But the actual user role relation will be in security_user_role table
 
--- [ ] Deleting security_package, security_package_role tables replaced with profile tables
--- [ ] Retiring security_role, security_role_permission, security_user_role_permission tables and replaced with v2 tables
+-- [X] Deleting security_package, security_package_role tables replaced with profile tables
+-- [X] Retiring security_role, security_role_permission, security_user_role_permission tables and replaced with v2 tables
 -- [X] Need to add security_role_role table to represent the role hierarchy. Only one level relation is restricted for role to role but v2 security_role_permission table will be level 2.
--- [ ] Deleting security_app_reg_package table tables replaced with app_reg_profile table
--- [ ] Deleting security_app_reg_user_role table and will be replaced with new table security_app_reg_user_profile table
+-- [X] Deleting security_app_reg_package table tables replaced with app_reg_profile table
+-- [X] Deleting security_app_reg_user_role table and will be replaced with new table security_app_reg_user_profile table
 -- [ ] Need to create a new OWNER Role for each client to make client level changes
 
 -- [X] Need to create Designation table
@@ -17,11 +17,11 @@ use security;
 -- [X] Need to add Designation id to security_user table
 -- [X] Need to add Reporting To id to security_user table
 
--- [ ] Need to create a new security_app_reg_designation table for representing a template of an organization's designations template for an app in a client
--- [ ] Need to create a new security_app_reg_department table for representing a template of an organization's departments for an app in a client
+-- [X] Need to create a new security_app_reg_designation table for representing a template of an organization's designations template for an app in a client
+-- [X] Need to create a new security_app_reg_department table for representing a template of an organization's departments for an app in a client
 
 -- [ ] First user on creation will be OWNER role for the client
--- [ ] Need to create a new security_app_reg_profile table for adding access to the profiles for the clients
+-- [X] Need to create a new security_app_reg_profile table for adding access to the profiles for the clients
 -- [ ] OWNER will have access to profiles to read the profile while assigning to a user
 -- [ ] Only with profile edit or create access can create a new profile for an app
 

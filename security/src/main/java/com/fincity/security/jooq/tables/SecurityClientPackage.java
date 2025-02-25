@@ -7,7 +7,6 @@ package com.fincity.security.jooq.tables;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
-import com.fincity.security.jooq.tables.SecurityPackage.SecurityPackagePath;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 
 import java.util.Arrays;
@@ -162,7 +161,7 @@ public class SecurityClientPackage extends TableImpl<SecurityClientPackageRecord
 
     @Override
     public List<ForeignKey<SecurityClientPackageRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_CLIENT_PACKAGE_CLIENT_ID, Keys.FK2_CLIENT_PACKAGE_PACKAGE_ID);
+        return Arrays.asList(Keys.FK1_CLIENT_PACKAGE_CLIENT_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -176,19 +175,6 @@ public class SecurityClientPackage extends TableImpl<SecurityClientPackageRecord
             _securityClient = new SecurityClientPath(this, Keys.FK1_CLIENT_PACKAGE_CLIENT_ID, null);
 
         return _securityClient;
-    }
-
-    private transient SecurityPackagePath _securityPackage;
-
-    /**
-     * Get the implicit join path to the <code>security.security_package</code>
-     * table.
-     */
-    public SecurityPackagePath securityPackage() {
-        if (_securityPackage == null)
-            _securityPackage = new SecurityPackagePath(this, Keys.FK2_CLIENT_PACKAGE_PACKAGE_ID, null);
-
-        return _securityPackage;
     }
 
     @Override
