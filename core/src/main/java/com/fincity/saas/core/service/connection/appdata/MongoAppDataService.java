@@ -416,7 +416,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							if (doc == null) return Mono.just(false);
 
 							return BooleanUtil.safeValueOf(deleteVersion)
-									? this.deleteVersions(conn, storage, Filters.eq(OBJECT_ID, id)).thenReturn(true)
+									? this.deleteVersionByFilter(conn, storage, Filters.eq(OBJECT_ID, id)).thenReturn(true)
 									: this.addVersion(conn, storage, null, objectId, ca, doc, "DELETE").thenReturn(true);
 						},
 
@@ -456,7 +456,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 							.collect(Collectors.toList()));
 
 					return BooleanUtil.safeValueOf(deleteVersion)
-							? this.deleteVersions(conn, storage, versionFilter)
+							? this.deleteVersionByFilter(conn, storage, versionFilter)
 							.then(Mono.from(collection.deleteMany(bsonCondition))
 									.map(DeleteResult::getDeletedCount))
 							: this.addVersionsAndDeleteMainDocs(conn, storage, collection, bsonCondition, ca, list);
@@ -464,7 +464,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteByFilter"));
 	}
 
-	private Mono<DeleteResult> deleteVersions(Connection conn, Storage storage, Bson bsonCondition) {
+	private Mono<DeleteResult> deleteVersionByFilter(Connection conn, Storage storage, Bson bsonCondition) {
 
 		return this.getVersionCollection(conn, storage)
 				.flatMap(vCollection -> Mono.from(vCollection.deleteMany(bsonCondition)))
