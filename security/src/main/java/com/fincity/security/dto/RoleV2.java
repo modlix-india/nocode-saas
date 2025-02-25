@@ -13,13 +13,13 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class Role extends AbstractUpdatableDTO<ULong, ULong> {
+public class RoleV2 extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private static final long serialVersionUID = -7176719786090846975L;
 
 	private ULong clientId;
-	private ULong appId;
 	private String name;
+	private String shortName;
 	private String description;
 	private String authority;
 }

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Permission;
-import com.fincity.security.dto.Role;
+import com.fincity.security.dto.RoleV2;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -103,7 +103,7 @@ public class UserController
 	}
 
 	@GetMapping("/availableRoles/{userId}")
-	public Mono<ResponseEntity<List<Role>>> getRolesFromUser(@PathVariable ULong userId) {
+	public Mono<ResponseEntity<List<RoleV2>>> getRolesFromUser(@PathVariable ULong userId) {
 
 		return this.userService.getRolesFromGivenUser(userId)
 				.map(ResponseEntity::ok);
