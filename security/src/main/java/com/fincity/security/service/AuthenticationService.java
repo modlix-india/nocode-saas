@@ -320,7 +320,7 @@ public class AuthenticationService implements IAuthenticationService {
 					"Failed password attempts are more than the configuration");
 
 			return FlatMapUtil.flatMapMono(
-					() -> this.lockUser(user, LocalDateTime.now().plusMinutes(policy.getUserLockTimeMin()),
+					() -> this.lockUser(user, LocalDateTime.now().plusMinutes(policy.getUserLockTime()),
 							passwordType.getName()),
 					userLocked -> this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED));
 		}
