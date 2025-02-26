@@ -1,5 +1,6 @@
 package com.fincity.saas.core.service;
 
+import java.math.BigInteger;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -8,12 +9,14 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationType;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Notification;
+import com.fincity.saas.core.feign.IFeignNotificationService;
 import com.fincity.saas.core.repository.NotificationRepository;
 
 import reactor.core.publisher.Mono;
@@ -22,8 +25,14 @@ import reactor.util.context.Context;
 @Service
 public class NotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
 
-	protected NotificationService() {
+	private final ConnectionService connectionService;
+
+	private final IFeignNotificationService feignNotificationService;
+
+	protected NotificationService(ConnectionService connectionService, IFeignNotificationService feignNotificationService) {
 		super(Notification.class);
+		this.connectionService = connectionService;
+		this.feignNotificationService = feignNotificationService;
 	}
 
 	@Override
@@ -98,6 +107,21 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 				super::update
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
+	}
+
+	public Mono<Boolean> processNotification(String appCode, String clientCode, BigInteger userId,
+	                                         String notificationName, String connectionName) {
+
+		return Mono.just(false);
+
+	}
+
+	public Mono<Notification> getNotification(String name, String appCode, String clientCode) {
+		return this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject);
+	}
+
+	public Mono<Notification> getNotification(String id) {
+		return this.read(id);
 	}
 
 }

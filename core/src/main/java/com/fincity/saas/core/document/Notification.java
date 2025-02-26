@@ -13,7 +13,6 @@ import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import lombok.Data;
