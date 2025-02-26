@@ -54,7 +54,7 @@ public class ClientOtpPolicyService
 						.setClientId(ULongUtil.valueOf(0))
 						.setAppId(ULongUtil.valueOf(0))
 						.setNoFailedAttempts((short) 3)
-						.setUserLockTimeMin(30L)
+						.setUserLockTimeMin(15L)
 						.setId(DEFAULT_POLICY_ID));
 	}
 
@@ -73,6 +73,9 @@ public class ClientOtpPolicyService
 					e.setExpireInterval(entity.getExpireInterval());
 					e.setResendSameOtp(entity.isResendSameOtp());
 					e.setNoResendAttempts(entity.getNoResendAttempts());
+					e.setNoFailedAttempts(
+							entity.getNoFailedAttempts() != null ? entity.getNoFailedAttempts() : (short) 3);
+					e.setUserLockTimeMin(entity.getUserLockTimeMin() != null ? entity.getUserLockTimeMin() : 15L);
 					return e;
 				});
 	}
