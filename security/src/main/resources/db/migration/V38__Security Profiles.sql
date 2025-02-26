@@ -7,7 +7,7 @@ use security;
 
 -- [X] Deleting security_package, security_package_role tables replaced with profile tables
 -- [X] Retiring security_role, security_role_permission, security_user_role_permission tables and replaced with v2 tables
--- [X] Need to add security_role_role table to represent the role hierarchy. Only one level relation is restricted for role to role but v2 security_role_permission table will be level 2.
+-- [X] Need to add security_role_role table to represent the role hierarchy. Only two levels relation is restricted for role to role but v2 security_role_permission table will be level 2.
 -- [X] Deleting security_app_reg_package table tables replaced with app_reg_profile table
 -- [X] Deleting security_app_reg_user_role table and will be replaced with new table security_app_reg_user_profile table
 -- [ ] Need to create a new OWNER Role for each client to make client level changes
@@ -38,6 +38,7 @@ DROP TABLE IF EXISTS `security_v2_role_permission`;
 DROP TABLE IF EXISTS `security_v2_role_role`;
 DROP TABLE IF EXISTS `security_profile_user`;
 DROP TABLE IF EXISTS `security_profile_role`;
+DROP TABLE IF EXISTS `security_client_profile`;
 DROP TABLE IF EXISTS `security_profile`;
 DROP TABLE IF EXISTS `security_v2_role`;
 
@@ -113,6 +114,7 @@ CREATE TABLE `security_profile_role` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
   `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this role belongs to',
   `ROLE_ID` bigint unsigned NOT NULL COMMENT 'Role ID for which this profile belongs to',
+  `PRIORITY` int unsigned NOT NULL DEFAULT 0 COMMENT 'Priority of the role in the profile',
 
   PRIMARY KEY (`ID`),
   UNIQUE KEY `UK1_PROFILE_ROLE_PROFILE_ID_ROLE_ID` (`PROFILE_ID`,`ROLE_ID`),
