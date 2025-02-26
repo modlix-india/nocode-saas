@@ -19,7 +19,7 @@
         <java.version>21</java.version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
-        <nocode-kirun-version>3.8.0</nocode-kirun-version>
+        <nocode-kirun-version>3.9.0</nocode-kirun-version>
         <xlsx-streamer.version>2.1.0</xlsx-streamer.version>
     </properties>
     <dependencies>

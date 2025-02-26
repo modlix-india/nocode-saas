@@ -5,12 +5,15 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
 import com.fincity.saas.commons.webclient.CustomUriBuilderFactory;
 import com.fincity.saas.commons.webclient.WebClientEncodingModes;
+import com.google.gson.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -31,10 +34,6 @@ import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.dto.RestRequest;
 import com.fincity.saas.core.dto.RestResponse;
 import com.fincity.saas.core.service.CoreMessageResourceService;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import com.google.gson.reflect.TypeToken;
 
 import reactor.core.publisher.Mono;
@@ -125,9 +124,9 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 					}
 
 					return requestBuilder
-							.bodyValue(gson.fromJson(
-									!request.getPayload().isJsonNull() ? request.getPayload() : new JsonObject(),
-									Object.class))
+							.bodyValue(
+									!request.getPayload().isJsonNull() ? JsonUtil.toMap(request.getPayload().getAsJsonObject())
+											: Collections.emptyMap())
 							.exchangeToMono(clientResponse -> handleResponse(clientResponse, tup
 									.getT3(), fileDownload))
 							.onErrorReturn(new RestResponse().setStatus(HttpStatus.BAD_REQUEST.value())
