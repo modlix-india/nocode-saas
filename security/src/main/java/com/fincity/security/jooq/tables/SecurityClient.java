@@ -24,6 +24,7 @@ import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOt
 import com.fincity.security.jooq.tables.SecurityClientPackage.SecurityClientPackagePath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPinPolicyPath;
+import com.fincity.security.jooq.tables.SecurityClientProfile.SecurityClientProfilePath;
 import com.fincity.security.jooq.tables.SecurityClientType.SecurityClientTypePath;
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.SecurityDepartment.SecurityDepartmentPath;
@@ -492,6 +493,19 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityClientPinPolicy = new SecurityClientPinPolicyPath(this, null, Keys.FK1_CLIENT_PIN_POL_CLIENT_ID.getInverseKey());
 
         return _securityClientPinPolicy;
+    }
+
+    private transient SecurityClientProfilePath _securityClientProfile;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_profile</code> table
+     */
+    public SecurityClientProfilePath securityClientProfile() {
+        if (_securityClientProfile == null)
+            _securityClientProfile = new SecurityClientProfilePath(this, null, Keys.FK1_CLIENT_PROFILE_CLIENT_ID.getInverseKey());
+
+        return _securityClientProfile;
     }
 
     private transient SecurityClientPasswordPolicyPath _securityClientPasswordPolicy;
