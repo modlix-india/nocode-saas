@@ -487,7 +487,7 @@ public class AppDataService {
 				() -> this.getStorageWithKIRunValidation(storageName, appCode, clientCode)
 						.map(ObjectWithUniqueID::getObject),
 
-				storage -> dataService.delete(conn, storage, id))
+				storage -> dataService.delete(conn, storage, id, null))
 
 				.contextWrite(
 						Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteCreatedRelatedObject"));
@@ -841,7 +841,7 @@ public class AppDataService {
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
 	}
 
-	public Mono<Boolean> delete(String appCode, String clientCode, String storageName, String id) {
+	public Mono<Boolean> delete(String appCode, String clientCode, String storageName, String id, boolean deleteVersion) {
 		Mono<Boolean> mono = FlatMapUtil.flatMapMonoWithNull(
 
 				SecurityContextUtil::getUsersContextAuthentication,
@@ -861,9 +861,9 @@ public class AppDataService {
 				(ca, ac, cc, conn, dataService, storage) -> this.genericOperation(storage,
 						(cona, hasAccess) -> FlatMapUtil.flatMapMono(
 
-								() -> this.deleteRelatedObjects(appCode, clientCode, dataService, conn, storage, id),
+								() -> this.deleteRelatedObjects(appCode, clientCode, dataService, conn, storage, id, deleteVersion),
 
-								deleted -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage, id),
+								deleted -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage, id, deleteVersion),
 
 								(deleted, e) -> {
 									if (!e.getT2().isPresent())
@@ -879,7 +879,7 @@ public class AppDataService {
 	}
 
 	
-	public Mono<Long> deleteByFilter(String appCode, String clientCode, String storageName, Query query, Boolean devMode) {
+	public Mono<Long> deleteByFilter(String appCode, String clientCode, String storageName, Query query, Boolean devMode, Boolean deleteVersion) {
 
         Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
 
@@ -897,7 +897,7 @@ public class AppDataService {
 
                 (ca, ac, cc, conn, dataService, storage) -> this.<Long>genericOperation(storage,
 
-                        (cona, hasAccess) -> dataService.deleteByFilter(conn, storage, query, devMode), 
+                        (cona, hasAccess) -> dataService.deleteByFilter(conn, storage, query, devMode, deleteVersion),
 
                         Storage::getDeleteAuth, CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE),
 
@@ -911,7 +911,7 @@ public class AppDataService {
 	
 
 	private Mono<Boolean> deleteRelatedObjects(String appCode, String clientCode, IAppDataService dataService,
-			Connection conn, Storage storage, String id) {
+			Connection conn, Storage storage, String id, boolean deleteVersion) {
 
 		if (storage.getRelations() == null || storage.getRelations().isEmpty())
 			return Mono.just(true);
@@ -977,10 +977,10 @@ public class AppDataService {
 						if (obj.get(relation.getKey()) instanceof List lst) {
 							for (Object o : lst)
 								deleteList.add(this.delete(appCode, clientCode, relation.getValue().getStorageName(),
-										o.toString()));
+										o.toString(), deleteVersion));
 						} else {
 							deleteList.add(this.delete(appCode, clientCode, relation.getValue().getStorageName(),
-									obj.get(relation.getKey()).toString()));
+									obj.get(relation.getKey()).toString(), deleteVersion));
 						}
 					}
 
@@ -992,7 +992,7 @@ public class AppDataService {
 
 	private Mono<Tuple2<Boolean, Optional<Map<String, Object>>>> deleteWithTriggers(String appCode, String clientCode,
 			IAppDataService dataService,
-			Connection conn, Storage storage, String id) {
+			Connection conn, Storage storage, String id, boolean deleteVersion) {
 
 		boolean noBeforeDelete = storage.getTriggers() == null
 				|| storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE) == null
@@ -1005,11 +1005,11 @@ public class AppDataService {
 						.isEmpty();
 
 		if (noBeforeDelete && noAfterDelete && !BooleanUtil.safeValueOf(storage.getGenerateEvents()))
-			return dataService.delete(conn, storage, id).map(e -> Tuples.of(e, Optional.empty()));
+			return dataService.delete(conn, storage, id, deleteVersion).map(e -> Tuples.of(e, Optional.empty()));
 
 		if (noBeforeDelete && noAfterDelete)
 			return this.read(appCode, clientCode, storage.getName(), id, false, List.of()).flatMap(
-					existing -> dataService.delete(conn, storage, id).map(e -> Tuples.of(e, Optional.of(existing))));
+					existing -> dataService.delete(conn, storage, id, deleteVersion).map(e -> Tuples.of(e, Optional.of(existing))));
 
 		return FlatMapUtil.flatMapMono(
 
@@ -1030,7 +1030,7 @@ public class AppDataService {
 					return this.executeTriggers(storage, StorageTriggerType.BEFORE_DELETE, args);
 				},
 
-				(existing, beforeDelete) -> dataService.delete(conn, storage, id),
+				(existing, beforeDelete) -> dataService.delete(conn, storage, id, deleteVersion),
 
 				(existing, beforeDelete, deleted) -> {
 
