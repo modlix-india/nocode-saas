@@ -103,6 +103,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		ReactiveFunction readStorage = new ReadStorageObject(appDataService, gson);
 		ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper, gson);
 		ReactiveFunction deleteByFilterStorage = new DeleteStorageObjectWithFilter(appDataService, objectMapper, gson);
+		ReactiveFunction getVersionDetailsStorageObject =new GetVersionDetailsStorageObject(appDataService,objectMapper,gson);
 
 		repoMap.put(createStorage.getSignature().getFullName(), createStorage);
 		repoMap.put(createManyStorage.getSignature().getFullName(), createManyStorage);
@@ -111,6 +112,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		repoMap.put(updateStorage.getSignature().getFullName(), updateStorage);
 		repoMap.put(readStorage.getSignature().getFullName(), readStorage);
 		repoMap.put(readPageStorage.getSignature().getFullName(), readPageStorage);
+		repoMap.put(getVersionDetailsStorageObject.getSignature().getFullName(), getVersionDetailsStorageObject);
 	}
 
 	private void makeRESTFunctions(RestService restService, IFeignFilesService filesService,

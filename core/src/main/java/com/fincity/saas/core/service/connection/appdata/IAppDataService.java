@@ -32,7 +32,7 @@ public interface IAppDataService {
 
 	Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId);
 
-	Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String versionId, Query query);
+	Mono<Page<Map<String, Object>>> readPageVersion(Connection conn, Storage storage, String versionId, Query query,Boolean includeVersion);
 
 	Mono<Boolean> checkifExists(Connection conn, Storage storage, String id);
 
