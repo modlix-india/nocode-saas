@@ -1,5 +1,6 @@
 package com.fincity.saas.core.document;
 
+import java.io.Serial;
 import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
@@ -21,11 +22,13 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Document
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "connectionFilteringIndex")
+@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'connectionType': 1}", name = "connectionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Connection extends AbstractOverridableDTO<Connection> {
 
+	@Serial
 	private static final long serialVersionUID = -5507743337705010640L;
 
 	private ConnectionType connectionType;

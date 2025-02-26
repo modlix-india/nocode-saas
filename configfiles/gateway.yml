@@ -29,6 +29,10 @@ spring:
           uri: lb://multi
           predicates:
             - Path=/api/multi/**, /*/api/multi/**, /*/*/api/multi/**, /*/*/*/api/multi/**, /*/*/*/*/api/multi/**, /*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/api/multi/**,
+        - id: notification
+          uri: lb://notification
+          predicates:
+            - Path=/api/notification/**, /*/api/notification/**, /*/*/api/notification/**, /*/*/*/api/notification/**, /*/*/*/*/api/notification/**, /*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**,
         - id: ui
           uri: lb://ui
           predicates:
