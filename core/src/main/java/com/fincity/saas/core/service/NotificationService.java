@@ -1,6 +1,5 @@
 package com.fincity.saas.core.service;
 
-import java.math.BigInteger;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -16,7 +15,6 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Notification;
-import com.fincity.saas.core.feign.IFeignNotificationService;
 import com.fincity.saas.core.repository.NotificationRepository;
 
 import reactor.core.publisher.Mono;
@@ -25,14 +23,8 @@ import reactor.util.context.Context;
 @Service
 public class NotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
 
-	private final ConnectionService connectionService;
-
-	private final IFeignNotificationService feignNotificationService;
-
-	protected NotificationService(ConnectionService connectionService, IFeignNotificationService feignNotificationService) {
+	protected NotificationService() {
 		super(Notification.class);
-		this.connectionService = connectionService;
-		this.feignNotificationService = feignNotificationService;
 	}
 
 	@Override
@@ -109,15 +101,19 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
 	}
 
-	public Mono<Boolean> processNotification(String appCode, String clientCode, BigInteger userId,
-	                                         String notificationName, String connectionName) {
+	public Mono<Notification> getNotification(String name, String appCode, String clientCode, NotificationType notificationType) {
 
-		return Mono.just(false);
+		return FlatMapUtil.flatMapMono(
 
-	}
+				() -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
 
-	public Mono<Notification> getNotification(String name, String appCode, String clientCode) {
-		return this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject);
+				notification -> Mono.justOrEmpty(notification.getNotificationType().equals(notificationType.getLiteral())
+						? notification : null),
+
+				(notification, typedNotification) -> Mono.justOrEmpty(typedNotification.getClientCode().equals(clientCode)
+						? typedNotification : null)
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.getNotification"));
 	}
 
 	public Mono<Notification> getNotification(String id) {
