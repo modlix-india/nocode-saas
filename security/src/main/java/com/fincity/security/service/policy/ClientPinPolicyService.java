@@ -57,7 +57,7 @@ public class ClientPinPolicyService
 						.setClientId(ULong.valueOf(0))
 						.setAppId(ULong.valueOf(0))
 						.setNoFailedAttempts((short) 3)
-						.setUserLockTimeMin(15L)
+						.setUserLockTime(15L)
 						.setId(DEFAULT_POLICY_ID));
 	}
 
@@ -74,7 +74,7 @@ public class ClientPinPolicyService
 					e.setPinHistoryCount(entity.getPinHistoryCount());
 					e.setNoFailedAttempts(
 							entity.getNoFailedAttempts() != null ? entity.getNoFailedAttempts() : (short) 3);
-					e.setUserLockTimeMin(entity.getUserLockTimeMin() != null ? entity.getUserLockTimeMin() : 15L);
+					e.setUserLockTime(entity.getUserLockTime() != null ? entity.getUserLockTime() : 15L);
 					return e;
 				});
 	}
