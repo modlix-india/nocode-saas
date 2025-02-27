@@ -22,4 +22,6 @@ public class RoleV2 extends AbstractUpdatableDTO<ULong, ULong> {
 	private String shortName;
 	private String description;
 	private String authority;
+	private RoleV2[] subRoles;
+	private Permission[] permissions;
 }
