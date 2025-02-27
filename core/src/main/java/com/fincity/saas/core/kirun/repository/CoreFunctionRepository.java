@@ -3,6 +3,8 @@ package com.fincity.saas.core.kirun.repository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.fincity.saas.core.functions.hash.HashData;
 import com.fincity.saas.core.functions.storage.*;
 import com.fincity.saas.core.functions.security.*;
 import lombok.Data;
@@ -62,6 +64,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 		this.makeEmailFunctions(builder.emailService);
 		this.makeFileFunctions(builder.filesService, builder.templateConversionService, builder.filesService, builder.gson);
 		this.makeCryptoFunctions();
+		this.makeHashingFunctions();
 
 		this.filterableNames = repoMap.values().stream().map(ReactiveFunction::getSignature)
 				.map(FunctionSignature::getFullName).toList();
@@ -164,6 +167,13 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
 		repoMap.put(signer.getSignature().getFullName(), signer);
 		repoMap.put(signatureValidator.getSignature().getFullName(), signatureValidator);
+	}
+
+	private void makeHashingFunctions(){
+
+		ReactiveFunction hashData = new HashData();
+
+		repoMap.put(hashData.getSignature().getFullName(), hashData);
 	}
 
 	@Override
