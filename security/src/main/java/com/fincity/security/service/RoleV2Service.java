@@ -32,6 +32,7 @@ import reactor.util.context.Context;
 public class RoleV2Service
         extends AbstractSecurityUpdatableDataService<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAO> {
 
+    private static final String ROLE = "Role";
     private static final String DESCRIPTION = "description";
     private static final String NAME = "name";
     private static final String SHORT_NAME = "shortName";
@@ -72,7 +73,7 @@ public class RoleV2Service
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
                         .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
-                                StringFormatter.format(msg, "Role"))))));
+                                StringFormatter.format(msg, ROLE))))));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Role_READ')")
@@ -97,7 +98,7 @@ public class RoleV2Service
                 .switchIfEmpty(Mono.defer(
                         () -> securityMessageResourceService.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
                                 .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
-                                        StringFormatter.format(msg, "Role", entity.getId()))))));
+                                        StringFormatter.format(msg, ROLE, entity.getId()))))));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Role_UPDATE')")
@@ -109,7 +110,7 @@ public class RoleV2Service
                 .switchIfEmpty(Mono.defer(
                         () -> securityMessageResourceService.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
                                 .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
-                                        StringFormatter.format(msg, "Role", id))))));
+                                        StringFormatter.format(msg, ROLE, id))))));
     }
 
     @Override
