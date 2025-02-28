@@ -1,7 +1,6 @@
 package com.fincity.security.dto;
 
 import java.io.Serial;
-import java.io.Serializable;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,7 +22,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePassword<User>, Serializable {
+public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePassword<User> {
 
 	@Serial
 	private static final long serialVersionUID = 754028768624617709L;

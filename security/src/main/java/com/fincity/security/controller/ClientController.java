@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
@@ -123,7 +122,8 @@ public class ClientController
 	}
 
 	@PostMapping("/register/otp/verify")
-	public Mono<ResponseEntity<Boolean>> preRegisterCheckOne(@RequestBody ClientRegistrationRequest registrationRequest) {
+	public Mono<ResponseEntity<Boolean>> preRegisterCheckOne(
+			@RequestBody ClientRegistrationRequest registrationRequest) {
 		return this.clientRegistrationService.preRegisterCheckOne(registrationRequest).map(ResponseEntity::ok);
 	}
 
