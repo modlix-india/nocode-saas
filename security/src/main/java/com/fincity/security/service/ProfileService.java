@@ -3,8 +3,8 @@ package com.fincity.security.service;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -19,35 +19,35 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.RoleV2DAO;
-import com.fincity.security.dto.RoleV2;
+import com.fincity.security.dao.ProfileDAO;
+import com.fincity.security.dto.Profile;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
-import com.fincity.security.jooq.tables.records.SecurityV2RoleRecord;
+import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class RoleV2Service
-        extends AbstractSecurityUpdatableDataService<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAO> {
+public class ProfileService
+        extends AbstractSecurityUpdatableDataService<SecurityProfileRecord, ULong, Profile, ProfileDAO> {
 
-    private static final String ROLE = "Role";
+    private static final String PROFILE = "Profile";
+
     private static final String DESCRIPTION = "description";
     private static final String NAME = "name";
-    private static final String SHORT_NAME = "shortName";
 
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
 
-    public RoleV2Service(SecurityMessageResourceService securityMessageResourceService, ClientService clientService) {
+    public ProfileService(SecurityMessageResourceService securityMessageResourceService, ClientService clientService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Role_CREATE')")
+    @PreAuthorize("hasAuthority('Authorities.Profile_CREATE')")
     @Override
-    public Mono<RoleV2> create(RoleV2 entity) {
+    public Mono<Profile> create(Profile entity) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -69,53 +69,53 @@ public class RoleV2Service
                 (ca, managed) -> super.create(entity)
 
         )
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.create"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
                         .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
-                                StringFormatter.format(msg, ROLE))))));
+                                StringFormatter.format(msg, PROFILE))))));
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Role_READ')")
+    @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
     @Override
-    public Mono<RoleV2> read(ULong id) {
+    public Mono<Profile> read(ULong id) {
         return super.read(id);
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Role_READ')")
+    @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
     @Override
-    public Mono<Page<RoleV2>> readPageFilter(Pageable pageable, AbstractCondition cond) {
+    public Mono<Page<Profile>> readPageFilter(Pageable pageable, AbstractCondition cond) {
         return super.readPageFilter(pageable, cond);
 
     }
 
     @PreAuthorize("hasAuthority('Authorities.Role_UPDATE')")
     @Override
-    public Mono<RoleV2> update(RoleV2 entity) {
+    public Mono<Profile> update(Profile entity) {
         return this.dao.canBeUpdated(entity.getId())
                 .filter(BooleanUtil::safeValueOf)
                 .flatMap(x -> super.update(entity))
                 .switchIfEmpty(Mono.defer(
                         () -> securityMessageResourceService.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
                                 .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
-                                        StringFormatter.format(msg, ROLE, entity.getId()))))));
+                                        StringFormatter.format(msg, PROFILE, entity.getId()))))));
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Role_UPDATE')")
+    @PreAuthorize("hasAuthority('Authorities.Profile_UPDATE')")
     @Override
-    public Mono<RoleV2> update(ULong id, Map<String, Object> fields) {
+    public Mono<Profile> update(ULong id, Map<String, Object> fields) {
         return this.dao.canBeUpdated(id)
                 .filter(BooleanUtil::safeValueOf)
                 .flatMap(x -> super.update(id, fields))
                 .switchIfEmpty(Mono.defer(
                         () -> securityMessageResourceService.getMessage(AbstractMessageService.OBJECT_NOT_FOUND)
                                 .flatMap(msg -> Mono.error(new GenericException(HttpStatus.NOT_FOUND,
-                                        StringFormatter.format(msg, ROLE, id))))));
+                                        StringFormatter.format(msg, PROFILE, id))))));
     }
 
     @Override
     public SecuritySoxLogObjectName getSoxObjectName() {
-        return SecuritySoxLogObjectName.ROLE;
+        return SecuritySoxLogObjectName.PROFILE;
     }
 
     @Override
@@ -126,24 +126,22 @@ public class RoleV2Service
             newFields.put(NAME, fields.get(NAME));
         if (fields.containsKey(DESCRIPTION))
             newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
-        if (fields.containsKey(SHORT_NAME))
-            newFields.put(SHORT_NAME, fields.get(SHORT_NAME));
 
         return Mono.just(newFields);
     }
 
     @Override
-    protected Mono<RoleV2> updatableEntity(RoleV2 entity) {
+    protected Mono<Profile> updatableEntity(Profile entity) {
         return this.read(entity.getId())
-                .map(existing -> {
-                    existing.setShortName(entity.getShortName());
-                    existing.setDescription(entity.getDescription());
-                    existing.setName(entity.getName());
-                    return existing;
-                });
+                .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
+                        .map(ca -> {
+                            existing.setDescription(entity.getDescription());
+                            existing.setName(entity.getName());
+                            return existing;
+                        }));
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Role_DELETE')")
+    @PreAuthorize("hasAuthority('Authorities.Profile_DELETE')")
     @Override
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
@@ -154,7 +152,7 @@ public class RoleV2Service
                 (ca, existing) -> super.delete(id)
 
         )
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.create"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.delete"))
                 .onErrorResume(
                         ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
                                 ? this.securityMessageResourceService.throwMessage(
