@@ -1,32 +1,5 @@
 use security;
 
--- [X] Need to create a new security_profile table for add definition of a profile
--- [X] Need to create a new security_profile_role table add roles to a profile
--- [X] Need to add security_profile_user table to represent the users assigned to a profile, even though the user is assigned a profile all roles in profile not be assigned to the user
--- [X] But the actual user role relation will be in security_user_role table
-
--- [X] Deleting security_package, security_package_role tables replaced with profile tables
--- [X] Retiring security_role, security_role_permission, security_user_role_permission tables and replaced with v2 tables
--- [X] Need to add security_role_role table to represent the role hierarchy. Only two levels relation is restricted for role to role but v2 security_role_permission table will be level 2.
--- [X] Deleting security_app_reg_package table tables replaced with app_reg_profile table
--- [X] Deleting security_app_reg_user_role table and will be replaced with new table security_app_reg_user_profile table
--- [ ] Need to create a new OWNER Role for each client to make client level changes
-
--- [X] Need to create Designation table
--- [X] Need to create Department table all Designations will be linked to department
--- [X] Need to add Designation id to security_user table
--- [X] Need to add Reporting To id to security_user table
-
--- [X] Need to create a new security_app_reg_designation table for representing a template of an organization's designations template for an app in a client
--- [X] Need to create a new security_app_reg_department table for representing a template of an organization's departments for an app in a client
-
--- [ ] First user on creation will be OWNER role for the client
--- [X] Need to create a new security_app_reg_profile table for adding access to the profiles for the clients
--- [ ] OWNER will have access to profiles to read the profile while assigning to a user
--- [ ] Only with profile edit or create access can create a new profile for an app
-
--- Security Profile Table
-
 -- Dropping all the tables that are replaced with new tables
 DROP TABLE IF EXISTS `security_app_reg_user_profile`;
 DROP TABLE IF EXISTS `security_app_reg_user_designation`;
@@ -59,6 +32,8 @@ CREATE TABLE `security_profile` (
   `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the profile',
   `APP_ID` bigint unsigned DEFAULT NULL,
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the profile',
+  `ARRANGEMENT` json DEFAULT NULL COMMENT 'Arrangement of the profile',
+  `PARENT_PROFILE_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent profile from which this profile is derived',
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
@@ -69,7 +44,8 @@ CREATE TABLE `security_profile` (
   KEY `FK1_PROFILE_CLIENT_ID` (`CLIENT_ID`),
   KEY `FK2_PROFILE_APP_ID` (`APP_ID`),
   CONSTRAINT `FK1_PROFILE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `FK2_PROFILE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  CONSTRAINT `FK2_PROFILE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK3_PROFILE_PARENT_PROFILE_ID` FOREIGN KEY (`PARENT_PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) 
 ENGINE=InnoDB 
 DEFAULT CHARSET=utf8mb4
@@ -98,6 +74,7 @@ CREATE TABLE `security_v2_role` (
   `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the role',
   `SHORT_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Short name of the role',
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the role',
+  `APP_ID` bigint unsigned DEFAULT NULL COMMENT 'App ID for which this role belongs to',
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
@@ -105,7 +82,9 @@ CREATE TABLE `security_v2_role` (
   `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
   PRIMARY KEY (`ID`),
   KEY `FK1_V2_ROLE_CLIENT_ID` (`CLIENT_ID`),
-  CONSTRAINT `FK1_V2_ROLE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `FK2_V2_ROLE_APP_ID` (`APP_ID`),
+  CONSTRAINT `FK1_V2_ROLE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK2_V2_ROLE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Security Profile Role Table
@@ -114,7 +93,6 @@ CREATE TABLE `security_profile_role` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
   `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this role belongs to',
   `ROLE_ID` bigint unsigned NOT NULL COMMENT 'Role ID for which this profile belongs to',
-  `PRIORITY` int unsigned NOT NULL DEFAULT 0 COMMENT 'Priority of the role in the profile',
 
   PRIMARY KEY (`ID`),
   UNIQUE KEY `UK1_PROFILE_ROLE_PROFILE_ID_ROLE_ID` (`PROFILE_ID`,`ROLE_ID`),
@@ -205,7 +183,7 @@ CREATE TABLE `security_department` (
   CONSTRAINT `FK1_DEPARTMENT_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) 
     REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `FK2_DEPARTMENT_PARENT_ID` FOREIGN KEY (`PARENT_DEPARTMENT_ID`) 
-    REFERENCES `security_department` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+    REFERENCES `security_department` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Security Designation Table with Reporting & Hierarchy
@@ -214,9 +192,10 @@ CREATE TABLE `security_designation` (
   `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID for which this designation belongs to',
   `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the designation',
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the designation',
-  `DEPARTMENT_ID` bigint unsigned NOT NULL COMMENT 'Department ID for which this designation belongs to',
+  `DEPARTMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Department ID for which this designation belongs to',
   `PARENT_DESIGNATION_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent designation for hierarchy',
   `NEXT_DESIGNATION_ID` bigint unsigned DEFAULT NULL COMMENT 'Next designation in the hierarchy',
+  `PROFILE_ID` bigint unsigned DEFAULT NULL COMMENT 'Profile ID for which this designation belongs to',
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
@@ -231,11 +210,13 @@ CREATE TABLE `security_designation` (
   CONSTRAINT `FK1_DESIGNATION_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) 
     REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `FK2_DESIGNATION_DEPARTMENT_ID` FOREIGN KEY (`DEPARTMENT_ID`) 
-    REFERENCES `security_department` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    REFERENCES `security_department` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `FK3_DESIGNATION_PARENT_ID` FOREIGN KEY (`PARENT_DESIGNATION_ID`) 
-    REFERENCES `security_designation` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    REFERENCES `security_designation` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `FK4_DESIGNATION_NEXT_DESIGNATION_ID` FOREIGN KEY (`NEXT_DESIGNATION_ID`) 
-    REFERENCES `security_designation` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+    REFERENCES `security_designation` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `FK5_DESIGNATION_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) 
+    REFERENCES `security_profile` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- Adding designation and reporting to user in security_user table along with foreign key constraints
 
@@ -383,8 +364,8 @@ SELECT ID from `security_client` WHERE CODE = 'SYSTEM' LIMIT 1 INTO @v_client_sy
 
 -- Inserting old roles into v2 role table
 
-INSERT INTO `security_v2_role` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
-  SELECT `CLIENT_ID`, `NAME`, `DESCRIPTION` FROM `security_role`;
+INSERT INTO `security_v2_role` (`CLIENT_ID`, `NAME`, `APP_ID`, `DESCRIPTION`)
+  SELECT `CLIENT_ID`, `NAME`, `APP_ID`, `DESCRIPTION` FROM `security_role`;
 
 -- Inserting old permissions into v2 role table to create a new role for each permission
 

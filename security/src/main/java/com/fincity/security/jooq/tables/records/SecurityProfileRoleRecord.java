@@ -8,7 +8,6 @@ import com.fincity.security.jooq.tables.SecurityProfileRole;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
-import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -69,23 +68,6 @@ public class SecurityProfileRoleRecord extends UpdatableRecordImpl<SecurityProfi
         return (ULong) get(2);
     }
 
-    /**
-     * Setter for <code>security.security_profile_role.PRIORITY</code>. Priority
-     * of the role in the profile
-     */
-    public SecurityProfileRoleRecord setPriority(UInteger value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_profile_role.PRIORITY</code>. Priority
-     * of the role in the profile
-     */
-    public UInteger getPriority() {
-        return (UInteger) get(3);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -109,13 +91,12 @@ public class SecurityProfileRoleRecord extends UpdatableRecordImpl<SecurityProfi
     /**
      * Create a detached, initialised SecurityProfileRoleRecord
      */
-    public SecurityProfileRoleRecord(ULong id, ULong profileId, ULong roleId, UInteger priority) {
+    public SecurityProfileRoleRecord(ULong id, ULong profileId, ULong roleId) {
         super(SecurityProfileRole.SECURITY_PROFILE_ROLE);
 
         setId(id);
         setProfileId(profileId);
         setRoleId(roleId);
-        setPriority(priority);
         resetChangedOnNotNull();
     }
 }

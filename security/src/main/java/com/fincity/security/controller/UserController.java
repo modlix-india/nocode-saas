@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.UserDAO;
-import com.fincity.security.dto.Permission;
 import com.fincity.security.dto.RoleV2;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
@@ -35,21 +34,6 @@ public class UserController
 
 	public UserController(UserService userService) {
 		this.userService = userService;
-	}
-
-	@GetMapping("{userId}/removePermission/{permissionId}")
-	public Mono<ResponseEntity<Boolean>> removePermission(@PathVariable ULong userId,
-			@PathVariable ULong permissionId) {
-
-		return this.userService.removePermissionFromUser(userId, permissionId)
-				.map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/{id}/assignPermission/{permissionId}")
-	public Mono<ResponseEntity<Boolean>> assignPermission(@PathVariable ULong id, @PathVariable ULong permissionId) {
-
-		return this.userService.assignPermissionToUser(id, permissionId)
-				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("{userId}/removeRole/{roleId}")
@@ -92,13 +76,6 @@ public class UserController
 	public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
 
 		return this.service.unblockUser(userId)
-				.map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/availablePermissions/{userId}")
-	public Mono<ResponseEntity<List<Permission>>> getPermissionsFromUser(@PathVariable ULong userId) {
-
-		return this.userService.getPermissionsFromGivenUser(userId)
 				.map(ResponseEntity::ok);
 	}
 
@@ -146,11 +123,4 @@ public class UserController
 				.map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/copy/authorities")
-	public Mono<ResponseEntity<Boolean>> copyUserAccess(@RequestParam ULong userId,
-			@RequestParam ULong referenceUserId) {
-
-		return this.userService.copyUserRolesNPermissions(userId, referenceUserId)
-				.map(ResponseEntity::ok);
-	}
 }

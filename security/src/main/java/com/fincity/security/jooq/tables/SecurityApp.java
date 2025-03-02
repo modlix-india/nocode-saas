@@ -15,8 +15,6 @@ import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyP
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegFileAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration.SecurityAppRegIntegrationPath;
-import com.fincity.security.jooq.tables.SecurityAppRegProfile.SecurityAppRegProfilePath;
-import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
@@ -25,6 +23,7 @@ import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
+import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import java.time.LocalDateTime;
@@ -365,32 +364,6 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityAppRegFileAccess;
     }
 
-    private transient SecurityAppRegProfilePath _securityAppRegProfile;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_profile</code> table
-     */
-    public SecurityAppRegProfilePath securityAppRegProfile() {
-        if (_securityAppRegProfile == null)
-            _securityAppRegProfile = new SecurityAppRegProfilePath(this, null, Keys.FK2_APP_REG_PROFILE_APP_ID.getInverseKey());
-
-        return _securityAppRegProfile;
-    }
-
-    private transient SecurityAppRegUserProfilePath _securityAppRegUserProfile;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_user_profile</code> table
-     */
-    public SecurityAppRegUserProfilePath securityAppRegUserProfile() {
-        if (_securityAppRegUserProfile == null)
-            _securityAppRegUserProfile = new SecurityAppRegUserProfilePath(this, null, Keys.FK2_APP_REG_USER_PROFILE_APP_ID.getInverseKey());
-
-        return _securityAppRegUserProfile;
-    }
-
     private transient SecurityClientOtpPolicyPath _securityClientOtpPolicy;
 
     /**
@@ -454,6 +427,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityProfile = new SecurityProfilePath(this, null, Keys.FK2_PROFILE_APP_ID.getInverseKey());
 
         return _securityProfile;
+    }
+
+    private transient SecurityV2RolePath _securityV2Role;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_v2_role</code> table
+     */
+    public SecurityV2RolePath securityV2Role() {
+        if (_securityV2Role == null)
+            _securityV2Role = new SecurityV2RolePath(this, null, Keys.FK2_V2_ROLE_APP_ID.getInverseKey());
+
+        return _securityV2Role;
     }
 
     private transient SecurityAppRegAccessPath _fk3AppRegAccAllowAppId;

@@ -10,26 +10,19 @@ import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
-import com.fincity.security.jooq.tables.SecurityAppRegDepartment;
-import com.fincity.security.jooq.tables.SecurityAppRegDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
-import com.fincity.security.jooq.tables.SecurityAppRegProfile;
-import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
-import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
-import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
 import com.fincity.security.jooq.tables.SecurityClientProfile;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
-import com.fincity.security.jooq.tables.SecurityDesignation;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
@@ -87,16 +80,6 @@ public class Tables {
     public static final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
 
     /**
-     * The table <code>security.security_app_reg_department</code>.
-     */
-    public static final SecurityAppRegDepartment SECURITY_APP_REG_DEPARTMENT = SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT;
-
-    /**
-     * The table <code>security.security_app_reg_designation</code>.
-     */
-    public static final SecurityAppRegDesignation SECURITY_APP_REG_DESIGNATION = SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION;
-
-    /**
      * The table <code>security.security_app_reg_file_access</code>.
      */
     public static final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
@@ -110,21 +93,6 @@ public class Tables {
      * The table <code>security.security_app_reg_integration_tokens</code>.
      */
     public static final SecurityAppRegIntegrationTokens SECURITY_APP_REG_INTEGRATION_TOKENS = SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS;
-
-    /**
-     * The table <code>security.security_app_reg_profile</code>.
-     */
-    public static final SecurityAppRegProfile SECURITY_APP_REG_PROFILE = SecurityAppRegProfile.SECURITY_APP_REG_PROFILE;
-
-    /**
-     * The table <code>security.security_app_reg_user_designation</code>.
-     */
-    public static final SecurityAppRegUserDesignation SECURITY_APP_REG_USER_DESIGNATION = SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION;
-
-    /**
-     * The table <code>security.security_app_reg_user_profile</code>.
-     */
-    public static final SecurityAppRegUserProfile SECURITY_APP_REG_USER_PROFILE = SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE;
 
     /**
      * The table <code>security.security_client</code>.
@@ -145,11 +113,6 @@ public class Tables {
      * The table <code>security.security_client_otp_policy</code>.
      */
     public static final SecurityClientOtpPolicy SECURITY_CLIENT_OTP_POLICY = SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY;
-
-    /**
-     * The table <code>security.security_client_package</code>.
-     */
-    public static final SecurityClientPackage SECURITY_CLIENT_PACKAGE = SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 
     /**
      * The table <code>security.security_client_password_policy</code>.
@@ -180,11 +143,6 @@ public class Tables {
      * The table <code>security.security_department</code>.
      */
     public static final SecurityDepartment SECURITY_DEPARTMENT = SecurityDepartment.SECURITY_DEPARTMENT;
-
-    /**
-     * The table <code>security.security_designation</code>.
-     */
-    public static final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
 
     /**
      * The table <code>security.security_otp</code>.

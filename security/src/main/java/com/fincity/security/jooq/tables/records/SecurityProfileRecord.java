@@ -8,6 +8,7 @@ import com.fincity.security.jooq.tables.SecurityProfile;
 
 import java.time.LocalDateTime;
 
+import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -103,11 +104,45 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
     }
 
     /**
+     * Setter for <code>security.security_profile.ARRANGEMENT</code>.
+     * Arrangement of the profile
+     */
+    public SecurityProfileRecord setArrangement(JSON value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_profile.ARRANGEMENT</code>.
+     * Arrangement of the profile
+     */
+    public JSON getArrangement() {
+        return (JSON) get(5);
+    }
+
+    /**
+     * Setter for <code>security.security_profile.PARENT_PROFILE_ID</code>.
+     * Parent profile from which this profile is derived
+     */
+    public SecurityProfileRecord setParentProfileId(ULong value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_profile.PARENT_PROFILE_ID</code>.
+     * Parent profile from which this profile is derived
+     */
+    public ULong getParentProfileId() {
+        return (ULong) get(6);
+    }
+
+    /**
      * Setter for <code>security.security_profile.CREATED_BY</code>. ID of the
      * user who created this row
      */
     public SecurityProfileRecord setCreatedBy(ULong value) {
-        set(5, value);
+        set(7, value);
         return this;
     }
 
@@ -116,7 +151,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(5);
+        return (ULong) get(7);
     }
 
     /**
@@ -124,7 +159,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is created
      */
     public SecurityProfileRecord setCreatedAt(LocalDateTime value) {
-        set(6, value);
+        set(8, value);
         return this;
     }
 
@@ -133,7 +168,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(8);
     }
 
     /**
@@ -141,7 +176,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * user who updated this row
      */
     public SecurityProfileRecord setUpdatedBy(ULong value) {
-        set(7, value);
+        set(9, value);
         return this;
     }
 
@@ -150,7 +185,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(9);
     }
 
     /**
@@ -158,7 +193,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is updated
      */
     public SecurityProfileRecord setUpdatedAt(LocalDateTime value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -167,7 +202,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -193,7 +228,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
     /**
      * Create a detached, initialised SecurityProfileRecord
      */
-    public SecurityProfileRecord(ULong id, ULong clientId, String name, ULong appId, String description, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityProfileRecord(ULong id, ULong clientId, String name, ULong appId, String description, JSON arrangement, ULong parentProfileId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityProfile.SECURITY_PROFILE);
 
         setId(id);
@@ -201,6 +236,8 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
         setName(name);
         setAppId(appId);
         setDescription(description);
+        setArrangement(arrangement);
+        setParentProfileId(parentProfileId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

@@ -7,10 +7,9 @@ package com.fincity.security.jooq.tables;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
-import com.fincity.security.jooq.tables.SecurityAppRegProfile.SecurityAppRegProfilePath;
-import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientProfile.SecurityClientProfilePath;
+import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityProfileRole.SecurityProfileRolePath;
 import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
@@ -27,6 +26,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -94,6 +94,18 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
      * Description of the profile
      */
     public final TableField<SecurityProfileRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description of the profile");
+
+    /**
+     * The column <code>security.security_profile.ARRANGEMENT</code>.
+     * Arrangement of the profile
+     */
+    public final TableField<SecurityProfileRecord, JSON> ARRANGEMENT = createField(DSL.name("ARRANGEMENT"), SQLDataType.JSON, this, "Arrangement of the profile");
+
+    /**
+     * The column <code>security.security_profile.PARENT_PROFILE_ID</code>.
+     * Parent profile from which this profile is derived
+     */
+    public final TableField<SecurityProfileRecord, ULong> PARENT_PROFILE_ID = createField(DSL.name("PARENT_PROFILE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Parent profile from which this profile is derived");
 
     /**
      * The column <code>security.security_profile.CREATED_BY</code>. ID of the
@@ -203,7 +215,7 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
 
     @Override
     public List<ForeignKey<SecurityProfileRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PROFILE_CLIENT_ID, Keys.FK2_PROFILE_APP_ID);
+        return Arrays.asList(Keys.FK1_PROFILE_CLIENT_ID, Keys.FK2_PROFILE_APP_ID, Keys.FK3_PROFILE_PARENT_PROFILE_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -230,6 +242,19 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
             _securityApp = new SecurityAppPath(this, Keys.FK2_PROFILE_APP_ID, null);
 
         return _securityApp;
+    }
+
+    private transient SecurityProfilePath _securityProfile;
+
+    /**
+     * Get the implicit join path to the <code>security.security_profile</code>
+     * table.
+     */
+    public SecurityProfilePath securityProfile() {
+        if (_securityProfile == null)
+            _securityProfile = new SecurityProfilePath(this, Keys.FK3_PROFILE_PARENT_PROFILE_ID, null);
+
+        return _securityProfile;
     }
 
     private transient SecurityProfileRolePath _securityProfileRole;
@@ -269,32 +294,6 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
             _securityClientProfile = new SecurityClientProfilePath(this, null, Keys.FK2_CLIENT_PROFILE_PROFILE_ID.getInverseKey());
 
         return _securityClientProfile;
-    }
-
-    private transient SecurityAppRegProfilePath _securityAppRegProfile;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_profile</code> table
-     */
-    public SecurityAppRegProfilePath securityAppRegProfile() {
-        if (_securityAppRegProfile == null)
-            _securityAppRegProfile = new SecurityAppRegProfilePath(this, null, Keys.FK3_APP_REG_PROFILE_PROFILE_ID.getInverseKey());
-
-        return _securityAppRegProfile;
-    }
-
-    private transient SecurityAppRegUserProfilePath _securityAppRegUserProfile;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_user_profile</code> table
-     */
-    public SecurityAppRegUserProfilePath securityAppRegUserProfile() {
-        if (_securityAppRegUserProfile == null)
-            _securityAppRegUserProfile = new SecurityAppRegUserProfilePath(this, null, Keys.FK3_APP_REG_USER_PROFILE_PROFILE_ID.getInverseKey());
-
-        return _securityAppRegUserProfile;
     }
 
     /**

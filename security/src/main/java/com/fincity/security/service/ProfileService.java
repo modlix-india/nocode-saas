@@ -82,6 +82,10 @@ public class ProfileService
         return super.read(id);
     }
 
+    public Mono<Profile> readInternal(ULong id) {
+        return super.read(id);
+    }
+
     @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
     @Override
     public Mono<Page<Profile>> readPageFilter(Pageable pageable, AbstractCondition cond) {

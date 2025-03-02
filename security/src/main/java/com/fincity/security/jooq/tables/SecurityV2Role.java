@@ -6,6 +6,7 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
@@ -93,6 +94,12 @@ public class SecurityV2Role extends TableImpl<SecurityV2RoleRecord> {
      * Description of the role
      */
     public final TableField<SecurityV2RoleRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description of the role");
+
+    /**
+     * The column <code>security.security_v2_role.APP_ID</code>. App ID for
+     * which this role belongs to
+     */
+    public final TableField<SecurityV2RoleRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED, this, "App ID for which this role belongs to");
 
     /**
      * The column <code>security.security_v2_role.CREATED_BY</code>. ID of the
@@ -197,7 +204,7 @@ public class SecurityV2Role extends TableImpl<SecurityV2RoleRecord> {
 
     @Override
     public List<ForeignKey<SecurityV2RoleRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_V2_ROLE_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_V2_ROLE_CLIENT_ID, Keys.FK2_V2_ROLE_APP_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -211,6 +218,19 @@ public class SecurityV2Role extends TableImpl<SecurityV2RoleRecord> {
             _securityClient = new SecurityClientPath(this, Keys.FK1_V2_ROLE_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityAppPath _securityApp;
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityAppPath securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityAppPath(this, Keys.FK2_V2_ROLE_APP_ID, null);
+
+        return _securityApp;
     }
 
     private transient SecurityV2RolePermissionPath _securityV2RolePermission;

@@ -34,7 +34,6 @@ import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.dto.Package;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
@@ -76,7 +75,7 @@ public class ClientService
 
 	@Autowired
 	@Lazy
-	private PackageService packageService;
+	private ProfileService profileService;
 
 	@Autowired
 	@Lazy
@@ -334,10 +333,22 @@ public class ClientService
 				clientId);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
-	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+	public Mono<Boolean> assignProfileToClient(ULong clientId, ULong profileId) {
 
-		return this.dao.checkPackageAssignedForClient(clientId, packageId).flatMap(result -> {
+		// return FlatMapUtil.flatMapMono(
+
+		// SecurityContextUtil::getUsersContextAuthentication,
+
+		// ca -> this.profileService.readInternal(profileId),
+
+		// ).contextWrite(Context.of(LogUtil.METHOD_NAME,
+		// "ClientService.assignProfileToClient"))
+		// .switchIfEmpty(securityMessageResourceService.throwMessage(
+		// msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		// SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, profileId, clientId));
+
+		return this.dao.checkPackageAssignedForClient(clientId, profileId).flatMap(result -> {
 			if (Boolean.TRUE.equals(result))
 				return Mono.just(Boolean.TRUE);
 
@@ -407,10 +418,6 @@ public class ClientService
 				clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
 						.flatMap(BooleanUtil::safeValueOfWithEmpty))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.checkClientAndPackageManaged"));
-	}
-
-	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
-		return this.dao.checkPermissionExistsOrCreatedForClient(clientId, permissionId);
 	}
 
 	public Mono<Client> getClientBy(String clientCode) {

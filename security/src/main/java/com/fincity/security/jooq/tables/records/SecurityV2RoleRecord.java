@@ -103,11 +103,28 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
     }
 
     /**
+     * Setter for <code>security.security_v2_role.APP_ID</code>. App ID for
+     * which this role belongs to
+     */
+    public SecurityV2RoleRecord setAppId(ULong value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_v2_role.APP_ID</code>. App ID for
+     * which this role belongs to
+     */
+    public ULong getAppId() {
+        return (ULong) get(5);
+    }
+
+    /**
      * Setter for <code>security.security_v2_role.CREATED_BY</code>. ID of the
      * user who created this row
      */
     public SecurityV2RoleRecord setCreatedBy(ULong value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -116,7 +133,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(5);
+        return (ULong) get(6);
     }
 
     /**
@@ -124,7 +141,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
      * this row is created
      */
     public SecurityV2RoleRecord setCreatedAt(LocalDateTime value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -133,7 +150,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(7);
     }
 
     /**
@@ -141,7 +158,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
      * user who updated this row
      */
     public SecurityV2RoleRecord setUpdatedBy(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -150,7 +167,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -158,7 +175,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
      * this row is updated
      */
     public SecurityV2RoleRecord setUpdatedAt(LocalDateTime value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -167,7 +184,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(9);
     }
 
     // -------------------------------------------------------------------------
@@ -193,7 +210,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
     /**
      * Create a detached, initialised SecurityV2RoleRecord
      */
-    public SecurityV2RoleRecord(ULong id, ULong clientId, String name, String shortName, String description, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityV2RoleRecord(ULong id, ULong clientId, String name, String shortName, String description, ULong appId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityV2Role.SECURITY_V2_ROLE);
 
         setId(id);
@@ -201,6 +218,7 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
         setName(name);
         setShortName(shortName);
         setDescription(description);
+        setAppId(appId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

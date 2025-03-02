@@ -35,7 +35,6 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
-import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -76,12 +75,6 @@ public class SecurityProfileRole extends TableImpl<SecurityProfileRoleRecord> {
      * for which this profile belongs to
      */
     public final TableField<SecurityProfileRoleRecord, ULong> ROLE_ID = createField(DSL.name("ROLE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Role ID for which this profile belongs to");
-
-    /**
-     * The column <code>security.security_profile_role.PRIORITY</code>. Priority
-     * of the role in the profile
-     */
-    public final TableField<SecurityProfileRoleRecord, UInteger> PRIORITY = createField(DSL.name("PRIORITY"), SQLDataType.INTEGERUNSIGNED.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGERUNSIGNED)), this, "Priority of the role in the profile");
 
     private SecurityProfileRole(Name alias, Table<SecurityProfileRoleRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

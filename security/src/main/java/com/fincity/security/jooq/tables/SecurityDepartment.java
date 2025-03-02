@@ -8,7 +8,6 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityDepartment.SecurityDepartmentPath;
-import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
 import com.fincity.security.jooq.tables.records.SecurityDepartmentRecord;
 
 import java.time.LocalDateTime;
@@ -223,19 +222,6 @@ public class SecurityDepartment extends TableImpl<SecurityDepartmentRecord> {
             _securityDepartment = new SecurityDepartmentPath(this, Keys.FK2_DEPARTMENT_PARENT_ID, null);
 
         return _securityDepartment;
-    }
-
-    private transient SecurityDesignationPath _securityDesignation;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_designation</code> table
-     */
-    public SecurityDesignationPath securityDesignation() {
-        if (_securityDesignation == null)
-            _securityDesignation = new SecurityDesignationPath(this, null, Keys.FK2_DESIGNATION_DEPARTMENT_ID.getInverseKey());
-
-        return _securityDesignation;
     }
 
     @Override

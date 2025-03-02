@@ -9,13 +9,11 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
-import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPastPasswords.SecurityPastPasswordsPath;
 import com.fincity.security.jooq.tables.SecurityPastPins.SecurityPastPinsPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
-import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.SecurityUserAddress.SecurityUserAddressPath;
 import com.fincity.security.jooq.tables.SecurityUserToken.SecurityUserTokenPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
@@ -77,18 +75,6 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * The column <code>security.security_user.ID</code>. Primary key
      */
     public final TableField<SecurityUserRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
-
-    /**
-     * The column <code>security.security_user.DESIGNATION_ID</code>.
-     * Designation ID for which this user belongs to
-     */
-    public final TableField<SecurityUserRecord, ULong> DESIGNATION_ID = createField(DSL.name("DESIGNATION_ID"), SQLDataType.BIGINTUNSIGNED, this, "Designation ID for which this user belongs to");
-
-    /**
-     * The column <code>security.security_user.REPORTING_TO</code>. Reporting to
-     * ID for which this user belongs to
-     */
-    public final TableField<SecurityUserRecord, ULong> REPORTING_TO = createField(DSL.name("REPORTING_TO"), SQLDataType.BIGINTUNSIGNED, this, "Reporting to ID for which this user belongs to");
 
     /**
      * The column <code>security.security_user.CLIENT_ID</code>. Client ID for
@@ -336,7 +322,7 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
 
     @Override
     public List<ForeignKey<SecurityUserRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_USER_CLIENT_ID, Keys.FK1_USER_DESIGNATION_ID, Keys.FK2_USER_REPORTING_TO_ID);
+        return Arrays.asList(Keys.FK1_USER_CLIENT_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -350,32 +336,6 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
             _securityClient = new SecurityClientPath(this, Keys.FK1_USER_CLIENT_ID, null);
 
         return _securityClient;
-    }
-
-    private transient SecurityDesignationPath _securityDesignation;
-
-    /**
-     * Get the implicit join path to the
-     * <code>security.security_designation</code> table.
-     */
-    public SecurityDesignationPath securityDesignation() {
-        if (_securityDesignation == null)
-            _securityDesignation = new SecurityDesignationPath(this, Keys.FK1_USER_DESIGNATION_ID, null);
-
-        return _securityDesignation;
-    }
-
-    private transient SecurityUserPath _securityUser;
-
-    /**
-     * Get the implicit join path to the <code>security.security_user</code>
-     * table.
-     */
-    public SecurityUserPath securityUser() {
-        if (_securityUser == null)
-            _securityUser = new SecurityUserPath(this, Keys.FK2_USER_REPORTING_TO_ID, null);
-
-        return _securityUser;
     }
 
     private transient SecurityPastPasswordsPath _securityPastPasswords;
