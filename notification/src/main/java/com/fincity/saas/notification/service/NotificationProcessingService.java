@@ -105,6 +105,8 @@ public class NotificationProcessingService {
 					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					NotificationMessageResourceService.UKNOWN_ERROR, NOTIFICATION);
 
+		logger.info("Processing notification request {}", notificationRequest);
+
 		return this.processNotificationInternal(notificationRequest.getAppCode(), notificationRequest.getClientCode(),
 				notificationRequest.getUserId(), notificationRequest.getNotificationName(),
 				notificationRequest.getObjectMap());
