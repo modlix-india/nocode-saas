@@ -13,21 +13,19 @@ import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyP
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegFileAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration.SecurityAppRegIntegrationPath;
-import com.fincity.security.jooq.tables.SecurityAppRegPackage.SecurityAppRegPackagePath;
-import com.fincity.security.jooq.tables.SecurityAppRegUserRole.SecurityAppRegUserRolePath;
 import com.fincity.security.jooq.tables.SecurityClientAddress.SecurityClientAddressPath;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy.SecurityClientHierarchyPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
-import com.fincity.security.jooq.tables.SecurityClientPackage.SecurityClientPackagePath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPinPolicyPath;
+import com.fincity.security.jooq.tables.SecurityClientProfile.SecurityClientProfilePath;
 import com.fincity.security.jooq.tables.SecurityClientType.SecurityClientTypePath;
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
-import com.fincity.security.jooq.tables.SecurityOrgStructure.SecurityOrgStructurePath;
-import com.fincity.security.jooq.tables.SecurityPackage.SecurityPackagePath;
+import com.fincity.security.jooq.tables.SecurityDepartment.SecurityDepartmentPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
-import com.fincity.security.jooq.tables.SecurityRole.SecurityRolePath;
+import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
+import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 
 import java.time.LocalDateTime;
@@ -303,32 +301,6 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _securityAppRegFileAccess;
     }
 
-    private transient SecurityAppRegPackagePath _securityAppRegPackage;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_package</code> table
-     */
-    public SecurityAppRegPackagePath securityAppRegPackage() {
-        if (_securityAppRegPackage == null)
-            _securityAppRegPackage = new SecurityAppRegPackagePath(this, null, Keys.FK1_APP_REG_PKG_CLNT_ID.getInverseKey());
-
-        return _securityAppRegPackage;
-    }
-
-    private transient SecurityAppRegUserRolePath _securityAppRegUserRole;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_user_role</code> table
-     */
-    public SecurityAppRegUserRolePath securityAppRegUserRole() {
-        if (_securityAppRegUserRole == null)
-            _securityAppRegUserRole = new SecurityAppRegUserRolePath(this, null, Keys.FK1_APP_REG_ROLE_CLNT_ID.getInverseKey());
-
-        return _securityAppRegUserRole;
-    }
-
     private transient SecurityClientAddressPath _securityClientAddress;
 
     /**
@@ -425,19 +397,6 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _securityClientOtpPolicy;
     }
 
-    private transient SecurityClientPackagePath _securityClientPackage;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_client_package</code> table
-     */
-    public SecurityClientPackagePath securityClientPackage() {
-        if (_securityClientPackage == null)
-            _securityClientPackage = new SecurityClientPackagePath(this, null, Keys.FK1_CLIENT_PACKAGE_CLIENT_ID.getInverseKey());
-
-        return _securityClientPackage;
-    }
-
     private transient SecurityClientPinPolicyPath _securityClientPinPolicy;
 
     /**
@@ -449,6 +408,19 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityClientPinPolicy = new SecurityClientPinPolicyPath(this, null, Keys.FK1_CLIENT_PIN_POL_CLIENT_ID.getInverseKey());
 
         return _securityClientPinPolicy;
+    }
+
+    private transient SecurityClientProfilePath _securityClientProfile;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_client_profile</code> table
+     */
+    public SecurityClientProfilePath securityClientProfile() {
+        if (_securityClientProfile == null)
+            _securityClientProfile = new SecurityClientProfilePath(this, null, Keys.FK1_CLIENT_PROFILE_CLIENT_ID.getInverseKey());
+
+        return _securityClientProfile;
     }
 
     private transient SecurityClientPasswordPolicyPath _securityClientPasswordPolicy;
@@ -477,30 +449,17 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _securityClientUrl;
     }
 
-    private transient SecurityOrgStructurePath _securityOrgStructure;
+    private transient SecurityDepartmentPath _securityDepartment;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_org_structure</code> table
+     * <code>security.security_department</code> table
      */
-    public SecurityOrgStructurePath securityOrgStructure() {
-        if (_securityOrgStructure == null)
-            _securityOrgStructure = new SecurityOrgStructurePath(this, null, Keys.FK1_ORG_STRUCTURE_CLIENT_ID.getInverseKey());
+    public SecurityDepartmentPath securityDepartment() {
+        if (_securityDepartment == null)
+            _securityDepartment = new SecurityDepartmentPath(this, null, Keys.FK1_DEPARTMENT_CLIENT_ID.getInverseKey());
 
-        return _securityOrgStructure;
-    }
-
-    private transient SecurityPackagePath _securityPackage;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_package</code> table
-     */
-    public SecurityPackagePath securityPackage() {
-        if (_securityPackage == null)
-            _securityPackage = new SecurityPackagePath(this, null, Keys.FK1_PACKAGE_CLIENT_ID.getInverseKey());
-
-        return _securityPackage;
+        return _securityDepartment;
     }
 
     private transient SecurityPermissionPath _securityPermission;
@@ -516,17 +475,17 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _securityPermission;
     }
 
-    private transient SecurityRolePath _securityRole;
+    private transient SecurityProfilePath _securityProfile;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_role</code> table
+     * <code>security.security_profile</code> table
      */
-    public SecurityRolePath securityRole() {
-        if (_securityRole == null)
-            _securityRole = new SecurityRolePath(this, null, Keys.FK1_ROLE_CLIENT_ID.getInverseKey());
+    public SecurityProfilePath securityProfile() {
+        if (_securityProfile == null)
+            _securityProfile = new SecurityProfilePath(this, null, Keys.FK1_PROFILE_CLIENT_ID.getInverseKey());
 
-        return _securityRole;
+        return _securityProfile;
     }
 
     private transient SecurityUserPath _securityUser;
@@ -540,6 +499,19 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityUser = new SecurityUserPath(this, null, Keys.FK1_USER_CLIENT_ID.getInverseKey());
 
         return _securityUser;
+    }
+
+    private transient SecurityV2RolePath _securityV2Role;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_v2_role</code> table
+     */
+    public SecurityV2RolePath securityV2Role() {
+        if (_securityV2Role == null)
+            _securityV2Role = new SecurityV2RolePath(this, null, Keys.FK1_V2_ROLE_CLIENT_ID.getInverseKey());
+
+        return _securityV2Role;
     }
 
     private transient SecurityAppPropertyPath _securityAppProperty;

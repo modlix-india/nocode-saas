@@ -27,7 +27,9 @@ public enum SecuritySoxLogObjectName implements EnumType {
 
     CLIENT_TYPE("CLIENT_TYPE"),
 
-    APP("APP");
+    APP("APP"),
+
+    PROFILE("PROFILE");
 
     private final String literal;
 

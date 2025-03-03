@@ -5,13 +5,7 @@ import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import static com.fincity.security.jooq.tables.SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
-import static com.fincity.security.jooq.tables.SecurityPackage.SECURITY_PACKAGE;
-import static com.fincity.security.jooq.tables.SecurityPackageRole.SECURITY_PACKAGE_ROLE;
-import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
-import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
-import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
-import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,11 +25,9 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityClientPackageRecord;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -116,33 +108,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
     }
 
-    public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
-
-        Condition clientCondition = SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)
-                .and(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId));
-
-        Condition assignedOrBasePackageCondition = clientCondition.or(SECURITY_PACKAGE.BASE.eq((byte) 1));
-
-        Condition permissionCreatedCondition = SECURITY_PERMISSION.CLIENT_ID.eq(clientId);
-
-        return Mono.from(
-
-                this.dslContext.selectCount()
-                        .from(SECURITY_PERMISSION)
-                        .leftJoin(SECURITY_ROLE_PERMISSION)
-                        .on(SECURITY_ROLE_PERMISSION.PERMISSION_ID.eq(SECURITY_PERMISSION.ID))
-                        .leftJoin(SECURITY_PACKAGE_ROLE)
-                        .on(SECURITY_PACKAGE_ROLE.ROLE_ID.eq(SECURITY_ROLE_PERMISSION.ROLE_ID))
-                        .leftJoin(SECURITY_CLIENT_PACKAGE)
-                        .on(SECURITY_CLIENT_PACKAGE.PACKAGE_ID
-                                .eq(SECURITY_PACKAGE_ROLE.PACKAGE_ID))
-                        .leftJoin(SECURITY_PACKAGE)
-                        .on(SECURITY_PACKAGE.ID.eq(SECURITY_CLIENT_PACKAGE.PACKAGE_ID))
-                        .where(assignedOrBasePackageCondition.or(permissionCreatedCondition)))
-                .map(Record1::value1)
-                .map(count -> count > 0);
-    }
-
     public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 
         return Mono.from(this.dslContext.update(SECURITY_CLIENT)
@@ -151,7 +116,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                         .and(SECURITY_CLIENT.STATUS_CODE
                                 .eq(SecurityClientStatusCode.INACTIVE))))
                 .map(e -> e > 0);
-
     }
 
     public Mono<Boolean> makeClientInActive(ULong clientId) {
@@ -213,7 +177,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
         query.addConditions(SECURITY_CLIENT_PACKAGE.PACKAGE_ID.eq(packageId)
                 .and(SECURITY_CLIENT_PACKAGE.CLIENT_ID.eq(clientId)));
-
+`
         return Mono.from(query)
                 .map(val -> val == 1);
     }
@@ -371,12 +335,11 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .map(Record1::value1);
     }
 
-
     public Mono<Boolean> isClientActive(List<ULong> clientIds) {
         return Mono.from(this.dslContext.selectCount()
-				        .from(SECURITY_CLIENT)
-				        .where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
-				        .and(SECURITY_CLIENT.ID.in(clientIds)))
-		        .map(count -> count.value1() > 0);
+                .from(SECURITY_CLIENT)
+                .where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
+                .and(SECURITY_CLIENT.ID.in(clientIds)))
+                .map(count -> count.value1() > 0);
     }
 }

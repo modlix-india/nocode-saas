@@ -13,34 +13,34 @@ import com.fincity.security.jooq.tables.SecurityAppRegAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
-import com.fincity.security.jooq.tables.SecurityAppRegPackage;
-import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
-import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
+import com.fincity.security.jooq.tables.SecurityClientProfile;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
-import com.fincity.security.jooq.tables.SecurityOrgStructure;
+import com.fincity.security.jooq.tables.SecurityDepartment;
 import com.fincity.security.jooq.tables.SecurityOtp;
-import com.fincity.security.jooq.tables.SecurityPackage;
-import com.fincity.security.jooq.tables.SecurityPackageRole;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
 import com.fincity.security.jooq.tables.SecurityPermission;
-import com.fincity.security.jooq.tables.SecurityRole;
-import com.fincity.security.jooq.tables.SecurityRolePermission;
+import com.fincity.security.jooq.tables.SecurityProfile;
+import com.fincity.security.jooq.tables.SecurityProfileRole;
+import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserAddress;
-import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
+import com.fincity.security.jooq.tables.SecurityV2Role;
+import com.fincity.security.jooq.tables.SecurityV2RolePermission;
+import com.fincity.security.jooq.tables.SecurityV2RoleRole;
+import com.fincity.security.jooq.tables.SecurityV2UserRole;
 
 
 /**
@@ -95,16 +95,6 @@ public class Tables {
     public static final SecurityAppRegIntegrationTokens SECURITY_APP_REG_INTEGRATION_TOKENS = SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS;
 
     /**
-     * The table <code>security.security_app_reg_package</code>.
-     */
-    public static final SecurityAppRegPackage SECURITY_APP_REG_PACKAGE = SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
-
-    /**
-     * The table <code>security.security_app_reg_user_role</code>.
-     */
-    public static final SecurityAppRegUserRole SECURITY_APP_REG_USER_ROLE = SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE;
-
-    /**
      * The table <code>security.security_client</code>.
      */
     public static final SecurityClient SECURITY_CLIENT = SecurityClient.SECURITY_CLIENT;
@@ -125,11 +115,6 @@ public class Tables {
     public static final SecurityClientOtpPolicy SECURITY_CLIENT_OTP_POLICY = SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY;
 
     /**
-     * The table <code>security.security_client_package</code>.
-     */
-    public static final SecurityClientPackage SECURITY_CLIENT_PACKAGE = SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
-
-    /**
      * The table <code>security.security_client_password_policy</code>.
      */
     public static final SecurityClientPasswordPolicy SECURITY_CLIENT_PASSWORD_POLICY = SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
@@ -138,6 +123,11 @@ public class Tables {
      * The table <code>security.security_client_pin_policy</code>.
      */
     public static final SecurityClientPinPolicy SECURITY_CLIENT_PIN_POLICY = SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY;
+
+    /**
+     * The table <code>security.security_client_profile</code>.
+     */
+    public static final SecurityClientProfile SECURITY_CLIENT_PROFILE = SecurityClientProfile.SECURITY_CLIENT_PROFILE;
 
     /**
      * The table <code>security.security_client_type</code>.
@@ -150,24 +140,14 @@ public class Tables {
     public static final SecurityClientUrl SECURITY_CLIENT_URL = SecurityClientUrl.SECURITY_CLIENT_URL;
 
     /**
-     * The table <code>security.security_org_structure</code>.
+     * The table <code>security.security_department</code>.
      */
-    public static final SecurityOrgStructure SECURITY_ORG_STRUCTURE = SecurityOrgStructure.SECURITY_ORG_STRUCTURE;
+    public static final SecurityDepartment SECURITY_DEPARTMENT = SecurityDepartment.SECURITY_DEPARTMENT;
 
     /**
      * The table <code>security.security_otp</code>.
      */
     public static final SecurityOtp SECURITY_OTP = SecurityOtp.SECURITY_OTP;
-
-    /**
-     * The table <code>security.security_package</code>.
-     */
-    public static final SecurityPackage SECURITY_PACKAGE = SecurityPackage.SECURITY_PACKAGE;
-
-    /**
-     * The table <code>security.security_package_role</code>.
-     */
-    public static final SecurityPackageRole SECURITY_PACKAGE_ROLE = SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 
     /**
      * The table <code>security.security_past_passwords</code>.
@@ -185,14 +165,19 @@ public class Tables {
     public static final SecurityPermission SECURITY_PERMISSION = SecurityPermission.SECURITY_PERMISSION;
 
     /**
-     * The table <code>security.security_role</code>.
+     * The table <code>security.security_profile</code>.
      */
-    public static final SecurityRole SECURITY_ROLE = SecurityRole.SECURITY_ROLE;
+    public static final SecurityProfile SECURITY_PROFILE = SecurityProfile.SECURITY_PROFILE;
 
     /**
-     * The table <code>security.security_role_permission</code>.
+     * The table <code>security.security_profile_role</code>.
      */
-    public static final SecurityRolePermission SECURITY_ROLE_PERMISSION = SecurityRolePermission.SECURITY_ROLE_PERMISSION;
+    public static final SecurityProfileRole SECURITY_PROFILE_ROLE = SecurityProfileRole.SECURITY_PROFILE_ROLE;
+
+    /**
+     * The table <code>security.security_profile_user</code>.
+     */
+    public static final SecurityProfileUser SECURITY_PROFILE_USER = SecurityProfileUser.SECURITY_PROFILE_USER;
 
     /**
      * The table <code>security.security_sox_log</code>.
@@ -225,12 +210,27 @@ public class Tables {
     public static final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
 
     /**
-     * The table <code>security.security_user_role_permission</code>.
-     */
-    public static final SecurityUserRolePermission SECURITY_USER_ROLE_PERMISSION = SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
-
-    /**
      * The table <code>security.security_user_token</code>.
      */
     public static final SecurityUserToken SECURITY_USER_TOKEN = SecurityUserToken.SECURITY_USER_TOKEN;
+
+    /**
+     * The table <code>security.security_v2_role</code>.
+     */
+    public static final SecurityV2Role SECURITY_V2_ROLE = SecurityV2Role.SECURITY_V2_ROLE;
+
+    /**
+     * The table <code>security.security_v2_role_permission</code>.
+     */
+    public static final SecurityV2RolePermission SECURITY_V2_ROLE_PERMISSION = SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION;
+
+    /**
+     * The table <code>security.security_v2_role_role</code>.
+     */
+    public static final SecurityV2RoleRole SECURITY_V2_ROLE_ROLE = SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE;
+
+    /**
+     * The table <code>security.security_v2_user_role</code>.
+     */
+    public static final SecurityV2UserRole SECURITY_V2_USER_ROLE = SecurityV2UserRole.SECURITY_V2_USER_ROLE;
 }

@@ -8,8 +8,6 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegFileAccessPath;
-import com.fincity.security.jooq.tables.SecurityAppRegPackage.SecurityAppRegPackagePath;
-import com.fincity.security.jooq.tables.SecurityAppRegUserRole.SecurityAppRegUserRolePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityClientTypeRecord;
 
@@ -229,32 +227,6 @@ public class SecurityClientType extends TableImpl<SecurityClientTypeRecord> {
             _securityAppRegFileAccess = new SecurityAppRegFileAccessPath(this, null, Keys.FK4_APP_REG_FILE_ACC_CLIENT_TYPE.getInverseKey());
 
         return _securityAppRegFileAccess;
-    }
-
-    private transient SecurityAppRegPackagePath _securityAppRegPackage;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_package</code> table
-     */
-    public SecurityAppRegPackagePath securityAppRegPackage() {
-        if (_securityAppRegPackage == null)
-            _securityAppRegPackage = new SecurityAppRegPackagePath(this, null, Keys.FK4_APP_REG_PKG_CLIENT_TYPE.getInverseKey());
-
-        return _securityAppRegPackage;
-    }
-
-    private transient SecurityAppRegUserRolePath _securityAppRegUserRole;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_user_role</code> table
-     */
-    public SecurityAppRegUserRolePath securityAppRegUserRole() {
-        if (_securityAppRegUserRole == null)
-            _securityAppRegUserRole = new SecurityAppRegUserRolePath(this, null, Keys.FK4_APP_REG_ROLE_CLIENT_TYPE.getInverseKey());
-
-        return _securityAppRegUserRole;
     }
 
     @Override
