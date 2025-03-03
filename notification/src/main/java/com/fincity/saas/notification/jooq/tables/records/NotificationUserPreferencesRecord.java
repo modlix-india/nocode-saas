@@ -41,8 +41,9 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
 
     /**
      * Setter for
-     * <code>notification.notification_user_preferences.APP_ID</code>.
-     * Identifier for the application. References security_app table
+     * <code>notification.notification_user_preferences.APP_ID</code>. App Id
+     * for which this user preference is getting created. References
+     * security_app table
      */
     public NotificationUserPreferencesRecord setAppId(ULong value) {
         set(1, value);
@@ -51,8 +52,9 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
 
     /**
      * Getter for
-     * <code>notification.notification_user_preferences.APP_ID</code>.
-     * Identifier for the application. References security_app table
+     * <code>notification.notification_user_preferences.APP_ID</code>. App Id
+     * for which this user preference is getting created. References
+     * security_app table
      */
     public ULong getAppId() {
         return (ULong) get(1);
@@ -60,8 +62,9 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
 
     /**
      * Setter for
-     * <code>notification.notification_user_preferences.USER_ID</code>.
-     * Identifier for the user. References security_user table
+     * <code>notification.notification_user_preferences.USER_ID</code>. App User
+     * Id under which this user preference is getting created. References
+     * security_user table
      */
     public NotificationUserPreferencesRecord setUserId(ULong value) {
         set(2, value);
@@ -70,8 +73,9 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
 
     /**
      * Getter for
-     * <code>notification.notification_user_preferences.USER_ID</code>.
-     * Identifier for the user. References security_user table
+     * <code>notification.notification_user_preferences.USER_ID</code>. App User
+     * Id under which this user preference is getting created. References
+     * security_user table
      */
     public ULong getUserId() {
         return (ULong) get(2);

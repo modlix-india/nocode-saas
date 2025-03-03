@@ -4,7 +4,9 @@
 package com.fincity.saas.notification.jooq;
 
 
+import com.fincity.saas.notification.jooq.tables.NotificationSentNotifications;
 import com.fincity.saas.notification.jooq.tables.NotificationUserPreferences;
+import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
 
 import org.jooq.TableField;
@@ -24,6 +26,8 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<NotificationSentNotificationsRecord> KEY_NOTIFICATION_SENT_NOTIFICATIONS_PRIMARY = Internal.createUniqueKey(NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS, DSL.name("KEY_notification_sent_notifications_PRIMARY"), new TableField[] { NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS.ID }, true);
+    public static final UniqueKey<NotificationSentNotificationsRecord> KEY_NOTIFICATION_SENT_NOTIFICATIONS_UK1_SENT_NOTIFICATION_CODE = Internal.createUniqueKey(NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS, DSL.name("KEY_notification_sent_notifications_UK1_SENT_NOTIFICATION_CODE"), new TableField[] { NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS.CODE }, true);
     public static final UniqueKey<NotificationUserPreferencesRecord> KEY_NOTIFICATION_USER_PREFERENCES_PRIMARY = Internal.createUniqueKey(NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES, DSL.name("KEY_notification_user_preferences_PRIMARY"), new TableField[] { NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.ID }, true);
     public static final UniqueKey<NotificationUserPreferencesRecord> KEY_NOTIFICATION_USER_PREFERENCES_UK1_USER_PREF_CODE = Internal.createUniqueKey(NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES, DSL.name("KEY_notification_user_preferences_UK1_USER_PREF_CODE"), new TableField[] { NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.CODE }, true);
     public static final UniqueKey<NotificationUserPreferencesRecord> KEY_NOTIFICATION_USER_PREFERENCES_UK2_USER_NOTI_PREF_APP_ID_USER_ID_NAME = Internal.createUniqueKey(NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES, DSL.name("KEY_notification_user_preferences_UK2_USER_NOTI_PREF_APP_ID_USER_ID_NAME"), new TableField[] { NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.APP_ID, NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES.USER_ID }, true);

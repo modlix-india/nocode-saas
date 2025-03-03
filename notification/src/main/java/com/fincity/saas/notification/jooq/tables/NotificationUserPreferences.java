@@ -65,17 +65,19 @@ public class NotificationUserPreferences extends TableImpl<NotificationUserPrefe
 
     /**
      * The column
-     * <code>notification.notification_user_preferences.APP_ID</code>.
-     * Identifier for the application. References security_app table
+     * <code>notification.notification_user_preferences.APP_ID</code>. App Id
+     * for which this user preference is getting created. References
+     * security_app table
      */
-    public final TableField<NotificationUserPreferencesRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
+    public final TableField<NotificationUserPreferencesRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App Id for which this user preference is getting created. References security_app table");
 
     /**
      * The column
-     * <code>notification.notification_user_preferences.USER_ID</code>.
-     * Identifier for the user. References security_user table
+     * <code>notification.notification_user_preferences.USER_ID</code>. App User
+     * Id under which this user preference is getting created. References
+     * security_user table
      */
-    public final TableField<NotificationUserPreferencesRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the user. References security_user table");
+    public final TableField<NotificationUserPreferencesRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App User Id under which this user preference is getting created. References security_user table");
 
     /**
      * The column <code>notification.notification_user_preferences.CODE</code>.

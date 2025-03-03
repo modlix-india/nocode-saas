@@ -273,6 +273,16 @@
                                             </binding>
                                             <includeTypes>JSON</includeTypes>
                                         </forcedType>
+                                        <forcedType>
+                                            <name>com.fincity.saas.commons.jooq.enums.notification.NotificationType</name>
+                                            <includeExpression>.*NOTIFICATION_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                        </forcedType>
+                                        <forcedType>
+                                            <name>com.fincity.saas.notification.enums.NotificationDeliveryStatus</name>
+                                            <includeExpression>.*DELIVERY_STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                        </forcedType>
                                     </forcedTypes>
                                 </database>
                                 <generate>
