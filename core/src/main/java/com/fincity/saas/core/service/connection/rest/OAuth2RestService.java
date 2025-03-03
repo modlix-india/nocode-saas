@@ -224,6 +224,9 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 
 	public Mono<Void> oAuth2Callback(ServerHttpRequest request, ServerHttpResponse response) {
 
+		if(request.getQueryParams().getFirst("code") ==null)
+			return invalidAuthCallback(request, response);
+
 		String state = request.getQueryParams().getFirst("state");
 
 		String basePageURL = "https://" + request.getHeaders().getFirst("X-Forwarded-Host");
@@ -231,7 +234,7 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 		WebClient webClient = WebClient.create();
 
 		String callbackURI = "https://" + request.getHeaders().getFirst("X-Forwarded-Host")
-				+ request.getPath().toString();
+				+ request.getPath();
 
 		return FlatMapUtil.flatMapMono(
 
@@ -403,6 +406,37 @@ public class OAuth2RestService extends AbstractRestService implements IRestServi
 
 		);
 
+	}
+
+	private Mono<Void> invalidAuthCallback(ServerHttpRequest request, ServerHttpResponse response) {
+
+		String state = request.getQueryParams().getFirst("state");
+
+		String basePageURL = "https://" + request.getHeaders().getFirst("X-Forwarded-Host");
+
+		response.setStatusCode(HttpStatus.FOUND);
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.coreTokenDAO.getCoreTokenByState(state),
+
+				coreToken -> this.connectionService.read(coreToken.getConnectionName(), coreToken.getAppCode(),
+						coreToken.getClientCode(), ConnectionType.REST_API),
+
+				(coreToken, connection) -> {
+
+					response.setStatusCode(HttpStatus.FOUND);
+
+					UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(basePageURL + connection.getConnectionDetails().get("pagePath"))
+							.queryParam("connection", "invalid");
+
+					response.getHeaders()
+							.setLocation(URI.create(builder.build().toUriString()));
+
+					return Mono.empty();
+
+				}
+		);
 	}
 
 }
