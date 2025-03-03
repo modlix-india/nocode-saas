@@ -13,7 +13,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.notification.dto.Template;
+import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
@@ -43,13 +43,14 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 		this.msgService = msgService;
 	}
 
-	public Mono<NotificationMessage> process(Template template, Map<String, Object> templateData) {
+	public Mono<NotificationMessage> process(NotificationTemplate template, Map<String, Object> templateData) {
 		return this.process(null, template, templateData);
 	}
 
-	public Mono<NotificationMessage> process(String language, Template template, Map<String, Object> templateData) {
+	public Mono<NotificationMessage> process(String language, NotificationTemplate template,
+			Map<String, Object> templateData) {
 
-		if (template.getChannelType() == null || template.getTemplateParts().isEmpty())
+		if (template.getTemplateParts().isEmpty())
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 					NotificationMessageResourceService.TEMPLATE_DATA_NOT_FOUND, "No template parts found");
 
@@ -75,13 +76,13 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 				.map(NotificationMessage::of);
 	}
 
-	protected Mono<String> getEffectiveLanguage(String requestedLanguage, Template template,
+	protected Mono<String> getEffectiveLanguage(String requestedLanguage, NotificationTemplate template,
 			Map<String, Object> templateData) {
 		return !StringUtil.safeIsBlank(requestedLanguage) ? Mono.just(requestedLanguage)
 				: this.getLanguage(template, templateData);
 	}
 
-	protected Mono<String> getLanguage(Template template, Map<String, Object> templateData) {
+	protected Mono<String> getLanguage(NotificationTemplate template, Map<String, Object> templateData) {
 
 		if (StringUtil.safeIsBlank(template.getLanguageExpression()))
 			return Mono.just(this.getDefaultLanguage(template.getDefaultLanguage()));

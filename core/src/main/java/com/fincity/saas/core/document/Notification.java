@@ -7,12 +7,14 @@ import java.util.Map;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.google.gson.JsonObject;
 
 import lombok.Data;
@@ -88,6 +90,10 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	@NoArgsConstructor
 	public static class NotificationTemplate implements Serializable {
 
+		@JsonIgnore
+		private String code = UniqueUtil.shortUUID();
+
+		private String connectionName;
 		private Map<String, Map<String, String>> templateParts;
 		private JsonObject variableSchema; // NOSONAR
 		private Map<String, String> resources;
@@ -95,6 +101,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 		private String languageExpression;
 
 		public NotificationTemplate(NotificationTemplate template) {
+			this.code = template.code;
 			this.templateParts = CloneUtil.cloneMapObject(template.templateParts);
 			this.variableSchema = template.variableSchema.deepCopy();
 			this.resources = CloneUtil.cloneMapObject(template.resources);

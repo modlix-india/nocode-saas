@@ -39,6 +39,11 @@ public class NotificationChannel {
 			return this;
 		}
 
+		public NotificationChannelBuilder isEnabled(boolean isEnabled) {
+			this.notificationEnabled = isEnabled;
+			return this;
+		}
+
 		public <T extends NotificationMessage> NotificationChannelBuilder addMessage(T message) {
 			if (preference == null || !this.notificationEnabled)
 				return this;
@@ -55,7 +60,7 @@ public class NotificationChannel {
 					&& message instanceof SmsMessage smsMessage)
 				this.sms = smsMessage;
 
-			this.notificationEnabled = this.email != null || this.inApp != null;
+			this.notificationEnabled = this.email != null || this.inApp != null || this.sms != null;
 			return this;
 		}
 

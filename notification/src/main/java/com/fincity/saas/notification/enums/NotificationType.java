@@ -30,6 +30,10 @@ public enum NotificationType implements EnumType {
 		this.description = description;
 	}
 
+	public static NotificationType lookupLiteral(String literal) {
+		return EnumType.lookupLiteral(NotificationType.class, literal);
+	}
+
 	@Override
 	public String getLiteral() {
 		return this.literal;
@@ -39,4 +43,5 @@ public enum NotificationType implements EnumType {
 	public String getName() {
 		return this.name();
 	}
+
 }

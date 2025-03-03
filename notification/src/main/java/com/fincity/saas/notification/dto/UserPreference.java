@@ -73,7 +73,6 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 				return PreferenceLevel.lookupLiteral(entry.getKey()).isAllDisable() ? Boolean.FALSE : entry.getValue().get(pref);
 		}
 		return Boolean.FALSE;
-
 	}
 
 	public boolean hasPreference(NotificationChannelType channelType) {

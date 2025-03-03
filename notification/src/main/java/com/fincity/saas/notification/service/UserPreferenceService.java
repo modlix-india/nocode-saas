@@ -20,7 +20,6 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.dao.UserPreferenceDao;
 import com.fincity.saas.notification.dto.UserPreference;
-import com.fincity.saas.notification.feign.IFeignCoreService;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
 
 import lombok.Getter;
@@ -37,22 +36,16 @@ public class UserPreferenceService
 
 	private static final String USER_PREFERENCE_CACHE = "userPreference";
 
-	private static final String NOTIFICATION_CONN_CACHE = "notificationConn";
-
-	private static final String NOTIFICATION_CONNECTION_TYPE = "NOTIFICATION";
-
 	private final NotificationMessageResourceService messageResourceService;
 	private final CacheService cacheService;
-	private final IFeignCoreService coreService;
 
 	@Getter
 	private IFeignSecurityService securityService;
 
 	protected UserPreferenceService(NotificationMessageResourceService messageResourceService,
-	                                CacheService cacheService, IFeignCoreService coreService) {
+	                                CacheService cacheService) {
 		this.messageResourceService = messageResourceService;
 		this.cacheService = cacheService;
-		this.coreService = coreService;
 	}
 
 	@Autowired
@@ -68,16 +61,8 @@ public class UserPreferenceService
 		return USER_PREFERENCE_CACHE;
 	}
 
-	private String getNotificationConnCache() {
-		return NOTIFICATION_CONN_CACHE;
-	}
-
 	private String getCacheKeys(ULong appId, ULong userId) {
 		return appId + ":" + userId;
-	}
-
-	private String getCacheKeys(String... entityNames) {
-		return String.join(":", entityNames);
 	}
 
 	@Override
@@ -259,10 +244,6 @@ public class UserPreferenceService
 		return SecurityContextUtil.getUsersContextAuthentication().flatMap(this::getUserPreference);
 	}
 
-	public Mono<Map<String, Object>> getNotificationConn(String appCode, String clientCode, String connectionName) {
-		return this.getNotificationConnInternal(appCode, clientCode, connectionName);
-	}
-
 	public Mono<UserPreference> getUserPreference(ContextAuthentication ca) {
 		return this.getAppUserId(ca.getUrlAppCode(), ULongUtil.valueOf(ca.getUser().getId()))
 				.flatMap(appUserId -> this.getUserPreference(appUserId.getT1(), appUserId.getT2()))
@@ -291,11 +272,5 @@ public class UserPreferenceService
 		return this.securityService.getAppByCode(appCode)
 				.map(App::getId)
 				.map(appId -> Tuples.of(ULongUtil.valueOf(appId), userId));
-	}
-
-	private Mono<Map<String, Object>> getNotificationConnInternal(String appCode, String clientCode, String connectionName) {
-		return cacheService.cacheValueOrGet(this.getNotificationConnCache(),
-				() -> coreService.getConnection(connectionName, appCode, clientCode, NOTIFICATION_CONNECTION_TYPE),
-				this.getCacheKeys(appCode, clientCode, connectionName));
 	}
 }
