@@ -43,7 +43,7 @@ public class UserPreferenceService
 	private IFeignSecurityService securityService;
 
 	protected UserPreferenceService(NotificationMessageResourceService messageResourceService,
-	                                CacheService cacheService) {
+			CacheService cacheService) {
 		this.messageResourceService = messageResourceService;
 		this.cacheService = cacheService;
 	}
@@ -75,16 +75,16 @@ public class UserPreferenceService
 
 		return FlatMapUtil.flatMapMono(
 
-						SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-						ca -> key != null ? this.read(key) : this.getUserPreference(ca),
+				ca -> key != null ? this.read(key) : this.getUserPreference(ca),
 
-						(ca, entity) -> this.canUpdatePreference(ca),
+				(ca, entity) -> this.canUpdatePreference(ca),
 
-						(ca, entity, canUpdate) -> super.update(key, fields),
+				(ca, entity, canUpdate) -> super.update(key, fields),
 
-						(ca, entity, canUpdate, updated) -> cacheService.evict(this.getUserPreferenceCacheName(),
-								this.getCacheKeys(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
+				(ca, entity, canUpdate, updated) -> cacheService.evict(this.getUserPreferenceCacheName(),
+						this.getCacheKeys(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -95,16 +95,16 @@ public class UserPreferenceService
 
 		return FlatMapUtil.flatMapMono(
 
-						SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-						ca -> this.read(entity.getId()),
+				ca -> this.read(entity.getId()),
 
-						(ca, uEntity) -> this.canUpdatePreference(ca),
+				(ca, uEntity) -> this.canUpdatePreference(ca),
 
-						(ca, uEntity, canUpdate) -> super.update(uEntity),
+				(ca, uEntity, canUpdate) -> super.update(uEntity),
 
-						(ca, uEntity, canUpdate, updated) -> cacheService.evict(this.getUserPreferenceCacheName(),
-								this.getCacheKeys(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
+				(ca, uEntity, canUpdate, updated) -> cacheService.evict(this.getUserPreferenceCacheName(),
+						this.getCacheKeys(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -142,16 +142,16 @@ public class UserPreferenceService
 
 		return FlatMapUtil.flatMapMono(
 
-						SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-						ca -> this.updateIdentifiers(ca, entity),
+				ca -> this.updateIdentifiers(ca, entity),
 
-						(ca, uEntity) -> this.canUpdatePreference(ca).flatMap(BooleanUtil::safeValueOfWithEmpty),
+				(ca, uEntity) -> this.canUpdatePreference(ca).flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-						(ca, uEntity, canCreate) -> super.create(uEntity),
+				(ca, uEntity, canCreate) -> super.create(uEntity),
 
-						(ca, uEntity, canCreate, created) -> cacheService.evict(this.getUserPreferenceCacheName(),
-								this.getCacheKeys(created.getAppId(), created.getUserId())).map(evicted -> created))
+				(ca, uEntity, canCreate, created) -> cacheService.evict(this.getUserPreferenceCacheName(),
+						this.getCacheKeys(created.getAppId(), created.getUserId())).map(evicted -> created))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_CREATE, getUserPreferenceName()));
@@ -171,19 +171,18 @@ public class UserPreferenceService
 
 		return FlatMapUtil.flatMapMono(
 
-						SecurityContextUtil::getUsersContextAuthentication,
+				SecurityContextUtil::getUsersContextAuthentication,
 
-						ca -> this.read(id),
+				ca -> this.read(id),
 
-						(ca, entity) -> this.canUpdatePreference(ca),
+				(ca, entity) -> this.canUpdatePreference(ca),
 
-						(ca, entity, canDelete) -> super.delete(id),
+				(ca, entity, canDelete) -> super.delete(id),
 
-						(ca, entity, canUpdate, deleted) -> cacheService.evict(this.getUserPreferenceCacheName(),
-								this.getCacheKeys(entity.getAppId(), entity.getUserId())).map(evicted -> deleted),
+				(ca, entity, canUpdate, deleted) -> cacheService.evict(this.getUserPreferenceCacheName(),
+						this.getCacheKeys(entity.getAppId(), entity.getUserId())).map(evicted -> deleted),
 
-						(ca, entity, canUpdate, deleted, evicted) -> Mono.just(deleted)
-				)
+				(ca, entity, canUpdate, deleted, evicted) -> Mono.just(deleted))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -193,32 +192,32 @@ public class UserPreferenceService
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-						() -> this.securityService.getAppByCode(ca.getUrlAppCode()).map(app -> ULongUtil.valueOf(app.getId())),
+				() -> this.securityService.getAppByCode(ca.getUrlAppCode()).map(app -> ULongUtil.valueOf(app.getId())),
 
-						appId -> {
+				appId -> {
 
-							entity.init();
+					entity.init();
 
-							if (entity.getAppId() == null)
-								entity.setAppId(appId);
+					if (entity.getAppId() == null)
+						entity.setAppId(appId);
 
-							if (entity.getUserId() == null)
-								entity.setUserId(ULongUtil.valueOf(ca.getUser().getId()));
+					if (entity.getUserId() == null)
+						entity.setUserId(ULongUtil.valueOf(ca.getUser().getId()));
 
-							return Mono.just(entity);
-						},
-						(appId, uEntity) -> this.getUserPreferenceInternal(uEntity.getAppId(),
-								uEntity.getUserId()),
+					return Mono.just(entity);
+				},
+				(appId, uEntity) -> this.getUserPreferenceInternal(uEntity.getAppId(),
+						uEntity.getUserId()),
 
-						(appId, uEntity, userPreference) -> {
+				(appId, uEntity, userPreference) -> {
 
-							if (userPreference != null)
-								return messageResourceService.throwMessage(
-										msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-										NotificationMessageResourceService.FORBIDDEN_CREATE, this.getUserPreferenceName());
+					if (userPreference != null)
+						return messageResourceService.throwMessage(
+								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+								NotificationMessageResourceService.FORBIDDEN_CREATE, this.getUserPreferenceName());
 
-							return Mono.just(uEntity);
-						})
+					return Mono.just(uEntity);
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserPreferenceService.updateIdentifiers"));
 	}
 
@@ -226,16 +225,16 @@ public class UserPreferenceService
 
 		return FlatMapUtil.flatMapMono(
 
-						() -> this.securityService.getAppByCode(ca.getUrlAppCode()),
+				() -> this.securityService.getAppByCode(ca.getUrlAppCode()),
 
-						app -> FlatMapUtil.flatMapMonoConsolidate(
-								() -> this.securityService.isBeingManagedById(ca.getLoggedInFromClientId(), app.getClientId()),
-								isManaged -> this.securityService.hasWriteAccess(ca.getUrlAppCode(),
-										ca.getLoggedInFromClientCode()),
-								(isManaged, hasEditAccess) -> Mono.just(ca.isSystemClient())),
+				app -> FlatMapUtil.flatMapMonoConsolidate(
+						() -> this.securityService.isBeingManagedById(ca.getLoggedInFromClientId(), app.getClientId()),
+						isManaged -> this.securityService.hasWriteAccess(ca.getUrlAppCode(),
+								ca.getLoggedInFromClientCode()),
+						(isManaged, hasEditAccess) -> Mono.just(ca.isSystemClient())),
 
-						(app, managedOrEdit) -> Mono.just(
-								managedOrEdit.getT1() || managedOrEdit.getT2() || managedOrEdit.getT3()))
+				(app, managedOrEdit) -> Mono.just(
+						managedOrEdit.getT1() || managedOrEdit.getT2() || managedOrEdit.getT3()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserPreferenceService.canUpdatePreference"))
 				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}

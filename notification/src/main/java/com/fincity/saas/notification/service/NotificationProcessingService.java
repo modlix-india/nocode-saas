@@ -9,9 +9,12 @@ import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -24,6 +27,7 @@ import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.feign.IFeignCoreService;
 import com.fincity.saas.notification.model.NotificationChannel;
 import com.fincity.saas.notification.model.NotificationChannel.NotificationChannelBuilder;
+import com.fincity.saas.notification.model.NotificationRequest;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.service.template.TemplateProcessor;
@@ -42,9 +46,11 @@ public class NotificationProcessingService {
 	private static final Logger logger = LoggerFactory.getLogger(NotificationProcessingService.class);
 	private static final String NOTIFICATION_CONN_CACHE = "notificationConn";
 
+	private static final String NOTIFICATION = "Notification";
 	private static final String NOTIFICATION_CONNECTION_TYPE = "NOTIFICATION";
 
 	private final IFeignCoreService coreService;
+	private final NotificationMessageResourceService messageResourceService;
 
 	private final UserPreferenceService userPreferenceService;
 
@@ -53,9 +59,11 @@ public class NotificationProcessingService {
 	@Getter
 	private CacheService cacheService;
 
-	public NotificationProcessingService(IFeignCoreService coreService, UserPreferenceService userPreferenceService,
+	public NotificationProcessingService(IFeignCoreService coreService,
+			NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
 			TemplateProcessor templateProcessor) {
 		this.coreService = coreService;
+		this.messageResourceService = messageResourceService;
 		this.userPreferenceService = userPreferenceService;
 		this.templateProcessor = templateProcessor;
 	}
@@ -77,9 +85,8 @@ public class NotificationProcessingService {
 		return NOTIFICATION_INFO_CACHE;
 	}
 
-	public Mono<Boolean> processAndSendNotification(String appCode, String clientCode, BigInteger userId,
-			String notificationName, Map<String, Object> objectMap) {
-		return this.processNotification(appCode, clientCode, userId, notificationName, objectMap)
+	public Mono<Boolean> processAndSendNotification(NotificationRequest notificationRequest) {
+		return this.processNotification(notificationRequest)
 				.flatMap(this::sendNotification);
 	}
 
@@ -91,7 +98,19 @@ public class NotificationProcessingService {
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.sendNotification"));
 	}
 
-	public Mono<SendRequest> processNotification(String appCode, String clientCode, BigInteger userId,
+	public Mono<SendRequest> processNotification(NotificationRequest notificationRequest) {
+
+		if (notificationRequest == null)
+			return this.messageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					NotificationMessageResourceService.UKNOWN_ERROR, NOTIFICATION);
+
+		return this.processNotificationInternal(notificationRequest.getAppCode(), notificationRequest.getClientCode(),
+				notificationRequest.getUserId(), notificationRequest.getNotificationName(),
+				notificationRequest.getObjectMap());
+	}
+
+	private Mono<SendRequest> processNotificationInternal(String appCode, String clientCode, BigInteger userId,
 			String notificationName, Map<String, Object> objectMap) {
 
 		return FlatMapUtil.flatMapMonoWithNull(
@@ -139,6 +158,19 @@ public class NotificationProcessingService {
 	}
 
 	private Mono<Notification> getNotificationInfo(String appCode, String clientCode, String notificationName) {
+
+		if (StringUtil.safeIsBlank(notificationName))
+			return this.messageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					AbstractMessageService.OBJECT_NOT_FOUND, NOTIFICATION);
+
+		return this.getNotificationInfoInternal(appCode, clientCode, notificationName).switchIfEmpty(
+				this.messageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+						AbstractMessageService.OBJECT_NOT_FOUND, NOTIFICATION, notificationName));
+	}
+
+	private Mono<Notification> getNotificationInfoInternal(String appCode, String clientCode, String notificationName) {
 		return cacheService.cacheValueOrGet(this.getNotificationInfoCache(),
 				() -> coreService.getNotificationInfo(notificationName, appCode, clientCode),
 				this.getCacheKeys(appCode, clientCode, notificationName));
@@ -146,6 +178,9 @@ public class NotificationProcessingService {
 
 	private Mono<Map<NotificationChannelType, NotificationTemplate>> applyUserPreferences(UserPreference userPreference,
 			Notification notification) {
+
+		if (userPreference == null)
+			return Mono.just(notification.getChannelDetailMap());
 
 		if (!userPreference.hasPreference(notification.getName())) {
 			logger.info("User {} dont have preference for {}", userPreference.getUserId(), notification.getName());

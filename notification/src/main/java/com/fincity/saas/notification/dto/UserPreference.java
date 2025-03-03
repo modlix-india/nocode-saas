@@ -61,7 +61,7 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 		preferences.keySet()
 				.forEach(level -> this.preferences.put(level,
 						PreferenceLevel.lookupLiteral(level).toValidMap(this.preferences.get(level))));
-		if (hasAnyPreference())
+		if (this.hasAnyPreference())
 			this.enabled = Boolean.TRUE;
 		return this;
 	}
