@@ -18,14 +18,14 @@ public enum PreferenceLevel implements EnumType {
 
 	private final String literal;
 	private final String displayName;
-	private final boolean allDisable;
+	private final boolean reverseSave;
 	private final Map<String, Boolean> defaultMap;
 	private final UnaryOperator<Map<String, Boolean>> validator;
 
-	PreferenceLevel(String literal, String displayName, Boolean allDisable) {
+	PreferenceLevel(String literal, String displayName, Boolean reverseSave) {
 		this.literal = literal;
 		this.displayName = displayName;
-		this.allDisable = allDisable;
+		this.reverseSave = reverseSave;
 		this.defaultMap = initilizeDefaultMap();
 		this.validator = initializeValidator();
 	}

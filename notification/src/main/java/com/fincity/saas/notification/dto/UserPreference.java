@@ -70,7 +70,7 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 
 		for (Map.Entry<String, Map<String, Boolean>> entry : preferences.entrySet()) {
 			if (entry.getValue().containsKey(pref))
-				return PreferenceLevel.lookupLiteral(entry.getKey()).isAllDisable() ? Boolean.FALSE
+				return PreferenceLevel.lookupLiteral(entry.getKey()).isReverseSave() ? Boolean.FALSE
 						: entry.getValue().get(pref);
 		}
 		return Boolean.FALSE;
@@ -84,7 +84,7 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 
 		for (Map.Entry<String, Map<String, Boolean>> entry : preferences.entrySet()) {
 			if (!entry.getValue().isEmpty())
-				return PreferenceLevel.lookupLiteral(entry.getKey()).isAllDisable() ? Boolean.TRUE
+				return PreferenceLevel.lookupLiteral(entry.getKey()).isReverseSave() ? Boolean.TRUE
 						: entry.getValue().values().stream().anyMatch(Boolean.TRUE::equals);
 		}
 		return Boolean.FALSE;

@@ -3,7 +3,6 @@ package com.fincity.saas.notification.service;
 import java.math.BigInteger;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -42,8 +41,9 @@ import reactor.util.function.Tuples;
 @Service
 public class NotificationProcessingService {
 
-	public static final String NOTIFICATION_INFO_CACHE = "notificationInfo";
 	private static final Logger logger = LoggerFactory.getLogger(NotificationProcessingService.class);
+
+	private static final String NOTIFICATION_INFO_CACHE = "notificationInfo";
 	private static final String NOTIFICATION_CONN_CACHE = "notificationConn";
 
 	private static final String NOTIFICATION = "Notification";
@@ -92,7 +92,7 @@ public class NotificationProcessingService {
 
 	public Mono<Boolean> sendNotification(SendRequest request) {
 
-		logger.info("Sending send notification request {}", request);
+		logger.info("Sending notification request {}", request);
 
 		return Mono.just(true)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.sendNotification"));
@@ -189,16 +189,12 @@ public class NotificationProcessingService {
 			return Mono.just(new EnumMap<>(NotificationChannelType.class));
 		}
 
-		Map<NotificationChannelType, NotificationTemplate> channelDetails = notification.getChannelDetailMap()
-				.entrySet()
-				.stream().filter(entry -> userPreference.hasPreference(entry.getKey()))
-				.collect(Collectors.toMap(
+		return Flux.fromIterable(notification.getChannelDetailMap().entrySet())
+				.filter(entry -> userPreference.hasPreference(entry.getKey()))
+				.collectMap(
 						Map.Entry::getKey,
 						Map.Entry::getValue,
-						(a, b) -> b,
-						() -> new EnumMap<>(NotificationChannelType.class)));
-
-		return Mono.just(channelDetails);
+						() -> new EnumMap<>(NotificationChannelType.class));
 	}
 
 	private Mono<Map<NotificationChannelType, Map<String, Object>>> getNotificationConnections(String appCode,
