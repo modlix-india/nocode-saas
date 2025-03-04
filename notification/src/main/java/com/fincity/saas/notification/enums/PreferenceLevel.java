@@ -1,10 +1,10 @@
 package com.fincity.saas.notification.enums;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 import org.jooq.EnumType;
 
@@ -13,44 +13,44 @@ import lombok.Getter;
 @Getter
 public enum PreferenceLevel implements EnumType {
 
-	CHANNEL("CHANNEL", "Channel", Boolean.FALSE),
-	NOTIFICATION("NOTIFICATION", "Disabled Notification", Boolean.TRUE);
+	CHANNEL("CHANNEL", "Channel", Boolean.FALSE,
+			Set.of(NotificationChannelType.DISABLED.getLiteral()), PreferenceLevel::toValidChannelList),
+	NOTIFICATION("NOTIFICATION", "Disabled Notification", Boolean.TRUE,
+			Set.of(), PreferenceLevel::toValidNotificationMap);
 
 	private final String literal;
 	private final String displayName;
 	private final boolean reverseSave;
-	private final Map<String, Boolean> defaultMap;
-	private final UnaryOperator<Map<String, Boolean>> validator;
+	private final Set<String> defaultList;
+	private final UnaryOperator<Set<String>> validator;
 
-	PreferenceLevel(String literal, String displayName, Boolean reverseSave) {
+	PreferenceLevel(String literal, String displayName, Boolean reverseSave, Set<String> defaultList,
+	                UnaryOperator<Set<String>> validator) {
 		this.literal = literal;
 		this.displayName = displayName;
 		this.reverseSave = reverseSave;
-		this.defaultMap = initilizeDefaultMap();
-		this.validator = initializeValidator();
+		this.defaultList = new HashSet<>(defaultList);
+		this.validator = validator;
 	}
 
 	public static PreferenceLevel lookupLiteral(String literal) {
 		return EnumType.lookupLiteral(PreferenceLevel.class, literal);
 	}
 
-	private Map<String, Boolean> initilizeDefaultMap() {
-		return switch (this) {
-			case CHANNEL -> Arrays.stream(NotificationChannelType.values())
-					.collect(Collectors.toMap(
-							NotificationChannelType::getLiteral,
-							channelType -> channelType.equals(NotificationChannelType.DISABLED),
-							(a, b) -> b,
-							HashMap::new));
-			case NOTIFICATION -> new HashMap<>();
-		};
+	private static Set<String> toValidChannelList(Set<String> preferences) {
+
+		if (preferences.contains(NotificationChannelType.DISABLED.getLiteral())) {
+			if (preferences.size() > 1) {
+				throw new IllegalArgumentException("Invalid channel preferences, disabled channel can not be set with other channels");
+			}
+			return new HashSet<>(List.of(NotificationChannelType.DISABLED.getLiteral()));
+		}
+
+		return preferences;
 	}
 
-	private UnaryOperator<Map<String, Boolean>> initializeValidator() {
-		return switch (this) {
-			case CHANNEL -> this::toValidChannelMap;
-			case NOTIFICATION -> this::toValidNotificationMap;
-		};
+	private static Set<String> toValidNotificationMap(Set<String> preferences) {
+		return preferences;
 	}
 
 	@Override
@@ -63,29 +63,15 @@ public enum PreferenceLevel implements EnumType {
 		return this.name();
 	}
 
-	public Map<String, Boolean> toValidMap(Map<String, Boolean> preferenceMap) {
-
-		if (preferenceMap == null || preferenceMap.isEmpty())
-			return this.defaultMap;
-
-		return this.validator.apply(preferenceMap);
+	public Set<String> getDefaultList() {
+		return new HashSet<>(this.defaultList);
 	}
 
-	private Map<String, Boolean> toValidChannelMap(Map<String, Boolean> preferenceMap) {
-		boolean isDisabled = preferenceMap.getOrDefault(NotificationChannelType.DISABLED.getLiteral(), Boolean.FALSE);
+	public Set<String> toValidList(Collection<String> preferences) {
 
-		if (isDisabled)
-			return this.defaultMap;
+		if (preferences == null || preferences.isEmpty())
+			return this.defaultList;
 
-		for (NotificationChannelType channelType : NotificationChannelType.values()) {
-			preferenceMap.putIfAbsent(channelType.getLiteral(), Boolean.FALSE);
-		}
-
-		return preferenceMap;
-	}
-
-	private Map<String, Boolean> toValidNotificationMap(Map<String, Boolean> preferenceMap) {
-		this.defaultMap.forEach((key, value) -> preferenceMap.put(key, Boolean.FALSE));
-		return preferenceMap;
+		return this.validator.apply(new HashSet<>(preferences));
 	}
 }

@@ -3,6 +3,7 @@ package com.fincity.saas.notification.dto;
 import java.io.Serial;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
@@ -23,11 +24,11 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 
-	private static final Map<String, Map<String, Boolean>> DEFAULT_PREF = Arrays
+	private static final Map<String, Set<String>> DEFAULT_PREF = Arrays
 			.stream(PreferenceLevel.values())
 			.collect(Collectors.toMap(
 					PreferenceLevel::getLiteral,
-					PreferenceLevel::getDefaultMap));
+					PreferenceLevel::getDefaultList));
 
 	@Serial
 	private static final long serialVersionUID = 6629796623611093778L;
@@ -35,59 +36,58 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong appId;
 	private ULong userId;
 	private String code = UniqueUtil.shortUUID();
-	private boolean enabled = Boolean.FALSE;
+	private boolean enabled;
 
-	private Map<String, Map<String, Boolean>> preferences;
-
-	public UserPreference() {
-		this.init();
-	}
+	private Map<String, Set<String>> preferences;
 
 	public UserPreference setEnabled(boolean enabled) {
 		if (!enabled)
-			this.preferences = DEFAULT_PREF;
+			this.init();
 
 		this.enabled = Boolean.TRUE;
 		return this;
 	}
 
-	public UserPreference setPreferences(Map<String, Map<String, Boolean>> preferences) {
+	public UserPreference setPreferences(Map<String, Set<String>> preferences) {
 
 		this.initDefault();
 
 		if (preferences == null || preferences.isEmpty())
 			return this;
 
-		preferences.keySet()
-				.forEach(level -> this.preferences.put(level,
-						PreferenceLevel.lookupLiteral(level).toValidMap(this.preferences.get(level))));
-		if (this.hasAnyPreference())
-			this.enabled = Boolean.TRUE;
+		preferences.forEach((key, value) -> {
+			if (value != null && !value.isEmpty())
+				this.preferences.put(key, PreferenceLevel.lookupLiteral(key).toValidList(value));
+
+		});
+
+		this.enabled = this.hasAnyPreference();
+
 		return this;
 	}
 
 	public boolean hasPreference(String pref) {
-
-		for (Map.Entry<String, Map<String, Boolean>> entry : preferences.entrySet()) {
-			if (entry.getValue().containsKey(pref))
-				return PreferenceLevel.lookupLiteral(entry.getKey()).isReverseSave() ? Boolean.FALSE
-						: entry.getValue().get(pref);
-		}
-		return Boolean.FALSE;
+		return preferences.entrySet().stream()
+				.anyMatch(entry -> entry.getValue().contains(pref)
+						&& !PreferenceLevel.lookupLiteral(entry.getKey()).isReverseSave());
 	}
 
 	public boolean hasPreference(NotificationChannelType channelType) {
-		return preferences.get(PreferenceLevel.CHANNEL.getLiteral()).getOrDefault(channelType.getLiteral(), Boolean.FALSE);
+		Set<String> channelPreferences = this.preferences.get(PreferenceLevel.CHANNEL.getLiteral());
+		if (channelPreferences == null)
+			return false;
+		return channelPreferences.contains(channelType.getLiteral());
 	}
 
 	public boolean hasAnyPreference() {
 
-		for (Map.Entry<String, Map<String, Boolean>> entry : preferences.entrySet()) {
-			if (!entry.getValue().isEmpty())
-				return PreferenceLevel.lookupLiteral(entry.getKey()).isReverseSave() ? Boolean.TRUE
-						: entry.getValue().values().stream().anyMatch(Boolean.TRUE::equals);
-		}
-		return Boolean.FALSE;
+		if (this.preferences == null || this.preferences.isEmpty())
+			return false;
+
+		return preferences.entrySet().stream()
+				.anyMatch(entry -> entry.getValue() != null &&
+						!entry.getValue().isEmpty() &&
+						!PreferenceLevel.lookupLiteral(entry.getKey()).getDefaultList().equals(entry.getValue()));
 	}
 
 	public void initDefault() {

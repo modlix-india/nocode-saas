@@ -16,7 +16,6 @@ import lombok.experimental.Accessors;
 public class NotificationTemplate {
 
 	private String code;
-	private String connectionName;
 	private Map<String, Map<String, String>> templateParts;
 	private JsonObject variableSchema; // NOSONAR
 	private Map<String, String> resources;

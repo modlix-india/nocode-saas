@@ -30,4 +30,8 @@ public enum NotificationChannelType implements EnumType {
 	public String getName() {
 		return null;
 	}
+
+	public String getQueueName(String exchangeName) {
+		return exchangeName + "." + this.getLiteral().toLowerCase();
+	}
 }

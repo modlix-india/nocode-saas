@@ -3,7 +3,6 @@ package com.fincity.saas.notification.document;
 import java.io.Serial;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.function.Function;
 
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.notification.enums.NotificationChannelType;
@@ -27,25 +26,13 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	private static final long serialVersionUID = 4924671644117461908L;
 
 	private String notificationType;
+	private Map<String, String> channelConnections;
 	private Map<String, NotificationTemplate> channelDetails;
 
 	public Notification(Notification notification) {
 		super(notification);
 		this.notificationType = notification.notificationType;
 		this.channelDetails = notification.channelDetails;
-	}
-
-	public static <T> Map<NotificationChannelType, T> getChannelValueMap(Map<NotificationChannelType, NotificationTemplate> templateMap,
-	                                                                     Function<NotificationTemplate, T> valueFunction) {
-
-		Function<NotificationTemplate, T> function = valueFunction == null ? value -> (T) Function.identity() : valueFunction;
-
-		Map<NotificationChannelType, T> resultMap = new EnumMap<>(NotificationChannelType.class);
-		templateMap.forEach((key, template) -> {
-			T value = function.apply(template);
-			resultMap.put(key, value);
-		});
-		return resultMap;
 	}
 
 	@Override
@@ -60,9 +47,15 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
 	public Map<NotificationChannelType, NotificationTemplate> getChannelDetailMap() {
 		Map<NotificationChannelType, NotificationTemplate> resultMap = new EnumMap<>(NotificationChannelType.class);
-		this.channelDetails.forEach((key, template) -> {
-			resultMap.put(NotificationChannelType.lookupLiteral(key), template);
-		});
+		this.channelDetails.forEach((key, template) ->
+				resultMap.put(NotificationChannelType.lookupLiteral(key), template));
+		return resultMap;
+	}
+
+	public Map<NotificationChannelType, String> getChannelConnectionMap() {
+		Map<NotificationChannelType, String> resultMap = new EnumMap<>(NotificationChannelType.class);
+		this.channelConnections.forEach((key, connectionName) ->
+				resultMap.put(NotificationChannelType.lookupLiteral(key), connectionName));
 		return resultMap;
 	}
 }

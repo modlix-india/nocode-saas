@@ -29,6 +29,7 @@ import com.fincity.saas.notification.model.NotificationChannel.NotificationChann
 import com.fincity.saas.notification.model.NotificationRequest;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.mq.NotificationMessageProducer;
 import com.fincity.saas.notification.service.template.TemplateProcessor;
 
 import lombok.Getter;
@@ -44,28 +45,32 @@ public class NotificationProcessingService {
 	private static final Logger logger = LoggerFactory.getLogger(NotificationProcessingService.class);
 
 	private static final String NOTIFICATION_INFO_CACHE = "notificationInfo";
-	private static final String NOTIFICATION_CONN_CACHE = "notificationConn";
 
 	private static final String NOTIFICATION = "Notification";
-	private static final String NOTIFICATION_CONNECTION_TYPE = "NOTIFICATION";
 
 	private final IFeignCoreService coreService;
 	private final NotificationMessageResourceService messageResourceService;
 
 	private final UserPreferenceService userPreferenceService;
+	private final NotificationConnectionService connectionService;
 
 	private final TemplateProcessor templateProcessor;
+
+	private final NotificationMessageProducer notificationProducer;
 
 	@Getter
 	private CacheService cacheService;
 
 	public NotificationProcessingService(IFeignCoreService coreService,
 			NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
-			TemplateProcessor templateProcessor) {
+			NotificationConnectionService connectionService,
+			TemplateProcessor templateProcessor, NotificationMessageProducer notificationProducer) {
 		this.coreService = coreService;
 		this.messageResourceService = messageResourceService;
 		this.userPreferenceService = userPreferenceService;
+		this.connectionService = connectionService;
 		this.templateProcessor = templateProcessor;
+		this.notificationProducer = notificationProducer;
 	}
 
 	@Autowired
@@ -75,10 +80,6 @@ public class NotificationProcessingService {
 
 	private String getCacheKeys(String... entityNames) {
 		return String.join(":", entityNames);
-	}
-
-	private String getNotificationConnCache() {
-		return NOTIFICATION_CONN_CACHE;
 	}
 
 	private String getNotificationInfoCache() {
@@ -94,7 +95,7 @@ public class NotificationProcessingService {
 
 		logger.info("Sending notification request {}", request);
 
-		return Mono.just(true)
+		return notificationProducer.broadcast(request)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.sendNotification"));
 	}
 
@@ -128,8 +129,8 @@ public class NotificationProcessingService {
 
 				(ca, userEntity, notiInfo, userPref) -> this.applyUserPreferences(userPref, notiInfo),
 
-				(ca, userEntity, notiInfo, userPref, channelDetails) -> this.getNotificationConnections(appCode,
-						clientCode, channelDetails),
+				(ca, userEntity, notiInfo, userPref, channelDetails) -> this.connectionService
+						.getNotificationConnections(appCode, clientCode, notiInfo.getChannelConnectionMap()),
 
 				(ca, userEntity, notiInfo, userPref, channelDetails, connInfo) -> {
 
@@ -146,7 +147,7 @@ public class NotificationProcessingService {
 					});
 
 					return this.createSendRequest(clientCode, appCode, notiInfo.getNotificationType(), userPref, toSend,
-							objectMap);
+							notiInfo.getChannelConnectionMap(), objectMap);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processNotification"));
 	}
@@ -197,36 +198,13 @@ public class NotificationProcessingService {
 						() -> new EnumMap<>(NotificationChannelType.class));
 	}
 
-	private Mono<Map<NotificationChannelType, Map<String, Object>>> getNotificationConnections(String appCode,
-			String clientCode, Map<NotificationChannelType, NotificationTemplate> channelDetails) {
-
-		if (channelDetails == null || channelDetails.isEmpty())
-			return Mono.empty();
-
-		Map<NotificationChannelType, Map<String, Object>> connections = new EnumMap<>(NotificationChannelType.class);
-
-		return Flux.fromIterable(channelDetails.entrySet())
-				.flatMap(
-						connection -> this
-								.getNotificationConn(appCode, clientCode, connection.getValue().getConnectionName())
-								.filter(connectionMap -> !(connectionMap == null || connectionMap.isEmpty()))
-								.doOnNext(connDetails -> connections.put(connection.getKey(), connDetails)))
-				.then(Mono.just(connections));
-	}
-
-	private Mono<Map<String, Object>> getNotificationConn(String appCode, String clientCode, String connectionName) {
-		return cacheService.cacheValueOrGet(this.getNotificationConnCache(),
-				() -> coreService.getConnection(connectionName, appCode, clientCode, NOTIFICATION_CONNECTION_TYPE),
-				this.getCacheKeys(appCode, clientCode, connectionName));
-	}
-
 	private Mono<SendRequest> createSendRequest(String appCode, String clientCode, String notificationType,
 			UserPreference userPref, Map<NotificationChannelType, NotificationTemplate> templateInfoMap,
-			Map<String, Object> objectMap) {
+			Map<NotificationChannelType, String> channelConnections, Map<String, Object> objectMap) {
 
 		return this.createNotificationChannel(userPref, templateInfoMap, objectMap)
 				.map(notificationChannel -> SendRequest.of(clientCode, appCode, userPref.getUserId().toBigInteger(),
-						notificationType, notificationChannel));
+						notificationType,channelConnections, notificationChannel));
 	}
 
 	private Mono<NotificationChannel> createNotificationChannel(UserPreference userPref,

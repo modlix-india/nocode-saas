@@ -15,16 +15,21 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Notification;
+import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.repository.NotificationRepository;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class NotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
 
-	protected NotificationService() {
+	private final ConnectionService connectionService;
+
+	protected NotificationService(ConnectionService connectionService) {
 		super(Notification.class);
+		this.connectionService = connectionService;
 	}
 
 	@Override
@@ -78,7 +83,9 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 					return Mono.just(entity);
 				},
 
-				(ca, vEntity) -> {
+				(ca, vEntity) -> this.validateConnections(entity.getAppCode(), entity.getClientCode(), entity.getChannelConnections()),
+
+				(ca, vEntity,validConnections) -> {
 
 					for (Map.Entry<String, Notification.NotificationTemplate> channelEntry : vEntity.getChannelDetails().entrySet()) {
 						if (!channelEntry.getValue().isValidSchema())
@@ -89,6 +96,19 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 					return Mono.just(vEntity);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.updatableEntity"));
+	}
+
+	private Mono<Boolean> validateConnections(String appCode, String clientCode, Map<String, String> connections) {
+		return Flux.fromIterable(connections.values())
+				.flatMap(connection -> this.connectionService.hasConnection(connection, appCode, clientCode, ConnectionType.NOTIFICATION)
+						.flatMap(hasConnection -> {
+							if (Boolean.FALSE.equals(hasConnection))
+								return this.messageResourceService.throwMessage(
+										msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+										CoreMessageResourceService.CONNECTION_NOT_AVAILABLE, connection);
+							return Mono.just(Boolean.TRUE);
+						}))
+				.then(Mono.just(Boolean.TRUE));
 	}
 
 	@Override

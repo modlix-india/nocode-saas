@@ -39,11 +39,13 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	private static final long serialVersionUID = 4924671644117461908L;
 
 	private String notificationType;
+	private Map<String, String> channelConnections;
 	private Map<String, NotificationTemplate> channelDetails;
 
 	public Notification(Notification notification) {
 		super(notification);
 		this.notificationType = notification.notificationType;
+		this.channelConnections = CloneUtil.cloneMapObject(notification.channelConnections);
 		this.channelDetails = CloneUtil.cloneMapObject(notification.channelDetails);
 	}
 
@@ -54,10 +56,16 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 			return Mono.just(this);
 
 		return FlatMapUtil.flatMapMonoWithNull(
-						() -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
 
-						ch -> {
+						() -> DifferenceApplicator.apply(this.channelConnections, base.channelConnections),
+
+						cc -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
+
+						(cc, ch) -> {
+							this.channelConnections = (Map<String, String>) cc;
+
 							this.channelDetails = (Map<String, NotificationTemplate>) ch;
+
 							if (this.notificationType == null)
 								this.notificationType = base.notificationType;
 
@@ -74,9 +82,16 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 						() -> Mono.just(this),
-						obj -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
-						(obj, ch) -> {
+
+						obj -> DifferenceExtractor.extract(obj.channelConnections, base.channelConnections),
+
+						(obj, cc) -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
+
+						(obj, cc, ch) -> {
+							obj.channelConnections = (Map<String, String>) cc;
+
 							obj.channelDetails = (Map<String, NotificationTemplate>) ch;
+
 							if (obj.notificationType == null)
 								obj.notificationType = base.notificationType;
 
@@ -93,7 +108,6 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 		@JsonIgnore
 		private String code = UniqueUtil.shortUUID();
 
-		private String connectionName;
 		private Map<String, Map<String, String>> templateParts;
 		private JsonObject variableSchema; // NOSONAR
 		private Map<String, String> resources;
