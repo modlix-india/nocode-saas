@@ -73,7 +73,7 @@ public class HashData extends AbstractReactiveFunction {
     private JsonElement processElement(JsonElement element, String algorithm, boolean primitiveLevel) {
 
         if (element.isJsonNull()) {
-            return new JsonPrimitive("null");
+            return HashUtil.createHash(JsonNull.INSTANCE, algorithm);
         }
         if (!primitiveLevel) {
             return HashUtil.createHash(element.toString(), algorithm);
