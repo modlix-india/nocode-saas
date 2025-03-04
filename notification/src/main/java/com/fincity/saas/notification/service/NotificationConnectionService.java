@@ -45,14 +45,14 @@ public class NotificationConnectionService {
 	}
 
 	public Mono<Map<NotificationChannelType, Map<String, Object>>> getNotificationConnections(String appCode,
-			String clientCode, Map<NotificationChannelType, String> channelDetails) {
+			String clientCode, Map<NotificationChannelType, String> channelConnections) {
 
-		if (channelDetails == null || channelDetails.isEmpty())
+		if (channelConnections == null || channelConnections.isEmpty())
 			return Mono.empty();
 
 		Map<NotificationChannelType, Map<String, Object>> connections = new EnumMap<>(NotificationChannelType.class);
 
-		return Flux.fromIterable(channelDetails.entrySet())
+		return Flux.fromIterable(channelConnections.entrySet())
 				.flatMap(
 						connection -> this
 								.getNotificationConn(appCode, clientCode, connection.getValue())

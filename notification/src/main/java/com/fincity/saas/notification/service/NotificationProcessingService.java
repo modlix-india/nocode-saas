@@ -204,7 +204,7 @@ public class NotificationProcessingService {
 
 		return this.createNotificationChannel(userPref, templateInfoMap, objectMap)
 				.map(notificationChannel -> SendRequest.of(clientCode, appCode, userPref.getUserId().toBigInteger(),
-						notificationType,channelConnections, notificationChannel));
+						notificationType, channelConnections, notificationChannel));
 	}
 
 	private Mono<NotificationChannel> createNotificationChannel(UserPreference userPref,
