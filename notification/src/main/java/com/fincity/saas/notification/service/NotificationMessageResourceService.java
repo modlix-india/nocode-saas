@@ -20,6 +20,7 @@ public class NotificationMessageResourceService extends AbstractMessageService {
 	public static final String FORBIDDEN_CREATE = "forbidden_create";
 	public static final String FORBIDDEN_UPDATE = "forbidden_update";
 	public static final String TEMPLATE_DATA_NOT_FOUND = "template_data_not_found";
+	public static final String CONNECTION_DETAILS_MISSING = "connection_details_missing";
 	public static final String MAIL_SEND_ERROR = "mail_send_error";
 
 	protected NotificationMessageResourceService() {

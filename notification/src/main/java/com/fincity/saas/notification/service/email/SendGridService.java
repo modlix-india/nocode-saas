@@ -23,7 +23,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
-@Service
+@Service(value = "sendgrid")
 public class SendGridService extends AbstractEmailService implements IEmailService {
 
 	private static final String EMAIL_ENDPOINT = "mail/send";
