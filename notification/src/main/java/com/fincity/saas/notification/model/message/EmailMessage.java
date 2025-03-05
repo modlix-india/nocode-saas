@@ -22,7 +22,7 @@ public class EmailMessage extends NotificationMessage {
 	private List<String> bccAddresses;
 
 	private boolean isHtml;
-	private String replyTo;
+	private List<String> replyTo;
 	private Map<String, String> headers;
 	private Priority priority;
 

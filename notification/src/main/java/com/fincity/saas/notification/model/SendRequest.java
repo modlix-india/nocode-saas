@@ -48,4 +48,9 @@ public class SendRequest implements Serializable {
 				new NotificationChannelBuilder().isEnabled(Boolean.FALSE).build());
 	}
 
+	public boolean isValid(NotificationChannelType channelType) {
+		return this.connections != null && this.channels != null &&
+				this.connections.containsKey(channelType) && this.channels.containsChannel(channelType);
+	}
+
 }

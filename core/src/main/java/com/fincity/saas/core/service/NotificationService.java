@@ -133,8 +133,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 				notification -> Mono
 						.justOrEmpty(notification.getNotificationType().equals(notificationType.getLiteral())
-								? notification
-								: null),
+								? notification : null),
 
 				(notification,
 						typedNotification) -> Mono.justOrEmpty(typedNotification.getClientCode().equals(clientCode)

@@ -25,6 +25,15 @@ public class NotificationChannel {
 		return new NotificationChannelBuilder();
 	}
 
+	public boolean containsChannel(NotificationChannelType channelType) {
+		return switch (channelType) {
+			case EMAIL -> email != null && !email.isNull();
+			case IN_APP -> inApp != null && !inApp.isNull();
+			case SMS -> sms != null && !sms.isNull();
+			default -> false;
+		};
+	}
+
 	public static class NotificationChannelBuilder {
 
 		private UserPreference preference;
