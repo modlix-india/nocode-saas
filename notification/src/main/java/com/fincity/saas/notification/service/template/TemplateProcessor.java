@@ -1,11 +1,12 @@
 package com.fincity.saas.notification.service.template;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.message.NotificationMessage;
@@ -53,7 +53,7 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 	public <T extends NotificationMessage<T>> Mono<T> process(String language, NotificationTemplate template,
 			Map<String, Object> templateData) {
 
-		if (template.getTemplateParts().isEmpty())
+		if (template.getTemplateParts().isEmpty() || !StringUtil.safeIsBlank(template.getCode()))
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 					NotificationMessageResourceService.TEMPLATE_DATA_NOT_FOUND, "No template parts found");
 
@@ -122,6 +122,16 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 						: lang);
 	}
 
+	public List<String> getAllTemplateName(String templateCode, String... recipientTypes) {
+		List<String> names = new ArrayList<>();
+		Arrays.stream(recipientTypes)
+				.forEach(recipientType -> names.add(this.getRecipientName(templateCode, recipientType)));
+		names.add(this.getLanguageName(templateCode));
+		names.add(this.getSubjectName(templateCode));
+		names.add(this.getBodyName(templateCode));
+		return names;
+	}
+
 	private String getDefaultLanguage(String defaultTemplateLanguage) {
 		return !StringUtil.safeIsBlank(defaultTemplateLanguage) ? defaultTemplateLanguage : DEFAULT_LANGUAGE;
 	}
@@ -143,6 +153,6 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 	}
 
 	private String createTemplateName(String code, String fieldName) {
-		return StringUtil.safeIsBlank(code) ? UniqueUtil.shortUUID() + ":" + fieldName : code + ":" + fieldName;
+		return code + ":" + fieldName;
 	}
 }
