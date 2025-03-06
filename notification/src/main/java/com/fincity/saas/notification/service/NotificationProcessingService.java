@@ -30,7 +30,7 @@ import com.fincity.saas.notification.model.NotificationRequest;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.mq.NotificationMessageProducer;
-import com.fincity.saas.notification.service.template.TemplateProcessor;
+import com.fincity.saas.notification.service.template.NotificationTemplateProcessor;
 
 import lombok.Getter;
 import reactor.core.publisher.Flux;
@@ -54,7 +54,7 @@ public class NotificationProcessingService {
 	private final UserPreferenceService userPreferenceService;
 	private final NotificationConnectionService connectionService;
 
-	private final TemplateProcessor templateProcessor;
+	private final NotificationTemplateProcessor notificationTemplateProcessor;
 
 	private final NotificationMessageProducer notificationProducer;
 
@@ -62,14 +62,14 @@ public class NotificationProcessingService {
 	private CacheService cacheService;
 
 	public NotificationProcessingService(IFeignCoreService coreService,
-			NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
-			NotificationConnectionService connectionService,
-			TemplateProcessor templateProcessor, NotificationMessageProducer notificationProducer) {
+	                                     NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
+	                                     NotificationConnectionService connectionService,
+	                                     NotificationTemplateProcessor notificationTemplateProcessor, NotificationMessageProducer notificationProducer) {
 		this.coreService = coreService;
 		this.messageResourceService = messageResourceService;
 		this.userPreferenceService = userPreferenceService;
 		this.connectionService = connectionService;
-		this.templateProcessor = templateProcessor;
+		this.notificationTemplateProcessor = notificationTemplateProcessor;
 		this.notificationProducer = notificationProducer;
 	}
 
@@ -214,7 +214,7 @@ public class NotificationProcessingService {
 
 		return Flux.fromIterable(templateInfoMap.entrySet())
 				.flatMap(
-						templateInfo -> this.templateProcessor.process(templateInfo.getValue(), objectMap))
+						templateInfo -> this.notificationTemplateProcessor.process(templateInfo.getValue(), objectMap))
 				.then(Mono.just(notificationChannelBuilder.build()));
 	}
 

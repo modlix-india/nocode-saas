@@ -34,9 +34,6 @@ public abstract class BaseTemplateProcessor {
 	protected static final Configuration DEFAULT = new Configuration(Configuration.VERSION_2_3_33);
 
 	private static final int INITIAL_BUFFER_SIZE = 4096;
-
-	private static final String CACHE_NAME_TEMPLATE = "notificationTemplateProcessor";
-
 	private static final Logger logger = LoggerFactory.getLogger(BaseTemplateProcessor.class);
 
 	static {
@@ -52,6 +49,8 @@ public abstract class BaseTemplateProcessor {
 
 	private CacheService cacheService;
 
+	protected abstract String getCacheName();
+
 	@Autowired
 	public void setCacheService(CacheService cacheService) {
 		this.cacheService = cacheService;
@@ -66,14 +65,13 @@ public abstract class BaseTemplateProcessor {
 	}
 
 	public Mono<Template> toTemplate(String templateName, String sourceCode) {
-		return cacheService.cacheValueOrGet(CACHE_NAME_TEMPLATE, () -> this.toTemplateSync(templateName, sourceCode),
+		return cacheService.cacheValueOrGet(this.getCacheName(), () -> this.toTemplateSync(templateName, sourceCode),
 				templateName);
 	}
 
 	public Mono<Boolean> evictTemplate(Object... templateNames) {
-
 		this.removeFreeMarkerCache(templateNames);
-		return cacheService.evict(CACHE_NAME_TEMPLATE, templateNames);
+		return cacheService.evict(this.getCacheName(), templateNames);
 	}
 
 	private void removeFreeMarkerCache(Object... templateNames) {

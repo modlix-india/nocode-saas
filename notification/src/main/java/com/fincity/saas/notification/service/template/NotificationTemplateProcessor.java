@@ -27,17 +27,24 @@ import reactor.core.publisher.Mono;
 
 @Getter
 @Service
-public class TemplateProcessor extends BaseTemplateProcessor {
+public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 
 	public static final String PRO_LANGUAGE = "language";
 	public static final String PRO_SUBJECT = "subject";
 	public static final String PRO_BODY = "body";
 
+	private static final String CACHE_NAME_TEMPLATE = "NotificationTemplateProcessor";
+
 	private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.getLanguage();
 
 	private NotificationMessageResourceService msgService;
 
-	protected TemplateProcessor() {
+	protected NotificationTemplateProcessor() {
+	}
+
+	@Override
+	protected String getCacheName() {
+		return CACHE_NAME_TEMPLATE;
 	}
 
 	@Autowired
@@ -97,7 +104,8 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 				.flatMap(entry -> this.getRecipient(templateCode, entry.getKey().name(), entry.getValue(), templateData)
 						.map(recipient -> Map.entry(entry.getKey(), recipient)))
 				.collect(RecipientInfo::new,
-						(recipientInfo, entry) -> recipientInfo.addRecipientInto(entry.getKey(), entry.getValue()));
+						(recipientInfo, entry) -> recipientInfo.addRecipientInto(entry.getKey(), entry.getValue()))
+				.switchIfEmpty(Mono.just(new RecipientInfo()));
 	}
 
 	protected Mono<String> getRecipient(String templateCode, String recipient, String recipientExpression,
