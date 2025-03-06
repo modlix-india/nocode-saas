@@ -130,10 +130,11 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 						: lang);
 	}
 
-	public List<String> getAllTemplateName(String templateCode, String... recipientTypes) {
+	public List<String> getAllTemplateName(String templateCode, NotificationChannelType channelType) {
 		List<String> names = new ArrayList<>();
-		Arrays.stream(recipientTypes)
-				.forEach(recipientType -> names.add(this.getRecipientName(templateCode, recipientType)));
+		channelType.getAllowedRecipientTypes()
+				.forEach(recipientType -> names.add(this.getRecipientName(templateCode,
+						recipientType.getLiteral())));
 		names.add(this.getLanguageName(templateCode));
 		names.add(this.getSubjectName(templateCode));
 		names.add(this.getBodyName(templateCode));

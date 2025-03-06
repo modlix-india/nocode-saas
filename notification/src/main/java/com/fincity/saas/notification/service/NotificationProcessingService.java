@@ -29,6 +29,7 @@ import com.fincity.saas.notification.model.NotificationChannel.NotificationChann
 import com.fincity.saas.notification.model.NotificationRequest;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.mq.NotificationMessageProducer;
 import com.fincity.saas.notification.service.template.NotificationTemplateProcessor;
 
@@ -62,9 +63,10 @@ public class NotificationProcessingService {
 	private CacheService cacheService;
 
 	public NotificationProcessingService(IFeignCoreService coreService,
-	                                     NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
-	                                     NotificationConnectionService connectionService,
-	                                     NotificationTemplateProcessor notificationTemplateProcessor, NotificationMessageProducer notificationProducer) {
+			NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
+			NotificationConnectionService connectionService,
+			NotificationTemplateProcessor notificationTemplateProcessor,
+			NotificationMessageProducer notificationProducer) {
 		this.coreService = coreService;
 		this.messageResourceService = messageResourceService;
 		this.userPreferenceService = userPreferenceService;
@@ -207,14 +209,18 @@ public class NotificationProcessingService {
 						notificationType, channelConnections, notificationChannel));
 	}
 
-	private Mono<NotificationChannel> createNotificationChannel(UserPreference userPref,
-			Map<NotificationChannelType, NotificationTemplate> templateInfoMap, Map<String, Object> objectMap) {
+	private <T extends NotificationMessage<T>> Mono<NotificationChannel> createNotificationChannel(
+			UserPreference userPref, Map<NotificationChannelType, NotificationTemplate> templateInfoMap,
+			Map<String, Object> objectMap) {
 
 		NotificationChannelBuilder notificationChannelBuilder = new NotificationChannelBuilder().preferences(userPref);
 
-		return Flux.fromIterable(templateInfoMap.entrySet())
-				.flatMap(
-						templateInfo -> this.notificationTemplateProcessor.process(templateInfo.getValue(), objectMap))
+		if (templateInfoMap == null || templateInfoMap.isEmpty())
+			return Mono.just(notificationChannelBuilder.build());
+
+		return Flux.fromIterable(templateInfoMap.values())
+				.<T>flatMap(templateInfo -> this.notificationTemplateProcessor.process(templateInfo, objectMap))
+				.doOnNext(notificationChannelBuilder::addMessage)
 				.then(Mono.just(notificationChannelBuilder.build()));
 	}
 
