@@ -6,9 +6,11 @@ import java.util.Map;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.scheduling.support.CronExpression;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
@@ -113,6 +115,8 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 		private Map<String, String> resources;
 		private String defaultLanguage;
 		private String languageExpression;
+		private Map<String, String> recipientExpressions;
+		private DeliveryOptions deliveryOptions;
 
 		public NotificationTemplate(NotificationTemplate template) {
 			this.code = template.code;
@@ -121,6 +125,8 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 			this.resources = CloneUtil.cloneMapObject(template.resources);
 			this.defaultLanguage = template.defaultLanguage;
 			this.languageExpression = template.languageExpression;
+			this.recipientExpressions = CloneUtil.cloneMapObject(template.recipientExpressions);
+			this.deliveryOptions = template.deliveryOptions;
 		}
 
 		public boolean isValidSchema() {
@@ -130,5 +136,34 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
 			return !this.variableSchema.isJsonNull() && !this.variableSchema.isJsonObject();
 		}
+
+		public boolean isValidForEmail() {
+			if (this.recipientExpressions == null || this.recipientExpressions.isEmpty())
+				return false;
+
+			return this.recipientExpressions.containsKey(NotificationRecipientType.FROM.getLiteral()) &&
+					this.recipientExpressions.containsKey(NotificationRecipientType.TO.getLiteral());
+		}
+	}
+
+	@Data
+	@Accessors(chain = true)
+	@NoArgsConstructor
+	public static class DeliveryOptions implements Serializable {
+
+		private boolean instant = Boolean.TRUE;
+		private String cronStatement;
+		private boolean allowUnsubscribing = Boolean.TRUE;
+
+		public DeliveryOptions(DeliveryOptions deliveryOptions) {
+			this.instant = deliveryOptions.instant;
+			this.cronStatement = deliveryOptions.cronStatement;
+			this.allowUnsubscribing = deliveryOptions.allowUnsubscribing;
+		}
+
+		public boolean isValid() {
+			return CronExpression.isValidExpression(this.cronStatement);
+		}
+
 	}
 }

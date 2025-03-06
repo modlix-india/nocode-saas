@@ -215,7 +215,6 @@ public class NotificationProcessingService {
 		return Flux.fromIterable(templateInfoMap.entrySet())
 				.flatMap(
 						templateInfo -> this.templateProcessor.process(templateInfo.getValue(), objectMap))
-				.mapNotNull(notificationChannelBuilder::addMessage)
 				.then(Mono.just(notificationChannelBuilder.build()));
 	}
 

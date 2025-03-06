@@ -9,7 +9,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
-public class InAppMessage extends NotificationMessage {
+public class InAppMessage extends NotificationMessage<InAppMessage> {
 
 	private String image;
 

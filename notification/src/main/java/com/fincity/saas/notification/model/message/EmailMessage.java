@@ -13,7 +13,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
-public class EmailMessage extends NotificationMessage {
+public class EmailMessage extends NotificationMessage<EmailMessage> {
 
 	private String fromAddress;
 	private String toAddress;
@@ -29,5 +29,15 @@ public class EmailMessage extends NotificationMessage {
 	@Override
 	public NotificationChannelType getChannelType() {
 		return NotificationChannelType.EMAIL;
+	}
+
+	@Override
+	public EmailMessage addRecipientInfo(RecipientInfo recipientInfo) {
+		this.fromAddress = recipientInfo.getFromAddress();
+		this.toAddress = recipientInfo.getToAddress();
+		this.ccAddresses = recipientInfo.getCcAddress();
+		this.bccAddresses = recipientInfo.getBccAddress();
+		this.replyTo = recipientInfo.getReplyTo();
+		return this;
 	}
 }

@@ -13,7 +13,7 @@ import reactor.util.function.Tuples;
 
 @Data
 @Accessors(chain = true)
-public class NotificationMessage implements ChannelType {
+public class NotificationMessage<T extends NotificationMessage<T>> implements ChannelType, IRecipientInfo<T> {
 
 	private String messageId;
 	private String subject;
@@ -23,30 +23,16 @@ public class NotificationMessage implements ChannelType {
 		this.messageId = UniqueUtil.shortUUID();
 	}
 
-	public static NotificationMessage of() {
-		return new NotificationMessage();
+	public NotificationMessage(String subject, String body) {
+		this.messageId = UniqueUtil.shortUUID();
+		this.subject = subject;
+		this.body = body;
 	}
 
-	public static NotificationMessage of(String subject, String body) {
-		return new NotificationMessage().setSubject(subject).setBody(body);
-	}
-
-	public static NotificationMessage of(Map<String, String> message) {
-
-		if (message == null || message.isEmpty())
-			return NotificationMessage.of();
-
-		String subject = message.getOrDefault("subject", null);
-		String body = message.getOrDefault("body", null);
-		return NotificationMessage.of(subject, body);
-	}
-
-	public static NotificationMessage of(Tuple2<String, String> message) {
-
-		if (message == null)
-			return NotificationMessage.of();
-
-		return NotificationMessage.of(message.getT1(), message.getT2());
+	public NotificationMessage(Map<String, String> message) {
+		this.subject = message.getOrDefault("subject", null);
+		this.messageId = UniqueUtil.shortUUID();
+		this.body = message.getOrDefault("body", null);
 	}
 
 	public Map<String, String> toMap() {

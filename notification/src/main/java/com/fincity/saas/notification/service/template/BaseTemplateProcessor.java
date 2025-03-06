@@ -4,8 +4,12 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.TimeZone;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -32,6 +36,8 @@ public abstract class BaseTemplateProcessor {
 	private static final int INITIAL_BUFFER_SIZE = 4096;
 
 	private static final String CACHE_NAME_TEMPLATE = "notificationTemplateProcessor";
+
+	private static final Logger logger = LoggerFactory.getLogger(BaseTemplateProcessor.class);
 
 	static {
 		DEFAULT.setDefaultEncoding(StandardCharsets.UTF_8.name());
@@ -62,6 +68,22 @@ public abstract class BaseTemplateProcessor {
 	public Mono<Template> toTemplate(String templateName, String sourceCode) {
 		return cacheService.cacheValueOrGet(CACHE_NAME_TEMPLATE, () -> this.toTemplateSync(templateName, sourceCode),
 				templateName);
+	}
+
+	public Mono<Boolean> evictTemplate(Object... templateNames) {
+
+		this.removeFreeMarkerCache(templateNames);
+		return cacheService.evict(CACHE_NAME_TEMPLATE, templateNames);
+	}
+
+	private void removeFreeMarkerCache(Object... templateNames) {
+		Arrays.stream(templateNames).filter(Objects::nonNull).forEach(templateName -> {
+			try {
+				DEFAULT.removeTemplateFromCache(templateName.toString());
+			} catch (IOException e) {
+				logger.error("No cache found in Freemarker cache for template: {}", templateName);
+			}
+		});
 	}
 
 	private Mono<Template> toTemplateSync(String templateName, String sourceCode) {

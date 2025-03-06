@@ -2,6 +2,7 @@ package com.fincity.saas.notification.service.template;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,15 +12,20 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.message.RecipientInfo;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
 import lombok.Getter;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Getter
 @Service
 public class TemplateProcessor extends BaseTemplateProcessor {
 
@@ -29,13 +35,9 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 
 	private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.getLanguage();
 
-	protected Logger logger;
-
-	@Getter
 	private NotificationMessageResourceService msgService;
 
 	protected TemplateProcessor() {
-		logger = LoggerFactory.getLogger(this.getClass());
 	}
 
 	@Autowired
@@ -43,11 +45,12 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 		this.msgService = msgService;
 	}
 
-	public Mono<NotificationMessage> process(NotificationTemplate template, Map<String, Object> templateData) {
+	public <T extends NotificationMessage<T>> Mono<T> process(NotificationTemplate template,
+			Map<String, Object> templateData) {
 		return this.process(null, template, templateData);
 	}
 
-	public Mono<NotificationMessage> process(String language, NotificationTemplate template,
+	public <T extends NotificationMessage<T>> Mono<T> process(String language, NotificationTemplate template,
 			Map<String, Object> templateData) {
 
 		if (template.getTemplateParts().isEmpty())
@@ -59,21 +62,47 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 				() -> this.getEffectiveLanguage(language, template, templateData),
 
 				lang -> {
-					NotificationMessage notificationMessage = NotificationMessage
-							.of(template.getTemplateParts().getOrDefault(this.getDefaultLanguage(language), null));
 
-					return !notificationMessage.isNull() ? Mono.just(notificationMessage)
-							: Mono.just(NotificationMessage.of(template.getTemplateParts().values().iterator().next()));
+					Map<String, String> templatePart = template.getTemplateParts().getOrDefault(
+							this.getDefaultLanguage(language), template.getTemplateParts().values().iterator().next());
+
+					return Mono.just(new NotificationMessage<T>(templatePart));
 				},
-				(lang, notificationMessage) -> this.process(template.getCode(), notificationMessage, templateData));
+				(lang, notificationMessage) -> this.processUserInfo(notificationMessage.getChannelType(),
+						template.getCode(), templateData, template.getRecipientExpressions()),
+				(lang, notificationMessage, userInfo) -> this.process(userInfo, template.getCode(), notificationMessage,
+						templateData));
 	}
 
-	public Mono<NotificationMessage> process(String templateCode, NotificationMessage notificationMessage,
-			Map<String, Object> templateData) {
+	private <T extends NotificationMessage<T>> Mono<T> process(RecipientInfo userInfo, String templateCode,
+			NotificationMessage<T> notificationMessage, Map<String, Object> templateData) {
 		return Mono.zip(
 				super.processString(this.getSubjectName(templateCode), notificationMessage.getSubject(), templateData),
 				super.processString(this.getBodyName(templateCode), notificationMessage.getBody(), templateData))
-				.map(NotificationMessage::of);
+				.map(message -> new NotificationMessage<T>(message.getT1(), message.getT2())
+						.addRecipientInfo(userInfo));
+	}
+
+	public Mono<RecipientInfo> processUserInfo(NotificationChannelType channelType, String templateCode,
+			Map<String, Object> templateData, Map<String, String> userExpressions) {
+
+		Set<NotificationRecipientType> recipientTypes = channelType.getAllowedRecipientTypes();
+
+		if (recipientTypes == null || recipientTypes.isEmpty())
+			return Mono.just(new RecipientInfo());
+
+		return Flux.fromIterable(userExpressions.entrySet())
+				.map(entry -> Map.entry(NotificationRecipientType.lookupLiteral(entry.getKey()), entry.getValue()))
+				.filter(entry -> recipientTypes.contains(entry.getKey()))
+				.flatMap(entry -> this.getRecipient(templateCode, entry.getKey().name(), entry.getValue(), templateData)
+						.map(recipient -> Map.entry(entry.getKey(), recipient)))
+				.collect(RecipientInfo::new,
+						(recipientInfo, entry) -> recipientInfo.addRecipientInto(entry.getKey(), entry.getValue()));
+	}
+
+	protected Mono<String> getRecipient(String templateCode, String recipient, String recipientExpression,
+			Map<String, Object> templateData) {
+		return super.processString(this.getRecipientName(templateCode, recipient), recipientExpression, templateData);
 	}
 
 	protected Mono<String> getEffectiveLanguage(String requestedLanguage, NotificationTemplate template,
@@ -95,6 +124,10 @@ public class TemplateProcessor extends BaseTemplateProcessor {
 
 	private String getDefaultLanguage(String defaultTemplateLanguage) {
 		return !StringUtil.safeIsBlank(defaultTemplateLanguage) ? defaultTemplateLanguage : DEFAULT_LANGUAGE;
+	}
+
+	private String getRecipientName(String templateCode, String recipientType) {
+		return this.createTemplateName(templateCode, recipientType);
 	}
 
 	private String getLanguageName(String templateCode) {

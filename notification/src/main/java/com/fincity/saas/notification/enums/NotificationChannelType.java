@@ -1,22 +1,32 @@
 package com.fincity.saas.notification.enums;
 
+import java.util.Set;
+
 import org.jooq.EnumType;
 
+import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
+import lombok.Getter;
+
+@Getter
 public enum NotificationChannelType implements EnumType {
 
 	DISABLED("DISABLED"),
-	EMAIL("EMAIL"),
+	EMAIL("EMAIL", NotificationRecipientType.FROM, NotificationRecipientType.TO, NotificationRecipientType.BCC,
+			NotificationRecipientType.CC, NotificationRecipientType.REPLY_TO),
 	IN_APP("IN_APP"),
 	MOBILE_PUSH("MOBILE_PUSH"),
 	WEB_PUSH("WEB_PUSH"),
-	SMS("SMS");
+	SMS("SMS", NotificationRecipientType.TO);
 
 	private final String literal;
 
-	NotificationChannelType(String literal) {
+	private final Set<NotificationRecipientType> allowedRecipientTypes;
+
+	NotificationChannelType(String literal, NotificationRecipientType... notificationRecipientTypes) {
 		this.literal = literal;
+		this.allowedRecipientTypes = notificationRecipientTypes == null ? Set.of() : Set.of(notificationRecipientTypes);
 	}
 
 	public static NotificationChannelType lookupLiteral(String literal) {
@@ -45,5 +55,9 @@ public enum NotificationChannelType implements EnumType {
 
 	public String getQueueName(String exchangeName) {
 		return exchangeName + "." + this.getLiteral().toLowerCase();
+	}
+
+	public boolean hasConnectionSubType(NotificationRecipientType recipientType) {
+		return this.allowedRecipientTypes.contains(recipientType);
 	}
 }

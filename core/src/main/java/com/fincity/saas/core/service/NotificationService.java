@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.enums.notification.NotificationChannelType;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationType;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -95,6 +96,26 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 									msg -> new GenericException(HttpStatus.BAD_REQUEST,
 											"Invalid notification template schema give: $"),
 									entity.getNotificationType());
+
+						if (NotificationChannelType.EMAIL.getLiteral().equals(channelEntry.getKey())
+								&& !channelEntry.getValue().isValidForEmail()) {
+							return this.messageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.BAD_REQUEST,
+											"Please provide delivery details for email"),
+									entity.getNotificationType());
+						}
+
+						Notification.DeliveryOptions deliveryOptions = channelEntry.getValue().getDeliveryOptions();
+
+						if (deliveryOptions != null && !deliveryOptions.isValid()) {
+							return this.messageResourceService.throwMessage(
+									msg -> new GenericException(HttpStatus.BAD_REQUEST,
+											"Invalid cron expression given: $"),
+									entity.getNotificationType());
+						}
+
+						if (deliveryOptions == null)
+							channelEntry.getValue().setDeliveryOptions(new Notification.DeliveryOptions());
 					}
 
 					return Mono.just(vEntity);
@@ -137,8 +158,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 				(notification,
 						typedNotification) -> Mono.justOrEmpty(typedNotification.getClientCode().equals(clientCode)
-								? typedNotification
-								: null)
+								? typedNotification : null)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.getNotification"));
 	}

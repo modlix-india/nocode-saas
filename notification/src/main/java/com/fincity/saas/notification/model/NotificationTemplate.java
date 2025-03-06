@@ -21,12 +21,6 @@ public class NotificationTemplate {
 	private Map<String, String> resources;
 	private String defaultLanguage;
 	private String languageExpression;
-
-	public boolean isValidSchema() {
-
-		if (this.variableSchema == null)
-			return true;
-
-		return !this.variableSchema.isJsonNull() && !this.variableSchema.isJsonObject();
-	}
+	private Map<String, String> recipientExpressions;
+	private DeliveryOptions deliveryOptions;
 }
