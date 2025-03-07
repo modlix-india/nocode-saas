@@ -32,6 +32,11 @@ public abstract class AbstractEmailService implements ChannelType {
 		this.msgService = messageResourceService;
 	}
 
+	@Override
+	public NotificationChannelType getChannelType() {
+		return NotificationChannelType.EMAIL;
+	}
+
 	protected <T> Mono<T> throwMailSendError(Object... params) {
 		return msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 				NotificationMessageResourceService.MAIL_SEND_ERROR, params);
@@ -53,6 +58,15 @@ public abstract class AbstractEmailService implements ChannelType {
 		return Mono.just(Boolean.TRUE);
 	}
 
+	@SuppressWarnings("unchecked")
+	protected Map<String, Object> getConnectionDetails(Map<String, Object> connection) {
+
+		if (connection == null || !connection.containsKey("connectionDetails"))
+			return Map.of();
+
+		return (Map<String, Object>) connection.getOrDefault("connectionDetails", Map.of());
+	}
+
 	protected String generateContentId(String fromAddress) {
 
 		if (fromAddress == null)
@@ -62,5 +76,4 @@ public abstract class AbstractEmailService implements ChannelType {
 
 		return System.currentTimeMillis() + "." + UniqueUtil.shortUUID() + "@" + domain;
 	}
-
 }

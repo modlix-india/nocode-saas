@@ -30,15 +30,13 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 
 	private final ConcurrentHashMap<String, SendGrid> sendGridClients = new ConcurrentHashMap<>();
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<Boolean> sendMail(EmailMessage emailMessage, Map<String, Object> connection) {
 
-		if (connection == null || !connection.containsKey("connectionDetails"))
-			return Mono.just(Boolean.FALSE);
+		Map<String, Object> connectionDetails = super.getConnectionDetails(connection);
 
-		Map<String, Object> connectionDetails = (Map<String, Object>) connection.getOrDefault("connectionDetails",
-				Map.of());
+		if (connectionDetails.isEmpty())
+			return Mono.just(Boolean.FALSE);
 
 		if (StringUtil.safeIsBlank(connectionDetails.get("apiKey")))
 			return this.throwMailSendError("SENDGRID api key is not found");
@@ -49,8 +47,7 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 
 				() -> this.hasValidConnection(connection),
 
-				validConnection -> this.callSendGrid(emailMessage, apiKey)
-
+				isValidConnection -> this.callSendGrid(emailMessage, apiKey)
 		).onErrorResume(ex -> {
 			logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
 			return this.throwMailSendError(ex.getMessage());

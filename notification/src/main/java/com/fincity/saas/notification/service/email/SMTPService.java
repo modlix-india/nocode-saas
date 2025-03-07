@@ -1,5 +1,6 @@
 package com.fincity.saas.notification.service.email;
 
+import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -35,11 +36,10 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 	@Override
 	public Mono<Boolean> sendMail(EmailMessage emailMessage, Map<String, Object> connection) {
 
-		if (connection == null || !connection.containsKey("connectionDetails"))
-			return Mono.just(Boolean.FALSE);
+		Map<String, Object> connectionDetails = super.getConnectionDetails(connection);
 
-		Map<String, Object> connectionDetails = (Map<String, Object>) connection.getOrDefault("connectionDetails",
-				Map.of());
+		if (connectionDetails.isEmpty())
+			return Mono.just(Boolean.FALSE);
 
 		Map<String, Object> connProps = (Map<String, Object>) connectionDetails.get("mailProps");
 
@@ -81,7 +81,11 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 			transport.sendMessage(message, message.getAllRecipients());
 
 			return Boolean.TRUE;
-		}).subscribeOn(Schedulers.boundedElastic());
+		}).subscribeOn(Schedulers.boundedElastic())
+				.onErrorResume(IOException.class, ex -> {
+					logger.error("Error while sending SMTP email: {}", ex.getMessage(), ex);
+					return this.throwMailSendError(ex.getMessage());
+				});
 	}
 
 	private MimeMessage createMimeMessage(Session session, EmailMessage emailMessage) throws MessagingException {
