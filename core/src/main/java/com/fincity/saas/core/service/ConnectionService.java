@@ -128,4 +128,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 					});
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.read"));
 	}
+
+	public Mono<Boolean> hasConnection(String name, String appCode, String clientCode, ConnectionType type) {
+		return this.read(name, appCode, clientCode, type).hasElement().switchIfEmpty(Mono.just(Boolean.FALSE));
+	}
 }
