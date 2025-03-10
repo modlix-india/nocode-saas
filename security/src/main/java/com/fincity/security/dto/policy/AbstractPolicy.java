@@ -27,11 +27,19 @@ public abstract class AbstractPolicy extends AbstractUpdatableDTO<ULong, ULong> 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private ULong appId;
 
-	private Short noFailedAttempts;
+	private Short noFailedAttempts = 3;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	private Long userLockTimeMin;
+	private Long userLockTime = 15L;
 
 	public abstract String generate();
+
+	public void initDefaults() {
+		if (this.noFailedAttempts == null)
+			this.noFailedAttempts = 3;
+
+		if (this.userLockTime == null)
+			this.userLockTime = 15L;
+	}
 
 }

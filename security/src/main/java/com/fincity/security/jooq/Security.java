@@ -18,14 +18,12 @@ import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
-import com.fincity.security.jooq.tables.SecurityClientManage;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
-import com.fincity.security.jooq.tables.SecurityCodeAccess;
 import com.fincity.security.jooq.tables.SecurityOrgStructure;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPackage;
@@ -136,11 +134,6 @@ public class Security extends SchemaImpl {
     public final SecurityClientHierarchy SECURITY_CLIENT_HIERARCHY = SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 
     /**
-     * The table <code>security.security_client_manage</code>.
-     */
-    public final SecurityClientManage SECURITY_CLIENT_MANAGE = SecurityClientManage.SECURITY_CLIENT_MANAGE;
-
-    /**
      * The table <code>security.security_client_otp_policy</code>.
      */
     public final SecurityClientOtpPolicy SECURITY_CLIENT_OTP_POLICY = SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY;
@@ -169,11 +162,6 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_client_url</code>.
      */
     public final SecurityClientUrl SECURITY_CLIENT_URL = SecurityClientUrl.SECURITY_CLIENT_URL;
-
-    /**
-     * The table <code>security.security_code_access</code>.
-     */
-    public final SecurityCodeAccess SECURITY_CODE_ACCESS = SecurityCodeAccess.SECURITY_CODE_ACCESS;
 
     /**
      * The table <code>security.security_org_structure</code>.
@@ -290,14 +278,12 @@ public class Security extends SchemaImpl {
             SecurityClient.SECURITY_CLIENT,
             SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY,
-            SecurityClientManage.SECURITY_CLIENT_MANAGE,
             SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY,
             SecurityClientPackage.SECURITY_CLIENT_PACKAGE,
             SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY,
             SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY,
             SecurityClientType.SECURITY_CLIENT_TYPE,
             SecurityClientUrl.SECURITY_CLIENT_URL,
-            SecurityCodeAccess.SECURITY_CODE_ACCESS,
             SecurityOrgStructure.SECURITY_ORG_STRUCTURE,
             SecurityOtp.SECURITY_OTP,
             SecurityPackage.SECURITY_PACKAGE,
