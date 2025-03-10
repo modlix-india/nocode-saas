@@ -1,4 +1,4 @@
-package com.fincity.saas.core.service;
+package com.fincity.saas.core.service.notification;
 
 import java.util.Map;
 
@@ -18,6 +18,8 @@ import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.core.document.Notification;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.repository.NotificationRepository;
+import com.fincity.saas.core.service.ConnectionService;
+import com.fincity.saas.core.service.CoreMessageResourceService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

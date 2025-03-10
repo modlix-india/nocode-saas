@@ -28,6 +28,8 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 
 	private static final String EMAIL_ENDPOINT = "mail/send";
 
+	private static final String API_KEY = "apiKey";
+
 	private final ConcurrentHashMap<String, SendGrid> sendGridClients = new ConcurrentHashMap<>();
 
 	@Override
@@ -38,10 +40,10 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 		if (connectionDetails.isEmpty())
 			return Mono.just(Boolean.FALSE);
 
-		if (StringUtil.safeIsBlank(connectionDetails.get("apiKey")))
+		if (StringUtil.safeIsBlank(connectionDetails.get(API_KEY)))
 			return this.throwMailSendError("SENDGRID api key is not found");
 
-		String apiKey = connectionDetails.get("apiKey").toString();
+		String apiKey = connectionDetails.get(API_KEY).toString();
 
 		return FlatMapUtil.flatMapMono(
 

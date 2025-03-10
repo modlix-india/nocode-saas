@@ -72,4 +72,6 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 	public static final String CANNOT_DELETE_TOKEN_WITH_CLIENT_CODE = "cannot_delete_token_with_client_code";
 
 	public static final String CONNECTION_NOT_AVAILABLE = "connection_not_available";
+
+	public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
 }
