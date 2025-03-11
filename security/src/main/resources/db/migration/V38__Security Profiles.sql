@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS `security_app_reg_user_designation`;
 DROP TABLE IF EXISTS `security_app_reg_profile`;
 DROP TABLE IF EXISTS `security_app_reg_designation`;
 DROP TABLE IF EXISTS `security_app_reg_department`;
+DROP TABLE IF EXISTS `security_profile_arrangement`;
 DROP TABLE IF EXISTS `security_v2_user_role`;
 DROP TABLE IF EXISTS `security_v2_role_permission`;
 DROP TABLE IF EXISTS `security_v2_role_role`;
@@ -32,8 +33,7 @@ CREATE TABLE `security_profile` (
   `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the profile',
   `APP_ID` bigint unsigned DEFAULT NULL,
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the profile',
-  `ARRANGEMENT` json DEFAULT NULL COMMENT 'Arrangement of the profile',
-  `PARENT_PROFILE_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent profile from which this profile is derived',
+  `ROOT_PROFILE_ID` bigint unsigned DEFAULT NULL COMMENT 'Profile ID to which the user is assigned',
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
@@ -45,7 +45,7 @@ CREATE TABLE `security_profile` (
   KEY `FK2_PROFILE_APP_ID` (`APP_ID`),
   CONSTRAINT `FK1_PROFILE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `FK2_PROFILE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `FK3_PROFILE_PARENT_PROFILE_ID` FOREIGN KEY (`PARENT_PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `FK3_PROFILE_ROOT_PROFILE_ID` FOREIGN KEY (`ROOT_PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) 
 ENGINE=InnoDB 
 DEFAULT CHARSET=utf8mb4
@@ -87,19 +87,24 @@ CREATE TABLE `security_v2_role` (
   CONSTRAINT `FK2_V2_ROLE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Security Profile Role Table
+-- Security Profile Arrangement Table
 
-CREATE TABLE `security_profile_role` (
+CREATE TABLE `security_profile_arrangement` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-  `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this role belongs to',
-  `ROLE_ID` bigint unsigned NOT NULL COMMENT 'Role ID for which this profile belongs to',
+  `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this arrangement belongs to',
+  `ROLE_ID` bigint unsigned DEFAULT NULL COMMENT 'Role ID for which this arrangement belongs to',
+  `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the arrangement',
+  `SHORT_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Short name of the arrangement',
+  `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the arrangement',
+  `ASSIGNABLE` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Whether the arrangement is assignable',
+  `PARENT_ARRANGEMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent arrangement for hierarchical structure',
+  `ORDER` int(11) NOT NULL DEFAULT '0' COMMENT 'Order of the arrangement',
 
   PRIMARY KEY (`ID`),
-  UNIQUE KEY `UK1_PROFILE_ROLE_PROFILE_ID_ROLE_ID` (`PROFILE_ID`,`ROLE_ID`),
-  KEY `FK1_PROFILE_ROLE_PROFILE_ID` (`PROFILE_ID`),
-  KEY `FK2_PROFILE_ROLE_ROLE_ID` (`ROLE_ID`),
-  CONSTRAINT `FK1_PROFILE_ROLE_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `FK2_PROFILE_ROLE_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `FK1_PROFILE_ARRANGEMENT_PROFILE_ID` (`PROFILE_ID`),
+  KEY `FK2_PROFILE_ARRANGEMENT_ROLE_ID` (`ROLE_ID`),
+  CONSTRAINT `FK1_PROFILE_ARRANGEMENT_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK2_PROFILE_ARRANGEMENT_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Security Profile User Table
