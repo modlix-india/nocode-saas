@@ -50,6 +50,16 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 		this.channelDetails = CloneUtil.cloneMapObject(notification.channelDetails);
 	}
 
+	public void updateChannelDetails(Map<String, NotificationTemplate> channelDetails) {
+
+		this.getChannelDetails().entrySet().stream()
+				.filter(entry -> channelDetails.containsKey(entry.getKey()))
+				.forEach(entry ->
+						channelDetails.put(entry.getKey(), channelDetails.get(entry.getKey()).setCode(entry.getValue().getCode())));
+
+		this.setChannelDetails(channelDetails);
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public Mono<Notification> applyOverride(Notification base) {
@@ -58,20 +68,20 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> DifferenceApplicator.apply(this.channelConnections, base.channelConnections),
+						() -> DifferenceApplicator.apply(this.channelConnections, base.channelConnections),
 
-				cc -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
+						cc -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
 
-				(cc, ch) -> {
-					this.channelConnections = (Map<String, String>) cc;
+						(cc, ch) -> {
+							this.channelConnections = (Map<String, String>) cc;
 
-					this.channelDetails = (Map<String, NotificationTemplate>) ch;
+							this.channelDetails = (Map<String, NotificationTemplate>) ch;
 
-					if (this.notificationType == null)
-						this.notificationType = base.notificationType;
+							if (this.notificationType == null)
+								this.notificationType = base.notificationType;
 
-					return Mono.just(this);
-				})
+							return Mono.just(this);
+						})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Notification.applyOverride"));
 	}
 
@@ -82,22 +92,22 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 			return Mono.just(this);
 
 		return FlatMapUtil.flatMapMonoWithNull(
-				() -> Mono.just(this),
+						() -> Mono.just(this),
 
-				obj -> DifferenceExtractor.extract(obj.channelConnections, base.channelConnections),
+						obj -> DifferenceExtractor.extract(obj.channelConnections, base.channelConnections),
 
-				(obj, cc) -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
+						(obj, cc) -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
 
-				(obj, cc, ch) -> {
-					obj.channelConnections = (Map<String, String>) cc;
+						(obj, cc, ch) -> {
+							obj.channelConnections = (Map<String, String>) cc;
 
-					obj.channelDetails = (Map<String, NotificationTemplate>) ch;
+							obj.channelDetails = (Map<String, NotificationTemplate>) ch;
 
-					if (obj.notificationType == null)
-						obj.notificationType = base.notificationType;
+							if (obj.notificationType == null)
+								obj.notificationType = base.notificationType;
 
-					return Mono.just(obj);
-				})
+							return Mono.just(obj);
+						})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Notification.makeOverride"));
 	}
 
@@ -128,6 +138,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 			this.deliveryOptions = template.deliveryOptions;
 		}
 
+		@JsonIgnore
 		public boolean isValidForEmail() {
 			if (this.recipientExpressions == null || this.recipientExpressions.isEmpty())
 				return false;
@@ -135,6 +146,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 			return this.recipientExpressions.containsKey(NotificationRecipientType.FROM.getLiteral()) &&
 					this.recipientExpressions.containsKey(NotificationRecipientType.TO.getLiteral());
 		}
+
 	}
 
 	@Data

@@ -52,7 +52,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
 					existing.setNotificationType(entity.getNotificationType());
-					existing.setChannelDetails(entity.getChannelDetails());
+					existing.updateChannelDetails(entity.getChannelDetails());
 
 					existing.setVersion(existing.getVersion() + 1);
 
