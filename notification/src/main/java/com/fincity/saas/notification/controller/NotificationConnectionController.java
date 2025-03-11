@@ -8,7 +8,8 @@ import com.fincity.saas.notification.service.NotificationConnectionService;
 
 @RestController
 @RequestMapping("api/notifications/connections")
-public class NotificationConnectionController implements INotificationCacheController<Connection, NotificationConnectionService> {
+public class NotificationConnectionController
+		implements INotificationCacheController<Connection, NotificationConnectionService> {
 
 	private final NotificationConnectionService notificationConnectionService;
 

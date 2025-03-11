@@ -54,19 +54,23 @@ public class NotificationChannel {
 			return this;
 		}
 
-		public <T extends NotificationMessage<T>> NotificationChannelBuilder addMessage(T message, RecipientInfo userInfo) {
+		public <T extends NotificationMessage<T>> NotificationChannelBuilder addMessage(T message,
+				RecipientInfo userInfo) {
 			if (preference == null || !this.notificationEnabled)
 				return this;
 
-			if (preference.hasPreference(NotificationChannelType.EMAIL) && message.getChannelType().equals(NotificationChannelType.EMAIL)
+			if (preference.hasPreference(NotificationChannelType.EMAIL)
+					&& message.getChannelType().equals(NotificationChannelType.EMAIL)
 					&& message instanceof EmailMessage emailMessage)
 				this.email = emailMessage.addRecipientInfo(userInfo);
 
-			if (preference.hasPreference(NotificationChannelType.IN_APP) && message.getChannelType().equals(NotificationChannelType.IN_APP)
+			if (preference.hasPreference(NotificationChannelType.IN_APP)
+					&& message.getChannelType().equals(NotificationChannelType.IN_APP)
 					&& message instanceof InAppMessage inAppMessage)
 				this.inApp = inAppMessage.addRecipientInfo(userInfo);
 
-			if (preference.hasPreference(NotificationChannelType.SMS) && message.getChannelType().equals(NotificationChannelType.SMS)
+			if (preference.hasPreference(NotificationChannelType.SMS)
+					&& message.getChannelType().equals(NotificationChannelType.SMS)
 					&& message instanceof SmsMessage smsMessage)
 				this.sms = smsMessage.addRecipientInfo(userInfo);
 
@@ -78,15 +82,18 @@ public class NotificationChannel {
 			if (preference == null || !this.notificationEnabled)
 				return this;
 
-			if (preference.hasPreference(NotificationChannelType.EMAIL) && message.getChannelType().equals(NotificationChannelType.EMAIL)
+			if (preference.hasPreference(NotificationChannelType.EMAIL)
+					&& message.getChannelType().equals(NotificationChannelType.EMAIL)
 					&& message instanceof EmailMessage emailMessage)
 				this.email = emailMessage;
 
-			if (preference.hasPreference(NotificationChannelType.IN_APP) && message.getChannelType().equals(NotificationChannelType.IN_APP)
+			if (preference.hasPreference(NotificationChannelType.IN_APP)
+					&& message.getChannelType().equals(NotificationChannelType.IN_APP)
 					&& message instanceof InAppMessage inAppMessage)
 				this.inApp = inAppMessage;
 
-			if (preference.hasPreference(NotificationChannelType.SMS) && message.getChannelType().equals(NotificationChannelType.SMS)
+			if (preference.hasPreference(NotificationChannelType.SMS)
+					&& message.getChannelType().equals(NotificationChannelType.SMS)
 					&& message instanceof SmsMessage smsMessage)
 				this.sms = smsMessage;
 

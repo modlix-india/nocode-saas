@@ -14,8 +14,7 @@ import com.fincity.saas.notification.service.AbstractCodeService;
 
 import reactor.core.publisher.Mono;
 
-public abstract class AbstractCodeController<R extends UpdatableRecord<R>, I extends Serializable,
-		D extends AbstractUpdatableDTO<I, I>, O extends AbstractCodeDao<R, I, D>, S extends AbstractCodeService<R, I, D, O>>
+public abstract class AbstractCodeController<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>, O extends AbstractCodeDao<R, I, D>, S extends AbstractCodeService<R, I, D, O>>
 		extends AbstractJOOQDataController<R, I, D, O, S> {
 
 	public static final String PATH_VARIABLE_ID = "code";

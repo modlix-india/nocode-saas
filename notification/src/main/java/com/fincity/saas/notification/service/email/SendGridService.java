@@ -50,11 +50,10 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 
 				() -> this.hasValidConnection(connection),
 
-				isValidConnection -> this.callSendGrid(emailMessage, apiKey)
-		).onErrorResume(ex -> {
-			logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
-			return this.throwMailSendError(ex.getMessage());
-		}).contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
+				isValidConnection -> this.callSendGrid(emailMessage, apiKey)).onErrorResume(ex -> {
+					logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
+					return this.throwMailSendError(ex.getMessage());
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
 
 	}
 
@@ -62,15 +61,15 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 
 		return Mono.fromCallable(() -> {
 
-					SendGrid sendGrid = sendGridClients.computeIfAbsent(apiKey, SendGrid::new);
-					Mail mail = this.buidMail(emailMessage);
-					Request request = new Request();
-					request.setMethod(Method.POST);
-					request.setEndpoint(EMAIL_ENDPOINT);
-					request.setBody(mail.build());
+			SendGrid sendGrid = sendGridClients.computeIfAbsent(apiKey, SendGrid::new);
+			Mail mail = this.buidMail(emailMessage);
+			Request request = new Request();
+			request.setMethod(Method.POST);
+			request.setEndpoint(EMAIL_ENDPOINT);
+			request.setBody(mail.build());
 
-					return sendGrid.api(request);
-				}).subscribeOn(Schedulers.boundedElastic())
+			return sendGrid.api(request);
+		}).subscribeOn(Schedulers.boundedElastic())
 				.map(response -> HttpStatus.valueOf(response.getStatusCode()).is2xxSuccessful())
 				.onErrorResume(IOException.class, ex -> {
 					logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);

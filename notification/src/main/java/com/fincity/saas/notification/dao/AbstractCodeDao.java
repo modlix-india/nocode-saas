@@ -23,7 +23,7 @@ public abstract class AbstractCodeDao<R extends UpdatableRecord<R>, I extends Se
 
 	public Mono<D> getByCode(String code) {
 		return Mono.from(
-				this.dslContext.selectFrom(this.table).where(codeField.eq(code))
-		).map(result -> result.into(this.pojoClass));
+				this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
+				.map(result -> result.into(this.pojoClass));
 	}
 }

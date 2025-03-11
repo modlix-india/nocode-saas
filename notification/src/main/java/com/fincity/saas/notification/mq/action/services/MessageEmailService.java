@@ -30,7 +30,8 @@ public class MessageEmailService extends AbstractMessageService implements IMess
 		if (!super.isValid(request))
 			return Mono.just(Boolean.FALSE);
 
-		return super.getConnection(request.getAppCode(), request.getClientCode(), request.getConnections().get(this.getChannelType()))
+		return super.getConnection(request.getAppCode(), request.getClientCode(),
+				request.getConnections().get(this.getChannelType()))
 				.flatMap(connection -> this.emailService.sendEmail(request.getChannels().getEmail(), connection));
 	}
 }

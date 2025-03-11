@@ -15,7 +15,8 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/notifications")
-public class NotificationController implements INotificationCacheController<Notification, NotificationProcessingService> {
+public class NotificationController
+		implements INotificationCacheController<Notification, NotificationProcessingService> {
 
 	private final NotificationProcessingService notificationProcessingService;
 

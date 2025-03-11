@@ -32,7 +32,7 @@ public class SendRequest implements Serializable {
 	private NotificationChannel channels;
 
 	public static SendRequest of(String clientCode, String appCode, BigInteger userId, String notificationType,
-	                             Map<NotificationChannelType, String> connections, NotificationChannel channels) {
+			Map<NotificationChannelType, String> connections, NotificationChannel channels) {
 		return new SendRequest()
 				.setCode(UniqueUtil.shortUUID())
 				.setClientCode(clientCode)

@@ -38,15 +38,13 @@ public class NotificationMessage<T extends NotificationMessage<T>> implements Ch
 	public Map<String, String> toMap() {
 		return Map.of(
 				"subject", this.getSubject(),
-				"body", this.getBody()
-		);
+				"body", this.getBody());
 	}
 
 	public Tuple2<String, String> toTuple() {
 		return Tuples.of(
 				this.getSubject() != null ? this.getSubject() : "",
-				this.getBody() != null ? this.getBody() : ""
-		);
+				this.getBody() != null ? this.getBody() : "");
 	}
 
 	public boolean isNull() {

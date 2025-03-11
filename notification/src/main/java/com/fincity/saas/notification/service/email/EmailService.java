@@ -25,7 +25,8 @@ public class EmailService {
 	private final Map<String, IEmailService> services = new HashMap<>();
 	private final NotificationMessageResourceService msgService;
 
-	public EmailService(SendGridService sendGridService, SMTPService smtpService, NotificationMessageResourceService msgService) {
+	public EmailService(SendGridService sendGridService, SMTPService smtpService,
+			NotificationMessageResourceService msgService) {
 		this.sendGridService = sendGridService;
 		this.smtpService = smtpService;
 		this.msgService = msgService;
@@ -41,19 +42,13 @@ public class EmailService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.getEmailProvider(connection.getConnectionSubType().name()),
-
-				provider -> Mono.justOrEmpty(this.services.get(provider))
+				() -> Mono.justOrEmpty(this.services.get(connection.getConnectionSubType().getProvider()))
 						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								NotificationMessageResourceService.CONNECTION_DETAILS_MISSING, provider)),
+								NotificationMessageResourceService.CONNECTION_DETAILS_MISSING,
+								connection.getConnectionSubType())),
 
-				(provider, service) -> service.sendMail(emailMessage, connection)
+				service -> service.sendMail(emailMessage, connection)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "EmailService.sendEmail"));
-	}
-
-	private Mono<String> getEmailProvider(String connectionSubType) {
-		String[] parts = connectionSubType.split("_");
-		return Mono.justOrEmpty(parts[parts.length - 1].toLowerCase());
 	}
 }

@@ -17,8 +17,9 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/notifications/preferences/users")
-public class UserPreferenceController extends AbstractCodeController<NotificationUserPreferencesRecord, ULong,
-		UserPreference, UserPreferenceDao, UserPreferenceService> implements INotificationCacheController<UserPreference, UserPreferenceService> {
+public class UserPreferenceController extends
+		AbstractCodeController<NotificationUserPreferencesRecord, ULong, UserPreference, UserPreferenceDao, UserPreferenceService>
+		implements INotificationCacheController<UserPreference, UserPreferenceService> {
 
 	@Override
 	public UserPreferenceService getService() {

@@ -32,7 +32,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 	private final NotificationProcessingService notificationProcessingService;
 
 	protected NotificationService(ConnectionService connectionService,
-	                              NotificationProcessingService notificationProcessingService) {
+			NotificationProcessingService notificationProcessingService) {
 		super(Notification.class);
 		this.connectionService = connectionService;
 		this.notificationProcessingService = notificationProcessingService;
@@ -140,12 +140,12 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 	public Mono<Notification> update(Notification entity) {
 		return FlatMapUtil.flatMapMono(
 
-						() -> this.validate(entity),
+				() -> this.validate(entity),
 
-						super::update,
+				super::update,
 
-						(validated, updated) -> this.notificationProcessingService.evictNotificationCache(updated)
-								.map(x -> updated))
+				(validated, updated) -> this.notificationProcessingService.evictNotificationCache(updated)
+						.map(x -> updated))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
 	}
 

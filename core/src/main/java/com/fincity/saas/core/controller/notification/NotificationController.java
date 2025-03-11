@@ -15,13 +15,14 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/core/notifications")
 public class NotificationController
-		extends AbstractOverridableDataController<Notification, NotificationRepository, NotificationService> {
+        extends AbstractOverridableDataController<Notification, NotificationRepository, NotificationService> {
 
-	@GetMapping("/internal")
-	public Mono<Notification> getNotification(@RequestParam String notificationName,
-	                                          @RequestParam String appCode,
-	                                          @RequestParam String clientCode) {
+    @GetMapping("/internal")
+    public Mono<Notification> getNotification(
+            @RequestParam String notificationName,
+            @RequestParam String appCode,
+            @RequestParam String clientCode) {
 
-		return this.service.getNotification(notificationName, appCode, clientCode);
-	}
+        return this.service.getNotification(notificationName, appCode, clientCode);
+    }
 }

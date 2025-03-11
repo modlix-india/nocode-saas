@@ -15,5 +15,10 @@ public enum ConnectionSubType {
 	NOTIFICATION_IN_APP,
 	NOTIFICATION_MOBILE_PUSH,
 	NOTIFICATION_WEB_PUSH,
-	NOTIFICATION_SMS
+	NOTIFICATION_SMS;
+
+	public String getProvider() {
+		String[] parts = this.name().split("_");
+		return parts[parts.length - 1].toLowerCase();
+	}
 }

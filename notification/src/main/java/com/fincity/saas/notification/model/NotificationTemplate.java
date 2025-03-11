@@ -1,5 +1,7 @@
 package com.fincity.saas.notification.model;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Map;
 
 import lombok.AllArgsConstructor;
@@ -11,7 +13,10 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class NotificationTemplate {
+public class NotificationTemplate implements Serializable {
+
+	@Serial
+	private static final long serialVersionUID = 5521219668534653174L;
 
 	private String code;
 	private Map<String, Map<String, String>> templateParts;

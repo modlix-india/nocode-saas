@@ -22,7 +22,7 @@ public class UserPreferenceDao extends AbstractCodeDao<NotificationUserPreferenc
 		return Mono.from(
 				this.dslContext.selectFrom(this.table)
 						.where(NOTIFICATION_USER_PREFERENCES.APP_ID.eq(appId))
-						.and(NOTIFICATION_USER_PREFERENCES.USER_ID.eq(userId))
-		).map(result -> result.into(this.pojoClass));
+						.and(NOTIFICATION_USER_PREFERENCES.USER_ID.eq(userId)))
+				.map(result -> result.into(this.pojoClass));
 	}
 }
