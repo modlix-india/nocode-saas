@@ -30,13 +30,16 @@ import reactor.util.function.Tuples;
 
 @Service
 public class UserPreferenceService
-		extends AbstractCodeService<NotificationUserPreferencesRecord, ULong, UserPreference, UserPreferenceDao> {
+		extends AbstractCodeService<NotificationUserPreferencesRecord, ULong, UserPreference, UserPreferenceDao>
+		implements INotificationCacheService<UserPreference> {
 
 	private static final String USER_PREFERENCE = "user_preference";
 
 	private static final String USER_PREFERENCE_CACHE = "userPreference";
 
 	private final NotificationMessageResourceService messageResourceService;
+
+	@Getter
 	private final CacheService cacheService;
 
 	@Getter
@@ -57,12 +60,9 @@ public class UserPreferenceService
 		return USER_PREFERENCE;
 	}
 
-	private String getUserPreferenceCacheName() {
+	@Override
+	public String getCacheName() {
 		return USER_PREFERENCE_CACHE;
-	}
-
-	private String getCacheKeys(ULong appId, ULong userId) {
-		return appId + ":" + userId;
 	}
 
 	@Override
@@ -83,8 +83,8 @@ public class UserPreferenceService
 
 				(ca, entity, canUpdate) -> super.update(key, fields),
 
-				(ca, entity, canUpdate, updated) -> cacheService.evict(this.getUserPreferenceCacheName(),
-						this.getCacheKeys(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
+				(ca, entity, canUpdate, updated) -> cacheService.evict(this.getCacheName(),
+						this.getCacheKey(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -103,8 +103,8 @@ public class UserPreferenceService
 
 				(ca, uEntity, canUpdate) -> super.update(uEntity),
 
-				(ca, uEntity, canUpdate, updated) -> cacheService.evict(this.getUserPreferenceCacheName(),
-						this.getCacheKeys(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
+				(ca, uEntity, canUpdate, updated) -> cacheService.evict(this.getCacheName(),
+						this.getCacheKey(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -150,8 +150,8 @@ public class UserPreferenceService
 
 				(ca, uEntity, canCreate) -> super.create(uEntity),
 
-				(ca, uEntity, canCreate, created) -> cacheService.evict(this.getUserPreferenceCacheName(),
-						this.getCacheKeys(created.getAppId(), created.getUserId())).map(evicted -> created))
+				(ca, uEntity, canCreate, created) -> cacheService.evict(this.getCacheName(),
+						this.getCacheKey(created.getAppId(), created.getUserId())).map(evicted -> created))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_CREATE, getUserPreferenceName()));
@@ -179,8 +179,8 @@ public class UserPreferenceService
 
 				(ca, entity, canDelete) -> super.delete(id),
 
-				(ca, entity, canUpdate, deleted) -> cacheService.evict(this.getUserPreferenceCacheName(),
-						this.getCacheKeys(entity.getAppId(), entity.getUserId())).map(evicted -> deleted),
+				(ca, entity, canUpdate, deleted) -> cacheService.evict(this.getCacheName(),
+						this.getCacheKey(entity.getAppId(), entity.getUserId())).map(evicted -> deleted),
 
 				(ca, entity, canUpdate, deleted, evicted) -> Mono.just(deleted))
 				.switchIfEmpty(messageResourceService.throwMessage(
@@ -263,8 +263,7 @@ public class UserPreferenceService
 	}
 
 	private Mono<UserPreference> getUserPreferenceInternal(ULong appId, ULong userId) {
-		return this.cacheService.cacheEmptyValueOrGet(this.getUserPreferenceCacheName(),
-				() -> this.dao.getUserPreference(appId, userId), this.getCacheKeys(appId, userId));
+		return this.cacheValue(() -> this.dao.getUserPreference(appId, userId), appId, userId);
 	}
 
 	private Mono<Tuple2<ULong, ULong>> getAppUserId(String appCode, ULong userId) {

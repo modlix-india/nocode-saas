@@ -16,10 +16,9 @@ import reactor.core.publisher.Mono;
 
 @Getter
 @Service
-public class NotificationConnectionService {
+public class NotificationConnectionService implements INotificationCacheService<Map<String, Object>> {
 
 	private static final String NOTIFICATION_CONN_CACHE = "notificationConn";
-
 	private static final String NOTIFICATION_CONNECTION_TYPE = "NOTIFICATION";
 
 	private IFeignCoreService coreService;
@@ -36,11 +35,8 @@ public class NotificationConnectionService {
 		this.cacheService = cacheService;
 	}
 
-	private String getCacheKeys(String... entityNames) {
-		return String.join(":", entityNames);
-	}
-
-	private String getNotificationConnCache() {
+	@Override
+	public String getCacheName() {
 		return NOTIFICATION_CONN_CACHE;
 	}
 
@@ -62,9 +58,9 @@ public class NotificationConnectionService {
 	}
 
 	public Mono<Map<String, Object>> getNotificationConn(String appCode, String clientCode, String connectionName) {
-		return cacheService.cacheValueOrGet(this.getNotificationConnCache(),
+		return this.cacheValue(
 				() -> coreService.getConnection(connectionName, appCode, clientCode, NOTIFICATION_CONNECTION_TYPE),
-				this.getCacheKeys(appCode, clientCode, connectionName));
+				appCode, clientCode, connectionName);
 	}
 
 }

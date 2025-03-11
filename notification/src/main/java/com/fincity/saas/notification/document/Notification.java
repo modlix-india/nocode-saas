@@ -1,7 +1,6 @@
 package com.fincity.saas.notification.document;
 
 import java.io.Serial;
-import java.util.EnumMap;
 import java.util.Map;
 
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
@@ -46,16 +45,10 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	}
 
 	public Map<NotificationChannelType, NotificationTemplate> getChannelDetailMap() {
-		Map<NotificationChannelType, NotificationTemplate> resultMap = new EnumMap<>(NotificationChannelType.class);
-		this.channelDetails.forEach((key, template) ->
-				resultMap.put(NotificationChannelType.lookupLiteral(key), template));
-		return resultMap;
+		return NotificationChannelType.getChannelTypeMap(this.channelDetails);
 	}
 
 	public Map<NotificationChannelType, String> getChannelConnectionMap() {
-		Map<NotificationChannelType, String> resultMap = new EnumMap<>(NotificationChannelType.class);
-		this.channelConnections.forEach((key, connectionName) ->
-				resultMap.put(NotificationChannelType.lookupLiteral(key), connectionName));
-		return resultMap;
+		return NotificationChannelType.getChannelTypeMap(this.channelConnections);
 	}
 }

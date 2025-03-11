@@ -41,7 +41,7 @@ import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
-public class NotificationProcessingService {
+public class NotificationProcessingService implements INotificationCacheService<Notification> {
 
 	private static final Logger logger = LoggerFactory.getLogger(NotificationProcessingService.class);
 
@@ -54,16 +54,15 @@ public class NotificationProcessingService {
 
 	private final UserPreferenceService userPreferenceService;
 	private final NotificationConnectionService connectionService;
-
 	private final NotificationTemplateProcessor notificationTemplateProcessor;
-
 	private final NotificationMessageProducer notificationProducer;
 
 	@Getter
 	private CacheService cacheService;
 
 	public NotificationProcessingService(IFeignCoreService coreService,
-			NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
+			NotificationMessageResourceService messageResourceService,
+			UserPreferenceService userPreferenceService,
 			NotificationConnectionService connectionService,
 			NotificationTemplateProcessor notificationTemplateProcessor,
 			NotificationMessageProducer notificationProducer) {
@@ -80,12 +79,17 @@ public class NotificationProcessingService {
 		this.cacheService = cacheService;
 	}
 
-	private String getCacheKeys(String... entityNames) {
-		return String.join(":", entityNames);
+	@Override
+	public String getCacheName() {
+		return NOTIFICATION_INFO_CACHE;
 	}
 
-	private String getNotificationInfoCache() {
-		return NOTIFICATION_INFO_CACHE;
+	@Override
+	public Mono<Boolean> evictChannelEntities(Map<String, String> templates) {
+
+		Map<NotificationChannelType, String> resultMap = NotificationChannelType.getChannelTypeMap(templates);
+
+		return notificationTemplateProcessor.evictTemplateCache(resultMap);
 	}
 
 	public Mono<Boolean> processAndSendNotification(NotificationRequest notificationRequest) {
@@ -112,7 +116,7 @@ public class NotificationProcessingService {
 
 		return this.processNotificationInternal(notificationRequest.getAppCode(), notificationRequest.getClientCode(),
 				notificationRequest.getUserId(), notificationRequest.getNotificationName(),
-				notificationRequest.getObjectMap());
+				notificationRequest.getChannelObjectMap());
 	}
 
 	private Mono<SendRequest> processNotificationInternal(String appCode, String clientCode, BigInteger userId,
@@ -176,9 +180,8 @@ public class NotificationProcessingService {
 	}
 
 	private Mono<Notification> getNotificationInfoInternal(String appCode, String clientCode, String notificationName) {
-		return cacheService.cacheValueOrGet(this.getNotificationInfoCache(),
-				() -> coreService.getNotificationInfo(notificationName, appCode, clientCode),
-				this.getCacheKeys(appCode, clientCode, notificationName));
+		return this.cacheValue(() -> coreService.getNotificationInfo(notificationName, appCode, clientCode),
+				appCode, clientCode, notificationName);
 	}
 
 	private Mono<Map<NotificationChannelType, NotificationTemplate>> applyUserPreferences(UserPreference userPreference,

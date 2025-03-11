@@ -14,8 +14,10 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.core.document.Notification;
 import com.fincity.saas.core.feign.IFeignNotificationService;
-import com.fincity.saas.core.model.NotificationRequest;
+import com.fincity.saas.core.model.notification.NotificationCacheRequest;
+import com.fincity.saas.core.model.notification.NotificationRequest;
 import com.fincity.saas.core.service.CoreMessageResourceService;
 
 import reactor.core.publisher.Mono;
@@ -25,11 +27,12 @@ import reactor.util.context.Context;
 public class NotificationProcessingService {
 
 	private final IFeignNotificationService notificationService;
-
 	private final IFeignSecurityService securityService;
+
 	private CoreMessageResourceService coreMsgService;
 
-	public NotificationProcessingService(IFeignNotificationService notificationService, IFeignSecurityService securityService) {
+	public NotificationProcessingService(IFeignNotificationService notificationService,
+			IFeignSecurityService securityService) {
 		this.notificationService = notificationService;
 		this.securityService = securityService;
 	}
@@ -39,7 +42,8 @@ public class NotificationProcessingService {
 		this.coreMsgService = coreMsgService;
 	}
 
-	public Mono<Boolean> processAndSendNotification(String appCode, String clientCode, BigInteger userId, String notificationName, Map<String, Object> objectMap) {
+	public Mono<Boolean> processAndSendNotification(String appCode, String clientCode, BigInteger userId,
+			String notificationName, Map<String, Object> objectMap) {
 
 		return FlatMapUtil.flatMapMono(
 
@@ -66,7 +70,29 @@ public class NotificationProcessingService {
 								.setClientCode(actup.getT2())
 								.setUserId(userId)
 								.setNotificationName(notificationName)
-								.setObjectMap(objectMap))
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processAndSendNotification"));
+								.setChannelObjectMap(objectMap)))
+				.contextWrite(
+						Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processAndSendNotification"));
+	}
+
+	public Mono<Boolean> evictConnectionCache(String appCode, String clientCode, String connectionName) {
+		return notificationService.evictNotificationConnectionCache(new NotificationCacheRequest()
+				.setAppCode(appCode).setClientCode(clientCode).setEntityName(connectionName));
+	}
+
+	public Mono<Boolean> evictNotificationCache(Notification notification) {
+
+		NotificationCacheRequest notificationCacheRequest = new NotificationCacheRequest()
+				.setAppCode(notification.getAppCode()).setClientCode(notification.getClientCode())
+				.setEntityName(notification.getName());
+
+		return notificationService.evictNotificationCache(notificationCacheRequest);
+	}
+
+	public Mono<Boolean> evictNotificationTemplateCache(String appCode, String clientCode, String notificationName,
+			Map<String, String> channelEntities) {
+		return notificationService.evictNotificationCache(new NotificationCacheRequest()
+				.setAppCode(appCode).setClientCode(clientCode).setEntityName(notificationName)
+				.setChannelEntities(channelEntities));
 	}
 }

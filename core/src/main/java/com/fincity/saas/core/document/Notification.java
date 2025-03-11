@@ -17,7 +17,6 @@ import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
 import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.google.gson.JsonObject;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -59,20 +58,20 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
 		return FlatMapUtil.flatMapMonoWithNull(
 
-						() -> DifferenceApplicator.apply(this.channelConnections, base.channelConnections),
+				() -> DifferenceApplicator.apply(this.channelConnections, base.channelConnections),
 
-						cc -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
+				cc -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
 
-						(cc, ch) -> {
-							this.channelConnections = (Map<String, String>) cc;
+				(cc, ch) -> {
+					this.channelConnections = (Map<String, String>) cc;
 
-							this.channelDetails = (Map<String, NotificationTemplate>) ch;
+					this.channelDetails = (Map<String, NotificationTemplate>) ch;
 
-							if (this.notificationType == null)
-								this.notificationType = base.notificationType;
+					if (this.notificationType == null)
+						this.notificationType = base.notificationType;
 
-							return Mono.just(this);
-						})
+					return Mono.just(this);
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Notification.applyOverride"));
 	}
 
@@ -83,22 +82,22 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 			return Mono.just(this);
 
 		return FlatMapUtil.flatMapMonoWithNull(
-						() -> Mono.just(this),
+				() -> Mono.just(this),
 
-						obj -> DifferenceExtractor.extract(obj.channelConnections, base.channelConnections),
+				obj -> DifferenceExtractor.extract(obj.channelConnections, base.channelConnections),
 
-						(obj, cc) -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
+				(obj, cc) -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
 
-						(obj, cc, ch) -> {
-							obj.channelConnections = (Map<String, String>) cc;
+				(obj, cc, ch) -> {
+					obj.channelConnections = (Map<String, String>) cc;
 
-							obj.channelDetails = (Map<String, NotificationTemplate>) ch;
+					obj.channelDetails = (Map<String, NotificationTemplate>) ch;
 
-							if (obj.notificationType == null)
-								obj.notificationType = base.notificationType;
+					if (obj.notificationType == null)
+						obj.notificationType = base.notificationType;
 
-							return Mono.just(obj);
-						})
+					return Mono.just(obj);
+				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "Notification.makeOverride"));
 	}
 
@@ -111,7 +110,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 		private String code = UniqueUtil.shortUUID();
 
 		private Map<String, Map<String, String>> templateParts;
-		private JsonObject variableSchema; // NOSONAR
+		private Map<String, Object> variableSchema; // NOSONAR
 		private Map<String, String> resources;
 		private String defaultLanguage;
 		private String languageExpression;
@@ -121,20 +120,12 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 		public NotificationTemplate(NotificationTemplate template) {
 			this.code = template.code;
 			this.templateParts = CloneUtil.cloneMapObject(template.templateParts);
-			this.variableSchema = template.variableSchema.deepCopy();
+			this.variableSchema = CloneUtil.cloneMapObject(template.variableSchema);
 			this.resources = CloneUtil.cloneMapObject(template.resources);
 			this.defaultLanguage = template.defaultLanguage;
 			this.languageExpression = template.languageExpression;
 			this.recipientExpressions = CloneUtil.cloneMapObject(template.recipientExpressions);
 			this.deliveryOptions = template.deliveryOptions;
-		}
-
-		public boolean isValidSchema() {
-
-			if (this.variableSchema == null)
-				return true;
-
-			return !this.variableSchema.isJsonNull() && !this.variableSchema.isJsonObject();
 		}
 
 		public boolean isValidForEmail() {
@@ -162,8 +153,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 		}
 
 		public boolean isValid() {
-			return CronExpression.isValidExpression(this.cronStatement);
+			return this.instant ? Boolean.TRUE : CronExpression.isValidExpression(this.cronStatement);
 		}
-
 	}
 }

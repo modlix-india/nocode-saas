@@ -53,8 +53,7 @@ public class SendNotification extends AbstractReactiveFunction {
 
 				Parameter.ofEntry(NOTIFICATION_NAME, Schema.ofString(NOTIFICATION_NAME)),
 
-				Parameter.ofEntry(OBJECT_MAP, Schema.ofObject(OBJECT_MAP).setDefaultValue(new JsonObject()))
-		));
+				Parameter.ofEntry(OBJECT_MAP, Schema.ofObject(OBJECT_MAP).setDefaultValue(new JsonObject()))));
 
 		return new FunctionSignature().setNamespace(NAMESPACE).setName(FUNCTION_NAME).setParameters(parameters)
 				.setEvents(Map.of(event.getName(), event));
@@ -75,11 +74,11 @@ public class SendNotification extends AbstractReactiveFunction {
 				return Mono.just(new FunctionOutput(List.of(EventResult.outputOf(
 						Map.of(EVENT_DATA, new JsonPrimitive(Boolean.FALSE))))));
 
-			return notificationService.processAndSendNotification(appCode, clientCode, userId, notificationName, objectMap)
+			return notificationService
+					.processAndSendNotification(appCode, clientCode, userId, notificationName, objectMap)
 					.switchIfEmpty(Mono.just(Boolean.FALSE))
 					.map(e -> new FunctionOutput(List.of(EventResult.outputOf(
-							Map.of(EVENT_DATA, new JsonPrimitive(e)))))
-					);
+							Map.of(EVENT_DATA, new JsonPrimitive(e))))));
 		});
 	}
 }

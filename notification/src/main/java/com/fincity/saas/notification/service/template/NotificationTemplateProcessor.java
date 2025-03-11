@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -129,7 +130,14 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 						: lang);
 	}
 
-	public List<String> getAllTemplateName(String templateCode, NotificationChannelType channelType) {
+	public Mono<Boolean> evictTemplateCache(Map<NotificationChannelType, String> templates) {
+		return Flux.fromIterable(templates.entrySet())
+				.flatMap(entry -> Flux.fromIterable(this.getAllTemplateName(entry.getKey(), entry.getValue())))
+				.collect(Collectors.toSet())
+				.flatMap(super::evictTemplate);
+	}
+
+	private List<String> getAllTemplateName(NotificationChannelType channelType, String templateCode) {
 		List<String> names = new ArrayList<>();
 		channelType.getAllowedRecipientTypes()
 				.forEach(recipientType -> names.add(this.getRecipientName(templateCode,

@@ -1,6 +1,9 @@
 package com.fincity.saas.notification.enums;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jooq.EnumType;
 
@@ -43,6 +46,22 @@ public enum NotificationChannelType implements EnumType {
 		return NotificationChannelType.valueOf(connectionSubType.split("_")[0].toUpperCase());
 	}
 
+	public static <T> Map<NotificationChannelType, T> getChannelTypeMap(Map<String, T> channelMap) {
+
+		if (channelMap == null || channelMap.isEmpty())
+			return new EnumMap<>(NotificationChannelType.class);
+
+		return channelMap.entrySet()
+				.stream()
+				.collect(Collectors.toMap(e ->
+						NotificationChannelType.lookupLiteral(e.getKey()),
+						Map.Entry::getValue,
+						(existing, replacement) -> replacement,
+						() -> new EnumMap<>(NotificationChannelType.class)
+				));
+
+	}
+
 	@Override
 	public String getLiteral() {
 		return literal;
@@ -57,7 +76,7 @@ public enum NotificationChannelType implements EnumType {
 		return exchangeName + "." + this.getLiteral().toLowerCase();
 	}
 
-	public boolean hasConnectionSubType(NotificationRecipientType recipientType) {
+	public boolean hasRecipientType(NotificationRecipientType recipientType) {
 		return this.allowedRecipientTypes.contains(recipientType);
 	}
 }

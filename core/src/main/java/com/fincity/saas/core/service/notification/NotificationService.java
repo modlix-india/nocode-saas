@@ -29,10 +29,13 @@ import reactor.util.context.Context;
 public class NotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
 
 	private final ConnectionService connectionService;
+	private final NotificationProcessingService notificationProcessingService;
 
-	protected NotificationService(ConnectionService connectionService) {
+	protected NotificationService(ConnectionService connectionService,
+			NotificationProcessingService notificationProcessingService) {
 		super(Notification.class);
 		this.connectionService = connectionService;
+		this.notificationProcessingService = notificationProcessingService;
 	}
 
 	@Override
@@ -93,11 +96,6 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 					for (Map.Entry<String, Notification.NotificationTemplate> channelEntry : vEntity.getChannelDetails()
 							.entrySet()) {
-						if (!channelEntry.getValue().isValidSchema())
-							return this.messageResourceService.throwMessage(
-									msg -> new GenericException(HttpStatus.BAD_REQUEST,
-											"Invalid notification template schema give: $"),
-									entity.getNotificationType());
 
 						if (NotificationChannelType.EMAIL.getLiteral().equals(channelEntry.getKey())
 								&& !channelEntry.getValue().isValidForEmail()) {
@@ -144,7 +142,11 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 				() -> this.validate(entity),
 
-				super::update).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
+				super::update,
+
+				(validated, updated) -> this.notificationProcessingService.evictNotificationCache(updated)
+						.map(x -> updated))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
 	}
 
 	public Mono<Notification> getNotification(String name, String appCode, String clientCode,
@@ -156,11 +158,13 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
 				notification -> Mono
 						.justOrEmpty(notification.getNotificationType().equals(notificationType.getLiteral())
-								? notification : null),
+								? notification
+								: null),
 
 				(notification,
 						typedNotification) -> Mono.justOrEmpty(typedNotification.getClientCode().equals(clientCode)
-								? typedNotification : null)
+								? typedNotification
+								: null)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.getNotification"));
 	}
