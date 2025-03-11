@@ -15,6 +15,8 @@ import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyP
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegFileAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration.SecurityAppRegIntegrationPath;
+import com.fincity.security.jooq.tables.SecurityAppRegProfile.SecurityAppRegProfilePath;
+import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
@@ -362,6 +364,32 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityAppRegFileAccess = new SecurityAppRegFileAccessPath(this, null, Keys.FK2_APP_REG_FILE_ACC_APP_ID.getInverseKey());
 
         return _securityAppRegFileAccess;
+    }
+
+    private transient SecurityAppRegProfilePath _securityAppRegProfile;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_reg_profile</code> table
+     */
+    public SecurityAppRegProfilePath securityAppRegProfile() {
+        if (_securityAppRegProfile == null)
+            _securityAppRegProfile = new SecurityAppRegProfilePath(this, null, Keys.FK2_APP_REG_PROFILE_APP_ID.getInverseKey());
+
+        return _securityAppRegProfile;
+    }
+
+    private transient SecurityAppRegUserProfilePath _securityAppRegUserProfile;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_reg_user_profile</code> table
+     */
+    public SecurityAppRegUserProfilePath securityAppRegUserProfile() {
+        if (_securityAppRegUserProfile == null)
+            _securityAppRegUserProfile = new SecurityAppRegUserProfilePath(this, null, Keys.FK2_APP_REG_USER_PROFILE_APP_ID.getInverseKey());
+
+        return _securityAppRegUserProfile;
     }
 
     private transient SecurityClientOtpPolicyPath _securityClientOtpPolicy;

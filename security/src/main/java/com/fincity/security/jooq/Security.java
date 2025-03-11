@@ -10,9 +10,14 @@ import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegDepartment;
+import com.fincity.security.jooq.tables.SecurityAppRegDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
+import com.fincity.security.jooq.tables.SecurityAppRegProfile;
+import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
+import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
@@ -23,12 +28,13 @@ import com.fincity.security.jooq.tables.SecurityClientProfile;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
+import com.fincity.security.jooq.tables.SecurityDesignation;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityProfile;
-import com.fincity.security.jooq.tables.SecurityProfileRole;
+import com.fincity.security.jooq.tables.SecurityProfileArrangement;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
@@ -94,6 +100,16 @@ public class Security extends SchemaImpl {
     public final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
 
     /**
+     * The table <code>security.security_app_reg_department</code>.
+     */
+    public final SecurityAppRegDepartment SECURITY_APP_REG_DEPARTMENT = SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT;
+
+    /**
+     * The table <code>security.security_app_reg_designation</code>.
+     */
+    public final SecurityAppRegDesignation SECURITY_APP_REG_DESIGNATION = SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION;
+
+    /**
      * The table <code>security.security_app_reg_file_access</code>.
      */
     public final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
@@ -107,6 +123,21 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_reg_integration_tokens</code>.
      */
     public final SecurityAppRegIntegrationTokens SECURITY_APP_REG_INTEGRATION_TOKENS = SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS;
+
+    /**
+     * The table <code>security.security_app_reg_profile</code>.
+     */
+    public final SecurityAppRegProfile SECURITY_APP_REG_PROFILE = SecurityAppRegProfile.SECURITY_APP_REG_PROFILE;
+
+    /**
+     * The table <code>security.security_app_reg_user_designation</code>.
+     */
+    public final SecurityAppRegUserDesignation SECURITY_APP_REG_USER_DESIGNATION = SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION;
+
+    /**
+     * The table <code>security.security_app_reg_user_profile</code>.
+     */
+    public final SecurityAppRegUserProfile SECURITY_APP_REG_USER_PROFILE = SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE;
 
     /**
      * The table <code>security.security_client</code>.
@@ -159,6 +190,11 @@ public class Security extends SchemaImpl {
     public final SecurityDepartment SECURITY_DEPARTMENT = SecurityDepartment.SECURITY_DEPARTMENT;
 
     /**
+     * The table <code>security.security_designation</code>.
+     */
+    public final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
+
+    /**
      * The table <code>security.security_otp</code>.
      */
     public final SecurityOtp SECURITY_OTP = SecurityOtp.SECURITY_OTP;
@@ -184,9 +220,9 @@ public class Security extends SchemaImpl {
     public final SecurityProfile SECURITY_PROFILE = SecurityProfile.SECURITY_PROFILE;
 
     /**
-     * The table <code>security.security_profile_role</code>.
+     * The table <code>security.security_profile_arrangement</code>.
      */
-    public final SecurityProfileRole SECURITY_PROFILE_ROLE = SecurityProfileRole.SECURITY_PROFILE_ROLE;
+    public final SecurityProfileArrangement SECURITY_PROFILE_ARRANGEMENT = SecurityProfileArrangement.SECURITY_PROFILE_ARRANGEMENT;
 
     /**
      * The table <code>security.security_profile_user</code>.
@@ -270,9 +306,14 @@ public class Security extends SchemaImpl {
             SecurityAppDependency.SECURITY_APP_DEPENDENCY,
             SecurityAppProperty.SECURITY_APP_PROPERTY,
             SecurityAppRegAccess.SECURITY_APP_REG_ACCESS,
+            SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT,
+            SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION,
             SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS,
             SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION,
             SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS,
+            SecurityAppRegProfile.SECURITY_APP_REG_PROFILE,
+            SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION,
+            SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY,
@@ -283,12 +324,13 @@ public class Security extends SchemaImpl {
             SecurityClientType.SECURITY_CLIENT_TYPE,
             SecurityClientUrl.SECURITY_CLIENT_URL,
             SecurityDepartment.SECURITY_DEPARTMENT,
+            SecurityDesignation.SECURITY_DESIGNATION,
             SecurityOtp.SECURITY_OTP,
             SecurityPastPasswords.SECURITY_PAST_PASSWORDS,
             SecurityPastPins.SECURITY_PAST_PINS,
             SecurityPermission.SECURITY_PERMISSION,
             SecurityProfile.SECURITY_PROFILE,
-            SecurityProfileRole.SECURITY_PROFILE_ROLE,
+            SecurityProfileArrangement.SECURITY_PROFILE_ARRANGEMENT,
             SecurityProfileUser.SECURITY_PROFILE_USER,
             SecuritySoxLog.SECURITY_SOX_LOG,
             SecuritySslCertificate.SECURITY_SSL_CERTIFICATE,
