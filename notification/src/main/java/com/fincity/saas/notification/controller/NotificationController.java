@@ -28,19 +28,19 @@ public class NotificationController implements INotificationCacheController<Noti
 		return notificationProcessingService;
 	}
 
+	@PostMapping()
+	public Mono<ResponseEntity<Boolean>> sendNotification(@RequestBody NotificationRequest notification) {
+		return this.notificationProcessingService.processAndSendNotification(notification)
+				.map(ResponseEntity::ok);
+	}
+
 	@PostMapping("/process")
 	public Mono<ResponseEntity<SendRequest>> processNotification(@RequestBody NotificationRequest notification) {
 		return this.notificationProcessingService.processNotification(notification).map(ResponseEntity::ok);
 	}
 
-	@PostMapping("/sent")
+	@PostMapping("/send")
 	public Mono<ResponseEntity<Boolean>> sendNotification(@RequestBody SendRequest sendRequest) {
 		return this.notificationProcessingService.sendNotification(sendRequest).map(ResponseEntity::ok);
-	}
-
-	@PostMapping("/sent")
-	public Mono<ResponseEntity<Boolean>> sendNotification(@RequestBody NotificationRequest notification) {
-		return this.notificationProcessingService.processAndSendNotification(notification)
-				.map(ResponseEntity::ok);
 	}
 }

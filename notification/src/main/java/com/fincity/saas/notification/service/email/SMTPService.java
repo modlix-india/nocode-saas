@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.model.message.EmailMessage;
 
 import jakarta.mail.Address;
@@ -34,9 +35,9 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Mono<Boolean> sendMail(EmailMessage emailMessage, Map<String, Object> connection) {
+	public Mono<Boolean> sendMail(EmailMessage emailMessage, Connection connection) {
 
-		Map<String, Object> connectionDetails = super.getConnectionDetails(connection);
+		Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
 		if (connectionDetails.isEmpty())
 			return Mono.just(Boolean.FALSE);
@@ -54,9 +55,9 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.hasValidConnection(connection),
+						() -> this.hasValidConnection(connection),
 
-				isValidConnection -> this.sendMailWithSession(emailMessage, connProps, username, password))
+						isValidConnection -> this.sendMailWithSession(emailMessage, connProps, username, password))
 				.onErrorResume(ex -> {
 					logger.error("Error while sending email: {}", ex.getMessage(), ex);
 					return this.throwMailSendError(ex.getMessage());
@@ -64,24 +65,24 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 	}
 
 	private Mono<Boolean> sendMailWithSession(EmailMessage emailMessage, Map<String, Object> connectionProps,
-			String username, String password) {
+	                                          String username, String password) {
 
 		return Mono.fromCallable(() -> {
-			Properties props = System.getProperties();
+					Properties props = System.getProperties();
 
-			props.putAll(connectionProps);
+					props.putAll(connectionProps);
 
-			Session session = Session.getDefaultInstance(props);
+					Session session = Session.getDefaultInstance(props);
 
-			MimeMessage message = this.createMimeMessage(session, emailMessage);
+					MimeMessage message = this.createMimeMessage(session, emailMessage);
 
-			Transport transport = session.getTransport();
+					Transport transport = session.getTransport();
 
-			transport.connect(username, password);
-			transport.sendMessage(message, message.getAllRecipients());
+					transport.connect(username, password);
+					transport.sendMessage(message, message.getAllRecipients());
 
-			return Boolean.TRUE;
-		}).subscribeOn(Schedulers.boundedElastic())
+					return Boolean.TRUE;
+				}).subscribeOn(Schedulers.boundedElastic())
 				.onErrorResume(IOException.class, ex -> {
 					logger.error("Error while sending SMTP email: {}", ex.getMessage(), ex);
 					return this.throwMailSendError(ex.getMessage());

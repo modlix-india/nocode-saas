@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.model.message.EmailMessage;
 import com.sendgrid.Method;
 import com.sendgrid.Request;
@@ -33,9 +34,9 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 	private final ConcurrentHashMap<String, SendGrid> sendGridClients = new ConcurrentHashMap<>();
 
 	@Override
-	public Mono<Boolean> sendMail(EmailMessage emailMessage, Map<String, Object> connection) {
+	public Mono<Boolean> sendMail(EmailMessage emailMessage, Connection connection) {
 
-		Map<String, Object> connectionDetails = super.getConnectionDetails(connection);
+		Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
 		if (connectionDetails.isEmpty())
 			return Mono.just(Boolean.FALSE);
@@ -61,15 +62,15 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 
 		return Mono.fromCallable(() -> {
 
-			SendGrid sendGrid = sendGridClients.computeIfAbsent(apiKey, SendGrid::new);
-			Mail mail = this.buidMail(emailMessage);
-			Request request = new Request();
-			request.setMethod(Method.POST);
-			request.setEndpoint(EMAIL_ENDPOINT);
-			request.setBody(mail.build());
+					SendGrid sendGrid = sendGridClients.computeIfAbsent(apiKey, SendGrid::new);
+					Mail mail = this.buidMail(emailMessage);
+					Request request = new Request();
+					request.setMethod(Method.POST);
+					request.setEndpoint(EMAIL_ENDPOINT);
+					request.setBody(mail.build());
 
-			return sendGrid.api(request);
-		}).subscribeOn(Schedulers.boundedElastic())
+					return sendGrid.api(request);
+				}).subscribeOn(Schedulers.boundedElastic())
 				.map(response -> HttpStatus.valueOf(response.getStatusCode()).is2xxSuccessful())
 				.onErrorResume(IOException.class, ex -> {
 					logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);

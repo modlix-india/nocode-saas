@@ -5,12 +5,10 @@ import java.util.List;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketSession;
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 
 import reactor.core.publisher.Mono;
 
 @Configuration
-@EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketHandler {
 
 	@Override

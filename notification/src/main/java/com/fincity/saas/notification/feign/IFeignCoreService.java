@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.document.Notification;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
@@ -18,7 +19,7 @@ public interface IFeignCoreService {
 	String NOTIFICATION_PATH = "api/core/notifications/internal";
 
 	@GetMapping(CONNECTION_PATH)
-	Mono<Map<String, Object>> getConnection(
+	Mono<Connection> getConnection(
 			@RequestParam String connectionName,
 			@RequestParam String appCode,
 			@RequestParam String clientCode,

@@ -32,7 +32,7 @@ spring:
         - id: notification
           uri: lb://notification
           predicates:
-            - Path=/api/notification/**, /*/api/notification/**, /*/*/api/notification/**, /*/*/*/api/notification/**, /*/*/*/*/api/notification/**, /*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**,
+            - Path=/api/notifications/**, /*/api/notifications/**, /*/*/api/notifications/**, /*/*/*/api/notifications/**, /*/*/*/*/api/notifications/**, /*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/*/*/api/notifications/**,
         - id: ui
           uri: lb://ui
           predicates:

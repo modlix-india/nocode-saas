@@ -30,7 +30,7 @@ public class BroadcastConfig {
 		declarableList.add(fanoutExchange);
 
 		for (NotificationChannelType channelType : NotificationChannelType.values()) {
-			declarableList.add(new Queue(channelType.getQueueName(fanoutExchangeName), false));
+			declarableList.add(new Queue(channelType.getQueueName(fanoutExchangeName), true, false, false));
 			declarableList.add(BindingBuilder.bind(new Queue(channelType.getQueueName(fanoutExchangeName), false)).to(fanoutExchange));
 		}
 

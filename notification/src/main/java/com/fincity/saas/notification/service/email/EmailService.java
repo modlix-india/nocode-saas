@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.model.message.EmailMessage;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
@@ -36,11 +37,11 @@ public class EmailService {
 		this.services.put("smtp", smtpService);
 	}
 
-	public Mono<Boolean> sendEmail(EmailMessage emailMessage, Map<String, Object> connection) {
+	public Mono<Boolean> sendEmail(EmailMessage emailMessage, Connection connection) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.getEmailProvider(connection.get("connectionSubType").toString()),
+				() -> this.getEmailProvider(connection.getConnectionSubType().name()),
 
 				provider -> Mono.justOrEmpty(this.services.get(provider))
 						.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),

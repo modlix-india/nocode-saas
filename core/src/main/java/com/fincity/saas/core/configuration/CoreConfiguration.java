@@ -93,7 +93,8 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**",
 				"/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind",
-				"/api/core/connections/oauth/evoke", "/api/core/connections/oauth/callback");
+				"/api/core/connections/oauth/evoke", "/api/core/connections/oauth/callback",
+				"api/core/connections/internal", "api/core/notifications/internal");
 	}
 
 	@Bean

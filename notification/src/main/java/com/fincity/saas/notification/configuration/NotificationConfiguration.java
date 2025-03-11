@@ -47,7 +47,8 @@ public class NotificationConfiguration extends AbstractJooqBaseConfiguration
 
 	@Bean
 	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService, this.objectMapper);
+		return this.springSecurityFilterChain(http, authService, this.objectMapper,
+				"/api/notifications", "/api/notifications/send", "/api/notifications/process");
 	}
 
 	@Override

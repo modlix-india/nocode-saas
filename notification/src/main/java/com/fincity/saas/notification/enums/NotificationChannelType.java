@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.jooq.EnumType;
 
+import com.fincity.saas.commons.jooq.enums.ConnectionSubType;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
@@ -36,14 +37,16 @@ public enum NotificationChannelType implements EnumType {
 		return EnumType.lookupLiteral(NotificationChannelType.class, literal);
 	}
 
-	public static NotificationChannelType getFromConnectionSubType(String connectionSubType) {
+	public static NotificationChannelType getFromConnectionSubType(ConnectionSubType connectionSubType) {
 
-		if (!connectionSubType.startsWith(NotificationMessageResourceService.NOTIFICATION_PREFIX))
+		String name = connectionSubType.name();
+
+		if (!name.startsWith(NotificationMessageResourceService.NOTIFICATION_PREFIX))
 			return null;
 
-		connectionSubType = connectionSubType.substring(NotificationMessageResourceService.NOTIFICATION_PREFIX.length());
+		name = name.substring(NotificationMessageResourceService.NOTIFICATION_PREFIX.length());
 
-		return NotificationChannelType.valueOf(connectionSubType.split("_")[0].toUpperCase());
+		return NotificationChannelType.valueOf(name.split("_")[0].toUpperCase());
 	}
 
 	public static <T> Map<NotificationChannelType, T> getChannelTypeMap(Map<String, T> channelMap) {
@@ -54,7 +57,7 @@ public enum NotificationChannelType implements EnumType {
 		return channelMap.entrySet()
 				.stream()
 				.collect(Collectors.toMap(e ->
-						NotificationChannelType.lookupLiteral(e.getKey()),
+								NotificationChannelType.lookupLiteral(e.getKey()),
 						Map.Entry::getValue,
 						(existing, replacement) -> replacement,
 						() -> new EnumMap<>(NotificationChannelType.class)

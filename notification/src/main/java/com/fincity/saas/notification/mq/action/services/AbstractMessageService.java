@@ -1,10 +1,9 @@
 package com.fincity.saas.notification.mq.action.services;
 
-import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.enums.ChannelType;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.service.NotificationConnectionService;
@@ -25,7 +24,7 @@ public abstract class AbstractMessageService implements ChannelType {
 		return sendRequest != null && sendRequest.isValid(this.getChannelType());
 	}
 
-	protected Mono<Map<String, Object>> getConnection(String appCode, String clientCode, String connectionName) {
+	protected Mono<Connection> getConnection(String appCode, String clientCode, String connectionName) {
 		return this.connectionService.getNotificationConn(appCode, clientCode, connectionName);
 	}
 

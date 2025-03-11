@@ -16,7 +16,7 @@ import com.fincity.saas.notification.service.UserPreferenceService;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/notification/preferences/users")
+@RequestMapping("api/notifications/preferences/users")
 public class UserPreferenceController extends AbstractCodeController<NotificationUserPreferencesRecord, ULong,
 		UserPreference, UserPreferenceDao, UserPreferenceService> implements INotificationCacheController<UserPreference, UserPreferenceService> {
 
