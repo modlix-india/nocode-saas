@@ -613,6 +613,51 @@ public class AppDataService {
 		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.update"));
 	}
 
+	public Mono<List<Map<String, Object>>> updateMany(String appCode, String clientCode, String storageName,
+													  List<DataObject> dataArray, Boolean eager, List<String> eagerFields, Boolean override) {
+
+		Mono<List<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+
+				(ca, ac) -> Mono.just(clientCode == null ? ca.getUrlClientCode() : clientCode),
+
+				(ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+
+				(ca, ac, cc, conn) -> Mono.just(this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+
+				(ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+						.map(ObjectWithUniqueID::getObject),
+
+				(ca, ac, cc, conn, dataService, storage) ->
+						Flux.fromIterable(dataArray)
+								.flatMapSequential(dataObject ->
+										FlatMapUtil.flatMapMono(
+														() -> this.processRelationsForUpdate(ac, cc, dataService, conn, storage, dataObject, override),
+
+														updatedDataObject -> this.updateWithTriggers(ac, cc, dataService, conn, storage, updatedDataObject, override)
+												)
+												.map(Tuple2::getT1)
+												.flatMap(updated -> {
+													if (BooleanUtil.safeValueOf(storage.getGenerateEvents())) {
+														return this.generateEvent(ca, ac, cc, storage, "Update", Map.of("dataArr", List.of(updated)), null);
+													}
+													return Mono.just(updated);
+												})
+												.flatMap(updated ->
+														this.fillRelatedObjects(ac, cc, storage, updated,
+																dataService, conn,
+																BooleanUtil.safeValueOf(eager) ? storage.getRelations().keySet().stream().toList()
+																		: eagerFields)
+												)
+								)
+								.collectList()
+		);
+		return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.updateMany"));
+	}
+
 	private Mono<DataObject> processRelationsForUpdate(String appCode, String clientCode, IAppDataService dataService,
 			Connection conn,
 			Storage storage, DataObject dataObject, Boolean override) {
