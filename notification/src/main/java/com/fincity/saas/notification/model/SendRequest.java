@@ -24,27 +24,27 @@ public class SendRequest implements Serializable {
 
 	private String xDebug;
 	private String code;
-	private String clientCode;
 	private String appCode;
+	private String clientCode;
 	private BigInteger userId;
 	private NotificationType notificationType;
 	private Map<NotificationChannelType, String> connections;
 	private NotificationChannel channels;
 
-	public static SendRequest of(String clientCode, String appCode, BigInteger userId, String notificationType,
-			Map<NotificationChannelType, String> connections, NotificationChannel channels) {
+	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
+	                             Map<NotificationChannelType, String> connections, NotificationChannel channels) {
 		return new SendRequest()
 				.setCode(UniqueUtil.shortUUID())
-				.setClientCode(clientCode)
 				.setAppCode(appCode)
+				.setClientCode(clientCode)
 				.setUserId(userId)
 				.setNotificationType(NotificationType.lookupLiteral(notificationType))
 				.setConnections(connections)
 				.setChannels(channels);
 	}
 
-	public static SendRequest of(String clientCode, String appCode, BigInteger userId, String notificationType) {
-		return of(clientCode, appCode, userId, notificationType, Map.of(),
+	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType) {
+		return of(appCode, clientCode, userId, notificationType, Map.of(),
 				new NotificationChannelBuilder().isEnabled(Boolean.FALSE).build());
 	}
 

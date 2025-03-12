@@ -149,13 +149,9 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
 	}
 
-	public Mono<Notification> getNotification(String name, String appCode, String clientCode) {
-		return this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject)
+	public Mono<Notification> readInternalNotification(String name, String appCode, String clientCode) {
+		return super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.getNotification"));
-	}
-
-	public Mono<Notification> getNotification(String id) {
-		return this.read(id);
 	}
 
 }

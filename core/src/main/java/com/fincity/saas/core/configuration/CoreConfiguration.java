@@ -38,7 +38,7 @@ import reactor.core.publisher.Mono;
 public class CoreConfiguration extends AbstractMongoConfiguration
 		implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
 
-	private CoreMessageResourceService messageService;
+	private final CoreMessageResourceService messageService;
 
 	@Value("${spring.r2dbc.url}")
 	private String url;
@@ -94,7 +94,7 @@ public class CoreConfiguration extends AbstractMongoConfiguration
 		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/core/function/**",
 				"/api/core/functions/repositoryFilter", "/api/core/functions/repositoryFind",
 				"/api/core/connections/oauth/evoke", "/api/core/connections/oauth/callback",
-				"api/core/connections/internal", "api/core/notifications/internal");
+				"/api/core/connections/internal", "/api/core/notifications/internal");
 	}
 
 	@Bean

@@ -64,7 +64,7 @@ public class ConnectionController
 	                                      @RequestParam String clientCode,
 	                                      @RequestParam String connectionType) {
 
-		return this.service.read(connectionName, appCode, clientCode, ConnectionType.valueOf(connectionType));
+		return this.service.readInternalConnection(connectionName, appCode, clientCode, ConnectionType.valueOf(connectionType));
 	}
 
 }

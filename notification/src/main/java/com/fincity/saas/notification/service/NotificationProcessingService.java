@@ -128,10 +128,11 @@ public class NotificationProcessingService implements INotificationCacheService<
 
 				ca -> this.getAppClientUserEntity(ca, appCode, clientCode, userId),
 
-				(ca, userEntity) -> this.getNotificationInfo(userEntity.getT1(), userEntity.getT2(), notificationName),
+				(ca, userEntity) -> this.getNotificationInfo(userEntity.getT1(), ca.getUrlClientCode(),
+						userEntity.getT2(), notificationName),
 
 				(ca, userEntity, notiInfo) -> this.userPreferenceService
-						.getUserPreference(userEntity.getT2(), userEntity.getT3()),
+						.getUserPreference(userEntity.getT1(), userEntity.getT3()),
 
 				(ca, userEntity, notiInfo, userPref) -> this.applyUserPreferences(userPref, notiInfo),
 
@@ -152,8 +153,9 @@ public class NotificationProcessingService implements INotificationCacheService<
 							toSend.put(channelType, channelDetails.get(channelType));
 					});
 
-					return this.createSendRequest(clientCode, appCode, notiInfo.getNotificationType(), userPref, toSend,
-							notiInfo.getChannelConnectionMap(), objectMap);
+					return this.createSendRequest(userEntity.getT1(), userEntity.getT2(),
+							userEntity.getT3().toBigInteger(), notiInfo.getNotificationType(),
+							userPref, toSend, notiInfo.getChannelConnectionMap(), objectMap);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processNotification"));
 	}
@@ -166,21 +168,24 @@ public class NotificationProcessingService implements INotificationCacheService<
 				ULongUtil.valueOf(userId == null ? ca.getUser().getId() : userId)));
 	}
 
-	private Mono<Notification> getNotificationInfo(String appCode, String clientCode, String notificationName) {
+	private Mono<Notification> getNotificationInfo(String appCode, String urlClientCode, String clientCode,
+			String notificationName) {
 
 		if (StringUtil.safeIsBlank(notificationName))
 			return this.messageResourceService.throwMessage(
 					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					AbstractMessageService.OBJECT_NOT_FOUND, NOTIFICATION);
 
-		return this.getNotificationInfoInternal(appCode, clientCode, notificationName).switchIfEmpty(
+		return this.getNotificationInfoInternal(appCode, urlClientCode, clientCode, notificationName).switchIfEmpty(
 				this.messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 						AbstractMessageService.OBJECT_NOT_FOUND, NOTIFICATION, notificationName));
 	}
 
-	private Mono<Notification> getNotificationInfoInternal(String appCode, String clientCode, String notificationName) {
-		return this.cacheValue(() -> coreService.getNotificationInfo(notificationName, appCode, clientCode),
+	private Mono<Notification> getNotificationInfoInternal(String appCode, String urlClientCode, String clientCode,
+			String notificationName) {
+		return this.cacheValue(
+				() -> coreService.getNotificationInfo(urlClientCode, notificationName, appCode, clientCode),
 				appCode, clientCode, notificationName);
 	}
 
@@ -190,7 +195,7 @@ public class NotificationProcessingService implements INotificationCacheService<
 		if (userPreference == null)
 			return Mono.just(notification.getChannelDetailMap());
 
-		if (!userPreference.hasPreference(notification.getName())) {
+		if (userPreference.hasPreference(notification.getName())) {
 			logger.info("User {} dont have preference for {}", userPreference.getUserId(), notification.getName());
 			return Mono.just(new EnumMap<>(NotificationChannelType.class));
 		}
@@ -203,12 +208,13 @@ public class NotificationProcessingService implements INotificationCacheService<
 						() -> new EnumMap<>(NotificationChannelType.class));
 	}
 
-	private Mono<SendRequest> createSendRequest(String appCode, String clientCode, String notificationType,
-			UserPreference userPref, Map<NotificationChannelType, NotificationTemplate> templateInfoMap,
+	private Mono<SendRequest> createSendRequest(String appCode, String clientCode, BigInteger userId,
+			String notificationType, UserPreference userPref,
+			Map<NotificationChannelType, NotificationTemplate> templateInfoMap,
 			Map<NotificationChannelType, String> channelConnections, Map<String, Object> objectMap) {
 
 		return this.createNotificationChannel(userPref, templateInfoMap, objectMap)
-				.map(notificationChannel -> SendRequest.of(clientCode, appCode, userPref.getUserId().toBigInteger(),
+				.map(notificationChannel -> SendRequest.of(appCode, clientCode, userId,
 						notificationType, channelConnections, notificationChannel));
 	}
 

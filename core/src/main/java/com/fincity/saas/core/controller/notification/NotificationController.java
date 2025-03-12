@@ -23,6 +23,6 @@ public class NotificationController
             @RequestParam String appCode,
             @RequestParam String clientCode) {
 
-        return this.service.getNotification(notificationName, appCode, clientCode);
+        return this.service.readInternalNotification(notificationName, appCode, clientCode);
     }
 }

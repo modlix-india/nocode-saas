@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 @ReactiveFeignClient(name = "notifications")
 public interface IFeignNotificationService {
 
-	String NOTIFICATION_PATH = "api/notifications";
+	String NOTIFICATION_PATH = "/api/notifications";
 
 	String CACHE_EVICT = "/evict";
 

@@ -2,6 +2,7 @@ package com.fincity.saas.notification.service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,8 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.dao.UserPreferenceDao;
 import com.fincity.saas.notification.dto.UserPreference;
+import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.PreferenceLevel;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
 
 import lombok.Getter;
@@ -36,6 +39,17 @@ public class UserPreferenceService
 	private static final String USER_PREFERENCE = "user_preference";
 
 	private static final String USER_PREFERENCE_CACHE = "userPreference";
+
+	private static final Map<String, Set<String>> DEFAULT_USER_PREFERENCE_MAP = Map.of(
+			PreferenceLevel.CHANNEL.getLiteral(), Set.of(NotificationChannelType.EMAIL.getLiteral()),
+			PreferenceLevel.NOTIFICATION.getLiteral(), Set.of());
+
+	private static final UserPreference DEFAULT_USER_PREFERENCE = new UserPreference()
+			.setAppId(ULongUtil.valueOf(0))
+			.setUserId(ULong.valueOf(0))
+			.setCode("0000000000000000000000")
+			.setEnabled(Boolean.TRUE)
+			.setPreferences(DEFAULT_USER_PREFERENCE_MAP);
 
 	private final NotificationMessageResourceService messageResourceService;
 
@@ -68,6 +82,10 @@ public class UserPreferenceService
 	@Override
 	public Mono<UserPreference> getByCode(String code) {
 		return this.dao.getByCode(code);
+	}
+
+	public Mono<UserPreference> getDefaultPreferences() {
+		return Mono.just(DEFAULT_USER_PREFERENCE);
 	}
 
 	@Override
@@ -240,35 +258,45 @@ public class UserPreferenceService
 	}
 
 	public Mono<UserPreference> getUserPreference() {
-		return SecurityContextUtil.getUsersContextAuthentication().flatMap(this::getUserPreference);
+		return SecurityContextUtil.getUsersContextAuthentication().flatMap(this::getUserPreference)
+				.switchIfEmpty(this.getDefaultPreferences());
 	}
 
 	public Mono<UserPreference> getUserPreference(ContextAuthentication ca) {
-		return this.getAppUserId(ca.getUrlAppCode(), ULongUtil.valueOf(ca.getUser().getId()))
-				.flatMap(appUserId -> this.getUserPreference(appUserId.getT1(), appUserId.getT2()))
+
+		if (!ca.isAuthenticated())
+			return Mono.empty();
+
+		return this.getUserPreference(ca.getUrlAppCode(), ULongUtil.valueOf(ca.getUser().getId()))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
 						"UserPreferenceService.getUserPreference[ContextAuthentication]"));
 	}
 
 	public Mono<UserPreference> getUserPreference(String appCode, ULong userId) {
-		return this.getAppUserId(appCode, userId)
-				.flatMap(appUserId -> this.getUserPreference(appUserId.getT1(), appUserId.getT2()))
+
+		if (userId == null)
+			return Mono.empty();
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.securityService.getAppByCode(appCode).map(App::getId),
+
+				appId -> this.getUserPreference(ULongUtil.valueOf(appId), userId))
 				.contextWrite(
 						Context.of(LogUtil.METHOD_NAME, "UserPreferenceService.getUserPreference[String, ULong]"));
 	}
 
 	public Mono<UserPreference> getUserPreference(ULong appId, ULong userId) {
+
+		if (appId == null || userId == null)
+			return Mono.empty();
+
 		return this.getUserPreferenceInternal(appId, userId)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserPreferenceService.getUserPreference[ULong, ULong]"));
 	}
 
 	private Mono<UserPreference> getUserPreferenceInternal(ULong appId, ULong userId) {
-		return this.cacheValue(() -> this.dao.getUserPreference(appId, userId), appId, userId);
-	}
-
-	private Mono<Tuple2<ULong, ULong>> getAppUserId(String appCode, ULong userId) {
-		return this.securityService.getAppByCode(appCode)
-				.map(App::getId)
-				.map(appId -> Tuples.of(ULongUtil.valueOf(appId), userId));
+		return this.cacheValue(() -> this.dao.getUserPreference(appId, userId)
+				.switchIfEmpty(this.getDefaultPreferences()), appId, userId);
 	}
 }

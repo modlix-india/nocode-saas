@@ -61,7 +61,7 @@ public class NotificationConnectionService implements INotificationCacheService<
 
 	public Mono<Connection> getNotificationConn(String appCode, String clientCode, String connectionName) {
 		return this.cacheValue(
-				() -> coreService.getConnection(connectionName, appCode, clientCode, NOTIFICATION_CONNECTION_TYPE),
+				() -> coreService.getConnection(clientCode, connectionName, appCode, clientCode, NOTIFICATION_CONNECTION_TYPE),
 				appCode, clientCode, connectionName);
 	}
 

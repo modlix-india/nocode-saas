@@ -1,5 +1,7 @@
 package com.fincity.saas.notification.configuration;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
@@ -19,6 +21,8 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
 import jakarta.annotation.PostConstruct;
+import reactivefeign.client.ReactiveHttpRequestInterceptor;
+import reactor.core.publisher.Mono;
 
 @Configuration
 public class NotificationConfiguration extends AbstractJooqBaseConfiguration
@@ -49,6 +53,21 @@ public class NotificationConfiguration extends AbstractJooqBaseConfiguration
 	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
 		return this.springSecurityFilterChain(http, authService, this.objectMapper,
 				"/api/notifications", "/api/notifications/send", "/api/notifications/process");
+	}
+
+	@Bean
+	public ReactiveHttpRequestInterceptor feignInterceptor() {
+		return request -> Mono.deferContextual(ctxView -> {
+
+			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
+				String key = ctxView.get(LogUtil.DEBUG_KEY);
+
+				request.headers()
+						.put(LogUtil.DEBUG_KEY, List.of(key));
+			}
+
+			return Mono.just(request);
+		});
 	}
 
 	@Override

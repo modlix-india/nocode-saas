@@ -90,12 +90,16 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 						!PreferenceLevel.lookupLiteral(entry.getKey()).getDefaultList().equals(entry.getValue()));
 	}
 
-	public void initDefault() {
+	private void initDefault() {
 		this.preferences = DEFAULT_PREF;
 		this.enabled = Boolean.FALSE;
 	}
 
 	public void init() {
 		this.setPreferences(this.preferences);
+	}
+
+	public static Map<String, Set<String>> getDefaultPref() {
+		return DEFAULT_PREF;
 	}
 }
