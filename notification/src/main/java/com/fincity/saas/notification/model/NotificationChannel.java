@@ -58,8 +58,7 @@ public class NotificationChannel {
 			return this;
 		}
 
-		public <T extends NotificationMessage<T>> NotificationChannelBuilder addMessage(T message,
-		                                                                                RecipientInfo userInfo) {
+		public <T extends NotificationMessage<T>> NotificationChannelBuilder addMessage(T message, RecipientInfo userInfo) {
 			if (preference == null || !this.notificationEnabled)
 				return this;
 

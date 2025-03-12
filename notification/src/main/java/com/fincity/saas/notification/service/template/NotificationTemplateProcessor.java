@@ -60,7 +60,7 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 	public <T extends NotificationMessage<T>> Mono<T> process(String language, NotificationTemplate template,
 			Map<String, Object> templateData) {
 
-		if (template.getTemplateParts().isEmpty() || !StringUtil.safeIsBlank(template.getCode()))
+		if (template.getTemplateParts().isEmpty() || StringUtil.safeIsBlank(template.getCode()))
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
 					NotificationMessageResourceService.TEMPLATE_DATA_NOT_FOUND, "No template parts found");
 
