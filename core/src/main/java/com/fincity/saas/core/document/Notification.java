@@ -116,9 +116,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	@NoArgsConstructor
 	public static class NotificationTemplate implements Serializable {
 
-		@JsonIgnore
 		private String code = UniqueUtil.shortUUID();
-
 		private Map<String, Map<String, String>> templateParts;
 		private Map<String, Object> variableSchema; // NOSONAR
 		private Map<String, String> resources;
