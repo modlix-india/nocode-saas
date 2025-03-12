@@ -53,4 +53,9 @@ public class SendRequest implements Serializable {
 				this.connections.containsKey(channelType) && this.channels.containsChannel(channelType);
 	}
 
+	public boolean isEmpty() {
+		return this.channels == null || !this.channels.containsAntChannel();
+
+	}
+
 }

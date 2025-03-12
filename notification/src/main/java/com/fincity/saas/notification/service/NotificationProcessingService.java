@@ -99,6 +99,11 @@ public class NotificationProcessingService implements INotificationCacheService<
 
 	public Mono<Boolean> sendNotification(SendRequest request) {
 
+		if (request.isEmpty()) {
+			logger.info("Received Empty Notification Request: {} [Ignoring]", request);
+			return Mono.just(Boolean.FALSE);
+		}
+
 		logger.info("Sending notification request {}", request);
 
 		return notificationProducer.broadcast(request)

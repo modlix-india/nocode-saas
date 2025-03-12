@@ -5,8 +5,8 @@ import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.message.EmailMessage;
 import com.fincity.saas.notification.model.message.InAppMessage;
 import com.fincity.saas.notification.model.message.NotificationMessage;
-import com.fincity.saas.notification.model.message.SmsMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
+import com.fincity.saas.notification.model.message.SmsMessage;
 
 import lombok.Getter;
 
@@ -24,6 +24,10 @@ public class NotificationChannel {
 
 	public static NotificationChannelBuilder builder() {
 		return new NotificationChannelBuilder();
+	}
+
+	public boolean containsAntChannel() {
+		return email != null || inApp != null || sms != null;
 	}
 
 	public boolean containsChannel(NotificationChannelType channelType) {
@@ -55,7 +59,7 @@ public class NotificationChannel {
 		}
 
 		public <T extends NotificationMessage<T>> NotificationChannelBuilder addMessage(T message,
-				RecipientInfo userInfo) {
+		                                                                                RecipientInfo userInfo) {
 			if (preference == null || !this.notificationEnabled)
 				return this;
 
