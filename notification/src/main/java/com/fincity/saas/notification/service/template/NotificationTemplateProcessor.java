@@ -121,11 +121,13 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 
 	protected Mono<String> getLanguage(NotificationTemplate template, Map<String, Object> templateData) {
 
+		String defaultLanguage = this.getDefaultLanguage(template.getDefaultLanguage());
+
 		if (StringUtil.safeIsBlank(template.getLanguageExpression()))
-			return Mono.just(this.getDefaultLanguage(template.getDefaultLanguage()));
+			return Mono.just(defaultLanguage);
 
 		return super.processString(this.getLanguageName(template.getCode()), template.getLanguageExpression(),
-				templateData)
+				templateData, defaultLanguage)
 				.map(lang -> StringUtil.safeIsBlank(lang) ? this.getDefaultLanguage(template.getDefaultLanguage())
 						: lang);
 	}

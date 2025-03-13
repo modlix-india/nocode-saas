@@ -97,6 +97,15 @@ public abstract class BaseTemplateProcessor {
 						"Failed to process template: " + templateName, e));
 	}
 
+	public Mono<String> processString(String templateName, String sourceCode, Object dataModel, String defaultString) {
+		return this.toTemplate(templateName, sourceCode)
+				.flatMap(template -> this.processString(template, dataModel))
+				.onErrorResume(e -> {
+					logger.error("Failed to process template: {}", templateName);
+					return Mono.justOrEmpty(defaultString);
+				});
+	}
+
 	public Mono<String> processString(Template template, Object dataModel) {
 		return Mono.fromCallable(() -> this.processStringSync(template, dataModel))
 				.subscribeOn(Schedulers.boundedElastic());
