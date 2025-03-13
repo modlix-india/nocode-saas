@@ -8,9 +8,8 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
-import com.fincity.security.jooq.tables.SecurityRole.SecurityRolePath;
-import com.fincity.security.jooq.tables.SecurityRolePermission.SecurityRolePermissionPath;
-import com.fincity.security.jooq.tables.SecurityUserRolePermission.SecurityUserRolePermissionPath;
+import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
+import com.fincity.security.jooq.tables.SecurityV2RolePermission.SecurityV2RolePermissionPath;
 import com.fincity.security.jooq.tables.records.SecurityPermissionRecord;
 
 import java.time.LocalDateTime;
@@ -230,38 +229,25 @@ public class SecurityPermission extends TableImpl<SecurityPermissionRecord> {
         return _securityApp;
     }
 
-    private transient SecurityRolePermissionPath _securityRolePermission;
+    private transient SecurityV2RolePermissionPath _securityV2RolePermission;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_role_permission</code> table
+     * <code>security.security_v2_role_permission</code> table
      */
-    public SecurityRolePermissionPath securityRolePermission() {
-        if (_securityRolePermission == null)
-            _securityRolePermission = new SecurityRolePermissionPath(this, null, Keys.FK2_ROLE_PERM_PERMISSION_ID.getInverseKey());
+    public SecurityV2RolePermissionPath securityV2RolePermission() {
+        if (_securityV2RolePermission == null)
+            _securityV2RolePermission = new SecurityV2RolePermissionPath(this, null, Keys.FK2_ROLE_PERMISSION_PERMISSION_ID.getInverseKey());
 
-        return _securityRolePermission;
-    }
-
-    private transient SecurityUserRolePermissionPath _securityUserRolePermission;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_user_role_permission</code> table
-     */
-    public SecurityUserRolePermissionPath securityUserRolePermission() {
-        if (_securityUserRolePermission == null)
-            _securityUserRolePermission = new SecurityUserRolePermissionPath(this, null, Keys.FK3_USER_ROLE_PERMISSION_ID.getInverseKey());
-
-        return _securityUserRolePermission;
+        return _securityV2RolePermission;
     }
 
     /**
      * Get the implicit many-to-many join path to the
-     * <code>security.security_role</code> table
+     * <code>security.security_v2_role</code> table
      */
-    public SecurityRolePath securityRole() {
-        return securityRolePermission().securityRole();
+    public SecurityV2RolePath securityV2Role() {
+        return securityV2RolePermission().securityV2Role();
     }
 
     @Override
