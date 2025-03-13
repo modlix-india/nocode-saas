@@ -1,5 +1,7 @@
 package com.fincity.security.dto;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
@@ -21,5 +23,14 @@ public class Profile extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong clientId;
 	private String name;
 	private String description;
-	private RoleV2[] roles;
+
+	// A profile can be inherited or can be created from scratch.
+	// If the profile is not inherited, we shall depend on client hierarcy to
+	// determine the overrides.
+	// Leading up to root profileId.
+	// But this rootProfileId will always be assigned to the user not the profile
+	// id which is inherited from rootProfileId.
+	private ULong rootProfileId;
+
+	private List<ProfileArrangement> arrangement;
 }

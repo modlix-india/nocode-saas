@@ -17,6 +17,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ProfileDAO;
@@ -37,12 +38,20 @@ public class ProfileService
     private static final String DESCRIPTION = "description";
     private static final String NAME = "name";
 
+    private static final String CACHE_NAME_PROFILE = "profile";
+    private static final String CACHE_NAME_APP_ID_PROFILE = "appIdProfile";
+
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
+    private final ClientHierarchyService clientHierarchyService;
+    private final CacheService cacheService;
 
-    public ProfileService(SecurityMessageResourceService securityMessageResourceService, ClientService clientService) {
+    public ProfileService(SecurityMessageResourceService securityMessageResourceService, ClientService clientService,
+            ClientHierarchyService clientHierarchyService, CacheService cacheService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
+        this.clientHierarchyService = clientHierarchyService;
+        this.cacheService = cacheService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_CREATE')")
@@ -79,7 +88,7 @@ public class ProfileService
     @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
     @Override
     public Mono<Profile> read(ULong id) {
-        return super.read(id);
+        return this.readInternal(id);
     }
 
     public Mono<Profile> readInternal(ULong id) {
@@ -93,7 +102,7 @@ public class ProfileService
 
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Role_UPDATE')")
+    @PreAuthorize("hasAuthority('Authorities.Profile_UPDATE')")
     @Override
     public Mono<Profile> update(Profile entity) {
         return this.dao.canBeUpdated(entity.getId())

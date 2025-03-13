@@ -336,88 +336,35 @@ public class ClientService
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> assignProfileToClient(ULong clientId, ULong profileId) {
 
-		// return FlatMapUtil.flatMapMono(
-
-		// SecurityContextUtil::getUsersContextAuthentication,
-
-		// ca -> this.profileService.readInternal(profileId),
-
-		// ).contextWrite(Context.of(LogUtil.METHOD_NAME,
-		// "ClientService.assignProfileToClient"))
-		// .switchIfEmpty(securityMessageResourceService.throwMessage(
-		// msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-		// SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, profileId, clientId));
-
-		return this.dao.checkPackageAssignedForClient(clientId, profileId).flatMap(result -> {
-			if (Boolean.TRUE.equals(result))
-				return Mono.just(Boolean.TRUE);
-
-			return FlatMapUtil.flatMapMono(
-
-					SecurityContextUtil::getUsersContextAuthentication,
-
-					ca -> this.dao.getPackage(packageId),
-
-					(ca, packageRecord) -> BooleanUtil.safeValueOfWithEmpty(packageRecord.isBase()),
-
-					(ca, packageRecord, basePackage) ->
-
-					ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-							: checkClientAndPackageManaged(ULong.valueOf(ca.getUser().getClientId()), clientId,
-									packageRecord.getClientId()),
-
-					(ca, packageRecord, basePackage, isManaged) ->
-
-					this.dao.addPackageToClient(clientId, packageId)
-							.map(e -> {
-								if (Boolean.TRUE.equals(e))
-									super.assignLog(clientId, ASSIGNED_PACKAGE + packageId);
-
-								return e;
-							})
-
-			).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.assignPackageToClient"))
-					.switchIfEmpty(securityMessageResourceService.throwMessage(
-							msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-							SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
-
-		});
-	}
-
-	public Mono<Boolean> hasPackageAccess(ULong clientId, ULong packageId) {
-
 		return FlatMapUtil.flatMapMono(
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.dao.getPackage(packageId),
+				ca -> this.profileService.readInternal(profileId),
 
-				(ca, pack) -> {
+				(ca, originalProfile) -> originalProfile.getRootProfileId() == null ? Mono.just(originalProfile)
+						: this.profileService.readInternal(originalProfile.getRootProfileId()),
 
-					if (pack.isBase())
-						return Mono.just(Boolean.TRUE);
+				(ca, originalProfile, profile) -> this.clientHierarchyService
+						.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+						.filter(BooleanUtil::safeValueOf),
 
-					if (CommonsUtil.safeEquals(clientId, pack.getClientId()))
-						return Mono.just(Boolean.TRUE);
+				(ca, originalProfile, profile, isManaged) -> this.clientHierarchyService
+						.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), profile.getClientId())
+						.filter(BooleanUtil::safeValueOf),
 
-					return this.dao.checkPackageAssignedForClient(clientId, packageId)
-							.flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(Boolean.TRUE)
-									: this.isBeingManagedBy(clientId, pack.getClientId()));
-				}
+				(ca, originalProfile, profile, isManaged, isManagedByProfile) -> this.appService
+						.hasReadAccess(profile.getAppId(), clientId)
+						.filter(BooleanUtil::safeValueOf),
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasPackageAccess"));
-	}
+				(ca, originalProfile, profile, isManaged, isManagedByProfile, hasReadAccess) -> this.dao
+						.assignProfileToClient(clientId,
+								profileId)
 
-	private Mono<Boolean> checkClientAndPackageManaged(ULong loggedInClientId, ULong clientId, ULong packageClientId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.isBeingManagedBy(loggedInClientId, clientId)
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
-						.flatMap(BooleanUtil::safeValueOfWithEmpty))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.checkClientAndPackageManaged"));
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.assignProfileToClient"))
+				.switchIfEmpty(securityMessageResourceService.throwMessage(
+						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+						SecurityMessageResourceService.ASSIGN_PROFILE_ERROR, profileId, clientId));
 	}
 
 	public Mono<Client> getClientBy(String clientCode) {
@@ -432,56 +379,76 @@ public class ClientService
 		return this.dao.checkRoleExistsOrCreatedForClient(clientId, roleId);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
-	public Mono<Boolean> removePackageFromClient(ULong clientId, ULong packageId) {
+	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+	public Mono<Boolean> removeProfileFromClient(ULong clientId, ULong profileId) {
 
-		return this.dao.checkPackageAssignedForClient(clientId, packageId).flatMap(result -> {
-			if (Boolean.FALSE.equals(result))
-				return securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-						AbstractMessageService.OBJECT_NOT_FOUND, clientId, packageId);
+		// return FlatMapUtil.flatMapMono(
+		// SecurityContextUtil::getUsersContextAuthentication,
 
-			return FlatMapUtil.flatMapMono(
+		// ca -> this.dao.checkProfileAssignedForClient(clientId,
+		// profileId).filter(BooleanUtil::safeValueOf),
 
-					SecurityContextUtil::getUsersContextAuthentication,
+		// (ca, isProfileAssigned) ->
+		// this.checkClientAndProfileManaged(ULong.valueOf(ca.getUser().getClientId()),
+		// clientId, profileId),
 
-					ca -> ca.isSystemClient() ? Mono.just(true)
-							: this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
-									.flatMap(BooleanUtil::safeValueOfWithEmpty),
+		// ).switchIfEmpty(securityMessageResourceService.throwMessage(
+		// msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+		// SecurityMessageResourceService.REMOVE_PROFILE_ERR0R, profileId, clientId));
 
-					(ca, sysOrManaged) -> this.packageService.getRolesFromPackage(packageId),
+		// // return this.dao.checkProfileAssignedForClient(clientId,
+		// profileId).flatMap(result -> {
+		// // if (Boolean.FALSE.equals(result))
+		// // return securityMessageResourceService.throwMessage(
+		// // msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+		// // AbstractMessageService.OBJECT_NOT_FOUND, clientId, packageId);
 
-					(ca, sysOrManaged, roles) -> this.packageService.omitRolesFromBasePackage(roles),
+		// // return FlatMapUtil.flatMapMono(
 
-					(ca, sysOrManaged, roles, finalRoles) -> this.dao.findAndRemoveRolesFromUsers(finalRoles,
-							packageId),
+		// // SecurityContextUtil::getUsersContextAuthentication,
 
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved) -> this.packageService
-							.getPermissionsFromPackage(packageId, finalRoles),
+		// // ca -> ca.isSystemClient() ? Mono.just(true)
+		// // : this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
+		// clientId)
+		// // .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions) -> this.packageService
-							.omitPermissionsFromBasePackage(permissions),
+		// // (ca, sysOrManaged) -> this.packageService.getRolesFromPackage(packageId),
 
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions,
-							finalPermissions) -> this.dao.findAndRemovePermissionsFromUsers(finalPermissions,
-									packageId),
+		// // (ca, sysOrManaged, roles) ->
+		// this.packageService.omitRolesFromBasePackage(roles),
 
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions, finalPermissions,
-							rolesPermissionsRemoved) ->
+		// // (ca, sysOrManaged, roles, finalRoles) ->
+		// this.dao.findAndRemoveRolesFromUsers(finalRoles,
+		// // packageId),
 
-					this.dao.removePackage(clientId, packageId)
-							.map(e -> {
-								if (Boolean.TRUE.equals(e))
-									super.unAssignLog(packageId, UNASSIGNED_PACKAGE + clientId);
+		// // (ca, sysOrManaged, roles, finalRoles, rolesRemoved) -> this.packageService
+		// // .getPermissionsFromPackage(packageId, finalRoles),
 
-								return e;
-							})
+		// // (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions) ->
+		// this.packageService
+		// // .omitPermissionsFromBasePackage(permissions),
 
-			).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.removePackageFromClient"));
-		})
-				.switchIfEmpty(securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
+		// // (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions,
+		// // finalPermissions) ->
+		// this.dao.findAndRemovePermissionsFromUsers(finalPermissions,
+		// // packageId),
+
+		// // (ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions,
+		// finalPermissions,
+		// // rolesPermissionsRemoved) ->
+
+		// // this.dao.removePackage(clientId, packageId)
+		// // .map(e -> {
+		// // if (Boolean.TRUE.equals(e))
+		// // super.unAssignLog(packageId, UNASSIGNED_PACKAGE + clientId);
+
+		// // return e;
+		// // })
+
+		// // ).contextWrite(Context.of(LogUtil.METHOD_NAME,
+		// "ClientService.removePackageFromClient"));
+		// }).switchIfEmpty(securityMessageResourceService.throwMessage(msg->new
+		// GenericException(HttpStatus.FORBIDDEN,msg),SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R,packageId,clientId));
 
 	}
 

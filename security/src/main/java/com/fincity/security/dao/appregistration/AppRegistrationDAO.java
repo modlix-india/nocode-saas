@@ -2,8 +2,7 @@ package com.fincity.security.dao.appregistration;
 
 import static com.fincity.security.jooq.tables.SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
-import static com.fincity.security.jooq.tables.SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
-import static com.fincity.security.jooq.tables.SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE;
+import static com.fincity.
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -17,8 +16,6 @@ import com.fincity.security.dto.AppRegistrationPackage;
 import com.fincity.security.dto.AppRegistrationRole;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityAppRegFileAccessResourceType;
-import com.fincity.security.jooq.tables.SecurityPackage;
-import com.fincity.security.jooq.tables.SecurityRole;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;

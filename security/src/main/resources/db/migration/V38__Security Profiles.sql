@@ -97,7 +97,6 @@ CREATE TABLE `security_profile_arrangement` (
   `SHORT_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Short name of the arrangement',
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the arrangement',
   `ASSIGNABLE` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Whether the arrangement is assignable',
-  `PARENT_ARRANGEMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent arrangement for hierarchical structure',
   `ORDER` int(11) NOT NULL DEFAULT '0' COMMENT 'Order of the arrangement',
 
   PRIMARY KEY (`ID`),

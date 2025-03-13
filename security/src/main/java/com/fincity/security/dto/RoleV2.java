@@ -2,6 +2,7 @@ package com.fincity.security.dto;
 
 import org.jooq.types.ULong;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
 import lombok.Data;
@@ -23,6 +24,10 @@ public class RoleV2 extends AbstractUpdatableDTO<ULong, ULong> {
 	private String shortName;
 	private String description;
 	private String authority;
+
+	@JsonIgnore
 	private RoleV2[] subRoles;
+
+	@JsonIgnore
 	private Permission[] permissions;
 }
