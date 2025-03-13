@@ -53,12 +53,12 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 	}
 
 	public <T extends NotificationMessage<T>> Mono<T> process(NotificationTemplate template,
-			Map<String, Object> templateData) {
+			Object templateData) {
 		return this.process(null, template, templateData);
 	}
 
 	public <T extends NotificationMessage<T>> Mono<T> process(String language, NotificationTemplate template,
-			Map<String, Object> templateData) {
+			Object templateData) {
 
 		if (template.getTemplateParts().isEmpty() || StringUtil.safeIsBlank(template.getCode()))
 			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
@@ -82,7 +82,7 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 	}
 
 	private <T extends NotificationMessage<T>> Mono<T> process(RecipientInfo userInfo, String templateCode,
-			NotificationMessage<T> notificationMessage, Map<String, Object> templateData) {
+			NotificationMessage<T> notificationMessage, Object templateData) {
 		return Mono.zip(
 				super.processString(this.getSubjectName(templateCode), notificationMessage.getSubject(), templateData),
 				super.processString(this.getBodyName(templateCode), notificationMessage.getBody(), templateData))
@@ -91,7 +91,7 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 	}
 
 	public Mono<RecipientInfo> processUserInfo(NotificationChannelType channelType, String templateCode,
-			Map<String, Object> templateData, Map<String, String> userExpressions) {
+			Object templateData, Map<String, String> userExpressions) {
 
 		Set<NotificationRecipientType> recipientTypes = channelType.getAllowedRecipientTypes();
 
@@ -109,17 +109,17 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 	}
 
 	protected Mono<String> getRecipient(String templateCode, String recipient, String recipientExpression,
-			Map<String, Object> templateData) {
+			Object templateData) {
 		return super.processString(this.getRecipientName(templateCode, recipient), recipientExpression, templateData);
 	}
 
 	protected Mono<String> getEffectiveLanguage(String requestedLanguage, NotificationTemplate template,
-			Map<String, Object> templateData) {
+			Object templateData) {
 		return !StringUtil.safeIsBlank(requestedLanguage) ? Mono.just(requestedLanguage)
 				: this.getLanguage(template, templateData);
 	}
 
-	protected Mono<String> getLanguage(NotificationTemplate template, Map<String, Object> templateData) {
+	protected Mono<String> getLanguage(NotificationTemplate template, Object templateData) {
 
 		String defaultLanguage = this.getDefaultLanguage(template.getDefaultLanguage());
 

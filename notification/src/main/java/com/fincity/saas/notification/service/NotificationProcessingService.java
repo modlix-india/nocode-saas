@@ -232,8 +232,9 @@ public class NotificationProcessingService implements INotificationCacheService<
 		if (templateInfoMap == null || templateInfoMap.isEmpty())
 			return Mono.just(notificationChannelBuilder.build());
 
-		return Flux.fromIterable(templateInfoMap.values())
-				.<T>flatMap(templateInfo -> this.notificationTemplateProcessor.process(templateInfo, objectMap))
+		return Flux.fromIterable(templateInfoMap.entrySet())
+				.<T>flatMap(templateInfo ->
+						this.notificationTemplateProcessor.process(templateInfo.getValue(), objectMap.get(templateInfo.getKey().getLiteral())))
 				.doOnNext(notificationChannelBuilder::addMessage)
 				.then(Mono.just(notificationChannelBuilder.build()));
 	}
