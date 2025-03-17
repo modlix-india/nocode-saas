@@ -10,7 +10,6 @@ import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityAppRegProfile.SecurityAppRegProfilePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
-import com.fincity.security.jooq.tables.SecurityClientProfile.SecurityClientProfilePath;
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityProfileArrangement.SecurityProfileArrangementPath;
@@ -276,19 +275,6 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
             _securityProfileUser = new SecurityProfileUserPath(this, null, Keys.FK1_PROFILE_USER_PROFILE_ID.getInverseKey());
 
         return _securityProfileUser;
-    }
-
-    private transient SecurityClientProfilePath _securityClientProfile;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_client_profile</code> table
-     */
-    public SecurityClientProfilePath securityClientProfile() {
-        if (_securityClientProfile == null)
-            _securityClientProfile = new SecurityClientProfilePath(this, null, Keys.FK2_CLIENT_PROFILE_PROFILE_ID.getInverseKey());
-
-        return _securityClientProfile;
     }
 
     private transient SecurityAppRegProfilePath _securityAppRegProfile;

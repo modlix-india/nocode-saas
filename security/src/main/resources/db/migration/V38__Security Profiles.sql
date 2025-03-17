@@ -51,21 +51,6 @@ ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
 
--- Creating a new table for profile to client
-
-CREATE TABLE `security_client_profile` (
-  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID',
-  `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID',
-  
-  PRIMARY KEY (`ID`),
-  UNIQUE KEY `UK1_CLIENT_PROFILE` (`CLIENT_ID`,`PROFILE_ID`),
-  KEY `FK2_CLIENT_PROFILE_PROFILE_ID` (`PROFILE_ID`),
-  CONSTRAINT `FK1_CLIENT_PROFILE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `FK2_CLIENT_PROFILE_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
 -- Security V2 Role Table
 
 CREATE TABLE `security_v2_role` (
