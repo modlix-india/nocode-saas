@@ -14,5 +14,7 @@ public abstract class AbstractCodeService<R extends UpdatableRecord<R>, I extend
 		D extends AbstractUpdatableDTO<I, I>, O extends AbstractCodeDao<R, I, D>>
 		extends AbstractJOOQUpdatableDataService<R, I, D, O> {
 
-	public abstract Mono<D> getByCode(String code);
+	public Mono<D> getByCode(String code) {
+		return this.dao.getByCode(code);
+	}
 }

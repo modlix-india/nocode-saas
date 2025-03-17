@@ -1,12 +1,20 @@
 package com.fincity.saas.notification.model;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.notification.dto.UserPreference;
+import com.fincity.saas.notification.enums.ChannelType;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.message.EmailMessage;
 import com.fincity.saas.notification.model.message.InAppMessage;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
 import com.fincity.saas.notification.model.message.SmsMessage;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import lombok.Getter;
 
@@ -26,10 +34,12 @@ public class NotificationChannel {
 		return new NotificationChannelBuilder();
 	}
 
-	public boolean containsAntChannel() {
+	@JsonIgnore
+	public boolean containsAnyChannel() {
 		return email != null || inApp != null || sms != null;
 	}
 
+	@JsonIgnore
 	public boolean containsChannel(NotificationChannelType channelType) {
 		return switch (channelType) {
 			case EMAIL -> email != null && !email.isNull();
@@ -37,6 +47,19 @@ public class NotificationChannel {
 			case SMS -> sms != null && !sms.isNull();
 			default -> false;
 		};
+	}
+
+	public Map<String, Object> toMap() {
+		Gson gson = new Gson();
+		String json = gson.toJson(this);
+		return gson.fromJson(json, new TypeToken<Map<String, Object>>() {
+		}.getType());
+	}
+
+	public  List<NotificationChannelType> getEnabledChannels() {
+		return Stream.of(this.email, this.inApp, this.sms)
+				.filter(message -> message != null && !message.isNull())
+				.map(ChannelType::getChannelType).toList();
 	}
 
 	public static class NotificationChannelBuilder {

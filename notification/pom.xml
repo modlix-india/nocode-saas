@@ -316,8 +316,8 @@
                                             <includeTypes>ENUM</includeTypes>
                                         </forcedType>
                                         <forcedType>
-                                            <name>com.fincity.saas.notification.enums.NotificationDeliveryStatus</name>
-                                            <includeExpression>.*DELIVERY_STATUS</includeExpression>
+                                            <name>com.fincity.saas.notification.enums.NotificationStage</name>
+                                            <includeExpression>.*NOTIFICATION_STAGE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                         </forcedType>
                                     </forcedTypes>

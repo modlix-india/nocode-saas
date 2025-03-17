@@ -79,11 +79,6 @@ public class UserPreferenceService
 		return USER_PREFERENCE_CACHE;
 	}
 
-	@Override
-	public Mono<UserPreference> getByCode(String code) {
-		return this.dao.getByCode(code);
-	}
-
 	public Mono<UserPreference> getDefaultPreferences() {
 		return Mono.just(DEFAULT_USER_PREFERENCE);
 	}

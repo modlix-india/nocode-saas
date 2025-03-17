@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.bindings.JSONMapBinding;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -93,8 +95,9 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
     /**
      * The column
      * <code>notification.notification_sent_notifications.NOTIFICATION_MESSAGE</code>.
+     * Notification message that is sent
      */
-    public final TableField<NotificationSentNotificationsRecord, String> NOTIFICATION_MESSAGE = createField(DSL.name("NOTIFICATION_MESSAGE"), SQLDataType.VARCHAR(125).nullable(false), this, "");
+    public final TableField<NotificationSentNotificationsRecord, Map> NOTIFICATION_MESSAGE = createField(DSL.name("NOTIFICATION_MESSAGE"), SQLDataType.JSON.nullable(false), this, "Notification message that is sent", new JSONMapBinding());
 
     /**
      * The column
@@ -102,6 +105,13 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * Type of notification that is sent
      */
     public final TableField<NotificationSentNotificationsRecord, String> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)), this, "Type of notification that is sent");
+
+    /**
+     * The column
+     * <code>notification.notification_sent_notifications.NOTIFICATION_STAGE</code>.
+     * Stage of the notification that is sent
+     */
+    public final TableField<NotificationSentNotificationsRecord, String> NOTIFICATION_STAGE = createField(DSL.name("NOTIFICATION_STAGE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("PLATFORM", SQLDataType.VARCHAR)), this, "Stage of the notification that is sent");
 
     /**
      * The column
@@ -122,14 +132,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_STATUS</code>.
      * Email delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, String> EMAIL_DELIVERY_STATUS = createField(DSL.name("EMAIL_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)), this, "Email delivery status");
-
-    /**
-     * The column
-     * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_TIME</code>.
-     * Time when the email was delivered
-     */
-    public final TableField<NotificationSentNotificationsRecord, LocalDateTime> EMAIL_DELIVERY_TIME = createField(DSL.name("EMAIL_DELIVERY_TIME"), SQLDataType.LOCALDATETIME(0), this, "Time when the email was delivered");
+    public final TableField<NotificationSentNotificationsRecord, Map> EMAIL_DELIVERY_STATUS = createField(DSL.name("EMAIL_DELIVERY_STATUS"), SQLDataType.JSON, this, "Email delivery status", new JSONMapBinding());
 
     /**
      * The column
@@ -143,14 +146,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.IN_APP_DELIVERY_STATUS</code>.
      * In-app delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, String> IN_APP_DELIVERY_STATUS = createField(DSL.name("IN_APP_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)), this, "In-app delivery status");
-
-    /**
-     * The column
-     * <code>notification.notification_sent_notifications.IN_APP_DELIVERY_TIME</code>.
-     * Time when the in-app notification was delivered
-     */
-    public final TableField<NotificationSentNotificationsRecord, LocalDateTime> IN_APP_DELIVERY_TIME = createField(DSL.name("IN_APP_DELIVERY_TIME"), SQLDataType.LOCALDATETIME(0), this, "Time when the in-app notification was delivered");
+    public final TableField<NotificationSentNotificationsRecord, Map> IN_APP_DELIVERY_STATUS = createField(DSL.name("IN_APP_DELIVERY_STATUS"), SQLDataType.JSON, this, "In-app delivery status", new JSONMapBinding());
 
     /**
      * The column
@@ -164,14 +160,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.MOBILE_PUSH_DELIVERY_STATUS</code>.
      * Mobile push delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, String> MOBILE_PUSH_DELIVERY_STATUS = createField(DSL.name("MOBILE_PUSH_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)), this, "Mobile push delivery status");
-
-    /**
-     * The column
-     * <code>notification.notification_sent_notifications.MOBILE_PUSH_DELIVERY_TIME</code>.
-     * Time when the mobile push notification was delivered
-     */
-    public final TableField<NotificationSentNotificationsRecord, LocalDateTime> MOBILE_PUSH_DELIVERY_TIME = createField(DSL.name("MOBILE_PUSH_DELIVERY_TIME"), SQLDataType.LOCALDATETIME(0), this, "Time when the mobile push notification was delivered");
+    public final TableField<NotificationSentNotificationsRecord, Map> MOBILE_PUSH_DELIVERY_STATUS = createField(DSL.name("MOBILE_PUSH_DELIVERY_STATUS"), SQLDataType.JSON, this, "Mobile push delivery status", new JSONMapBinding());
 
     /**
      * The column
@@ -185,14 +174,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.WEB_PUSH_DELIVERY_STATUS</code>.
      * Web push delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, String> WEB_PUSH_DELIVERY_STATUS = createField(DSL.name("WEB_PUSH_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)), this, "Web push delivery status");
-
-    /**
-     * The column
-     * <code>notification.notification_sent_notifications.WEB_PUSH_DELIVERY_TIME</code>.
-     * Time when the web push notification was delivered
-     */
-    public final TableField<NotificationSentNotificationsRecord, LocalDateTime> WEB_PUSH_DELIVERY_TIME = createField(DSL.name("WEB_PUSH_DELIVERY_TIME"), SQLDataType.LOCALDATETIME(0), this, "Time when the web push notification was delivered");
+    public final TableField<NotificationSentNotificationsRecord, Map> WEB_PUSH_DELIVERY_STATUS = createField(DSL.name("WEB_PUSH_DELIVERY_STATUS"), SQLDataType.JSON, this, "Web push delivery status", new JSONMapBinding());
 
     /**
      * The column
@@ -206,14 +188,28 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.SMS_DELIVERY_STATUS</code>.
      * SMS delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, String> SMS_DELIVERY_STATUS = createField(DSL.name("SMS_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)), this, "SMS delivery status");
+    public final TableField<NotificationSentNotificationsRecord, Map> SMS_DELIVERY_STATUS = createField(DSL.name("SMS_DELIVERY_STATUS"), SQLDataType.JSON, this, "SMS delivery status", new JSONMapBinding());
 
     /**
      * The column
-     * <code>notification.notification_sent_notifications.SMS_DELIVERY_TIME</code>.
-     * Time when the SMS was delivered
+     * <code>notification.notification_sent_notifications.ERROR_CODE</code>.
+     * Error Code if error occurs during this notification
      */
-    public final TableField<NotificationSentNotificationsRecord, LocalDateTime> SMS_DELIVERY_TIME = createField(DSL.name("SMS_DELIVERY_TIME"), SQLDataType.LOCALDATETIME(0), this, "Time when the SMS was delivered");
+    public final TableField<NotificationSentNotificationsRecord, Integer> ERROR_CODE = createField(DSL.name("ERROR_CODE"), SQLDataType.INTEGER, this, "Error Code if error occurs during this notification");
+
+    /**
+     * The column
+     * <code>notification.notification_sent_notifications.ERROR_MESSAGE_ID</code>.
+     * Error message id if error occurs during this notification
+     */
+    public final TableField<NotificationSentNotificationsRecord, String> ERROR_MESSAGE_ID = createField(DSL.name("ERROR_MESSAGE_ID"), SQLDataType.CHAR(125), this, "Error message id if error occurs during this notification");
+
+    /**
+     * The column
+     * <code>notification.notification_sent_notifications.ERROR_MESSAGE</code>.
+     * Error message if error occurs during this notification
+     */
+    public final TableField<NotificationSentNotificationsRecord, String> ERROR_MESSAGE = createField(DSL.name("ERROR_MESSAGE"), SQLDataType.CLOB, this, "Error message if error occurs during this notification");
 
     /**
      * The column

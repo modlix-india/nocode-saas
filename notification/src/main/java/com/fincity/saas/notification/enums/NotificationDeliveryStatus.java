@@ -5,14 +5,14 @@ import org.jooq.EnumType;
 public enum NotificationDeliveryStatus implements EnumType {
 
 	NO_INFO("NO_INFO"),
-	FAILED("FAILED"),
-	PENDING("PENDING"),
+	CREATED("CREATED"),
+	ERROR("ERROR"),
 	CANCELLED("CANCELLED"),
 	QUEUED("QUEUED"),
 	SENT("SENT"),
 	DELIVERED("DELIVERED"),
 	READ("READ"),
-	ERROR("ERROR");
+	FAILED("FAILED");
 
 	private final String literal;
 

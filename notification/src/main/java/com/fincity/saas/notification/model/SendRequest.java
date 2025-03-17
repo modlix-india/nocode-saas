@@ -54,7 +54,7 @@ public class SendRequest implements Serializable {
 	}
 
 	public boolean isEmpty() {
-		return this.channels == null || !this.channels.containsAntChannel();
+		return this.channels == null || !this.channels.containsAnyChannel();
 
 	}
 

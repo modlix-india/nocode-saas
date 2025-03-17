@@ -7,6 +7,7 @@ package com.fincity.saas.notification.jooq.tables.records;
 import com.fincity.saas.notification.jooq.tables.NotificationSentNotifications;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -119,8 +120,9 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
     /**
      * Setter for
      * <code>notification.notification_sent_notifications.NOTIFICATION_MESSAGE</code>.
+     * Notification message that is sent
      */
-    public NotificationSentNotificationsRecord setNotificationMessage(String value) {
+    public NotificationSentNotificationsRecord setNotificationMessage(Map value) {
         set(5, value);
         return this;
     }
@@ -128,9 +130,10 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
     /**
      * Getter for
      * <code>notification.notification_sent_notifications.NOTIFICATION_MESSAGE</code>.
+     * Notification message that is sent
      */
-    public String getNotificationMessage() {
-        return (String) get(5);
+    public Map getNotificationMessage() {
+        return (Map) get(5);
     }
 
     /**
@@ -154,11 +157,30 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
 
     /**
      * Setter for
+     * <code>notification.notification_sent_notifications.NOTIFICATION_STAGE</code>.
+     * Stage of the notification that is sent
+     */
+    public NotificationSentNotificationsRecord setNotificationStage(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_sent_notifications.NOTIFICATION_STAGE</code>.
+     * Stage of the notification that is sent
+     */
+    public String getNotificationStage() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for
      * <code>notification.notification_sent_notifications.TRIGGER_TIME</code>.
      * Time when the notification was triggered
      */
     public NotificationSentNotificationsRecord setTriggerTime(LocalDateTime value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -168,7 +190,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when the notification was triggered
      */
     public LocalDateTime getTriggerTime() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(8);
     }
 
     /**
@@ -177,7 +199,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * notification enabled or not
      */
     public NotificationSentNotificationsRecord setIsEmail(Byte value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -187,7 +209,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * notification enabled or not
      */
     public Byte getIsEmail() {
-        return (Byte) get(8);
+        return (Byte) get(9);
     }
 
     /**
@@ -195,37 +217,18 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_STATUS</code>.
      * Email delivery status
      */
-    public NotificationSentNotificationsRecord setEmailDeliveryStatus(String value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_STATUS</code>.
-     * Email delivery status
-     */
-    public String getEmailDeliveryStatus() {
-        return (String) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_TIME</code>.
-     * Time when the email was delivered
-     */
-    public NotificationSentNotificationsRecord setEmailDeliveryTime(LocalDateTime value) {
+    public NotificationSentNotificationsRecord setEmailDeliveryStatus(Map value) {
         set(10, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_TIME</code>.
-     * Time when the email was delivered
+     * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_STATUS</code>.
+     * Email delivery status
      */
-    public LocalDateTime getEmailDeliveryTime() {
-        return (LocalDateTime) get(10);
+    public Map getEmailDeliveryStatus() {
+        return (Map) get(10);
     }
 
     /**
@@ -252,7 +255,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.IN_APP_DELIVERY_STATUS</code>.
      * In-app delivery status
      */
-    public NotificationSentNotificationsRecord setInAppDeliveryStatus(String value) {
+    public NotificationSentNotificationsRecord setInAppDeliveryStatus(Map value) {
         set(12, value);
         return this;
     }
@@ -262,27 +265,8 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.IN_APP_DELIVERY_STATUS</code>.
      * In-app delivery status
      */
-    public String getInAppDeliveryStatus() {
-        return (String) get(12);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_sent_notifications.IN_APP_DELIVERY_TIME</code>.
-     * Time when the in-app notification was delivered
-     */
-    public NotificationSentNotificationsRecord setInAppDeliveryTime(LocalDateTime value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_sent_notifications.IN_APP_DELIVERY_TIME</code>.
-     * Time when the in-app notification was delivered
-     */
-    public LocalDateTime getInAppDeliveryTime() {
-        return (LocalDateTime) get(13);
+    public Map getInAppDeliveryStatus() {
+        return (Map) get(12);
     }
 
     /**
@@ -291,7 +275,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Mobile push notification enabled or not
      */
     public NotificationSentNotificationsRecord setIsMobilePush(Byte value) {
-        set(14, value);
+        set(13, value);
         return this;
     }
 
@@ -301,7 +285,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Mobile push notification enabled or not
      */
     public Byte getIsMobilePush() {
-        return (Byte) get(14);
+        return (Byte) get(13);
     }
 
     /**
@@ -309,8 +293,8 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.MOBILE_PUSH_DELIVERY_STATUS</code>.
      * Mobile push delivery status
      */
-    public NotificationSentNotificationsRecord setMobilePushDeliveryStatus(String value) {
-        set(15, value);
+    public NotificationSentNotificationsRecord setMobilePushDeliveryStatus(Map value) {
+        set(14, value);
         return this;
     }
 
@@ -319,27 +303,8 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.MOBILE_PUSH_DELIVERY_STATUS</code>.
      * Mobile push delivery status
      */
-    public String getMobilePushDeliveryStatus() {
-        return (String) get(15);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_sent_notifications.MOBILE_PUSH_DELIVERY_TIME</code>.
-     * Time when the mobile push notification was delivered
-     */
-    public NotificationSentNotificationsRecord setMobilePushDeliveryTime(LocalDateTime value) {
-        set(16, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_sent_notifications.MOBILE_PUSH_DELIVERY_TIME</code>.
-     * Time when the mobile push notification was delivered
-     */
-    public LocalDateTime getMobilePushDeliveryTime() {
-        return (LocalDateTime) get(16);
+    public Map getMobilePushDeliveryStatus() {
+        return (Map) get(14);
     }
 
     /**
@@ -348,7 +313,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Web push notification enabled or not
      */
     public NotificationSentNotificationsRecord setIsWebPush(Byte value) {
-        set(17, value);
+        set(15, value);
         return this;
     }
 
@@ -358,7 +323,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Web push notification enabled or not
      */
     public Byte getIsWebPush() {
-        return (Byte) get(17);
+        return (Byte) get(15);
     }
 
     /**
@@ -366,8 +331,8 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.WEB_PUSH_DELIVERY_STATUS</code>.
      * Web push delivery status
      */
-    public NotificationSentNotificationsRecord setWebPushDeliveryStatus(String value) {
-        set(18, value);
+    public NotificationSentNotificationsRecord setWebPushDeliveryStatus(Map value) {
+        set(16, value);
         return this;
     }
 
@@ -376,27 +341,8 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.WEB_PUSH_DELIVERY_STATUS</code>.
      * Web push delivery status
      */
-    public String getWebPushDeliveryStatus() {
-        return (String) get(18);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_sent_notifications.WEB_PUSH_DELIVERY_TIME</code>.
-     * Time when the web push notification was delivered
-     */
-    public NotificationSentNotificationsRecord setWebPushDeliveryTime(LocalDateTime value) {
-        set(19, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_sent_notifications.WEB_PUSH_DELIVERY_TIME</code>.
-     * Time when the web push notification was delivered
-     */
-    public LocalDateTime getWebPushDeliveryTime() {
-        return (LocalDateTime) get(19);
+    public Map getWebPushDeliveryStatus() {
+        return (Map) get(16);
     }
 
     /**
@@ -405,7 +351,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * notification enabled or not
      */
     public NotificationSentNotificationsRecord setIsSms(Byte value) {
-        set(20, value);
+        set(17, value);
         return this;
     }
 
@@ -415,7 +361,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * notification enabled or not
      */
     public Byte getIsSms() {
-        return (Byte) get(20);
+        return (Byte) get(17);
     }
 
     /**
@@ -423,37 +369,75 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * <code>notification.notification_sent_notifications.SMS_DELIVERY_STATUS</code>.
      * SMS delivery status
      */
-    public NotificationSentNotificationsRecord setSmsDeliveryStatus(String value) {
+    public NotificationSentNotificationsRecord setSmsDeliveryStatus(Map value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_sent_notifications.SMS_DELIVERY_STATUS</code>.
+     * SMS delivery status
+     */
+    public Map getSmsDeliveryStatus() {
+        return (Map) get(18);
+    }
+
+    /**
+     * Setter for
+     * <code>notification.notification_sent_notifications.ERROR_CODE</code>.
+     * Error Code if error occurs during this notification
+     */
+    public NotificationSentNotificationsRecord setErrorCode(Integer value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_sent_notifications.ERROR_CODE</code>.
+     * Error Code if error occurs during this notification
+     */
+    public Integer getErrorCode() {
+        return (Integer) get(19);
+    }
+
+    /**
+     * Setter for
+     * <code>notification.notification_sent_notifications.ERROR_MESSAGE_ID</code>.
+     * Error message id if error occurs during this notification
+     */
+    public NotificationSentNotificationsRecord setErrorMessageId(String value) {
+        set(20, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_sent_notifications.ERROR_MESSAGE_ID</code>.
+     * Error message id if error occurs during this notification
+     */
+    public String getErrorMessageId() {
+        return (String) get(20);
+    }
+
+    /**
+     * Setter for
+     * <code>notification.notification_sent_notifications.ERROR_MESSAGE</code>.
+     * Error message if error occurs during this notification
+     */
+    public NotificationSentNotificationsRecord setErrorMessage(String value) {
         set(21, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_sent_notifications.SMS_DELIVERY_STATUS</code>.
-     * SMS delivery status
+     * <code>notification.notification_sent_notifications.ERROR_MESSAGE</code>.
+     * Error message if error occurs during this notification
      */
-    public String getSmsDeliveryStatus() {
+    public String getErrorMessage() {
         return (String) get(21);
-    }
-
-    /**
-     * Setter for
-     * <code>notification.notification_sent_notifications.SMS_DELIVERY_TIME</code>.
-     * Time when the SMS was delivered
-     */
-    public NotificationSentNotificationsRecord setSmsDeliveryTime(LocalDateTime value) {
-        set(22, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_sent_notifications.SMS_DELIVERY_TIME</code>.
-     * Time when the SMS was delivered
-     */
-    public LocalDateTime getSmsDeliveryTime() {
-        return (LocalDateTime) get(22);
     }
 
     /**
@@ -462,7 +446,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who created this row
      */
     public NotificationSentNotificationsRecord setCreatedBy(ULong value) {
-        set(23, value);
+        set(22, value);
         return this;
     }
 
@@ -472,7 +456,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(23);
+        return (ULong) get(22);
     }
 
     /**
@@ -481,7 +465,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is created
      */
     public NotificationSentNotificationsRecord setCreatedAt(LocalDateTime value) {
-        set(24, value);
+        set(23, value);
         return this;
     }
 
@@ -491,7 +475,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(24);
+        return (LocalDateTime) get(23);
     }
 
     /**
@@ -500,7 +484,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who updated this row
      */
     public NotificationSentNotificationsRecord setUpdatedBy(ULong value) {
-        set(25, value);
+        set(24, value);
         return this;
     }
 
@@ -510,7 +494,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(25);
+        return (ULong) get(24);
     }
 
     /**
@@ -519,7 +503,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is updated
      */
     public NotificationSentNotificationsRecord setUpdatedAt(LocalDateTime value) {
-        set(26, value);
+        set(25, value);
         return this;
     }
 
@@ -529,7 +513,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(26);
+        return (LocalDateTime) get(25);
     }
 
     // -------------------------------------------------------------------------
@@ -555,7 +539,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
     /**
      * Create a detached, initialised NotificationSentNotificationsRecord
      */
-    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, String notificationMessage, String notificationType, LocalDateTime triggerTime, Byte isEmail, String emailDeliveryStatus, LocalDateTime emailDeliveryTime, Byte isInApp, String inAppDeliveryStatus, LocalDateTime inAppDeliveryTime, Byte isMobilePush, String mobilePushDeliveryStatus, LocalDateTime mobilePushDeliveryTime, Byte isWebPush, String webPushDeliveryStatus, LocalDateTime webPushDeliveryTime, Byte isSms, String smsDeliveryStatus, LocalDateTime smsDeliveryTime, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, Map notificationMessage, String notificationType, String notificationStage, LocalDateTime triggerTime, Byte isEmail, Map emailDeliveryStatus, Byte isInApp, Map inAppDeliveryStatus, Byte isMobilePush, Map mobilePushDeliveryStatus, Byte isWebPush, Map webPushDeliveryStatus, Byte isSms, Map smsDeliveryStatus, Integer errorCode, String errorMessageId, String errorMessage, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS);
 
         setId(id);
@@ -565,22 +549,21 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
         setUserId(userId);
         setNotificationMessage(notificationMessage);
         setNotificationType(notificationType);
+        setNotificationStage(notificationStage);
         setTriggerTime(triggerTime);
         setIsEmail(isEmail);
         setEmailDeliveryStatus(emailDeliveryStatus);
-        setEmailDeliveryTime(emailDeliveryTime);
         setIsInApp(isInApp);
         setInAppDeliveryStatus(inAppDeliveryStatus);
-        setInAppDeliveryTime(inAppDeliveryTime);
         setIsMobilePush(isMobilePush);
         setMobilePushDeliveryStatus(mobilePushDeliveryStatus);
-        setMobilePushDeliveryTime(mobilePushDeliveryTime);
         setIsWebPush(isWebPush);
         setWebPushDeliveryStatus(webPushDeliveryStatus);
-        setWebPushDeliveryTime(webPushDeliveryTime);
         setIsSms(isSms);
         setSmsDeliveryStatus(smsDeliveryStatus);
-        setSmsDeliveryTime(smsDeliveryTime);
+        setErrorCode(errorCode);
+        setErrorMessageId(errorMessageId);
+        setErrorMessage(errorMessage);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
