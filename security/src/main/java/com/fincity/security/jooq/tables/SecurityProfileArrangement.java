@@ -6,7 +6,9 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
+import com.fincity.security.jooq.tables.SecurityProfileArrangement.SecurityProfileArrangementPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityProfileArrangementRecord;
 
@@ -67,6 +69,12 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
     public final TableField<SecurityProfileArrangementRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
 
     /**
+     * The column <code>security.security_profile_arrangement.CLIENT_ID</code>.
+     * Client ID for which this arrangement belongs to
+     */
+    public final TableField<SecurityProfileArrangementRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID for which this arrangement belongs to");
+
+    /**
      * The column <code>security.security_profile_arrangement.PROFILE_ID</code>.
      * Profile ID for which this arrangement belongs to
      */
@@ -104,17 +112,17 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
     public final TableField<SecurityProfileArrangementRecord, Byte> ASSIGNABLE = createField(DSL.name("ASSIGNABLE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Whether the arrangement is assignable");
 
     /**
-     * The column
-     * <code>security.security_profile_arrangement.PARENT_ARRANGEMENT_ID</code>.
-     * Parent arrangement for hierarchical structure
-     */
-    public final TableField<SecurityProfileArrangementRecord, ULong> PARENT_ARRANGEMENT_ID = createField(DSL.name("PARENT_ARRANGEMENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Parent arrangement for hierarchical structure");
-
-    /**
      * The column <code>security.security_profile_arrangement.ORDER</code>.
      * Order of the arrangement
      */
     public final TableField<SecurityProfileArrangementRecord, Integer> ORDER = createField(DSL.name("ORDER"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "Order of the arrangement");
+
+    /**
+     * The column
+     * <code>security.security_profile_arrangement.PARENT_ARRANGEMENT_ID</code>.
+     * Parent arrangement ID for hierarchical structure
+     */
+    public final TableField<SecurityProfileArrangementRecord, ULong> PARENT_ARRANGEMENT_ID = createField(DSL.name("PARENT_ARRANGEMENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Parent arrangement ID for hierarchical structure");
 
     private SecurityProfileArrangement(Name alias, Table<SecurityProfileArrangementRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -198,7 +206,7 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
 
     @Override
     public List<ForeignKey<SecurityProfileArrangementRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PROFILE_ARRANGEMENT_PROFILE_ID, Keys.FK2_PROFILE_ARRANGEMENT_ROLE_ID);
+        return Arrays.asList(Keys.FK1_PROFILE_ARRANGEMENT_PROFILE_ID, Keys.FK2_PROFILE_ARRANGEMENT_ROLE_ID, Keys.FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID, Keys.FK4_PROFILE_ARRANGEMENT_CLIENT_ID);
     }
 
     private transient SecurityProfilePath _securityProfile;
@@ -225,6 +233,32 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
             _securityV2Role = new SecurityV2RolePath(this, Keys.FK2_PROFILE_ARRANGEMENT_ROLE_ID, null);
 
         return _securityV2Role;
+    }
+
+    private transient SecurityProfileArrangementPath _securityProfileArrangement;
+
+    /**
+     * Get the implicit join path to the
+     * <code>security.security_profile_arrangement</code> table.
+     */
+    public SecurityProfileArrangementPath securityProfileArrangement() {
+        if (_securityProfileArrangement == null)
+            _securityProfileArrangement = new SecurityProfileArrangementPath(this, Keys.FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID, null);
+
+        return _securityProfileArrangement;
+    }
+
+    private transient SecurityClientPath _securityClient;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table.
+     */
+    public SecurityClientPath securityClient() {
+        if (_securityClient == null)
+            _securityClient = new SecurityClientPath(this, Keys.FK4_PROFILE_ARRANGEMENT_CLIENT_ID, null);
+
+        return _securityClient;
     }
 
     @Override

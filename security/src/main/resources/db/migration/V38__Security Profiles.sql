@@ -13,7 +13,6 @@ DROP TABLE IF EXISTS `security_v2_role_role`;
 DROP TABLE IF EXISTS `security_profile_user`;
 DROP TABLE IF EXISTS `security_profile_role`;
 DROP TABLE IF EXISTS `security_client_profile`;
-DROP TABLE IF EXISTS `security_profile`;
 DROP TABLE IF EXISTS `security_v2_role`;
 
 ALTER TABLE `security_user` 
@@ -25,6 +24,7 @@ ALTER TABLE `security_user`
   DROP COLUMN `REPORTING_TO`;
 
 DROP TABLE IF EXISTS `security_designation`;
+DROP TABLE IF EXISTS `security_profile`;
 DROP TABLE IF EXISTS `security_department`;
 
 CREATE TABLE `security_profile` (
@@ -91,6 +91,7 @@ CREATE TABLE `security_v2_role` (
 
 CREATE TABLE `security_profile_arrangement` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID for which this arrangement belongs to',
   `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this arrangement belongs to',
   `ROLE_ID` bigint unsigned DEFAULT NULL COMMENT 'Role ID for which this arrangement belongs to',
   `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the arrangement',
@@ -98,13 +99,17 @@ CREATE TABLE `security_profile_arrangement` (
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the arrangement',
   `ASSIGNABLE` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Whether the arrangement is assignable',
   `ORDER` int(11) NOT NULL DEFAULT '0' COMMENT 'Order of the arrangement',
+  `PARENT_ARRANGEMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent arrangement ID for hierarchical structure',
 
   PRIMARY KEY (`ID`),
   KEY `FK1_PROFILE_ARRANGEMENT_PROFILE_ID` (`PROFILE_ID`),
   KEY `FK2_PROFILE_ARRANGEMENT_ROLE_ID` (`ROLE_ID`),
   CONSTRAINT `FK1_PROFILE_ARRANGEMENT_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `FK2_PROFILE_ARRANGEMENT_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  CONSTRAINT `FK2_PROFILE_ARRANGEMENT_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID` FOREIGN KEY (`PARENT_ARRANGEMENT_ID`) REFERENCES `security_profile_arrangement` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `FK4_PROFILE_ARRANGEMENT_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) 
+ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Security Profile User Table
 

@@ -20,12 +20,13 @@ public class RoleV2 extends AbstractUpdatableDTO<ULong, ULong> {
 
 	private ULong clientId;
 	private ULong appId;
+	// This is more for reading a role to pickup app Name to pickup authorities.
+	private String appName;
 	private String name;
 	private String shortName;
 	private String description;
 	private String authority;
 
-	@JsonIgnore
 	private RoleV2[] subRoles;
 
 	@JsonIgnore

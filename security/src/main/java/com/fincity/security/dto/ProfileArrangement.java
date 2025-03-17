@@ -16,6 +16,7 @@ public class ProfileArrangement extends AbstractDTO<ULong, ULong> {
     private static final long serialVersionUID = 1L;
 
     private ULong profileId;
+    private ULong clientId;
     private ULong roleId;
     private String name;
     private String shortName;

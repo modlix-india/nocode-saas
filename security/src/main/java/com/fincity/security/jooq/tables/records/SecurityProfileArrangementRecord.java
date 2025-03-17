@@ -37,11 +37,28 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
     }
 
     /**
+     * Setter for <code>security.security_profile_arrangement.CLIENT_ID</code>.
+     * Client ID for which this arrangement belongs to
+     */
+    public SecurityProfileArrangementRecord setClientId(ULong value) {
+        set(1, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_profile_arrangement.CLIENT_ID</code>.
+     * Client ID for which this arrangement belongs to
+     */
+    public ULong getClientId() {
+        return (ULong) get(1);
+    }
+
+    /**
      * Setter for <code>security.security_profile_arrangement.PROFILE_ID</code>.
      * Profile ID for which this arrangement belongs to
      */
     public SecurityProfileArrangementRecord setProfileId(ULong value) {
-        set(1, value);
+        set(2, value);
         return this;
     }
 
@@ -50,7 +67,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Profile ID for which this arrangement belongs to
      */
     public ULong getProfileId() {
-        return (ULong) get(1);
+        return (ULong) get(2);
     }
 
     /**
@@ -58,7 +75,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Role ID for which this arrangement belongs to
      */
     public SecurityProfileArrangementRecord setRoleId(ULong value) {
-        set(2, value);
+        set(3, value);
         return this;
     }
 
@@ -67,7 +84,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Role ID for which this arrangement belongs to
      */
     public ULong getRoleId() {
-        return (ULong) get(2);
+        return (ULong) get(3);
     }
 
     /**
@@ -75,7 +92,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * of the arrangement
      */
     public SecurityProfileArrangementRecord setName(String value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -84,7 +101,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * of the arrangement
      */
     public String getName() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
@@ -92,7 +109,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Short name of the arrangement
      */
     public SecurityProfileArrangementRecord setShortName(String value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -101,7 +118,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Short name of the arrangement
      */
     public String getShortName() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
@@ -110,7 +127,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Description of the arrangement
      */
     public SecurityProfileArrangementRecord setDescription(String value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -120,7 +137,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Description of the arrangement
      */
     public String getDescription() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
@@ -128,7 +145,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Whether the arrangement is assignable
      */
     public SecurityProfileArrangementRecord setAssignable(Byte value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -137,26 +154,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      * Whether the arrangement is assignable
      */
     public Byte getAssignable() {
-        return (Byte) get(6);
-    }
-
-    /**
-     * Setter for
-     * <code>security.security_profile_arrangement.PARENT_ARRANGEMENT_ID</code>.
-     * Parent arrangement for hierarchical structure
-     */
-    public SecurityProfileArrangementRecord setParentArrangementId(ULong value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_profile_arrangement.PARENT_ARRANGEMENT_ID</code>.
-     * Parent arrangement for hierarchical structure
-     */
-    public ULong getParentArrangementId() {
-        return (ULong) get(7);
+        return (Byte) get(7);
     }
 
     /**
@@ -174,6 +172,25 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
      */
     public Integer getOrder() {
         return (Integer) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>security.security_profile_arrangement.PARENT_ARRANGEMENT_ID</code>.
+     * Parent arrangement ID for hierarchical structure
+     */
+    public SecurityProfileArrangementRecord setParentArrangementId(ULong value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_profile_arrangement.PARENT_ARRANGEMENT_ID</code>.
+     * Parent arrangement ID for hierarchical structure
+     */
+    public ULong getParentArrangementId() {
+        return (ULong) get(9);
     }
 
     // -------------------------------------------------------------------------
@@ -199,18 +216,19 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
     /**
      * Create a detached, initialised SecurityProfileArrangementRecord
      */
-    public SecurityProfileArrangementRecord(ULong id, ULong profileId, ULong roleId, String name, String shortName, String description, Byte assignable, ULong parentArrangementId, Integer order) {
+    public SecurityProfileArrangementRecord(ULong id, ULong clientId, ULong profileId, ULong roleId, String name, String shortName, String description, Byte assignable, Integer order, ULong parentArrangementId) {
         super(SecurityProfileArrangement.SECURITY_PROFILE_ARRANGEMENT);
 
         setId(id);
+        setClientId(clientId);
         setProfileId(profileId);
         setRoleId(roleId);
         setName(name);
         setShortName(shortName);
         setDescription(description);
         setAssignable(assignable);
-        setParentArrangementId(parentArrangementId);
         setOrder(order);
+        setParentArrangementId(parentArrangementId);
         resetChangedOnNotNull();
     }
 }
