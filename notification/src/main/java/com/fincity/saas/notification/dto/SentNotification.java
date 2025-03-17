@@ -22,11 +22,13 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
+@FieldNameConstants
 public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 
 	@Serial
