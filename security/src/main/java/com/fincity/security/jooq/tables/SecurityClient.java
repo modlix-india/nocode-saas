@@ -15,7 +15,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegDepartment.SecurityAppRegD
 import com.fincity.security.jooq.tables.SecurityAppRegDesignation.SecurityAppRegDesignationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegFileAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration.SecurityAppRegIntegrationPath;
-import com.fincity.security.jooq.tables.SecurityAppRegProfile.SecurityAppRegProfilePath;
+import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.SecurityAppRegProfileRestrictionPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.SecurityAppRegUserDesignationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityClientAddress.SecurityClientAddressPath;
@@ -333,17 +333,17 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _securityAppRegFileAccess;
     }
 
-    private transient SecurityAppRegProfilePath _securityAppRegProfile;
+    private transient SecurityAppRegProfileRestrictionPath _securityAppRegProfileRestriction;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_profile</code> table
+     * <code>security.security_app_reg_profile_restriction</code> table
      */
-    public SecurityAppRegProfilePath securityAppRegProfile() {
-        if (_securityAppRegProfile == null)
-            _securityAppRegProfile = new SecurityAppRegProfilePath(this, null, Keys.FK1_APP_REG_PROFILE_CLNT_ID.getInverseKey());
+    public SecurityAppRegProfileRestrictionPath securityAppRegProfileRestriction() {
+        if (_securityAppRegProfileRestriction == null)
+            _securityAppRegProfileRestriction = new SecurityAppRegProfileRestrictionPath(this, null, Keys.FK1_APP_REG_PROFILE_CLNT_ID.getInverseKey());
 
-        return _securityAppRegProfile;
+        return _securityAppRegProfileRestriction;
     }
 
     private transient SecurityAppRegUserDesignationPath _securityAppRegUserDesignation;

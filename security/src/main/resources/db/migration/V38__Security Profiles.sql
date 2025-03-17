@@ -4,6 +4,8 @@ use security;
 DROP TABLE IF EXISTS `security_app_reg_user_profile`;
 DROP TABLE IF EXISTS `security_app_reg_user_designation`;
 DROP TABLE IF EXISTS `security_app_reg_profile`;
+DROP TABLE IF EXISTS `security_app_reg_profile_restriction`;
+DROP TABLE IF EXISTS `security_profile_client_restriction`;
 DROP TABLE IF EXISTS `security_app_reg_designation`;
 DROP TABLE IF EXISTS `security_app_reg_department`;
 DROP TABLE IF EXISTS `security_profile_arrangement`;
@@ -98,6 +100,22 @@ CREATE TABLE `security_profile_arrangement` (
 ) 
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Security Profile Client restriction Table
+
+CREATE TABLE `security_profile_client_restriction` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this restriction belongs to',
+  `APP_ID` bigint unsigned NOT NULL COMMENT 'App ID for which this restriction belongs to',
+  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID for which this restriction belongs to',
+  
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_PROFILE_CLIENT_APP_ID` (`PROFILE_ID`,`APP_ID`,`CLIENT_ID`),
+  KEY `FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID` (`PROFILE_ID`),
+  KEY `FK2_PROFILE_CLIENT_RESTRICTION_APP_ID` (`APP_ID`),
+  CONSTRAINT `FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK2_PROFILE_CLIENT_RESTRICTION_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- Security Profile User Table
 
 CREATE TABLE `security_profile_user` (
@@ -226,7 +244,7 @@ ADD CONSTRAINT `FK2_USER_REPORTING_TO_ID` FOREIGN KEY (`REPORTING_TO`) REFERENCE
 
 -- App registration related tables
 
-CREATE TABLE `security_app_reg_profile` (
+CREATE TABLE `security_app_reg_profile_restriction` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
   `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID',
   `CLIENT_TYPE` char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'BUS' COMMENT 'Client type',

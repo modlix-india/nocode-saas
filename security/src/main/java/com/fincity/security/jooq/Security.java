@@ -15,7 +15,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
-import com.fincity.security.jooq.tables.SecurityAppRegProfile;
+import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
 import com.fincity.security.jooq.tables.SecurityClient;
@@ -34,6 +34,7 @@ import com.fincity.security.jooq.tables.SecurityPastPins;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileArrangement;
+import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
@@ -124,9 +125,9 @@ public class Security extends SchemaImpl {
     public final SecurityAppRegIntegrationTokens SECURITY_APP_REG_INTEGRATION_TOKENS = SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS;
 
     /**
-     * The table <code>security.security_app_reg_profile</code>.
+     * The table <code>security.security_app_reg_profile_restriction</code>.
      */
-    public final SecurityAppRegProfile SECURITY_APP_REG_PROFILE = SecurityAppRegProfile.SECURITY_APP_REG_PROFILE;
+    public final SecurityAppRegProfileRestriction SECURITY_APP_REG_PROFILE_RESTRICTION = SecurityAppRegProfileRestriction.SECURITY_APP_REG_PROFILE_RESTRICTION;
 
     /**
      * The table <code>security.security_app_reg_user_designation</code>.
@@ -219,6 +220,11 @@ public class Security extends SchemaImpl {
     public final SecurityProfileArrangement SECURITY_PROFILE_ARRANGEMENT = SecurityProfileArrangement.SECURITY_PROFILE_ARRANGEMENT;
 
     /**
+     * The table <code>security.security_profile_client_restriction</code>.
+     */
+    public final SecurityProfileClientRestriction SECURITY_PROFILE_CLIENT_RESTRICTION = SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION;
+
+    /**
      * The table <code>security.security_profile_user</code>.
      */
     public final SecurityProfileUser SECURITY_PROFILE_USER = SecurityProfileUser.SECURITY_PROFILE_USER;
@@ -305,7 +311,7 @@ public class Security extends SchemaImpl {
             SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS,
             SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION,
             SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS,
-            SecurityAppRegProfile.SECURITY_APP_REG_PROFILE,
+            SecurityAppRegProfileRestriction.SECURITY_APP_REG_PROFILE_RESTRICTION,
             SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION,
             SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE,
             SecurityClient.SECURITY_CLIENT,
@@ -324,6 +330,7 @@ public class Security extends SchemaImpl {
             SecurityPermission.SECURITY_PERMISSION,
             SecurityProfile.SECURITY_PROFILE,
             SecurityProfileArrangement.SECURITY_PROFILE_ARRANGEMENT,
+            SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION,
             SecurityProfileUser.SECURITY_PROFILE_USER,
             SecuritySoxLog.SECURITY_SOX_LOG,
             SecuritySslCertificate.SECURITY_SSL_CERTIFICATE,
