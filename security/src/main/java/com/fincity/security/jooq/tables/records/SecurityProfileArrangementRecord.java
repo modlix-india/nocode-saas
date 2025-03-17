@@ -193,6 +193,25 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
         return (ULong) get(9);
     }
 
+    /**
+     * Setter for
+     * <code>security.security_profile_arrangement.OVERRIDE_ARRANGEMENT_ID</code>.
+     * Override arrangement ID for which this arrangement belongs to
+     */
+    public SecurityProfileArrangementRecord setOverrideArrangementId(ULong value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_profile_arrangement.OVERRIDE_ARRANGEMENT_ID</code>.
+     * Override arrangement ID for which this arrangement belongs to
+     */
+    public ULong getOverrideArrangementId() {
+        return (ULong) get(10);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -216,7 +235,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
     /**
      * Create a detached, initialised SecurityProfileArrangementRecord
      */
-    public SecurityProfileArrangementRecord(ULong id, ULong clientId, ULong profileId, ULong roleId, String name, String shortName, String description, Byte assignable, Integer order, ULong parentArrangementId) {
+    public SecurityProfileArrangementRecord(ULong id, ULong clientId, ULong profileId, ULong roleId, String name, String shortName, String description, Byte assignable, Integer order, ULong parentArrangementId, ULong overrideArrangementId) {
         super(SecurityProfileArrangement.SECURITY_PROFILE_ARRANGEMENT);
 
         setId(id);
@@ -229,6 +248,7 @@ public class SecurityProfileArrangementRecord extends UpdatableRecordImpl<Securi
         setAssignable(assignable);
         setOrder(order);
         setParentArrangementId(parentArrangementId);
+        setOverrideArrangementId(overrideArrangementId);
         resetChangedOnNotNull();
     }
 }

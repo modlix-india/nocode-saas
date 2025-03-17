@@ -124,6 +124,13 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
      */
     public final TableField<SecurityProfileArrangementRecord, ULong> PARENT_ARRANGEMENT_ID = createField(DSL.name("PARENT_ARRANGEMENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Parent arrangement ID for hierarchical structure");
 
+    /**
+     * The column
+     * <code>security.security_profile_arrangement.OVERRIDE_ARRANGEMENT_ID</code>.
+     * Override arrangement ID for which this arrangement belongs to
+     */
+    public final TableField<SecurityProfileArrangementRecord, ULong> OVERRIDE_ARRANGEMENT_ID = createField(DSL.name("OVERRIDE_ARRANGEMENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Override arrangement ID for which this arrangement belongs to");
+
     private SecurityProfileArrangement(Name alias, Table<SecurityProfileArrangementRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -206,7 +213,7 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
 
     @Override
     public List<ForeignKey<SecurityProfileArrangementRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PROFILE_ARRANGEMENT_PROFILE_ID, Keys.FK2_PROFILE_ARRANGEMENT_ROLE_ID, Keys.FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID, Keys.FK4_PROFILE_ARRANGEMENT_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_PROFILE_ARRANGEMENT_PROFILE_ID, Keys.FK2_PROFILE_ARRANGEMENT_ROLE_ID, Keys.FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID, Keys.FK4_PROFILE_ARRANGEMENT_CLIENT_ID, Keys.FK5_PROFILE_ARRANGEMENT_OVERRIDE_ARRANGEMENT_ID);
     }
 
     private transient SecurityProfilePath _securityProfile;
@@ -235,17 +242,18 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
         return _securityV2Role;
     }
 
-    private transient SecurityProfileArrangementPath _securityProfileArrangement;
+    private transient SecurityProfileArrangementPath _fk3ProfileArrangementParentArrangementId;
 
     /**
      * Get the implicit join path to the
-     * <code>security.security_profile_arrangement</code> table.
+     * <code>security.security_profile_arrangement</code> table, via the
+     * <code>FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID</code> key.
      */
-    public SecurityProfileArrangementPath securityProfileArrangement() {
-        if (_securityProfileArrangement == null)
-            _securityProfileArrangement = new SecurityProfileArrangementPath(this, Keys.FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID, null);
+    public SecurityProfileArrangementPath fk3ProfileArrangementParentArrangementId() {
+        if (_fk3ProfileArrangementParentArrangementId == null)
+            _fk3ProfileArrangementParentArrangementId = new SecurityProfileArrangementPath(this, Keys.FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID, null);
 
-        return _securityProfileArrangement;
+        return _fk3ProfileArrangementParentArrangementId;
     }
 
     private transient SecurityClientPath _securityClient;
@@ -259,6 +267,20 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
             _securityClient = new SecurityClientPath(this, Keys.FK4_PROFILE_ARRANGEMENT_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityProfileArrangementPath _fk5ProfileArrangementOverrideArrangementId;
+
+    /**
+     * Get the implicit join path to the
+     * <code>security.security_profile_arrangement</code> table, via the
+     * <code>FK5_PROFILE_ARRANGEMENT_OVERRIDE_ARRANGEMENT_ID</code> key.
+     */
+    public SecurityProfileArrangementPath fk5ProfileArrangementOverrideArrangementId() {
+        if (_fk5ProfileArrangementOverrideArrangementId == null)
+            _fk5ProfileArrangementOverrideArrangementId = new SecurityProfileArrangementPath(this, Keys.FK5_PROFILE_ARRANGEMENT_OVERRIDE_ARRANGEMENT_ID, null);
+
+        return _fk5ProfileArrangementOverrideArrangementId;
     }
 
     @Override
