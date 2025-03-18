@@ -8,9 +8,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.notification.dao.SentNotificationDao;
 import com.fincity.saas.notification.dto.SentNotification;
 import com.fincity.saas.notification.enums.NotificationChannelType;
@@ -24,6 +26,25 @@ import reactor.core.publisher.Mono;
 @Service
 public class SentNotificationService
 		extends AbstractCodeService<NotificationSentNotificationsRecord, ULong, SentNotification, SentNotificationDao> {
+
+	private static final String SENT_NOTIFICATION_CACHE = "sentNotification";
+
+	private CacheService cacheService;
+
+	@Override
+	protected String getCacheName() {
+		return SENT_NOTIFICATION_CACHE;
+	}
+
+	@Override
+	protected CacheService getCacheService() {
+		return cacheService;
+	}
+
+	@Autowired
+	public void setCacheService(CacheService cacheService) {
+		this.cacheService = cacheService;
+	}
 
 	@Override
 	protected Mono<SentNotification> updatableEntity(SentNotification entity) {
@@ -95,13 +116,20 @@ public class SentNotificationService
 
 	private Mono<SentNotification> updateFromRequest(SendRequest request, NotificationStage notificationStage,
 			NotificationDeliveryStatus deliveryStatus, NotificationChannelType... channelTypes) {
+
 		return FlatMapUtil.flatMapMono(
+
 				() -> this.getByCode(request.getCode())
 						.switchIfEmpty(
 								this.createFromRequest(request, notificationStage, deliveryStatus, channelTypes)),
+
 				sentNotification -> this.updateSentNotification(sentNotification, request, LocalDateTime.now(),
 						notificationStage, deliveryStatus, channelTypes),
-				(sentNotification, updated) -> this.update(updated));
+
+				(sentNotification, updatedNotification) -> this.update(updatedNotification),
+
+				(sentNotification, updatedNotification, updated) -> this.evictCode(updated.getCode()).map(evictedCode-> updated)
+		);
 	}
 
 	private Mono<SentNotification> createSentNotification(SendRequest request, LocalDateTime createdTime,
@@ -109,6 +137,21 @@ public class SentNotificationService
 			NotificationChannelType... channelTypes) {
 
 		SentNotification sentNotification = SentNotification.from(request, createdTime);
+
+		return this.updateStageAndStatus(sentNotification, request, createdTime, notificationStage, deliveryStatus,
+				channelTypes);
+	}
+
+	private Mono<SentNotification> updateSentNotification(SentNotification sentNotification, SendRequest request,
+			LocalDateTime createdTime, NotificationStage notificationStage, NotificationDeliveryStatus deliveryStatus,
+			NotificationChannelType... channelTypes) {
+		return this.updateStageAndStatus(sentNotification, request, createdTime, notificationStage, deliveryStatus,
+				channelTypes);
+	}
+
+	private Mono<SentNotification> updateStageAndStatus(SentNotification sentNotification, SendRequest request,
+			LocalDateTime createdTime, NotificationStage notificationStage, NotificationDeliveryStatus deliveryStatus,
+			NotificationChannelType... channelTypes) {
 
 		sentNotification.setNotificationStage(notificationStage);
 
@@ -126,28 +169,5 @@ public class SentNotificationService
 				.setChannelInfo(ct, Boolean.TRUE, deliveryStatusInfo, Boolean.TRUE));
 
 		return Mono.just(sentNotification);
-	}
-
-	private Mono<SentNotification> updateSentNotification(SentNotification sentNotification, SendRequest request,
-			LocalDateTime createdTime, NotificationStage notificationStage, NotificationDeliveryStatus deliveryStatus,
-			NotificationChannelType... channelTypes) {
-
-		sentNotification.setNotificationStage(notificationStage);
-
-		if (!request.getChannels().containsAnyChannel())
-			return Mono.just(sentNotification);
-
-		Map<String, LocalDateTime> deliveryStatusInfo = Map.of(deliveryStatus.getLiteral(), createdTime);
-
-		List<NotificationChannelType> channels = channelTypes.length > 0
-				? Arrays.stream(channelTypes).filter(ct -> request.getChannels().getEnabledChannels().contains(ct))
-						.toList()
-				: new ArrayList<>(request.getChannels().getEnabledChannels());
-
-		channels.forEach(ct -> sentNotification
-				.setChannelInfo(ct, Boolean.TRUE, deliveryStatusInfo, Boolean.FALSE));
-
-		return Mono.just(sentNotification);
-
 	}
 }

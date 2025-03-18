@@ -28,8 +28,6 @@ import com.fincity.saas.notification.jooq.tables.records.NotificationUserPrefere
 import lombok.Getter;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Service
 public class UserPreferenceService
@@ -97,7 +95,10 @@ public class UserPreferenceService
 				(ca, entity, canUpdate) -> super.update(key, fields),
 
 				(ca, entity, canUpdate, updated) -> cacheService.evict(this.getCacheName(),
-						this.getCacheKey(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
+						this.getCacheKey(updated.getAppId(), updated.getUserId())),
+
+				(ca, entity, canUpdate, updated, evicted) -> this.evictCode(updated.getCode())
+						.map(evictedCode -> updated))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -117,7 +118,10 @@ public class UserPreferenceService
 				(ca, uEntity, canUpdate) -> super.update(uEntity),
 
 				(ca, uEntity, canUpdate, updated) -> cacheService.evict(this.getCacheName(),
-						this.getCacheKey(updated.getAppId(), updated.getUserId())).map(evicted -> updated))
+						this.getCacheKey(updated.getAppId(), updated.getUserId())),
+
+				(ca, uEntity, canUpdate, updated, evicted) -> this.evictCode(updated.getCode())
+						.map(evictedCode -> updated))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
@@ -193,9 +197,12 @@ public class UserPreferenceService
 				(ca, entity, canDelete) -> super.delete(id),
 
 				(ca, entity, canUpdate, deleted) -> cacheService.evict(this.getCacheName(),
-						this.getCacheKey(entity.getAppId(), entity.getUserId())).map(evicted -> deleted),
+						this.getCacheKey(entity.getAppId(), entity.getUserId())),
 
-				(ca, entity, canUpdate, deleted, evicted) -> Mono.just(deleted))
+				(ca, entity, canUpdate, deleted, evicted) -> this.evictCode(entity.getCode())
+						.map(evictedCode -> deleted)
+
+		)
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
