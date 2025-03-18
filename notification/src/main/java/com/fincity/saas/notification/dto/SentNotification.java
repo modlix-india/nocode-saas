@@ -16,6 +16,7 @@ import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.NotificationType;
+import com.fincity.saas.notification.model.NotificationErrorInfo;
 import com.fincity.saas.notification.model.SendRequest;
 
 import lombok.Data;
@@ -68,7 +69,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 				.setAppCode(request.getAppCode())
 				.setUserId(ULongUtil.valueOf(request.getUserId()))
 				.setNotificationType(request.getNotificationType())
-				.setNotificationMessage(request.getChannels().toMap())
+				.setNotificationMessage(request.getChannels() != null ? request.getChannels().toMap() : Map.of())
 				.setTriggerTime(triggerTime);
 	}
 
@@ -76,19 +77,16 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 			Map<String, LocalDateTime> deliveryStatus, boolean override) {
 
 		switch (channelType) {
-			case EMAIL ->
-				this.updateChannelInfo(isEnabled, deliveryStatus, this::setEmail, this::getEmailDeliveryStatus,
-						this::setEmailDeliveryStatus, override);
-			case IN_APP ->
-				this.updateChannelInfo(isEnabled, deliveryStatus, this::setInApp, this::getInAppDeliveryStatus,
-						this::setInAppDeliveryStatus, override);
+			case EMAIL -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setEmail,
+					this::getEmailDeliveryStatus, this::setEmailDeliveryStatus, override);
+			case IN_APP -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setInApp,
+					this::getInAppDeliveryStatus, this::setInAppDeliveryStatus, override);
 			case MOBILE_PUSH -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setMobilePush,
 					this::getMobilePushDeliveryStatus, this::setMobilePushDeliveryStatus, override);
-			case WEB_PUSH ->
-				this.updateChannelInfo(isEnabled, deliveryStatus, this::setWebPush, this::getWebPushDeliveryStatus,
-						this::setWebPushDeliveryStatus, override);
-			case SMS -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setSms, this::getSmsDeliveryStatus,
-					this::setSmsDeliveryStatus, override);
+			case WEB_PUSH -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setWebPush,
+					this::getWebPushDeliveryStatus, this::setWebPushDeliveryStatus, override);
+			case SMS -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setSms,
+					this::getSmsDeliveryStatus, this::setSmsDeliveryStatus, override);
 			default -> {
 				// do nothing
 			}
@@ -114,10 +112,10 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 		setStatus.accept(currentStatus);
 	}
 
-	public SentNotification setErrorInfo(String errorMessageId, Integer errorCode, String errorMessage) {
-		this.setErrorMessageId(errorMessageId);
-		this.setErrorCode(errorCode);
-		this.setErrorMessage(errorMessage);
+	public SentNotification setErrorInfo(NotificationErrorInfo notificationErrorInfo) {
+		this.setErrorMessageId(notificationErrorInfo.getMessageId());
+		this.setErrorCode(notificationErrorInfo.getErrorCode());
+		this.setErrorMessage(notificationErrorInfo.getErrorMessage());
 		return this;
 	}
 

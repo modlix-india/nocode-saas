@@ -30,6 +30,7 @@ public class SendRequest implements Serializable {
 	private NotificationType notificationType;
 	private Map<NotificationChannelType, String> connections;
 	private NotificationChannel channels;
+	private NotificationErrorInfo errorInfo;
 
 	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
 	                             Map<NotificationChannelType, String> connections, NotificationChannel channels) {
@@ -41,6 +42,17 @@ public class SendRequest implements Serializable {
 				.setNotificationType(NotificationType.lookupLiteral(notificationType))
 				.setConnections(connections)
 				.setChannels(channels);
+	}
+
+	public static SendRequest ofError(String appCode, String clientCode, BigInteger userId, String notificationType,
+	                                  NotificationErrorInfo errorInfo) {
+		return new SendRequest()
+				.setCode(UniqueUtil.shortUUID())
+				.setAppCode(appCode)
+				.setClientCode(clientCode)
+				.setUserId(userId)
+				.setNotificationType(NotificationType.lookupLiteral(notificationType))
+				.setErrorInfo(errorInfo);
 	}
 
 	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType) {

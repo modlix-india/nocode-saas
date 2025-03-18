@@ -1,7 +1,6 @@
 package com.fincity.saas.notification.service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.dao.SentNotificationDao;
 import com.fincity.saas.notification.dto.SentNotification;
 import com.fincity.saas.notification.enums.NotificationChannelType;
@@ -22,6 +22,7 @@ import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotific
 import com.fincity.saas.notification.model.SendRequest;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class SentNotificationService
@@ -89,57 +90,65 @@ public class SentNotificationService
 	}
 
 	public Mono<SentNotification> toPlatformNotification(SendRequest request) {
-		return this.createFromRequest(request, NotificationStage.PLATFORM, NotificationDeliveryStatus.CREATED);
+		return this.createFromRequest(request, NotificationStage.PLATFORM, NotificationDeliveryStatus.CREATED)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toPlatformNotification"));
 	}
 
 	public Mono<SentNotification> toPlatformNotification(SendRequest request, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
-		return this.createFromRequest(request, NotificationStage.PLATFORM, deliveryStatus, channelTypes);
+		return this.createFromRequest(request, NotificationStage.PLATFORM, deliveryStatus, channelTypes)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"SentNotificationService.toPlatformNotification[NotificationChannelType]"));
 	}
 
 	public Mono<SentNotification> toGatewayNotification(SendRequest request, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
-		return this.updateFromRequest(request, NotificationStage.GATEWAY, deliveryStatus, channelTypes);
+		return this.updateOrCreateFromRequest(request, NotificationStage.GATEWAY, deliveryStatus, channelTypes)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toGatewayNotification"));
 	}
 
 	public Mono<SentNotification> toNetworkNotification(SendRequest request, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
-		return this.updateFromRequest(request, NotificationStage.NETWORK, deliveryStatus, channelTypes);
+		return this.updateOrCreateFromRequest(request, NotificationStage.NETWORK, deliveryStatus, channelTypes)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toNetworkNotification"));
+	}
+
+	public Mono<SentNotification> toErrorNotification(SendRequest request) {
+		return this.updateOrCreateFromRequest(request, null, NotificationDeliveryStatus.ERROR)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toErrorNotification"));
 	}
 
 	private Mono<SentNotification> createFromRequest(SendRequest request, NotificationStage notificationStage,
 			NotificationDeliveryStatus deliveryStatus, NotificationChannelType... channelTypes) {
 		return this
 				.createSentNotification(request, LocalDateTime.now(), notificationStage, deliveryStatus, channelTypes)
-				.flatMap(this::create);
+				.flatMap(this::create)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.createFromRequest"));
 	}
 
-	private Mono<SentNotification> updateFromRequest(SendRequest request, NotificationStage notificationStage,
+	private Mono<SentNotification> updateOrCreateFromRequest(SendRequest request, NotificationStage notificationStage,
 			NotificationDeliveryStatus deliveryStatus, NotificationChannelType... channelTypes) {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.getByCode(request.getCode())
-						.switchIfEmpty(
-								this.createFromRequest(request, notificationStage, deliveryStatus, channelTypes)),
+				() -> this.getByCode(request.getCode()),
 
 				sentNotification -> this.updateSentNotification(sentNotification, request, LocalDateTime.now(),
 						notificationStage, deliveryStatus, channelTypes),
 
 				(sentNotification, updatedNotification) -> this.update(updatedNotification),
 
-				(sentNotification, updatedNotification, updated) -> this.evictCode(updated.getCode()).map(evictedCode-> updated)
-		);
+				(sentNotification, updatedNotification, updated) -> this.evictCode(updated.getCode())
+						.map(evictedCode -> updated))
+				.switchIfEmpty(this.createFromRequest(request, notificationStage, deliveryStatus, channelTypes))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.updateFromRequest"));
 	}
 
 	private Mono<SentNotification> createSentNotification(SendRequest request, LocalDateTime createdTime,
 			NotificationStage notificationStage, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
-
-		SentNotification sentNotification = SentNotification.from(request, createdTime);
-
-		return this.updateStageAndStatus(sentNotification, request, createdTime, notificationStage, deliveryStatus,
-				channelTypes);
+		return this.updateStageAndStatus(SentNotification.from(request, createdTime), request, createdTime,
+				notificationStage, deliveryStatus, channelTypes);
 	}
 
 	private Mono<SentNotification> updateSentNotification(SentNotification sentNotification, SendRequest request,
@@ -153,20 +162,24 @@ public class SentNotificationService
 			LocalDateTime createdTime, NotificationStage notificationStage, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
 
-		sentNotification.setNotificationStage(notificationStage);
+		if (notificationStage != null)
+			sentNotification.setNotificationStage(notificationStage);
 
-		if (!request.getChannels().containsAnyChannel())
+		if (deliveryStatus == null || !request.getChannels().containsAnyChannel())
 			return Mono.just(sentNotification);
+
+		if (deliveryStatus.equals(NotificationDeliveryStatus.ERROR))
+			sentNotification.setErrorInfo(request.getErrorInfo());
+
+		List<NotificationChannelType> enabledChannels = request.getChannels().getEnabledChannels();
+
+		List<NotificationChannelType> channels = channelTypes.length > 0
+				? Arrays.stream(channelTypes).filter(enabledChannels::contains).toList()
+				: enabledChannels;
 
 		Map<String, LocalDateTime> deliveryStatusInfo = Map.of(deliveryStatus.getLiteral(), createdTime);
 
-		List<NotificationChannelType> channels = channelTypes.length > 0
-				? Arrays.stream(channelTypes).filter(ct -> request.getChannels().getEnabledChannels().contains(ct))
-						.toList()
-				: new ArrayList<>(request.getChannels().getEnabledChannels());
-
-		channels.forEach(ct -> sentNotification
-				.setChannelInfo(ct, Boolean.TRUE, deliveryStatusInfo, Boolean.TRUE));
+		channels.forEach(ct -> sentNotification.setChannelInfo(ct, Boolean.TRUE, deliveryStatusInfo, Boolean.TRUE));
 
 		return Mono.just(sentNotification);
 	}

@@ -11,6 +11,6 @@ public class NotificationErrorInfo {
 
 	private Integer errorCode;
 	private String messageId;
-	private String description;
+	private String errorMessage;
 	private String transId;
 }
