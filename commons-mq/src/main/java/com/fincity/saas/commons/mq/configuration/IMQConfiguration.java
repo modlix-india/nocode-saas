@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public interface IMQConfiguration {
 
 	@Bean
-	default DirectRabbitListenerContainerFactory directMesageListener(CachingConnectionFactory connectionFactory) {
+	default DirectRabbitListenerContainerFactory directMessageListener(CachingConnectionFactory connectionFactory) {
 
 		DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
 		factory.setAcknowledgeMode(AcknowledgeMode.AUTO);

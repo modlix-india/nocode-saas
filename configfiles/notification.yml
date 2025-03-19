@@ -1,6 +1,8 @@
 spring:
   application:
     name: notification
+  freemarker:
+    check-template-location: false
   r2dbc:
     url: ${notification.db.url}
     username: ${notification.db.username}

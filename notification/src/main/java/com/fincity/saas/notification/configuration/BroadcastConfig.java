@@ -8,17 +8,23 @@ import org.springframework.amqp.core.Declarable;
 import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import com.fincity.saas.notification.enums.NotificationChannelType;
 
 @Configuration
 public class BroadcastConfig {
 
 	@Value("${events.mq.exchange.fanout:notification.fanout.exchange}")
 	private String fanoutExchangeName;
+
+	private QueueNameProvider queueNameProvider;
+
+	@Autowired
+	private void setQueueNameProvider(QueueNameProvider queueNameProvider) {
+		this.queueNameProvider = queueNameProvider;
+	}
 
 	@Bean
 	public Declarables fanoutBindings() {
@@ -29,10 +35,10 @@ public class BroadcastConfig {
 
 		declarableList.add(fanoutExchange);
 
-		for (NotificationChannelType channelType : NotificationChannelType.values()) {
-			declarableList.add(new Queue(channelType.getQueueName(fanoutExchangeName), true, false, false));
-			declarableList.add(BindingBuilder.bind(new Queue(channelType.getQueueName(fanoutExchangeName), false))
-					.to(fanoutExchange));
+		for (String queueName : queueNameProvider.getAllBroadcastQueues()) {
+			Queue queue = new Queue(queueName, true, false, false);
+			declarableList.add(queue);
+			declarableList.add(BindingBuilder.bind(queue).to(fanoutExchange));
 		}
 
 		return new Declarables(declarableList);

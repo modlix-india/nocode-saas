@@ -56,22 +56,23 @@ public class NotificationProcessingService implements INotificationCacheService<
 	private final NotificationConnectionService connectionService;
 	private final NotificationTemplateProcessor notificationTemplateProcessor;
 	private final NotificationMessageProducer notificationProducer;
+	private final SentNotificationService sentNotificationService;
 
 	@Getter
 	private CacheService cacheService;
 
 	public NotificationProcessingService(IFeignCoreService coreService,
-			NotificationMessageResourceService messageResourceService,
-			UserPreferenceService userPreferenceService,
+			NotificationMessageResourceService messageResourceService, UserPreferenceService userPreferenceService,
 			NotificationConnectionService connectionService,
 			NotificationTemplateProcessor notificationTemplateProcessor,
-			NotificationMessageProducer notificationProducer) {
+			NotificationMessageProducer notificationProducer, SentNotificationService sentNotificationService) {
 		this.coreService = coreService;
 		this.messageResourceService = messageResourceService;
 		this.userPreferenceService = userPreferenceService;
 		this.connectionService = connectionService;
 		this.notificationTemplateProcessor = notificationTemplateProcessor;
 		this.notificationProducer = notificationProducer;
+		this.sentNotificationService = sentNotificationService;
 	}
 
 	@Autowired
@@ -233,8 +234,8 @@ public class NotificationProcessingService implements INotificationCacheService<
 			return Mono.just(notificationChannelBuilder.build());
 
 		return Flux.fromIterable(templateInfoMap.entrySet())
-				.<T>flatMap(templateInfo ->
-						this.notificationTemplateProcessor.process(templateInfo.getValue(), objectMap.get(templateInfo.getKey().getLiteral())))
+				.<T>flatMap(templateInfo -> this.notificationTemplateProcessor.process(templateInfo.getValue(),
+						objectMap.get(templateInfo.getKey().getLiteral())))
 				.doOnNext(notificationChannelBuilder::addMessage)
 				.then(Mono.just(notificationChannelBuilder.build()));
 	}
