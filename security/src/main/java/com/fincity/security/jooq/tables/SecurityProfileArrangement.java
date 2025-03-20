@@ -90,7 +90,7 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
      * The column <code>security.security_profile_arrangement.NAME</code>. Name
      * of the arrangement
      */
-    public final TableField<SecurityProfileArrangementRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(256).nullable(false), this, "Name of the arrangement");
+    public final TableField<SecurityProfileArrangementRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(256), this, "Name of the arrangement");
 
     /**
      * The column <code>security.security_profile_arrangement.SHORT_NAME</code>.
@@ -115,7 +115,7 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
      * The column <code>security.security_profile_arrangement.ORDER</code>.
      * Order of the arrangement
      */
-    public final TableField<SecurityProfileArrangementRecord, Integer> ORDER = createField(DSL.name("ORDER"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "Order of the arrangement");
+    public final TableField<SecurityProfileArrangementRecord, Integer> ORDER = createField(DSL.name("ORDER"), SQLDataType.INTEGER, this, "Order of the arrangement");
 
     /**
      * The column
