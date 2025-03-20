@@ -32,9 +32,9 @@ DROP TABLE IF EXISTS `security_department`;
 CREATE TABLE `security_profile` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
   `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID for which this profile belongs to',
-  `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the profile',
-  `APP_ID` bigint unsigned DEFAULT NULL,
-  `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the profile',
+  `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Name of the profile',
+  `APP_ID` bigint unsigned NOT NULL,
+  `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Description of the profile',
   `ROOT_PROFILE_ID` bigint unsigned DEFAULT NULL COMMENT 'Profile ID to which the user is assigned',
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
@@ -84,7 +84,7 @@ CREATE TABLE `security_profile_arrangement` (
   `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the arrangement',
   `SHORT_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Short name of the arrangement',
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the arrangement',
-  `ASSIGNABLE` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Whether the arrangement is assignable',
+  `ASSIGNABLE` tinyint(1) DEFAULT NULL COMMENT 'Whether the arrangement is assignable',
   `ORDER` int(11) NOT NULL DEFAULT '0' COMMENT 'Order of the arrangement',
   `PARENT_ARRANGEMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent arrangement ID for hierarchical structure',
   `OVERRIDE_ARRANGEMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Override arrangement ID for which this arrangement belongs to',
@@ -375,6 +375,10 @@ CREATE TABLE `security_app_reg_user_designation` (
 -- Adding profile related permissions and roles
 
 SELECT ID from `security_client` WHERE CODE = 'SYSTEM' LIMIT 1 INTO @v_client_system;
+
+-- DELETING any profile related permissions;
+
+DELETE FROM security.security_permission where NAME like 'Profile%';
 
 -- Inserting old roles into v2 role table
 

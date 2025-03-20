@@ -109,7 +109,7 @@ public class SecurityProfileArrangement extends TableImpl<SecurityProfileArrange
      * The column <code>security.security_profile_arrangement.ASSIGNABLE</code>.
      * Whether the arrangement is assignable
      */
-    public final TableField<SecurityProfileArrangementRecord, Byte> ASSIGNABLE = createField(DSL.name("ASSIGNABLE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Whether the arrangement is assignable");
+    public final TableField<SecurityProfileArrangementRecord, Byte> ASSIGNABLE = createField(DSL.name("ASSIGNABLE"), SQLDataType.TINYINT, this, "Whether the arrangement is assignable");
 
     /**
      * The column <code>security.security_profile_arrangement.ORDER</code>.
