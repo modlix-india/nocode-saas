@@ -75,7 +75,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.APP_CODE</code>. App
      * Code on which this notification was sent. References security_app table
      */
-    public final TableField<NotificationSentNotificationsRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(8).nullable(false), this, "App Code on which this notification was sent. References security_app table");
+    public final TableField<NotificationSentNotificationsRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this notification was sent. References security_app table");
 
     /**
      * The column
@@ -189,6 +189,13 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * SMS delivery status
      */
     public final TableField<NotificationSentNotificationsRecord, Map> SMS_DELIVERY_STATUS = createField(DSL.name("SMS_DELIVERY_STATUS"), SQLDataType.JSON, this, "SMS delivery status", new JSONMapBinding());
+
+    /**
+     * The column
+     * <code>notification.notification_sent_notifications.IS_ERROR</code>. If we
+     * are getting error in notification or not
+     */
+    public final TableField<NotificationSentNotificationsRecord, Byte> IS_ERROR = createField(DSL.name("IS_ERROR"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "If we are getting error in notification or not");
 
     /**
      * The column

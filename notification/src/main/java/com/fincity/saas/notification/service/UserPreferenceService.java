@@ -298,7 +298,7 @@ public class UserPreferenceService
 	}
 
 	private Mono<UserPreference> getUserPreferenceInternal(ULong appId, ULong userId) {
-		return this.cacheValue(() -> this.dao.getUserPreference(appId, userId)
+		return this.cacheValueOrGet(() -> this.dao.getUserPreference(appId, userId)
 				.switchIfEmpty(this.getDefaultPreferences()), appId, userId);
 	}
 }

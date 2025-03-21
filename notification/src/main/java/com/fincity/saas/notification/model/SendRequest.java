@@ -5,10 +5,12 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Map;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.model.NotificationChannel.NotificationChannelBuilder;
+import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -45,7 +47,7 @@ public class SendRequest implements Serializable {
 	}
 
 	public static SendRequest ofError(String appCode, String clientCode, BigInteger userId, String notificationType,
-	                                  NotificationErrorInfo errorInfo) {
+	                                  GenericException errorInfo) {
 		return new SendRequest()
 				.setCode(UniqueUtil.shortUUID())
 				.setAppCode(appCode)
@@ -66,8 +68,20 @@ public class SendRequest implements Serializable {
 	}
 
 	public boolean isEmpty() {
-		return this.channels == null || !this.channels.containsAnyChannel();
+		if (this.channels == null)
+			return true;
 
+		return !this.channels.containsAnyChannel();
+
+	}
+
+	public <T extends GenericException> SendRequest setErrorInfo(T exception) {
+		this.errorInfo = new NotificationErrorInfo(exception);
+		return this;
+	}
+
+	public boolean isError() {
+		return this.errorInfo != null;
 	}
 
 }

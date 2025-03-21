@@ -23,16 +23,23 @@ public class NotificationMessage<T extends NotificationMessage<T>> implements Ch
 		this.messageId = UniqueUtil.shortUUID();
 	}
 
-	public NotificationMessage(String subject, String body) {
-		this.messageId = UniqueUtil.shortUUID();
-		this.subject = subject;
-		this.body = body;
-	}
-
-	public NotificationMessage(Map<String, String> message) {
+	public T setMessage(Map<String, String> message) {
 		this.subject = message.getOrDefault("subject", null);
 		this.messageId = UniqueUtil.shortUUID();
 		this.body = message.getOrDefault("body", null);
+		return (T) this;
+	}
+
+	public T setMessage(String subject, String body) {
+		this.subject = subject;
+		this.body = body;
+		return (T) this;
+	}
+
+	public T updateMessage(String subject, String body) {
+		this.subject = subject;
+		this.body = body;
+		return (T) this;
 	}
 
 	public Map<String, String> toMap() {

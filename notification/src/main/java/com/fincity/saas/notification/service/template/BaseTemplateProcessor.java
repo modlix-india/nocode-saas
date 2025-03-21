@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.notification.exception.TemplateProcessingException;
 
 import freemarker.cache.MruCacheStorage;
 import freemarker.cache.StringTemplateLoader;
@@ -106,7 +107,7 @@ public abstract class BaseTemplateProcessor {
 				});
 	}
 
-	public Mono<String> processString(Template template, Object dataModel) {
+	private Mono<String> processString(Template template, Object dataModel) {
 		return Mono.fromCallable(() -> this.processStringSync(template, dataModel))
 				.subscribeOn(Schedulers.boundedElastic());
 	}

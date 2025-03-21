@@ -23,6 +23,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.document.Notification;
 import com.fincity.saas.notification.dto.UserPreference;
 import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.exception.TemplateProcessingException;
 import com.fincity.saas.notification.feign.IFeignCoreService;
 import com.fincity.saas.notification.model.NotificationChannel;
 import com.fincity.saas.notification.model.NotificationChannel.NotificationChannelBuilder;
@@ -30,6 +31,7 @@ import com.fincity.saas.notification.model.NotificationRequest;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.response.NotificationResponse;
 import com.fincity.saas.notification.mq.NotificationMessageProducer;
 import com.fincity.saas.notification.service.template.NotificationTemplateProcessor;
 
@@ -93,21 +95,23 @@ public class NotificationProcessingService implements INotificationCacheService<
 		return notificationTemplateProcessor.evictTemplateCache(resultMap);
 	}
 
-	public Mono<Boolean> processAndSendNotification(NotificationRequest notificationRequest) {
+	public Mono<NotificationResponse> processAndSendNotification(NotificationRequest notificationRequest) {
 		return this.processNotification(notificationRequest)
 				.flatMap(this::sendNotification);
 	}
 
-	public Mono<Boolean> sendNotification(SendRequest request) {
+	public Mono<NotificationResponse> sendNotification(SendRequest request) {
 
 		if (request.isEmpty()) {
 			logger.info("Received Empty Notification Request: {} [Ignoring]", request);
-			return Mono.just(Boolean.FALSE);
+			return sentNotificationService.toErrorNotification(request).map(NotificationResponse::ofError);
 		}
 
 		logger.info("Sending notification request {}", request);
 
-		return notificationProducer.broadcast(request)
+		return sentNotificationService.toPlatformNotification(request)
+				.flatMap(pRequest -> notificationProducer.broadcast(request))
+				.map(NotificationResponse::ofSuccess)
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.sendNotification"));
 	}
 
@@ -190,7 +194,7 @@ public class NotificationProcessingService implements INotificationCacheService<
 
 	private Mono<Notification> getNotificationInfoInternal(String appCode, String urlClientCode, String clientCode,
 			String notificationName) {
-		return this.cacheValue(
+		return this.cacheValueOrGet(
 				() -> coreService.getNotificationInfo(urlClientCode, notificationName, appCode, clientCode),
 				appCode, clientCode, notificationName);
 	}
@@ -220,8 +224,10 @@ public class NotificationProcessingService implements INotificationCacheService<
 			Map<NotificationChannelType, String> channelConnections, Map<String, Object> objectMap) {
 
 		return this.createNotificationChannel(userPref, templateInfoMap, objectMap)
-				.map(notificationChannel -> SendRequest.of(appCode, clientCode, userId,
-						notificationType, channelConnections, notificationChannel));
+				.map(notificationChannel -> SendRequest.of(appCode, clientCode, userId, notificationType,
+						channelConnections, notificationChannel))
+				.onErrorResume(TemplateProcessingException.class,
+						e -> Mono.just(SendRequest.ofError(appCode, clientCode, userId, notificationType, e)));
 	}
 
 	private <T extends NotificationMessage<T>> Mono<NotificationChannel> createNotificationChannel(
@@ -233,11 +239,18 @@ public class NotificationProcessingService implements INotificationCacheService<
 		if (templateInfoMap == null || templateInfoMap.isEmpty())
 			return Mono.just(notificationChannelBuilder.build());
 
-		return Flux.fromIterable(templateInfoMap.entrySet())
-				.<T>flatMap(templateInfo -> this.notificationTemplateProcessor.process(templateInfo.getValue(),
-						objectMap.get(templateInfo.getKey().getLiteral())))
-				.doOnNext(notificationChannelBuilder::addMessage)
-				.then(Mono.just(notificationChannelBuilder.build()));
+		return FlatMapUtil.flatMapMono(
+
+				() -> Flux.fromIterable(templateInfoMap.entrySet())
+						.<T>flatMap(templateInfo -> this.notificationTemplateProcessor.process(templateInfo.getKey(),
+								templateInfo.getValue(),
+								objectMap.get(templateInfo.getKey().getLiteral())))
+						.collectList(),
+
+				messages -> {
+					messages.forEach(notificationChannelBuilder::addMessage);
+					return Mono.just(notificationChannelBuilder.build());
+				});
 	}
 
 }

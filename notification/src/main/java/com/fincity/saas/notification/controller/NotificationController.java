@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.notification.document.Notification;
 import com.fincity.saas.notification.model.NotificationRequest;
 import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.response.NotificationResponse;
 import com.fincity.saas.notification.service.NotificationProcessingService;
 
 import reactor.core.publisher.Mono;
@@ -30,7 +31,7 @@ public class NotificationController
 	}
 
 	@PostMapping()
-	public Mono<ResponseEntity<Boolean>> sendNotification(@RequestBody NotificationRequest notification) {
+	public Mono<ResponseEntity<NotificationResponse>> sendNotification(@RequestBody NotificationRequest notification) {
 		return this.notificationProcessingService.processAndSendNotification(notification)
 				.map(ResponseEntity::ok);
 	}
@@ -41,7 +42,7 @@ public class NotificationController
 	}
 
 	@PostMapping("/send")
-	public Mono<ResponseEntity<Boolean>> sendNotification(@RequestBody SendRequest sendRequest) {
+	public Mono<ResponseEntity<NotificationResponse>> sendNotification(@RequestBody SendRequest sendRequest) {
 		return this.notificationProcessingService.sendNotification(sendRequest).map(ResponseEntity::ok);
 	}
 }

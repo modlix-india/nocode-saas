@@ -385,11 +385,30 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
 
     /**
      * Setter for
+     * <code>notification.notification_sent_notifications.IS_ERROR</code>. If we
+     * are getting error in notification or not
+     */
+    public NotificationSentNotificationsRecord setIsError(Byte value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_sent_notifications.IS_ERROR</code>. If we
+     * are getting error in notification or not
+     */
+    public Byte getIsError() {
+        return (Byte) get(19);
+    }
+
+    /**
+     * Setter for
      * <code>notification.notification_sent_notifications.ERROR_CODE</code>.
      * Error Code if error occurs during this notification
      */
     public NotificationSentNotificationsRecord setErrorCode(Integer value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -399,7 +418,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Error Code if error occurs during this notification
      */
     public Integer getErrorCode() {
-        return (Integer) get(19);
+        return (Integer) get(20);
     }
 
     /**
@@ -408,7 +427,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Error message id if error occurs during this notification
      */
     public NotificationSentNotificationsRecord setErrorMessageId(String value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -418,7 +437,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Error message id if error occurs during this notification
      */
     public String getErrorMessageId() {
-        return (String) get(20);
+        return (String) get(21);
     }
 
     /**
@@ -427,7 +446,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Error message if error occurs during this notification
      */
     public NotificationSentNotificationsRecord setErrorMessage(String value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -437,7 +456,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Error message if error occurs during this notification
      */
     public String getErrorMessage() {
-        return (String) get(21);
+        return (String) get(22);
     }
 
     /**
@@ -446,7 +465,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who created this row
      */
     public NotificationSentNotificationsRecord setCreatedBy(ULong value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -456,7 +475,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(22);
+        return (ULong) get(23);
     }
 
     /**
@@ -465,7 +484,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is created
      */
     public NotificationSentNotificationsRecord setCreatedAt(LocalDateTime value) {
-        set(23, value);
+        set(24, value);
         return this;
     }
 
@@ -475,7 +494,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(23);
+        return (LocalDateTime) get(24);
     }
 
     /**
@@ -484,7 +503,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who updated this row
      */
     public NotificationSentNotificationsRecord setUpdatedBy(ULong value) {
-        set(24, value);
+        set(25, value);
         return this;
     }
 
@@ -494,7 +513,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(24);
+        return (ULong) get(25);
     }
 
     /**
@@ -503,7 +522,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is updated
      */
     public NotificationSentNotificationsRecord setUpdatedAt(LocalDateTime value) {
-        set(25, value);
+        set(26, value);
         return this;
     }
 
@@ -513,7 +532,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(25);
+        return (LocalDateTime) get(26);
     }
 
     // -------------------------------------------------------------------------
@@ -539,7 +558,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
     /**
      * Create a detached, initialised NotificationSentNotificationsRecord
      */
-    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, Map notificationMessage, String notificationType, String notificationStage, LocalDateTime triggerTime, Byte isEmail, Map emailDeliveryStatus, Byte isInApp, Map inAppDeliveryStatus, Byte isMobilePush, Map mobilePushDeliveryStatus, Byte isWebPush, Map webPushDeliveryStatus, Byte isSms, Map smsDeliveryStatus, Integer errorCode, String errorMessageId, String errorMessage, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, Map notificationMessage, String notificationType, String notificationStage, LocalDateTime triggerTime, Byte isEmail, Map emailDeliveryStatus, Byte isInApp, Map inAppDeliveryStatus, Byte isMobilePush, Map mobilePushDeliveryStatus, Byte isWebPush, Map webPushDeliveryStatus, Byte isSms, Map smsDeliveryStatus, Byte isError, Integer errorCode, String errorMessageId, String errorMessage, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS);
 
         setId(id);
@@ -561,6 +580,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
         setWebPushDeliveryStatus(webPushDeliveryStatus);
         setIsSms(isSms);
         setSmsDeliveryStatus(smsDeliveryStatus);
+        setIsError(isError);
         setErrorCode(errorCode);
         setErrorMessageId(errorMessageId);
         setErrorMessage(errorMessage);

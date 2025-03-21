@@ -37,7 +37,7 @@ CREATE TABLE `notification`.`notification_sent_notifications` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
-    `APP_CODE` CHAR(8) NOT NULL COMMENT 'App Code on which this notification was sent. References security_app table',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent. References security_app table',
     `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent. References security_user table',
     `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the user. References security_user table',
 
@@ -56,6 +56,7 @@ CREATE TABLE `notification`.`notification_sent_notifications` (
     `WEB_PUSH_DELIVERY_STATUS` JSON NULL COMMENT 'Web push delivery status',
     `IS_SMS` TINYINT NOT NULL DEFAULT 0 COMMENT 'SMS notification enabled or not',
     `SMS_DELIVERY_STATUS` JSON NULL COMMENT 'SMS delivery status',
+    `IS_ERROR` TINYINT NOT NULL DEFAULT 0 COMMENT 'If we are getting error in notification or not',
     `ERROR_CODE` INTEGER NULL COMMENT 'Error Code if error occurs during this notification',
     `ERROR_MESSAGE_ID` CHAR(125) NULL COMMENT 'Error message id if error occurs during this notification',
     `ERROR_MESSAGE` TEXT NULL COMMENT 'Error message if error occurs during this notification',

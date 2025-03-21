@@ -16,7 +16,7 @@ import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.NotificationType;
-import com.fincity.saas.notification.model.NotificationErrorInfo;
+import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 import com.fincity.saas.notification.model.SendRequest;
 
 import lombok.Data;
@@ -58,6 +58,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	private boolean isSms = Boolean.FALSE;
 	private Map<String, LocalDateTime> smsDeliveryStatus = HashMap
 			.newHashMap(NotificationDeliveryStatus.values().length);
+	private boolean isError = Boolean.FALSE;
 	private Integer errorCode;
 	private String errorMessageId;
 	private String errorMessage;
@@ -70,7 +71,8 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 				.setUserId(ULongUtil.valueOf(request.getUserId()))
 				.setNotificationType(request.getNotificationType())
 				.setNotificationMessage(request.getChannels() != null ? request.getChannels().toMap() : Map.of())
-				.setTriggerTime(triggerTime);
+				.setTriggerTime(triggerTime)
+				.setErrorInfo(request.getErrorInfo());
 	}
 
 	public void setChannelInfo(NotificationChannelType channelType, Boolean isEnabled,
@@ -113,8 +115,13 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	public SentNotification setErrorInfo(NotificationErrorInfo notificationErrorInfo) {
+
+		if (notificationErrorInfo == null)
+			return this;
+
+		this.setError(Boolean.TRUE);
 		this.setErrorMessageId(notificationErrorInfo.getMessageId());
-		this.setErrorCode(notificationErrorInfo.getErrorCode());
+		this.setErrorCode(notificationErrorInfo.getErrorCode().value());
 		this.setErrorMessage(notificationErrorInfo.getErrorMessage());
 		return this;
 	}

@@ -16,7 +16,10 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.exception.TemplateProcessingException;
 import com.fincity.saas.notification.model.NotificationTemplate;
+import com.fincity.saas.notification.model.message.EmailMessage;
+import com.fincity.saas.notification.model.message.InAppMessage;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
@@ -42,6 +45,18 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 	protected NotificationTemplateProcessor() {
 	}
 
+	private <T extends NotificationMessage<T>> T getNotificationMessage(NotificationChannelType channelType,
+			Map<String, String> templatePart) {
+		return switch (channelType) {
+			case DISABLED -> null;
+			case EMAIL -> (T) new EmailMessage().setMessage(templatePart);
+			case IN_APP -> (T) new InAppMessage().setMessage(templatePart);
+			case MOBILE_PUSH -> null;
+			case WEB_PUSH -> null;
+			case SMS -> null;
+		};
+	}
+
 	@Override
 	protected String getCacheName() {
 		return CACHE_NAME_TEMPLATE;
@@ -52,17 +67,18 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 		this.msgService = msgService;
 	}
 
-	public <T extends NotificationMessage<T>> Mono<T> process(NotificationTemplate template,
-			Object templateData) {
-		return this.process(null, template, templateData);
+	public <T extends NotificationMessage<T>> Mono<T> process(NotificationChannelType channelType,
+			NotificationTemplate template, Object templateData) {
+		return this.process(null, channelType, template, templateData);
 	}
 
-	public <T extends NotificationMessage<T>> Mono<T> process(String language, NotificationTemplate template,
-			Object templateData) {
+	public <T extends NotificationMessage<T>> Mono<T> process(String language, NotificationChannelType channelType,
+			NotificationTemplate template, Object templateData) {
 
 		if (template.getTemplateParts().isEmpty() || StringUtil.safeIsBlank(template.getCode()))
-			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-					NotificationMessageResourceService.TEMPLATE_DATA_NOT_FOUND, "No template parts found");
+			return this.msgService.throwMessage(TemplateProcessingException::new,
+					"$ info not provided for $ template in $ Channel.", "Template", template.getCode(),
+					channelType.getLiteral());
 
 		return FlatMapUtil.flatMapMono(
 
@@ -73,20 +89,24 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 					Map<String, String> templatePart = template.getTemplateParts().getOrDefault(
 							this.getDefaultLanguage(language), template.getTemplateParts().values().iterator().next());
 
-					return Mono.just(new NotificationMessage<T>(templatePart));
+					return Mono.<T>justOrEmpty(this.getNotificationMessage(channelType, templatePart));
 				},
 				(lang, notificationMessage) -> this.processUserInfo(notificationMessage.getChannelType(),
 						template.getCode(), templateData, template.getRecipientExpressions()),
-				(lang, notificationMessage, userInfo) -> this.process(userInfo, template.getCode(), notificationMessage,
-						templateData));
+				(lang, notificationMessage, userInfo) -> this.processInternal(userInfo, template.getCode(),
+						notificationMessage,
+						templateData))
+				.switchIfEmpty(this.msgService.throwMessage(TemplateProcessingException::new,
+						"$ info not provided for $ template in $ Channel.", "User", template.getCode(),
+						channelType.getLiteral()));
 	}
 
-	private <T extends NotificationMessage<T>> Mono<T> process(RecipientInfo userInfo, String templateCode,
+	private <T extends NotificationMessage<T>> Mono<T> processInternal(RecipientInfo userInfo, String templateCode,
 			NotificationMessage<T> notificationMessage, Object templateData) {
 		return Mono.zip(
 				super.processString(this.getSubjectName(templateCode), notificationMessage.getSubject(), templateData),
 				super.processString(this.getBodyName(templateCode), notificationMessage.getBody(), templateData))
-				.map(message -> new NotificationMessage<T>(message.getT1(), message.getT2())
+				.map(message -> notificationMessage.updateMessage(message.getT1(), message.getT2())
 						.addRecipientInfo(userInfo));
 	}
 
@@ -129,7 +149,8 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 		return super.processString(this.getLanguageName(template.getCode()), template.getLanguageExpression(),
 				templateData, defaultLanguage)
 				.map(lang -> StringUtil.safeIsBlank(lang) ? this.getDefaultLanguage(template.getDefaultLanguage())
-						: lang);
+						: lang)
+				.onErrorReturn(defaultLanguage);
 	}
 
 	public Mono<Boolean> evictTemplateCache(Map<NotificationChannelType, String> templates) {

@@ -42,11 +42,11 @@ public interface INotificationCacheService<T> {
 		return this.getCacheService().evict(this.getCacheName(), this.getCacheKey(cacheRequest));
 	}
 
-	default Mono<T> cacheValue(Supplier<Mono<T>> supplier, Object... entityNames) {
+	default Mono<T> cacheValueOrGet(Supplier<Mono<T>> supplier, Object... entityNames) {
 		return this.getCacheService().cacheValueOrGet(this.getCacheName(), supplier, this.getCacheKey(entityNames));
 	}
 
-	default Mono<T> cacheValue(Supplier<Mono<T>> supplier, String... entityNames) {
+	default Mono<T> cacheValueOrGet(Supplier<Mono<T>> supplier, String... entityNames) {
 		return this.getCacheService().cacheValueOrGet(this.getCacheName(), supplier, this.getCacheKey(entityNames));
 	}
 }
