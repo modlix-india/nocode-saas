@@ -36,6 +36,7 @@ CREATE TABLE `security_profile` (
   `APP_ID` bigint unsigned NOT NULL,
   `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Description of the profile',
   `ROOT_PROFILE_ID` bigint unsigned DEFAULT NULL COMMENT 'Profile ID to which the user is assigned',
+  `ARRANGEMENT` json DEFAULT NULL COMMENT 'Arrangement of the profile',
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
@@ -74,31 +75,21 @@ CREATE TABLE `security_v2_role` (
   CONSTRAINT `FK2_V2_ROLE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Security Profile Arrangement Table
+-- Security Profile Role Table
 
-CREATE TABLE `security_profile_arrangement` (
+CREATE TABLE `security_profile_role` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID for which this arrangement belongs to',
-  `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this arrangement belongs to',
-  `ROLE_ID` bigint unsigned DEFAULT NULL COMMENT 'Role ID for which this arrangement belongs to',
-  `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Name of the arrangement',
-  `SHORT_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Short name of the arrangement',
-  `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Description of the arrangement',
-  `ASSIGNABLE` tinyint(1) DEFAULT NULL COMMENT 'Whether the arrangement is assignable',
-  `ORDER` int(11) DEFAULT NULL COMMENT 'Order of the arrangement',
-  `PARENT_ARRANGEMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Parent arrangement ID for hierarchical structure',
-  `OVERRIDE_ARRANGEMENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Override arrangement ID for which this arrangement belongs to',
-
+  `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this role belongs to',
+  `ROLE_ID` bigint unsigned NOT NULL COMMENT 'Role ID for which this role belongs to',
+  `EXCLUDE` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Flag to indicate if this role is excluded',
+  
   PRIMARY KEY (`ID`),
-  KEY `FK1_PROFILE_ARRANGEMENT_PROFILE_ID` (`PROFILE_ID`),
-  KEY `FK2_PROFILE_ARRANGEMENT_ROLE_ID` (`ROLE_ID`),
-  CONSTRAINT `FK1_PROFILE_ARRANGEMENT_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `FK2_PROFILE_ARRANGEMENT_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `FK3_PROFILE_ARRANGEMENT_PARENT_ARRANGEMENT_ID` FOREIGN KEY (`PARENT_ARRANGEMENT_ID`) REFERENCES `security_profile_arrangement` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `FK4_PROFILE_ARRANGEMENT_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `FK5_PROFILE_ARRANGEMENT_OVERRIDE_ARRANGEMENT_ID` FOREIGN KEY (`OVERRIDE_ARRANGEMENT_ID`) REFERENCES `security_profile_arrangement` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE
-) 
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `UK1_PROFILE_ROLE_APP_ID` (`PROFILE_ID`,`ROLE_ID`),
+  KEY `FK1_PROFILE_ROLE_PROFILE_ID` (`PROFILE_ID`),
+  KEY `FK2_PROFILE_ROLE_ROLE_ID` (`ROLE_ID`),
+  CONSTRAINT `FK1_PROFILE_ROLE_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK2_PROFILE_ROLE_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Security Profile Client restriction Table
 
