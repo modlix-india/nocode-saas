@@ -9,7 +9,8 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
-import com.fincity.security.jooq.tables.SecurityProfileArrangement.SecurityProfileArrangementPath;
+import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
+import com.fincity.security.jooq.tables.SecurityProfileRole.SecurityProfileRolePath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission.SecurityV2RolePermissionPath;
 import com.fincity.security.jooq.tables.SecurityV2RoleRole.SecurityV2RoleRolePath;
@@ -259,17 +260,17 @@ public class SecurityV2Role extends TableImpl<SecurityV2RoleRecord> {
         return _fk1RoleRoleRoleId;
     }
 
-    private transient SecurityProfileArrangementPath _securityProfileArrangement;
+    private transient SecurityProfileRolePath _securityProfileRole;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_profile_arrangement</code> table
+     * <code>security.security_profile_role</code> table
      */
-    public SecurityProfileArrangementPath securityProfileArrangement() {
-        if (_securityProfileArrangement == null)
-            _securityProfileArrangement = new SecurityProfileArrangementPath(this, null, Keys.FK2_PROFILE_ARRANGEMENT_ROLE_ID.getInverseKey());
+    public SecurityProfileRolePath securityProfileRole() {
+        if (_securityProfileRole == null)
+            _securityProfileRole = new SecurityProfileRolePath(this, null, Keys.FK2_PROFILE_ROLE_ROLE_ID.getInverseKey());
 
-        return _securityProfileArrangement;
+        return _securityProfileRole;
     }
 
     private transient SecurityV2RoleRolePath _fk2RoleRoleSubRoleId;
@@ -297,6 +298,14 @@ public class SecurityV2Role extends TableImpl<SecurityV2RoleRecord> {
             _securityV2UserRole = new SecurityV2UserRolePath(this, null, Keys.FK2_USER_ROLE_V2_ROLE_ID.getInverseKey());
 
         return _securityV2UserRole;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_profile</code> table
+     */
+    public SecurityProfilePath securityProfile() {
+        return securityProfileRole().securityProfile();
     }
 
     /**

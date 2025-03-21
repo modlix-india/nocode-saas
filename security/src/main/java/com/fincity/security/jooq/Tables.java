@@ -33,8 +33,8 @@ import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityProfile;
-import com.fincity.security.jooq.tables.SecurityProfileArrangement;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
+import com.fincity.security.jooq.tables.SecurityProfileRole;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
@@ -201,14 +201,14 @@ public class Tables {
     public static final SecurityProfile SECURITY_PROFILE = SecurityProfile.SECURITY_PROFILE;
 
     /**
-     * The table <code>security.security_profile_arrangement</code>.
-     */
-    public static final SecurityProfileArrangement SECURITY_PROFILE_ARRANGEMENT = SecurityProfileArrangement.SECURITY_PROFILE_ARRANGEMENT;
-
-    /**
      * The table <code>security.security_profile_client_restriction</code>.
      */
     public static final SecurityProfileClientRestriction SECURITY_PROFILE_CLIENT_RESTRICTION = SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION;
+
+    /**
+     * The table <code>security.security_profile_role</code>.
+     */
+    public static final SecurityProfileRole SECURITY_PROFILE_ROLE = SecurityProfileRole.SECURITY_PROFILE_ROLE;
 
     /**
      * The table <code>security.security_profile_user</code>.

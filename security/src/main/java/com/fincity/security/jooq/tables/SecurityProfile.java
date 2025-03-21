@@ -12,10 +12,11 @@ import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppReg
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
-import com.fincity.security.jooq.tables.SecurityProfileArrangement.SecurityProfileArrangementPath;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction.SecurityProfileClientRestrictionPath;
+import com.fincity.security.jooq.tables.SecurityProfileRole.SecurityProfileRolePath;
 import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
+import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
 
 import java.time.LocalDateTime;
@@ -28,6 +29,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -101,6 +103,12 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
      * Profile ID to which the user is assigned
      */
     public final TableField<SecurityProfileRecord, ULong> ROOT_PROFILE_ID = createField(DSL.name("ROOT_PROFILE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Profile ID to which the user is assigned");
+
+    /**
+     * The column <code>security.security_profile.ARRANGEMENT</code>.
+     * Arrangement of the profile
+     */
+    public final TableField<SecurityProfileRecord, JSON> ARRANGEMENT = createField(DSL.name("ARRANGEMENT"), SQLDataType.JSON, this, "Arrangement of the profile");
 
     /**
      * The column <code>security.security_profile.CREATED_BY</code>. ID of the
@@ -252,19 +260,6 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
         return _securityProfile;
     }
 
-    private transient SecurityProfileArrangementPath _securityProfileArrangement;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_profile_arrangement</code> table
-     */
-    public SecurityProfileArrangementPath securityProfileArrangement() {
-        if (_securityProfileArrangement == null)
-            _securityProfileArrangement = new SecurityProfileArrangementPath(this, null, Keys.FK1_PROFILE_ARRANGEMENT_PROFILE_ID.getInverseKey());
-
-        return _securityProfileArrangement;
-    }
-
     private transient SecurityProfileClientRestrictionPath _securityProfileClientRestriction;
 
     /**
@@ -276,6 +271,19 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
             _securityProfileClientRestriction = new SecurityProfileClientRestrictionPath(this, null, Keys.FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID.getInverseKey());
 
         return _securityProfileClientRestriction;
+    }
+
+    private transient SecurityProfileRolePath _securityProfileRole;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_profile_role</code> table
+     */
+    public SecurityProfileRolePath securityProfileRole() {
+        if (_securityProfileRole == null)
+            _securityProfileRole = new SecurityProfileRolePath(this, null, Keys.FK1_PROFILE_ROLE_PROFILE_ID.getInverseKey());
+
+        return _securityProfileRole;
     }
 
     private transient SecurityProfileUserPath _securityProfileUser;
@@ -328,6 +336,14 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
             _securityDesignation = new SecurityDesignationPath(this, null, Keys.FK5_DESIGNATION_PROFILE_ID.getInverseKey());
 
         return _securityDesignation;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_v2_role</code> table
+     */
+    public SecurityV2RolePath securityV2Role() {
+        return securityProfileRole().securityV2Role();
     }
 
     /**
