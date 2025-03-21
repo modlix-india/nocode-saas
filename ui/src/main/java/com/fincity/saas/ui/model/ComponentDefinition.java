@@ -4,10 +4,10 @@ import java.io.Serializable;
 import java.util.Map;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
-import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
-import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.EqualsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 

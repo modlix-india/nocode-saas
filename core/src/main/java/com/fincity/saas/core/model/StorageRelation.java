@@ -2,7 +2,7 @@ package com.fincity.saas.core.model;
 
 import java.io.Serializable;
 
-import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.util.EqualsUtil;
 import com.fincity.saas.core.enums.StorageRelationConstraint;
 import com.fincity.saas.core.enums.StorageRelationType;

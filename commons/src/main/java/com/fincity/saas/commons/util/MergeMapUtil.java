@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.mongo.util;
+package com.fincity.saas.commons.util;
 
 import java.util.HashMap;
 import java.util.Map;

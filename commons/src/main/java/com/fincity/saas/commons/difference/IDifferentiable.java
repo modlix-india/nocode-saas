@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.mongo.difference;
+package com.fincity.saas.commons.difference;
 
 import reactor.core.publisher.Mono;
 
