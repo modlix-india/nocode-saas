@@ -13,7 +13,7 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
-import com.fincity.saas.commons.util.EqualsUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.StorageTriggerType;
 import com.fincity.saas.core.model.StorageRelation;
@@ -186,34 +186,34 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
 	private void subMakeOverride(Storage base, Storage obj) {
 
-		if (EqualsUtil.safeEquals(obj.isAudited, base.isAudited))
+		if (CommonsUtil.safeEquals(obj.isAudited, base.isAudited))
 			obj.isAudited = null;
 
-		if (EqualsUtil.safeEquals(obj.isVersioned, base.isVersioned))
+		if (CommonsUtil.safeEquals(obj.isVersioned, base.isVersioned))
 			obj.isVersioned = null;
 
-		if (EqualsUtil.safeEquals(obj.createAuth, base.createAuth))
+		if (CommonsUtil.safeEquals(obj.createAuth, base.createAuth))
 			obj.createAuth = null;
 
-		if (EqualsUtil.safeEquals(obj.readAuth, base.readAuth))
+		if (CommonsUtil.safeEquals(obj.readAuth, base.readAuth))
 			obj.readAuth = null;
 
-		if (EqualsUtil.safeEquals(obj.updateAuth, base.updateAuth))
+		if (CommonsUtil.safeEquals(obj.updateAuth, base.updateAuth))
 			obj.updateAuth = null;
 
-		if (EqualsUtil.safeEquals(obj.deleteAuth, base.deleteAuth))
+		if (CommonsUtil.safeEquals(obj.deleteAuth, base.deleteAuth))
 			obj.deleteAuth = null;
 
-		if (EqualsUtil.safeEquals(obj.uniqueName, base.uniqueName))
+		if (CommonsUtil.safeEquals(obj.uniqueName, base.uniqueName))
 			obj.uniqueName = null;
 
-		if (EqualsUtil.safeEquals(obj.isAppLevel, base.isAppLevel))
+		if (CommonsUtil.safeEquals(obj.isAppLevel, base.isAppLevel))
 			obj.isAppLevel = null;
 
-		if (EqualsUtil.safeEquals(obj.onlyThruKIRun, base.onlyThruKIRun))
+		if (CommonsUtil.safeEquals(obj.onlyThruKIRun, base.onlyThruKIRun))
 			obj.onlyThruKIRun = null;
 
-		if (EqualsUtil.safeEquals(obj.generateEvents, base.generateEvents))
+		if (CommonsUtil.safeEquals(obj.generateEvents, base.generateEvents))
 			obj.generateEvents = null;
 	}
 

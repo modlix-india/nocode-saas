@@ -9,7 +9,7 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
-import com.fincity.saas.commons.util.EqualsUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -67,7 +67,7 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 				.flatMap(e -> DifferenceExtractor.extract(e.schema, base.schema)
 						.map(k -> {
 							e.schema = (Map<String, Object>) k;
-							if (EqualsUtil.safeEquals(e.includeContextAuthentication,
+							if (CommonsUtil.safeEquals(e.includeContextAuthentication,
 									base.includeContextAuthentication))
 								e.includeContextAuthentication = null;
 							return e;

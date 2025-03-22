@@ -3,7 +3,7 @@ package com.fincity.saas.core.model;
 import java.io.Serializable;
 
 import com.fincity.saas.commons.difference.IDifferentiable;
-import com.fincity.saas.commons.util.EqualsUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.core.enums.StorageRelationConstraint;
 import com.fincity.saas.core.enums.StorageRelationType;
 
@@ -70,32 +70,32 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
 
         StorageRelation diff = new StorageRelation();
 
-        if (!EqualsUtil.safeEquals(this.uniqueRelationId, inc.uniqueRelationId))
+        if (!CommonsUtil.safeEquals(this.uniqueRelationId, inc.uniqueRelationId))
             diff.uniqueRelationId = null;
         else
             diff.uniqueRelationId = this.uniqueRelationId;
 
-        if (!EqualsUtil.safeEquals(this.storageName, inc.storageName))
+        if (!CommonsUtil.safeEquals(this.storageName, inc.storageName))
             diff.storageName = null;
         else
             diff.storageName = this.storageName;
 
-        if (!EqualsUtil.safeEquals(this.relationType, inc.relationType))
+        if (!CommonsUtil.safeEquals(this.relationType, inc.relationType))
             diff.relationType = null;
         else
             diff.relationType = this.relationType;
 
-        if (!EqualsUtil.safeEquals(this.fieldName, inc.fieldName))
+        if (!CommonsUtil.safeEquals(this.fieldName, inc.fieldName))
             diff.fieldName = null;
         else
             diff.fieldName = this.fieldName;
 
-        if (!EqualsUtil.safeEquals(this.deleteConstraint, inc.deleteConstraint))
+        if (!CommonsUtil.safeEquals(this.deleteConstraint, inc.deleteConstraint))
             diff.deleteConstraint = null;
         else
             diff.deleteConstraint = this.deleteConstraint;
 
-        if (!EqualsUtil.safeEquals(this.updateConstraint, inc.updateConstraint))
+        if (!CommonsUtil.safeEquals(this.updateConstraint, inc.updateConstraint))
             diff.updateConstraint = null;
         else
             diff.updateConstraint = this.updateConstraint;

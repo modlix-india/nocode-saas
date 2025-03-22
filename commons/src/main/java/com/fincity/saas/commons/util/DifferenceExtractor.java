@@ -1,6 +1,6 @@
 package com.fincity.saas.commons.util;
 
-import static com.fincity.saas.commons.util.EqualsUtil.*;
+import static com.fincity.saas.commons.util.CommonsUtil.*;
 
 import java.util.HashMap;
 import java.util.Map;
