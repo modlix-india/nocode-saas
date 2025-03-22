@@ -13,7 +13,6 @@ import com.fincity.security.jooq.tables.records.SecurityAppRegIntegrationTokensR
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.jooq.Condition;
@@ -22,6 +21,7 @@ import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -38,7 +38,6 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
-import org.jooq.jackson.extensions.converters.JSONtoJacksonConverter;
 import org.jooq.types.ULong;
 
 
@@ -116,7 +115,7 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
      * <code>security.security_app_reg_integration_tokens.TOKEN_METADATA</code>.
      * Token metadata
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, LinkedHashMap> TOKEN_METADATA = createField(DSL.name("TOKEN_METADATA"), SQLDataType.JSON, this, "Token metadata", new JSONtoJacksonConverter<LinkedHashMap>(LinkedHashMap.class));
+    public final TableField<SecurityAppRegIntegrationTokensRecord, JSON> TOKEN_METADATA = createField(DSL.name("TOKEN_METADATA"), SQLDataType.JSON, this, "Token metadata");
 
     /**
      * The column
@@ -130,7 +129,7 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
      * <code>security.security_app_reg_integration_tokens.USER_METADATA</code>.
      * User metadata
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, LinkedHashMap> USER_METADATA = createField(DSL.name("USER_METADATA"), SQLDataType.JSON, this, "User metadata", new JSONtoJacksonConverter<LinkedHashMap>(LinkedHashMap.class));
+    public final TableField<SecurityAppRegIntegrationTokensRecord, JSON> USER_METADATA = createField(DSL.name("USER_METADATA"), SQLDataType.JSON, this, "User metadata");
 
     /**
      * The column

@@ -7,7 +7,7 @@ package com.fincity.security.jooq.tables.records;
 import com.fincity.security.jooq.tables.SecurityProfile;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -124,7 +124,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Setter for <code>security.security_profile.ARRANGEMENT</code>.
      * Arrangement of the profile
      */
-    public SecurityProfileRecord setArrangement(LinkedHashMap value) {
+    public SecurityProfileRecord setArrangement(Map value) {
         set(6, value);
         return this;
     }
@@ -133,8 +133,8 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Getter for <code>security.security_profile.ARRANGEMENT</code>.
      * Arrangement of the profile
      */
-    public LinkedHashMap getArrangement() {
-        return (LinkedHashMap) get(6);
+    public Map getArrangement() {
+        return (Map) get(6);
     }
 
     /**
@@ -228,7 +228,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
     /**
      * Create a detached, initialised SecurityProfileRecord
      */
-    public SecurityProfileRecord(ULong id, ULong clientId, String name, ULong appId, String description, ULong rootProfileId, LinkedHashMap arrangement, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityProfileRecord(ULong id, ULong clientId, String name, ULong appId, String description, ULong rootProfileId, Map arrangement, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityProfile.SECURITY_PROFILE);
 
         setId(id);

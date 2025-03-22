@@ -22,8 +22,8 @@ import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -109,7 +109,7 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
      * The column <code>security.security_profile.ARRANGEMENT</code>.
      * Arrangement of the profile
      */
-    public final TableField<SecurityProfileRecord, LinkedHashMap> ARRANGEMENT = createField(DSL.name("ARRANGEMENT"), SQLDataType.JSON, this, "Arrangement of the profile", new JSONtoJacksonConverter<LinkedHashMap>(LinkedHashMap.class));
+    public final TableField<SecurityProfileRecord, Map> ARRANGEMENT = createField(DSL.name("ARRANGEMENT"), SQLDataType.JSON, this, "Arrangement of the profile", new JSONtoJacksonConverter<Map>(Map.class));
 
     /**
      * The column <code>security.security_profile.CREATED_BY</code>. ID of the

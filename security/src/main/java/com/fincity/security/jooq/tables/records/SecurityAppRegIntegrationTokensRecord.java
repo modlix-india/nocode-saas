@@ -7,8 +7,8 @@ package com.fincity.security.jooq.tables.records;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 
+import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -156,7 +156,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.TOKEN_METADATA</code>.
      * Token metadata
      */
-    public SecurityAppRegIntegrationTokensRecord setTokenMetadata(LinkedHashMap value) {
+    public SecurityAppRegIntegrationTokensRecord setTokenMetadata(JSON value) {
         set(7, value);
         return this;
     }
@@ -166,8 +166,8 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.TOKEN_METADATA</code>.
      * Token metadata
      */
-    public LinkedHashMap getTokenMetadata() {
-        return (LinkedHashMap) get(7);
+    public JSON getTokenMetadata() {
+        return (JSON) get(7);
     }
 
     /**
@@ -194,7 +194,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.USER_METADATA</code>.
      * User metadata
      */
-    public SecurityAppRegIntegrationTokensRecord setUserMetadata(LinkedHashMap value) {
+    public SecurityAppRegIntegrationTokensRecord setUserMetadata(JSON value) {
         set(9, value);
         return this;
     }
@@ -204,8 +204,8 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.USER_METADATA</code>.
      * User metadata
      */
-    public LinkedHashMap getUserMetadata() {
-        return (LinkedHashMap) get(9);
+    public JSON getUserMetadata() {
+        return (JSON) get(9);
     }
 
     /**
@@ -307,7 +307,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
     /**
      * Create a detached, initialised SecurityAppRegIntegrationTokensRecord
      */
-    public SecurityAppRegIntegrationTokensRecord(ULong id, ULong integrationId, String authCode, String state, String token, String refreshToken, LocalDateTime expiresAt, LinkedHashMap tokenMetadata, String username, LinkedHashMap userMetadata, LocalDateTime createdAt, ULong createdBy, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegIntegrationTokensRecord(ULong id, ULong integrationId, String authCode, String state, String token, String refreshToken, LocalDateTime expiresAt, JSON tokenMetadata, String username, JSON userMetadata, LocalDateTime createdAt, ULong createdBy, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS);
 
         setId(id);
