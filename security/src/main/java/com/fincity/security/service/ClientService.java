@@ -334,10 +334,6 @@ public class ClientService
 		return this.getClientBy(clientCode).map(Client::getId);
 	}
 
-	public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {
-		return this.dao.checkRoleExistsOrCreatedForClient(clientId, roleId);
-	}
-
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
 	public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 

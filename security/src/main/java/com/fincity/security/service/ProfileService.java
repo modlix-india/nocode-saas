@@ -1,7 +1,9 @@
 package com.fincity.security.service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.jooq.exception.DataAccessException;
@@ -237,5 +239,17 @@ public class ProfileService
 
                 (ca, managed, hasAppAccess) -> this.dao.restrictClient(profileId, clientId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.restrictClient"));
+    }
+
+    public Mono<Boolean> hasAccessToRoles(ULong clientId, Set<ULong> roleIds) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+
+                (ca, clientHierarchy) -> this.dao.hasAccessToRoles(clientId, clientHierarchy, roleIds))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.hasAccessToRoles"));
     }
 }

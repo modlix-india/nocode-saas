@@ -1,10 +1,15 @@
 package com.fincity.security.dao;
 
+import static com.fincity.saas.commons.util.StringUtil.*;
+import static com.fincity.security.jooq.tables.SecurityClient.*;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
+import static com.fincity.security.jooq.tables.SecurityClientUrl.*;
+import static com.fincity.security.jooq.tables.SecurityProfile.*;
+
 import java.util.List;
 import java.util.Objects;
 
 import org.jooq.Condition;
-import org.jooq.DeleteQuery;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectJoinStep;
@@ -17,19 +22,10 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import static com.fincity.saas.commons.util.StringUtil.removeSpecialCharacters;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
-import static com.fincity.security.jooq.tables.SecurityClientProfile.SECURITY_CLIENT_PROFILE;
-import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
-import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
-import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
-import static com.fincity.security.jooq.tables.SecurityProfileRole.SECURITY_PROFILE_ROLE;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.jooq.tables.records.SecurityClientProfileRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -99,17 +95,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .map(e -> e.into(this.pojoClass));
     }
 
-    public Mono<Boolean> assignProfileToClient(ULong clientId, ULong profileId) {
-
-        return Mono
-                .from(this.dslContext
-                        .insertInto(SECURITY_CLIENT_PROFILE, SECURITY_CLIENT_PROFILE.CLIENT_ID,
-                                SECURITY_CLIENT_PROFILE.PROFILE_ID)
-                        .values(clientId, profileId))
-                .map(val -> val > 0);
-
-    }
-
     public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 
         return Mono.from(this.dslContext.update(SECURITY_CLIENT)
@@ -145,41 +130,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .where(SECURITY_CLIENT.ID.in(clientIds))).map(e -> e.into(Client.class)).collectList();
     }
 
-    public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {
-
-        Condition profileCondition = SECURITY_CLIENT_PROFILE.CLIENT_ID.eq(clientId);
-        Condition roleCondition = SECURITY_V2_ROLE.ID.eq(roleId);
-        Condition roleExistsCondition = profileCondition.and(roleCondition);
-        Condition roleCreatedCondition = SECURITY_V2_ROLE.CLIENT_ID.eq(clientId);
-
-        return Mono.from(
-
-                this.dslContext.selectCount()
-                        .from(SECURITY_V2_ROLE)
-                        .leftJoin(SECURITY_PROFILE_ROLE)
-                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
-                        .leftJoin(SECURITY_PROFILE)
-                        .on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_ROLE.PROFILE_ID))
-                        .leftJoin(SECURITY_CLIENT_PROFILE)
-                        .on(SECURITY_CLIENT_PROFILE.PROFILE_ID
-                                .eq(SECURITY_PROFILE.ID))
-                        .where(roleExistsCondition.or(roleCreatedCondition)))
-
-                .map(Record1::value1)
-                .map(val -> val > 0);
-    }
-
-    public Mono<Boolean> removeProfile(ULong clientId, ULong profileId) {
-
-        DeleteQuery<SecurityClientProfileRecord> query = this.dslContext.deleteQuery(SECURITY_CLIENT_PROFILE);
-
-        query.addConditions(SECURITY_CLIENT_PROFILE.PROFILE_ID.eq(profileId)
-                .and(SECURITY_CLIENT_PROFILE.CLIENT_ID.eq(clientId)));
-
-        return Mono.from(query)
-                .map(val -> val == 1);
-    }
-
     public Mono<Profile> getProfile(ULong profileId) {
 
         return Mono.from(this.dslContext.select(SECURITY_PROFILE.fields())
@@ -188,18 +138,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .limit(1))
                 .filter(Objects::nonNull)
                 .map(e -> e.into(Profile.class));
-    }
-
-    public Mono<Boolean> checkProfileAssignedForClient(ULong clientId, ULong profileId) {
-
-        return Mono.from(
-
-                this.dslContext.selectCount()
-                        .from(SECURITY_CLIENT_PROFILE)
-                        .where(SECURITY_CLIENT_PROFILE.CLIENT_ID.eq(clientId)
-                                .and(SECURITY_CLIENT_PROFILE.PROFILE_ID.eq(profileId))))
-                .map(Record1::value1)
-                .map(value -> value == 1);
     }
 
     public Flux<ClientUrlPattern> readClientPatterns() {
@@ -240,20 +178,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .collectList()
                 .map(List::getLast);
 
-    }
-
-    public Mono<List<Profile>> getProfilesAvailableForClient(ULong clientId) {
-
-        return Flux.from(
-
-                this.dslContext.select(SECURITY_PROFILE.fields())
-                        .from(SECURITY_PROFILE)
-                        .leftJoin(SECURITY_CLIENT_PROFILE)
-                        .on(SECURITY_PROFILE.ID.eq(SECURITY_CLIENT_PROFILE.PROFILE_ID))
-
-                        .where(SECURITY_CLIENT_PROFILE.CLIENT_ID.eq(clientId)))
-                .map(e -> e.into(Profile.class))
-                .collectList();
     }
 
     public Mono<ULong> getSystemClientId() {

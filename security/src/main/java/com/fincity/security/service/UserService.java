@@ -9,6 +9,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -90,6 +91,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	private final TokenService tokenService;
 	private final EventCreationService ecService;
 	private final AppRegistrationDAO appRegistrationDAO;
+	private final ProfileService profileService;
 
 	@Value("${jwt.key}")
 	private String tokenKey;
@@ -98,7 +100,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			ClientHierarchyService clientHierarchyService, PasswordEncoder passwordEncoder,
 			SecurityMessageResourceService securityMessageResourceService, SoxLogService soxLogService,
 			OtpService otpService, TokenService tokenService, EventCreationService ecService,
-			AppRegistrationDAO appRegistrationDAO) {
+			AppRegistrationDAO appRegistrationDAO, ProfileService profileService) {
 
 		this.clientService = clientService;
 		this.appService = appService;
@@ -110,6 +112,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		this.tokenService = tokenService;
 		this.ecService = ecService;
 		this.appRegistrationDAO = appRegistrationDAO;
+		this.profileService = profileService;
 	}
 
 	private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -589,7 +592,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 							(ca, user, sysOrManaged) ->
 
-							this.clientService.checkRoleExistsOrCreatedForClient(user.getClientId(), roleId)
+							this.profileService.hasAccessToRoles(user.getClientId(), Set.of(roleId))
 									.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 							(ca, user, sysOrManaged, roleApplicable) ->
