@@ -148,8 +148,16 @@ public class FileSystemService {
         if (StringUtil.safeIsBlank(finalPath))
             return Mono.empty();
 
+        final String extension;
+        int lastDotIndex = finalPath.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            extension = finalPath.substring(lastDotIndex);
+        } else {
+            extension = "";
+        }
+
         return FlatMapUtil.flatMapMono(
-                () -> Mono.fromCallable(() -> this.tempFolder.resolve(HashUtil.sha256Hash(finalPath)))
+                () -> Mono.fromCallable(() -> this.tempFolder.resolve(HashUtil.sha256Hash(finalPath)  + extension))
                     .subscribeOn(Schedulers.boundedElastic()),
 
                 filePath -> forceDownload ? Mono.just(false) :
