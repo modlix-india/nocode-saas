@@ -20,12 +20,13 @@ import com.fincity.saas.commons.exeception.GenericException;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.core.async.SdkPublisher;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
-public class MockS3AsyncClient {
+public class MockS3AsyncClient implements S3AsyncClient {
 
 	private static final Logger logger = LoggerFactory.getLogger(MockS3AsyncClient.class);
 

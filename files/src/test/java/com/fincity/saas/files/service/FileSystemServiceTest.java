@@ -24,13 +24,13 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 class FileSystemServiceTest {
 	private static final String TEST_BUCKET = "FileSystemServiceTest-bucket";
 	private FileSystemService fileSystemService;
-	private com.fincity.saas.files.service.MockS3AsyncClient mockS3Client;
+	private MockS3AsyncClient mockS3Client;
 
 	@BeforeEach
 	void setUp() {
 		FileSystemDao fileSystemDao = Mockito.mock(FileSystemDao.class);
 		CacheService cacheService = Mockito.mock(CacheService.class);
-		mockS3Client = new com.fincity.saas.files.service.MockS3AsyncClient(TEST_BUCKET);
+		mockS3Client = new MockS3AsyncClient(TEST_BUCKET);
 		FilesFileSystemType fileSystemType = FilesFileSystemType.SECURED;
 		fileSystemService = new FileSystemService(fileSystemDao, cacheService, TEST_BUCKET, mockS3Client, fileSystemType);
 	}
