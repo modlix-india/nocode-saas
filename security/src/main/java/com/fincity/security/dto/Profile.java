@@ -1,6 +1,6 @@
 package com.fincity.security.dto;
 
-import java.util.List;
+import java.util.Map;
 
 import org.jooq.types.ULong;
 
@@ -32,5 +32,5 @@ public class Profile extends AbstractUpdatableDTO<ULong, ULong> {
 	// id which is inherited from rootProfileId.
 	private ULong rootProfileId;
 
-	private List<ProfileArrangement> arrangement;
+	private Map<String, Object> arrangement;
 }

@@ -1,13 +1,10 @@
 package com.fincity.security.controller;
 
-import java.util.List;
-
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.Profile;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
@@ -85,22 +81,6 @@ public class ClientController
 			@RequestParam String host, @RequestParam String port) {
 		return this.service.getClientPattern(scheme, host, port).map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
 				.defaultIfEmpty(Tuples.of("SYSTEM", "nothing")).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/{clientId}/assignProfile/{profileId}")
-	public Mono<ResponseEntity<Boolean>> assignProfile(@PathVariable ULong clientId, @PathVariable ULong profileId) {
-		return this.service.assignProfileToClient(clientId, profileId).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/{clientId}/removeProfile/{profileId}")
-	public Mono<ResponseEntity<Boolean>> removeProfile(@PathVariable ULong clientId, @PathVariable ULong profileId) {
-		return this.service.removeProfileFromClient(clientId, profileId).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/availableProfiles/{clientId}")
-	public Mono<ResponseEntity<List<Profile>>> fetchProfilesForClient(@PathVariable ULong clientId,
-			@RequestParam(required = false) ULong appId) {
-		return this.service.fetchProfiles(clientId, appId).map(ResponseEntity::ok);
 	}
 
 	@GetMapping("/makeClientActive")

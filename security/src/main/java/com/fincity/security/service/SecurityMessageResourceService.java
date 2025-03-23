@@ -113,6 +113,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String UNSUPPORTED_PLATFORM = "unsupported_platform";
 	public static final String CRT_KEY_ISSUE = "crt_key_issue";
 	public static final String SUBDOMAIN_SUFFIX_FORBIDDEN = "subdomain_suffix_forbidden";
+	public static final String PROFILE_NEEDS_APP = "profile_needs_app";
+	public static final String FORBIDDEN_ROLE_ACCESS = "forbidden_role_access";
 
 	public SecurityMessageResourceService() {
 

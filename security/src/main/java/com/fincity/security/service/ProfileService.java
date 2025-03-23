@@ -2,6 +2,7 @@ package com.fincity.security.service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
@@ -38,20 +39,21 @@ public class ProfileService
     private static final String DESCRIPTION = "description";
     private static final String NAME = "name";
 
-    private static final String CACHE_NAME_PROFILE = "profile";
     private static final String CACHE_NAME_APP_ID_PROFILE = "appIdProfile";
 
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
     private final ClientHierarchyService clientHierarchyService;
+    private final AppService appService;
     private final CacheService cacheService;
 
     public ProfileService(SecurityMessageResourceService securityMessageResourceService, ClientService clientService,
-            ClientHierarchyService clientHierarchyService, CacheService cacheService) {
+            ClientHierarchyService clientHierarchyService, CacheService cacheService, AppService appService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
         this.clientHierarchyService = clientHierarchyService;
         this.cacheService = cacheService;
+        this.appService = appService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_CREATE')")
@@ -63,6 +65,27 @@ public class ProfileService
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> {
+                    if (entity.getAppId() == null)
+                        return this.securityMessageResourceService.<Boolean>throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.PROFILE_NEEDS_APP);
+
+                    // Checking whether the profile's client id has access to the app or not.
+                    return this.appService.hasReadAccess(entity.getAppId(), entity.getClientId())
+                            .filter(BooleanUtil::safeValueOf);
+                },
+
+                (ca, hasAppAccess) -> {
+
+                    if (ca.isSystemClient())
+                        return Mono.just(true);
+
+                    return this.appService.hasReadAccess(entity.getAppId(), ULong.valueOf(ca.getUser().getClientId()))
+                            .filter(BooleanUtil::safeValueOf);
+                },
+
+                (ca, hasAppAccess, clientAlsoHasAppAccess) -> {
+
                     if (entity.getClientId() == null)
                         return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
 
@@ -75,7 +98,22 @@ public class ProfileService
                             .map(x -> entity);
                 },
 
-                (ca, managed) -> super.create(entity)
+                (ca, hasAppAccess, clientAlsoHasAppAccess, managed) -> clientHierarchyService
+                        .getClientHierarchy(entity.getClientId()),
+
+                (ca, hasAppAccess, clientAlsoHasAppAccess, managed,
+                        clientHierarchy) -> this.dao.hasAccessToRoles(entity.getAppId(), clientHierarchy,
+                                entity),
+
+                (ca, hasAppAccess, clientAlsoHasAppAccess, managed, clientHierarchy, hasAccessToRoles) -> {
+                    if (!hasAccessToRoles) {
+                        return this.securityMessageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS);
+                    }
+                    entity.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
+                    return this.dao.create(entity, clientHierarchy);
+                }
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.create"))
@@ -88,7 +126,14 @@ public class ProfileService
     @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
     @Override
     public Mono<Profile> read(ULong id) {
-        return this.readInternal(id);
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+
+                (ca, clientHierarchy) -> this.dao.read(id, clientHierarchy))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.read"));
     }
 
     public Mono<Profile> readInternal(ULong id) {
@@ -96,14 +141,18 @@ public class ProfileService
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
-    @Override
-    public Mono<Page<Profile>> readPageFilter(Pageable pageable, AbstractCondition cond) {
-        return super.readPageFilter(pageable, cond);
+    public Mono<Page<Profile>> readAll(ULong appId, Pageable pageable) {
+        return FlatMapUtil.flatMapMono(
 
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+
+                (ca, clientHierarchy) -> this.dao.readAll(appId, clientHierarchy, pageable))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.readAll"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_UPDATE')")
-    @Override
     public Mono<Profile> update(Profile entity) {
         return this.dao.canBeUpdated(entity.getId())
                 .filter(BooleanUtil::safeValueOf)
@@ -160,9 +209,9 @@ public class ProfileService
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.read(id),
+                ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
 
-                (ca, existing) -> super.delete(id)
+                (ca, hierarchy) -> this.dao.delete(id, hierarchy)
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.delete"))
@@ -172,5 +221,21 @@ public class ProfileService
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
                                         SecurityMessageResourceService.DELETE_ROLE_ERROR)
                                 : Mono.error(ex));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Profile_READ') and hasAuthority('Authorities.Client_UPDATE')")
+    public Mono<Boolean> restrictClient(ULong profileId, ULong clientId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+                        .filter(BooleanUtil::safeValueOf),
+
+                (ca, managed) -> this.dao.checkProfileAppAccess(profileId, clientId).filter(BooleanUtil::safeValueOf),
+
+                (ca, managed, hasAppAccess) -> this.dao.restrictClient(profileId, clientId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.restrictClient"));
     }
 }

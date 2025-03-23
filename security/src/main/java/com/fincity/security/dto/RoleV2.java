@@ -1,5 +1,7 @@
 package com.fincity.security.dto;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -27,8 +29,10 @@ public class RoleV2 extends AbstractUpdatableDTO<ULong, ULong> {
 	private String description;
 	private String authority;
 
-	private RoleV2[] subRoles;
+	private ULong parentRoleId;
+
+	private List<RoleV2> subRoles;
 
 	@JsonIgnore
-	private Permission[] permissions;
+	private List<Permission> permissions;
 }
