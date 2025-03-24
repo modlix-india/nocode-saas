@@ -29,6 +29,7 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
+import software.amazon.awssdk.core.FileTransformerConfiguration;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -148,15 +149,18 @@ public class FileSystemService {
 
     public Mono<File> getAsFile(String path, boolean forceDownload) {
 
-        String finalPath = path.replace("//", "/");
+        Path finalPath = Path.of(path.replace("//", "/"));
 
         if (StringUtil.safeIsBlank(finalPath))
             return Mono.empty();
 
-        String fileExtension = FileExtensionUtil.getExtension(finalPath);
-
         return FlatMapUtil.flatMapMono(
-                () -> Mono.fromCallable(() -> this.tempFolder.resolve(HashUtil.sha256Hash(finalPath) + "." + fileExtension))
+                () -> Mono.fromCallable(() -> {
+                        Path targetPath = this.tempFolder.resolve(
+                            Path.of(HashUtil.sha256Hash(finalPath.getParent()), finalPath.getFileName().toString()));
+                        Files.createDirectories(targetPath.getParent());
+                        return targetPath;
+                    })
                     .subscribeOn(Schedulers.boundedElastic()),
 
                 filePath -> forceDownload ? Mono.just(false) :
@@ -166,9 +170,13 @@ public class FileSystemService {
 
                     if (Boolean.TRUE.equals(exists)) return Mono.just(filePath.toFile());
 
-                    return Mono.fromFuture(s3Client.getObject(GetObjectRequest.builder().bucket(bucketName)
-                            .key(finalPath).build(),
-                        AsyncResponseTransformer.toFile(filePath))).thenReturn(filePath.toFile());
+                    return Mono.fromFuture(s3Client.getObject(
+                            GetObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(finalPath.toString())
+                                .build(),
+                            AsyncResponseTransformer.toFile(filePath)))
+                        .thenReturn(filePath.toFile());
                 }
             ).onErrorMap(ex ->
                 new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to download file : " + path, ex))
