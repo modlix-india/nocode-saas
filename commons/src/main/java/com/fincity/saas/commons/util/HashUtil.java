@@ -1,15 +1,17 @@
 package com.fincity.saas.commons.util;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+
+import com.fincity.saas.commons.enums.StringEncoder;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.google.gson.JsonElement;
 
 public class HashUtil {
 
@@ -17,16 +19,19 @@ public class HashUtil {
 
     private static final ConcurrentHashMap<String, MessageDigest> digestCache = new ConcurrentHashMap<>();
 
+    private static final StringEncoder encoder = StringEncoder.HEX;
+
     private HashUtil() {
     }
 
     public static String sha256Hash(Object object) {
-        if (object == null) return null;
+        if (object == null)
+            return null;
 
         try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
+            MessageDigest md = getMessageDigest("SHA-256");
             byte[] messageDigest = md.digest(object.toString().getBytes());
-            return new BigInteger(1, messageDigest).toString(16);
+            return encoder.encode(messageDigest);
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
             return null;
@@ -34,28 +39,22 @@ public class HashUtil {
     }
 
     public static <T> JsonElement createHash(T input, String algorithm) {
-        try {
-            MessageDigest md = getMessageDigest(algorithm);
-            byte[] valueBytes = convertToBytes(input);
-            byte[] hash = md.digest(valueBytes);
-            return new JsonPrimitive(bytesToHex(hash));
-        } catch (NoSuchAlgorithmException e) {
-            logger.error(e.getMessage(), e);
-            throw new RuntimeException("Hash algorithm not supported: " + algorithm, e);
-        }
+
+        if (StringUtil.safeIsBlank(algorithm))
+            throw new GenericException(HttpStatus.BAD_REQUEST, "Algorithm cannot be null or empty");
+
+        MessageDigest md = getMessageDigest(algorithm);
+        byte[] hash = md.digest(convertToBytes(input));
+        return encoder.encodeToJson(hash);
     }
 
     private static <T> byte[] convertToBytes(T input) {
-        if (input == null) {
+        if (input == null)
             return new byte[0];
-        }
 
-        if (input instanceof Number) {
-            if (input instanceof Double || input instanceof Float) {
-                return doubleToBytes(((Number) input).doubleValue());
-            }
-            return longToBytes(((Number) input).longValue());
-        }
+        if (input instanceof Number number)
+            return number instanceof Double || number instanceof Float ? doubleToBytes(number.doubleValue())
+                    : longToBytes(number.longValue());
 
         return input.toString().getBytes(StandardCharsets.UTF_8);
     }
@@ -74,26 +73,15 @@ public class HashUtil {
         return longToBytes(bits);
     }
 
-    private static MessageDigest getMessageDigest(String algorithm) throws NoSuchAlgorithmException {
-        return digestCache.computeIfAbsent(algorithm, alg -> {
-            try {
-                return MessageDigest.getInstance(alg);
-            } catch (NoSuchAlgorithmException e) {
-                logger.error(e.getMessage(), e);
-                throw new RuntimeException(e);
-            }
-        });
+    private static MessageDigest getMessageDigest(String alg) {
+        return digestCache.computeIfAbsent(alg, HashUtil::doGetMessageDigest);
     }
 
-    private static String bytesToHex(byte[] hash) {
-        StringBuilder hexString = new StringBuilder(2 * hash.length);
-        for (byte b : hash) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) {
-                hexString.append('0');
-            }
-            hexString.append(hex);
+    private static MessageDigest doGetMessageDigest(String alg) {
+        try {
+            return MessageDigest.getInstance(alg);
+        } catch (NoSuchAlgorithmException e) {
+            throw new GenericException(HttpStatus.BAD_REQUEST, "Hash algorithm not supported: " + alg, e);
         }
-        return hexString.toString();
     }
 }
