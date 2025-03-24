@@ -134,12 +134,15 @@ public class ProfileService
 
                 ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
 
-                (ca, clientHierarchy) -> this.dao.read(id, clientHierarchy))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.read"));
-    }
+                (ca, clientHierarchy) -> this.dao.read(id, clientHierarchy),
 
-    public Mono<Profile> readInternal(ULong id) {
-        return super.read(id);
+                (ca, clientHierarchy, profile) -> this.appService
+                        .hasReadAccess(profile.getAppId(), ULong.valueOf(ca.getUser().getClientId()))
+                        .filter(BooleanUtil::safeValueOf)
+                        .<Profile>map(x -> profile)
+
+        )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.read"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
