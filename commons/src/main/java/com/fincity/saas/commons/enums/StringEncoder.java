@@ -44,6 +44,10 @@ public enum StringEncoder {
 		return selected.stream().map(algo -> new JsonPrimitive(algo.getName())).collect(Collectors.toList());
 	}
 
+	public JsonPrimitive encodeToJson(byte[] bytes) {
+		return new JsonPrimitive(encode(bytes));
+	}
+
 	public String encode(byte[] bytes) {
 		return switch (this) {
 			case BASE64 -> encodeBase64(bytes);
