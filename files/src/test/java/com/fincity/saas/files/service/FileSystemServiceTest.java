@@ -1,6 +1,7 @@
 package com.fincity.saas.files.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -22,6 +23,7 @@ import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 class FileSystemServiceTest {
+
 	private static final String TEST_BUCKET = "FileSystemServiceTest-bucket";
 	private FileSystemService fileSystemService;
 	private MockS3AsyncClient mockS3Client;
@@ -41,10 +43,11 @@ class FileSystemServiceTest {
 		FileSystemUtils.deleteRecursively(fileSystemService.getTempFolder().toFile());
 	}
 
-
 	@Test
 	void testGetAsFile() {
+
 		String path = "test/path/to/file.txt";
+
 		boolean forceDownload = false;
 
 		CompletableFuture<PutObjectResponse> putFuture;
@@ -56,7 +59,8 @@ class FileSystemServiceTest {
 
 		putFuture.join();
 
-		Mono<File> result = fileSystemService.getAsFile(path, forceDownload).switchIfEmpty(Mono.error(new AssertionError("not found")));
+		Mono<File> result = fileSystemService.getAsFile(path, forceDownload)
+				.switchIfEmpty(Mono.error(new AssertionError("File %s not found".formatted(path))));
 
 		File file = result.block();
 
