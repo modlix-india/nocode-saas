@@ -8,6 +8,8 @@ import com.fincity.saas.files.dao.FileSystemDao;
 import com.fincity.saas.files.jooq.enums.FilesFileSystemType;
 import com.fincity.saas.files.model.FileDetail;
 import com.fincity.saas.files.model.FilesPage;
+import com.fincity.saas.files.util.FileExtensionUtil;
+
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +21,8 @@ import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
+
+import lombok.Getter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -61,6 +65,7 @@ public class FileSystemService {
     private final S3AsyncClient s3Client;
     private final FilesFileSystemType fileSystemType;
 
+    @Getter
     private final Path tempFolder;
 
     private final Logger logger = LoggerFactory.getLogger(FileSystemService.class);
@@ -148,8 +153,10 @@ public class FileSystemService {
         if (StringUtil.safeIsBlank(finalPath))
             return Mono.empty();
 
+        String fileExtension = FileExtensionUtil.getExtension(finalPath);
+
         return FlatMapUtil.flatMapMono(
-                () -> Mono.fromCallable(() -> this.tempFolder.resolve(HashUtil.sha256Hash(finalPath)))
+                () -> Mono.fromCallable(() -> this.tempFolder.resolve(HashUtil.sha256Hash(finalPath) + "." + fileExtension))
                     .subscribeOn(Schedulers.boundedElastic()),
 
                 filePath -> forceDownload ? Mono.just(false) :
@@ -157,7 +164,7 @@ public class FileSystemService {
 
                 (filePath, exists) -> {
 
-                    if (exists) return Mono.just(filePath.toFile());
+                    if (Boolean.TRUE.equals(exists)) return Mono.just(filePath.toFile());
 
                     return Mono.fromFuture(s3Client.getObject(GetObjectRequest.builder().bucket(bucketName)
                             .key(finalPath).build(),
