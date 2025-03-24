@@ -1,13 +1,5 @@
 package com.fincity.security.enums;
 
-import com.fincity.security.jooq.enums.SecurityAppRegAccessLevel;
-import com.fincity.security.jooq.enums.SecurityAppRegFileAccessLevel;
-import com.fincity.security.jooq.enums.SecurityAppRegDepartmentLevel;
-import com.fincity.security.jooq.enums.SecurityAppRegDesignationLevel;
-import com.fincity.security.jooq.enums.SecurityAppRegUserDesignationLevel;
-import com.fincity.security.jooq.enums.SecurityAppRegUserProfileLevel;
-import com.fincity.security.jooq.enums.SecurityAppRegProfileRestrictionLevel;
-
 // Client level type with respect to the application.
 // If the app is created by SYSTEM then everyone starts with CLIENT and then follows.
 // If the app is created by a non SYSTEM client then their client is CLIENT and then follows.
@@ -17,33 +9,12 @@ public enum ClientLevelType {
     CLIENT,
     OWNER;
 
-    private static final String UNKNOWN_LEVEL = "Unknown level: ";
-
-    public static ClientLevelType from(SecurityAppRegAccessLevel level) {
-        return switch (level) {
-            case CLIENT -> ClientLevelType.CLIENT;
-            case CUSTOMER -> ClientLevelType.CUSTOMER;
-            case CONSUMER -> ClientLevelType.CONSUMER;
-            default -> throw new IllegalArgumentException(UNKNOWN_LEVEL + level);
-        };
+    public static ClientLevelType from(Object level) {
+        return ClientLevelType.valueOf(level.toString());
     }
 
-    public SecurityAppRegAccessLevel toAppAccessLevel() {
-        return switch (this) {
-            case CLIENT -> SecurityAppRegAccessLevel.CLIENT;
-            case CUSTOMER -> SecurityAppRegAccessLevel.CUSTOMER;
-            case CONSUMER -> SecurityAppRegAccessLevel.CONSUMER;
-            default -> throw new IllegalArgumentException(UNKNOWN_LEVEL + this);
-        };
-    }
-
-    public SecurityAppRegFileAccessLevel toFileAccessLevel() {
-        return switch (this) {
-            case CLIENT -> SecurityAppRegFileAccessLevel.CLIENT;
-            case CUSTOMER -> SecurityAppRegFileAccessLevel.CUSTOMER;
-            case CONSUMER -> SecurityAppRegFileAccessLevel.CONSUMER;
-            default -> throw new IllegalArgumentException(UNKNOWN_LEVEL + this);
-        };
+    public <T extends Enum<T>> T to(Class<T> type) {
+        return Enum.valueOf(type, this.toString());
     }
 
 }
