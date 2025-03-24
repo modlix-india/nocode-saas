@@ -434,3 +434,7 @@ INSERT IGNORE INTO `security_v2_role_role` (ROLE_ID, SUB_ROLE_ID) VALUES
 
 ALTER TABLE `security`.`security_sox_log` 
 CHANGE COLUMN `OBJECT_NAME` `OBJECT_NAME` ENUM('USER', 'ROLE', 'PERMISSION', 'PACKAGE', 'CLIENT', 'CLIENT_TYPE', 'APP', 'PROFILE') CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL COMMENT 'Operation on the object' ;
+
+SET SQL_SAFE_UPDATES = 0;
+DELETE FROM `security`.`security_v2_role` where short_name = 'Assign';
+SET SQL_SAFE_UPDATES = 1;
