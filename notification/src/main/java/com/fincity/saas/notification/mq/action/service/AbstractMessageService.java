@@ -7,6 +7,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.enums.ChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
+import com.fincity.saas.notification.exception.NotificationDeliveryException;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.service.NotificationConnectionService;
 import com.fincity.saas.notification.service.SentNotificationService;
@@ -30,25 +31,25 @@ public abstract class AbstractMessageService implements IMessageService, Channel
 		this.sentNotificationService = sentNotificationService;
 	}
 
-	protected boolean isValid(SendRequest sendRequest) {
+	private boolean isValid(SendRequest sendRequest) {
 		return sendRequest != null && sendRequest.isValid(this.getChannelType());
 	}
 
-	protected Mono<Connection> getConnection(SendRequest request) {
+	private Mono<Connection> getConnection(SendRequest request) {
 		return this.connectionService.getNotificationConn(request.getAppCode(), request.getClientCode(),
 				request.getConnections().get(this.getChannelType().getLiteral()));
 	}
 
-	protected Mono<Boolean> notificationSent(SendRequest sendRequest) {
-		return this.sendNotification(sendRequest, NotificationDeliveryStatus.SENT);
+	private Mono<Boolean> notificationSent(SendRequest sendRequest) {
+		return this.sendNotification(sendRequest, NotificationDeliveryStatus.SENT).map(request -> Boolean.TRUE);
 	}
 
-	protected Mono<Boolean> notificationFailed(SendRequest sendRequest) {
-		return this.sendNotification(sendRequest, NotificationDeliveryStatus.FAILED);
+	private Mono<Boolean> notificationFailed(SendRequest sendRequest) {
+		return this.sendNotification(sendRequest, NotificationDeliveryStatus.FAILED).map(request -> Boolean.FALSE);
 	}
 
-	private Mono<Boolean> sendNotification(SendRequest sendRequest, NotificationDeliveryStatus deliveryStatus) {
-		return sentNotificationService.toNetworkNotification(sendRequest, deliveryStatus).map(request -> Boolean.TRUE);
+	private Mono<SendRequest> sendNotification(SendRequest sendRequest, NotificationDeliveryStatus deliveryStatus) {
+		return sentNotificationService.toNetworkNotification(sendRequest, deliveryStatus);
 	}
 
 	@Override
@@ -57,16 +58,15 @@ public abstract class AbstractMessageService implements IMessageService, Channel
 		if (!isValid(request))
 			return Mono.just(Boolean.FALSE);
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 
-				() -> getConnection(request),
+				() -> this.getConnection(request),
 
-				connection -> this.execute(request.getChannels()., connection),
+				connection -> this.execute(request.getChannels().get(this.getChannelType()), connection)
+						.onErrorResume(NotificationDeliveryException.class, ex -> this.notificationFailed(request.setChannelErrorInfo(ex, this.getChannelType()))),
 
-				(connection, emailSent) -> notificationSent(request)
+				(connection, executed) -> Boolean.TRUE.equals(executed) ? this.notificationSent(request) : Mono.just(Boolean.FALSE)
 		);
 	}
-
-
 
 }

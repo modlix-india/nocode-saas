@@ -10,7 +10,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.fincity.saas.notification.mq.action.service.AbstractMessageService;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
@@ -28,7 +28,7 @@ public class EmailService extends AbstractMessageService {
 	private final NotificationMessageResourceService msgService;
 
 	public EmailService(SendGridService sendGridService, SMTPService smtpService,
-			NotificationMessageResourceService msgService) {
+	                    NotificationMessageResourceService msgService) {
 		this.sendGridService = sendGridService;
 		this.smtpService = smtpService;
 		this.msgService = msgService;
@@ -41,7 +41,8 @@ public class EmailService extends AbstractMessageService {
 	}
 
 	@Override
-	public <T extends NotificationMessage<T>> Mono<Boolean> execute(T message, Connection connection) {
+	public Mono<Boolean> execute(Object message, Connection connection) {
+
 		return FlatMapUtil.flatMapMono(
 
 				() -> Mono.justOrEmpty(this.services.get(connection.getConnectionSubType().getProvider()))
@@ -49,8 +50,14 @@ public class EmailService extends AbstractMessageService {
 								NotificationMessageResourceService.CONNECTION_DETAILS_MISSING,
 								connection.getConnectionSubType())),
 
-				service -> service.sendMail((EmailMessage) message, connection)
+				service -> message instanceof EmailMessage emailMessage ? service.sendMail(emailMessage, connection)
+						: Mono.just(Boolean.FALSE)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "EmailService.sendEmail"));
+	}
+
+	@Override
+	public NotificationChannelType getChannelType() {
+		return NotificationChannelType.EMAIL;
 	}
 }

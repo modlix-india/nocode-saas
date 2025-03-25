@@ -16,7 +16,7 @@ import com.fincity.saas.notification.configuration.QueueNameProvider;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.mq.action.service.IMessageService;
-import com.fincity.saas.notification.mq.action.service.channel.MessageEmailService;
+import com.fincity.saas.notification.service.channel.email.EmailService;
 import com.rabbitmq.client.Channel;
 
 import jakarta.annotation.PostConstruct;
@@ -28,11 +28,13 @@ public class NotificationMessageListener {
 
 	private final Map<NotificationChannelType, IMessageService> messageServices = new EnumMap<>(
 			NotificationChannelType.class);
-	private final MessageEmailService messageEmailService;
+
+	private final EmailService emailService;
+
 	private QueueNameProvider queueNameProvider;
 
-	public NotificationMessageListener(MessageEmailService messageEmailService) {
-		this.messageEmailService = messageEmailService;
+	public NotificationMessageListener(EmailService emailService) {
+		this.emailService = emailService;
 	}
 
 	@Autowired
@@ -42,7 +44,7 @@ public class NotificationMessageListener {
 
 	@PostConstruct
 	public void init() {
-		this.messageServices.put(NotificationChannelType.EMAIL, messageEmailService);
+		this.messageServices.put(NotificationChannelType.EMAIL, emailService);
 	}
 
 	@RabbitListener(queues = "#{queueNameProvider.getEmailBroadcastQueues()}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
@@ -62,13 +64,14 @@ public class NotificationMessageListener {
 	}
 
 	private Mono<Boolean> executeMessage(NotificationChannelType channelType, SendRequest request) {
+
 		Mono<Boolean> reveicedMono = FlatMapUtil.flatMapMono(
 
 				() -> Mono.justOrEmpty(this.messageServices.get(channelType)),
 
-				service -> service.execute(request)
+				service -> service.execute(request).switchIfEmpty(Mono.just(Boolean.FALSE))
 
-		).switchIfEmpty(Mono.just(Boolean.FALSE));
+		).onErrorResume(throwable -> Mono.just(Boolean.FALSE));
 
 		return request.getXDebug() != null
 				? reveicedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, request.getXDebug()))

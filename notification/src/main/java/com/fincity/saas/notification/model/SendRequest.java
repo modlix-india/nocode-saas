@@ -3,6 +3,7 @@ package com.fincity.saas.notification.model;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -11,7 +12,6 @@ import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.model.NotificationChannel.NotificationChannelBuilder;
-import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import lombok.Data;
@@ -35,9 +35,10 @@ public class SendRequest implements Serializable {
 	private Map<String, String> connections;
 	private NotificationChannel channels;
 	private NotificationErrorInfo errorInfo;
+	private Map<String, NotificationErrorInfo> channelErrors;
 
 	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
-	                             Map<String, String> connections, NotificationChannel channels) {
+			Map<String, String> connections, NotificationChannel channels) {
 		return new SendRequest()
 				.setCode(UniqueUtil.shortUUID())
 				.setAppCode(appCode)
@@ -49,7 +50,7 @@ public class SendRequest implements Serializable {
 	}
 
 	public static SendRequest ofError(String appCode, String clientCode, BigInteger userId, String notificationType,
-	                                  GenericException errorInfo) {
+			GenericException errorInfo) {
 		return new SendRequest()
 				.setCode(UniqueUtil.shortUUID())
 				.setAppCode(appCode)
@@ -83,17 +84,16 @@ public class SendRequest implements Serializable {
 		return this;
 	}
 
+	public <T extends GenericException> SendRequest setChannelErrorInfo(T exception, NotificationChannelType channelType) {
+		if (this.channelErrors == null)
+			this.channelErrors = new HashMap<>();
+		this.channelErrors.put(channelType.getLiteral(), new NotificationErrorInfo(exception));
+		return this;
+	}
+
 	@JsonIgnore
 	public boolean isError() {
 		return this.errorInfo != null;
-	}
-
-	public <T extends NotificationMessage<T>> T getChannel(NotificationChannelType channelType) {
-		return switch (channelType) {
-			case DISABLED, WEB_PUSH, MOBILE_PUSH, SMS -> null;
-			case EMAIL -> this.channels.getEmail();
-			case IN_APP -> this.channels.getInApp();
-		};
 	}
 
 }

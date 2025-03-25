@@ -1,27 +1,33 @@
 package com.fincity.saas.notification.model;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.notification.dto.UserPreference;
 import com.fincity.saas.notification.enums.ChannelType;
 import com.fincity.saas.notification.enums.NotificationChannelType;
-import com.fincity.saas.notification.model.message.channel.EmailMessage;
-import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
+import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.message.channel.MobilePushMessage;
 import com.fincity.saas.notification.model.message.channel.SmsMessage;
 import com.fincity.saas.notification.model.message.channel.WebPushMessage;
+import com.fincity.saas.notification.util.IClassConverter;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import lombok.Getter;
 
 @Getter
-public class NotificationChannel {
+public class NotificationChannel implements IClassConverter, Serializable {
+
+	@Serial
+	private static final long serialVersionUID = 5676431093000206490L;
+
+	private static final Gson GSON = new Gson();
 
 	private boolean notificationEnabled;
 	private EmailMessage email;
@@ -40,7 +46,7 @@ public class NotificationChannel {
 
 	@JsonIgnore
 	public boolean containsAnyChannel() {
-		return email != null || inApp != null || sms != null;
+		return email != null || inApp != null || mobilePush != null || webPush != null || sms != null;
 	}
 
 	@JsonIgnore
@@ -48,26 +54,27 @@ public class NotificationChannel {
 		return switch (channelType) {
 			case EMAIL -> email != null && !email.isNull();
 			case IN_APP -> inApp != null && !inApp.isNull();
+			case MOBILE_PUSH -> mobilePush != null && !mobilePush.isNull();
+			case WEB_PUSH -> webPush != null && !webPush.isNull();
 			case SMS -> sms != null && !sms.isNull();
 			default -> false;
 		};
 	}
 
-	public boolean get(NotificationChannelType channelType) {
-
+	public Object get(NotificationChannelType channelType) {
+		return switch (channelType) {
+			case EMAIL -> email;
+			case IN_APP -> inApp;
+			case MOBILE_PUSH -> mobilePush;
+			case WEB_PUSH -> webPush;
+			case SMS -> sms;
+			default -> null;
+		};
 	}
 
 	@JsonIgnore
-	public Map<String, Object> toMap() {
-		Gson gson = new Gson();
-		String json = gson.toJson(this);
-		return gson.fromJson(json, new TypeToken<Map<String, Object>>() {
-		}.getType());
-	}
-
-	@JsonIgnore
-	public  List<NotificationChannelType> getEnabledChannels() {
-		return Stream.of(this.email, this.inApp, this.sms)
+	public List<NotificationChannelType> getEnabledChannels() {
+		return Stream.of(this.email, this.inApp, this.mobilePush, this.webPush, this.sms)
 				.filter(message -> message != null && !message.isNull())
 				.map(ChannelType::getChannelType).toList();
 	}
@@ -78,6 +85,8 @@ public class NotificationChannel {
 		private boolean notificationEnabled;
 		private EmailMessage email = null;
 		private InAppMessage inApp = null;
+		private MobilePushMessage mobilePush = null;
+		private WebPushMessage webPush = null;
 		private SmsMessage sms = null;
 
 		public NotificationChannelBuilder preferences(UserPreference preferences) {
@@ -88,29 +97,6 @@ public class NotificationChannel {
 
 		public NotificationChannelBuilder isEnabled(boolean isEnabled) {
 			this.notificationEnabled = isEnabled;
-			return this;
-		}
-
-		public <T extends NotificationMessage<T>> NotificationChannelBuilder addMessage(T message, RecipientInfo userInfo) {
-			if (preference == null || !this.notificationEnabled)
-				return this;
-
-			if (preference.hasPreference(NotificationChannelType.EMAIL)
-					&& message.getChannelType().equals(NotificationChannelType.EMAIL)
-					&& message instanceof EmailMessage emailMessage)
-				this.email = emailMessage.addRecipientInfo(userInfo);
-
-			if (preference.hasPreference(NotificationChannelType.IN_APP)
-					&& message.getChannelType().equals(NotificationChannelType.IN_APP)
-					&& message instanceof InAppMessage inAppMessage)
-				this.inApp = inAppMessage.addRecipientInfo(userInfo);
-
-			if (preference.hasPreference(NotificationChannelType.SMS)
-					&& message.getChannelType().equals(NotificationChannelType.SMS)
-					&& message instanceof SmsMessage smsMessage)
-				this.sms = smsMessage.addRecipientInfo(userInfo);
-
-			this.notificationEnabled = this.email != null || this.inApp != null || this.sms != null;
 			return this;
 		}
 
@@ -127,6 +113,16 @@ public class NotificationChannel {
 					&& message.getChannelType().equals(NotificationChannelType.IN_APP)
 					&& message instanceof InAppMessage inAppMessage)
 				this.inApp = inAppMessage;
+
+			if (preference.hasPreference(NotificationChannelType.MOBILE_PUSH)
+					&& message.getChannelType().equals(NotificationChannelType.MOBILE_PUSH)
+					&& message instanceof MobilePushMessage mobilePushMessage)
+				this.mobilePush = mobilePushMessage;
+
+			if (preference.hasPreference(NotificationChannelType.WEB_PUSH)
+					&& message.getChannelType().equals(NotificationChannelType.WEB_PUSH)
+					&& message instanceof WebPushMessage webPushMessage)
+				this.webPush = webPushMessage;
 
 			if (preference.hasPreference(NotificationChannelType.SMS)
 					&& message.getChannelType().equals(NotificationChannelType.SMS)
@@ -147,6 +143,12 @@ public class NotificationChannel {
 			if (inApp != null)
 				inApp.addRecipientInfo(userInfo);
 
+			if (mobilePush != null)
+				mobilePush.addRecipientInfo(userInfo);
+
+			if (webPush != null)
+				webPush.addRecipientInfo(userInfo);
+
 			if (sms != null)
 				sms.addRecipientInfo(userInfo);
 
@@ -158,6 +160,8 @@ public class NotificationChannel {
 			channel.notificationEnabled = this.notificationEnabled;
 			channel.email = this.email;
 			channel.inApp = this.inApp;
+			channel.mobilePush = this.mobilePush;
+			channel.webPush = this.webPush;
 			channel.sms = this.sms;
 			return channel;
 		}

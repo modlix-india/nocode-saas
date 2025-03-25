@@ -1,5 +1,8 @@
 package com.fincity.saas.notification.model.response;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 import org.springframework.http.HttpStatus;
 
 import com.fincity.saas.notification.model.SendRequest;
@@ -11,7 +14,10 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-public class NotificationResponse {
+public class NotificationResponse implements Serializable {
+
+	@Serial
+	private static final long serialVersionUID = 7271697827921768050L;
 
 	private String transId;
 	private HttpStatus status;

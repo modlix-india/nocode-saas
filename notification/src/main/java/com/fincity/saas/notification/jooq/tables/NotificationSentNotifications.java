@@ -199,24 +199,17 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
 
     /**
      * The column
-     * <code>notification.notification_sent_notifications.ERROR_CODE</code>.
-     * Error Code if error occurs during this notification
-     */
-    public final TableField<NotificationSentNotificationsRecord, Integer> ERROR_CODE = createField(DSL.name("ERROR_CODE"), SQLDataType.INTEGER, this, "Error Code if error occurs during this notification");
-
-    /**
-     * The column
-     * <code>notification.notification_sent_notifications.ERROR_MESSAGE_ID</code>.
-     * Error message id if error occurs during this notification
-     */
-    public final TableField<NotificationSentNotificationsRecord, String> ERROR_MESSAGE_ID = createField(DSL.name("ERROR_MESSAGE_ID"), SQLDataType.CHAR(125), this, "Error message id if error occurs during this notification");
-
-    /**
-     * The column
      * <code>notification.notification_sent_notifications.ERROR_MESSAGE</code>.
      * Error message if error occurs during this notification
      */
-    public final TableField<NotificationSentNotificationsRecord, String> ERROR_MESSAGE = createField(DSL.name("ERROR_MESSAGE"), SQLDataType.CLOB, this, "Error message if error occurs during this notification");
+    public final TableField<NotificationSentNotificationsRecord, Map> ERROR_MESSAGE = createField(DSL.name("ERROR_MESSAGE"), SQLDataType.JSON, this, "Error message if error occurs during this notification", new JSONMapBinding());
+
+    /**
+     * The column
+     * <code>notification.notification_sent_notifications.CHANNEL_ERRORS</code>.
+     * Channel Errors if error occurs during channel listeners processing
+     */
+    public final TableField<NotificationSentNotificationsRecord, Map> CHANNEL_ERRORS = createField(DSL.name("CHANNEL_ERRORS"), SQLDataType.JSON, this, "Channel Errors if error occurs during channel listeners processing", new JSONMapBinding());
 
     /**
      * The column

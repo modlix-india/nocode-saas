@@ -10,7 +10,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
-public class MobilePushMessage extends NotificationMessage<InAppMessage> {
+public class MobilePushMessage extends NotificationMessage<MobilePushMessage> {
 
 	@Override
 	public NotificationChannelType getChannelType() {

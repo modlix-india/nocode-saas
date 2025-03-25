@@ -62,9 +62,8 @@ public class SentNotificationService
 					e.setWebPushDeliveryStatus(entity.getWebPushDeliveryStatus());
 					e.setSms(entity.isSms());
 					e.setSmsDeliveryStatus(entity.getSmsDeliveryStatus());
-					e.setErrorCode(entity.getErrorCode());
-					e.setErrorMessageId(entity.getErrorMessageId());
 					e.setErrorMessage(entity.getErrorMessage());
+					e.setChannelErrors(entity.getChannelErrors());
 					return e;
 				});
 	}
@@ -179,8 +178,7 @@ public class SentNotificationService
 		if (deliveryStatus == null || request.isEmpty())
 			return Mono.just(sentNotification);
 
-		if (deliveryStatus.equals(NotificationDeliveryStatus.ERROR))
-			sentNotification.setErrorInfo(request.getErrorInfo());
+		this.updateErrorStatus(sentNotification, request, deliveryStatus);
 
 		List<NotificationChannelType> enabledChannels = request.getChannels().getEnabledChannels();
 
@@ -193,5 +191,17 @@ public class SentNotificationService
 		channels.forEach(ct -> sentNotification.updateChannelInfo(ct, Boolean.TRUE, deliveryStatusInfo, Boolean.TRUE));
 
 		return Mono.just(sentNotification);
+	}
+
+	private void updateErrorStatus(SentNotification sentNotification, SendRequest request,
+			NotificationDeliveryStatus deliveryStatus) {
+
+		if (deliveryStatus.isError()) {
+			if (request.getErrorInfo() != null)
+				sentNotification.setErrorInfo(request.getErrorInfo());
+
+			if (request.getChannelErrors() != null && !request.getChannelErrors().isEmpty())
+				sentNotification.setChannelErrorInfo(request.getChannelErrors());
+		}
 	}
 }

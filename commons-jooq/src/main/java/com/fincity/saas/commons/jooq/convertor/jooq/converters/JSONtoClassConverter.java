@@ -32,4 +32,9 @@ public class JSONtoClassConverter<U> extends AbstractJooqConverter<JSON, U> {
 	protected U defaultIfError() {
 		return null;
 	}
+
+	@Override
+	protected JSON valueIfNull() {
+		return JSON.jsonOrNull("{}");
+	}
 }

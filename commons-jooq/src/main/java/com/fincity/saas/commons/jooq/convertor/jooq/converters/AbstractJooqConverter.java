@@ -30,6 +30,10 @@ public abstract class AbstractJooqConverter<J, U> extends AbstractConverter<J, U
 
 	protected abstract U defaultIfError();
 
+	protected J valueIfNull() {
+		return null;
+	}
+
 	@Override
 	public U from(J databaseObject) {
 		if (databaseObject == null)
@@ -47,14 +51,14 @@ public abstract class AbstractJooqConverter<J, U> extends AbstractConverter<J, U
 	@Override
 	public J to(U userObject) {
 		if (userObject == null)
-			return null;
+			return this.valueIfNull();
 
 		try {
 			String jsonString = mapper.writeValueAsString(userObject);
 			return this.toJson(jsonString);
 		} catch (Exception e) {
 			logger.error("Error when converting object of type {} to JSON", toType(), e);
-			return this.toJson(null);
+			return this.valueIfNull();
 		}
 	}
 }

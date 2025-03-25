@@ -57,9 +57,8 @@ CREATE TABLE `notification`.`notification_sent_notifications` (
     `IS_SMS` TINYINT NOT NULL DEFAULT 0 COMMENT 'SMS notification enabled or not',
     `SMS_DELIVERY_STATUS` JSON NULL COMMENT 'SMS delivery status',
     `IS_ERROR` TINYINT NOT NULL DEFAULT 0 COMMENT 'If we are getting error in notification or not',
-    `ERROR_CODE` INTEGER NULL COMMENT 'Error Code if error occurs during this notification',
-    `ERROR_MESSAGE_ID` CHAR(125) NULL COMMENT 'Error message id if error occurs during this notification',
-    `ERROR_MESSAGE` TEXT NULL COMMENT 'Error message if error occurs during this notification',
+    `ERROR_MESSAGE` JSON NULL COMMENT 'Error message if error occurs during this notification',
+    `CHANNEL_ERRORS` JSON NULL COMMENT 'Channel Errors if error occurs during channel listeners processing',
 
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',

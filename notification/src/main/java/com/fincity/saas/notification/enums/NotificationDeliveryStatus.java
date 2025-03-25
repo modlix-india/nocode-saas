@@ -33,4 +33,8 @@ public enum NotificationDeliveryStatus implements EnumType {
 	public String getName() {
 		return null;
 	}
+
+	public boolean isError() {
+		return this == ERROR || this == FAILED;
+	}
 }

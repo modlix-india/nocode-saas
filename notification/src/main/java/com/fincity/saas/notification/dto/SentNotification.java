@@ -16,8 +16,8 @@ import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.NotificationType;
-import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -35,6 +35,9 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	@Serial
 	private static final long serialVersionUID = 8064924743393465814L;
 
+	private static final int DELIVERY_STATUS_SIZE = NotificationDeliveryStatus.values().length;
+	private static final int CHANNEL_SIZE = NotificationChannelType.values().length;
+
 	private String code;
 	private String clientCode;
 	private String appCode;
@@ -44,24 +47,18 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	private NotificationStage notificationStage;
 	private LocalDateTime triggerTime;
 	private boolean isEmail = Boolean.FALSE;
-	private Map<String, LocalDateTime> emailDeliveryStatus = HashMap
-			.newHashMap(NotificationDeliveryStatus.values().length);
+	private Map<String, LocalDateTime> emailDeliveryStatus = HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 	private boolean isInApp = Boolean.FALSE;
-	private Map<String, LocalDateTime> inAppDeliveryStatus = HashMap
-			.newHashMap(NotificationDeliveryStatus.values().length);
+	private Map<String, LocalDateTime> inAppDeliveryStatus = HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 	private boolean isMobilePush = Boolean.FALSE;
-	private Map<String, LocalDateTime> mobilePushDeliveryStatus = HashMap
-			.newHashMap(NotificationDeliveryStatus.values().length);
+	private Map<String, LocalDateTime> mobilePushDeliveryStatus = HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 	private boolean isWebPush = Boolean.FALSE;
-	private Map<String, LocalDateTime> webPushDeliveryStatus = HashMap
-			.newHashMap(NotificationDeliveryStatus.values().length);
+	private Map<String, LocalDateTime> webPushDeliveryStatus = HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 	private boolean isSms = Boolean.FALSE;
-	private Map<String, LocalDateTime> smsDeliveryStatus = HashMap
-			.newHashMap(NotificationDeliveryStatus.values().length);
+	private Map<String, LocalDateTime> smsDeliveryStatus = HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 	private boolean isError = Boolean.FALSE;
-	private Integer errorCode;
-	private String errorMessageId;
-	private String errorMessage;
+	private Map<String, Object> errorMessage = new HashMap<>();
+	private Map<String, Object> channelErrors = HashMap.newHashMap(CHANNEL_SIZE);
 
 	public static SentNotification from(SendRequest request, LocalDateTime triggerTime) {
 		return new SentNotification()
@@ -72,7 +69,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 				.setNotificationType(request.getNotificationType())
 				.setNotificationMessage(request.getChannels() != null ? request.getChannels().toMap() : Map.of())
 				.setTriggerTime(triggerTime)
-				.setErrorInfo(request.getErrorInfo());
+				.setErrorMessage(request.getErrorInfo() != null ? request.getErrorInfo().toMap() : Map.of());
 	}
 
 	public void updateChannelInfo(NotificationChannelType channelType, Boolean isEnabled,
@@ -102,28 +99,38 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 		setEnabled.accept(isEnabled);
 
 		if (Boolean.FALSE.equals(isEnabled)) {
-			setStatus.accept(HashMap.newHashMap(NotificationDeliveryStatus.values().length));
+			setStatus.accept(HashMap.newHashMap(DELIVERY_STATUS_SIZE));
 			return;
 		}
 
 		Map<String, LocalDateTime> currentStatus = override
 				? getStatus.get()
-				: HashMap.newHashMap(NotificationDeliveryStatus.values().length);
+				: HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 
 		currentStatus.putAll(deliveryStatus);
 		setStatus.accept(currentStatus);
 	}
 
-	public SentNotification setErrorInfo(NotificationErrorInfo notificationErrorInfo) {
+	public void setErrorInfo(NotificationErrorInfo notificationErrorInfo) {
 
 		if (notificationErrorInfo == null)
-			return this;
+			return;
 
 		this.setError(Boolean.TRUE);
-		this.setErrorMessageId(notificationErrorInfo.getMessageId());
-		this.setErrorCode(notificationErrorInfo.getErrorCode().value());
-		this.setErrorMessage(notificationErrorInfo.getErrorMessage());
-		return this;
+		this.setErrorMessage(notificationErrorInfo.toMap());
+	}
+
+	public void setChannelErrorInfo(Map<String, NotificationErrorInfo> channelErrors) {
+
+		if (channelErrors == null || channelErrors.isEmpty())
+			return;
+
+		this.setError(Boolean.TRUE);
+
+		if (this.channelErrors == null)
+			this.channelErrors = HashMap.newHashMap(CHANNEL_SIZE);
+
+		channelErrors.forEach((key, value) -> this.channelErrors.put(key, value.toMap()));
 	}
 
 }
