@@ -62,6 +62,7 @@ public class SentNotificationService
 					e.setWebPushDeliveryStatus(entity.getWebPushDeliveryStatus());
 					e.setSms(entity.isSms());
 					e.setSmsDeliveryStatus(entity.getSmsDeliveryStatus());
+					e.setError(entity.isError());
 					e.setErrorMessage(entity.getErrorMessage());
 					e.setChannelErrors(entity.getChannelErrors());
 					return e;

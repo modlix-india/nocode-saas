@@ -67,9 +67,9 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 				.setAppCode(request.getAppCode())
 				.setUserId(ULongUtil.valueOf(request.getUserId()))
 				.setNotificationType(request.getNotificationType())
-				.setNotificationMessage(request.getChannels() != null ? request.getChannels().toMap() : Map.of())
+				.setNotificationMessage(request.getChannels() != null ? request.getChannels().toMap() : new HashMap<>())
 				.setTriggerTime(triggerTime)
-				.setErrorMessage(request.getErrorInfo() != null ? request.getErrorInfo().toMap() : Map.of());
+				.setErrorMessage(request.getErrorInfo() != null ? request.getErrorInfo().toMap() : new HashMap<>());
 	}
 
 	public void updateChannelInfo(NotificationChannelType channelType, Boolean isEnabled,
