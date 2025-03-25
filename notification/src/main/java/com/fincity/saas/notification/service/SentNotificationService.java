@@ -91,41 +91,41 @@ public class SentNotificationService
 
 	public Mono<SendRequest> toPlatformNotification(SendRequest request) {
 		return this.createFromRequest(request, NotificationStage.PLATFORM, NotificationDeliveryStatus.CREATED)
-				.map(entity -> request)
+				.flatMap(entity -> Mono.just(request))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toPlatformNotification"));
 	}
 
 	public Mono<SendRequest> toPlatformNotification(SendRequest request, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
 		return this.createFromRequest(request, NotificationStage.PLATFORM, deliveryStatus, channelTypes)
-				.map(entity -> request)
+				.flatMap(entity -> Mono.just(request))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME,
 						"SentNotificationService.toPlatformNotification[NotificationChannelType]"));
 	}
 
 	public Mono<SendRequest> toGatewayNotification(SendRequest request, NotificationDeliveryStatus deliveryStatus) {
 		return this.updateOrCreateFromRequest(request, NotificationStage.GATEWAY, deliveryStatus)
-				.map(entity -> request)
+				.flatMap(entity -> Mono.just(request))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toGatewayNotification"));
 	}
 
 	public Mono<SendRequest> toGatewayNotification(SendRequest request, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
 		return this.updateOrCreateFromRequest(request, NotificationStage.GATEWAY, deliveryStatus, channelTypes)
-				.map(entity -> request)
+				.flatMap(entity -> Mono.just(request))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toGatewayNotification"));
 	}
 
 	public Mono<SendRequest> toNetworkNotification(SendRequest request, NotificationDeliveryStatus deliveryStatus,
 			NotificationChannelType... channelTypes) {
 		return this.updateOrCreateFromRequest(request, NotificationStage.NETWORK, deliveryStatus, channelTypes)
-				.map(entity -> request)
+				.flatMap(entity -> Mono.just(request))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toNetworkNotification"));
 	}
 
 	public Mono<SendRequest> toErrorNotification(SendRequest request) {
 		return this.updateOrCreateFromRequest(request, null, NotificationDeliveryStatus.ERROR)
-				.map(entity -> request)
+				.flatMap(entity -> Mono.just(request))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.toErrorNotification"));
 	}
 
@@ -142,7 +142,7 @@ public class SentNotificationService
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.getByCode(request.getCode()),
+				() -> super.getByCode(request.getCode()),
 
 				sentNotification -> this.updateSentNotification(sentNotification, request, LocalDateTime.now(),
 						notificationStage, deliveryStatus, channelTypes),
@@ -190,7 +190,7 @@ public class SentNotificationService
 
 		Map<String, LocalDateTime> deliveryStatusInfo = Map.of(deliveryStatus.getLiteral(), createdTime);
 
-		channels.forEach(ct -> sentNotification.setChannelInfo(ct, Boolean.TRUE, deliveryStatusInfo, Boolean.TRUE));
+		channels.forEach(ct -> sentNotification.updateChannelInfo(ct, Boolean.TRUE, deliveryStatusInfo, Boolean.TRUE));
 
 		return Mono.just(sentNotification);
 	}

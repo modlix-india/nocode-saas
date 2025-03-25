@@ -1,6 +1,8 @@
-package com.fincity.saas.notification.model.message;
+package com.fincity.saas.notification.model.message.channel;
 
 import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.message.RecipientInfo;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

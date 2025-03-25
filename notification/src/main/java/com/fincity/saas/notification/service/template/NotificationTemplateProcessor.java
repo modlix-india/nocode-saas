@@ -5,21 +5,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;
 import com.fincity.saas.notification.model.NotificationTemplate;
-import com.fincity.saas.notification.model.message.EmailMessage;
-import com.fincity.saas.notification.model.message.InAppMessage;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
@@ -47,14 +44,12 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 
 	private <T extends NotificationMessage<T>> T getNotificationMessage(NotificationChannelType channelType,
 			Map<String, String> templatePart) {
-		return switch (channelType) {
-			case DISABLED -> null;
-			case EMAIL -> (T) new EmailMessage().setMessage(templatePart);
-			case IN_APP -> (T) new InAppMessage().setMessage(templatePart);
-			case MOBILE_PUSH -> null;
-			case WEB_PUSH -> null;
-			case SMS -> null;
-		};
+
+		if (channelType == null || channelType == NotificationChannelType.DISABLED)
+			return null;
+
+		Supplier<T> creator = channelType.getMessageCreator();
+		return creator != null ? creator.get().setMessage(templatePart) : null;
 	}
 
 	@Override

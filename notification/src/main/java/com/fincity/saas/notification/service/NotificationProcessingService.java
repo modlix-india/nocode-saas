@@ -165,7 +165,7 @@ public class NotificationProcessingService implements INotificationCacheService<
 
 					return this.createSendRequest(userEntity.getT1(), userEntity.getT2(),
 							userEntity.getT3().toBigInteger(), notiInfo.getNotificationType(),
-							userPref, toSend, notiInfo.getChannelConnectionMap(), objectMap);
+							userPref, toSend, notiInfo.getChannelConnections(), objectMap);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processNotification"));
 	}
@@ -221,7 +221,7 @@ public class NotificationProcessingService implements INotificationCacheService<
 	private Mono<SendRequest> createSendRequest(String appCode, String clientCode, BigInteger userId,
 			String notificationType, UserPreference userPref,
 			Map<NotificationChannelType, NotificationTemplate> templateInfoMap,
-			Map<NotificationChannelType, String> channelConnections, Map<String, Object> objectMap) {
+			Map<String, String> channelConnections, Map<String, Object> objectMap) {
 
 		return this.createNotificationChannel(userPref, templateInfoMap, objectMap)
 				.map(notificationChannel -> SendRequest.of(appCode, clientCode, userId, notificationType,

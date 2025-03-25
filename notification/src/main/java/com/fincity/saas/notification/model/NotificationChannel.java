@@ -8,11 +8,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.notification.dto.UserPreference;
 import com.fincity.saas.notification.enums.ChannelType;
 import com.fincity.saas.notification.enums.NotificationChannelType;
-import com.fincity.saas.notification.model.message.EmailMessage;
-import com.fincity.saas.notification.model.message.InAppMessage;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
+import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
-import com.fincity.saas.notification.model.message.SmsMessage;
+import com.fincity.saas.notification.model.message.channel.MobilePushMessage;
+import com.fincity.saas.notification.model.message.channel.SmsMessage;
+import com.fincity.saas.notification.model.message.channel.WebPushMessage;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -24,6 +26,8 @@ public class NotificationChannel {
 	private boolean notificationEnabled;
 	private EmailMessage email;
 	private InAppMessage inApp;
+	private MobilePushMessage mobilePush;
+	private WebPushMessage webPush;
 	private SmsMessage sms;
 
 	private NotificationChannel() {
@@ -49,6 +53,11 @@ public class NotificationChannel {
 		};
 	}
 
+	public boolean get(NotificationChannelType channelType) {
+
+	}
+
+	@JsonIgnore
 	public Map<String, Object> toMap() {
 		Gson gson = new Gson();
 		String json = gson.toJson(this);
@@ -56,6 +65,7 @@ public class NotificationChannel {
 		}.getType());
 	}
 
+	@JsonIgnore
 	public  List<NotificationChannelType> getEnabledChannels() {
 		return Stream.of(this.email, this.inApp, this.sms)
 				.filter(message -> message != null && !message.isNull())

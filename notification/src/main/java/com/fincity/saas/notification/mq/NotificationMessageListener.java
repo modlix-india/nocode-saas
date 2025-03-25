@@ -15,8 +15,8 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.configuration.QueueNameProvider;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.SendRequest;
-import com.fincity.saas.notification.mq.action.services.IMessageService;
-import com.fincity.saas.notification.mq.action.services.MessageEmailService;
+import com.fincity.saas.notification.mq.action.service.IMessageService;
+import com.fincity.saas.notification.mq.action.service.channel.MessageEmailService;
 import com.rabbitmq.client.Channel;
 
 import jakarta.annotation.PostConstruct;
@@ -62,7 +62,6 @@ public class NotificationMessageListener {
 	}
 
 	private Mono<Boolean> executeMessage(NotificationChannelType channelType, SendRequest request) {
-
 		Mono<Boolean> reveicedMono = FlatMapUtil.flatMapMono(
 
 				() -> Mono.justOrEmpty(this.messageServices.get(channelType)),

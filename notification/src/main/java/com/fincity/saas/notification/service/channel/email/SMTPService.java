@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.service.email;
+package com.fincity.saas.notification.service.channel.email;
 
 import java.io.IOException;
 import java.util.Date;
@@ -13,7 +13,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.model.message.EmailMessage;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
 
 import jakarta.mail.Address;
 import jakarta.mail.Message;
@@ -99,7 +99,8 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 		this.addMessageRecipients(message, Message.RecipientType.BCC, emailMessage.getBccAddresses());
 		this.addMessageRecipients(message, Message.RecipientType.CC, emailMessage.getCcAddresses());
 
-		message.setReplyTo(this.getInternetAddresses(emailMessage.getReplyTo()));
+		if (emailMessage.getReplyTo() != null)
+			message.setReplyTo(this.getInternetAddresses(emailMessage.getReplyTo()));
 
 		message.setSubject(emailMessage.getSubject());
 

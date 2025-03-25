@@ -41,6 +41,10 @@ public abstract class AbstractJooqBinding<T, U> extends AbstractBinding<T, U> {
 		this.targetsSqlType = targetsSqlType;
 	}
 
+	public  String getConvertStringValue(T value) {
+		return value.toString();
+	}
+
 	@NonNull
 	@Override
 	public Converter<T, U> converter() {
@@ -50,7 +54,7 @@ public abstract class AbstractJooqBinding<T, U> extends AbstractBinding<T, U> {
 	@Override
 	public void set(BindingSetStatementContext<U> ctx) throws SQLException {
 		T value = ctx.convert(converter()).value();
-		ctx.statement().setObject(ctx.index(), value, targetsSqlType); // NOSONAR
+		ctx.statement().setObject(ctx.index(), this.getConvertStringValue(value), targetsSqlType); // NOSONAR
 	}
 
 	@Override

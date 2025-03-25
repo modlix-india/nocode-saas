@@ -1,7 +1,7 @@
-package com.fincity.saas.notification.service.email;
+package com.fincity.saas.notification.service.channel.email;
 
 import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.model.message.EmailMessage;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
 
 import reactor.core.publisher.Mono;
 

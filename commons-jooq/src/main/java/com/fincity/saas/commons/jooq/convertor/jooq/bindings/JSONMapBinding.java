@@ -13,4 +13,9 @@ public class JSONMapBinding extends AbstractJooqBinding<JSON, Map> {
 	public JSONMapBinding() {
 		super(new JSONtoClassConverter<>(Map.class), SQLDataType.JSON.getSQLType());
 	}
+
+	@Override
+	public String getConvertStringValue(JSON value) {
+		return value.data();
+	}
 }

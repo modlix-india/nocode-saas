@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.service.email;
+package com.fincity.saas.notification.service.channel.email;
 
 import java.io.IOException;
 import java.util.Map;
@@ -11,7 +11,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.model.message.EmailMessage;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.SendGrid;

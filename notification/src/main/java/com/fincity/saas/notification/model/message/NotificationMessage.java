@@ -30,12 +30,6 @@ public class NotificationMessage<T extends NotificationMessage<T>> implements Ch
 		return (T) this;
 	}
 
-	public T setMessage(String subject, String body) {
-		this.subject = subject;
-		this.body = body;
-		return (T) this;
-	}
-
 	public T updateMessage(String subject, String body) {
 		this.subject = subject;
 		this.body = body;

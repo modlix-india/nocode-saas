@@ -75,7 +75,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 				.setErrorInfo(request.getErrorInfo());
 	}
 
-	public void setChannelInfo(NotificationChannelType channelType, Boolean isEnabled,
+	public void updateChannelInfo(NotificationChannelType channelType, Boolean isEnabled,
 			Map<String, LocalDateTime> deliveryStatus, boolean override) {
 
 		switch (channelType) {
@@ -107,8 +107,8 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 		}
 
 		Map<String, LocalDateTime> currentStatus = override
-				? HashMap.newHashMap(NotificationDeliveryStatus.values().length)
-				: getStatus.get();
+				? getStatus.get()
+				: HashMap.newHashMap(NotificationDeliveryStatus.values().length);
 
 		currentStatus.putAll(deliveryStatus);
 		setStatus.accept(currentStatus);

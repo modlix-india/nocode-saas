@@ -1,18 +1,22 @@
-package com.fincity.saas.notification.model.message;
+package com.fincity.saas.notification.model.message.channel;
 
 import java.util.List;
 import java.util.Map;
 
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.enums.Priority;
+import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.message.RecipientInfo;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class EmailMessage extends NotificationMessage<EmailMessage> {
 
 	private String fromAddress;

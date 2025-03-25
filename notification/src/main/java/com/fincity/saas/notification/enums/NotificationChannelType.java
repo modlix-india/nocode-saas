@@ -3,12 +3,19 @@ package com.fincity.saas.notification.enums;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.jooq.EnumType;
 
 import com.fincity.saas.commons.jooq.enums.ConnectionSubType;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
+import com.fincity.saas.notification.model.message.channel.InAppMessage;
+import com.fincity.saas.notification.model.message.channel.MobilePushMessage;
+import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.message.channel.SmsMessage;
+import com.fincity.saas.notification.model.message.channel.WebPushMessage;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
 import lombok.Getter;
@@ -16,20 +23,22 @@ import lombok.Getter;
 @Getter
 public enum NotificationChannelType implements EnumType {
 
-	DISABLED("DISABLED"),
-	EMAIL("EMAIL", NotificationRecipientType.FROM, NotificationRecipientType.TO, NotificationRecipientType.BCC,
+	DISABLED("DISABLED", null),
+	EMAIL("EMAIL", EmailMessage::new, NotificationRecipientType.FROM, NotificationRecipientType.TO, NotificationRecipientType.BCC,
 			NotificationRecipientType.CC, NotificationRecipientType.REPLY_TO),
-	IN_APP("IN_APP"),
-	MOBILE_PUSH("MOBILE_PUSH"),
-	WEB_PUSH("WEB_PUSH"),
-	SMS("SMS", NotificationRecipientType.TO);
+	IN_APP("IN_APP", InAppMessage::new),
+	MOBILE_PUSH("MOBILE_PUSH", MobilePushMessage::new),
+	WEB_PUSH("WEB_PUSH", WebPushMessage::new),
+	SMS("SMS", SmsMessage::new, NotificationRecipientType.TO);
 
 	private final String literal;
-
+	private final Supplier<? extends NotificationMessage<?>> messageCreator;
 	private final Set<NotificationRecipientType> allowedRecipientTypes;
 
-	NotificationChannelType(String literal, NotificationRecipientType... notificationRecipientTypes) {
+	NotificationChannelType(String literal, Supplier<? extends NotificationMessage<?>> messageCreator,
+	                        NotificationRecipientType... notificationRecipientTypes) {
 		this.literal = literal;
+		this.messageCreator = messageCreator;
 		this.allowedRecipientTypes = notificationRecipientTypes == null ? Set.of() : Set.of(notificationRecipientTypes);
 	}
 
@@ -81,5 +90,9 @@ public enum NotificationChannelType implements EnumType {
 
 	public boolean hasRecipientType(NotificationRecipientType recipientType) {
 		return this.allowedRecipientTypes.contains(recipientType);
+	}
+
+	public <T extends NotificationMessage<T>> Supplier<T> getMessageCreator() {
+		return (Supplier<T>) this.messageCreator;
 	}
 }

@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.service.email;
+package com.fincity.saas.notification.service.channel.email;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,7 +10,9 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.model.message.EmailMessage;
+import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
+import com.fincity.saas.notification.mq.action.service.AbstractMessageService;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
 import jakarta.annotation.PostConstruct;
@@ -18,7 +20,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class EmailService {
+public class EmailService extends AbstractMessageService {
 
 	private final SendGridService sendGridService;
 	private final SMTPService smtpService;
@@ -38,8 +40,8 @@ public class EmailService {
 		this.services.put("smtp", smtpService);
 	}
 
-	public Mono<Boolean> sendEmail(EmailMessage emailMessage, Connection connection) {
-
+	@Override
+	public <T extends NotificationMessage<T>> Mono<Boolean> execute(T message, Connection connection) {
 		return FlatMapUtil.flatMapMono(
 
 				() -> Mono.justOrEmpty(this.services.get(connection.getConnectionSubType().getProvider()))
@@ -47,7 +49,7 @@ public class EmailService {
 								NotificationMessageResourceService.CONNECTION_DETAILS_MISSING,
 								connection.getConnectionSubType())),
 
-				service -> service.sendMail(emailMessage, connection)
+				service -> service.sendMail((EmailMessage) message, connection)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "EmailService.sendEmail"));
 	}
