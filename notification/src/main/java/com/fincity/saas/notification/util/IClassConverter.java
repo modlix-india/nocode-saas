@@ -12,8 +12,7 @@ public interface IClassConverter {
 
 	@JsonIgnore
 	default Map<String, Object> toMap() {
-		String json = GSON.toJson(this);
-		return GSON.fromJson(json, new TypeToken<Map<String, Object>>() {
+		return GSON.fromJson(GSON.toJson(this), new TypeToken<Map<String, Object>>() {
 		}.getType());
 	}
 }

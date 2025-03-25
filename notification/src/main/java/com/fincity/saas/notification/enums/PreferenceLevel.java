@@ -38,11 +38,9 @@ public enum PreferenceLevel implements EnumType {
 	}
 
 	private static Set<String> toValidChannelList(Set<String> preferences) {
-
 		if (preferences.contains(NotificationChannelType.DISABLED.getLiteral())) {
-			if (preferences.size() > 1) {
+			if (preferences.size() > 1)
 				throw new IllegalArgumentException("Invalid channel preferences, disabled channel can not be set with other channels");
-			}
 			return new HashSet<>(List.of(NotificationChannelType.DISABLED.getLiteral()));
 		}
 

@@ -103,9 +103,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 			return;
 		}
 
-		Map<String, LocalDateTime> currentStatus = override
-				? getStatus.get()
-				: HashMap.newHashMap(DELIVERY_STATUS_SIZE);
+		Map<String, LocalDateTime> currentStatus = override ? getStatus.get() : HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 
 		currentStatus.putAll(deliveryStatus);
 		setStatus.accept(currentStatus);
@@ -116,8 +114,9 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 		if (notificationErrorInfo == null)
 			return;
 
-		this.setError(Boolean.TRUE);
 		this.setErrorMessage(notificationErrorInfo.toMap());
+
+		this.setError(Boolean.TRUE);
 	}
 
 	public void setChannelErrorInfo(Map<String, NotificationErrorInfo> channelErrors) {
@@ -125,12 +124,12 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 		if (channelErrors == null || channelErrors.isEmpty())
 			return;
 
-		this.setError(Boolean.TRUE);
-
 		if (this.channelErrors == null)
 			this.channelErrors = HashMap.newHashMap(CHANNEL_SIZE);
 
 		channelErrors.forEach((key, value) -> this.channelErrors.put(key, value.toMap()));
+
+		this.setError(Boolean.TRUE);
 	}
 
 }

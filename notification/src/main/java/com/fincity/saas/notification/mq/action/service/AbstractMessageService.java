@@ -58,15 +58,15 @@ public abstract class AbstractMessageService implements IMessageService, Channel
 		if (!isValid(request))
 			return Mono.just(Boolean.FALSE);
 
-		return FlatMapUtil.flatMapMonoWithNull(
+		return FlatMapUtil.flatMapMono(
 
 				() -> this.getConnection(request),
 
-				connection -> this.execute(request.getChannels().get(this.getChannelType()), connection)
-						.onErrorResume(NotificationDeliveryException.class, ex -> this.notificationFailed(request.setChannelErrorInfo(ex, this.getChannelType()))),
+				connection -> this.execute(request.getChannels().get(this.getChannelType()), connection),
 
 				(connection, executed) -> Boolean.TRUE.equals(executed) ? this.notificationSent(request) : Mono.just(Boolean.FALSE)
-		);
+		).onErrorResume(NotificationDeliveryException.class, ex ->
+				this.notificationFailed(request.setChannelErrorInfo(ex, this.getChannelType())));
 	}
 
 }
