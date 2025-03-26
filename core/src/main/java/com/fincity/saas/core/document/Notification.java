@@ -116,6 +116,9 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	@NoArgsConstructor
 	public static class NotificationTemplate implements Serializable {
 
+		@Serial
+		private static final long serialVersionUID = 1054865111921742820L;
+
 		private String code = UniqueUtil.shortUUID();
 		private Map<String, Map<String, String>> templateParts;
 		private Map<String, Object> variableSchema; // NOSONAR
@@ -151,6 +154,9 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 	@Accessors(chain = true)
 	@NoArgsConstructor
 	public static class DeliveryOptions implements Serializable {
+
+		@Serial
+		private static final long serialVersionUID = 3684669126118045688L;
 
 		private boolean instant = Boolean.TRUE;
 		private String cronStatement;

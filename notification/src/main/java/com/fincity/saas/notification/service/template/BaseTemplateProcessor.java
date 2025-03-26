@@ -10,13 +10,10 @@ import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.notification.exception.TemplateProcessingException;
 
 import freemarker.cache.MruCacheStorage;
 import freemarker.cache.StringTemplateLoader;
@@ -32,33 +29,25 @@ import reactor.core.scheduler.Schedulers;
 @Component
 public abstract class BaseTemplateProcessor {
 
-	protected static final Configuration DEFAULT = new Configuration(Configuration.VERSION_2_3_33);
+	protected static final Configuration CONFIGURATION = new Configuration(Configuration.VERSION_2_3_33);
+	private static final StringTemplateLoader TEMPLATE_LOADER = new StringTemplateLoader();
 
 	private static final int INITIAL_BUFFER_SIZE = 4096;
 	private static final Logger logger = LoggerFactory.getLogger(BaseTemplateProcessor.class);
 
 	static {
-		DEFAULT.setDefaultEncoding(StandardCharsets.UTF_8.name());
-		DEFAULT.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
-		DEFAULT.setLogTemplateExceptions(false);
-		DEFAULT.setWrapUncheckedExceptions(true);
-		DEFAULT.setFallbackOnNullLoopVariable(false);
-		DEFAULT.setSQLDateAndTimeTimeZone(TimeZone.getTimeZone(ZoneOffset.UTC));
-		DEFAULT.setTemplateLoader(new StringTemplateLoader());
-		DEFAULT.setCacheStorage(new MruCacheStorage(200, Integer.MAX_VALUE));
-	}
-
-	private CacheService cacheService;
-
-	protected abstract String getCacheName();
-
-	@Autowired
-	public void setCacheService(CacheService cacheService) {
-		this.cacheService = cacheService;
+		CONFIGURATION.setDefaultEncoding(StandardCharsets.UTF_8.name());
+		CONFIGURATION.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+		CONFIGURATION.setLogTemplateExceptions(false);
+		CONFIGURATION.setWrapUncheckedExceptions(true);
+		CONFIGURATION.setFallbackOnNullLoopVariable(false);
+		CONFIGURATION.setSQLDateAndTimeTimeZone(TimeZone.getTimeZone(ZoneOffset.UTC));
+		CONFIGURATION.setTemplateLoader(TEMPLATE_LOADER);
+		CONFIGURATION.setCacheStorage(new MruCacheStorage(200, Integer.MAX_VALUE));
 	}
 
 	public Configuration getConfiguration() {
-		return DEFAULT;
+		return CONFIGURATION;
 	}
 
 	public int getInitialBufferSize() {
@@ -66,19 +55,18 @@ public abstract class BaseTemplateProcessor {
 	}
 
 	public Mono<Template> toTemplate(String templateName, String sourceCode) {
-		return cacheService.cacheValueOrGet(this.getCacheName(), () -> this.toTemplateSync(templateName, sourceCode),
-				templateName);
+		return this.toTemplateSync(templateName, sourceCode);
 	}
 
 	public Mono<Boolean> evictTemplate(Object... templateNames) {
 		this.removeFreeMarkerCache(templateNames);
-		return cacheService.evict(this.getCacheName(), templateNames);
+		return Mono.just(Boolean.TRUE);
 	}
 
 	private void removeFreeMarkerCache(Object... templateNames) {
 		Arrays.stream(templateNames).filter(Objects::nonNull).forEach(templateName -> {
 			try {
-				DEFAULT.removeTemplateFromCache(templateName.toString());
+				CONFIGURATION.removeTemplateFromCache(templateName.toString());
 			} catch (IOException e) {
 				logger.error("No cache found in Freemarker cache for template: {}", templateName);
 			}
@@ -86,9 +74,14 @@ public abstract class BaseTemplateProcessor {
 	}
 
 	private Mono<Template> toTemplateSync(String templateName, String sourceCode) {
-		return Mono.fromCallable(() -> new Template(templateName, sourceCode, this.getConfiguration()))
-				.onErrorMap(IOException.class, e -> new GenericException(HttpStatus.BAD_REQUEST,
-						"Failed to create template: " + templateName, e));
+		return Mono.fromCallable(() -> {
+			Object eTemplate = TEMPLATE_LOADER.findTemplateSource(templateName);
+			if (eTemplate == null)
+				TEMPLATE_LOADER.putTemplate(templateName, sourceCode);
+			return CONFIGURATION.getTemplate(templateName);
+		}).onErrorMap(IOException.class, e -> new GenericException(HttpStatus.BAD_REQUEST,
+				"Failed to create template: " + templateName, e))
+				.subscribeOn(Schedulers.boundedElastic());
 	}
 
 	public Mono<String> processString(String templateName, String sourceCode, Object dataModel) {

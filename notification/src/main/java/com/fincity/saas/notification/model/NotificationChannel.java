@@ -17,7 +17,6 @@ import com.fincity.saas.notification.model.message.channel.MobilePushMessage;
 import com.fincity.saas.notification.model.message.channel.SmsMessage;
 import com.fincity.saas.notification.model.message.channel.WebPushMessage;
 import com.fincity.saas.notification.util.IClassConverter;
-import com.google.gson.Gson;
 
 import lombok.Getter;
 
@@ -26,8 +25,6 @@ public class NotificationChannel implements IClassConverter, Serializable {
 
 	@Serial
 	private static final long serialVersionUID = 5676431093000206490L;
-
-	private static final Gson GSON = new Gson();
 
 	private boolean notificationEnabled;
 	private EmailMessage email;

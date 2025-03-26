@@ -33,8 +33,6 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 	public static final String PRO_SUBJECT = "subject";
 	public static final String PRO_BODY = "body";
 
-	private static final String CACHE_NAME_TEMPLATE = "NotificationTemplateProcessor";
-
 	private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.getLanguage();
 
 	private NotificationMessageResourceService msgService;
@@ -50,11 +48,6 @@ public class NotificationTemplateProcessor extends BaseTemplateProcessor {
 
 		Supplier<T> creator = channelType.getMessageCreator();
 		return creator != null ? creator.get().setMessage(templatePart) : null;
-	}
-
-	@Override
-	protected String getCacheName() {
-		return CACHE_NAME_TEMPLATE;
 	}
 
 	@Autowired
