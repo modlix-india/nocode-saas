@@ -31,6 +31,7 @@ public abstract class BaseTemplateProcessor {
 
 	protected static final Configuration CONFIGURATION = new Configuration(Configuration.VERSION_2_3_33);
 	private static final StringTemplateLoader TEMPLATE_LOADER = new StringTemplateLoader();
+	private static final Object TEMPLATE_LOCK = new Object();
 
 	private static final int INITIAL_BUFFER_SIZE = 4096;
 	private static final Logger logger = LoggerFactory.getLogger(BaseTemplateProcessor.class);
@@ -75,12 +76,14 @@ public abstract class BaseTemplateProcessor {
 
 	private Mono<Template> toTemplateSync(String templateName, String sourceCode) {
 		return Mono.fromCallable(() -> {
-			Object eTemplate = TEMPLATE_LOADER.findTemplateSource(templateName);
-			if (eTemplate == null)
-				TEMPLATE_LOADER.putTemplate(templateName, sourceCode);
-			return CONFIGURATION.getTemplate(templateName);
-		}).onErrorMap(IOException.class, e -> new GenericException(HttpStatus.BAD_REQUEST,
-				"Failed to create template: " + templateName, e))
+					synchronized (TEMPLATE_LOCK) {
+						Object eTemplate = TEMPLATE_LOADER.findTemplateSource(templateName);
+						if (eTemplate == null)
+							TEMPLATE_LOADER.putTemplate(templateName, sourceCode);
+						return CONFIGURATION.getTemplate(templateName);
+					}
+				}).onErrorMap(IOException.class, e -> new GenericException(HttpStatus.BAD_REQUEST,
+						"Failed to create template: " + templateName, e))
 				.subscribeOn(Schedulers.boundedElastic());
 	}
 

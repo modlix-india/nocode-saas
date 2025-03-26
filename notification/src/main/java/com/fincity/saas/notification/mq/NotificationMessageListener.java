@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.notification.configuration.QueueNameProvider;
+import com.fincity.saas.notification.configuration.MqNameProvider;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.mq.action.service.IMessageService;
@@ -31,15 +31,15 @@ public class NotificationMessageListener {
 
 	private final EmailService emailService;
 
-	private QueueNameProvider queueNameProvider;
+	private MqNameProvider mqNameProvider;
 
 	public NotificationMessageListener(EmailService emailService) {
 		this.emailService = emailService;
 	}
 
 	@Autowired
-	private void setQueueNameProvider(QueueNameProvider queueNameProvider) {
-		this.queueNameProvider = queueNameProvider;
+	private void setMqNameProvider(MqNameProvider mqNameProvider) {
+		this.mqNameProvider = mqNameProvider;
 	}
 
 	@PostConstruct
@@ -47,7 +47,7 @@ public class NotificationMessageListener {
 		this.messageServices.put(NotificationChannelType.EMAIL, emailService);
 	}
 
-	@RabbitListener(queues = "#{queueNameProvider.getEmailBroadcastQueues()}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
+	@RabbitListener(queues = "#{mqNameProvider.getEmailBroadcastQueues()}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
 	public Mono<Void> handleEmailNotification(@Payload SendRequest request, Channel channel,
 			@Header(AmqpHeaders.DELIVERY_TAG) long tag) {
 		return this.executeMessage(NotificationChannelType.EMAIL, request)
@@ -55,7 +55,7 @@ public class NotificationMessageListener {
 				.then();
 	}
 
-	@RabbitListener(queues = "#{queueNameProvider.getInAppBroadcastQueues()}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
+	@RabbitListener(queues = "#{mqNameProvider.getInAppBroadcastQueues()}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
 	public Mono<Void> handleInAppNotification(@Payload SendRequest request, Channel channel,
 			@Header(AmqpHeaders.DELIVERY_TAG) long tag) {
 		return this.executeMessage(NotificationChannelType.IN_APP, request)

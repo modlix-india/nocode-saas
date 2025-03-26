@@ -19,11 +19,11 @@ public class BroadcastConfig {
 	@Value("${events.mq.exchange.fanout:notification.fanout.exchange}")
 	private String fanoutExchangeName;
 
-	private QueueNameProvider queueNameProvider;
+	private MqNameProvider mqNameProvider;
 
 	@Autowired
-	private void setQueueNameProvider(QueueNameProvider queueNameProvider) {
-		this.queueNameProvider = queueNameProvider;
+	private void setMqNameProvider(MqNameProvider mqNameProvider) {
+		this.mqNameProvider = mqNameProvider;
 	}
 
 	@Bean
@@ -35,7 +35,7 @@ public class BroadcastConfig {
 
 		declarableList.add(fanoutExchange);
 
-		for (String queueName : queueNameProvider.getAllBroadcastQueues()) {
+		for (String queueName : mqNameProvider.getAllBroadcastQueues()) {
 			Queue queue = new Queue(queueName, true, false, false);
 			declarableList.add(queue);
 			declarableList.add(BindingBuilder.bind(queue).to(fanoutExchange));

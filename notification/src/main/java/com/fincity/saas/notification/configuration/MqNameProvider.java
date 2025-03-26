@@ -8,20 +8,20 @@ import org.springframework.stereotype.Component;
 import com.fincity.saas.notification.enums.NotificationChannelType;
 
 @Component
-public class QueueNameProvider {
+public class MqNameProvider {
 
 	@Value("${events.mq.exchange.fanout:notification.fanout.exchange}")
 	private String fanoutExchangeName;
 
 	public String[] getEmailBroadcastQueues() {
 		return new String[]{
-				NotificationChannelType.EMAIL.getQueueName(fanoutExchangeName)
+				NotificationChannelType.EMAIL.getMqQueueName(fanoutExchangeName)
 		};
 	}
 
 	public String[] getInAppBroadcastQueues() {
 		return new String[]{
-				NotificationChannelType.IN_APP.getQueueName(fanoutExchangeName)
+				NotificationChannelType.IN_APP.getMqQueueName(fanoutExchangeName)
 		};
 	}
 

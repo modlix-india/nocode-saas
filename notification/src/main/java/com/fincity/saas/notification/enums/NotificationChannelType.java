@@ -71,7 +71,6 @@ public enum NotificationChannelType implements EnumType {
 						(existing, replacement) -> replacement,
 						() -> new EnumMap<>(NotificationChannelType.class)
 				));
-
 	}
 
 	@Override
@@ -84,8 +83,8 @@ public enum NotificationChannelType implements EnumType {
 		return null;
 	}
 
-	public String getQueueName(String exchangeName) {
-		return exchangeName + "." + this.getLiteral().toLowerCase();
+	public String getMqQueueName(String mqExchangeName) {
+		return mqExchangeName + "." + this.getLiteral().toLowerCase();
 	}
 
 	public boolean hasRecipientType(NotificationRecipientType recipientType) {
