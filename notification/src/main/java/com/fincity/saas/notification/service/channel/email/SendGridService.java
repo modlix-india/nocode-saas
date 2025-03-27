@@ -42,7 +42,7 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 			return Mono.just(Boolean.FALSE);
 
 		if (StringUtil.safeIsBlank(connectionDetails.get(API_KEY)))
-			return this.throwMailSendError("SENDGRID api key is not found");
+			return this.throwSendError("SENDGRID api key is not found");
 
 		String apiKey = connectionDetails.get(API_KEY).toString();
 
@@ -52,7 +52,7 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 
 				isValidConnection -> this.callSendGrid(emailMessage, apiKey)).onErrorResume(ex -> {
 					logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
-					return this.throwMailSendError(ex.getMessage());
+					return this.throwSendError(ex.getMessage());
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
 
 	}
@@ -73,7 +73,7 @@ public class SendGridService extends AbstractEmailService implements IEmailServi
 				.map(response -> HttpStatus.valueOf(response.getStatusCode()).is2xxSuccessful())
 				.onErrorResume(IOException.class, ex -> {
 					logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
-					return this.throwMailSendError(ex.getMessage());
+					return this.throwSendError(ex.getMessage());
 				});
 
 	}

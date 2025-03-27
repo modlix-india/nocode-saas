@@ -1,10 +1,11 @@
 package com.fincity.saas.notification.model.message;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.notification.enums.ChannelType;
+import com.fincity.saas.notification.enums.channel.ChannelType;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -13,7 +14,7 @@ import reactor.util.function.Tuples;
 
 @Data
 @Accessors(chain = true)
-public class NotificationMessage<T extends NotificationMessage<T>> implements ChannelType, IRecipientInfo<T> {
+public class NotificationMessage<T extends NotificationMessage<T>> implements ChannelType, IRecipientInfo<T>, Serializable {
 
 	private String messageId;
 	private String subject;

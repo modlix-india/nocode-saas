@@ -45,13 +45,13 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 		Map<String, Object> connProps = (Map<String, Object>) connectionDetails.get("mailProps");
 
 		if (connProps == null || connProps.isEmpty())
-			return this.throwMailSendError("Connection Properties with 'mail.' are missing");
+			return this.throwSendError("Connection Properties with 'mail.' are missing");
 
 		String username = StringUtil.safeValueOf(connectionDetails.get("username"), "");
 		String password = StringUtil.safeValueOf(connectionDetails.get("password"), "");
 
 		if (StringUtil.safeIsBlank(username) || StringUtil.safeIsBlank(password))
-			return this.throwMailSendError("Connection username/password is missing");
+			return this.throwSendError("Connection username/password is missing");
 
 		return FlatMapUtil.flatMapMono(
 
@@ -60,7 +60,7 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 				isValidConnection -> this.sendMailWithSession(emailMessage, connProps, username, password))
 				.onErrorResume(ex -> {
 					logger.error("Error while sending email: {}", ex.getMessage(), ex);
-					return this.throwMailSendError(ex.getMessage());
+					return this.throwSendError(ex.getMessage());
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
 	}
 
@@ -85,7 +85,7 @@ public class SMTPService extends AbstractEmailService implements IEmailService {
 		}).subscribeOn(Schedulers.boundedElastic())
 				.onErrorResume(IOException.class, ex -> {
 					logger.error("Error while sending SMTP email: {}", ex.getMessage(), ex);
-					return this.throwMailSendError(ex.getMessage());
+					return this.throwSendError(ex.getMessage());
 				});
 	}
 

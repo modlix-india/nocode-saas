@@ -8,6 +8,8 @@ import java.util.function.UnaryOperator;
 
 import org.jooq.EnumType;
 
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
+
 import lombok.Getter;
 
 @Getter
@@ -58,7 +60,7 @@ public enum PreferenceLevel implements EnumType {
 
 	@Override
 	public String getName() {
-		return this.name();
+		return null;
 	}
 
 	public Set<String> getDefaultList() {

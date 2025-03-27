@@ -9,7 +9,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.model.NotificationChannel.NotificationChannelBuilder;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;

@@ -5,7 +5,7 @@ import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 
 @Component
 public class MqNameProvider {

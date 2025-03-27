@@ -21,7 +21,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.dao.UserPreferenceDao;
 import com.fincity.saas.notification.dto.UserPreference;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.PreferenceLevel;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
 

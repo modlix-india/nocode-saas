@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.message.NotificationMessage;

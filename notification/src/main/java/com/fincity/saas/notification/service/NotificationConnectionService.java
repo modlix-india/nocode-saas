@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.feign.IFeignCoreService;
 
 import lombok.Getter;

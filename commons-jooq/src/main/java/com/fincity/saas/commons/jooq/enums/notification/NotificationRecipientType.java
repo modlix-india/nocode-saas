@@ -34,6 +34,6 @@ public enum NotificationRecipientType implements EnumType {
 
 	@Override
 	public String getName() {
-		return "";
+		return null;
 	}
 }

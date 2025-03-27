@@ -15,7 +15,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.dao.SentNotificationDao;
 import com.fincity.saas.notification.dto.SentNotification;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;

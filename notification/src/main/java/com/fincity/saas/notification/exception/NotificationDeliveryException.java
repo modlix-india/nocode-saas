@@ -3,7 +3,7 @@ package com.fincity.saas.notification.exception;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 
 public class NotificationDeliveryException extends GenericException {
 

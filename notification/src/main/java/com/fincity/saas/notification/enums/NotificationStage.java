@@ -30,6 +30,6 @@ public enum NotificationStage implements EnumType {
 
 	@Override
 	public String getName() {
-		return this.name();
+		return null;
 	}
 }

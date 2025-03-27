@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.enums;
+package com.fincity.saas.notification.enums.channel;
 
 import java.util.EnumMap;
 import java.util.Map;

@@ -7,8 +7,8 @@ import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.notification.dto.UserPreference;
-import com.fincity.saas.notification.enums.ChannelType;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.ChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;

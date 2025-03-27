@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.configuration.MqNameProvider;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.mq.action.service.IMessageService;
 import com.fincity.saas.notification.service.channel.email.EmailService;

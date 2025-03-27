@@ -22,7 +22,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.document.Notification;
 import com.fincity.saas.notification.dto.UserPreference;
-import com.fincity.saas.notification.enums.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;
 import com.fincity.saas.notification.feign.IFeignCoreService;
 import com.fincity.saas.notification.model.NotificationChannel;

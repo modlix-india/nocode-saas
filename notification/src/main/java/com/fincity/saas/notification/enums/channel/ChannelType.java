@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.enums;
+package com.fincity.saas.notification.enums.channel;
 
 public interface ChannelType {
 
