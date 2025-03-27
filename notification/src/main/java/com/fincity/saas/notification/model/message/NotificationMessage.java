@@ -6,6 +6,7 @@ import java.util.Map;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.channel.ChannelType;
+import com.fincity.saas.notification.util.IClassConverter;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -14,7 +15,7 @@ import reactor.util.function.Tuples;
 
 @Data
 @Accessors(chain = true)
-public class NotificationMessage<T extends NotificationMessage<T>> implements ChannelType, IRecipientInfo<T>, Serializable {
+public class NotificationMessage<T extends NotificationMessage<T>> implements ChannelType, IRecipientInfo<T>, IClassConverter, Serializable {
 
 	private String messageId;
 	private String subject;
@@ -35,12 +36,6 @@ public class NotificationMessage<T extends NotificationMessage<T>> implements Ch
 		this.subject = subject;
 		this.body = body;
 		return (T) this;
-	}
-
-	public Map<String, String> toMap() {
-		return Map.of(
-				"subject", this.getSubject(),
-				"body", this.getBody());
 	}
 
 	public Tuple2<String, String> toTuple() {

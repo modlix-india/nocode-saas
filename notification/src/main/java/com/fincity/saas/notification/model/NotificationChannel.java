@@ -58,13 +58,15 @@ public class NotificationChannel implements IClassConverter, Serializable {
 		};
 	}
 
-	public Object get(NotificationChannelType channelType) {
+	@JsonIgnore
+	@SuppressWarnings("unchecked")
+	public <T extends NotificationMessage<T>> T get(NotificationChannelType channelType) {
 		return switch (channelType) {
-			case EMAIL -> email;
-			case IN_APP -> inApp;
-			case MOBILE_PUSH -> mobilePush;
-			case WEB_PUSH -> webPush;
-			case SMS -> sms;
+			case EMAIL -> (T) email;
+			case IN_APP -> (T) inApp;
+			case MOBILE_PUSH -> (T) mobilePush;
+			case WEB_PUSH -> (T) webPush;
+			case SMS -> (T) sms;
 			default -> null;
 		};
 	}

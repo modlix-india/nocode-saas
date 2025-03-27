@@ -9,8 +9,8 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.NotificationChannel.NotificationChannelBuilder;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
@@ -31,38 +31,34 @@ public class SendRequest implements Serializable {
 	private String appCode;
 	private String clientCode;
 	private BigInteger userId;
-	private NotificationType notificationType;
+	private NotificationType notificationType = NotificationType.INFO;
 	private Map<String, String> connections;
 	private NotificationChannel channels;
 	private NotificationErrorInfo errorInfo;
 	private Map<String, NotificationErrorInfo> channelErrors;
 
-	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
-			Map<String, String> connections, NotificationChannel channels) {
-		return new SendRequest()
-				.setCode(UniqueUtil.shortUUID())
-				.setAppCode(appCode)
-				.setClientCode(clientCode)
+	private static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
+			Map<String, String> connections, NotificationChannel channels, NotificationErrorInfo errorInfo) {
+		return new SendRequest().setCode(UniqueUtil.shortUUID()).setAppCode(appCode).setClientCode(clientCode)
 				.setUserId(userId)
-				.setNotificationType(NotificationType.lookupLiteral(notificationType))
-				.setConnections(connections)
-				.setChannels(channels);
+				.setNotificationType(notificationType != null ? NotificationType.lookupLiteral(notificationType)
+						: NotificationType.INFO)
+				.setConnections(connections).setChannels(channels).setErrorInfo(errorInfo);
 	}
 
-	public static SendRequest ofError(String appCode, String clientCode, BigInteger userId, String notificationType,
-			GenericException errorInfo) {
-		return new SendRequest()
-				.setCode(UniqueUtil.shortUUID())
-				.setAppCode(appCode)
-				.setClientCode(clientCode)
-				.setUserId(userId)
-				.setNotificationType(NotificationType.lookupLiteral(notificationType))
-				.setErrorInfo(errorInfo);
+	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
+			Map<String, String> connections, NotificationChannel channels) {
+		return of(appCode, clientCode, userId, notificationType, connections, channels, null);
 	}
 
 	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType) {
 		return of(appCode, clientCode, userId, notificationType, Map.of(),
 				new NotificationChannelBuilder().isEnabled(Boolean.FALSE).build());
+	}
+
+	public static SendRequest ofError(String appCode, String clientCode, BigInteger userId, String notificationType,
+			GenericException errorInfo) {
+		return of(appCode, clientCode, userId, notificationType, null, null, new NotificationErrorInfo(errorInfo));
 	}
 
 	@JsonIgnore
@@ -79,12 +75,8 @@ public class SendRequest implements Serializable {
 		return !this.channels.containsAnyChannel();
 	}
 
-	public <T extends GenericException> SendRequest setErrorInfo(T exception) {
-		this.errorInfo = new NotificationErrorInfo(exception);
-		return this;
-	}
-
-	public <T extends GenericException> SendRequest setChannelErrorInfo(T exception, NotificationChannelType channelType) {
+	public <T extends GenericException> SendRequest setChannelErrorInfo(T exception,
+			NotificationChannelType channelType) {
 		if (this.channelErrors == null)
 			this.channelErrors = new HashMap<>();
 		this.channelErrors.put(channelType.getLiteral(), new NotificationErrorInfo(exception));

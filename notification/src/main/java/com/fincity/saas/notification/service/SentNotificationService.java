@@ -11,13 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.dao.SentNotificationDao;
 import com.fincity.saas.notification.dto.SentNotification;
-import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
 import com.fincity.saas.notification.model.SendRequest;
 
@@ -45,6 +46,13 @@ public class SentNotificationService
 	@Autowired
 	public void setCacheService(CacheService cacheService) {
 		this.cacheService = cacheService;
+	}
+
+	@Override
+	protected Mono<ULong> getLoggedInUserId() {
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+				ca -> Mono.justOrEmpty(ca.isAuthenticated() ? ULong.valueOf(ca.getUser().getId()) : null));
 	}
 
 	@Override

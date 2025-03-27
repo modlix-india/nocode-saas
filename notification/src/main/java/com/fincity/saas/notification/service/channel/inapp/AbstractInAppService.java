@@ -7,7 +7,7 @@ import com.fincity.saas.notification.service.channel.AbstractChannelService;
 
 import reactor.core.publisher.Mono;
 
-public class AbstractInAppService extends AbstractChannelService {
+public abstract class AbstractInAppService extends AbstractChannelService {
 
 	@Override
 	protected <T> Mono<T> throwSendError(Object... params) {
@@ -18,5 +18,9 @@ public class AbstractInAppService extends AbstractChannelService {
 	@Override
 	public NotificationChannelType getChannelType() {
 		return NotificationChannelType.IN_APP;
+	}
+
+	protected String eventName(String... params) {
+		return String.join(":", params);
 	}
 }
