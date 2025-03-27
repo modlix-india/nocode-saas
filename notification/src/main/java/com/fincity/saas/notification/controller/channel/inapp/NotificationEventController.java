@@ -26,7 +26,7 @@ public class NotificationEventController {
 
 	@GetMapping(path = "/subscribe/{appCode}/{clientCode}/{userId}",
 			produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public Flux<ServerSentEvent<SendResponse>> subscribe(
+	public Flux<ServerSentEvent<SendResponse>> subscribeToEvent(
 			@PathVariable String appCode,
 			@PathVariable String clientCode,
 			@PathVariable BigInteger userId) {

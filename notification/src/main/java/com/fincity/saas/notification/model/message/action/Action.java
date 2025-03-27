@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.ActionType;
 
 import lombok.Data;
@@ -16,18 +17,27 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor
 public class Action {
 
+	private String code = UniqueUtil.shortUUID();
+	private boolean isCompleted = Boolean.FALSE;
 	private String actionType;
 	private String actionUrl;
 	private Map<String, Object> actionParams;
+
+	private static Action of(ActionType actionType, String actionUrl, Map<String, Object> actionParams) {
+		return new Action()
+				.setCode(UniqueUtil.shortUUID())
+				.setCompleted(Boolean.FALSE)
+				.setActionType(actionType.getLiteral())
+				.setActionUrl(actionUrl)
+				.setActionParams(actionParams);
+	}
 
 	public interface IAction<T extends IAction<T>> {
 
 		T setAction(Action action);
 
 		default T setAction(ActionType actionType, String actionUrl, Map<String, Object> actionParams) {
-			return setAction(new Action().setActionType(actionType.getLiteral()).setActionUrl(actionUrl)
-					.setActionParams(actionParams)
-			);
+			return setAction(Action.of(actionType, actionUrl, actionParams));
 		}
 	}
 
