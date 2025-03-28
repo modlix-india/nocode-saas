@@ -304,12 +304,40 @@
                                     <inputSchema>notification</inputSchema>
                                     <forcedTypes>
                                         <forcedType>
-                                            <userType>java.util.Map</userType>
-                                            <binding>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.bindings.JSONMapBinding
-                                            </binding>
+                                            <userType>com.fincity.saas.notification.model.NotificationChannel</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
                                             <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*NOTIFICATION_CHANNEL</includeExpression>
                                         </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.notification.model.message.channel.InAppMessage</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*IN_APP_MESSAGE</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.notification.model.response.NotificationErrorInfo</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*ERROR_INFO</includeExpression>
+                                        </forcedType>
+                                        <forcedTypes>
+                                            <userType>java.util.Map</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                        </forcedTypes>
                                         <forcedType>
                                             <name>com.fincity.saas.commons.jooq.enums.notification.NotificationType</name>
                                             <includeExpression>.*NOTIFICATION_TYPE</includeExpression>
@@ -320,6 +348,12 @@
                                             <includeExpression>.*NOTIFICATION_STAGE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                         </forcedType>
+                                        <forcedType>
+                                            <name>com.fincity.saas.commons.jooq.enums.notification.NotificationType</name>
+                                            <includeExpression>.*NOTIFICATION_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                        </forcedType>
+
                                     </forcedTypes>
                                 </database>
                                 <generate>
