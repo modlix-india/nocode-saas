@@ -29,6 +29,7 @@ import com.fincity.security.jooq.tables.SecurityDepartment.SecurityDepartmentPat
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
+import com.fincity.security.jooq.tables.SecurityProfileClientRestriction.SecurityProfileClientRestrictionPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
@@ -608,6 +609,19 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityAppRegIntegration = new SecurityAppRegIntegrationPath(this, null, Keys.FK2_APP_REG_INTEGRATION_CLIENT_ID.getInverseKey());
 
         return _securityAppRegIntegration;
+    }
+
+    private transient SecurityProfileClientRestrictionPath _securityProfileClientRestriction;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_profile_client_restriction</code> table
+     */
+    public SecurityProfileClientRestrictionPath securityProfileClientRestriction() {
+        if (_securityProfileClientRestriction == null)
+            _securityProfileClientRestriction = new SecurityProfileClientRestrictionPath(this, null, Keys.FK3_PROFILE_CLIENT_RESTRICTION_CLIENT_ID.getInverseKey());
+
+        return _securityProfileClientRestriction;
     }
 
     /**

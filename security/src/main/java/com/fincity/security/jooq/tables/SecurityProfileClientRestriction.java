@@ -7,6 +7,7 @@ package com.fincity.security.jooq.tables;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
+import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.records.SecurityProfileClientRestrictionRecord;
 
@@ -174,7 +175,7 @@ public class SecurityProfileClientRestriction extends TableImpl<SecurityProfileC
 
     @Override
     public List<ForeignKey<SecurityProfileClientRestrictionRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID, Keys.FK2_PROFILE_CLIENT_RESTRICTION_APP_ID);
+        return Arrays.asList(Keys.FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID, Keys.FK2_PROFILE_CLIENT_RESTRICTION_APP_ID, Keys.FK3_PROFILE_CLIENT_RESTRICTION_CLIENT_ID);
     }
 
     private transient SecurityProfilePath _securityProfile;
@@ -201,6 +202,19 @@ public class SecurityProfileClientRestriction extends TableImpl<SecurityProfileC
             _securityApp = new SecurityAppPath(this, Keys.FK2_PROFILE_CLIENT_RESTRICTION_APP_ID, null);
 
         return _securityApp;
+    }
+
+    private transient SecurityClientPath _securityClient;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table.
+     */
+    public SecurityClientPath securityClient() {
+        if (_securityClient == null)
+            _securityClient = new SecurityClientPath(this, Keys.FK3_PROFILE_CLIENT_RESTRICTION_CLIENT_ID, null);
+
+        return _securityClient;
     }
 
     @Override
