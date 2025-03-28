@@ -4,10 +4,12 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.bindings.JSONMapBinding;
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
+import com.fincity.saas.notification.model.NotificationChannel;
+import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -18,6 +20,7 @@ import java.util.Map;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Identity;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
@@ -94,10 +97,10 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
 
     /**
      * The column
-     * <code>notification.notification_sent_notifications.NOTIFICATION_MESSAGE</code>.
-     * Notification message that is sent
+     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
+     * Notification message that is sent in different channels
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> NOTIFICATION_MESSAGE = createField(DSL.name("NOTIFICATION_MESSAGE"), SQLDataType.JSON.nullable(false), this, "Notification message that is sent", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, NotificationChannel> NOTIFICATION_CHANNEL = createField(DSL.name("NOTIFICATION_CHANNEL"), SQLDataType.JSON.nullable(false), this, "Notification message that is sent in different channels", new JSONtoClassConverter<JSON, NotificationChannel>(JSON.class, NotificationChannel.class));
 
     /**
      * The column
@@ -132,7 +135,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.EMAIL_DELIVERY_STATUS</code>.
      * Email delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> EMAIL_DELIVERY_STATUS = createField(DSL.name("EMAIL_DELIVERY_STATUS"), SQLDataType.JSON, this, "Email delivery status", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, Map> EMAIL_DELIVERY_STATUS = createField(DSL.name("EMAIL_DELIVERY_STATUS"), SQLDataType.JSON, this, "Email delivery status", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
@@ -146,7 +149,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.IN_APP_DELIVERY_STATUS</code>.
      * In-app delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> IN_APP_DELIVERY_STATUS = createField(DSL.name("IN_APP_DELIVERY_STATUS"), SQLDataType.JSON, this, "In-app delivery status", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, Map> IN_APP_DELIVERY_STATUS = createField(DSL.name("IN_APP_DELIVERY_STATUS"), SQLDataType.JSON, this, "In-app delivery status", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
@@ -160,7 +163,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.MOBILE_PUSH_DELIVERY_STATUS</code>.
      * Mobile push delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> MOBILE_PUSH_DELIVERY_STATUS = createField(DSL.name("MOBILE_PUSH_DELIVERY_STATUS"), SQLDataType.JSON, this, "Mobile push delivery status", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, Map> MOBILE_PUSH_DELIVERY_STATUS = createField(DSL.name("MOBILE_PUSH_DELIVERY_STATUS"), SQLDataType.JSON, this, "Mobile push delivery status", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
@@ -174,7 +177,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.WEB_PUSH_DELIVERY_STATUS</code>.
      * Web push delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> WEB_PUSH_DELIVERY_STATUS = createField(DSL.name("WEB_PUSH_DELIVERY_STATUS"), SQLDataType.JSON, this, "Web push delivery status", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, Map> WEB_PUSH_DELIVERY_STATUS = createField(DSL.name("WEB_PUSH_DELIVERY_STATUS"), SQLDataType.JSON, this, "Web push delivery status", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
@@ -188,7 +191,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.SMS_DELIVERY_STATUS</code>.
      * SMS delivery status
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> SMS_DELIVERY_STATUS = createField(DSL.name("SMS_DELIVERY_STATUS"), SQLDataType.JSON, this, "SMS delivery status", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, Map> SMS_DELIVERY_STATUS = createField(DSL.name("SMS_DELIVERY_STATUS"), SQLDataType.JSON, this, "SMS delivery status", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
@@ -199,17 +202,17 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
 
     /**
      * The column
-     * <code>notification.notification_sent_notifications.ERROR_MESSAGE</code>.
-     * Error message if error occurs during this notification
+     * <code>notification.notification_sent_notifications.ERROR_INFO</code>.
+     * Error info if error occurs during this notification
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> ERROR_MESSAGE = createField(DSL.name("ERROR_MESSAGE"), SQLDataType.JSON, this, "Error message if error occurs during this notification", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, NotificationErrorInfo> ERROR_INFO = createField(DSL.name("ERROR_INFO"), SQLDataType.JSON, this, "Error info if error occurs during this notification", new JSONtoClassConverter<JSON, NotificationErrorInfo>(JSON.class, NotificationErrorInfo.class));
 
     /**
      * The column
      * <code>notification.notification_sent_notifications.CHANNEL_ERRORS</code>.
      * Channel Errors if error occurs during channel listeners processing
      */
-    public final TableField<NotificationSentNotificationsRecord, Map> CHANNEL_ERRORS = createField(DSL.name("CHANNEL_ERRORS"), SQLDataType.JSON, this, "Channel Errors if error occurs during channel listeners processing", new JSONMapBinding());
+    public final TableField<NotificationSentNotificationsRecord, Map> CHANNEL_ERRORS = createField(DSL.name("CHANNEL_ERRORS"), SQLDataType.JSON, this, "Channel Errors if error occurs during channel listeners processing", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column

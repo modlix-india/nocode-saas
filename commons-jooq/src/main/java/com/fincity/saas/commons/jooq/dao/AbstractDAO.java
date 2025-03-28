@@ -20,6 +20,7 @@ import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.InsertSetStep;
 import org.jooq.InsertValuesStepN;
+import org.jooq.JSON;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.SelectJoinStep;
@@ -76,7 +77,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 			UInteger.class, x -> x == null ? x : x.longValue(),
 			UShort.class, x -> x == null ? x : x.intValue());
 
-	private static final JSONtoClassConverter<Object> JSON_CONVERTER = new JSONtoClassConverter<>(Object.class);
+	private static final JSONtoClassConverter<JSON, Object> JSON_CONVERTER = new JSONtoClassConverter<>(Object.class);
 
 	protected final Class<D> pojoClass;
 

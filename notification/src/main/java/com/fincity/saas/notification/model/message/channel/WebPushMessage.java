@@ -1,5 +1,7 @@
 package com.fincity.saas.notification.model.message.channel;
 
+import java.io.Serial;
+
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 
@@ -11,6 +13,9 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 public class WebPushMessage extends NotificationMessage<WebPushMessage> {
+
+	@Serial
+	private static final long serialVersionUID = 1093811688566066278L;
 
 	@Override
 	public NotificationChannelType getChannelType() {

@@ -2,13 +2,13 @@ package com.fincity.saas.notification.dto;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationType;
+import com.fincity.saas.notification.model.message.channel.InAppMessage;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,10 +31,16 @@ public class InAppNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	private String appCode;
 	private ULong userId;
 	private NotificationType notificationType;
-	private Map<String, Object> notificationMessage;
-	private NotificationDeliveryStatus deliveryStatus;
+	private InAppMessage inAppMessage;
+	private NotificationDeliveryStatus notificationDeliveryStatus;
+
+	private boolean sent = Boolean.FALSE;
 	private LocalDateTime sentTime;
+	private boolean delivered = Boolean.FALSE;
 	private LocalDateTime deliveredTime;
+	private boolean read = Boolean.FALSE;
 	private LocalDateTime readTime;
+	private boolean failed = Boolean.FALSE;
+	private LocalDateTime failedTime;
 
 }

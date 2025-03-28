@@ -1,5 +1,7 @@
 package com.fincity.saas.notification.model.message;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
 
 import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientType;
@@ -9,7 +11,10 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class RecipientInfo {
+public class RecipientInfo implements Serializable {
+
+	@Serial
+	private static final long serialVersionUID = 2894522683777970300L;
 
 	private String senderId;
 	private String senderName;

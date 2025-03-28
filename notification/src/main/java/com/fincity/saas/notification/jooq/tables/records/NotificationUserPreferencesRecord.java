@@ -40,13 +40,30 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
     }
 
     /**
+     * Setter for <code>notification.notification_user_preferences.CODE</code>.
+     * Unique Code to identify this row
+     */
+    public NotificationUserPreferencesRecord setCode(String value) {
+        set(1, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>notification.notification_user_preferences.CODE</code>.
+     * Unique Code to identify this row
+     */
+    public String getCode() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for
      * <code>notification.notification_user_preferences.APP_ID</code>. App Id
      * for which this user preference is getting created. References
      * security_app table
      */
     public NotificationUserPreferencesRecord setAppId(ULong value) {
-        set(1, value);
+        set(2, value);
         return this;
     }
 
@@ -57,7 +74,7 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
      * security_app table
      */
     public ULong getAppId() {
-        return (ULong) get(1);
+        return (ULong) get(2);
     }
 
     /**
@@ -67,7 +84,7 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
      * security_user table
      */
     public NotificationUserPreferencesRecord setUserId(ULong value) {
-        set(2, value);
+        set(3, value);
         return this;
     }
 
@@ -78,24 +95,7 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
      * security_user table
      */
     public ULong getUserId() {
-        return (ULong) get(2);
-    }
-
-    /**
-     * Setter for <code>notification.notification_user_preferences.CODE</code>.
-     * Unique Code to identify this row
-     */
-    public NotificationUserPreferencesRecord setCode(String value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>notification.notification_user_preferences.CODE</code>.
-     * Unique Code to identify this row
-     */
-    public String getCode() {
-        return (String) get(3);
+        return (ULong) get(3);
     }
 
     /**
@@ -235,13 +235,13 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
     /**
      * Create a detached, initialised NotificationUserPreferencesRecord
      */
-    public NotificationUserPreferencesRecord(ULong id, ULong appId, ULong userId, String code, Map preferences, Byte enabled, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationUserPreferencesRecord(ULong id, String code, ULong appId, ULong userId, Map preferences, Byte enabled, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES);
 
         setId(id);
+        setCode(code);
         setAppId(appId);
         setUserId(userId);
-        setCode(code);
         setPreferences(preferences);
         setEnabled(enabled);
         setCreatedBy(createdBy);

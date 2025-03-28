@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.response.SendResponse;
 import com.fincity.saas.notification.service.channel.inapp.NotificationEventService;
 
@@ -26,7 +27,7 @@ public class NotificationEventController {
 
 	@GetMapping(path = "/subscribe/{appCode}/{clientCode}/{userId}",
 			produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public Flux<ServerSentEvent<SendResponse>> subscribeToEvent(
+	public Flux<ServerSentEvent<SendResponse<InAppMessage>>> subscribeToEvent(
 			@PathVariable String appCode,
 			@PathVariable String clientCode,
 			@PathVariable BigInteger userId) {

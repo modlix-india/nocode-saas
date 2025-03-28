@@ -4,7 +4,7 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.bindings.JSONMapBinding;
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
@@ -18,6 +18,7 @@ import java.util.Map;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Identity;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
@@ -64,6 +65,12 @@ public class NotificationUserPreferences extends TableImpl<NotificationUserPrefe
     public final TableField<NotificationUserPreferencesRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
 
     /**
+     * The column <code>notification.notification_user_preferences.CODE</code>.
+     * Unique Code to identify this row
+     */
+    public final TableField<NotificationUserPreferencesRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row");
+
+    /**
      * The column
      * <code>notification.notification_user_preferences.APP_ID</code>. App Id
      * for which this user preference is getting created. References
@@ -80,17 +87,11 @@ public class NotificationUserPreferences extends TableImpl<NotificationUserPrefe
     public final TableField<NotificationUserPreferencesRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App User Id under which this user preference is getting created. References security_user table");
 
     /**
-     * The column <code>notification.notification_user_preferences.CODE</code>.
-     * Unique Code to identify this row
-     */
-    public final TableField<NotificationUserPreferencesRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row");
-
-    /**
      * The column
      * <code>notification.notification_user_preferences.PREFERENCES</code>.
      * Notification preference
      */
-    public final TableField<NotificationUserPreferencesRecord, Map> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON, this, "Notification preference", new JSONMapBinding());
+    public final TableField<NotificationUserPreferencesRecord, Map> PREFERENCES = createField(DSL.name("PREFERENCES"), SQLDataType.JSON, this, "Notification preference", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column

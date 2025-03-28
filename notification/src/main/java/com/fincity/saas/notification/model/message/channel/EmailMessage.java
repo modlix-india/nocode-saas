@@ -1,10 +1,10 @@
 package com.fincity.saas.notification.model.message.channel;
 
+import java.io.Serial;
 import java.util.List;
 import java.util.Map;
 
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
-import com.fincity.saas.notification.enums.Priority;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
 
@@ -19,6 +19,9 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor
 public class EmailMessage extends NotificationMessage<EmailMessage> {
 
+	@Serial
+	private static final long serialVersionUID = 2865166538661325442L;
+
 	private String fromAddress;
 	private String toAddress;
 
@@ -28,7 +31,7 @@ public class EmailMessage extends NotificationMessage<EmailMessage> {
 	private boolean isHtml;
 	private List<String> replyTo;
 	private Map<String, String> headers;
-	private Priority priority;
+	private String priority;
 
 	@Override
 	public NotificationChannelType getChannelType() {

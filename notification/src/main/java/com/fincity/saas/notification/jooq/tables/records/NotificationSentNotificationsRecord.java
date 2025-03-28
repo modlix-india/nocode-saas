@@ -5,6 +5,8 @@ package com.fincity.saas.notification.jooq.tables.records;
 
 
 import com.fincity.saas.notification.jooq.tables.NotificationSentNotifications;
+import com.fincity.saas.notification.model.NotificationChannel;
+import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -119,21 +121,21 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
 
     /**
      * Setter for
-     * <code>notification.notification_sent_notifications.NOTIFICATION_MESSAGE</code>.
-     * Notification message that is sent
+     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
+     * Notification message that is sent in different channels
      */
-    public NotificationSentNotificationsRecord setNotificationMessage(Map value) {
+    public NotificationSentNotificationsRecord setNotificationChannel(NotificationChannel value) {
         set(5, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_sent_notifications.NOTIFICATION_MESSAGE</code>.
-     * Notification message that is sent
+     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
+     * Notification message that is sent in different channels
      */
-    public Map getNotificationMessage() {
-        return (Map) get(5);
+    public NotificationChannel getNotificationChannel() {
+        return (NotificationChannel) get(5);
     }
 
     /**
@@ -404,21 +406,21 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
 
     /**
      * Setter for
-     * <code>notification.notification_sent_notifications.ERROR_MESSAGE</code>.
-     * Error message if error occurs during this notification
+     * <code>notification.notification_sent_notifications.ERROR_INFO</code>.
+     * Error info if error occurs during this notification
      */
-    public NotificationSentNotificationsRecord setErrorMessage(Map value) {
+    public NotificationSentNotificationsRecord setErrorInfo(NotificationErrorInfo value) {
         set(20, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>notification.notification_sent_notifications.ERROR_MESSAGE</code>.
-     * Error message if error occurs during this notification
+     * <code>notification.notification_sent_notifications.ERROR_INFO</code>.
+     * Error info if error occurs during this notification
      */
-    public Map getErrorMessage() {
-        return (Map) get(20);
+    public NotificationErrorInfo getErrorInfo() {
+        return (NotificationErrorInfo) get(20);
     }
 
     /**
@@ -539,7 +541,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
     /**
      * Create a detached, initialised NotificationSentNotificationsRecord
      */
-    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, Map notificationMessage, String notificationType, String notificationStage, LocalDateTime triggerTime, Byte isEmail, Map emailDeliveryStatus, Byte isInApp, Map inAppDeliveryStatus, Byte isMobilePush, Map mobilePushDeliveryStatus, Byte isWebPush, Map webPushDeliveryStatus, Byte isSms, Map smsDeliveryStatus, Byte isError, Map errorMessage, Map channelErrors, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, NotificationChannel notificationChannel, String notificationType, String notificationStage, LocalDateTime triggerTime, Byte isEmail, Map emailDeliveryStatus, Byte isInApp, Map inAppDeliveryStatus, Byte isMobilePush, Map mobilePushDeliveryStatus, Byte isWebPush, Map webPushDeliveryStatus, Byte isSms, Map smsDeliveryStatus, Byte isError, NotificationErrorInfo errorInfo, Map channelErrors, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS);
 
         setId(id);
@@ -547,7 +549,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
         setAppCode(appCode);
         setClientCode(clientCode);
         setUserId(userId);
-        setNotificationMessage(notificationMessage);
+        setNotificationChannel(notificationChannel);
         setNotificationType(notificationType);
         setNotificationStage(notificationStage);
         setTriggerTime(triggerTime);
@@ -562,7 +564,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
         setIsSms(isSms);
         setSmsDeliveryStatus(smsDeliveryStatus);
         setIsError(isError);
-        setErrorMessage(errorMessage);
+        setErrorInfo(errorInfo);
         setChannelErrors(channelErrors);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

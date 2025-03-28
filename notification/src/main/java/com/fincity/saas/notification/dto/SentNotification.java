@@ -12,10 +12,11 @@ import org.jooq.types.ULong;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.NotificationType;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
+import com.fincity.saas.notification.model.NotificationChannel;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
@@ -43,7 +44,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	private String appCode;
 	private ULong userId;
 	private NotificationType notificationType;
-	private Map<String, Object> notificationMessage;
+	private NotificationChannel notificationChannel;
 	private NotificationStage notificationStage;
 	private LocalDateTime triggerTime;
 	private boolean isEmail = Boolean.FALSE;
@@ -57,7 +58,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	private boolean isSms = Boolean.FALSE;
 	private Map<String, LocalDateTime> smsDeliveryStatus = HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 	private boolean isError = Boolean.FALSE;
-	private Map<String, Object> errorMessage = new HashMap<>();
+	private NotificationErrorInfo errorInfo;
 	private Map<String, Object> channelErrors = HashMap.newHashMap(CHANNEL_SIZE);
 
 	public static SentNotification from(SendRequest request, LocalDateTime triggerTime) {
@@ -67,13 +68,13 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 				.setAppCode(request.getAppCode())
 				.setUserId(ULongUtil.valueOf(request.getUserId()))
 				.setNotificationType(request.getNotificationType())
-				.setNotificationMessage(request.getChannels() != null ? request.getChannels().toMap() : new HashMap<>())
+				.setNotificationChannel(request.getChannels())
 				.setTriggerTime(triggerTime)
-				.setErrorMessage(request.getErrorInfo() != null ? request.getErrorInfo().toMap() : new HashMap<>());
+				.setErrorInfo(request.getErrorInfo());
 	}
 
 	public void updateChannelInfo(NotificationChannelType channelType, Boolean isEnabled,
-			Map<String, LocalDateTime> deliveryStatus, boolean override) {
+	                              Map<String, LocalDateTime> deliveryStatus, boolean override) {
 
 		switch (channelType) {
 			case EMAIL -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setEmail,
@@ -93,8 +94,8 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	private void updateChannelInfo(Boolean isEnabled, Map<String, LocalDateTime> deliveryStatus,
-			Consumer<Boolean> setEnabled, Supplier<Map<String, LocalDateTime>> getStatus,
-			Consumer<Map<String, LocalDateTime>> setStatus, boolean override) {
+	                               Consumer<Boolean> setEnabled, Supplier<Map<String, LocalDateTime>> getStatus,
+	                               Consumer<Map<String, LocalDateTime>> setStatus, boolean override) {
 
 		setEnabled.accept(isEnabled);
 
@@ -109,27 +110,30 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 		setStatus.accept(currentStatus);
 	}
 
-	public void setErrorInfo(NotificationErrorInfo notificationErrorInfo) {
+	public SentNotification setErrorInfo(NotificationErrorInfo notificationErrorInfo) {
 
 		if (notificationErrorInfo == null)
-			return;
+			return this;
 
-		this.setErrorMessage(notificationErrorInfo.toMap());
+		this.errorInfo = notificationErrorInfo;
+		this.isError = Boolean.TRUE;
 
-		this.setError(Boolean.TRUE);
+		return this;
 	}
 
-	public void setChannelErrorInfo(Map<String, NotificationErrorInfo> channelErrors) {
+	public SentNotification setChannelErrorInfo(Map<String, NotificationErrorInfo> channelErrors) {
 
 		if (channelErrors == null || channelErrors.isEmpty())
-			return;
+			return this;
 
 		if (this.channelErrors == null)
 			this.channelErrors = HashMap.newHashMap(CHANNEL_SIZE);
 
 		channelErrors.forEach((key, value) -> this.channelErrors.put(key, value.toMap()));
 
-		this.setError(Boolean.TRUE);
+		this.isError = Boolean.TRUE;
+
+		return this;
 	}
 
 }

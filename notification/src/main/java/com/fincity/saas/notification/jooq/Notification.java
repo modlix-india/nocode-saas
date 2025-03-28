@@ -4,6 +4,7 @@
 package com.fincity.saas.notification.jooq;
 
 
+import com.fincity.saas.notification.jooq.tables.NotificationInAppNotifications;
 import com.fincity.saas.notification.jooq.tables.NotificationSentNotifications;
 import com.fincity.saas.notification.jooq.tables.NotificationUserPreferences;
 
@@ -27,6 +28,11 @@ public class Notification extends SchemaImpl {
      * The reference instance of <code>notification</code>
      */
     public static final Notification NOTIFICATION = new Notification();
+
+    /**
+     * The table <code>notification.notification_in_app_notifications</code>.
+     */
+    public final NotificationInAppNotifications NOTIFICATION_IN_APP_NOTIFICATIONS = NotificationInAppNotifications.NOTIFICATION_IN_APP_NOTIFICATIONS;
 
     /**
      * The table <code>notification.notification_sent_notifications</code>.
@@ -54,6 +60,7 @@ public class Notification extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            NotificationInAppNotifications.NOTIFICATION_IN_APP_NOTIFICATIONS,
             NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS,
             NotificationUserPreferences.NOTIFICATION_USER_PREFERENCES
         );

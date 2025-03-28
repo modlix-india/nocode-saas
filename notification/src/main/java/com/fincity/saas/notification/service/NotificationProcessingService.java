@@ -31,6 +31,7 @@ import com.fincity.saas.notification.model.NotificationRequest;
 import com.fincity.saas.notification.model.NotificationTemplate;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.model.message.NotificationMessage;
+import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.fincity.saas.notification.model.response.NotificationResponse;
 import com.fincity.saas.notification.model.response.SendResponse;
 import com.fincity.saas.notification.mq.NotificationMessageProducer;
@@ -110,7 +111,7 @@ public class NotificationProcessingService implements INotificationCacheService<
 
 		logger.info("Sending notification request {}", request);
 
-		SendResponse response = SendResponse.of(request, NotificationChannelType.EMAIL);
+		SendResponse<EmailMessage> response = SendResponse.of(request, NotificationChannelType.EMAIL);
 
 		logger.info("Notification response: {}", response);
 

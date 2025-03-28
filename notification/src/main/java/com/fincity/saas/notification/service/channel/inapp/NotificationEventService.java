@@ -9,6 +9,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.response.SendResponse;
 
 import reactor.core.publisher.Flux;
@@ -24,7 +25,7 @@ public class NotificationEventService extends AbstractInAppService implements II
 
 	private static final int BUFFER_SIZE = Queues.SMALL_BUFFER_SIZE;
 
-	private final Many<SendResponse> sink;
+	private final Many<SendResponse<InAppMessage>> sink;
 
 	public NotificationEventService() {
 		this.sink = Sinks.many().multicast().onBackpressureBuffer(BUFFER_SIZE);
@@ -32,12 +33,12 @@ public class NotificationEventService extends AbstractInAppService implements II
 
 	@Override
 	public Mono<Boolean> sendMessage(SendRequest inAppMessage, Connection connection) {
-		return Mono.justOrEmpty(SendResponse.of(inAppMessage, this.getChannelType()))
+		return Mono.justOrEmpty(SendResponse.ofInApp(inAppMessage))
 				.map(sink::tryEmitNext).map(Sinks.EmitResult::isSuccess)
 				.onErrorResume(e -> Mono.just(Boolean.FALSE));
 	}
 
-	public Flux<ServerSentEvent<SendResponse>> subscribeToEvent(String appCode, String clientCode, BigInteger userId) {
+	public Flux<ServerSentEvent<SendResponse<InAppMessage>>> subscribeToEvent(String appCode, String clientCode, BigInteger userId) {
 
 		if (appCode == null || clientCode == null || userId == null)
 			return Flux.empty();
@@ -55,15 +56,15 @@ public class NotificationEventService extends AbstractInAppService implements II
 				});
 	}
 
-	private ServerSentEvent<SendResponse> getServerSentEvent(SendResponse response) {
-		return ServerSentEvent.<SendResponse>builder()
+	private ServerSentEvent<SendResponse<InAppMessage>> getServerSentEvent(SendResponse<InAppMessage> response) {
+		return ServerSentEvent.<SendResponse<InAppMessage>>builder()
 				.id(response.getCode())
 				.event(eventName(EVENT_NAME, response.getNotificationType(), response.getCode()))
 				.data(response)
 				.build();
 	}
 
-	private Mono<Boolean> isMessageForUser(SendResponse message, String appCode, String clientCode, BigInteger userId) {
+	private Mono<Boolean> isMessageForUser(SendResponse<InAppMessage> message, String appCode, String clientCode, BigInteger userId) {
 		return Mono.just(message.getClientCode().equals(clientCode)
 				&& message.getAppCode().equals(appCode)
 				&& message.getUserId().equals(userId));

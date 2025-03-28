@@ -44,7 +44,7 @@ public class SentNotificationService
 	}
 
 	@Autowired
-	public void setCacheService(CacheService cacheService) {
+	private void setCacheService(CacheService cacheService) {
 		this.cacheService = cacheService;
 	}
 
@@ -71,7 +71,7 @@ public class SentNotificationService
 					e.setSms(entity.isSms());
 					e.setSmsDeliveryStatus(entity.getSmsDeliveryStatus());
 					e.setError(entity.isError());
-					e.setErrorMessage(entity.getErrorMessage());
+					e.setErrorInfo(entity.getErrorInfo());
 					e.setChannelErrors(entity.getChannelErrors());
 					return e;
 				});
@@ -89,7 +89,7 @@ public class SentNotificationService
 		fields.remove(SentNotification.Fields.appCode);
 		fields.remove(SentNotification.Fields.userId);
 		fields.remove(SentNotification.Fields.notificationType);
-		fields.remove(SentNotification.Fields.notificationMessage);
+		fields.remove(SentNotification.Fields.notificationChannel);
 		fields.remove(SentNotification.Fields.triggerTime);
 		fields.remove("createdAt");
 		fields.remove("createdBy");

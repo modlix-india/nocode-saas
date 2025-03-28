@@ -4,15 +4,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.enums.channel.ChannelType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
+import com.fincity.saas.notification.enums.channel.ChannelType;
 import com.fincity.saas.notification.exception.NotificationDeliveryException;
 import com.fincity.saas.notification.model.SendRequest;
 import com.fincity.saas.notification.service.NotificationConnectionService;
 import com.fincity.saas.notification.service.SentNotificationService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
 @Service
 public abstract class AbstractMessageService implements IMessageService, ChannelType {
@@ -60,13 +62,23 @@ public abstract class AbstractMessageService implements IMessageService, Channel
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.getConnection(request),
+				() -> this.getConnection(request).map(connection -> Tuples.of(request, connection))
+						.onErrorResume(GenericException.class,
+								ex -> Mono.just(Tuples.of(request.setChannelErrorInfo(ex, this.getChannelType()),
+										new Connection()))),
 
-				connection -> this.execute(request.getChannels().get(this.getChannelType()), connection),
+				connection -> {
 
-				(connection, executed) -> Boolean.TRUE.equals(executed) ? this.notificationSent(request) : Mono.just(Boolean.FALSE)
-		).onErrorResume(NotificationDeliveryException.class, ex ->
-				this.notificationFailed(request.setChannelErrorInfo(ex, this.getChannelType())));
+					if (connection.getT1().isError())
+						return Mono.just(Tuples.of(connection.getT1(), Boolean.FALSE));
+
+					return this.execute(request.getChannels().get(this.getChannelType()), connection.getT2())
+							.map(executed -> Tuples.of(request, executed))
+							.onErrorResume(NotificationDeliveryException.class, ex -> Mono.just(
+									Tuples.of(request.setChannelErrorInfo(ex, this.getChannelType()), Boolean.FALSE)));
+				},
+
+				(connection, executed) -> executed.getT1().isError() ? this.notificationFailed(executed.getT1())
+						: this.notificationSent(executed.getT1()));
 	}
-
 }

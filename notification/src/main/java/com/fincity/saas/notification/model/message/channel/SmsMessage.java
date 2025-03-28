@@ -1,5 +1,7 @@
 package com.fincity.saas.notification.model.message.channel;
 
+import java.io.Serial;
+
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.RecipientInfo;
@@ -12,6 +14,9 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 public class SmsMessage extends NotificationMessage<SmsMessage> {
+
+	@Serial
+	private static final long serialVersionUID = 5065136200116564131L;
 
 	private String senderName;
 	private String senderId;

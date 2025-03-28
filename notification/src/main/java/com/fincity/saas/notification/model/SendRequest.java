@@ -38,7 +38,7 @@ public class SendRequest implements Serializable {
 	private Map<String, NotificationErrorInfo> channelErrors;
 
 	private static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
-			Map<String, String> connections, NotificationChannel channels, NotificationErrorInfo errorInfo) {
+	                              Map<String, String> connections, NotificationChannel channels, NotificationErrorInfo errorInfo) {
 		return new SendRequest().setCode(UniqueUtil.shortUUID()).setAppCode(appCode).setClientCode(clientCode)
 				.setUserId(userId)
 				.setNotificationType(notificationType != null ? NotificationType.lookupLiteral(notificationType)
@@ -47,7 +47,7 @@ public class SendRequest implements Serializable {
 	}
 
 	public static SendRequest of(String appCode, String clientCode, BigInteger userId, String notificationType,
-			Map<String, String> connections, NotificationChannel channels) {
+	                             Map<String, String> connections, NotificationChannel channels) {
 		return of(appCode, clientCode, userId, notificationType, connections, channels, null);
 	}
 
@@ -57,7 +57,7 @@ public class SendRequest implements Serializable {
 	}
 
 	public static SendRequest ofError(String appCode, String clientCode, BigInteger userId, String notificationType,
-			GenericException errorInfo) {
+	                                  GenericException errorInfo) {
 		return of(appCode, clientCode, userId, notificationType, null, null, new NotificationErrorInfo(errorInfo));
 	}
 
@@ -76,7 +76,7 @@ public class SendRequest implements Serializable {
 	}
 
 	public <T extends GenericException> SendRequest setChannelErrorInfo(T exception,
-			NotificationChannelType channelType) {
+	                                                                    NotificationChannelType channelType) {
 		if (this.channelErrors == null)
 			this.channelErrors = new HashMap<>();
 		this.channelErrors.put(channelType.getLiteral(), new NotificationErrorInfo(exception));
@@ -85,7 +85,7 @@ public class SendRequest implements Serializable {
 
 	@JsonIgnore
 	public boolean isError() {
-		return this.errorInfo != null;
+		return this.errorInfo != null || (this.channelErrors != null && !this.channelErrors.isEmpty());
 	}
 
 }

@@ -70,12 +70,10 @@ public class NotificationMessageListener {
 				() -> Mono.justOrEmpty(this.messageServices.get(channelType)),
 
 				service -> service.execute(request).switchIfEmpty(Mono.just(Boolean.FALSE))
-
-		).onErrorResume(throwable -> Mono.just(Boolean.FALSE));
+		);
 
 		return request.getXDebug() != null
-				? reveicedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, request.getXDebug()))
-				: reveicedMono;
+				? reveicedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, request.getXDebug())) : reveicedMono;
 	}
 
 }

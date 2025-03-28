@@ -1,7 +1,8 @@
 package com.fincity.saas.notification.model.message.action;
 
-import java.util.ArrayList;
+import java.io.Serializable;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,11 +16,11 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-public class Action {
+public class Action implements Serializable {
 
 	private String code = UniqueUtil.shortUUID();
 	private boolean isCompleted = Boolean.FALSE;
-	private String actionType;
+	private ActionType actionType;
 	private String actionUrl;
 	private Map<String, Object> actionParams;
 
@@ -27,12 +28,12 @@ public class Action {
 		return new Action()
 				.setCode(UniqueUtil.shortUUID())
 				.setCompleted(Boolean.FALSE)
-				.setActionType(actionType.getLiteral())
+				.setActionType(actionType)
 				.setActionUrl(actionUrl)
 				.setActionParams(actionParams);
 	}
 
-	public interface IAction<T extends IAction<T>> {
+	private interface IAction<T extends IAction<T>> {
 
 		T setAction(Action action);
 
@@ -47,22 +48,38 @@ public class Action {
 
 	public interface MultiAction<T extends MultiAction<T>> extends IAction<T> {
 
-		List<Action> getActions();
+		Map<String, Action> getActions();
 
-		T setActions(List<Action> actions);
+		T setActions(Map<String, Action> actions);
 
 		default T setActions(Action... actions) {
 			return setActions(Arrays.stream(actions).toList());
 		}
 
+		default T setActions(List<Action> actions) {
+			Map<String, Action> actionMap = getActions();
+			if (actionMap == null)
+				actionMap = new HashMap<>();
+
+			for (Action action : actions)
+				actionMap.put(action.getActionUrl(), action);
+
+			return setActions(actionMap);
+		}
+
+		default Action getAction(String actionCode) {
+			return getActions() != null ? getActions().getOrDefault(actionCode, null) : null;
+		}
+
 		@Override
 		default T setAction(Action action) {
-			List<Action> actions = getActions();
-			if (actions == null)
-				actions = new ArrayList<>();
+			Map<String, Action> actionMap = getActions();
+			if (actionMap == null)
+				actionMap = new HashMap<>();
 
-			actions.add(action);
-			return setActions(actions);
+			actionMap.put(action.getCode(), action);
+
+			return setActions(actionMap);
 		}
 	}
 }

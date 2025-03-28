@@ -4,12 +4,16 @@ import java.io.Serial;
 
 import org.jooq.JSON;
 
-public class JSONtoClassConverter<U> extends AbstractJooqConverter<JSON, U> {
+public class JSONtoClassConverter<T, U> extends AbstractJooqConverter<JSON, U> {
 
 	@Serial
 	private static final long serialVersionUID = 4084897018025032842L;
 
 	public JSONtoClassConverter(Class<U> toType) {
+		super(JSON.class, toType);
+	}
+
+	public JSONtoClassConverter(Class<T> fromType, Class<U> toType) {
 		super(JSON.class, toType);
 	}
 

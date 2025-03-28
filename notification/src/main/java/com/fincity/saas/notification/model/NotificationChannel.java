@@ -16,12 +16,11 @@ import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.message.channel.MobilePushMessage;
 import com.fincity.saas.notification.model.message.channel.SmsMessage;
 import com.fincity.saas.notification.model.message.channel.WebPushMessage;
-import com.fincity.saas.notification.util.IClassConverter;
 
 import lombok.Getter;
 
 @Getter
-public class NotificationChannel implements IClassConverter, Serializable {
+public class NotificationChannel implements Serializable {
 
 	@Serial
 	private static final long serialVersionUID = 5676431093000206490L;
