@@ -9,6 +9,8 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +45,7 @@ import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Permission;
-import com.fincity.security.dto.Role;
+import com.fincity.security.dto.RoleV2;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
@@ -70,12 +72,7 @@ import reactor.util.function.Tuples;
 @Service
 public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
-	private static final String ASSIGNED_PERMISSION = " Permission is assigned to the user ";
-
 	private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
-
-	private static final String UNASSIGNED_PERMISSION = " Permission is removed from the selected user";
-
 	private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
 
 	private static final int VALIDITY_MINUTES = 30;
@@ -90,6 +87,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	private final TokenService tokenService;
 	private final EventCreationService ecService;
 	private final AppRegistrationDAO appRegistrationDAO;
+	private final ProfileService profileService;
 
 	@Value("${jwt.key}")
 	private String tokenKey;
@@ -98,7 +96,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			ClientHierarchyService clientHierarchyService, PasswordEncoder passwordEncoder,
 			SecurityMessageResourceService securityMessageResourceService, SoxLogService soxLogService,
 			OtpService otpService, TokenService tokenService, EventCreationService ecService,
-			AppRegistrationDAO appRegistrationDAO) {
+			AppRegistrationDAO appRegistrationDAO, ProfileService profileService) {
 
 		this.clientService = clientService;
 		this.appService = appService;
@@ -110,6 +108,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		this.tokenService = tokenService;
 		this.ecService = ecService;
 		this.appRegistrationDAO = appRegistrationDAO;
+		this.profileService = profileService;
 	}
 
 	private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -133,7 +132,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.getUsersBy(userName, userId, clientCode, appCode, authenticationIdentifierType,
 								userStatusCodes)
 						.flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.getFirst()))
-						.flatMap(this.dao::setPermissions),
+						.flatMap(user -> this.setAllAuthorities(appCode, user)),
 
 				user -> this.clientService.getActiveClient(user.getClientId()),
 
@@ -142,6 +141,29 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				(user, uClient, mClient) -> Mono.just(Tuples.of(mClient, uClient, user)))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.findUserNClient"));
+	}
+
+	private Mono<User> setRoleAuthorities(String appCode, User user) {
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.dao.getRoleAuthorities(appCode, user.getId()),
+
+				authorities -> Mono.just(authorities.isEmpty() ? user : user.setAuthorities(authorities)))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setAuthorities"));
+	}
+
+	private Mono<User> setAllAuthorities(String appCode, User user) {
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.dao.getRoleAuthorities(appCode, user.getId()),
+
+				roleAuths -> this.profileService.getProfileAuthorities(appCode, user.getClientId(),
+						user.getId()),
+
+				(roleAuths, profileAuths) -> Mono
+						.just(user.setAuthorities(Stream.concat(roleAuths.stream(), profileAuths.stream()).toList()))
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setAuthorities"));
 	}
 
 	public Mono<Boolean> checkUserAndClient(Tuple3<Client, Client, User> userNClient, String clientCode) {
@@ -163,8 +185,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.defaultIfEmpty(Boolean.FALSE);
 	}
 
-	public Mono<User> getUserForContext(ULong id) {
-		return this.dao.readById(id).flatMap(this.dao::setPermissions);
+	public Mono<User> getUserForContext(String appCode, ULong id) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.dao.readById(id),
+
+				user -> this.setAllAuthorities(appCode, user)
+
+		)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserForContext"));
+
 	}
 
 	public Mono<Short> increaseFailedAttempt(ULong userId, AuthenticationPasswordType passwordType) {
@@ -242,7 +272,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 					this.soxLogService.createLog(createdUser.getId(), CREATE, getSoxObjectName(), "User created");
 					return this.setPasswordEntities(createdUser, pass);
 
-				}).switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.create"))
+				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
 	}
 
 	private void updateUserIdentificationKeys(User entity) {
@@ -467,107 +499,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 						.map(x -> 1));
 	}
 
-	public Mono<User> readInternal(ULong id) {
+	// We don't add the authorities from profiles because it is cached.
+	// When there are changes in profiles it is very hard to manage the cache
+	// invalidation between user and profile.
+	// Please don't use this method if you want authorties from profile too.
+	public Mono<User> readInternal(String appCode, ULong id) {
 		return this.dao.readInternal(id)
-				.flatMap(this.dao::setPermissions);
+				.flatMap(user -> this.setRoleAuthorities(appCode, user));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.User_READ') and hasAuthority('Authorities.Permission_READ')")
-	public Mono<List<Permission>> getPermissionsFromGivenUser(ULong userId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca ->
-
-				ca.isSystemClient() ? Mono.just(true)
-						: this.read(userId)
-								.flatMap(user -> this.clientService.isBeingManagedBy(
-										ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-										ULongUtil.valueOf(user.getClientId())))
-								.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(ca, sysOrManaged) ->
-
-				this.dao.fetchPermissionsFromGivenUser(userId)
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getPermissionsFromGivenUser"))
-				.switchIfEmpty(
-						this.forbiddenError(SecurityMessageResourceService.FETCH_PERMISSION_ERROR_FOR_USER, userId));
-
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.Role_READ') and hasAuthority('Authorities.User_READ')")
-	public Mono<List<Role>> getRolesFromGivenUser(ULong userId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca ->
-
-				ca.isSystemClient() ? Mono.just(true)
-						: this.read(userId)
-								.flatMap(user -> this.clientService.isBeingManagedBy(
-										ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-										ULongUtil.valueOf(user.getClientId())))
-								.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(ca, sysOrManaged) ->
-
-				this.dao.fetchRolesFromGivenUser(userId)
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getRolesFromGivenUser"))
-				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FETCH_ROLE_ERROR_FOR_USER, userId));
-
-	}
-
-	public Mono<Boolean> removeFromPermissionList(List<ULong> userList, List<ULong> permissionList) {
-
-		return this.dao.removePermissionListFromUser(userList, permissionList)
-				.flatMap(e -> Flux.fromIterable(userList)
-						.flatMap(this::evictTokens)
-						.collectList()
-						.map(x -> e));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
-	public Mono<Boolean> removePermissionFromUser(ULong userId, ULong permissionId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca ->
-
-				ca.isSystemClient() ? Mono.just(true)
-						: this.dao.readById(userId)
-
-								.flatMap(user -> this.clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-										.getClientId()), user.getClientId())),
-
-				(ca, isManaged) ->
-
-				this.dao.removePermissionFromUser(userId, permissionId)
-						.map(val -> {
-							boolean removed = val > 0;
-
-							if (removed)
-								super.unAssignLog(userId, UNASSIGNED_PERMISSION);
-
-							return removed;
-						})
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removePermissionFromUser"))
-
-				.flatMap(e -> this.evictTokens(userId)
-						.map(x -> e))
-				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.REMOVE_PERMISSION_ERROR, permissionId,
-						userId));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
+	@PreAuthorize("hasAuthority('Authorities.User_UPDATE') and hasAuthority('Authorities.Role_READ')")
 	public Mono<Boolean> removeRoleFromUser(ULong userId, ULong roleId) {
 		return FlatMapUtil.flatMapMono(
 
@@ -600,52 +541,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Permission_To_User')")
-	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
-
-		return this.dao.checkPermissionAssignedForUser(userId, permissionId)
-				.flatMap(result -> {
-
-					if (Boolean.TRUE.equals(result))
-						return Mono.just(result);
-
-					return FlatMapUtil.flatMapMono(
-
-							SecurityContextUtil::getUsersContextAuthentication,
-
-							contextAuth -> this.dao.readById(userId),
-
-							(contextAuth, user) ->
-
-							contextAuth.isSystemClient() ? Mono.just(true) :
-
-									clientService.isBeingManagedBy(ULongUtil.valueOf(contextAuth.getUser()
-											.getClientId()), user.getClientId())
-											.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-							(contextAuth, user, sysOrManaged) -> this.clientService
-									.checkPermissionExistsOrCreatedForClient(user.getClientId(), permissionId)
-									.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-							(contextAuth, user, sysOrManaged, hasPermission) ->
-
-							this.dao.assignPermissionToUser(userId, permissionId)
-									.map(e -> {
-										if (Boolean.TRUE.equals(e))
-											super.assignLog(userId, ASSIGNED_PERMISSION + permissionId);
-
-										return e;
-									})
-
-				).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignPermissionToUser"))
-							.flatMap(e -> this.evictTokens(userId).map(x -> e))
-							.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ASSIGN_PERMISSION_ERROR,
-									permissionId, userId));
-				});
-
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User')")
+	@PreAuthorize("hasAuthority('Authorities.User_UPDATE') and hasAuthority('Authorities.Role_READ')")
 	public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
 
 		return this.dao.checkRoleAssignedForUser(userId, roleId)
@@ -669,7 +565,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 							(ca, user, sysOrManaged) ->
 
-							this.clientService.checkRoleExistsOrCreatedForClient(user.getClientId(), roleId)
+							this.profileService.hasAccessToRoles(user.getClientId(), Set.of(roleId))
 									.flatMap(BooleanUtil::safeValueOfWithEmpty),
 
 							(ca, user, sysOrManaged, roleApplicable) ->
@@ -687,6 +583,55 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 							.switchIfEmpty(
 									this.forbiddenError(SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
 				});
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.User_UPDATE') and hasAuthority('Authorities.Profile_READ')")
+	public Mono<Boolean> assignProfileToUser(ULong userId, ULong profileId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.readById(userId),
+
+				(ca, user) -> clientService
+						.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
+						.filter(BooleanUtil::safeValueOf),
+
+				(ca, user, sysManaged) -> profileService.hasAccessToProfiles(user.getClientId(), Set.of(profileId))
+						.filter(BooleanUtil::safeValueOf),
+
+				(ca, user, sysManaged, profileAccess) -> this.dao.addProfileToUser(userId, profileId).map(e -> e != 0)
+
+		)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
+				.flatMap(e -> this.evictTokens(userId).map(x -> e))
+				.switchIfEmpty(
+						this.forbiddenError(SecurityMessageResourceService.PROFILE_FORBIDDEN, profileId, userId));
+	}
+
+	@PreAuthorize("hasAuthority('Authorities.User_UPDATE') and hasAuthority('Authorities.Profile_READ')")
+	public Mono<Boolean> removeProfileFromUser(ULong userId, ULong profileId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				SecurityContextUtil::getUsersContextAuthentication,
+
+				ca -> this.dao.readById(userId),
+
+				(ca, user) -> clientService
+						.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
+						.filter(BooleanUtil::safeValueOf),
+
+				(ca, user, sysManaged) -> this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0)
+
+		)
+				.contextWrite(Context.of(LogUtil.METHOD_NAME,
+						"UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
+				.flatMap(e -> this.evictTokens(userId).map(x -> e))
+				.switchIfEmpty(
+						this.forbiddenError(SecurityMessageResourceService.PROFILE_FORBIDDEN, profileId, userId));
 	}
 
 	public Mono<Boolean> updatePassword(ULong userId, RequestUpdatePassword reqPassword) {
@@ -1161,33 +1106,5 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 												.length() - 50))
 				.setExpiresAt(token.getT2())
 				.setIpAddress(hostAddress));
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Role_To_User') and hasAuthority('Authorities.ASSIGN_Permission_To_User')")
-	public Mono<Boolean> copyUserRolesNPermissions(ULong userId, ULong referenceUserId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.dao.readById(userId),
-
-				(ca, user) -> this.dao.readById(referenceUserId),
-
-				(ca, user, rUser) -> Mono.just(user.getClientId().equals(rUser.getClientId()))
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(ca, user, rUser, isSameClient) -> ca.isSystemClient() ? Mono.just(true) :
-
-						clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()),
-
-								user.getClientId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(ca, user, rUser, isSameClient, sysOrManaged) -> this.dao.copyRolesNPermissionsFromUser(userId,
-						referenceUserId)
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.copyUserRolesNPermissions"))
-				.switchIfEmpty(
-						this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_COPY_ROLE_PERMISSION, "User"));
 	}
 }

@@ -1,13 +1,10 @@
 package com.fincity.security.controller;
 
-import java.util.List;
-
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.Package;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
@@ -87,21 +83,6 @@ public class ClientController
 				.defaultIfEmpty(Tuples.of("SYSTEM", "nothing")).map(ResponseEntity::ok);
 	}
 
-	@GetMapping("/{clientId}/assignPackage/{packageId}")
-	public Mono<ResponseEntity<Boolean>> assignPackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
-		return this.service.assignPackageToClient(clientId, packageId).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/{clientId}/removePackage/{packageId}")
-	public Mono<ResponseEntity<Boolean>> removePackage(@PathVariable ULong clientId, @PathVariable ULong packageId) {
-		return this.service.removePackageFromClient(clientId, packageId).map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/availablePackages/{clientId}")
-	public Mono<ResponseEntity<List<Package>>> fetchPackagesForClient(@PathVariable ULong clientId) {
-		return this.service.fetchPackages(clientId).map(ResponseEntity::ok);
-	}
-
 	@GetMapping("/makeClientActive")
 	public Mono<ResponseEntity<Boolean>> makeClientActive(@RequestParam(required = false) ULong clientId) {
 
@@ -123,7 +104,8 @@ public class ClientController
 	}
 
 	@PostMapping("/register/otp/verify")
-	public Mono<ResponseEntity<Boolean>> preRegisterCheckOne(@RequestBody ClientRegistrationRequest registrationRequest) {
+	public Mono<ResponseEntity<Boolean>> preRegisterCheckOne(
+			@RequestBody ClientRegistrationRequest registrationRequest) {
 		return this.clientRegistrationService.preRegisterCheckOne(registrationRequest).map(ResponseEntity::ok);
 	}
 
