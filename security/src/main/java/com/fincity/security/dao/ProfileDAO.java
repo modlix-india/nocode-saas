@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.Record2;
+import org.jooq.Record3;
 import org.jooq.Record6;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
@@ -601,18 +602,23 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
     public Mono<List<String>> getProfileAuthorities(ULong profileId, ClientHierarchy clientHierarchy) {
 
-        FlatMapUtil.flatMapMono(() -> Flux.from(this.dslContext.select(SecurityProfile.SECURITY_PROFILE.ID)
+        return FlatMapUtil.flatMapMono(() -> Flux.from(this.dslContext.select(SecurityProfile.SECURITY_PROFILE.ID,
+                SecurityProfile.SECURITY_PROFILE.NAME, SecurityApp.SECURITY_APP.APP_CODE)
                 .from(SecurityProfile.SECURITY_PROFILE)
+                .leftJoin(SecurityApp.SECURITY_APP)
+                .on(SecurityApp.SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID))
                 .where(
                         DSL.or(
                                 SecurityProfile.SECURITY_PROFILE.ID.eq(profileId),
                                 DSL.and(
                                         SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID.eq(profileId),
                                         SecurityProfile.SECURITY_PROFILE.CLIENT_ID
-                                                .in(clientHierarchy.getClientIds())))))
-                .map(Record1::value1).collectList(),
+                                                .in(clientHierarchy.getClientIds())))
 
-                profileIds -> Flux.from(this.dslContext.select(
+                ))
+                .collectList(),
+
+                profiles -> Flux.from(this.dslContext.select(
                         SecurityV2Role.SECURITY_V2_ROLE.ID,
                         SecurityProfile.SECURITY_PROFILE.CLIENT_ID,
                         SecurityProfile.SECURITY_PROFILE.ID,
@@ -627,7 +633,8 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         .leftJoin(SecurityProfile.SECURITY_PROFILE)
                         .on(SecurityProfile.SECURITY_PROFILE.ID
                                 .eq(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID))
-                        .where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID.in(profileIds)))
+                        .where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
+                                .in(profiles.stream().map(Record3::value1).collect(Collectors.toSet()))))
 
                         .collect(Collectors.groupingBy(e -> e.get(SecurityV2Role.SECURITY_V2_ROLE.ID)))
                         .map(map -> {
@@ -671,7 +678,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                             return records;
                         }),
 
-                (profileIds, roles) -> Flux.from(
+                (profiles, roles) -> Flux.from(
                         this.dslContext.select(
                                 SecurityV2Role.SECURITY_V2_ROLE.ID,
                                 SecurityV2Role.SECURITY_V2_ROLE.NAME,
@@ -687,7 +694,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                                 .collect(Collectors.toSet()))))
                         .collectList(),
 
-                (profileIds, roles, subRoles) ->
+                (profiles, roles, subRoles) ->
 
                 Flux.from(this.dslContext
                         .select(SecurityPermission.SECURITY_PERMISSION.NAME,
@@ -700,21 +707,30 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                 subRoles.stream().map(e -> e.getValue(SecurityV2Role.SECURITY_V2_ROLE.ID))).toList())))
                         .collectList(),
 
-                (profileIds, roles, subRoles, permissions) -> Mono.just(Stream.concat(Stream.concat(
+                (profiles, roles, subRoles, permissions) -> Mono.just(Stream.of(
                         roles.stream()
-                                .map(e -> AuthoritiesNameUtil.makeName(e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-                                        e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME), true)),
+                                .map(e -> AuthoritiesNameUtil.makeRoleName(
+                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                        e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
 
                         subRoles.stream()
-                                .map(e -> AuthoritiesNameUtil.makeName(e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-                                        e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME), true))),
+                                .map(e -> AuthoritiesNameUtil.makeRoleName(
+                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                        e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
 
                         permissions.stream()
-                                .map(e -> AuthoritiesNameUtil.makeName(e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-                                        e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME), false)))
-                        .distinct()
-                        .toList()));
+                                .map(e -> AuthoritiesNameUtil.makePermissionName(
+                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                        e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME))),
 
-        return Mono.empty();
+                        profiles.stream()
+                                .map(e -> AuthoritiesNameUtil.makeProfileName(
+                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                        e.getValue(SecurityProfile.SECURITY_PROFILE.NAME))))
+                        .flatMap(e -> e)
+                        .distinct()
+                        .toList())
+
+        );
     }
 }

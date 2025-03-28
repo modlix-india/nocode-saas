@@ -490,15 +490,18 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 						Stream.concat(
 								roles.stream()
-										.map(e -> AuthoritiesNameUtil.makeName(
+										.map(e -> AuthoritiesNameUtil.makeRoleName(
 												e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-												e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME), true)),
+												e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
 								permissions
 										.stream()
-										.map(e -> AuthoritiesNameUtil.makeName(
+										.map(e -> AuthoritiesNameUtil.makePermissionName(
 												e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-												e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME), false)))
-								.toList())
+												e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME))))
+								.distinct()
+								.toList()
+
+				)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.getRoleAuthorities"));
 	}
