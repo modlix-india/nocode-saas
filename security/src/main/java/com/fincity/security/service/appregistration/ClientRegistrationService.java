@@ -249,9 +249,11 @@ public class ClientRegistrationService {
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null ?
-						this.clientService.validatePasswordPolicy(policy, null, registrationRequest.getInputPassType(),
-						password) : Mono.just(Boolean.TRUE),
+				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null
+						? this.clientService.validatePasswordPolicy(policy, null,
+								registrationRequest.getInputPassType(),
+								password)
+						: Mono.just(Boolean.TRUE),
 
 				passValid -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
 						: this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
@@ -765,7 +767,7 @@ public class ClientRegistrationService {
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.userService.getUserForContext(registrationRequest.getUserId()),
+				ca -> this.userService.getUserForContext(ca.getUrlAppCode(), registrationRequest.getUserId()),
 
 				(ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
 

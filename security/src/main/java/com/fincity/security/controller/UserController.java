@@ -36,10 +36,17 @@ public class UserController
 		this.userService = userService;
 	}
 
-	@GetMapping("{userId}/removeRole/{roleId}")
-	public Mono<ResponseEntity<Boolean>> removeRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
+	@GetMapping("{userId}/removeProfile/{profileId}")
+	public Mono<ResponseEntity<Boolean>> removeProfile(@PathVariable ULong userId, @PathVariable ULong profileId) {
 
-		return userService.removeRoleFromUser(userId, roleId)
+		return userService.removeProfileFromUser(userId, profileId)
+				.map(ResponseEntity::ok);
+	}
+
+	@GetMapping("{userId}/assignProfile/{profileId}")
+	public Mono<ResponseEntity<Boolean>> assignProfile(@PathVariable ULong userId, @PathVariable ULong profileId) {
+
+		return userService.assignProfileToUser(userId, profileId)
 				.map(ResponseEntity::ok);
 	}
 
@@ -76,13 +83,6 @@ public class UserController
 	public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
 
 		return this.service.unblockUser(userId)
-				.map(ResponseEntity::ok);
-	}
-
-	@GetMapping("/availableRoles/{userId}")
-	public Mono<ResponseEntity<List<RoleV2>>> getRolesFromUser(@PathVariable ULong userId) {
-
-		return this.userService.getRolesFromGivenUser(userId)
 				.map(ResponseEntity::ok);
 	}
 

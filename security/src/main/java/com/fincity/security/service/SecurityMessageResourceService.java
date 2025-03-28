@@ -35,6 +35,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
 	public static final String UNKNOWN_TOKEN = "unknown_token";
 	public static final String ALREADY_EXISTS = "already_exists";
 	public static final String ROLE_FORBIDDEN = "role_forbidden_for_selected_user";
+	public static final String PROFILE_FORBIDDEN = "profile_forbidden_for_selected_user";
 	public static final String ASSIGN_PERMISSION_ERROR = "assign_permission_error";
 	public static final String ASSIGN_PROFILE_ERROR = "assign_profile_error";
 	public static final String ASSIGN_ROLE_ERROR = "assign_role_error";

@@ -16,14 +16,14 @@ import reactor.util.context.Context;
 public class TransportService {
 
     private final AppService appService;
-    private final RoleService roleService;
-    private final PackageService packageService;
+    private final RoleV2Service roleService;
+    private final ProfileService profileService;
 
-    public TransportService(AppService appService, RoleService roleService,
-            PackageService packageService) {
+    public TransportService(AppService appService, RoleV2Service roleService,
+            ProfileService profileService) {
         this.appService = appService;
         this.roleService = roleService;
-        this.packageService = packageService;
+        this.profileService = profileService;
     }
 
     public Mono<TransportPOJO> makeTransport(String appCode) {
