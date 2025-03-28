@@ -8,7 +8,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,21 +46,25 @@ public class MockS3AsyncClient implements S3AsyncClient {
 
 	@Override
 	public void close() {
+		logger.info("Closing MockS3AsyncClient");
+		logger.info("Cleaning up temp folder {}", tempFolder);
 		FileSystemUtils.deleteRecursively(tempFolder.toFile());
 	}
 
 	@Override
-	public <ReturnT> CompletableFuture<ReturnT> getObject(GetObjectRequest getObjectRequest, AsyncResponseTransformer<GetObjectResponse, ReturnT> asyncResponseTransformer) {
+	public <T> CompletableFuture<T> getObject(GetObjectRequest getObjectRequest, AsyncResponseTransformer<GetObjectResponse, T> asyncResponseTransformer) {
 		Path filePath = tempFolder.resolve(getObjectRequest.key());
 
+		logger.info("Attempting to get object: {}, resolved to path: {}", getObjectRequest.key(), filePath);
+
 		if (!Files.exists(filePath)) {
-			CompletableFuture<ReturnT> future = new CompletableFuture<>();
+			CompletableFuture<T> future = new CompletableFuture<>();
 			future.completeExceptionally(new GenericException(HttpStatus.NOT_FOUND,
 					"File not found: " + getObjectRequest.key()));
 			return future;
 		}
 
-		CompletableFuture<ReturnT> future = asyncResponseTransformer.prepare();
+		CompletableFuture<T> future = asyncResponseTransformer.prepare();
 
 		try {
 			long contentLength = Files.size(filePath);
@@ -126,34 +129,22 @@ public class MockS3AsyncClient implements S3AsyncClient {
 
 		PutObjectRequest.Builder builder = PutObjectRequest.builder();
 		putObjectRequest.accept(builder);
-		Path filePath = tempFolder.resolve(builder.build().key());
+		PutObjectRequest request = builder.build();
+		Path filePath = tempFolder.resolve(request.key());
+
+		logger.info("Putting object: {}, resolved to path: {}", request.key(), filePath);
 
 		return CompletableFuture.runAsync(() -> {
 			try {
 				Files.createDirectories(filePath.getParent());
-				requestBody.subscribe(new Subscriber<>() {
-					@Override
-					public void onSubscribe(Subscription s) {
-						s.request(Long.MAX_VALUE);
-					}
-
-					@Override
-					public void onNext(ByteBuffer byteBuffer) {
-						try {
-							Files.write(filePath, byteBuffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-						} catch (IOException e) {
-							logger.error(e.getMessage());
-						}
-					}
-
-					@Override
-					public void onError(Throwable t) {
-						logger.error(t.getMessage());
-					}
-
-					@Override
-					public void onComplete() {
-						// Completed writing to file
+				requestBody.subscribe(buffer -> {
+					try {
+						byte[] bytes = new byte[buffer.remaining()];
+						buffer.get(bytes);
+						Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+						logger.info("File created: {}", filePath);
+					} catch (IOException e) {
+						logger.error("Error writing file: {}", e.getMessage());
 					}
 				});
 			} catch (IOException e) {
