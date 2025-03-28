@@ -6,7 +6,7 @@ import java.math.BigInteger;
 
 import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
-import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;
 
@@ -30,7 +30,7 @@ public class SendResponse<T extends NotificationMessage<T>> implements Serializa
 	private T notificationMessage;
 
 	private static <T extends NotificationMessage<T>> SendResponse<T> of(String code, String appCode, String clientCode,
-			BigInteger userId,	NotificationType notificationType, T notificationMessage) {
+			BigInteger userId, NotificationType notificationType, T notificationMessage) {
 		return new SendResponse<T>().setCode(code).setAppCode(appCode).setClientCode(clientCode).setUserId(userId)
 				.setNotificationType(
 						notificationType != null ? notificationType.getLiteral() : NotificationType.INFO.getLiteral())

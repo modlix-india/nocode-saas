@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
-import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.service.SentNotificationService;
 
 import reactor.core.publisher.Mono;

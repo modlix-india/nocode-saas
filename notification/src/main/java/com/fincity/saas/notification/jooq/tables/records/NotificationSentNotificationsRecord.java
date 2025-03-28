@@ -5,7 +5,7 @@ package com.fincity.saas.notification.jooq.tables.records;
 
 
 import com.fincity.saas.notification.jooq.tables.NotificationSentNotifications;
-import com.fincity.saas.notification.model.NotificationChannel;
+import com.fincity.saas.notification.model.request.NotificationChannel;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import java.time.LocalDateTime;

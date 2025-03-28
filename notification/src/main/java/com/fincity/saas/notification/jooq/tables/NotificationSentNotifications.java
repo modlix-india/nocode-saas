@@ -8,7 +8,7 @@ import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConver
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
-import com.fincity.saas.notification.model.NotificationChannel;
+import com.fincity.saas.notification.model.request.NotificationChannel;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import java.time.LocalDateTime;

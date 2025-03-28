@@ -5,7 +5,7 @@ import java.io.Serializable;
 
 import org.springframework.http.HttpStatus;
 
-import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.request.SendRequest;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

@@ -5,7 +5,7 @@ import java.util.Map;
 
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
-import com.fincity.saas.notification.model.NotificationTemplate;
+import com.fincity.saas.notification.model.template.NotificationTemplate;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

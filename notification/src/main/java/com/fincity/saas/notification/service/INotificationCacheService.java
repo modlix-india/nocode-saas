@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.notification.model.NotificationCacheRequest;
+import com.fincity.saas.notification.model.request.NotificationCacheRequest;
 
 import reactor.core.publisher.Mono;
 

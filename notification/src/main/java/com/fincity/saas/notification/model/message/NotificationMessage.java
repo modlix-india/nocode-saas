@@ -7,6 +7,7 @@ import java.util.Map;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.channel.ChannelType;
+import com.fincity.saas.notification.model.message.recipient.IRecipientInfo;
 
 import lombok.Data;
 import lombok.experimental.Accessors;

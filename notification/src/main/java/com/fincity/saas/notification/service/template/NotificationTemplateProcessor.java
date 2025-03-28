@@ -16,9 +16,9 @@ import com.fincity.saas.commons.jooq.enums.notification.NotificationRecipientTyp
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;
-import com.fincity.saas.notification.model.NotificationTemplate;
+import com.fincity.saas.notification.model.template.NotificationTemplate;
 import com.fincity.saas.notification.model.message.NotificationMessage;
-import com.fincity.saas.notification.model.message.RecipientInfo;
+import com.fincity.saas.notification.model.message.recipient.RecipientInfo;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 
 import lombok.Getter;

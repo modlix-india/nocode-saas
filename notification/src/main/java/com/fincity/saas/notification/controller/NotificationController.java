@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.notification.document.Notification;
-import com.fincity.saas.notification.model.NotificationRequest;
-import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.request.NotificationRequest;
+import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.model.response.NotificationResponse;
 import com.fincity.saas.notification.service.NotificationProcessingService;
 

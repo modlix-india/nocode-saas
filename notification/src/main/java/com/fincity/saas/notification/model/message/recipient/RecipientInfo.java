@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.model.message;
+package com.fincity.saas.notification.model.message.recipient;
 
 import java.io.Serial;
 import java.io.Serializable;

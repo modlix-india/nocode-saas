@@ -20,7 +20,7 @@ import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
-import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.request.SendRequest;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;

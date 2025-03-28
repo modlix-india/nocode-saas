@@ -9,7 +9,7 @@ import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.channel.ChannelType;
 import com.fincity.saas.notification.exception.NotificationDeliveryException;
-import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.service.NotificationConnectionService;
 import com.fincity.saas.notification.service.SentNotificationService;
 

@@ -2,7 +2,7 @@ package com.fincity.saas.notification.controller;
 
 import org.springframework.web.bind.annotation.PostMapping;
 
-import com.fincity.saas.notification.model.NotificationCacheRequest;
+import com.fincity.saas.notification.model.request.NotificationCacheRequest;
 import com.fincity.saas.notification.service.INotificationCacheService;
 
 import reactor.core.publisher.Mono;

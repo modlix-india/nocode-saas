@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.model;
+package com.fincity.saas.notification.model.request;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -10,7 +10,7 @@ import com.fincity.saas.notification.dto.UserPreference;
 import com.fincity.saas.notification.enums.channel.ChannelType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.message.NotificationMessage;
-import com.fincity.saas.notification.model.message.RecipientInfo;
+import com.fincity.saas.notification.model.message.recipient.RecipientInfo;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.message.channel.MobilePushMessage;

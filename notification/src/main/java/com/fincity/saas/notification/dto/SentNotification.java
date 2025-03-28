@@ -16,8 +16,8 @@ import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
-import com.fincity.saas.notification.model.NotificationChannel;
-import com.fincity.saas.notification.model.SendRequest;
+import com.fincity.saas.notification.model.request.NotificationChannel;
+import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
 
 import lombok.Data;
