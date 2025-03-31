@@ -2,6 +2,7 @@ package com.fincity.saas.notification.service;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -21,8 +23,13 @@ import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
 import com.fincity.saas.notification.model.request.SendRequest;
+import com.fincity.saas.notification.service.channel.IChannelStorageService;
+import com.fincity.saas.notification.service.channel.inapp.InAppNotificationService;
 
+import jakarta.annotation.PostConstruct;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
 @Service
@@ -31,7 +38,21 @@ public class SentNotificationService
 
 	private static final String SENT_NOTIFICATION_CACHE = "sentNotification";
 
+	private final InAppNotificationService inAppNotificationService;
+
+	private final Map<NotificationChannelType, IChannelStorageService<ULong, ? extends AbstractUpdatableDTO<ULong, ULong>, ?>> storageServices = new EnumMap<>(
+			NotificationChannelType.class);
+
 	private CacheService cacheService;
+
+	public SentNotificationService(InAppNotificationService inAppNotificationService) {
+		this.inAppNotificationService = inAppNotificationService;
+	}
+
+	@PostConstruct
+	public void init() {
+		this.storageServices.put(inAppNotificationService.getChannelType(), inAppNotificationService);
+	}
 
 	@Override
 	protected String getCacheName() {
@@ -139,25 +160,40 @@ public class SentNotificationService
 
 	private Mono<SentNotification> createFromRequest(SendRequest request, NotificationStage notificationStage,
 			NotificationDeliveryStatus deliveryStatus, NotificationChannelType... channelTypes) {
-		return this
-				.createSentNotification(request, LocalDateTime.now(), notificationStage, deliveryStatus, channelTypes)
-				.flatMap(this::create)
+		LocalDateTime triggerTime = LocalDateTime.now();
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.createSentNotification(request, triggerTime, notificationStage, deliveryStatus,
+						channelTypes),
+
+				this::create,
+
+				(sendNotification, created) -> this.createChannelStorage(request, triggerTime, notificationStage,
+						deliveryStatus),
+
+				(sendNotification, created, sCreated) -> Mono.just(created))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.createFromRequest"));
+
 	}
 
 	private Mono<SentNotification> updateOrCreateFromRequest(SendRequest request, NotificationStage notificationStage,
 			NotificationDeliveryStatus deliveryStatus, NotificationChannelType... channelTypes) {
+		LocalDateTime triggerTime = LocalDateTime.now();
 
 		return FlatMapUtil.flatMapMono(
 
 				() -> super.getByCode(request.getCode()),
 
-				sentNotification -> this.updateSentNotification(sentNotification, request, LocalDateTime.now(),
+				sentNotification -> this.updateSentNotification(sentNotification, request, triggerTime,
 						notificationStage, deliveryStatus, channelTypes),
 
 				(sentNotification, updatedNotification) -> this.update(updatedNotification),
 
-				(sentNotification, updatedNotification, updated) -> this.evictCode(updated.getCode())
+				(sentNotification, updatedNotification, updated) -> this.updateChannelStorage(request, triggerTime,
+						notificationStage, deliveryStatus),
+
+				(sentNotification, updatedNotification, updated, sUpdated) -> this.evictCode(updated.getCode())
 						.map(evictedCode -> updated))
 				.switchIfEmpty(this.createFromRequest(request, notificationStage, deliveryStatus, channelTypes))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.updateFromRequest"));
@@ -212,5 +248,33 @@ public class SentNotificationService
 			if (request.getChannelErrors() != null && !request.getChannelErrors().isEmpty())
 				sentNotification.setChannelErrorInfo(request.getChannelErrors());
 		}
+	}
+
+	private Mono<Boolean> createChannelStorage(SendRequest request, LocalDateTime triggerTime,
+			NotificationStage notificationStage, NotificationDeliveryStatus deliveryStatus) {
+
+		return Flux.fromIterable(storageServices.entrySet())
+				.parallel()
+				.runOn(Schedulers.boundedElastic())
+				.filter(entry -> request.getChannels().containsChannel(entry.getKey()))
+				.flatMap(service -> service.getValue()
+						.saveChannelNotification(request, triggerTime, notificationStage, deliveryStatus)
+						.map(c -> Boolean.TRUE))
+				.sequential()
+				.any(Boolean.TRUE::equals);
+	}
+
+	private Mono<Boolean> updateChannelStorage(SendRequest request, LocalDateTime triggerTime,
+			NotificationStage notificationStage, NotificationDeliveryStatus deliveryStatus) {
+
+		return Flux.fromIterable(storageServices.entrySet())
+				.parallel()
+				.runOn(Schedulers.boundedElastic())
+				.filter(entry -> request.getChannels().containsChannel(entry.getKey()))
+				.flatMap(service -> service.getValue()
+						.updateChannelNotification(request, triggerTime, notificationStage, deliveryStatus)
+						.map(c -> Boolean.TRUE))
+				.sequential()
+				.any(Boolean.TRUE::equals);
 	}
 }

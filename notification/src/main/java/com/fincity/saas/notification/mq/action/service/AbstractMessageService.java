@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
 
 @Service
-public abstract class AbstractMessageService implements IMessageService, ChannelType {
+public abstract class AbstractMessageService<T extends AbstractMessageService<T>> implements IMessageService<T>, ChannelType {
 
 	private NotificationConnectionService connectionService;
 

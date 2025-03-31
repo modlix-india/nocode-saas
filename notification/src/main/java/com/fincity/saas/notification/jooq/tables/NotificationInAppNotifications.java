@@ -7,7 +7,6 @@ package com.fincity.saas.notification.jooq.tables;
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
-import com.fincity.saas.notification.jooq.enums.NotificationInAppNotificationsNotificationDeliveryStatus;
 import com.fincity.saas.notification.jooq.tables.records.NotificationInAppNotificationsRecord;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;
 
@@ -15,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -111,10 +111,31 @@ public class NotificationInAppNotifications extends TableImpl<NotificationInAppN
 
     /**
      * The column
+     * <code>notification.notification_in_app_notifications.NOTIFICATION_STAGE</code>.
+     * Stage of the notification that is sent
+     */
+    public final TableField<NotificationInAppNotificationsRecord, String> NOTIFICATION_STAGE = createField(DSL.name("NOTIFICATION_STAGE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("PLATFORM", SQLDataType.VARCHAR)), this, "Stage of the notification that is sent");
+
+    /**
+     * The column
      * <code>notification.notification_in_app_notifications.NOTIFICATION_DELIVERY_STATUS</code>.
      * Current Delivery status of this notification message
      */
-    public final TableField<NotificationInAppNotificationsRecord, NotificationInAppNotificationsNotificationDeliveryStatus> NOTIFICATION_DELIVERY_STATUS = createField(DSL.name("NOTIFICATION_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)).asEnumDataType(NotificationInAppNotificationsNotificationDeliveryStatus.class), this, "Current Delivery status of this notification message");
+    public final TableField<NotificationInAppNotificationsRecord, String> NOTIFICATION_DELIVERY_STATUS = createField(DSL.name("NOTIFICATION_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)), this, "Current Delivery status of this notification message");
+
+    /**
+     * The column
+     * <code>notification.notification_in_app_notifications.ACTIONS</code>.
+     * Actions to be performed on this notification
+     */
+    public final TableField<NotificationInAppNotificationsRecord, Map> ACTIONS = createField(DSL.name("ACTIONS"), SQLDataType.JSON, this, "Actions to be performed on this notification", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
+
+    /**
+     * The column
+     * <code>notification.notification_in_app_notifications.TRIGGER_TIME</code>.
+     * Time when the notification was triggered
+     */
+    public final TableField<NotificationInAppNotificationsRecord, LocalDateTime> TRIGGER_TIME = createField(DSL.name("TRIGGER_TIME"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Time when the notification was triggered");
 
     /**
      * The column

@@ -41,8 +41,8 @@ CREATE TABLE `notification`.`notification_sent_notifications` (
     `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent. References security_user table',
     `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the user. References security_user table',
 
-    `NOTIFICATION_CHANNEL` JSON NOT NULL COMMENT 'Notification message that is sent in different channels',
     `NOTIFICATION_TYPE` ENUM ('ALERT', 'BULK', 'INFO', 'WARNING', 'ERROR', 'SUCCESS', 'REMINDER', 'SCHEDULED', 'SYSTEM', 'PROMOTIONAL', 'UPDATE', 'SECURITY') NOT NULL DEFAULT 'INFO' COMMENT 'Type of notification that is sent',
+    `NOTIFICATION_CHANNEL` JSON NOT NULL COMMENT 'Notification message that is sent in different channels',
     `NOTIFICATION_STAGE` ENUM ('PLATFORM', 'GATEWAY', 'NETWORK') NOT NULL DEFAULT 'PLATFORM' COMMENT 'Stage of the notification that is sent',
     `TRIGGER_TIME` TIMESTAMP NOT NULL COMMENT 'Time when the notification was triggered',
 
@@ -84,7 +84,10 @@ CREATE TABLE `notification`.`notification_in_app_notifications` (
 
     `NOTIFICATION_TYPE` ENUM ('ALERT', 'BULK', 'INFO', 'WARNING', 'ERROR', 'SUCCESS', 'REMINDER', 'SCHEDULED', 'SYSTEM', 'PROMOTIONAL', 'UPDATE', 'SECURITY') NOT NULL DEFAULT 'INFO' COMMENT 'Type of notification that is sent',
     `IN_APP_MESSAGE` JSON NOT NULL COMMENT 'In-App Notification message that is sent',
+    `NOTIFICATION_STAGE` ENUM ('PLATFORM', 'GATEWAY', 'NETWORK') NOT NULL DEFAULT 'PLATFORM' COMMENT 'Stage of the notification that is sent',
     `NOTIFICATION_DELIVERY_STATUS` ENUM ('NO_INFO', 'CREATED', 'ERROR', 'CANCELLED', 'QUEUED', 'SENT', 'DELIVERED', 'READ', 'FAILED') NOT NULL DEFAULT 'NO_INFO' COMMENT 'Current Delivery status of this notification message',
+    `ACTIONS` JSON NULL COMMENT 'Actions to be performed on this notification',
+    `TRIGGER_TIME` TIMESTAMP NOT NULL COMMENT 'Time when the notification was triggered',
 
     `SENT` TINYINT NOT NULL DEFAULT 0 COMMENT 'Is this notification is sent or not',
     `SENT_TIME` TIMESTAMP NULL COMMENT 'Time when this notification was sent',

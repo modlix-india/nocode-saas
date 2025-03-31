@@ -19,7 +19,7 @@ import reactor.core.publisher.Sinks.Many;
 import reactor.util.concurrent.Queues;
 
 @Service(value = "notificationEvent")
-public class NotificationEventService extends AbstractInAppService implements IInAppService {
+public class NotificationEventService extends AbstractInAppService implements IInAppService<NotificationEventService> {
 
 	private static final String EVENT_NAME = "sse-notification-event";
 
@@ -28,7 +28,7 @@ public class NotificationEventService extends AbstractInAppService implements II
 	private final Many<SendResponse<InAppMessage>> sink;
 
 	public NotificationEventService() {
-		this.sink = Sinks.many().multicast().onBackpressureBuffer(BUFFER_SIZE);
+		this.sink = Sinks.many().multicast().onBackpressureBuffer(BUFFER_SIZE, false);
 	}
 
 	@Override
@@ -38,7 +38,8 @@ public class NotificationEventService extends AbstractInAppService implements II
 				.onErrorResume(e -> Mono.just(Boolean.FALSE));
 	}
 
-	public Flux<ServerSentEvent<SendResponse<InAppMessage>>> subscribeToEvent(String appCode, String clientCode, BigInteger userId) {
+	public Flux<ServerSentEvent<SendResponse<InAppMessage>>> subscribeToEvent(String appCode, String clientCode,
+			BigInteger userId) {
 
 		if (appCode == null || clientCode == null || userId == null)
 			return Flux.empty();
@@ -64,7 +65,8 @@ public class NotificationEventService extends AbstractInAppService implements II
 				.build();
 	}
 
-	private Mono<Boolean> isMessageForUser(SendResponse<InAppMessage> message, String appCode, String clientCode, BigInteger userId) {
+	private Mono<Boolean> isMessageForUser(SendResponse<InAppMessage> message, String appCode, String clientCode,
+			BigInteger userId) {
 		return Mono.just(message.getClientCode().equals(clientCode)
 				&& message.getAppCode().equals(appCode)
 				&& message.getUserId().equals(userId));

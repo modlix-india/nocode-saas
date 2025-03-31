@@ -5,7 +5,7 @@ import com.fincity.saas.notification.model.request.SendRequest;
 
 import reactor.core.publisher.Mono;
 
-public interface IInAppService {
+public interface IInAppService<T extends IInAppService<T>>  {
 
 	Mono<Boolean> sendMessage(SendRequest inAppMessage, Connection connection);
 

@@ -20,11 +20,11 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class EmailService extends AbstractMessageService {
+public class EmailService extends AbstractMessageService<EmailService> {
 
 	private final SendGridService sendGridService;
 	private final SMTPService smtpService;
-	private final Map<String, IEmailService> services = new HashMap<>();
+	private final Map<String, IEmailService<?>> services = new HashMap<>();
 	private final NotificationMessageResourceService msgService;
 
 	public EmailService(SendGridService sendGridService, SMTPService smtpService,

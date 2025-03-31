@@ -121,30 +121,11 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
 
     /**
      * Setter for
-     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
-     * Notification message that is sent in different channels
-     */
-    public NotificationSentNotificationsRecord setNotificationChannel(NotificationChannel value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
-     * Notification message that is sent in different channels
-     */
-    public NotificationChannel getNotificationChannel() {
-        return (NotificationChannel) get(5);
-    }
-
-    /**
-     * Setter for
      * <code>notification.notification_sent_notifications.NOTIFICATION_TYPE</code>.
      * Type of notification that is sent
      */
     public NotificationSentNotificationsRecord setNotificationType(String value) {
-        set(6, value);
+        set(5, value);
         return this;
     }
 
@@ -154,7 +135,26 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
      * Type of notification that is sent
      */
     public String getNotificationType() {
-        return (String) get(6);
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for
+     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
+     * Notification message that is sent in different channels
+     */
+    public NotificationSentNotificationsRecord setNotificationChannel(NotificationChannel value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
+     * Notification message that is sent in different channels
+     */
+    public NotificationChannel getNotificationChannel() {
+        return (NotificationChannel) get(6);
     }
 
     /**
@@ -541,7 +541,7 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
     /**
      * Create a detached, initialised NotificationSentNotificationsRecord
      */
-    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, NotificationChannel notificationChannel, String notificationType, String notificationStage, LocalDateTime triggerTime, Byte isEmail, Map emailDeliveryStatus, Byte isInApp, Map inAppDeliveryStatus, Byte isMobilePush, Map mobilePushDeliveryStatus, Byte isWebPush, Map webPushDeliveryStatus, Byte isSms, Map smsDeliveryStatus, Byte isError, NotificationErrorInfo errorInfo, Map channelErrors, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationSentNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, String notificationType, NotificationChannel notificationChannel, String notificationStage, LocalDateTime triggerTime, Byte isEmail, Map emailDeliveryStatus, Byte isInApp, Map inAppDeliveryStatus, Byte isMobilePush, Map mobilePushDeliveryStatus, Byte isWebPush, Map webPushDeliveryStatus, Byte isSms, Map smsDeliveryStatus, Byte isError, NotificationErrorInfo errorInfo, Map channelErrors, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationSentNotifications.NOTIFICATION_SENT_NOTIFICATIONS);
 
         setId(id);
@@ -549,8 +549,8 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
         setAppCode(appCode);
         setClientCode(clientCode);
         setUserId(userId);
-        setNotificationChannel(notificationChannel);
         setNotificationType(notificationType);
+        setNotificationChannel(notificationChannel);
         setNotificationStage(notificationStage);
         setTriggerTime(triggerTime);
         setIsEmail(isEmail);

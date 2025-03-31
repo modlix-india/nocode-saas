@@ -11,7 +11,6 @@ import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.NotificationType;
@@ -63,7 +62,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 
 	public static SentNotification from(SendRequest request, LocalDateTime triggerTime) {
 		return new SentNotification()
-				.setCode(request.getCode() != null ? request.getCode() : UniqueUtil.shortUUID())
+				.setCode(request.getCode())
 				.setClientCode(request.getClientCode())
 				.setAppCode(request.getAppCode())
 				.setUserId(ULongUtil.valueOf(request.getUserId()))
@@ -74,7 +73,7 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	public void updateChannelInfo(NotificationChannelType channelType, Boolean isEnabled,
-	                              Map<String, LocalDateTime> deliveryStatus, boolean override) {
+			Map<String, LocalDateTime> deliveryStatus, boolean override) {
 
 		switch (channelType) {
 			case EMAIL -> this.updateChannelInfo(isEnabled, deliveryStatus, this::setEmail,
@@ -94,8 +93,8 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	private void updateChannelInfo(Boolean isEnabled, Map<String, LocalDateTime> deliveryStatus,
-	                               Consumer<Boolean> setEnabled, Supplier<Map<String, LocalDateTime>> getStatus,
-	                               Consumer<Map<String, LocalDateTime>> setStatus, boolean override) {
+			Consumer<Boolean> setEnabled, Supplier<Map<String, LocalDateTime>> getStatus,
+			Consumer<Map<String, LocalDateTime>> setStatus, boolean override) {
 
 		setEnabled.accept(isEnabled);
 
@@ -104,7 +103,8 @@ public class SentNotification extends AbstractUpdatableDTO<ULong, ULong> {
 			return;
 		}
 
-		Map<String, LocalDateTime> currentStatus = override ? getStatus.get() : HashMap.newHashMap(DELIVERY_STATUS_SIZE);
+		Map<String, LocalDateTime> currentStatus = override ? getStatus.get()
+				: HashMap.newHashMap(DELIVERY_STATUS_SIZE);
 
 		currentStatus.putAll(deliveryStatus);
 		setStatus.accept(currentStatus);

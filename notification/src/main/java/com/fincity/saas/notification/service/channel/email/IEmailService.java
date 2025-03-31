@@ -5,7 +5,7 @@ import com.fincity.saas.notification.model.message.channel.EmailMessage;
 
 import reactor.core.publisher.Mono;
 
-public interface IEmailService {
+public interface IEmailService<T extends IEmailService<T>> {
 
 	Mono<Boolean> sendMail(EmailMessage emailMessage, Connection connection);
 

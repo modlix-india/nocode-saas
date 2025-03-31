@@ -97,17 +97,17 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
 
     /**
      * The column
-     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
-     * Notification message that is sent in different channels
-     */
-    public final TableField<NotificationSentNotificationsRecord, NotificationChannel> NOTIFICATION_CHANNEL = createField(DSL.name("NOTIFICATION_CHANNEL"), SQLDataType.JSON.nullable(false), this, "Notification message that is sent in different channels", new JSONtoClassConverter<JSON, NotificationChannel>(JSON.class, NotificationChannel.class));
-
-    /**
-     * The column
      * <code>notification.notification_sent_notifications.NOTIFICATION_TYPE</code>.
      * Type of notification that is sent
      */
     public final TableField<NotificationSentNotificationsRecord, String> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)), this, "Type of notification that is sent");
+
+    /**
+     * The column
+     * <code>notification.notification_sent_notifications.NOTIFICATION_CHANNEL</code>.
+     * Notification message that is sent in different channels
+     */
+    public final TableField<NotificationSentNotificationsRecord, NotificationChannel> NOTIFICATION_CHANNEL = createField(DSL.name("NOTIFICATION_CHANNEL"), SQLDataType.JSON.nullable(false), this, "Notification message that is sent in different channels", new JSONtoClassConverter<JSON, NotificationChannel>(JSON.class, NotificationChannel.class));
 
     /**
      * The column

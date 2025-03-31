@@ -31,7 +31,7 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
 @Service(value = "smtp")
-public class SMTPService extends AbstractEmailService implements IEmailService {
+public class SMTPService extends AbstractEmailService implements IEmailService<SMTPService> {
 
 	@SuppressWarnings("unchecked")
 	@Override

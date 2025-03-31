@@ -26,7 +26,7 @@ import reactor.util.context.Context;
 @Component
 public class NotificationMessageListener {
 
-	private final Map<NotificationChannelType, IMessageService> messageServices = new EnumMap<>(
+	private final Map<NotificationChannelType, IMessageService<?>> messageServices = new EnumMap<>(
 			NotificationChannelType.class);
 
 	private final EmailService emailService;

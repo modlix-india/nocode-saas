@@ -304,7 +304,7 @@
                                     <inputSchema>notification</inputSchema>
                                     <forcedTypes>
                                         <forcedType>
-                                            <userType>com.fincity.saas.notification.model.NotificationChannel</userType>
+                                            <userType>com.fincity.saas.notification.model.request.NotificationChannel</userType>
                                             <converter>
                                                 com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
                                             </converter>
@@ -339,7 +339,7 @@
                                             <genericConverter>true</genericConverter>
                                         </forcedTypes>
                                         <forcedType>
-                                            <name>com.fincity.saas.commons.jooq.enums.notification.NotificationType</name>
+                                            <name>com.fincity.saas.notification.enums.NotificationType</name>
                                             <includeExpression>.*NOTIFICATION_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                         </forcedType>
@@ -349,11 +349,10 @@
                                             <includeTypes>ENUM</includeTypes>
                                         </forcedType>
                                         <forcedType>
-                                            <name>com.fincity.saas.commons.jooq.enums.notification.NotificationType</name>
-                                            <includeExpression>.*NOTIFICATION_TYPE</includeExpression>
+                                            <name>com.fincity.saas.notification.enums.notification.NotificationDeliveryStatus</name>
+                                            <includeExpression>.*NOTIFICATION_DELIVERY_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                         </forcedType>
-
                                     </forcedTypes>
                                 </database>
                                 <generate>

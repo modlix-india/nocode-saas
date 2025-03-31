@@ -4,11 +4,11 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
-import com.fincity.saas.notification.jooq.enums.NotificationInAppNotificationsNotificationDeliveryStatus;
 import com.fincity.saas.notification.jooq.tables.NotificationInAppNotifications;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -160,11 +160,30 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
 
     /**
      * Setter for
+     * <code>notification.notification_in_app_notifications.NOTIFICATION_STAGE</code>.
+     * Stage of the notification that is sent
+     */
+    public NotificationInAppNotificationsRecord setNotificationStage(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_in_app_notifications.NOTIFICATION_STAGE</code>.
+     * Stage of the notification that is sent
+     */
+    public String getNotificationStage() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for
      * <code>notification.notification_in_app_notifications.NOTIFICATION_DELIVERY_STATUS</code>.
      * Current Delivery status of this notification message
      */
-    public NotificationInAppNotificationsRecord setNotificationDeliveryStatus(NotificationInAppNotificationsNotificationDeliveryStatus value) {
-        set(7, value);
+    public NotificationInAppNotificationsRecord setNotificationDeliveryStatus(String value) {
+        set(8, value);
         return this;
     }
 
@@ -173,8 +192,46 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * <code>notification.notification_in_app_notifications.NOTIFICATION_DELIVERY_STATUS</code>.
      * Current Delivery status of this notification message
      */
-    public NotificationInAppNotificationsNotificationDeliveryStatus getNotificationDeliveryStatus() {
-        return (NotificationInAppNotificationsNotificationDeliveryStatus) get(7);
+    public String getNotificationDeliveryStatus() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>notification.notification_in_app_notifications.ACTIONS</code>.
+     * Actions to be performed on this notification
+     */
+    public NotificationInAppNotificationsRecord setActions(Map value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_in_app_notifications.ACTIONS</code>.
+     * Actions to be performed on this notification
+     */
+    public Map getActions() {
+        return (Map) get(9);
+    }
+
+    /**
+     * Setter for
+     * <code>notification.notification_in_app_notifications.TRIGGER_TIME</code>.
+     * Time when the notification was triggered
+     */
+    public NotificationInAppNotificationsRecord setTriggerTime(LocalDateTime value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_in_app_notifications.TRIGGER_TIME</code>.
+     * Time when the notification was triggered
+     */
+    public LocalDateTime getTriggerTime() {
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -183,7 +240,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * notification is sent or not
      */
     public NotificationInAppNotificationsRecord setSent(Byte value) {
-        set(8, value);
+        set(11, value);
         return this;
     }
 
@@ -193,7 +250,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * notification is sent or not
      */
     public Byte getSent() {
-        return (Byte) get(8);
+        return (Byte) get(11);
     }
 
     /**
@@ -202,7 +259,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was sent
      */
     public NotificationInAppNotificationsRecord setSentTime(LocalDateTime value) {
-        set(9, value);
+        set(12, value);
         return this;
     }
 
@@ -212,7 +269,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was sent
      */
     public LocalDateTime getSentTime() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(12);
     }
 
     /**
@@ -221,7 +278,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * this notification is delivered or not
      */
     public NotificationInAppNotificationsRecord setDelivered(Byte value) {
-        set(10, value);
+        set(13, value);
         return this;
     }
 
@@ -231,7 +288,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * this notification is delivered or not
      */
     public Byte getDelivered() {
-        return (Byte) get(10);
+        return (Byte) get(13);
     }
 
     /**
@@ -240,7 +297,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was delivered to user
      */
     public NotificationInAppNotificationsRecord setDeliveredTime(LocalDateTime value) {
-        set(11, value);
+        set(14, value);
         return this;
     }
 
@@ -250,7 +307,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was delivered to user
      */
     public LocalDateTime getDeliveredTime() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(14);
     }
 
     /**
@@ -259,7 +316,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * notification is read or not
      */
     public NotificationInAppNotificationsRecord setRead(Byte value) {
-        set(12, value);
+        set(15, value);
         return this;
     }
 
@@ -269,7 +326,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * notification is read or not
      */
     public Byte getRead() {
-        return (Byte) get(12);
+        return (Byte) get(15);
     }
 
     /**
@@ -278,7 +335,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was read by user
      */
     public NotificationInAppNotificationsRecord setReadTime(LocalDateTime value) {
-        set(13, value);
+        set(16, value);
         return this;
     }
 
@@ -288,7 +345,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was read by user
      */
     public LocalDateTime getReadTime() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(16);
     }
 
     /**
@@ -297,7 +354,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * this notification is failed or not
      */
     public NotificationInAppNotificationsRecord setFailed(Byte value) {
-        set(14, value);
+        set(17, value);
         return this;
     }
 
@@ -307,7 +364,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * this notification is failed or not
      */
     public Byte getFailed() {
-        return (Byte) get(14);
+        return (Byte) get(17);
     }
 
     /**
@@ -316,7 +373,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was failed
      */
     public NotificationInAppNotificationsRecord setFailedTime(LocalDateTime value) {
-        set(15, value);
+        set(18, value);
         return this;
     }
 
@@ -326,7 +383,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this notification was failed
      */
     public LocalDateTime getFailedTime() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -335,7 +392,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * ID of the user who created this row
      */
     public NotificationInAppNotificationsRecord setCreatedBy(ULong value) {
-        set(16, value);
+        set(19, value);
         return this;
     }
 
@@ -345,7 +402,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(19);
     }
 
     /**
@@ -354,7 +411,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this row is created
      */
     public NotificationInAppNotificationsRecord setCreatedAt(LocalDateTime value) {
-        set(17, value);
+        set(20, value);
         return this;
     }
 
@@ -364,7 +421,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(20);
     }
 
     /**
@@ -373,7 +430,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * ID of the user who updated this row
      */
     public NotificationInAppNotificationsRecord setUpdatedBy(ULong value) {
-        set(18, value);
+        set(21, value);
         return this;
     }
 
@@ -383,7 +440,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * ID of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(21);
     }
 
     /**
@@ -392,7 +449,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this row is updated
      */
     public NotificationInAppNotificationsRecord setUpdatedAt(LocalDateTime value) {
-        set(19, value);
+        set(22, value);
         return this;
     }
 
@@ -402,7 +459,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(22);
     }
 
     // -------------------------------------------------------------------------
@@ -428,7 +485,7 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
     /**
      * Create a detached, initialised NotificationInAppNotificationsRecord
      */
-    public NotificationInAppNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, String notificationType, InAppMessage inAppMessage, NotificationInAppNotificationsNotificationDeliveryStatus notificationDeliveryStatus, Byte sent, LocalDateTime sentTime, Byte delivered, LocalDateTime deliveredTime, Byte read, LocalDateTime readTime, Byte failed, LocalDateTime failedTime, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public NotificationInAppNotificationsRecord(ULong id, String code, String appCode, String clientCode, ULong userId, String notificationType, InAppMessage inAppMessage, String notificationStage, String notificationDeliveryStatus, Map actions, LocalDateTime triggerTime, Byte sent, LocalDateTime sentTime, Byte delivered, LocalDateTime deliveredTime, Byte read, LocalDateTime readTime, Byte failed, LocalDateTime failedTime, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(NotificationInAppNotifications.NOTIFICATION_IN_APP_NOTIFICATIONS);
 
         setId(id);
@@ -438,7 +495,10 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
         setUserId(userId);
         setNotificationType(notificationType);
         setInAppMessage(inAppMessage);
+        setNotificationStage(notificationStage);
         setNotificationDeliveryStatus(notificationDeliveryStatus);
+        setActions(actions);
+        setTriggerTime(triggerTime);
         setSent(sent);
         setSentTime(sentTime);
         setDelivered(delivered);

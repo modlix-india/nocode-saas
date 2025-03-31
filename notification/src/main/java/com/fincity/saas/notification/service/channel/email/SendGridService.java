@@ -25,7 +25,7 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
 @Service(value = "sendgrid")
-public class SendGridService extends AbstractEmailService implements IEmailService {
+public class SendGridService extends AbstractEmailService implements IEmailService<SendGridService> {
 
 	private static final String EMAIL_ENDPOINT = "mail/send";
 
