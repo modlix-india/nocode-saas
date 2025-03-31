@@ -33,6 +33,9 @@ public interface INotificationCacheService<T> {
 
 	default Mono<Boolean> evict(NotificationCacheRequest cacheRequest) {
 
+		if (cacheRequest.isEmpty())
+			return Mono.just(Boolean.FALSE);
+
 		if (cacheRequest.hasChannelEntities())
 			return Mono.zip(
 					this.evictChannelEntities(cacheRequest.getChannelEntities()),

@@ -139,10 +139,12 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 	}
 
 	public Mono<Boolean> hasConnection(String name, String appCode, String clientCode, ConnectionType type) {
-		return this.readInternalConnection(name, appCode, clientCode, type).hasElement().switchIfEmpty(Mono.just(Boolean.FALSE));
+		return this.readInternalConnection(name, appCode, clientCode, type).hasElement()
+				.switchIfEmpty(Mono.just(Boolean.FALSE));
 	}
 
-	public Mono<Connection> readInternalConnection(String name, String appCode, String clientCode, ConnectionType type) {
+	public Mono<Connection> readInternalConnection(String name, String appCode, String clientCode,
+			ConnectionType type) {
 
 		return FlatMapUtil.flatMapMono(
 

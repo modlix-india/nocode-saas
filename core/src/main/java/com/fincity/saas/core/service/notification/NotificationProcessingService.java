@@ -14,6 +14,7 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.document.Notification;
 import com.fincity.saas.core.feign.IFeignNotificationService;
 import com.fincity.saas.core.model.notification.NotificationCacheRequest;
@@ -75,24 +76,21 @@ public class NotificationProcessingService {
 						Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processAndSendNotification"));
 	}
 
-	public Mono<Boolean> evictConnectionCache(String appCode, String clientCode, String connectionName) {
-		return notificationService.evictNotificationConnectionCache(new NotificationCacheRequest()
-				.setAppCode(appCode).setClientCode(clientCode).setEntityName(connectionName));
+	public Mono<Boolean> evictConnectionCache(Connection connection) {
+
+		NotificationCacheRequest notificationCacheRequest = new NotificationCacheRequest()
+				.setAppCode(connection.getAppCode()).setClientCode(connection.getClientCode())
+				.setEntityName(connection.getName());
+
+		return notificationService.evictNotificationConnectionCache(notificationCacheRequest);
 	}
 
 	public Mono<Boolean> evictNotificationCache(Notification notification) {
 
 		NotificationCacheRequest notificationCacheRequest = new NotificationCacheRequest()
 				.setAppCode(notification.getAppCode()).setClientCode(notification.getClientCode())
-				.setEntityName(notification.getName());
+				.setEntityName(notification.getName()).setChannelEntities(notification.getChannelTemplateCodes());
 
 		return notificationService.evictNotificationCache(notificationCacheRequest);
-	}
-
-	public Mono<Boolean> evictNotificationTemplateCache(String appCode, String clientCode, String notificationName,
-			Map<String, String> channelEntities) {
-		return notificationService.evictNotificationCache(new NotificationCacheRequest()
-				.setAppCode(appCode).setClientCode(clientCode).setEntityName(notificationName)
-				.setChannelEntities(channelEntities));
 	}
 }

@@ -35,20 +35,16 @@ public class NotificationMessageProducer {
 
 	public Mono<SendRequest> broadcast(SendRequest sendRequest) {
 		return FlatMapUtil.flatMapMono(
-				() -> Mono.just(sendRequest),
+				() -> Mono.deferContextual(ctx -> {
+					boolean isDebug = ctx.hasKey(LogUtil.DEBUG_KEY);
 
-				request -> Mono.deferContextual(cv -> {
-					if (!cv.hasKey(LogUtil.DEBUG_KEY))
-						return Mono.just(request);
-
-					request.setXDebug(cv.get(LogUtil.DEBUG_KEY));
-					return Mono.just(request);
+					return isDebug ? Mono.just(sendRequest.setXDebug(ctx.get(LogUtil.DEBUG_KEY))) : Mono.just(sendRequest);
 				}),
 
-				(request, dRequest) -> sentNotificationService.toGatewayNotification(dRequest,
+				dRequest -> sentNotificationService.toGatewayNotification(dRequest,
 						NotificationDeliveryStatus.QUEUED),
 
-				(request, dRequest, sRequest) -> Mono.fromCallable(() -> {
+				(dRequest, sRequest) -> Mono.fromCallable(() -> {
 					amqpTemplate.convertAndSend(fanoutExchangeName, "", dRequest);
 					return dRequest;
 				}));

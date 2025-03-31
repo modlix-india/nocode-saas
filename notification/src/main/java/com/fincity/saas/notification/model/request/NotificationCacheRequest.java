@@ -24,4 +24,8 @@ public class NotificationCacheRequest implements Serializable {
 	public boolean hasChannelEntities() {
 		return this.channelEntities != null && !this.channelEntities.isEmpty();
 	}
+
+	public boolean isEmpty() {
+		return this.appCode == null || this.clientCode == null || this.entityName == null;
+	}
 }

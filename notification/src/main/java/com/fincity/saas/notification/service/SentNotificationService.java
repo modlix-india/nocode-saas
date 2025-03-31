@@ -183,17 +183,19 @@ public class SentNotificationService
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> super.getByCode(request.getCode()),
+				() -> Mono.just(request),
 
-				sentNotification -> this.updateSentNotification(sentNotification, request, triggerTime,
+				req -> super.getByCode(req.getCode()),
+
+				(req, sentNotification) -> this.updateSentNotification(sentNotification, req, triggerTime,
 						notificationStage, deliveryStatus, channelTypes),
 
-				(sentNotification, updatedNotification) -> this.update(updatedNotification),
+				(req, sentNotification, updatedNotification) -> this.update(updatedNotification),
 
-				(sentNotification, updatedNotification, updated) -> this.updateChannelStorage(request, triggerTime,
+				(req, sentNotification, updatedNotification, updated) -> this.updateChannelStorage(request, triggerTime,
 						notificationStage, deliveryStatus),
 
-				(sentNotification, updatedNotification, updated, sUpdated) -> this.evictCode(updated.getCode())
+				(req, sentNotification, updatedNotification, updated, sUpdated) -> this.evictCode(updated.getCode())
 						.map(evictedCode -> updated))
 				.switchIfEmpty(this.createFromRequest(request, notificationStage, deliveryStatus, channelTypes))
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "SentNotificationService.updateFromRequest"));

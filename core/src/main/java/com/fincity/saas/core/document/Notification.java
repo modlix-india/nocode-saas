@@ -3,6 +3,7 @@ package com.fincity.saas.core.document;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -58,6 +59,14 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 						channelDetails.put(entry.getKey(), channelDetails.get(entry.getKey()).setCode(entry.getValue().getCode())));
 
 		this.setChannelDetails(channelDetails);
+	}
+
+	public Map<String, String> getChannelTemplateCodes() {
+		return this.getChannelDetails().entrySet().stream()
+				.collect(Collectors.toMap(
+						Map.Entry::getKey,
+						entry -> entry.getValue().getCode(),
+						(a, b) -> b));
 	}
 
 	@SuppressWarnings("unchecked")
