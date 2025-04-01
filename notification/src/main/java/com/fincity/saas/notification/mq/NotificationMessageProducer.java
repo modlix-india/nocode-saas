@@ -38,7 +38,8 @@ public class NotificationMessageProducer {
 				() -> Mono.deferContextual(ctx -> {
 					boolean isDebug = ctx.hasKey(LogUtil.DEBUG_KEY);
 
-					return isDebug ? Mono.just(sendRequest.setXDebug(ctx.get(LogUtil.DEBUG_KEY))) : Mono.just(sendRequest);
+					return isDebug ? Mono.just(sendRequest.setXDebug(ctx.get(LogUtil.DEBUG_KEY)))
+							: Mono.just(sendRequest);
 				}),
 
 				dRequest -> sentNotificationService.toGatewayNotification(dRequest,

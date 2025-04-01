@@ -227,7 +227,8 @@ public class SentNotificationService
 
 		this.updateErrorStatus(sentNotification, request, deliveryStatus);
 
-		List<NotificationChannelType> enabledChannels = request.getChannels().getEnabledChannels();
+		List<NotificationChannelType> enabledChannels = deliveryStatus.isError() ? request.getErrorChannels() :
+				request.getChannels().getEnabledChannels();
 
 		List<NotificationChannelType> channels = channelTypes.length > 0
 				? Arrays.stream(channelTypes).filter(enabledChannels::contains).toList()
@@ -258,7 +259,7 @@ public class SentNotificationService
 		return Flux.fromIterable(storageServices.entrySet())
 				.parallel()
 				.runOn(Schedulers.boundedElastic())
-				.filter(entry -> request.getChannels().containsChannel(entry.getKey()))
+				.filter(entry -> this.isChannelAvailable(entry.getKey(), request, deliveryStatus))
 				.flatMap(service -> service.getValue()
 						.saveChannelNotification(request, triggerTime, notificationStage, deliveryStatus)
 						.map(c -> Boolean.TRUE))
@@ -272,11 +273,15 @@ public class SentNotificationService
 		return Flux.fromIterable(storageServices.entrySet())
 				.parallel()
 				.runOn(Schedulers.boundedElastic())
-				.filter(entry -> request.getChannels().containsChannel(entry.getKey()))
+				.filter(entry -> this.isChannelAvailable(entry.getKey(), request, deliveryStatus))
 				.flatMap(service -> service.getValue()
 						.updateChannelNotification(request, triggerTime, notificationStage, deliveryStatus)
 						.map(c -> Boolean.TRUE))
 				.sequential()
 				.any(Boolean.TRUE::equals);
+	}
+
+	private boolean isChannelAvailable(NotificationChannelType channelType, SendRequest request, NotificationDeliveryStatus deliveryStatus) {
+		return deliveryStatus.isError() ? request.getChannelErrors().containsKey(channelType.getLiteral()) : request.getChannels().containsChannel(channelType);
 	}
 }

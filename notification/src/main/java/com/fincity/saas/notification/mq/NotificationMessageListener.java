@@ -17,6 +17,7 @@ import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.mq.action.service.IMessageService;
 import com.fincity.saas.notification.service.channel.email.EmailService;
+import com.fincity.saas.notification.service.channel.inapp.InAppService;
 import com.rabbitmq.client.Channel;
 
 import jakarta.annotation.PostConstruct;
@@ -31,10 +32,13 @@ public class NotificationMessageListener {
 
 	private final EmailService emailService;
 
+	private final InAppService inAppService;
+
 	private MqNameProvider mqNameProvider;
 
-	public NotificationMessageListener(EmailService emailService) {
+	public NotificationMessageListener(EmailService emailService, InAppService inAppService) {
 		this.emailService = emailService;
+		this.inAppService = inAppService;
 	}
 
 	@Autowired
@@ -45,6 +49,7 @@ public class NotificationMessageListener {
 	@PostConstruct
 	public void init() {
 		this.messageServices.put(NotificationChannelType.EMAIL, emailService);
+		this.messageServices.put(NotificationChannelType.IN_APP, inAppService);
 	}
 
 	@RabbitListener(queues = "#{mqNameProvider.getEmailBroadcastQueues()}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
@@ -69,11 +74,11 @@ public class NotificationMessageListener {
 
 				() -> Mono.justOrEmpty(this.messageServices.get(channelType)),
 
-				service -> service.execute(request).switchIfEmpty(Mono.just(Boolean.FALSE))
-		);
+				service -> service.execute(request).switchIfEmpty(Mono.just(Boolean.FALSE)));
 
 		return request.getXDebug() != null
-				? reveicedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, request.getXDebug())) : reveicedMono;
+				? reveicedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, request.getXDebug()))
+				: reveicedMono;
 	}
 
 }

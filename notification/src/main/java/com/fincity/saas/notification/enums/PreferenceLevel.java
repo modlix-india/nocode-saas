@@ -1,13 +1,12 @@
 package com.fincity.saas.notification.enums;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import org.jooq.EnumType;
 
+import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 
 import lombok.Getter;
@@ -16,22 +15,22 @@ import lombok.Getter;
 public enum PreferenceLevel implements EnumType {
 
 	CHANNEL("CHANNEL", "Channel", Boolean.FALSE,
-			Set.of(NotificationChannelType.DISABLED.getLiteral()), PreferenceLevel::toValidChannelList),
+			List.of(NotificationChannelType.DISABLED.getLiteral()), PreferenceLevel::toValidChannelList),
 	NOTIFICATION("NOTIFICATION", "Disabled Notification", Boolean.TRUE,
-			Set.of(), PreferenceLevel::toValidNotificationMap);
+			List.of(), PreferenceLevel::toValidNotificationList);
 
 	private final String literal;
 	private final String displayName;
 	private final boolean reverseSave;
-	private final Set<String> defaultList;
-	private final UnaryOperator<Set<String>> validator;
+	private final List<String> defaultList;
+	private final UnaryOperator<List<String>> validator;
 
-	PreferenceLevel(String literal, String displayName, Boolean reverseSave, Set<String> defaultList,
-	                UnaryOperator<Set<String>> validator) {
+	PreferenceLevel(String literal, String displayName, Boolean reverseSave, List<String> defaultList,
+			UnaryOperator<List<String>> validator) {
 		this.literal = literal;
 		this.displayName = displayName;
 		this.reverseSave = reverseSave;
-		this.defaultList = new HashSet<>(defaultList);
+		this.defaultList = CloneUtil.cloneMapList(defaultList);
 		this.validator = validator;
 	}
 
@@ -39,17 +38,18 @@ public enum PreferenceLevel implements EnumType {
 		return EnumType.lookupLiteral(PreferenceLevel.class, literal);
 	}
 
-	private static Set<String> toValidChannelList(Set<String> preferences) {
+	private static List<String> toValidChannelList(List<String> preferences) {
 		if (preferences.contains(NotificationChannelType.DISABLED.getLiteral())) {
 			if (preferences.size() > 1)
-				throw new IllegalArgumentException("Invalid channel preferences, disabled channel can not be set with other channels");
-			return new HashSet<>(List.of(NotificationChannelType.DISABLED.getLiteral()));
+				throw new IllegalArgumentException(
+						"Invalid channel preferences, disabled channel can not be set with other channels");
+			return List.of(NotificationChannelType.DISABLED.getLiteral());
 		}
 
 		return preferences;
 	}
 
-	private static Set<String> toValidNotificationMap(Set<String> preferences) {
+	private static List<String> toValidNotificationList(List<String> preferences) {
 		return preferences;
 	}
 
@@ -63,15 +63,15 @@ public enum PreferenceLevel implements EnumType {
 		return null;
 	}
 
-	public Set<String> getDefaultList() {
-		return new HashSet<>(this.defaultList);
-	}
-
-	public Set<String> toValidList(Collection<String> preferences) {
+	public List<String> toValidList(List<String> preferences) {
 
 		if (preferences == null || preferences.isEmpty())
 			return this.defaultList;
 
-		return this.validator.apply(new HashSet<>(preferences));
+		return this.validator.apply(preferences);
+	}
+
+	public boolean isDefault(List<String> preferences) {
+		return new HashSet<>(this.defaultList).containsAll(preferences);
 	}
 }

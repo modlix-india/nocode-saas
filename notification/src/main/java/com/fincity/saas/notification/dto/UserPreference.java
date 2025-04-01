@@ -2,29 +2,33 @@ package com.fincity.saas.notification.dto;
 
 import java.io.Serial;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.PreferenceLevel;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @ToString(callSuper = true)
+@FieldNameConstants
 public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 
-	private static final Map<String, Set<String>> DEFAULT_PREF = Arrays
+	private static final Map<String, List<String>> DEFAULT_PREF = Arrays
 			.stream(PreferenceLevel.values())
 			.collect(Collectors.toMap(
 					PreferenceLevel::getLiteral,
@@ -38,29 +42,26 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 	private String code = UniqueUtil.shortUUID();
 	private boolean enabled;
 
-	private Map<String, Set<String>> preferences;
+	private Map<String, List<String>> preferences;
+
+	public static Map<String, List<String>> getDefaultPref() {
+		return CloneUtil.cloneMapObject(DEFAULT_PREF);
+	}
 
 	public UserPreference setEnabled(boolean enabled) {
 		if (!enabled)
-			this.init();
+			this.preferences = getDefaultPref();
 
-		this.enabled = Boolean.TRUE;
+		this.enabled = enabled;
 		return this;
 	}
 
-	public UserPreference setPreferences(Map<String, Set<String>> preferences) {
-
-		this.initDefault();
+	public UserPreference setPreferences(Map<String, List<String>> preferences) {
 
 		if (preferences == null || preferences.isEmpty())
 			return this;
 
-		preferences.forEach((key, value) -> {
-			if (value != null && !value.isEmpty())
-				this.preferences.put(key, PreferenceLevel.lookupLiteral(key).toValidList(value));
-
-		});
-
+		this.preferences = CloneUtil.cloneMapObject(preferences);
 		this.enabled = this.hasAnyPreference();
 
 		return this;
@@ -73,7 +74,7 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 	}
 
 	public boolean hasPreference(NotificationChannelType channelType) {
-		Set<String> channelPreferences = this.preferences.get(PreferenceLevel.CHANNEL.getLiteral());
+		Collection<String> channelPreferences = this.preferences.get(PreferenceLevel.CHANNEL.getLiteral());
 		if (channelPreferences == null)
 			return false;
 		return channelPreferences.contains(channelType.getLiteral());
@@ -87,19 +88,6 @@ public class UserPreference extends AbstractUpdatableDTO<ULong, ULong> {
 		return preferences.entrySet().stream()
 				.anyMatch(entry -> entry.getValue() != null &&
 						!entry.getValue().isEmpty() &&
-						!PreferenceLevel.lookupLiteral(entry.getKey()).getDefaultList().equals(entry.getValue()));
-	}
-
-	private void initDefault() {
-		this.preferences = DEFAULT_PREF;
-		this.enabled = Boolean.FALSE;
-	}
-
-	public void init() {
-		this.setPreferences(this.preferences);
-	}
-
-	public static Map<String, Set<String>> getDefaultPref() {
-		return DEFAULT_PREF;
+						!PreferenceLevel.lookupLiteral(entry.getKey()).isDefault(entry.getValue()));
 	}
 }

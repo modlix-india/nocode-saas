@@ -1,6 +1,9 @@
 package com.fincity.saas.notification.service;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,8 +24,8 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.notification.dao.UserPreferenceDao;
 import com.fincity.saas.notification.dto.UserPreference;
-import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.enums.PreferenceLevel;
+import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.jooq.tables.records.NotificationUserPreferencesRecord;
 
 import lombok.Getter;
@@ -38,16 +41,24 @@ public class UserPreferenceService
 
 	private static final String USER_PREFERENCE_CACHE = "userPreference";
 
-	private static final Map<String, Set<String>> DEFAULT_USER_PREFERENCE_MAP = Map.of(
-			PreferenceLevel.CHANNEL.getLiteral(), Set.of(NotificationChannelType.EMAIL.getLiteral()),
-			PreferenceLevel.NOTIFICATION.getLiteral(), Set.of());
+	private static final Map<String, List<String>> DEFAULT_USER_PREFERENCE_MAP = HashMap
+			.newHashMap(PreferenceLevel.values().length);
 
-	private static final UserPreference DEFAULT_USER_PREFERENCE = new UserPreference()
+	static {
+		DEFAULT_USER_PREFERENCE_MAP.put(PreferenceLevel.CHANNEL.getLiteral(),
+				new ArrayList<>(List.of(NotificationChannelType.EMAIL.getLiteral())));
+		DEFAULT_USER_PREFERENCE_MAP.put(PreferenceLevel.NOTIFICATION.getLiteral(), new ArrayList<>());
+	}
+
+	private static final ULong DEFAULT_USER_PREFERENCE_ID = ULong.MIN;
+
+	private static final UserPreference DEFAULT_USER_PREFERENCE = (UserPreference) new UserPreference()
 			.setAppId(ULongUtil.valueOf(0))
 			.setUserId(ULong.valueOf(0))
 			.setCode("0000000000000000000000")
 			.setEnabled(Boolean.TRUE)
-			.setPreferences(DEFAULT_USER_PREFERENCE_MAP);
+			.setPreferences(DEFAULT_USER_PREFERENCE_MAP)
+			.setId(DEFAULT_USER_PREFERENCE_ID);
 
 	private final NotificationMessageResourceService messageResourceService;
 
@@ -75,6 +86,13 @@ public class UserPreferenceService
 	@Override
 	public String getCacheName() {
 		return USER_PREFERENCE_CACHE;
+	}
+
+	@Override
+	protected Mono<ULong> getLoggedInUserId() {
+		return FlatMapUtil.flatMapMono(
+				SecurityContextUtil::getUsersContextAuthentication,
+				ca -> Mono.justOrEmpty(ca.isAuthenticated() ? ULong.valueOf(ca.getUser().getId()) : null));
 	}
 
 	public Mono<UserPreference> getDefaultPreferences() {
@@ -111,16 +129,18 @@ public class UserPreferenceService
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.read(entity.getId()),
+				ca -> Mono.just(entity),
 
-				(ca, uEntity) -> this.canUpdatePreference(ca),
+				(ca, uEntity) -> this.read(uEntity.getId()),
 
-				(ca, uEntity, canUpdate) -> super.update(uEntity),
+				(ca, uEntity, eEntity) -> this.canUpdatePreference(ca),
 
-				(ca, uEntity, canUpdate, updated) -> cacheService.evict(this.getCacheName(),
+				(ca, uEntity, eEntity, canUpdate) -> super.update(uEntity),
+
+				(ca, uEntity, eEntity, canUpdate, updated) -> cacheService.evict(this.getCacheName(),
 						this.getCacheKey(updated.getAppId(), updated.getUserId())),
 
-				(ca, uEntity, canUpdate, updated, evicted) -> this.evictCode(updated.getCode())
+				(ca, uEntity, eEntity, canUpdate, updated, evicted) -> this.evictCode(updated.getCode())
 						.map(evictedCode -> updated))
 				.switchIfEmpty(messageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -145,9 +165,9 @@ public class UserPreferenceService
 			return Mono.just(new HashMap<>());
 
 		fields.remove("id");
-		fields.remove("appId");
-		fields.remove("userId");
-		fields.remove("code");
+		fields.remove(UserPreference.Fields.appId);
+		fields.remove(UserPreference.Fields.userId);
+		fields.remove(UserPreference.Fields.code);
 		fields.remove("createdAt");
 		fields.remove("createdBy");
 
@@ -202,10 +222,9 @@ public class UserPreferenceService
 				(ca, entity, canUpdate, deleted, evicted) -> this.evictCode(entity.getCode())
 						.map(evictedCode -> deleted)
 
-		)
-				.switchIfEmpty(messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
+		).switchIfEmpty(messageResourceService.throwMessage(
+				msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+				NotificationMessageResourceService.FORBIDDEN_UPDATE, this.getUserPreferenceName()));
 	}
 
 	private Mono<UserPreference> updateIdentifiers(ContextAuthentication ca, UserPreference entity) {
@@ -216,7 +235,14 @@ public class UserPreferenceService
 
 				appId -> {
 
-					entity.init();
+					Map<String, List<String>> pref = entity.getPreferences();
+
+					pref.forEach((key, value) -> {
+						if (value != null && !value.isEmpty())
+							pref.put(key, PreferenceLevel.lookupLiteral(key).toValidList(value));
+					});
+
+					entity.setPreferences(pref);
 
 					if (entity.getAppId() == null)
 						entity.setAppId(appId);
@@ -231,7 +257,7 @@ public class UserPreferenceService
 
 				(appId, uEntity, userPreference) -> {
 
-					if (userPreference != null)
+					if (userPreference != null && !this.isDefaultPreference(userPreference))
 						return messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
 								NotificationMessageResourceService.FORBIDDEN_CREATE, this.getUserPreferenceName());
@@ -300,5 +326,9 @@ public class UserPreferenceService
 	private Mono<UserPreference> getUserPreferenceInternal(ULong appId, ULong userId) {
 		return this.cacheValueOrGet(() -> this.dao.getUserPreference(appId, userId)
 				.switchIfEmpty(this.getDefaultPreferences()), appId, userId);
+	}
+
+	private boolean isDefaultPreference(UserPreference userPreference) {
+		return userPreference.getId() == null || userPreference.getId().equals(DEFAULT_USER_PREFERENCE_ID);
 	}
 }

@@ -9,5 +9,5 @@ public interface IMessageService<T extends IMessageService<T>> {
 
 	Mono<Boolean> execute(SendRequest request);
 
-	Mono<Boolean> execute(Object message, Connection connection);
+	Mono<Boolean> execute(SendRequest request, Connection connection);
 }

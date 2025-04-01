@@ -16,7 +16,7 @@ import com.fincity.saas.notification.service.channel.inapp.NotificationEventServ
 import reactor.core.publisher.Flux;
 
 @RestController
-@RequestMapping("api/notifications/inApp/events")
+@RequestMapping("api/notification/inApp/events")
 public class NotificationEventController {
 
 	private final NotificationEventService notificationEventService;

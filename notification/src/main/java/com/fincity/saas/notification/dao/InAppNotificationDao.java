@@ -9,7 +9,8 @@ import com.fincity.saas.notification.dto.InAppNotification;
 import com.fincity.saas.notification.jooq.tables.records.NotificationInAppNotificationsRecord;
 
 @Component
-public class InAppNotificationDao extends AbstractCodeDao<NotificationInAppNotificationsRecord, ULong, InAppNotification> {
+public class InAppNotificationDao
+		extends AbstractCodeDao<NotificationInAppNotificationsRecord, ULong, InAppNotification> {
 
 	protected InAppNotificationDao() {
 		super(InAppNotification.class, NOTIFICATION_IN_APP_NOTIFICATIONS, NOTIFICATION_IN_APP_NOTIFICATIONS.ID,

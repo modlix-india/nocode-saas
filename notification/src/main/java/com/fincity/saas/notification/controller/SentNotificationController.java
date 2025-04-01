@@ -10,7 +10,7 @@ import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotific
 import com.fincity.saas.notification.service.SentNotificationService;
 
 @RestController
-@RequestMapping("api/notifications/sent")
+@RequestMapping("api/notification/sent")
 public class SentNotificationController extends
 		AbstractCodeController<NotificationSentNotificationsRecord, ULong, SentNotification, SentNotificationDao, SentNotificationService> {
 

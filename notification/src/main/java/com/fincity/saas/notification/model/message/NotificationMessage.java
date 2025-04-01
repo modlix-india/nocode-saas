@@ -16,7 +16,8 @@ import reactor.util.function.Tuples;
 
 @Data
 @Accessors(chain = true)
-public class NotificationMessage<T extends NotificationMessage<T>> implements ChannelType, IRecipientInfo<T>, Serializable {
+public class NotificationMessage<T extends NotificationMessage<T>>
+		implements ChannelType, IRecipientInfo<T>, Serializable {
 
 	@Serial
 	private static final long serialVersionUID = 3505135188384990396L;

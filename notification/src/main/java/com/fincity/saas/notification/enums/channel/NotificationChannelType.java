@@ -24,7 +24,8 @@ import lombok.Getter;
 public enum NotificationChannelType implements EnumType {
 
 	DISABLED("DISABLED", null),
-	EMAIL("EMAIL", EmailMessage::new, NotificationRecipientType.FROM, NotificationRecipientType.TO, NotificationRecipientType.BCC,
+	EMAIL("EMAIL", EmailMessage::new, NotificationRecipientType.FROM, NotificationRecipientType.TO,
+			NotificationRecipientType.BCC,
 			NotificationRecipientType.CC, NotificationRecipientType.REPLY_TO),
 	IN_APP("IN_APP", InAppMessage::new),
 	MOBILE_PUSH("MOBILE_PUSH", MobilePushMessage::new),
@@ -36,7 +37,7 @@ public enum NotificationChannelType implements EnumType {
 	private final Set<NotificationRecipientType> allowedRecipientTypes;
 
 	NotificationChannelType(String literal, Supplier<? extends NotificationMessage<?>> messageCreator,
-	                        NotificationRecipientType... notificationRecipientTypes) {
+			NotificationRecipientType... notificationRecipientTypes) {
 		this.literal = literal;
 		this.messageCreator = messageCreator;
 		this.allowedRecipientTypes = notificationRecipientTypes == null ? Set.of() : Set.of(notificationRecipientTypes);
@@ -65,12 +66,10 @@ public enum NotificationChannelType implements EnumType {
 
 		return channelMap.entrySet()
 				.stream()
-				.collect(Collectors.toMap(e ->
-								NotificationChannelType.lookupLiteral(e.getKey()),
+				.collect(Collectors.toMap(e -> NotificationChannelType.lookupLiteral(e.getKey()),
 						Map.Entry::getValue,
 						(existing, replacement) -> replacement,
-						() -> new EnumMap<>(NotificationChannelType.class)
-				));
+						() -> new EnumMap<>(NotificationChannelType.class)));
 	}
 
 	@Override

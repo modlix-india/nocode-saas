@@ -13,7 +13,6 @@ import com.fincity.saas.notification.enums.NotificationStage;
 import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.message.action.Action;
-import com.fincity.saas.notification.model.message.action.Action.MultiAction;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.request.SendRequest;
 
@@ -28,7 +27,7 @@ import lombok.experimental.FieldNameConstants;
 @Accessors(chain = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class InAppNotification extends AbstractUpdatableDTO<ULong, ULong> implements MultiAction<InAppNotification> {
+public class InAppNotification extends AbstractUpdatableDTO<ULong, ULong> {
 
 	@Serial
 	private static final long serialVersionUID = 4387019101849838824L;

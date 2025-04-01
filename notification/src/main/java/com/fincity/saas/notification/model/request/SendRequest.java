@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -86,6 +87,20 @@ public class SendRequest implements Serializable {
 	@JsonIgnore
 	public boolean isError() {
 		return this.errorInfo != null || (this.channelErrors != null && !this.channelErrors.isEmpty());
+	}
+
+	@JsonIgnore
+	public boolean isError(NotificationChannelType channelType) {
+		return this.errorInfo != null || ((this.channelErrors != null && !this.channelErrors.isEmpty())
+				&& this.channelErrors.containsKey(channelType.getLiteral()));
+	}
+
+	@JsonIgnore
+	public List<NotificationChannelType> getErrorChannels() {
+		if (this.channelErrors == null || this.channelErrors.isEmpty())
+			return List.of();
+
+		return this.channelErrors.keySet().stream().map(NotificationChannelType::lookupLiteral).toList();
 	}
 
 }

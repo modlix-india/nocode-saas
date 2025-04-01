@@ -17,7 +17,8 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
 
 @Service
-public abstract class AbstractMessageService<T extends AbstractMessageService<T>> implements IMessageService<T>, ChannelType {
+public abstract class AbstractMessageService<T extends AbstractMessageService<T>>
+		implements IMessageService<T>, ChannelType {
 
 	private NotificationConnectionService connectionService;
 
@@ -69,16 +70,16 @@ public abstract class AbstractMessageService<T extends AbstractMessageService<T>
 
 				connection -> {
 
-					if (connection.getT1().isError())
+					if (connection.getT1().isError(this.getChannelType()))
 						return Mono.just(Tuples.of(connection.getT1(), Boolean.FALSE));
 
-					return this.execute(request.getChannels().get(this.getChannelType()), connection.getT2())
+					return this.execute(request, connection.getT2())
 							.map(executed -> Tuples.of(request, executed))
 							.onErrorResume(NotificationDeliveryException.class, ex -> Mono.just(
 									Tuples.of(request.setChannelErrorInfo(ex, this.getChannelType()), Boolean.FALSE)));
 				},
 
-				(connection, executed) -> executed.getT1().isError() ? this.notificationFailed(executed.getT1())
-						: this.notificationSent(executed.getT1()));
+				(connection, executed) -> executed.getT1().isError(this.getChannelType()) ?
+						this.notificationFailed(executed.getT1()) : this.notificationSent(executed.getT1()));
 	}
 }

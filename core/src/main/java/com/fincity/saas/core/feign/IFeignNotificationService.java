@@ -9,10 +9,10 @@ import com.fincity.saas.core.model.notification.NotificationRequest;
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 
-@ReactiveFeignClient(name = "notifications")
+@ReactiveFeignClient(name = "notification")
 public interface IFeignNotificationService {
 
-	String NOTIFICATION_PATH = "/api/notifications";
+	String NOTIFICATION_PATH = "/api/notification";
 
 	String CACHE_EVICT = "/evict";
 

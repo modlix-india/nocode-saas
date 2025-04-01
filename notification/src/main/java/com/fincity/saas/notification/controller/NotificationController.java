@@ -15,7 +15,7 @@ import com.fincity.saas.notification.service.NotificationProcessingService;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/notifications")
+@RequestMapping("api/notification")
 public class NotificationController
 		implements INotificationCacheController<Notification, NotificationProcessingService> {
 

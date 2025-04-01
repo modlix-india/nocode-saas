@@ -14,7 +14,7 @@ spring:
       validation-query: SELECT 1
     flyway:
       enabled: true
-      driver-class-name: org.postgresql.Driver
+      driver-class-name: com.mysql.cj.jdbc.Driver
       url: ${notification.db.flyway.url}
       user: ${notification.db.username}
       password: ${notification.db.password}
@@ -33,7 +33,7 @@ spring:
           - id: notification
             uri: lb://notification
             predicates:
-              - Path=/api/notifications/**, /*/api/notifications/**, /*/*/api/notifications/**, /*/*/*/api/notifications/**, /*/*/*/*/api/notifications/**, /*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/*/*/api/notifications/**, /*/*/*/*/*/*/*/*/*/api/notifications/**,
+              - Path=/api/notification/**, /*/api/notification/**, /*/*/api/notification/**, /*/*/*/api/notification/**, /*/*/*/*/api/notification/**, /*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/*/api/notification/**,
     rabbitmq:
       host: ${mq.host}
       port: ${mq.port}
