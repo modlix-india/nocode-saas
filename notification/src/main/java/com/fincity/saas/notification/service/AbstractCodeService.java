@@ -27,9 +27,15 @@ public abstract class AbstractCodeService<R extends UpdatableRecord<R>, I extend
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.getByCode(code).defaultIfEmpty(entity),
+				() -> this.getByCode(code),
 
-				this::updatableEntity,
+				e -> {
+
+					if (entity.getId() == null)
+						entity.setId(e.getId());
+
+					return updatableEntity(entity);
+				},
 
 				(e, updatableEntity) -> this.getLoggedInUserId().map(lEntity -> {
 					updatableEntity.setUpdatedBy(lEntity);
@@ -39,6 +45,16 @@ public abstract class AbstractCodeService<R extends UpdatableRecord<R>, I extend
 				(e, updatableEntity, uEntity) -> this.dao.update(uEntity),
 
 				(e, updatableEntity, uEntity, updated) -> this.evictCode(code).map(evicted -> updated));
+	}
+
+	public Mono<Integer> deleteByCode(String code) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.dao.deleteByCode(code),
+
+				deleted -> this.evictCode(code).map(evicted -> deleted)
+		);
 	}
 
 	public Mono<Boolean> evictCode(String code) {

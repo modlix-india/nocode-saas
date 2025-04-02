@@ -2,6 +2,7 @@ package com.fincity.saas.notification.dao;
 
 import java.io.Serializable;
 
+import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
@@ -23,7 +24,15 @@ public abstract class AbstractCodeDao<R extends UpdatableRecord<R>, I extends Se
 
 	public Mono<D> getByCode(String code) {
 		return Mono.from(
-				this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
+						this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
 				.map(result -> result.into(this.pojoClass));
+	}
+
+	public Mono<Integer> deleteByCode(String code) {
+
+		DeleteQuery<R> query = dslContext.deleteQuery(table);
+		query.addConditions(codeField.eq(code));
+
+		return Mono.from(query);
 	}
 }
