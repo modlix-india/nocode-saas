@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: notification
+  freemarker:
+    check-template-location: false
+  r2dbc:
+    url: ${notification.db.url}
+    username: ${notification.db.username}
+    password: ${notification.db.password}
+    pool:
+      initial-size: 2
+      max-size: 4
+      max-idle-time: 30m
+      validation-query: SELECT 1
+    flyway:
+      enabled: true
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${notification.db.flyway.url}
+      user: ${notification.db.username}
+      password: ${notification.db.password}
+    boot:
+      admin:
+        client:
+          instance:
+            name: notification
+    servlet:
+      multipart:
+        max-file-size: -1
+        max-request-size: -1
+    cloud:
+      gateway:
+        routes:
+          - id: notification
+            uri: lb://notification
+            predicates:
+              - Path=/api/notification/**, /*/api/notification/**, /*/*/api/notification/**, /*/*/*/api/notification/**, /*/*/*/*/api/notification/**, /*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/*/api/notification/**,
+    rabbitmq:
+      host: ${mq.host}
+      port: ${mq.port}
+      username: ${mq.username}
+      password: ${mq.password}
+
+management:
+  endpoint:
+    flyway:
+      enabled: true
+
+redis:
+  cache:
+    prefix: not

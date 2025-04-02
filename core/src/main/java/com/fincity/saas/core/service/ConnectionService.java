@@ -5,6 +5,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.document.Connection;
 import com.fincity.saas.core.enums.ConnectionType;
 import com.fincity.saas.core.repository.ConnectionRepository;
+import com.fincity.saas.core.service.notification.NotificationProcessingService;
 
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import reactor.core.publisher.Mono;
@@ -35,8 +37,16 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 	@Value("${redis.connection.eviction.channel:connectionChannel}")
 	private String channel;
 
+	private NotificationProcessingService notificationProcessingService;
+
 	protected ConnectionService() {
 		super(Connection.class);
+	}
+
+	@Lazy
+	@Autowired
+	private void setNotificationService(NotificationProcessingService notificationProcessingService) {
+		this.notificationProcessingService = notificationProcessingService;
 	}
 
 	@Override
@@ -109,15 +119,14 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
+				() -> super.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
 
-				conn -> Mono.<Connection>justOrEmpty(conn.getConnectionType() == type ? conn : null),
+				conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
 
-				(conn, typedConn) -> Mono.<Connection>justOrEmpty(typedConn.getClientCode().equals(clientCode)
+				(conn, typedConn) -> Mono.justOrEmpty(typedConn.getClientCode().equals(clientCode)
 						|| BooleanUtil.safeValueOf(typedConn.getIsAppLevel()) ? typedConn : null),
 
 				(conn, typedConn, clientCheckedConn) -> {
-
 					if (!BooleanUtil.safeValueOf(clientCheckedConn.getOnlyThruKIRun()))
 						return Mono.just(clientCheckedConn);
 
@@ -127,5 +136,23 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 						return Mono.empty();
 					});
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.read"));
+	}
+
+	public Mono<Boolean> hasConnection(String name, String appCode, String clientCode, ConnectionType type) {
+		return this.readInternalConnection(name, appCode, clientCode, type).hasElement()
+				.switchIfEmpty(Mono.just(Boolean.FALSE));
+	}
+
+	public Mono<Connection> readInternalConnection(String name, String appCode, String clientCode,
+			ConnectionType type) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
+
+				conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
+
+				(conn, typedConn) -> Mono.justOrEmpty(typedConn.getClientCode().equals(clientCode)
+						|| BooleanUtil.safeValueOf(typedConn.getIsAppLevel()) ? typedConn : null));
 	}
 }
