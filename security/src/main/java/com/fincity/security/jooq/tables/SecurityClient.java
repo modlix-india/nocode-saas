@@ -18,6 +18,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegIntegration.SecurityAppReg
 import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.SecurityAppRegProfileRestrictionPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.SecurityAppRegUserDesignationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
+import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2.SecurityAppRegUserRoleV2Path;
 import com.fincity.security.jooq.tables.SecurityClientAddress.SecurityClientAddressPath;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy.SecurityClientHierarchyPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
@@ -370,6 +371,19 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityAppRegUserProfile = new SecurityAppRegUserProfilePath(this, null, Keys.FK1_APP_REG_USER_PROFILE_CLNT_ID.getInverseKey());
 
         return _securityAppRegUserProfile;
+    }
+
+    private transient SecurityAppRegUserRoleV2Path _securityAppRegUserRoleV2;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_reg_user_role_v2</code> table
+     */
+    public SecurityAppRegUserRoleV2Path securityAppRegUserRoleV2() {
+        if (_securityAppRegUserRoleV2 == null)
+            _securityAppRegUserRoleV2 = new SecurityAppRegUserRoleV2Path(this, null, Keys.FK1_APP_REG_USER_ROLE_CLIENT_ID.getInverseKey());
+
+        return _securityAppRegUserRoleV2;
     }
 
     private transient SecurityClientAddressPath _securityClientAddress;

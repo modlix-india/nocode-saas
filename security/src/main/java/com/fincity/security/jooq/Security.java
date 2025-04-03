@@ -18,6 +18,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
 import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
+import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
@@ -138,6 +139,11 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_reg_user_profile</code>.
      */
     public final SecurityAppRegUserProfile SECURITY_APP_REG_USER_PROFILE = SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE;
+
+    /**
+     * The table <code>security.security_app_reg_user_role_v2</code>.
+     */
+    public final SecurityAppRegUserRoleV2 SECURITY_APP_REG_USER_ROLE_V2 = SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2;
 
     /**
      * The table <code>security.security_client</code>.
@@ -314,6 +320,7 @@ public class Security extends SchemaImpl {
             SecurityAppRegProfileRestriction.SECURITY_APP_REG_PROFILE_RESTRICTION,
             SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION,
             SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE,
+            SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY,

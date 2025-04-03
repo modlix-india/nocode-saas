@@ -7,6 +7,7 @@ package com.fincity.security.jooq.tables;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
+import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2.SecurityAppRegUserRoleV2Path;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
@@ -258,6 +259,19 @@ public class SecurityV2Role extends TableImpl<SecurityV2RoleRecord> {
             _fk1RoleRoleRoleId = new SecurityV2RoleRolePath(this, null, Keys.FK1_ROLE_ROLE_ROLE_ID.getInverseKey());
 
         return _fk1RoleRoleRoleId;
+    }
+
+    private transient SecurityAppRegUserRoleV2Path _securityAppRegUserRoleV2;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_reg_user_role_v2</code> table
+     */
+    public SecurityAppRegUserRoleV2Path securityAppRegUserRoleV2() {
+        if (_securityAppRegUserRoleV2 == null)
+            _securityAppRegUserRoleV2 = new SecurityAppRegUserRoleV2Path(this, null, Keys.FK2_APP_REG_USER_ROLE_ROLE_V2_ID.getInverseKey());
+
+        return _securityAppRegUserRoleV2;
     }
 
     private transient SecurityProfileRolePath _securityProfileRole;

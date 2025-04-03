@@ -307,7 +307,8 @@
                                         security_app_reg_package |
                                         security_app_reg_user_role |
                                         security_org_structure |
-                                        security_role
+                                        security_role |
+                                        security_app_reg_user_role
                                     </excludes>
                                     <forcedTypes>
                                         <forcedType>

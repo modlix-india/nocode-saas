@@ -3,6 +3,7 @@ use security;
 -- Dropping all the tables that are replaced with new tables
 DROP TABLE IF EXISTS `security_app_reg_user_profile`;
 DROP TABLE IF EXISTS `security_app_reg_user_designation`;
+DROP TABLE IF EXISTS `security_app_reg_user_role_v2`;
 DROP TABLE IF EXISTS `security_app_reg_profile`;
 DROP TABLE IF EXISTS `security_app_reg_profile_restriction`;
 DROP TABLE IF EXISTS `security_profile_client_restriction`;
@@ -284,6 +285,31 @@ CREATE TABLE `security_app_reg_department` (
   KEY `FK2_APP_REG_DEPARTMENT_PARENT_ID` (`PARENT_DEPARTMENT_ID`),
   CONSTRAINT `FK1_APP_REG_DEPARTMENT_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `FK2_APP_REG_DEPARTMENT_PARENT_ID` FOREIGN KEY (`PARENT_DEPARTMENT_ID`) REFERENCES `security_app_reg_department` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Security App Reg User RoleV2 Table
+
+CREATE TABLE `security_app_reg_user_role_v2` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID',
+  `CLIENT_TYPE` char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'BUS' COMMENT 'Client type',
+  `APP_ID` bigint unsigned NOT NULL COMMENT 'App ID',
+  `LEVEL` enum('CLIENT','CUSTOMER','CONSUMER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CLIENT' COMMENT 'Access level',
+  `BUSINESS_TYPE` char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'COMMON' COMMENT 'Business type',
+
+  `ROLE_ID` bigint unsigned NOT NULL COMMENT 'Role ID',
+
+  `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
+  `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
+  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+
+  PRIMARY KEY (`ID`),
+  KEY `FK1_APP_REG_USER_ROLE_CLIENT_ID` (`CLIENT_ID`),
+  KEY `FK2_APP_REG_USER_ROLE_ROLE_V2_ID` (`ROLE_ID`),
+  CONSTRAINT `FK1_APP_REG_USER_ROLE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `FK2_APP_REG_USER_ROLE_ROLE_V2_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `security_app_reg_designation` (
