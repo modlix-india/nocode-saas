@@ -249,8 +249,6 @@ CREATE TABLE `security_app_reg_profile_restriction` (
   
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
-  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
   
   PRIMARY KEY (`ID`),
   UNIQUE KEY `CLIENT_ID` (`CLIENT_ID`,`APP_ID`,`PROFILE_ID`,`CLIENT_TYPE`,`LEVEL`,`BUSINESS_TYPE`),
@@ -277,8 +275,6 @@ CREATE TABLE `security_app_reg_department` (
   
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
-  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
   PRIMARY KEY (`ID`),
   KEY `FK1_APP_REG_DEPARTMENT_CLIENT_ID` (`CLIENT_ID`),
@@ -302,8 +298,6 @@ CREATE TABLE `security_app_reg_user_role_v2` (
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
-  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
   PRIMARY KEY (`ID`),
   KEY `FK1_APP_REG_USER_ROLE_CLIENT_ID` (`CLIENT_ID`),
@@ -328,8 +322,6 @@ CREATE TABLE `security_app_reg_designation` (
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
-  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
   PRIMARY KEY (`ID`),
   KEY `FK1_APP_REG_DESIGNATION_CLIENT_ID` (`CLIENT_ID`),
@@ -354,8 +346,6 @@ CREATE TABLE `security_app_reg_user_profile` (
   
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
-  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
   
   PRIMARY KEY (`ID`),
   UNIQUE KEY `CLIENT_ID` (`CLIENT_ID`,`APP_ID`,`PROFILE_ID`,`CLIENT_TYPE`,`LEVEL`,`BUSINESS_TYPE`),
@@ -380,8 +370,6 @@ CREATE TABLE `security_app_reg_user_designation` (
 
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
-  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
 
   PRIMARY KEY (`ID`),
   KEY `FK1_APP_REG_USER_DESIGNATION_CLIENT_ID` (`CLIENT_ID`),

@@ -187,44 +187,6 @@ public class SecurityAppRegUserDesignationRecord extends UpdatableRecordImpl<Sec
         return (LocalDateTime) get(8);
     }
 
-    /**
-     * Setter for
-     * <code>security.security_app_reg_user_designation.UPDATED_BY</code>. ID of
-     * the user who updated this row
-     */
-    public SecurityAppRegUserDesignationRecord setUpdatedBy(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_user_designation.UPDATED_BY</code>. ID of
-     * the user who updated this row
-     */
-    public ULong getUpdatedBy() {
-        return (ULong) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>security.security_app_reg_user_designation.UPDATED_AT</code>. Time
-     * when this row is updated
-     */
-    public SecurityAppRegUserDesignationRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_user_designation.UPDATED_AT</code>. Time
-     * when this row is updated
-     */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -248,7 +210,7 @@ public class SecurityAppRegUserDesignationRecord extends UpdatableRecordImpl<Sec
     /**
      * Create a detached, initialised SecurityAppRegUserDesignationRecord
      */
-    public SecurityAppRegUserDesignationRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegUserDesignationLevel level, String businessType, ULong designationId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegUserDesignationRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegUserDesignationLevel level, String businessType, ULong designationId, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION);
 
         setId(id);
@@ -260,8 +222,6 @@ public class SecurityAppRegUserDesignationRecord extends UpdatableRecordImpl<Sec
         setDesignationId(designationId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        setUpdatedBy(updatedBy);
-        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

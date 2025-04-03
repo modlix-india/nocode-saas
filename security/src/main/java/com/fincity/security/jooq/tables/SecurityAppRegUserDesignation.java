@@ -122,20 +122,6 @@ public class SecurityAppRegUserDesignation extends TableImpl<SecurityAppRegUserD
      */
     public final TableField<SecurityAppRegUserDesignationRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
-    /**
-     * The column
-     * <code>security.security_app_reg_user_designation.UPDATED_BY</code>. ID of
-     * the user who updated this row
-     */
-    public final TableField<SecurityAppRegUserDesignationRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
-
-    /**
-     * The column
-     * <code>security.security_app_reg_user_designation.UPDATED_AT</code>. Time
-     * when this row is updated
-     */
-    public final TableField<SecurityAppRegUserDesignationRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
-
     private SecurityAppRegUserDesignation(Name alias, Table<SecurityAppRegUserDesignationRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

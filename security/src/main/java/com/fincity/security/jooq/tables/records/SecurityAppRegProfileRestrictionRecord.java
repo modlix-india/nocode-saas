@@ -189,44 +189,6 @@ public class SecurityAppRegProfileRestrictionRecord extends UpdatableRecordImpl<
         return (LocalDateTime) get(8);
     }
 
-    /**
-     * Setter for
-     * <code>security.security_app_reg_profile_restriction.UPDATED_BY</code>. ID
-     * of the user who updated this row
-     */
-    public SecurityAppRegProfileRestrictionRecord setUpdatedBy(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_profile_restriction.UPDATED_BY</code>. ID
-     * of the user who updated this row
-     */
-    public ULong getUpdatedBy() {
-        return (ULong) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>security.security_app_reg_profile_restriction.UPDATED_AT</code>.
-     * Time when this row is updated
-     */
-    public SecurityAppRegProfileRestrictionRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_profile_restriction.UPDATED_AT</code>.
-     * Time when this row is updated
-     */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -250,7 +212,7 @@ public class SecurityAppRegProfileRestrictionRecord extends UpdatableRecordImpl<
     /**
      * Create a detached, initialised SecurityAppRegProfileRestrictionRecord
      */
-    public SecurityAppRegProfileRestrictionRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegProfileRestrictionLevel level, String businessType, ULong profileId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegProfileRestrictionRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegProfileRestrictionLevel level, String businessType, ULong profileId, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityAppRegProfileRestriction.SECURITY_APP_REG_PROFILE_RESTRICTION);
 
         setId(id);
@@ -262,8 +224,6 @@ public class SecurityAppRegProfileRestrictionRecord extends UpdatableRecordImpl<
         setProfileId(profileId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        setUpdatedBy(updatedBy);
-        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

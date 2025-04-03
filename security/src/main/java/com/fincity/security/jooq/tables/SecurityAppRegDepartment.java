@@ -131,18 +131,6 @@ public class SecurityAppRegDepartment extends TableImpl<SecurityAppRegDepartment
      */
     public final TableField<SecurityAppRegDepartmentRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
-    /**
-     * The column <code>security.security_app_reg_department.UPDATED_BY</code>.
-     * ID of the user who updated this row
-     */
-    public final TableField<SecurityAppRegDepartmentRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
-
-    /**
-     * The column <code>security.security_app_reg_department.UPDATED_AT</code>.
-     * Time when this row is updated
-     */
-    public final TableField<SecurityAppRegDepartmentRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
-
     private SecurityAppRegDepartment(Name alias, Table<SecurityAppRegDepartmentRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

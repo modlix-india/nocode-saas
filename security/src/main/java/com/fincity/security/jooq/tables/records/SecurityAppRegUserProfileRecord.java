@@ -185,44 +185,6 @@ public class SecurityAppRegUserProfileRecord extends UpdatableRecordImpl<Securit
         return (LocalDateTime) get(8);
     }
 
-    /**
-     * Setter for
-     * <code>security.security_app_reg_user_profile.UPDATED_BY</code>. ID of the
-     * user who updated this row
-     */
-    public SecurityAppRegUserProfileRecord setUpdatedBy(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_user_profile.UPDATED_BY</code>. ID of the
-     * user who updated this row
-     */
-    public ULong getUpdatedBy() {
-        return (ULong) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>security.security_app_reg_user_profile.UPDATED_AT</code>. Time when
-     * this row is updated
-     */
-    public SecurityAppRegUserProfileRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_user_profile.UPDATED_AT</code>. Time when
-     * this row is updated
-     */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -246,7 +208,7 @@ public class SecurityAppRegUserProfileRecord extends UpdatableRecordImpl<Securit
     /**
      * Create a detached, initialised SecurityAppRegUserProfileRecord
      */
-    public SecurityAppRegUserProfileRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegUserProfileLevel level, String businessType, ULong profileId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegUserProfileRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegUserProfileLevel level, String businessType, ULong profileId, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE);
 
         setId(id);
@@ -258,8 +220,6 @@ public class SecurityAppRegUserProfileRecord extends UpdatableRecordImpl<Securit
         setProfileId(profileId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        setUpdatedBy(updatedBy);
-        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

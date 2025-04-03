@@ -183,44 +183,6 @@ public class SecurityAppRegUserRoleV2Record extends UpdatableRecordImpl<Security
         return (LocalDateTime) get(8);
     }
 
-    /**
-     * Setter for
-     * <code>security.security_app_reg_user_role_v2.UPDATED_BY</code>. ID of the
-     * user who updated this row
-     */
-    public SecurityAppRegUserRoleV2Record setUpdatedBy(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_user_role_v2.UPDATED_BY</code>. ID of the
-     * user who updated this row
-     */
-    public ULong getUpdatedBy() {
-        return (ULong) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>security.security_app_reg_user_role_v2.UPDATED_AT</code>. Time when
-     * this row is updated
-     */
-    public SecurityAppRegUserRoleV2Record setUpdatedAt(LocalDateTime value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_app_reg_user_role_v2.UPDATED_AT</code>. Time when
-     * this row is updated
-     */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -244,7 +206,7 @@ public class SecurityAppRegUserRoleV2Record extends UpdatableRecordImpl<Security
     /**
      * Create a detached, initialised SecurityAppRegUserRoleV2Record
      */
-    public SecurityAppRegUserRoleV2Record(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegUserRoleV2Level level, String businessType, ULong roleId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegUserRoleV2Record(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegUserRoleV2Level level, String businessType, ULong roleId, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2);
 
         setId(id);
@@ -256,8 +218,6 @@ public class SecurityAppRegUserRoleV2Record extends UpdatableRecordImpl<Security
         setRoleId(roleId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        setUpdatedBy(updatedBy);
-        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

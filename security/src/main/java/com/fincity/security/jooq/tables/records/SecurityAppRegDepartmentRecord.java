@@ -213,40 +213,6 @@ public class SecurityAppRegDepartmentRecord extends UpdatableRecordImpl<Security
         return (LocalDateTime) get(10);
     }
 
-    /**
-     * Setter for <code>security.security_app_reg_department.UPDATED_BY</code>.
-     * ID of the user who updated this row
-     */
-    public SecurityAppRegDepartmentRecord setUpdatedBy(ULong value) {
-        set(11, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_app_reg_department.UPDATED_BY</code>.
-     * ID of the user who updated this row
-     */
-    public ULong getUpdatedBy() {
-        return (ULong) get(11);
-    }
-
-    /**
-     * Setter for <code>security.security_app_reg_department.UPDATED_AT</code>.
-     * Time when this row is updated
-     */
-    public SecurityAppRegDepartmentRecord setUpdatedAt(LocalDateTime value) {
-        set(12, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_app_reg_department.UPDATED_AT</code>.
-     * Time when this row is updated
-     */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(12);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -270,7 +236,7 @@ public class SecurityAppRegDepartmentRecord extends UpdatableRecordImpl<Security
     /**
      * Create a detached, initialised SecurityAppRegDepartmentRecord
      */
-    public SecurityAppRegDepartmentRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegDepartmentLevel level, String businessType, String name, String description, ULong parentDepartmentId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegDepartmentRecord(ULong id, ULong clientId, String clientType, ULong appId, SecurityAppRegDepartmentLevel level, String businessType, String name, String description, ULong parentDepartmentId, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT);
 
         setId(id);
@@ -284,8 +250,6 @@ public class SecurityAppRegDepartmentRecord extends UpdatableRecordImpl<Security
         setParentDepartmentId(parentDepartmentId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        setUpdatedBy(updatedBy);
-        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }
