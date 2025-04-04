@@ -4,10 +4,10 @@ import java.io.Serializable;
 import java.util.Map;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
-import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
-import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.core.enums.EventActionTaskType;
 
@@ -41,25 +41,24 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
 	public Mono<EventActionTask> extractDifference(EventActionTask inc) {
 		return FlatMapUtil.flatMapMono(
 
-		        () -> DifferenceExtractor.extract(inc.parameters, this.parameters)
-		                .defaultIfEmpty(Map.of()),
+				() -> DifferenceExtractor.extract(inc.parameters, this.parameters)
+						.defaultIfEmpty(Map.of()),
 
-		        params ->
-				{
+				params -> {
 
-			        EventActionTask eat = new EventActionTask();
+					EventActionTask eat = new EventActionTask();
 
-			        if (inc.order == null || !inc.order.equals(this.order))
-				        eat.order = this.order;
+					if (inc.order == null || !inc.order.equals(this.order))
+						eat.order = this.order;
 
-			        if (inc.type != this.type)
-				        eat.type = this.type;
+					if (inc.type != this.type)
+						eat.type = this.type;
 
-			        eat.parameters = (Map<String, Object>) params;
+					eat.parameters = (Map<String, Object>) params;
 
-			        return Mono.just(eat);
-		        })
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventActionTask.extractDifference"));
+					return Mono.just(eat);
+				})
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "EventActionTask.extractDifference"));
 
 	}
 
@@ -68,29 +67,28 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
 	public Mono<EventActionTask> applyOverride(EventActionTask base) {
 
 		return base == null ? Mono.just(this)
-		        : FlatMapUtil.flatMapMono(
+				: FlatMapUtil.flatMapMono(
 
-		                () -> DifferenceApplicator.apply(this.parameters, base.parameters),
+						() -> DifferenceApplicator.apply(this.parameters, base.parameters),
 
-		                params ->
-						{
+						params -> {
 
-			                if (this.key == null)
-				                this.key = base.key;
+							if (this.key == null)
+								this.key = base.key;
 
-			                if (this.order == null)
-				                this.order = base.order;
+							if (this.order == null)
+								this.order = base.order;
 
-			                if (this.type == null)
-				                this.type = base.type;
+							if (this.type == null)
+								this.type = base.type;
 
-			                this.setParameters((Map<String, Object>) params);
+							this.setParameters((Map<String, Object>) params);
 
-			                return Mono.just(this);
-		                }
+							return Mono.just(this);
+						}
 
 				)
-		                .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventActionTask.applyOverride"));
+						.contextWrite(Context.of(LogUtil.METHOD_NAME, "EventActionTask.applyOverride"));
 	}
 
 	@Override

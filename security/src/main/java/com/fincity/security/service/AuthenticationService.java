@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
@@ -77,6 +78,8 @@ public class AuthenticationService implements IAuthenticationService {
 
 	private final CacheService cacheService;
 
+	private final ProfileService profileService;
+
 	private final AppRegistrationIntegrationTokenDao integrationTokenDao;
 
 	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
@@ -85,7 +88,8 @@ public class AuthenticationService implements IAuthenticationService {
 			TokenService tokenService, OtpService otpService, SecurityMessageResourceService resourceService,
 			SoxLogService soxLogService, PasswordEncoder pwdEncoder, CacheService cacheService,
 			AppRegistrationIntegrationTokenDao integrationTokenDao,
-			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
+			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
+			ProfileService profileService) {
 		this.userService = userService;
 		this.clientService = clientService;
 		this.appService = appService;
@@ -97,6 +101,7 @@ public class AuthenticationService implements IAuthenticationService {
 		this.cacheService = cacheService;
 		this.integrationTokenDao = integrationTokenDao;
 		this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
+		this.profileService = profileService;
 	}
 
 	@Value("${jwt.key}")
@@ -446,13 +451,31 @@ public class AuthenticationService implements IAuthenticationService {
 					if (cachedCA != null)
 						return Mono.just(cachedCA);
 
-					return getAuthenticationIfNotInCache(basic, bearerToken, request);
+					return getAuthenticationIfNotInCache(appCode, basic, bearerToken, request);
 				})
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"))
-				.onErrorResume(e -> this.makeAnonySpringAuthentication(request));
+				.onErrorResume(e -> this.makeAnonySpringAuthentication(request))
+				.flatMap(e -> {
+					if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
+						return this.profileService
+								.getProfileAuthorities(appCode, ULong.valueOf(ca.getUser().getClientId()),
+										ULong.valueOf(ca.getUser().getId()))
+								.map(auths -> {
+									ContextUser cu = ca.getUser();
+									if (cu.getAuthorities() != null && !cu.getAuthorities().isEmpty()) {
+										List<String> roleAuths = new ArrayList<>(cu.getStringAuthorities());
+										roleAuths.addAll(auths);
+										cu.setStringAuthorities(roleAuths);
+									} else
+										cu.setStringAuthorities(auths);
+									return ca;
+								});
+					}
+					return Mono.just(e);
+				});
 	}
 
-	private Mono<Authentication> getAuthenticationIfNotInCache(boolean basic, String bearerToken,
+	private Mono<Authentication> getAuthenticationIfNotInCache(String appCode, boolean basic, String bearerToken,
 			ServerHttpRequest request) {
 
 		if (!basic) {
@@ -465,7 +488,7 @@ public class AuthenticationService implements IAuthenticationService {
 							.setOperator(FilterConditionOperator.EQUALS).setValue(toPartToken(bearerToken)))
 							.filter(e -> e.getToken().equals(bearerToken)).take(1).single(),
 
-					token -> this.makeSpringAuthentication(request, claims, token),
+					token -> this.makeSpringAuthentication(appCode, request, claims, token),
 
 					(token, ca) -> {
 
@@ -496,12 +519,12 @@ public class AuthenticationService implements IAuthenticationService {
 			String username = token.substring(0, token.indexOf(':'));
 			String password = token.substring(token.indexOf(':') + 1);
 
-			String appCode = request.getHeaders().getFirst(AppService.AC);
+			String reqAppCode = request.getHeaders().getFirst(AppService.AC);
 			String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
 			return FlatMapUtil.flatMapMono(
 
-					() -> this.userService.findNonDeletedUserNClient(username, null, clientCode, appCode,
+					() -> this.userService.findNonDeletedUserNClient(username, null, clientCode, reqAppCode,
 							AuthenticationIdentifierType.USER_NAME),
 
 					tup -> this.userService.checkUserAndClient(tup, clientCode)
@@ -509,7 +532,7 @@ public class AuthenticationService implements IAuthenticationService {
 
 					(tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
 
-					(tup, linCCheck, user) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), appCode,
+					(tup, linCCheck, user) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), reqAppCode,
 							AuthenticationPasswordType.PASSWORD),
 
 					(tup, linCCheck, user, policy) -> this.checkPassword(password, null, user, policy,
@@ -518,7 +541,7 @@ public class AuthenticationService implements IAuthenticationService {
 					(tup, linCCheck, user, policy, passwordChecked) -> Mono.just(new ContextAuthentication(
 							user.toContextUser(), true, tup.getT1().getId().toBigInteger(),
 							tup.getT1().getCode(), tup.getT2().getTypeCode(), tup.getT2().getCode(), finToken,
-							LocalDateTime.now().plusYears(1), clientCode, appCode)))
+							LocalDateTime.now().plusYears(1), clientCode, reqAppCode)))
 					.contextWrite(Context.of(LogUtil.METHOD_NAME,
 							"AuthenticationService.getAuthenticationIfNotInCache [Basic]"))
 					.map(Authentication.class::cast)
@@ -544,14 +567,15 @@ public class AuthenticationService implements IAuthenticationService {
 		return bearerToken.length() > 50 ? bearerToken.substring(bearerToken.length() - 50) : bearerToken;
 	}
 
-	private Mono<ContextAuthentication> makeSpringAuthentication(ServerHttpRequest request, JWTClaims jwtClaims,
+	private Mono<ContextAuthentication> makeSpringAuthentication(String appCode, ServerHttpRequest request,
+			JWTClaims jwtClaims,
 			TokenObject tokenObject) {
 
 		return FlatMapUtil.flatMapMono(
 
 				() -> checkTokenOrigin(request, jwtClaims),
 
-				claims -> this.userService.readInternal(tokenObject.getUserId()),
+				claims -> this.userService.readInternal(appCode, tokenObject.getUserId()),
 
 				(claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
 

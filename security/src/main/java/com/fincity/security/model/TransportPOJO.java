@@ -2,6 +2,7 @@ package com.fincity.security.model;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 import com.fincity.security.enums.ClientLevelType;
 
@@ -21,7 +22,7 @@ public class TransportPOJO implements Serializable {
 	private String type;
 	private String clientCode;
 	private List<AppTransportRole> roles;
-	private List<AppTransportPackage> packages;
+	private List<AppTransportProfile> packages;
 	private List<AppTransportProperty> properties;
 	private List<AppTransportRegAppAccess> appAccess;
 	private List<AppTransportRegRoles> rolesAccess;
@@ -35,8 +36,7 @@ public class TransportPOJO implements Serializable {
 		private String roleName;
 		private String roleDescription;
 		private List<AppTransportPermission> permissions;
-		// For when we have roles in roles
-		private List<String> roleNames;
+		private List<AppTransportRole> subRoles;
 	}
 
 	@Data
@@ -50,11 +50,11 @@ public class TransportPOJO implements Serializable {
 	@Data
 	@Accessors(chain = true)
 	@NoArgsConstructor
-	public static class AppTransportPackage implements Serializable {
-		private String packageName;
-		private String packageCode;
-		private String packageDescription;
-		private List<String> roles;
+	public static class AppTransportProfile implements Serializable {
+		private String profileName;
+		private String profileDescription;
+		private Map<String, Object> arrangement;
+		private List<AppTransportRole> roles;
 	}
 
 	@Data
