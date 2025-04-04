@@ -16,13 +16,17 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.RoleV2DAO;
 import com.fincity.security.dto.RoleV2;
+import com.fincity.security.dto.appregistration.AbstractAppRegistration;
+import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityV2RoleRecord;
+import com.fincity.security.service.appregistration.IAppRegistrationHelperService;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Mono;
@@ -30,7 +34,8 @@ import reactor.util.context.Context;
 
 @Service
 public class RoleV2Service
-        extends AbstractSecurityUpdatableDataService<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAO> {
+        extends AbstractSecurityUpdatableDataService<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAO>
+        implements IAppRegistrationHelperService {
 
     private static final String ROLE = "Role";
     private static final String DESCRIPTION = "description";
@@ -161,5 +166,25 @@ public class RoleV2Service
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
                                         SecurityMessageResourceService.DELETE_ROLE_ERROR)
                                 : Mono.error(ex));
+    }
+
+    @Override
+    public Mono<RoleV2> readObject(ULong id,
+            AppRegistrationObjectType type) {
+        return super.read(id);
+    }
+
+    @Override
+    public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
+        return FlatMapUtil.flatMapMono(
+
+                () -> super.read(id),
+
+                role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
+                        .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
+                                : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
+
+        )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.hasAccessTo"));
     }
 }

@@ -21,6 +21,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
@@ -32,11 +33,13 @@ import com.fincity.security.dao.appregistration.AppRegistrationDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
+import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.AppDependency;
 import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.model.TransportPOJO.AppTransportProperty;
+import com.fincity.security.service.appregistration.IAppRegistrationHelperService;
 import com.google.common.base.Functions;
 
 import reactor.core.publisher.Flux;
@@ -46,7 +49,8 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Service
-public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppRecord, ULong, App, AppDAO> {
+public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppRecord, ULong, App, AppDAO>
+        implements IAppRegistrationHelperService {
 
     private static final String APPLICATION = "Application";
     private static final String APPLICATION_ACCESS = "Application access";
@@ -907,5 +911,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 (ca, access, access2) -> this.dao.noOneHasWriteAccessExcept(appCode, clientCode))
                 .defaultIfEmpty(Boolean.FALSE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasDeleteAccess"));
+    }
+
+    @Override
+    public Mono<? extends AbstractDTO<ULong, ULong>> readObject(ULong id, AppRegistrationObjectType type) {
+        return super.read(id);
+    }
+
+    @Override
+    public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
+        return this.hasWriteAccess(id, clientId);
     }
 }

@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
@@ -24,10 +23,12 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ProfileDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Profile;
-import com.fincity.security.dto.User;
+import com.fincity.security.dto.RoleV2;
+import com.fincity.security.dto.appregistration.AbstractAppRegistration;
+import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
-import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
+import com.fincity.security.service.appregistration.IAppRegistrationHelperService;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import reactor.core.publisher.Flux;
@@ -36,7 +37,8 @@ import reactor.util.context.Context;
 
 @Service
 public class ProfileService
-        extends AbstractSecurityUpdatableDataService<SecurityProfileRecord, ULong, Profile, ProfileDAO> {
+        extends AbstractSecurityUpdatableDataService<SecurityProfileRecord, ULong, Profile, ProfileDAO>
+        implements IAppRegistrationHelperService {
 
     private static final String PROFILE = "Profile";
 
@@ -134,12 +136,14 @@ public class ProfileService
                 .flatMap(e -> {
 
                     String cacheName = CACHE_NAME_ID + "_"
-                            + (e.getRootProfileId() == null ? e.getId() : e.getRootProfileId());
+                            + (e.getRootProfileId() == null ? e.getId()
+                                    : e.getRootProfileId());
 
                     if (e.getRootProfileId() == null)
                         return this.cacheService.evictAll(cacheName).map(x -> e);
 
-                    return this.dao.isBeingUsedByManagingClients(e.getClientId(), e.getId(), e.getRootProfileId())
+                    return this.dao.isBeingUsedByManagingClients(e.getClientId(), e.getId(),
+                            e.getRootProfileId())
                             .flatMap(used -> {
 
                                 if (used)
@@ -294,7 +298,8 @@ public class ProfileService
         return Flux.fromIterable(profileIds)
                 .flatMap(
                         pid -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_ID + "_" + pid,
-                                () -> this.dao.getProfileAuthorities(pid, clientHierarchy),
+                                () -> this.dao.getProfileAuthorities(pid,
+                                        clientHierarchy),
                                 clientHierarchy.getClientId())
                                 .flatMapMany(Flux::fromIterable))
                 .distinct()
@@ -313,5 +318,25 @@ public class ProfileService
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.setAuthorities"));
+    }
+
+    @Override
+    public Mono<Profile> readObject(ULong id,
+            AppRegistrationObjectType type) {
+        return super.read(id);
+    }
+
+    @Override
+    public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
+        return FlatMapUtil.flatMapMono(
+
+                () -> super.read(id),
+
+                role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
+                        .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
+                                : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
+
+        )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.hasAccessTo"));
     }
 }

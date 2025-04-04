@@ -9,8 +9,8 @@ import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.App;
-import com.fincity.security.dto.AppRegistrationAccess;
-import com.fincity.security.dto.AppRegistrationFile;
+import com.fincity.security.dto.appregistration.AppRegistrationAccess;
+import com.fincity.security.dto.appregistration.AppRegistrationFileAccess;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityAppRegFileAccessResourceType;
 
@@ -64,8 +64,8 @@ public class AppRegistrationDAO {
                                 .where(SECURITY_APP_REG_USER_ROLE.APP_ID.eq(id))),
 
                 (acc, pack, role) -> Mono.from(
-                                this.dslContext.deleteFrom(SECURITY_APP_REG_FILE_ACCESS)
-                                        .where(SECURITY_APP_REG_FILE_ACCESS.APP_ID.eq(id)))
+                        this.dslContext.deleteFrom(SECURITY_APP_REG_FILE_ACCESS)
+                                .where(SECURITY_APP_REG_FILE_ACCESS.APP_ID.eq(id)))
                         .map(e -> true)
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.deleteEverythingRelated"));
@@ -110,7 +110,7 @@ public class AppRegistrationDAO {
     }
 
     public Mono<Page<AppRegistrationAccess>> getAccess(ULong appId, ULong clientId, String clientType,
-                                                       ClientLevelType level, String businessType, Pageable pageable) {
+            ClientLevelType level, String businessType, Pageable pageable) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -148,7 +148,7 @@ public class AppRegistrationDAO {
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getAccess"));
     }
 
-    public Mono<AppRegistrationFile> createFile(App app, AppRegistrationFile file) {
+    public Mono<AppRegistrationFileAccess> createFile(App app, AppRegistrationFileAccess file) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -179,12 +179,12 @@ public class AppRegistrationDAO {
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.createFile"));
     }
 
-    public Mono<AppRegistrationFile> getFileById(ULong id) {
+    public Mono<AppRegistrationFileAccess> getFileById(ULong id) {
 
         return Mono
                 .from(this.dslContext.selectFrom(SECURITY_APP_REG_FILE_ACCESS)
                         .where(SECURITY_APP_REG_FILE_ACCESS.ID.eq(id)))
-                .map(e -> e.into(AppRegistrationFile.class));
+                .map(e -> e.into(AppRegistrationFileAccess.class));
     }
 
     public Mono<Boolean> deleteFile(ULong id) {
@@ -195,9 +195,9 @@ public class AppRegistrationDAO {
                 .map(e -> e > 0);
     }
 
-    public Mono<Page<AppRegistrationFile>> getFile(ULong appId, ULong clientId, String clientType,
-                                                   ClientLevelType level,
-                                                   String businessType, Pageable pageable) {
+    public Mono<Page<AppRegistrationFileAccess>> getFile(ULong appId, ULong clientId, String clientType,
+            ClientLevelType level,
+            String businessType, Pageable pageable) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -222,16 +222,17 @@ public class AppRegistrationDAO {
 
                 () -> Flux.from(this.dslContext.selectFrom(SECURITY_APP_REG_FILE_ACCESS).where(condition)
                         .orderBy(SECURITY_APP_REG_FILE_ACCESS.CREATED_AT.desc()).limit(pageable.getPageSize())
-                        .offset(pageable.getOffset())).map(e -> e.into(AppRegistrationFile.class)).collectList(),
+                        .offset(pageable.getOffset())).map(e -> e.into(AppRegistrationFileAccess.class)).collectList(),
 
                 lst -> Mono.from(this.dslContext.selectCount().from(SECURITY_APP_REG_FILE_ACCESS).where(condition))
                         .map(Record1::value1).map(e -> (long) e),
 
                 (lst, count) -> {
                     if (lst.isEmpty())
-                        return Mono.just(Page.<AppRegistrationFile>empty(pageable));
+                        return Mono.just(Page.<AppRegistrationFileAccess>empty(pageable));
 
-                    return Mono.just(PageableExecutionUtils.<AppRegistrationFile>getPage(lst, pageable, () -> count));
+                    return Mono.just(
+                            PageableExecutionUtils.<AppRegistrationFileAccess>getPage(lst, pageable, () -> count));
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationDAO.getFile"));
     }
 
@@ -274,7 +275,7 @@ public class AppRegistrationDAO {
     }
 
     public Mono<Page<AppRegistrationPackage>> getPackage(ULong appId, String packageName, ULong clientId,
-                                                         String clientType, ClientLevelType level, String businessType, Pageable pageable) {
+            String clientType, ClientLevelType level, String businessType, Pageable pageable) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -330,16 +331,16 @@ public class AppRegistrationDAO {
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> Mono.from(this.dslContext.insertInto(SECURITY_APP_REG_USER_ROLE)
-                                .set(SECURITY_APP_REG_USER_ROLE.APP_ID, app.getId())
-                                .set(SECURITY_APP_REG_USER_ROLE.CLIENT_ID,
-                                        CommonsUtil.nonNullValue(role.getClientId(), ULong.valueOf(ca.getUser().getClientId())))
-                                .set(SECURITY_APP_REG_USER_ROLE.BUSINESS_TYPE, role.getBusinessType())
-                                .set(SECURITY_APP_REG_USER_ROLE.CLIENT_TYPE, role.getClientType())
-                                .set(SECURITY_APP_REG_USER_ROLE.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
-                                .set(SECURITY_APP_REG_USER_ROLE.LEVEL, role.getLevel().toUserRoleLevel())
+                        .set(SECURITY_APP_REG_USER_ROLE.APP_ID, app.getId())
+                        .set(SECURITY_APP_REG_USER_ROLE.CLIENT_ID,
+                                CommonsUtil.nonNullValue(role.getClientId(), ULong.valueOf(ca.getUser().getClientId())))
+                        .set(SECURITY_APP_REG_USER_ROLE.BUSINESS_TYPE, role.getBusinessType())
+                        .set(SECURITY_APP_REG_USER_ROLE.CLIENT_TYPE, role.getClientType())
+                        .set(SECURITY_APP_REG_USER_ROLE.CREATED_BY, ULong.valueOf(ca.getUser().getId()))
+                        .set(SECURITY_APP_REG_USER_ROLE.LEVEL, role.getLevel().toUserRoleLevel())
 
-                                .set(SECURITY_APP_REG_USER_ROLE.ROLE_ID, role.getRoleId())
-                                .returningResult(SECURITY_APP_REG_USER_ROLE.ID))
+                        .set(SECURITY_APP_REG_USER_ROLE.ROLE_ID, role.getRoleId())
+                        .returningResult(SECURITY_APP_REG_USER_ROLE.ID))
                         .map(Record1::value1),
 
                 (ca, id) -> this.getRoleById(id)
@@ -364,7 +365,7 @@ public class AppRegistrationDAO {
     }
 
     public Mono<Page<AppRegistrationRole>> getRole(ULong appId, String roleName, ULong clientId, String clientType,
-                                                   ClientLevelType level, String businessType, Pageable pageable) {
+            ClientLevelType level, String businessType, Pageable pageable) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -414,8 +415,8 @@ public class AppRegistrationDAO {
     }
 
     public Mono<List<Tuple2<ULong, Boolean>>> getAppIdsForRegistration(ULong appId, ULong appClientId,
-                                                                       ULong urlClientId,
-                                                                       String clientType, ClientLevelType level, String businessType) {
+            ULong urlClientId,
+            String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_ACCESS.APP_ID.eq(appId),
                 SECURITY_APP_REG_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
@@ -469,7 +470,7 @@ public class AppRegistrationDAO {
     }
 
     public Mono<List<ULong>> getPackageIdsForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
-                                                          String clientType, ClientLevelType level, String businessType) {
+            String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_PACKAGE.APP_ID.eq(appId),
                 SECURITY_APP_REG_PACKAGE.CLIENT_ID.in(appClientId, urlClientId),
@@ -480,26 +481,26 @@ public class AppRegistrationDAO {
         return Flux.from(this.dslContext.select(SECURITY_APP_REG_PACKAGE.CLIENT_ID, SECURITY_APP_REG_PACKAGE.PACKAGE_ID)
                 .from(SECURITY_APP_REG_PACKAGE).where(condition)).collectList().map(e -> {
 
-            if (e.isEmpty())
-                return List.of();
+                    if (e.isEmpty())
+                        return List.of();
 
-            Map<ULong, Set<ULong>> map = new HashMap<>();
+                    Map<ULong, Set<ULong>> map = new HashMap<>();
 
-            for (var r : e) {
-                ULong clientId = r.get(SECURITY_APP_REG_PACKAGE.CLIENT_ID);
-                ULong packageId = r.get(SECURITY_APP_REG_PACKAGE.PACKAGE_ID);
+                    for (var r : e) {
+                        ULong clientId = r.get(SECURITY_APP_REG_PACKAGE.CLIENT_ID);
+                        ULong packageId = r.get(SECURITY_APP_REG_PACKAGE.PACKAGE_ID);
 
-                Set<ULong> list = map.getOrDefault(clientId, new HashSet<>());
-                list.add(packageId);
-                map.put(clientId, list);
-            }
+                        Set<ULong> list = map.getOrDefault(clientId, new HashSet<>());
+                        list.add(packageId);
+                        map.put(clientId, list);
+                    }
 
-            return new ArrayList<>(map.getOrDefault(urlClientId, map.get(appClientId)));
-        });
+                    return new ArrayList<>(map.getOrDefault(urlClientId, map.get(appClientId)));
+                });
     }
 
     public Mono<List<ULong>> getRoleIdsForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
-                                                       String clientType, ClientLevelType level, String businessType) {
+            String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_USER_ROLE.APP_ID.eq(appId),
                 SECURITY_APP_REG_USER_ROLE.CLIENT_ID.in(appClientId, urlClientId),
@@ -530,9 +531,9 @@ public class AppRegistrationDAO {
                 });
     }
 
-    public Mono<List<AppRegistrationFile>> getFileAccessForRegistration(ULong appId, ULong appClientId,
-                                                                        ULong urlClientId,
-                                                                        String clientType, ClientLevelType level, String businessType) {
+    public Mono<List<AppRegistrationFileAccess>> getFileAccessForRegistration(ULong appId, ULong appClientId,
+            ULong urlClientId,
+            String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_FILE_ACCESS.APP_ID.eq(appId),
                 SECURITY_APP_REG_FILE_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
@@ -541,16 +542,16 @@ public class AppRegistrationDAO {
                 SECURITY_APP_REG_FILE_ACCESS.BUSINESS_TYPE.eq(businessType));
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_APP_REG_FILE_ACCESS).where(condition))
-                .map(e -> e.into(AppRegistrationFile.class)).collectList().map(e -> {
+                .map(e -> e.into(AppRegistrationFileAccess.class)).collectList().map(e -> {
 
                     if (e.isEmpty())
                         return List.of();
 
-                    Map<ULong, List<AppRegistrationFile>> map = new HashMap<>();
+                    Map<ULong, List<AppRegistrationFileAccess>> map = new HashMap<>();
 
                     for (var r : e) {
                         ULong clientId1 = r.getClientId();
-                        List<AppRegistrationFile> list = map.getOrDefault(clientId1, new ArrayList<>());
+                        List<AppRegistrationFileAccess> list = map.getOrDefault(clientId1, new ArrayList<>());
                         list.add(r);
                         map.put(clientId1, list);
                     }
