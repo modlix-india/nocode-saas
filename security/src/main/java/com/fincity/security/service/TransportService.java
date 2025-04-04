@@ -1,16 +1,10 @@
 package com.fincity.security.service;
 
-import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.model.TransportPOJO;
 
 import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
 
 @Service
 public class TransportService {
@@ -28,66 +22,75 @@ public class TransportService {
 
     public Mono<TransportPOJO> makeTransport(String appCode) {
 
-        return FlatMapUtil.flatMapMono(
+        return Mono.<TransportPOJO>empty();
 
-                SecurityContextUtil::getUsersContextAuthentication,
+        // return FlatMapUtil.flatMapMono(
 
-                ca -> this.appService.getAppByCode(appCode),
+        // SecurityContextUtil::getUsersContextAuthentication,
 
-                (ca, app) -> this.appService.hasWriteAccess(appCode, ca.getClientCode()),
+        // ca -> this.appService.getAppByCode(appCode),
 
-                (ca, app, hasWriteAccess) -> {
+        // (ca, app) -> this.appService.hasWriteAccess(appCode, ca.getClientCode()),
 
-                    if (!hasWriteAccess.booleanValue())
-                        return Mono.empty();
+        // (ca, app, hasWriteAccess) -> {
 
-                    TransportPOJO transport = new TransportPOJO();
+        // if (!hasWriteAccess.booleanValue())
+        // return Mono.<Boolean>empty();
 
-                    transport.setUniqueTransportCode(UniqueUtil.shortUUID());
-                    transport.setAppCode(app.getAppCode());
-                    transport.setName(app.getAppName());
-                    transport.setType(app.getAppType().toString());
+        // TransportPOJO transport = new TransportPOJO();
 
-                    return Mono.just(transport);
-                },
+        // transport.setUniqueTransportCode(UniqueUtil.shortUUID());
+        // transport.setAppCode(app.getAppCode());
+        // transport.setName(app.getAppName());
+        // transport.setType(app.getAppType().toString());
 
-                (ca, app, hasWriteAccess, transport) -> Mono.zip(
-                        this.roleService.readForTransport(app.getId(), app.getClientId(),
-                                ULong.valueOf(ca.getUser().getClientId())),
-                        this.packageService.readForTransport(app.getId(), app.getClientId(),
-                                ULong.valueOf(ca.getUser().getClientId()))),
+        // return Mono.just(transport);
+        // },
 
-                (ca, app, hasWriteAccess, transport, tuple) -> {
+        // (ca, app, hasWriteAccess, transport) -> Mono.zip(
+        // this.roleService.readForTransport(app.getId(), app.getClientId(),
+        // ULong.valueOf(ca.getUser().getClientId())),
+        // this.packageService.readForTransport(app.getId(), app.getClientId(),
+        // ULong.valueOf(ca.getUser().getClientId()))),
 
-                    transport.setRoles(tuple.getT1());
-                    transport.setPackages(tuple.getT2());
+        // (ca, app, hasWriteAccess, transport, tuple) -> {
 
-                    return Mono.just(transport);
-                }
+        // transport.setRoles(tuple.getT1());
+        // transport.setPackages(tuple.getT2());
 
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "TransportService.makeTransport"));
+        // return Mono.just(transport);
+        // }
+
+        // ).contextWrite(Context.of(LogUtil.METHOD_NAME,
+        // "TransportService.makeTransport"));
     }
 
     public Mono<Boolean> createAndApply(TransportPOJO pojo) {
 
-        return FlatMapUtil.flatMapMono(
+        return Mono.<Boolean>empty();
 
-                SecurityContextUtil::getUsersContextAuthentication,
+        // return FlatMapUtil.flatMapMono(
 
-                ca -> this.appService.getAppByCode(pojo.getAppCode()),
+        // SecurityContextUtil::getUsersContextAuthentication,
 
-                (ca, app) -> this.appService.hasWriteAccess(pojo.getAppCode(), pojo.getClientCode()),
+        // ca -> this.appService.getAppByCode(pojo.getAppCode()),
 
-                (ca, app, hasWriteAccess) -> this.roleService.createRolesFromTransport(app.getId(), pojo.getRoles()),
+        // (ca, app) -> this.appService.hasWriteAccess(pojo.getAppCode(),
+        // pojo.getClientCode()),
 
-                (ca, app, hasWriteAccess, createdRoles) -> this.packageService.createPackagesFromTransport(app.getId(),
-                        pojo.getPackages(), createdRoles),
+        // (ca, app, hasWriteAccess) ->
+        // this.roleService.createRolesFromTransport(app.getId(), pojo.getRoles()),
 
-                (ca, app, hasWriteAccess, createdRoles, createdPackages) -> this.appService
-                        .createPropertiesFromTransport(app.getId(),
-                                pojo.getProperties())
+        // (ca, app, hasWriteAccess, createdRoles) ->
+        // this.packageService.createPackagesFromTransport(app.getId(),
+        // pojo.getPackages(), createdRoles),
 
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "TransportService.createAndApply"));
+        // (ca, app, hasWriteAccess, createdRoles, createdPackages) -> this.appService
+        // .createPropertiesFromTransport(app.getId(),
+        // pojo.getProperties())
+
+        // ).contextWrite(Context.of(LogUtil.METHOD_NAME,
+        // "TransportService.createAndApply"));
     }
 
 }

@@ -4,9 +4,11 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Indexes;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppRegUserRoleV2Level;
+import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityAppRegUserRoleV2Record;
@@ -20,6 +22,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -191,6 +194,11 @@ public class SecurityAppRegUserRoleV2 extends TableImpl<SecurityAppRegUserRoleV2
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.SECURITY_APP_REG_USER_ROLE_V2_FK3_APP_REG_USER_ROLE_APP_ID);
+    }
+
+    @Override
     public Identity<SecurityAppRegUserRoleV2Record, ULong> getIdentity() {
         return (Identity<SecurityAppRegUserRoleV2Record, ULong>) super.getIdentity();
     }
@@ -202,7 +210,7 @@ public class SecurityAppRegUserRoleV2 extends TableImpl<SecurityAppRegUserRoleV2
 
     @Override
     public List<ForeignKey<SecurityAppRegUserRoleV2Record, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_REG_USER_ROLE_CLIENT_ID, Keys.FK2_APP_REG_USER_ROLE_ROLE_V2_ID);
+        return Arrays.asList(Keys.FK1_APP_REG_USER_ROLE_CLIENT_ID, Keys.FK2_APP_REG_USER_ROLE_APP_ID, Keys.FK2_APP_REG_USER_ROLE_ROLE_V2_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -216,6 +224,19 @@ public class SecurityAppRegUserRoleV2 extends TableImpl<SecurityAppRegUserRoleV2
             _securityClient = new SecurityClientPath(this, Keys.FK1_APP_REG_USER_ROLE_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityAppPath _securityApp;
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityAppPath securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityAppPath(this, Keys.FK2_APP_REG_USER_ROLE_APP_ID, null);
+
+        return _securityApp;
     }
 
     private transient SecurityV2RolePath _securityV2Role;

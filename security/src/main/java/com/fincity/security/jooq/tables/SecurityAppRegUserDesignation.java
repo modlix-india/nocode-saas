@@ -4,9 +4,11 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Indexes;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppRegUserDesignationLevel;
+import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityAppRegDesignation.SecurityAppRegDesignationPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityAppRegUserDesignationRecord;
@@ -20,6 +22,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -193,6 +196,11 @@ public class SecurityAppRegUserDesignation extends TableImpl<SecurityAppRegUserD
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.SECURITY_APP_REG_USER_DESIGNATION_FK3_APP_REG_USER_DESIGNATION_APP_ID);
+    }
+
+    @Override
     public Identity<SecurityAppRegUserDesignationRecord, ULong> getIdentity() {
         return (Identity<SecurityAppRegUserDesignationRecord, ULong>) super.getIdentity();
     }
@@ -204,7 +212,7 @@ public class SecurityAppRegUserDesignation extends TableImpl<SecurityAppRegUserD
 
     @Override
     public List<ForeignKey<SecurityAppRegUserDesignationRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_REG_USER_DESIGNATION_CLIENT_ID, Keys.FK2_APP_REG_USER_DESIGNATION_DESIGNATION_ID);
+        return Arrays.asList(Keys.FK1_APP_REG_USER_DESIGNATION_CLIENT_ID, Keys.FK2_APP_REG_USER_DESIGNATION_APP_ID, Keys.FK2_APP_REG_USER_DESIGNATION_DESIGNATION_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -218,6 +226,19 @@ public class SecurityAppRegUserDesignation extends TableImpl<SecurityAppRegUserD
             _securityClient = new SecurityClientPath(this, Keys.FK1_APP_REG_USER_DESIGNATION_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityAppPath _securityApp;
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityAppPath securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityAppPath(this, Keys.FK2_APP_REG_USER_DESIGNATION_APP_ID, null);
+
+        return _securityApp;
     }
 
     private transient SecurityAppRegDesignationPath _securityAppRegDesignation;
