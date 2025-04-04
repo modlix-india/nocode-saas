@@ -29,7 +29,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ClientDAO;
-import com.fincity.security.dao.appregistration.AppRegistrationDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.policy.AbstractPolicy;
@@ -63,10 +63,6 @@ public class ClientService
 	private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
 	private static final String CACHE_NAME_CLIENT_ID = "clientId";
 
-	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
-
-	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
-
 	@Autowired
 	private CacheService cacheService;
 
@@ -78,7 +74,7 @@ public class ClientService
 	private SecurityMessageResourceService securityMessageResourceService;
 
 	@Autowired
-	private AppRegistrationDAO appRegistrationDAO;
+	private AppRegistrationV2DAO appRegistrationDAO;
 
 	@Autowired
 	private ClientHierarchyService clientHierarchyService;
@@ -429,5 +425,10 @@ public class ClientService
 	public Mono<Boolean> isClientActive(ULong clientId) {
 		return this.clientHierarchyService.getClientHierarchyIds(clientId).collectList()
 				.flatMap(clientHie -> this.dao.isClientActive(clientHie));
+	}
+
+	public Mono<Boolean> addClientRegistrationObjects(ULong appId, ULong clientId, ULong loggedInFromClientId,
+			Client client) {
+		return Mono.just(Boolean.TRUE);
 	}
 }

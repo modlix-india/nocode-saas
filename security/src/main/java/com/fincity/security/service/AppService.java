@@ -29,7 +29,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
-import com.fincity.security.dao.appregistration.AppRegistrationDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
@@ -58,7 +58,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     private final ClientService clientService;
     private final SecurityMessageResourceService messageResourceService;
     private final CacheService cacheService;
-    private final AppRegistrationDAO appRegistrationDao;
+    private final AppRegistrationV2DAO appRegistrationDao;
 
     private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -84,7 +84,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     public static final String THUMB_URL = "thumbUrl";
 
     public AppService(ClientService clientService, SecurityMessageResourceService messageResourceService,
-            CacheService cacheService, AppRegistrationDAO appRegistrationDao) {
+            CacheService cacheService, AppRegistrationV2DAO appRegistrationDao) {
 
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;

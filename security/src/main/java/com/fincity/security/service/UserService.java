@@ -41,7 +41,7 @@ import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
-import com.fincity.security.dao.appregistration.AppRegistrationDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Permission;
@@ -86,7 +86,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	private final OtpService otpService;
 	private final TokenService tokenService;
 	private final EventCreationService ecService;
-	private final AppRegistrationDAO appRegistrationDAO;
+	private final AppRegistrationV2DAO appRegistrationDAO;
 	private final ProfileService profileService;
 
 	@Value("${jwt.key}")
@@ -96,7 +96,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			ClientHierarchyService clientHierarchyService, PasswordEncoder passwordEncoder,
 			SecurityMessageResourceService securityMessageResourceService, SoxLogService soxLogService,
 			OtpService otpService, TokenService tokenService, EventCreationService ecService,
-			AppRegistrationDAO appRegistrationDAO, ProfileService profileService) {
+			AppRegistrationV2DAO appRegistrationDAO, ProfileService profileService) {
 
 		this.clientService = clientService;
 		this.appService = appService;
