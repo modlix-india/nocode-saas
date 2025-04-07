@@ -32,7 +32,6 @@ import lombok.Getter;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Service
 public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractPolicyDao<R, D>>
@@ -187,7 +186,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						getCacheKeys(updated.getClientId(), updated.getAppId())).<D>map(evicted -> updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
+						SecurityMessageResourceService.FORBIDDEN_UPDATE, getPolicyName()));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
@@ -212,7 +211,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).<D>map(evicted -> updated))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
+						SecurityMessageResourceService.FORBIDDEN_UPDATE, getPolicyName()));
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
@@ -237,7 +236,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 						getCacheKeys(entity.getClientId(), entity.getAppId())).<Integer>map(evicted -> deleted))
 				.switchIfEmpty(securityMessageResourceService.throwMessage(
 						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
+						SecurityMessageResourceService.FORBIDDEN_UPDATE, getPolicyName()));
 	}
 
 	private Mono<Boolean> canUpdatePolicy(ContextAuthentication ca, ULong appId) {
@@ -265,10 +264,10 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 	}
 
 	private Mono<Tuple2<ULong, ULong>> getClientAndAppId(String clientCode, String appCode) {
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoConsolidate(
 				() -> clientService.getClientId(clientCode),
-				clientId -> appService.getAppByCode(appCode),
-				(clientId, app) -> Mono.just(Tuples.of(clientId, app.getId())));
+				clientId -> appService.getAppByCode(appCode).map(app -> ULongUtil.valueOf(app.getId()))
+		);
 	}
 
 	public Mono<D> getClientAppPolicy(ULong clientId, ULong appId) {
