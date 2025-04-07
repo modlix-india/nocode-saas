@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: worker
+  
+  r2dbc:
+    url: ${worker.db.url}
+    username: ${worker.db.username}
+    password: ${worker.db.password}
+    pool:
+      initial-size: 2
+      max-size: 4
+      max-idle-time: 30m
+      validation-query: SELECT 1
+    flyway:
+      enabled: true
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${worker.db.flyway.url}
+      user: ${worker.db.username}
+      password: ${worker.db.password}
+    boot:
+      admin:
+        client:
+          instance:
+            name: worker
+    servlet:
+      multipart:
+        max-file-size: -1
+        max-request-size: -1
+    cloud:
+      gateway:
+        routes:
+          - id: worker
+            uri: lb://worker
+            predicates:
+              - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/*/api/worker/**,
+
+management:
+  endpoint:
+    flyway:
+      enabled: true
+
+redis:
+  cache:
+    prefix: wor
