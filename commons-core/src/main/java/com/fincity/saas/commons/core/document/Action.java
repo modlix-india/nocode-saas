@@ -23,7 +23,6 @@ import reactor.core.publisher.Mono;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Action extends AbstractOverridableDTO<Action> {
-
     @Serial
     private static final long serialVersionUID = 3425030507970576753L;
 
@@ -32,7 +31,6 @@ public class Action extends AbstractOverridableDTO<Action> {
     private Map<String, String> properties;
 
     public Action(Action action) {
-
         super(action);
         this.functionName = action.functionName;
         this.functionNamespace = action.functionNamespace;
@@ -42,7 +40,6 @@ public class Action extends AbstractOverridableDTO<Action> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Action> applyOverride(Action base) {
-
         if (base == null) return Mono.just(this);
 
         return DifferenceApplicator.apply(this.properties, base.properties)
@@ -58,7 +55,6 @@ public class Action extends AbstractOverridableDTO<Action> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Action> makeOverride(Action base) {
-
         if (base == null) return Mono.just(this);
 
         return Mono.just(this).flatMap(e -> DifferenceExtractor.extract(e.properties, base.properties)

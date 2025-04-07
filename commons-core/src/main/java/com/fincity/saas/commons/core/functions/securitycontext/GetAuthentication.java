@@ -17,7 +17,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class GetAuthentication extends AbstractReactiveFunction {
-
     private static final String FUNCTION_NAME = "GetAuthentication";
 
     private static final String NAME_SPACE = "CoreServices.SecurityContext";
@@ -34,7 +33,6 @@ public class GetAuthentication extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event()
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(

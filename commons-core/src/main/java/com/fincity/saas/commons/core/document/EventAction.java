@@ -24,14 +24,12 @@ import reactor.core.publisher.Mono;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class EventAction extends AbstractOverridableDTO<EventAction> {
-
     @Serial
     private static final long serialVersionUID = 8419515774158611099L;
 
     private Map<String, EventActionTask> tasks;
 
     public EventAction(EventAction obj) {
-
         super(obj);
         this.tasks = CloneUtil.cloneMapObject(obj.tasks);
     }
@@ -39,7 +37,6 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventAction> applyOverride(EventAction base) {
-
         if (base == null) return Mono.just(this);
 
         return DifferenceApplicator.apply(this.tasks, base.tasks)
@@ -53,7 +50,6 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventAction> makeOverride(EventAction base) {
-
         if (base == null) return Mono.just(this);
 
         return Mono.just(this)

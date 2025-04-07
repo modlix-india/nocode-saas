@@ -23,7 +23,6 @@ import reactor.core.publisher.Mono;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Workflow extends AbstractOverridableDTO<Workflow> {
-
     @Serial
     private static final long serialVersionUID = -7863306840732076558L;
 
@@ -33,7 +32,6 @@ public class Workflow extends AbstractOverridableDTO<Workflow> {
     private TriggerWorkflowStep trigger;
 
     public Workflow(Workflow workflow) {
-
         super(workflow);
         this.isTemplate = workflow.isTemplate;
         this.startAuth = workflow.startAuth;

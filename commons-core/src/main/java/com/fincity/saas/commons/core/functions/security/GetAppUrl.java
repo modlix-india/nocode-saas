@@ -16,7 +16,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class GetAppUrl extends AbstractReactiveFunction {
-
     private static final String FUNCTION_NAME = "GetAppUrl";
 
     private static final String NAME_SPACE = "CoreServices.Security";
@@ -35,7 +34,6 @@ public class GetAppUrl extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_DATA, Schema.ofString(EVENT_DATA)));
 
         Map<String, Parameter> parameters = new HashMap<>(Map.ofEntries(
@@ -51,7 +49,6 @@ public class GetAppUrl extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String appCode = context.getArguments().get(APP_CODE).getAsString();
         String clientCode = context.getArguments().get(CLIENT_CODE).getAsString();
 

@@ -15,7 +15,6 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class ConditionWorkflowStep extends WorkflowStep {
-
     @Serial
     private static final long serialVersionUID = 2178854708270744216L;
 
@@ -24,9 +23,7 @@ public class ConditionWorkflowStep extends WorkflowStep {
     private Map<String, Map<String, Boolean>> children;
 
     public ConditionWorkflowStep(ConditionWorkflowStep step) {
-
         super(step);
-
         this.expression = step.expression;
         this.children = CloneUtil.cloneMapObject(step.children);
         this.possibleValues = CloneUtil.cloneMapList(step.possibleValues);

@@ -24,7 +24,6 @@ public class SendGridService extends AbstractEmailService implements IAppEmailSe
     @Override
     public Mono<Boolean> sendMail(
             List<String> toAddresses, Template template, Map<String, Object> templateData, Connection connection) {
-
         if (connection.getConnectionDetails() == null
                 || StringUtil.safeIsBlank(connection.getConnectionDetails().get("apiKey")))
             return this.msgService.throwMessage(
@@ -63,16 +62,16 @@ public class SendGridService extends AbstractEmailService implements IAppEmailSe
     }
 
     private Map<String, Object> getSendGridBody(ProcessedEmailDetails details) {
-
         return Map.of(
                 "personalizations",
-                        List.of(Map.of(
-                                "to",
-                                details.getTo().stream()
-                                        .map(e -> Map.of("email", e))
-                                        .toList())),
-                "from", Map.of("email", details.getFrom()),
-                "subject", details.getSubject(),
-                "content", List.of(Map.of("type", "text/html", "value", details.getBody())));
+                List.of(Map.of(
+                        "to",
+                        details.getTo().stream().map(e -> Map.of("email", e)).toList())),
+                "from",
+                Map.of("email", details.getFrom()),
+                "subject",
+                details.getSubject(),
+                "content",
+                List.of(Map.of("type", "text/html", "value", details.getBody())));
     }
 }

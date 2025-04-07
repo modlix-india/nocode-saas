@@ -16,15 +16,13 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public class SendEmail extends AbstractReactiveFunction {
-
     private static final String EVENT_DATA = "sent";
 
     private static final String FUNCTION_NAME = "SendEmail";
@@ -51,7 +49,6 @@ public class SendEmail extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_DATA, Schema.ofBoolean(EVENT_DATA)));
 
         Map<String, Parameter> parameters = new HashMap<>(Map.ofEntries(
@@ -71,7 +68,6 @@ public class SendEmail extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String appCode = context.getArguments().get(APP_CODE).getAsString();
         String clientCode = context.getArguments().get(CLIENT_CODE).getAsString();
         String connectionName = context.getArguments().get(CONNECTION_NAME).getAsString();

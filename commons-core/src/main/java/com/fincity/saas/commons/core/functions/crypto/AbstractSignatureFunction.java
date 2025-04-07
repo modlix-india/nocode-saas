@@ -16,7 +16,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractSignatureFunction extends AbstractReactiveFunction {
-
     protected static final String NAMESPACE = "CoreServices.Crypto";
 
     protected static final String ALGORITHM = "alg";
@@ -57,7 +56,6 @@ public abstract class AbstractSignatureFunction extends AbstractReactiveFunction
 
     protected Mono<FunctionOutput> sign(
             ReactiveSigner reactiveSigner, JsonElement data, Charset charset, StringEncoder encoder) {
-
         if (reactiveSigner == null || data == null || data.isJsonNull() || charset == null || encoder == null)
             return Mono.just(
                     new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_DATA, new JsonPrimitive(""))))));
@@ -71,7 +69,6 @@ public abstract class AbstractSignatureFunction extends AbstractReactiveFunction
 
     protected Mono<FunctionOutput> isValid(
             ReactiveSigner reactiveSigner, JsonElement data, String signature, Charset charset, StringEncoder encoder) {
-
         if (reactiveSigner == null || data == null || data.isJsonNull() || signature == null)
             return Mono.just(new FunctionOutput(
                     List.of(EventResult.outputOf(Map.of(IS_VALID, new JsonPrimitive(Boolean.FALSE))))));

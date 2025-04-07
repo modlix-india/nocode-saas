@@ -8,7 +8,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "function")
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "coreFunctionFilteringIndex")
 public class CoreFunction extends AbstractFunction<CoreFunction> {
-
     @Serial
     private static final long serialVersionUID = 229558978137767412L;
 

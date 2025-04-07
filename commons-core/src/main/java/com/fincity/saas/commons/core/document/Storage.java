@@ -32,7 +32,6 @@ import reactor.util.context.Context;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Storage extends AbstractOverridableDTO<Storage> {
-
     @Serial
     private static final long serialVersionUID = -5399288837130565200L;
 
@@ -54,7 +53,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     private List<String> textIndexFields;
 
     public Storage(Storage store) {
-
         super(store);
         this.schema = CloneUtil.cloneMapObject(store.schema);
 
@@ -81,7 +79,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Storage> applyOverride(Storage base) {
-
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
@@ -107,7 +104,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     }
 
     private void subApplyOverride(Storage base) {
-
         if (this.isAudited == null) this.isAudited = base.isAudited;
 
         if (this.isVersioned == null) this.isVersioned = base.isVersioned;
@@ -132,7 +128,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Storage> makeOverride(Storage base) {
-
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
@@ -161,7 +156,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     }
 
     private void subMakeOverride(Storage base, Storage obj) {
-
         if (EqualsUtil.safeEquals(obj.isAudited, base.isAudited)) obj.isAudited = null;
 
         if (EqualsUtil.safeEquals(obj.isVersioned, base.isVersioned)) obj.isVersioned = null;
@@ -187,7 +181,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     @Accessors(chain = true)
     @NoArgsConstructor
     public static class StorageIndex implements Serializable {
-
         private List<StorageIndexField> fields;
         private boolean unique = false;
 
@@ -201,7 +194,6 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     @Accessors(chain = true)
     @NoArgsConstructor
     public static class StorageIndexField implements Serializable {
-
         private String fieldName;
         private Sort.Direction direction = Sort.Direction.ASC;
 

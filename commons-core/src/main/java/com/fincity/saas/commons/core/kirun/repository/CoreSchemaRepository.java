@@ -14,7 +14,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class CoreSchemaRepository extends ReactiveHybridRepository<Schema> {
-
     public static final String SCHEMA_NAMESPACE_SECURITY_CONTEXT = "Security.Context";
 
     public static final String SCHEMA_NAME_CONTEXT_USER = "ContextUser";
@@ -26,7 +25,6 @@ public class CoreSchemaRepository extends ReactiveHybridRepository<Schema> {
     private final List<String> filterableNames;
 
     public CoreSchemaRepository() {
-
         repoMap.put(
                 SCHEMA_NAMESPACE_SECURITY_CONTEXT + "." + SCHEMA_NAME_CONTEXT_USER,
                 new Schema()

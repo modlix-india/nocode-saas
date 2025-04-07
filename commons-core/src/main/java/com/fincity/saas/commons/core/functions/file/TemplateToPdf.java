@@ -29,7 +29,6 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 public class TemplateToPdf extends AbstractReactiveFunction {
-
     private static final String EVENT_DATA = "fileData";
 
     private static final String FUNCTION_NAME = "TemplateToPdf";
@@ -69,7 +68,6 @@ public class TemplateToPdf extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_DATA, Schema.ofObject(EVENT_DATA)));
 
         Map<String, Parameter> parameters = new HashMap<>(Map.ofEntries(
@@ -96,7 +94,6 @@ public class TemplateToPdf extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String appCode = context.getArguments().get(APP_CODE).getAsString();
         String clientCode = context.getArguments().get(CLIENT_CODE).getAsString();
         String templateName = context.getArguments().get(TEMPLATE_NAME).getAsString();

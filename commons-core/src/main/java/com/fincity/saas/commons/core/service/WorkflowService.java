@@ -1,7 +1,6 @@
 package com.fincity.saas.commons.core.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Workflow;
 import com.fincity.saas.commons.core.repository.WorkflowRepository;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -22,39 +21,35 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 
     @Override
     public Mono<Workflow> create(Workflow entity) {
-
         if (entity.getTrigger() == null) {
             return this.messageResourceService.throwMessage(
                     msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
                     CoreMessageResourceService.WORKFLOW_TRIGGER_MISSING);
         }
 
-        return super.create(entity).flatMap(this::addSchedularForTriggers);
+        return super.create(entity).flatMap(this::addSchedulerForTriggers);
     }
 
     @Override
     protected Mono<Workflow> updatableEntity(Workflow entity) {
-
-        return flatMapMono(() -> this.read(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
                     if (existing.getVersion() != entity.getVersion())
                         return this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-                    if (entity.getTrigger() == null) {
+                    if (entity.getTrigger() == null)
                         return this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
                                 CoreMessageResourceService.WORKFLOW_TRIGGER_MISSING);
-                    }
 
                     existing.setStartAuth(entity.getStartAuth());
                     existing.setSteps(entity.getSteps());
                     existing.setVersion(existing.getVersion() + 1);
 
                     if (!entity.getTrigger().equals(existing.getTrigger())) {
-
                         existing.setTrigger(entity.getTrigger());
-                        return this.addSchedularForTriggers(existing);
+                        return this.addSchedulerForTriggers(existing);
                     }
 
                     return Mono.just(existing);
@@ -62,24 +57,20 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WorkflowService.updatableEntity"));
     }
 
-    private Mono<Workflow> addSchedularForTriggers(Workflow entity) {
-
+    private Mono<Workflow> addSchedulerForTriggers(Workflow entity) {
         // TODO: Need to write logic to add triggers.
-
         return Mono.just(entity);
     }
 
-    private Mono<Boolean> removeSchedularForTriggers(Workflow entity) {
-
+    private Mono<Boolean> removeSchedulerForTriggers(Workflow entity) {
         // TODO: Need to write logic to remove triggers.
-
         return Mono.just(true);
     }
 
     @Override
     public Mono<Boolean> delete(String id) {
-
-        return flatMapMono(() -> this.read(id), this::removeSchedularForTriggers, (entity, removed) -> super.delete(id))
+        return FlatMapUtil.flatMapMono(
+                        () -> this.read(id), this::removeSchedulerForTriggers, (entity, removed) -> super.delete(id))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WorkflowService.delete"));
     }
 }

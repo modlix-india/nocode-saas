@@ -20,7 +20,6 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class FileServerStreamFactory implements FSStreamFactory {
-
     private static final Pattern FILE_SERVER_SECURED_PATTERN = Pattern.compile(".*/api/files/secured/file/(.*)");
     private final IFeignFilesService filesService;
     private final WebClient webClient;
@@ -34,7 +33,6 @@ public class FileServerStreamFactory implements FSStreamFactory {
 
     @Override
     public FSStream getUrl(String url) {
-
         if (url == null || url.isEmpty()) {
             return null;
         }
@@ -66,10 +64,7 @@ public class FileServerStreamFactory implements FSStreamFactory {
     }
 
     private byte[] getResource(String url) {
-
-        if (cache.containsKey(url)) {
-            return cache.get(url);
-        }
+        if (cache.containsKey(url)) return cache.get(url);
 
         return FlatMapUtil.flatMapMono(
                         () -> isFileServerUrl(url) ? fetchInternalResource(url) : fetchExternalResource(url),
@@ -81,7 +76,6 @@ public class FileServerStreamFactory implements FSStreamFactory {
     }
 
     private Mono<byte[]> fetchInternalResource(String url) {
-
         String path = extractFilePath(url);
 
         return filesService

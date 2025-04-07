@@ -1,15 +1,17 @@
 package com.fincity.saas.commons.core.dto;
 
 import com.google.gson.JsonElement;
-import java.io.Serial;
-import java.util.Map;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.springframework.util.MultiValueMap;
 
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Map;
+
 @Data
 @Accessors(chain = true)
-public class RestRequest {
+public class RestRequest implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 5293001147710257733L;

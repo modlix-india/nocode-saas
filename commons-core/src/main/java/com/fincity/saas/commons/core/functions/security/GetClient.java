@@ -21,7 +21,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class GetClient extends AbstractReactiveFunction {
-
     private static final String FUNCTION_NAME = "GetClient";
 
     private static final String NAME_SPACE = "CoreServices.Security";
@@ -40,23 +39,32 @@ public class GetClient extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event()
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(
                         EVENT_DATA_CLIENT,
                         Schema.ofObject(EVENT_DATA_CLIENT)
                                 .setProperties(Map.of(
-                                        "id", Schema.ofLong("id"),
-                                        "createdBy", Schema.ofLong("createdBy"),
-                                        "updatedBy", Schema.ofLong("updatedBy"),
-                                        "code", Schema.ofString("code"),
-                                        "name", Schema.ofString("name"),
-                                        "typeCode", Schema.ofString("typeCode"),
-                                        "tokenValidityMinutes", Schema.ofInteger("tokenValidityMinutes"),
-                                        "localeCode", Schema.ofString("localeCode"),
-                                        "statusCode", Schema.ofString("statusCode"),
-                                        "businessType", Schema.ofString("businessType")))));
+                                        "id",
+                                        Schema.ofLong("id"),
+                                        "createdBy",
+                                        Schema.ofLong("createdBy"),
+                                        "updatedBy",
+                                        Schema.ofLong("updatedBy"),
+                                        "code",
+                                        Schema.ofString("code"),
+                                        "name",
+                                        Schema.ofString("name"),
+                                        "typeCode",
+                                        Schema.ofString("typeCode"),
+                                        "tokenValidityMinutes",
+                                        Schema.ofInteger("tokenValidityMinutes"),
+                                        "localeCode",
+                                        Schema.ofString("localeCode"),
+                                        "statusCode",
+                                        Schema.ofString("statusCode"),
+                                        "businessType",
+                                        Schema.ofString("businessType")))));
 
         return new FunctionSignature()
                 .setNamespace(NAME_SPACE)
@@ -73,7 +81,6 @@ public class GetClient extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         JsonPrimitive param = context.getArguments().get(ID_CODE_PARAM).getAsJsonPrimitive();
 
         return Mono.deferContextual(cv -> {

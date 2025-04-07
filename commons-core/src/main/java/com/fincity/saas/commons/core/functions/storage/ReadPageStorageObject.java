@@ -69,7 +69,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
     private final Gson gson;
 
     public ReadPageStorageObject(AppDataService appDataService, ObjectMapper mapper, Gson gson) {
-
         this.appDataService = appDataService;
         this.mapper = mapper;
         this.gson = gson;
@@ -81,7 +80,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Schema objectSchema = new Schema()
                 .setName("SortOrder")
                 .setType(Type.of(SchemaType.OBJECT))
@@ -136,7 +134,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String storageName = context.getArguments().get(STORAGE_NAME).getAsString();
 
         JsonObject filter = context.getArguments().get(FILTER).getAsJsonObject();
@@ -193,14 +190,22 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
                             receivedObject.getContent(),
                             "page",
                             Map.of(
-                                    "first", receivedObject.isFirst(),
-                                    "last", receivedObject.isLast(),
-                                    "size", receivedObject.getSize(),
-                                    "page", receivedObject.getNumber(),
-                                    "totalElements", receivedObject.getTotalElements(),
-                                    "totalPages", receivedObject.getTotalPages(),
-                                    "sort", receivedObject.getSort(),
-                                    "numberOfElements", receivedObject.getNumberOfElements()),
+                                    "first",
+                                    receivedObject.isFirst(),
+                                    "last",
+                                    receivedObject.isLast(),
+                                    "size",
+                                    receivedObject.getSize(),
+                                    "page",
+                                    receivedObject.getNumber(),
+                                    "totalElements",
+                                    receivedObject.getTotalElements(),
+                                    "totalPages",
+                                    receivedObject.getTotalPages(),
+                                    "sort",
+                                    receivedObject.getSort(),
+                                    "numberOfElements",
+                                    receivedObject.getNumberOfElements()),
                             "total",
                             receivedObject.getTotalElements());
 
@@ -230,7 +235,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
     }
 
     private Order getNullsOrder(Order order, JsonObject sortObj) {
-
         return switch (sortObj.get(NULL_HANDLING).getAsString()) {
             case "NULLS_FIRST" -> order.nullsFirst();
             case "NULLS_LAST" -> order.nullsLast();

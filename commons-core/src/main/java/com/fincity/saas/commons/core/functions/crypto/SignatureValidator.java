@@ -17,7 +17,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class SignatureValidator extends AbstractSignatureFunction {
-
     private static final String FUNCTION_NAME = "SignatureValidator";
 
     private static final String SECRET_KEY = "secretKey";
@@ -26,7 +25,6 @@ public class SignatureValidator extends AbstractSignatureFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String algorithm = context.getArguments().get(ALGORITHM).getAsString();
         String charset = context.getArguments().get(CHARSET).getAsString();
 
@@ -51,7 +49,6 @@ public class SignatureValidator extends AbstractSignatureFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_DATA, Schema.ofString(EVENT_DATA)));
 
         Map<String, Parameter> parameters = Map.ofEntries(

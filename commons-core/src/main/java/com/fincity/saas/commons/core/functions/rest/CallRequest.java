@@ -43,7 +43,6 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 public class CallRequest extends AbstractReactiveFunction {
-
     private static final String STRING_VALUE = "stringValue";
 
     private static final String URL = "url";
@@ -96,20 +95,19 @@ public class CallRequest extends AbstractReactiveFunction {
     private final Gson gson;
     private final IFeignFilesService fileService;
     private final IFeignSecurityService securityService;
-    private final RestService restService;
+    private final RestService<?,?> restService;
     private final String name;
     private final String methodName;
     private final boolean hasPayload;
 
     public CallRequest(
-            RestService restService,
+            RestService<? , ? > restService,
             IFeignFilesService fileService,
             IFeignSecurityService securityService,
             String name,
             String methodName,
             boolean hasPayload,
             Gson gson) {
-
         this.restService = restService;
         this.name = name;
         this.methodName = methodName;
@@ -119,13 +117,8 @@ public class CallRequest extends AbstractReactiveFunction {
         this.securityService = securityService;
     }
 
-    public RestService getRestService() {
-        return restService;
-    }
-
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event()
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(
@@ -210,7 +203,6 @@ public class CallRequest extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String appCode = context.getArguments().get(APP_CODE).getAsString();
         JsonElement payload = context.getArguments().get(PAYLOAD);
         String clientCode = context.getArguments().get(CLIENT_CODE).getAsString();
@@ -245,11 +237,11 @@ public class CallRequest extends AbstractReactiveFunction {
         }
 
         RestRequest request = new RestRequest()
-                .setHeaders(headerMap.size() > 0 ? headerMap : null)
+                .setHeaders(!headerMap.isEmpty() ? headerMap : null)
                 .setIgnoreDefaultHeaders(ignoreConnectionHeaders)
                 .setMethod(method)
                 .setPathParameters(pathParamsMap)
-                .setQueryParameters(queryParamsMap.size() > 0 ? queryParamsMap : null)
+                .setQueryParameters(!queryParamsMap.isEmpty() ? queryParamsMap : null)
                 .setTimeout(timeout)
                 .setPayload(payload)
                 .setUrl(url);
@@ -291,7 +283,6 @@ public class CallRequest extends AbstractReactiveFunction {
             boolean override,
             String fileClientCode,
             String fileType) {
-
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> {
@@ -303,7 +294,7 @@ public class CallRequest extends AbstractReactiveFunction {
 
                             return this.securityService
                                     .isBeingManaged(ca.getUrlClientCode(), fileClientCode)
-                                    .map(e -> e.booleanValue() ? fileClientCode : "");
+                                    .map(e -> e ? fileClientCode : "");
                         },
                         (ca, cc) -> {
                             if (StringUtil.safeIsBlank(cc)) return Mono.error(new Exception("Client code is invalid"));
@@ -325,21 +316,17 @@ public class CallRequest extends AbstractReactiveFunction {
             boolean override,
             String cc,
             String fileType) {
-
         try {
-
             ByteBuffer buffer = ByteBuffer.wrap((byte[]) obj.getData());
 
             return this.fileService.create(
                     fileType, cc, override, fileLocation, this.resolveFileName(obj, url, fileName), buffer);
-
         } catch (Exception e) {
             return Mono.error(e);
         }
     }
 
     private String resolveFileName(RestResponse obj, String url, String fileName) {
-
         boolean fileNameEmpty = StringUtil.safeIsBlank(fileName);
 
         String fileExtension = "";
@@ -359,7 +346,7 @@ public class CallRequest extends AbstractReactiveFunction {
 
         int urlIndex = url.indexOf(".");
         if (urlIndex != -1) {
-            fileExtension = url.substring(urlIndex + 1, url.indexOf("?") == -1 ? url.length() : url.indexOf("?"));
+            fileExtension = url.substring(urlIndex + 1, !url.contains("?") ? url.length() : url.indexOf("?"));
             finalFileName = fileNameWithoutExtension + "." + fileExtension;
             return finalFileName;
         }
@@ -382,7 +369,6 @@ public class CallRequest extends AbstractReactiveFunction {
     }
 
     public String parseContentDispositionForFileName(String cd) {
-
         int index = cd.indexOf(CD_FILE_NAME);
 
         if (index == -1) return null;
@@ -403,14 +389,12 @@ public class CallRequest extends AbstractReactiveFunction {
         int doub = cd.indexOf('\'', index);
         String charset = cd.substring(index, doub);
         Charset cs = StandardCharsets.UTF_8;
-        if (charset != null) {
-            try {
-                cs = Charset.forName(charset);
-            } catch (Exception e) {
-                logger.error("Charset not found: {}", charset, e);
-            }
-        }
-        index = doub + 1;
+      try {
+          cs = Charset.forName(charset);
+      } catch (Exception e) {
+          logger.error("Charset not found: {}", charset, e);
+      }
+      index = doub + 1;
         int end = cd.indexOf('\'', index);
         if (end == -1 || end >= cd.length()) return null;
         return URLDecoder.decode(cd.substring(end + 1), cs);
@@ -429,7 +413,6 @@ public class CallRequest extends AbstractReactiveFunction {
     }
 
     private Mono<FunctionOutput> processOutput(RestResponse obj) {
-
         return Mono.just(new FunctionOutput(List.of(EventResult.outputOf(Map.of(
                 EVENT_DATA,
                 gson.toJsonTree(obj.getData()),
@@ -440,7 +423,6 @@ public class CallRequest extends AbstractReactiveFunction {
     }
 
     private Mono<FunctionOutput> makeErrorResponseFunctionOutput(RestResponse obj) {
-
         return Mono.just(new FunctionOutput(List.of(
                 EventResult.of(
                         Event.ERROR,
@@ -460,27 +442,9 @@ public class CallRequest extends AbstractReactiveFunction {
                         gson.toJsonTree(Map.of()))))));
     }
 
-    private JsonElement processsFeignException(FeignException fe) {
-
-        Optional<ByteBuffer> op = fe.responseBody();
-        ByteBuffer byteBuffer = op.isPresent() ? op.get() : null;
-
-        if (byteBuffer == null || !byteBuffer.hasArray()) return null;
-        Collection<String> ctype = fe.responseHeaders().get(HttpHeaders.CONTENT_TYPE);
-        if (ctype == null || !ctype.contains("application/json")) return null;
-
-        try {
-            return this.gson.fromJson(new String(byteBuffer.array()), JsonElement.class);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     private Mono<FunctionOutput> makeExceptionResponseFunctionOutput(Throwable ex) {
-
-        if (ex instanceof FeignException) {
-            JsonElement je = this.processsFeignException((FeignException) ex);
+        if (ex instanceof FeignException feignException) {
+            JsonElement je = this.processFeignException(feignException);
             if (je != null) {
                 return Mono.just(new FunctionOutput(List.of(
                         EventResult.of(
@@ -520,4 +484,21 @@ public class CallRequest extends AbstractReactiveFunction {
                         STATUS_CODE,
                         gson.toJsonTree(Map.of()))))));
     }
+
+  private JsonElement processFeignException(FeignException fe) {
+    Optional<ByteBuffer> op = fe.responseBody();
+    ByteBuffer byteBuffer = op.orElse(null);
+
+    if (byteBuffer == null || !byteBuffer.hasArray()) return null;
+
+    Collection<String> contentType = fe.responseHeaders().get(HttpHeaders.CONTENT_TYPE);
+    if (contentType == null || !contentType.contains("application/json")) return null;
+
+    try {
+      return this.gson.fromJson(new String(byteBuffer.array()), JsonElement.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+    }
+    return null;
+  }
 }

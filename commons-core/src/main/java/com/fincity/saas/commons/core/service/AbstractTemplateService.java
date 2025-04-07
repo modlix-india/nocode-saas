@@ -22,7 +22,6 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public abstract class AbstractTemplateService {
-
     protected static final Configuration CONFIGURATION = new Configuration(Configuration.VERSION_2_3_32);
 
     static {
@@ -34,7 +33,6 @@ public abstract class AbstractTemplateService {
         CONFIGURATION.setSQLDateAndTimeTimeZone(TimeZone.getDefault());
     }
 
-    @Autowired
     protected CoreMessageResourceService msgService;
 
     protected Logger logger;
@@ -43,15 +41,18 @@ public abstract class AbstractTemplateService {
         logger = LoggerFactory.getLogger(this.getClass());
     }
 
+    @Autowired
+    private void setMsgService(CoreMessageResourceService msgService) {
+        this.msgService = msgService;
+    }
+
     protected Mono<Map<String, String>> getProcessedTemplate(
             String language, Template template, Map<String, Object> templateData) {
-
-        if (template.getTemplateParts() == null || template.getTemplateParts().isEmpty()) {
+        if (template.getTemplateParts() == null || template.getTemplateParts().isEmpty())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
                     CoreMessageResourceService.MAIL_SEND_ERROR,
                     "No template parts found");
-        }
 
         Map<String, String> temp = template.getTemplateParts().get(language.isBlank() ? "en" : language);
         if (temp == null) temp = template.getTemplateParts().values().iterator().next();
@@ -64,9 +65,8 @@ public abstract class AbstractTemplateService {
 
     protected Mono<String> getEffectiveLanguage(
             Template template, String requestedLanguage, Map<String, Object> templateData) {
-        if (!StringUtil.safeIsBlank(requestedLanguage)) {
-            return Mono.just(requestedLanguage);
-        }
+        if (!StringUtil.safeIsBlank(requestedLanguage)) return Mono.just(requestedLanguage);
+
         return getLanguage(template, templateData);
     }
 
@@ -91,3 +91,4 @@ public abstract class AbstractTemplateService {
                 .map(e -> e.isBlank() ? template.getDefaultLanguage() : e);
     }
 }
+	

@@ -15,7 +15,6 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class TriggerWorkflowStep extends WorkflowStep {
-
     @Serial
     private static final long serialVersionUID = 2178854708270744216L;
 
@@ -26,9 +25,7 @@ public class TriggerWorkflowStep extends WorkflowStep {
     private Map<String, Boolean> children;
 
     public TriggerWorkflowStep(TriggerWorkflowStep step) {
-
         super(step);
-
         this.triggerType = step.triggerType;
         this.eventName = step.eventName;
         this.cronString = step.cronString;

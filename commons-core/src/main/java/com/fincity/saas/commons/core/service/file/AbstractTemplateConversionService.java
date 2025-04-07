@@ -14,7 +14,6 @@ public abstract class AbstractTemplateConversionService extends AbstractTemplate
 
     @Override
     public Mono<byte[]> convertTemplate(Template template, String outputFormat, Map<String, Object> templateData) {
-
         return FlatMapUtil.flatMapMono(
                         () -> this.getLanguage(template, templateData),
                         lang -> getProcessedTemplate(lang, template, templateData),

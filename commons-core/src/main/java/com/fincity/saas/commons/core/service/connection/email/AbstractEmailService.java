@@ -19,7 +19,6 @@ public abstract class AbstractEmailService extends AbstractTemplateService {
 
     protected Mono<ProcessedEmailDetails> getProcessedEmailDetails(
             List<String> toAddresses, Template template, Map<String, Object> templateData) {
-
         return FlatMapUtil.flatMapMono(
                         () -> this.getToAddresses(toAddresses, template, templateData),
                         to -> this.getFromAddress(template, templateData),
@@ -34,7 +33,6 @@ public abstract class AbstractEmailService extends AbstractTemplateService {
     }
 
     protected Mono<String> getFromAddress(Template template, Map<String, Object> templateData) {
-
         boolean isBlankExpression = StringUtil.safeIsBlank(template.getFromExpression());
 
         if (isBlankExpression) return Mono.just("");
@@ -44,13 +42,11 @@ public abstract class AbstractEmailService extends AbstractTemplateService {
 
     protected Mono<List<String>> getToAddresses(
             List<String> toAddresses, Template template, Map<String, Object> templateData) {
-
         List<String> addresses = new ArrayList<>();
 
         boolean isBlankExpression = StringUtil.safeIsBlank(template.getToExpression());
 
         if (toAddresses != null && !toAddresses.isEmpty()) {
-
             if (isBlankExpression) return Mono.just(toAddresses);
             addresses.addAll(toAddresses);
         }

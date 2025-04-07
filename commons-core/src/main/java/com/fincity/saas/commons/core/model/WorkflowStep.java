@@ -12,7 +12,6 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @NoArgsConstructor
 public abstract class WorkflowStep implements Serializable {
-
     @Serial
     private static final long serialVersionUID = 4819827598636692079L;
 
@@ -22,7 +21,6 @@ public abstract class WorkflowStep implements Serializable {
     private String stepName;
 
     protected WorkflowStep(WorkflowStep step) {
-
         this.comment = step.comment;
         this.description = step.description;
         this.position = step.position;

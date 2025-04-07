@@ -6,7 +6,7 @@ import lombok.Getter;
 public enum EventActionTaskType {
     SEND_EMAIL("Send Email"),
 
-    CALL_COREFUNCTION("Call Core Function");
+    CALL_CORE_FUNCTION("Call Core Function");
 
     private final String displayName;
 

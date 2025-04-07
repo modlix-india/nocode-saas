@@ -29,7 +29,6 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
     @Override
     public Mono<Boolean> sendMail(
             List<String> toAddresses, Template template, Map<String, Object> templateData, Connection connection) {
-
         if (connection.getConnectionDetails() == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
@@ -59,7 +58,7 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
                         (tup, details) -> {
                             try {
                                 Properties props = System.getProperties();
-                                for (var entry : connProps.entrySet()) props.put(entry.getKey(), entry.getValue());
+                                props.putAll(connProps);
 
                                 Session session = Session.getDefaultInstance(props);
 
@@ -87,9 +86,7 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
                                 transport.sendMessage(message, message.getAllRecipients());
 
                                 return Mono.just(true);
-
                             } catch (MessagingException mex) {
-
                                 logger.error("Error while sending : {}", mex.getMessage(), mex);
 
                                 return this.msgService.throwMessage(

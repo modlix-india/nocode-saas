@@ -21,7 +21,6 @@ import reactor.util.context.Context;
 
 @Service
 public class EmailService {
-
     private final ConnectionService connectionService;
 
     private final CoreMessageResourceService msgService;
@@ -48,7 +47,6 @@ public class EmailService {
 
     @PostConstruct
     public void init() {
-
         this.services.put(ConnectionSubType.SENDGRID, sendGridService);
         this.services.put(ConnectionSubType.SMTP, smtpService);
     }
@@ -69,7 +67,6 @@ public class EmailService {
             String templateName,
             String connectionName,
             Map<String, Object> templateData) {
-
         return FlatMapUtil.flatMapMono(
                         () -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
                         actup -> connectionService

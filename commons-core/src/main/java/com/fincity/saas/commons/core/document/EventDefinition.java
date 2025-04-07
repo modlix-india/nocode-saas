@@ -24,7 +24,6 @@ import reactor.core.publisher.Mono;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
-
     @Serial
     private static final long serialVersionUID = -5343026916526769179L;
 
@@ -32,7 +31,6 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
     private Boolean includeContextAuthentication;
 
     public EventDefinition(EventDefinition obj) {
-
         super(obj);
         this.schema = CloneUtil.cloneMapObject(obj.schema);
         this.includeContextAuthentication = obj.includeContextAuthentication;
@@ -41,7 +39,6 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventDefinition> applyOverride(EventDefinition base) {
-
         if (base == null) return Mono.just(this);
 
         return DifferenceApplicator.apply(this.schema, base.schema)
@@ -57,7 +54,6 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventDefinition> makeOverride(EventDefinition base) {
-
         if (base == null) return Mono.just(this);
 
         return Mono.just(this)

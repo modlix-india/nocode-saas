@@ -23,7 +23,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
-
     private static final String EVENT_RESULT = "result";
 
     private static final String FUNCTION_NAME = "DeleteByFilter";
@@ -45,7 +44,6 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
     private final Gson gson;
 
     public DeleteStorageObjectWithFilter(AppDataService appDataService, ObjectMapper mapper, Gson gson) {
-
         this.appDataService = appDataService;
         this.mapper = mapper;
         this.gson = gson;
@@ -53,7 +51,6 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event =
                 new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_RESULT, Schema.ofLong(EVENT_RESULT)));
 
@@ -79,7 +76,6 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String storageName = context.getArguments().get(STORAGE_NAME).getAsString();
 
         JsonObject filter = context.getArguments().get(FILTER).getAsJsonObject();

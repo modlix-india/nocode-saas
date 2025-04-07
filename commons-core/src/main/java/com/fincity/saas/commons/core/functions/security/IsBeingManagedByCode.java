@@ -16,7 +16,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class IsBeingManagedByCode extends AbstractReactiveFunction {
-
     private static final String FUNCTION_NAME = "IsBeingManagedByCode";
 
     private static final String NAME_SPACE = "CoreServices.Security";
@@ -35,7 +34,6 @@ public class IsBeingManagedByCode extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event()
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(EVENT_DATA_RESULT, Schema.ofBoolean(EVENT_DATA_RESULT)));
@@ -53,7 +51,6 @@ public class IsBeingManagedByCode extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String clientCode = context.getArguments().get(CLIENT_CODE).getAsString();
         String managingClientCode =
                 context.getArguments().get(MANAGING_CLIENT_CODE).getAsString();

@@ -19,7 +19,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class HashData extends AbstractReactiveFunction {
-
     private static final String FUNCTION_NAME = "HashData";
 
     private static final String NAMESPACE = "CoreServices.Hash";
@@ -36,7 +35,6 @@ public class HashData extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event()
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(EVENT_RESULT_NAME, Schema.ofString(EVENT_RESULT_NAME)));
@@ -68,7 +66,6 @@ public class HashData extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         Map<String, JsonElement> args = context.getArguments();
 
         String algorithm = args.get(PARAMETER_ALGORITHM).getAsString();
@@ -83,7 +80,6 @@ public class HashData extends AbstractReactiveFunction {
     }
 
     private JsonElement processElement(JsonElement element, String algorithm, boolean primitiveLevel) {
-
         if (element.isJsonNull()) {
             return HashUtil.createHash(JsonNull.INSTANCE, algorithm);
         }

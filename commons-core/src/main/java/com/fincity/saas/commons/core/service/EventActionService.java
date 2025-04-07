@@ -21,7 +21,6 @@ public class EventActionService extends AbstractOverridableDataService<EventActi
 
     @Override
     protected Mono<EventAction> updatableEntity(EventAction entity) {
-
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
                     if (existing.getVersion() != entity.getVersion())
                         return this.messageResourceService.throwMessage(

@@ -17,14 +17,12 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class Signer extends AbstractSignatureFunction {
-
     private static final String FUNCTION_NAME = "Signer";
 
     private static final String SECRET_KEY = "secretKey";
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String algorithm = context.getArguments().get(ALGORITHM).getAsString();
         String charset = context.getArguments().get(CHARSET).getAsString();
 
@@ -47,7 +45,6 @@ public class Signer extends AbstractSignatureFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_DATA, Schema.ofString(EVENT_DATA)));
 
         Map<String, Parameter> parameters = Map.ofEntries(

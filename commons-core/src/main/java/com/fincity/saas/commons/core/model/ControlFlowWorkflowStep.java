@@ -16,7 +16,6 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class ControlFlowWorkflowStep extends WorkflowStep {
-
     @Serial
     private static final long serialVersionUID = 2178854708270744216L;
 
@@ -28,7 +27,6 @@ public class ControlFlowWorkflowStep extends WorkflowStep {
     private Map<String, Boolean> children;
 
     public ControlFlowWorkflowStep(ControlFlowWorkflowStep step) {
-
         super(step);
         this.flowType = step.flowType;
         this.time = step.time;

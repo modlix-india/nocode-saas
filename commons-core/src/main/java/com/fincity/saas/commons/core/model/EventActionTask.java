@@ -20,7 +20,6 @@ import reactor.util.context.Context;
 @Accessors(chain = true)
 @NoArgsConstructor
 public class EventActionTask implements IDifferentiable<EventActionTask>, Comparable<EventActionTask>, Serializable {
-
     @Serial
     private static final long serialVersionUID = 667994849634307890L;
 
@@ -39,7 +38,6 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventActionTask> extractDifference(EventActionTask inc) {
-
         return FlatMapUtil.flatMapMono(
                         () -> DifferenceExtractor.extract(inc.parameters, this.parameters)
                                 .defaultIfEmpty(Map.of()),
@@ -60,7 +58,6 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventActionTask> applyOverride(EventActionTask override) {
-
         if (override == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMono(

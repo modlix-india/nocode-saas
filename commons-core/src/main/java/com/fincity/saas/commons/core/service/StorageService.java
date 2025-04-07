@@ -1,7 +1,5 @@
 package com.fincity.saas.commons.core.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
@@ -33,7 +31,6 @@ import reactor.util.context.Context;
 
 @Service
 public class StorageService extends AbstractOverridableDataService<Storage, StorageRepository> {
-
     public static final String CACHE_NAME_STORAGE_SCHEMA = "storageSchema";
 
     private final CoreMessageResourceService coreMsgService;
@@ -48,7 +45,6 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
             CoreFunctionService coreFunctionService,
             Gson gson) {
         super(Storage.class);
-
         this.gson = gson;
         this.coreMsgService = coreMsgService;
         this.coreSchemaService = coreSchemaService;
@@ -57,19 +53,16 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
     @Override
     public Mono<Storage> create(Storage entity) {
-
         entity.setUniqueName(UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(), entity.getName()));
 
         Mono<Storage> creationMono;
 
         if (entity.getBaseClientCode() != null) {
-
             creationMono = FlatMapUtil.flatMapMono(
                             SecurityContextUtil::getUsersContextAuthentication,
                             ca -> this.getMergedSources(entity),
                             (ca, merged) -> {
-                                if (BooleanUtil.safeValueOf(merged.getIsAppLevel())) {
-
+                                if (BooleanUtil.safeValueOf(merged.getIsAppLevel()))
                                     return this.securityService
                                             .hasWriteAccess(entity.getAppCode(), entity.getClientCode())
                                             .flatMap(access -> {
@@ -80,7 +73,6 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
                                                 return this.localCreate(entity);
                                             });
-                                }
 
                                 return this.localCreate(entity);
                             })
@@ -93,7 +85,6 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
     }
 
     private Mono<Storage> localCreate(Storage entity) {
-
         return FlatMapUtil.flatMapMono(() -> this.validate(entity), super::create)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.localCreate"));
     }
@@ -119,26 +110,21 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                         },
                         (appSchemaRepo, schema) -> {
                             if (schema.getType().getAllowedSchemaTypes().size() != 1
-                                    || !schema.getType().getAllowedSchemaTypes().contains(SchemaType.OBJECT)) {
-
+                                    || !schema.getType().getAllowedSchemaTypes().contains(SchemaType.OBJECT))
                                 return this.messageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         CoreMessageResourceService.STORAGE_SCHEMA_ALWAYS_OBJECT);
-                            }
 
                             if (storage.getRelations() == null
                                     || storage.getRelations().isEmpty()) return Mono.just(storage);
 
                             for (Entry<String, StorageRelation> relationEntry :
                                     storage.getRelations().entrySet()) {
-
-                                if (schema.getProperties().containsKey(relationEntry.getKey())) {
-
+                                if (schema.getProperties().containsKey(relationEntry.getKey()))
                                     return this.messageResourceService.throwMessage(
                                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                             CoreMessageResourceService.STORAGE_SCHEMA_FIELD_ALREADY_EXISTS,
                                             relationEntry.getKey());
-                                }
 
                                 if (relationEntry.getValue().getUniqueRelationId() != null) continue;
 
@@ -169,7 +155,6 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
     @Override
     public Mono<Storage> update(Storage entity) {
-
         return FlatMapUtil.flatMapMono(
                         () -> this.validate(entity),
                         storage -> this.read(entity.getId()),
@@ -229,7 +214,6 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
     @Override
     public Mono<Boolean> delete(String id) {
-
         return FlatMapUtil.flatMapMono(
                         () -> this.read(id),
                         storage -> {
@@ -283,7 +267,7 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
     @Override
     protected Mono<Storage> updatableEntity(Storage entity) {
-        return flatMapMono(() -> this.read(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
                     if (existing.getVersion() != entity.getVersion())
                         return this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
@@ -313,7 +297,6 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
     }
 
     public Mono<Schema> getSchema(Storage storage) {
-
         return cacheService.cacheEmptyValueOrGet(
                 CACHE_NAME_STORAGE_SCHEMA,
                 () -> Mono.just(gson.fromJson(gson.toJsonTree(storage.getSchema()), Schema.class)),

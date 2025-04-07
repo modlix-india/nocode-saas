@@ -44,7 +44,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class CoreFunctionRepository implements ReactiveRepository<ReactiveFunction> {
-
     private final Map<String, ReactiveFunction> repoMap = new HashMap<>();
 
     private final List<String> filterableNames;
@@ -82,7 +81,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     }
 
     private void makeSecurityFunctions(IFeignSecurityService securityService, Gson gson) {
-
         ReactiveFunction isBeingManagedByCode = new IsBeingManagedByCode(securityService);
         ReactiveFunction isBeingManagedById = new IsBeingManagedById(securityService);
         ReactiveFunction isUserBeingManaged = new IsUserBeingManaged(securityService);
@@ -96,7 +94,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
     private void makeSecurityContextFunctions(
             ContextService userContextService, ClientUrlService clientUrlService, Gson gson) {
-
         ReactiveFunction hasAuthority = new HasAuthority(userContextService);
         ReactiveFunction getAuthentication = new GetAuthentication(userContextService, gson);
         ReactiveFunction getUser = new GetUser(userContextService, gson);
@@ -109,7 +106,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     }
 
     private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper, Gson gson) {
-
         ReactiveFunction createStorage = new CreateStorageObject(appDataService, gson);
         ReactiveFunction createManyStorage = new CreateManyStorageObject(appDataService, gson);
         ReactiveFunction deleteStorage = new DeleteStorageObject(appDataService);
@@ -132,7 +128,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
             IFeignFilesService filesService,
             IFeignSecurityService securityService,
             Gson gson) {
-
         ReactiveFunction getRequest =
                 new CallRequest(restService, filesService, securityService, "GetRequest", "GET", false, gson);
         ReactiveFunction postRequest =
@@ -155,7 +150,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     }
 
     private void makeEmailFunctions(EmailService emailService) {
-
         ReactiveFunction sendEmail = new SendEmail(emailService);
 
         repoMap.put(sendEmail.getSignature().getFullName(), sendEmail);
@@ -166,7 +160,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
             TemplateConversionService templateConversionService,
             IFeignFilesService fileService,
             Gson gson) {
-
         ReactiveFunction fileToBase64 = new FileToBase64(filesService);
         ReactiveFunction templateToPdf = new TemplateToPdf(templateConversionService, fileService, gson);
 
@@ -175,7 +168,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     }
 
     private void makeCryptoFunctions() {
-
         ReactiveFunction signer = new Signer();
         ReactiveFunction signatureValidator = new SignatureValidator();
 
@@ -184,7 +176,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     }
 
     private void makeHashingFunctions() {
-
         ReactiveFunction hashData = new HashData();
 
         repoMap.put(hashData.getSignature().getFullName(), hashData);
@@ -199,7 +190,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
 
     @Override
     public Mono<ReactiveFunction> find(String namespace, String name) {
-
         return Mono.justOrEmpty(repoMap.get(namespace + "." + name));
     }
 }

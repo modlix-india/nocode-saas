@@ -23,7 +23,6 @@ import java.util.stream.StreamSupport;
 import reactor.core.publisher.Mono;
 
 public class UpdateStorageObject extends AbstractReactiveFunction {
-
     private static final String DATA_OBJECT_ID = "dataObjectId";
 
     private static final String DATA_OBJECT = "dataObject";
@@ -62,7 +61,6 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
         Event errorEvent =
@@ -93,7 +91,6 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String storageName = context.getArguments().get(STORAGE_NAME).getAsString();
 
         Boolean isPartial = context.getArguments().get(ISPARTIAL).getAsBoolean();

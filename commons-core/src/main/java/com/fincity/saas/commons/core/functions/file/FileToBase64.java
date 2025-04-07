@@ -18,7 +18,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class FileToBase64 extends AbstractReactiveFunction {
-
     private static final String FILE_TYPE = "fileType";
 
     private static final String METADATA_REQUIRED = "metadataRequired";
@@ -43,7 +42,6 @@ public class FileToBase64 extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         return new FunctionSignature()
                 .setNamespace(NAMESPACE)
                 .setName(NAME)
@@ -65,7 +63,6 @@ public class FileToBase64 extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String path = context.getArguments().get(FILE_PATH).getAsString();
 
         String fileType = context.getArguments().get(FILE_TYPE).getAsString();

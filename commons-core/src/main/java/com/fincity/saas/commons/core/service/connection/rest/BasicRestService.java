@@ -10,19 +10,9 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.webclient.CustomUriBuilderFactory;
 import com.fincity.saas.commons.webclient.WebClientEncodingModes;
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.reflect.TypeToken;
-import java.lang.reflect.Type;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -40,8 +30,17 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
+import java.lang.reflect.Type;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 @Service
-public class BasicRestService extends AbstractRestService implements IRestService {
+public class BasicRestService extends AbstractRestService {
 
     private static final String ENCODED_TEXT_TAG_DATA = "data:";
     private static final String ENCODED_TEXT_TAG_NAME = "name:";
@@ -49,17 +48,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
     private static final String ENCODING_MODE = "encodingMode";
 
-    private final CoreMessageResourceService msgService;
-    private final Gson gson;
-
-    public BasicRestService(CoreMessageResourceService msgService, Gson gson) {
-
-        this.msgService = msgService;
-        this.gson = gson;
-    }
-
     private static byte[] decodeToFile(String base64EncodedFile) {
-
         try {
             return Base64.getDecoder().decode(base64EncodedFile);
         } catch (IllegalArgumentException e) {
@@ -68,13 +57,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
     }
 
     @Override
-    public Mono<RestResponse> call(Connection connection, RestRequest request) {
-        return this.call(connection, request, false);
-    }
-
-    @Override
     public Mono<RestResponse> call(Connection connection, RestRequest request, final boolean fileDownload) {
-
         return FlatMapUtil.flatMapMono(
                         () -> this.applyConnectionDetails(
                                         connection,
@@ -125,14 +108,14 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
                             if (headers.getContentType() != null
                                     && headers.getContentType().isCompatibleWith(MediaType.MULTIPART_FORM_DATA)) {
-                                var newPayload = getFormDataFromJson(request.getPayload());
+                                MultipartBodyBuilder newPayload = getFormDataFromJson(request.getPayload());
                                 return doRequestWithFormData(newPayload, requestBuilder, tup.getT3(), fileDownload);
                             }
 
                             if (headers.getContentType() != null
                                     && headers.getContentType()
                                             .isCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED)) {
-                                var newPayload = getURLFormDataFromJson(request.getPayload());
+                                MultiValueMap<String, String> newPayload = getURLFormDataFromJson(request.getPayload());
                                 return doRequestWithFormData(newPayload, requestBuilder, tup.getT3(), fileDownload);
                             }
 
@@ -152,19 +135,13 @@ public class BasicRestService extends AbstractRestService implements IRestServic
     }
 
     private MultipartBodyBuilder getFormDataFromJson(JsonElement payload) {
-
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         if (!payload.isJsonObject()) return builder;
 
         for (var x : payload.getAsJsonObject().entrySet()) {
-
             if (x.getValue().isJsonArray()) {
-
-                for (var y : x.getValue().getAsJsonArray()) {
-
-                    String str = y.getAsString();
-                    this.addFormData(builder, x.getKey(), str);
-                }
+                for (JsonElement y : x.getValue().getAsJsonArray())
+                    this.addFormData(builder, x.getKey(), y.getAsString());
             } else this.addFormData(builder, x.getKey(), x.getValue().getAsString());
         }
 
@@ -172,9 +149,7 @@ public class BasicRestService extends AbstractRestService implements IRestServic
     }
 
     private void addFormData(MultipartBodyBuilder builder, String key, String value) {
-
         if (value.startsWith(ENCODED_TEXT_TAG_DATA)) {
-
             String[] parts = value.split(";");
             if (parts.length < 3) {
                 builder.part(key, value);
@@ -198,7 +173,6 @@ public class BasicRestService extends AbstractRestService implements IRestServic
     }
 
     private MultiValueMap<String, String> getURLFormDataFromJson(JsonElement payload) {
-
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
 
         if (!payload.isJsonObject()) return map;
@@ -231,7 +205,6 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
     private Mono<Tuple3<String, HttpHeaders, Duration>> applyConnectionDetails(
             Connection connection, String url, boolean ignoreDefaultHeaders, int timeout) {
-
         HttpHeaders headers = new HttpHeaders();
 
         Duration timeoutDuration = Duration.ofSeconds(timeout < 1 ? 300 : timeout);
@@ -240,9 +213,8 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
         if (connectionDetails == null || connectionDetails.isEmpty()) return Mono.empty();
 
-        if (connectionDetails.get("timeout") instanceof Integer conTimeout) {
+        if (connectionDetails.get("timeout") instanceof Integer conTimeout)
             timeoutDuration = Duration.ofSeconds(timeout < 1 ? conTimeout : timeout);
-        }
 
         if (connectionDetails.containsKey("userName") && connectionDetails.containsKey("password")) {
             String userName = (String) connectionDetails.get("userName");
@@ -253,20 +225,16 @@ public class BasicRestService extends AbstractRestService implements IRestServic
 
         if (connectionDetails.containsKey("defaultHeaders")
                 && !ignoreDefaultHeaders
-                && connectionDetails.get("defaultHeaders") instanceof Map<?, ?> dHeaders) {
-
-            for (Entry<?, ?> header : dHeaders.entrySet())
-                if (header.getValue() != null)
-                    headers.set(header.getKey().toString(), header.getValue().toString());
-        }
+                && connectionDetails.get("defaultHeaders") instanceof Map<?, ?> dHeaders)
+            dHeaders.entrySet().stream()
+                    .filter(header -> header.getValue() != null)
+                    .forEach(header -> headers.set(
+                            header.getKey().toString(), header.getValue().toString()));
 
         if (connectionDetails.containsKey("baseUrl")) {
-
             String baseUrl = connectionDetails.get("baseUrl").toString();
             if (baseUrl.trim().endsWith("/")) baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
-            if (url.trim().startsWith("/")) {
-                url = url.substring(1);
-            }
+            if (url.trim().startsWith("/")) url = url.substring(1);
             url = baseUrl + '/' + url;
         }
 
@@ -276,13 +244,11 @@ public class BasicRestService extends AbstractRestService implements IRestServic
     private UriBuilder applyQueryParameters(
             UriBuilder uriBuilder, Map<String, String> queryParameters, WebClientEncodingModes encodingMode) {
         if (queryParameters != null && !queryParameters.isEmpty()) {
-            for (Entry<String, String> entry : queryParameters.entrySet()) {
-                if (encodingMode.equals(WebClientEncodingModes.MANUAL_VALUES_ENCODED)) {
-                    uriBuilder.queryParam(entry.getKey(), URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
-                } else {
-                    uriBuilder.queryParam(entry.getKey(), entry.getValue());
-                }
-            }
+            queryParameters.forEach((key, value) -> uriBuilder.queryParam(
+                    key,
+                    encodingMode.equals(WebClientEncodingModes.MANUAL_VALUES_ENCODED)
+                            ? URLEncoder.encode(value, StandardCharsets.UTF_8)
+                            : value));
         }
         return uriBuilder;
     }
@@ -303,7 +269,6 @@ public class BasicRestService extends AbstractRestService implements IRestServic
                     .onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 
         if (contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
-
             return clientResponse
                     .bodyToMono(String.class)
                     .map(jsonData -> restResponse.setData(processJsonResponse(jsonData)))
@@ -312,7 +277,6 @@ public class BasicRestService extends AbstractRestService implements IRestServic
         } else if (fileDownload
                 || headers.getContentDisposition().getFilename() != null
                 || contentType.getType().equals(MimeTypeUtils.APPLICATION_OCTET_STREAM.getType())) {
-
             return clientResponse
                     .bodyToMono(byte[].class)
                     .map(binaryData -> processBinaryResponse(binaryData, restResponse))
@@ -328,21 +292,17 @@ public class BasicRestService extends AbstractRestService implements IRestServic
     }
 
     private Object processJsonResponse(String jsonData) {
-
         JsonElement jsonElement = gson.fromJson(jsonData, JsonElement.class);
         if (jsonElement.isJsonPrimitive()) {
-
             JsonPrimitive prim = jsonElement.getAsJsonPrimitive();
             if (prim.isNumber()) return prim.getAsNumber();
             else if (prim.isJsonNull()) return null;
             else if (prim.isBoolean()) return prim.getAsBoolean();
             else if (prim.isString()) return prim.getAsString();
         } else if (jsonElement.isJsonObject()) {
-
             Type mapType = new TypeToken<Map<String, Object>>() {}.getType();
             return gson.fromJson(jsonData, mapType);
         } else if (jsonElement.isJsonArray()) {
-
             Type arrayType = new TypeToken<List<Object>>() {}.getType();
             return gson.fromJson(jsonData, arrayType);
         }

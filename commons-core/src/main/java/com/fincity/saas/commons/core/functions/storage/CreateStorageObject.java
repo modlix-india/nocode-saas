@@ -22,7 +22,6 @@ import java.util.stream.StreamSupport;
 import reactor.core.publisher.Mono;
 
 public class CreateStorageObject extends AbstractReactiveFunction {
-
     private static final String DATA_OBJECT = "dataObject";
 
     private static final String EVENT_RESULT = "result";
@@ -55,7 +54,6 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
 
         Event errorEvent =
@@ -82,7 +80,6 @@ public class CreateStorageObject extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String storageName = context.getArguments().get(STORAGE_NAME).getAsString();
 
         JsonObject dataObject = context.getArguments().get(DATA_OBJECT).getAsJsonObject();

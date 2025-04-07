@@ -39,11 +39,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import jakarta.annotation.PostConstruct;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -57,6 +52,12 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 @Service
 public class CoreFunctionService extends AbstractFunctionService<CoreFunction, CoreFunctionDocumentRepository> {
 
@@ -69,6 +70,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
             Long::valueOf,
             SchemaType.INTEGER,
             Integer::valueOf);
+
     private ReactiveHybridRepository<ReactiveFunction> coreFunctionRepository;
 
     @Autowired
@@ -140,7 +142,6 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
             String clientCode,
             Map<String, JsonElement> job,
             ServerHttpRequest request) {
-
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> this.getFunctionRepository(appCode, clientCode)
@@ -160,11 +161,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                             if (fun instanceof DefinitionFunction df
                                     && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
                                     && !SecurityContextUtil.hasAuthority(
-                                            df.getExecutionAuthorization(), ca.getAuthorities())) {
+                                            df.getExecutionAuthorization(), ca.getAuthorities()))
                                 return this.messageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
-                            }
 
                             return fun.execute(new ReactiveFunctionExecutionParameters(
                                             new ReactiveHybridRepository<>(
@@ -179,7 +179,6 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
     private Mono<Map<String, JsonElement>> getRequestParamsToArguments(
             Map<String, Parameter> parameters, ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
-
         MultiValueMap<String, String> queryParams =
                 request == null ? new LinkedMultiValueMap<>() : request.getQueryParams();
 
@@ -207,9 +206,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
                     if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT)) return Mono.empty();
 
-                    if (type.contains(SchemaType.STRING)) {
-                        return Mono.just(jsonElementString(e, value, param));
-                    }
+                    if (type.contains(SchemaType.STRING)) return Mono.just(jsonElementString(e, value, param));
 
                     if (type.contains(SchemaType.DOUBLE)) {
                         return Mono.just(jsonElement(e, value, param, SchemaType.DOUBLE));
@@ -229,24 +226,24 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
     private Tuple2<String, JsonElement> jsonElement(
             Entry<String, Parameter> e, List<String> value, Parameter param, SchemaType type) {
-
         if (!param.isVariableArgument())
-            return Tuples.of(e.getKey(), new JsonPrimitive(CONVERTOR.get(type).apply(value.get(0))));
+            return Tuples.of(e.getKey(), new JsonPrimitive(CONVERTOR.get(type).apply(value.getFirst())));
 
-        JsonArray arr = new JsonArray();
-        for (String each : value) arr.add(new JsonPrimitive(CONVERTOR.get(type).apply(each)));
+        JsonArray jsonArray = new JsonArray();
+        value.stream()
+                .map(each -> new JsonPrimitive(CONVERTOR.get(type).apply(each)))
+                .forEach(jsonArray::add);
 
-        return Tuples.of(e.getKey(), arr);
+        return Tuples.of(e.getKey(), jsonArray);
     }
 
     private Tuple2<String, JsonElement> jsonElementString(
             Entry<String, Parameter> e, List<String> value, Parameter param) {
+        if (!param.isVariableArgument()) return Tuples.of(e.getKey(), new JsonPrimitive(value.getFirst()));
 
-        if (!param.isVariableArgument()) return Tuples.of(e.getKey(), new JsonPrimitive(value.get(0)));
+        JsonArray jsonArray = new JsonArray();
+        value.stream().map(JsonPrimitive::new).forEach(jsonArray::add);
 
-        JsonArray arr = new JsonArray();
-        for (String each : value) arr.add(new JsonPrimitive(each));
-
-        return Tuples.of(e.getKey(), arr);
+        return Tuples.of(e.getKey(), jsonArray);
     }
 }

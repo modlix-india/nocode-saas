@@ -108,13 +108,20 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private static final String TEXT_INDEX_NAME = "_textIndex";
     private static final Map<FilterConditionOperator, String> FILTER_MATCH_OPERATOR = Map.of(
-            FilterConditionOperator.EQUALS, "$eq",
-            FilterConditionOperator.GREATER_THAN, "$gt",
-            FilterConditionOperator.GREATER_THAN_EQUAL, "$gte",
-            FilterConditionOperator.LESS_THAN, "$lt",
-            FilterConditionOperator.LESS_THAN_EQUAL, "$lte",
-            FilterConditionOperator.LIKE, "$regex",
-            FilterConditionOperator.STRING_LOOSE_EQUAL, "$regex");
+            FilterConditionOperator.EQUALS,
+            "$eq",
+            FilterConditionOperator.GREATER_THAN,
+            "$gt",
+            FilterConditionOperator.GREATER_THAN_EQUAL,
+            "$gte",
+            FilterConditionOperator.LESS_THAN,
+            "$lt",
+            FilterConditionOperator.LESS_THAN_EQUAL,
+            "$lte",
+            FilterConditionOperator.LIKE,
+            "$regex",
+            FilterConditionOperator.STRING_LOOSE_EQUAL,
+            "$regex");
     private final Map<String, MongoClient> mongoClients = new HashMap<>();
     private final StorageService storageService;
     private final CoreSchemaService schemaService;
@@ -149,7 +156,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @PostConstruct
     public void init() {
-
         if (subAsyncCommand == null || subConnect == null) return;
 
         subAsyncCommand.subscribe(channel);
@@ -165,7 +171,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public void message(String channel, String message) {
-
         if (channel == null || !channel.equals(this.channel)) return;
 
         MongoClient client = this.mongoClients.remove(message);
@@ -180,7 +185,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Map<String, Object>> create(Connection conn, Storage storage, DataObject dataObject) {
-
         return FlatMapUtil.flatMapMonoWithNull(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> this.getCollection(
@@ -226,7 +230,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Map<String, Object>> update(Connection conn, Storage storage, DataObject dataObject, Boolean override) {
-
         // TODO: Added boolean override to differentiate between the incoming request in
         // patch/put
 
@@ -296,7 +299,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Mono<JsonObject> handleRelationsAndValidate(
             Map<String, Object> objectMap, Storage storage, Schema schema, ReactiveRepository<Schema> appSchemaRepo) {
-
         JsonObject job = this.gson.toJsonTree(objectMap).getAsJsonObject();
 
         Map<String, JsonElement> relations = new HashMap<>();
@@ -326,7 +328,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             ContextAuthentication ca,
             Document document,
             String operation) {
-
         if (!BooleanUtil.safeValueOf(storage.getIsAudited()) && !BooleanUtil.safeValueOf(storage.getIsVersioned()))
             return Mono.empty();
 
@@ -355,7 +356,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Map<String, Object>> read(Connection conn, Storage storage, String id) {
-
         if (!ObjectId.isValid(id))
             return this.mongoObjectNotFound(
                     AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id);
@@ -372,7 +372,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Page<Map<String, Object>>> readPage(Connection conn, Storage storage, Query query) {
-
         Pageable page = query.getPageable();
         AbstractCondition condition = query.getCondition();
         Boolean count = query.getCount();
@@ -393,7 +392,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Flux<Map<String, Object>> readPageAsFlux(Connection conn, Storage storage, Query query) {
-
         Pageable page = query.getPageable();
         AbstractCondition condition = query.getCondition();
 
@@ -406,7 +404,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Boolean> delete(Connection conn, Storage storage, String id) {
-
         if (!ObjectId.isValid(id))
             return this.mongoObjectNotFound(
                     AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id);
@@ -423,7 +420,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Long> deleteByFilter(Connection conn, Storage storage, Query query, Boolean devMode) {
-
         AbstractCondition condition = query.getCondition();
 
         return FlatMapUtil.flatMapMono(
@@ -438,7 +434,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Map<String, Object>> readVersion(Connection conn, Storage storage, String versionId) {
-
         if (!ObjectId.isValid(versionId))
             return this.mongoObjectNotFound(
                     AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), versionId);
@@ -459,7 +454,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     @Override
     public Mono<Page<Map<String, Object>>> readPageVersion(
             Connection conn, Storage storage, String objectId, Query query) {
-
         Pageable page = query.getPageable();
 
         FilterCondition objectIdFilterCondition = new FilterCondition()
@@ -492,7 +486,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Boolean> checkifExists(Connection conn, Storage storage, String id) {
-
         if (!ObjectId.isValid(id)) return Mono.just(Boolean.FALSE);
 
         BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
@@ -505,7 +498,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Boolean> deleteStorage(Connection conn, Storage storage) {
-
         return FlatMapUtil.flatMapMono(
                         () -> this.getCollection(conn, storage).flatMap(collection -> Mono.from(collection.drop())
                                 .then(Mono.just(Boolean.TRUE))),
@@ -523,16 +515,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Flux<Document> applyQueryOnElements(
             MongoCollection<Document> collection, Query query, Bson bsonCondition, Pageable page) {
-
         if (query.getFields() == null || query.getFields().isEmpty()) {
             FindPublisher<Document> publisher = collection.find(bsonCondition);
 
             if (!Query.DEFAULT_SORT.equals(page.getSort())) publisher.sort(this.sort(page.getSort()));
 
             return Flux.from(publisher.skip((int) page.getOffset()).limit(page.getPageSize()));
-
         } else {
-
             List<Bson> pipeLines = new ArrayList<>(List.of(Aggregates.match(bsonCondition)));
 
             Bson sort = null;
@@ -552,7 +541,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private Bson sort(Sort sort) {
-
         if (sort == null) return null;
 
         if (sort.equals(Query.DEFAULT_SORT)) return null;
@@ -565,7 +553,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private Mono<Bson> filter(Storage storage, AbstractCondition condition) {
-
         if (condition == null) return Mono.just(Filters.empty());
 
         return (condition instanceof ComplexCondition cc
@@ -575,7 +562,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private Mono<Bson> complexConditionFilter(Storage storage, ComplexCondition cc) {
-
         if (cc.getConditions() == null || cc.getConditions().isEmpty()) return Mono.empty();
 
         return Flux.concat(cc.getConditions().stream()
@@ -597,7 +583,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         if (fc == null) return Mono.empty();
 
         if (fc.getOperator() == FilterConditionOperator.TEXT_SEARCH) {
-
             if (fc.getValue() == null) return Mono.empty();
 
             Document doc =
@@ -622,7 +607,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         if (isObjectIdField && value != null) value = new ObjectId(value.toString());
 
         if (fc.getOperator() == IN) {
-
             if (value == null
                     && (fc.getMultiValue() == null || fc.getMultiValue().isEmpty())) return Mono.empty();
 
@@ -632,7 +616,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         }
 
         if (fc.getOperator() == FilterConditionOperator.MATCH) {
-
             if (value == null) return Mono.empty();
 
             Document doc = new Document(Map.of(
@@ -646,7 +629,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         }
 
         if (fc.getOperator() == FilterConditionOperator.MATCH_ALL) {
-
             if (value == null
                     && (fc.getMultiValue() == null || fc.getMultiValue().isEmpty())) return Mono.empty();
 
@@ -659,7 +641,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         if (value == null) return Mono.empty();
 
         if (fc.getOperator() == BETWEEN) {
-
             var first = fc.isNegate() ? Filters.lt(fc.getField(), value) : Filters.gte(fc.getField(), value);
             var second = fc.isNegate()
                     ? Filters.gt(fc.getField(), fc.getToValue())
@@ -699,7 +680,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private List<?> multiFieldValue(boolean convertId, Object objValue, List<?> values) {
-
         if (values != null && !values.isEmpty())
             return !convertId
                     ? values
@@ -755,7 +735,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             String uniqueName,
             Map<String, StorageIndex> indexes,
             List<String> textIndexFields) {
-
         MongoClient client = this.getMongoClient(conn);
 
         if (client == null)
@@ -778,7 +757,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Mono<MongoCollection<Document>> getVersionCollection(
             Connection conn, String appCode, String clientCode, String uniqueName) {
-
         MongoClient client = this.getMongoClient(conn);
 
         if (client == null)
@@ -791,7 +769,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private Map<String, Object> convertBisonIds(Storage storage, Document document, boolean isVersion) {
-
         this.convertBisonId(document, ID);
 
         if (isVersion) this.convertBisonId(document, OBJECT_ID);
@@ -800,7 +777,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private void convertBisonId(Document document, String key) {
-
         if (!document.containsKey(key)) return;
 
         String id = document.getObjectId(key).toHexString();
@@ -814,7 +790,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private Map<String, Object> updateDocWithIds(Storage storage, Document doc) {
-
         for (Entry<String, StorageRelation> relationEntry :
                 storage.getRelations().entrySet()) {
             if (!doc.containsKey(relationEntry.getKey())) continue;
@@ -836,7 +811,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Mono<Boolean> manageIndexes(
             MongoCollection<Document> collection, Map<String, StorageIndex> indexes, List<String> textIndexFields) {
-
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.dropRemovedIndexes(collection, indexes, textIndexFields),
                         x -> {
@@ -880,13 +854,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Mono<Boolean> dropRemovedIndexes(
             MongoCollection<Document> collection, Map<String, StorageIndex> indexes, List<String> textIndexFields) {
-
         return Flux.from(collection.listIndexes())
                 .filter(e -> {
                     String indexName = e.getString("name");
                     if (indexName.equals("_id_")) return Boolean.FALSE;
 
-                    if (indexName.equals(TEXT_INDEX_NAME)) return textIndexFields == null || textIndexFields.isEmpty();
+                    if (indexName.equals(TEXT_INDEX_NAME))
+                        return (textIndexFields == null || textIndexFields.isEmpty());
 
                     if (indexes == null || indexes.isEmpty()) return Boolean.TRUE;
 
@@ -904,7 +878,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     private synchronized MongoClient createMongoClient(Connection conn) {
-
         if (conn.getConnectionDetails() == null
                 || StringUtil.safeIsBlank(conn.getConnectionDetails().get("url")))
             throw msgService.nonReactiveMessage(

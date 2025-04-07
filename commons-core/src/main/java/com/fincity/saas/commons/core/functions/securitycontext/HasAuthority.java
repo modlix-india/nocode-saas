@@ -15,7 +15,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class HasAuthority extends AbstractReactiveFunction {
-
     private static final String AUTHORITY_PARAM = "authority";
 
     private static final String FUNCTION_NAME = "HasAuthority";
@@ -32,7 +31,6 @@ public class HasAuthority extends AbstractReactiveFunction {
 
     @Override
     public FunctionSignature getSignature() {
-
         Event event = new Event()
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(EVENT_DATA_RESULT, Schema.ofBoolean(EVENT_DATA_RESULT)));
@@ -46,7 +44,6 @@ public class HasAuthority extends AbstractReactiveFunction {
 
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
-
         String authority = context.getArguments().get(AUTHORITY_PARAM).getAsString();
 
         return userContextService

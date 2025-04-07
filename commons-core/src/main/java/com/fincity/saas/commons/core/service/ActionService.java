@@ -1,7 +1,6 @@
 package com.fincity.saas.commons.core.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Action;
 import com.fincity.saas.commons.core.repository.ActionRepository;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -22,8 +21,7 @@ public class ActionService extends AbstractOverridableDataService<Action, Action
 
     @Override
     protected Mono<Action> updatableEntity(Action entity) {
-
-        return flatMapMono(() -> this.read(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
                     if (existing.getVersion() != entity.getVersion())
                         return this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),

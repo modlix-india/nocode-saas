@@ -8,8 +8,12 @@ import reactor.core.publisher.Mono;
 @Service
 public class ClientUrlService {
 
-    @Autowired
     private IFeignSecurityService securityService;
+
+    @Autowired
+    private void setFeignSecurityService(IFeignSecurityService securityService) {
+        this.securityService = securityService;
+    }
 
     public Mono<String> getAppUrl(String appCode, String clientCode) {
         return securityService.getAppUrl(appCode, clientCode);

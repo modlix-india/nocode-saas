@@ -27,7 +27,6 @@ import reactor.util.context.Context;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Template extends AbstractOverridableDTO<Template> {
-
     @Serial
     private static final long serialVersionUID = -6427509976748513994L;
 
@@ -40,7 +39,6 @@ public class Template extends AbstractOverridableDTO<Template> {
     private String languageExpression;
 
     public Template(Template template) {
-
         super(template);
         this.templateParts = CloneUtil.cloneMapObject(template.templateParts);
         this.resources = CloneUtil.cloneMapObject(template.resources);
@@ -54,7 +52,6 @@ public class Template extends AbstractOverridableDTO<Template> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Template> applyOverride(Template base) {
-
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
@@ -82,7 +79,6 @@ public class Template extends AbstractOverridableDTO<Template> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Template> makeOverride(Template base) {
-
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMono(

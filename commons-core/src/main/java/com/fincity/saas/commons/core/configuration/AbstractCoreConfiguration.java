@@ -4,13 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
-import com.fincity.saas.commons.mongo.configuration.AbstractMongoConfiguration;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
 import jakarta.annotation.PostConstruct;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
@@ -19,20 +17,22 @@ import org.springframework.context.annotation.Bean;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
-public abstract class AbstractCoreConfiguration extends AbstractMongoConfiguration
+import java.util.List;
+
+public abstract class AbstractCoreConfiguration extends AbstractJooqMongoConfig
         implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
 
     protected CoreMessageResourceService messageService;
 
-    protected AbstractCoreConfiguration(ObjectMapper objectMapper, CoreMessageResourceService messageService) {
-        super(objectMapper);
+    protected AbstractCoreConfiguration(
+            ObjectMapper objectMapper, String schema, CoreMessageResourceService messageService) {
+        super(objectMapper, schema);
         this.messageService = messageService;
     }
 
     @PostConstruct
     @Override
     public void initialize() {
-
         super.initialize();
         this.objectMapper.registerModule(new KIRuntimeSerializationModule());
         this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(messageService));

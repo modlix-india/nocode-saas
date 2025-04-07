@@ -6,8 +6,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class VersionService extends AbstractVersionService {
-
-    private static final Map<String, String> authNames = Map.ofEntries(
+    private static final Map<String, String> AUTH_NAMES = Map.ofEntries(
             Map.entry("ACTION", "Action"),
             Map.entry("CONNECTION", "Connection"),
             Map.entry("FUNCTION", "Function"),
@@ -19,6 +18,6 @@ public class VersionService extends AbstractVersionService {
 
     @Override
     protected String mapAuthName(String objectType) {
-        return authNames.get(objectType);
+        return AUTH_NAMES.get(objectType);
     }
 }

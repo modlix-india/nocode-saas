@@ -17,7 +17,6 @@ import reactor.util.context.Context;
 @Accessors(chain = true)
 @NoArgsConstructor
 public class StorageRelation implements Serializable, IDifferentiable<StorageRelation> {
-
     @Serial
     private static final long serialVersionUID = 4819827598636692079L;
 
@@ -39,7 +38,6 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
 
     @Override
     public Mono<StorageRelation> extractDifference(StorageRelation inc) {
-
         if (inc == null) return Mono.just(this);
 
         StorageRelation diff = new StorageRelation();
@@ -64,7 +62,6 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
 
     @Override
     public Mono<StorageRelation> applyOverride(StorageRelation override) {
-
         if (override == null) return Mono.just(this);
 
         if (this.uniqueRelationId == null) this.uniqueRelationId = override.uniqueRelationId;

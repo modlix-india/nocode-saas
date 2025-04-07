@@ -10,7 +10,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface IAppDataService {
-
     String CACHE_SUFFIX_FOR_INDEX_CREATION = "_index_creation";
 
     Mono<Map<String, Object>> create(Connection conn, Storage storage, DataObject dataObject);

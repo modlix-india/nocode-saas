@@ -7,7 +7,6 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public interface IAppEmailService {
-
     Mono<Boolean> sendMail(
             List<String> toAddresses, Template template, Map<String, Object> templateData, Connection connection);
 }

@@ -2,7 +2,6 @@ package com.fincity.saas.commons.core.feign;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,7 +12,6 @@ import reactor.core.publisher.Mono;
 
 @ReactiveFeignClient(name = "files")
 public interface IFeignFilesService {
-
     @PostMapping("/api/files/internal/{resourceType}")
     Mono<Map<String, Object>> create(
             @PathVariable String resourceType,

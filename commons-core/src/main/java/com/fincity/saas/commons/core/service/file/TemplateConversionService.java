@@ -22,14 +22,26 @@ public class TemplateConversionService {
 
     private final Map<MediaType, ITemplateConversionService> services = new HashMap<>();
 
-    @Autowired
     private PdfConversionService pdfConversionService;
 
-    @Autowired
     private CoreMessageResourceService msgService;
 
-    @Autowired
     private TemplateService templateService;
+
+    @Autowired
+    private void setPdfConversionService(PdfConversionService pdfConversionService) {
+        this.pdfConversionService = pdfConversionService;
+    }
+
+    @Autowired
+    private void setMsgService(CoreMessageResourceService msgService) {
+        this.msgService = msgService;
+    }
+
+    @Autowired
+    private void setTemplateService(TemplateService templateService) {
+        this.templateService = templateService;
+    }
 
     @PostConstruct
     public void init() {
@@ -42,7 +54,6 @@ public class TemplateConversionService {
             String clientCode,
             String outputFormat,
             Map<String, Object> templateData) {
-
         return FlatMapUtil.flatMapMono(
                         () -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
                         acTup -> Mono.justOrEmpty(

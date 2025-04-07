@@ -15,8 +15,9 @@ import com.openhtmltopdf.svgsupport.BatikSVGDrawer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
-import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
+import org.jsoup.parser.Parser;
+import org.jsoup.parser.StreamParser;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,6 @@ import reactor.util.context.Context;
 
 @Service
 public class PdfConversionService extends AbstractTemplateConversionService {
-
     private static final int INITIAL_BUFFER_SIZE = 8192; // 8KB initial size
     private static final String BODY_KEY = "body";
 
@@ -39,13 +39,11 @@ public class PdfConversionService extends AbstractTemplateConversionService {
 
     @Override
     protected Mono<byte[]> convertToFormat(Map<String, String> processedParts, String outputFormat, Template template) {
-
         String htmlContent = processedParts.get(BODY_KEY);
 
-        if (htmlContent == null || htmlContent.isBlank()) {
+        if (htmlContent == null || htmlContent.isBlank())
             return Mono.error(new GenericException(
                     HttpStatus.INTERNAL_SERVER_ERROR, CoreMessageResourceService.TEMPLATE_DETAILS_MISSING));
-        }
 
         return Mono.fromCallable(() -> generatePdf(htmlContent, template, outputFormat))
                 .subscribeOn(Schedulers.boundedElastic())
@@ -63,12 +61,17 @@ public class PdfConversionService extends AbstractTemplateConversionService {
     }
 
     public Document html5ParseDocument(String htmlContent) {
-        return new W3CDom().fromJsoup(Jsoup.parse(htmlContent, "UTF-8"));
+        try (StreamParser streamParser = new StreamParser(Parser.htmlParser()).parse(htmlContent, "")) {
+            return new W3CDom().fromJsoup(streamParser.complete());
+        } catch (IOException e) {
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Error parsing HTML content using StreamParser", e);
+        }
     }
 
     private PdfRendererBuilder createPdfBuilder(String htmlContent, ByteArrayOutputStream os) {
 
-        Document doc = html5ParseDocument(htmlContent);
+        Document doc = this.html5ParseDocument(htmlContent);
 
         return new PdfRendererBuilder()
                 .useHttpStreamImplementation(streamFactory)
