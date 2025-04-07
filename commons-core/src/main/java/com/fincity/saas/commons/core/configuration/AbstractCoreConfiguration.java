@@ -35,7 +35,7 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqBaseInProgra
     }
 
     @Bean
-    public ReactiveHttpRequestInterceptor feignInterceptor() {
+    ReactiveHttpRequestInterceptor feignInterceptor() {
         return request -> Mono.deferContextual(ctxView -> {
             if (ctxView.hasKey(LogUtil.DEBUG_KEY))
                 request.headers().put(LogUtil.DEBUG_KEY, List.of(ctxView.get(LogUtil.DEBUG_KEY)));
