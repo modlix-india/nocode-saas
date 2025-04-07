@@ -175,9 +175,9 @@ public class AppDataController {
 	@DeleteMapping(PATH_ID)
 	public Mono<ResponseEntity<Boolean>> delete(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode, @RequestHeader String clientCode,
-			@PathVariable(PATH_VARIABLE_ID) final String id) {
+			@PathVariable(PATH_VARIABLE_ID) final String id,Boolean deleteVersion) {
 
-		return this.service.delete(appCode, clientCode, storageName, id)
+		return this.service.delete(appCode, clientCode, storageName, id, deleteVersion)
 				.map(ResponseEntity::ok);
 	}
 

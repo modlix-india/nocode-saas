@@ -31,6 +31,8 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 
 	private static final String STORAGE_NAME = "storageName";
 
+	private static final String DELETE_VERSION = "deleteVersion";
+
 	private static final String APP_CODE = "appCode";
 
 	private static final String CLIENT_CODE = "clientCode";
@@ -59,6 +61,9 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 						Parameter.of(APP_CODE,
 								Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
 
+						DELETE_VERSION,
+						Parameter.of(DELETE_VERSION, Schema.ofBoolean(DELETE_VERSION).setDefaultValue(new JsonPrimitive(false))),
+
 						CLIENT_CODE,
 						Parameter.of(CLIENT_CODE,
 								Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))))
@@ -79,6 +84,8 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 		JsonElement appCodeJSON = context.getArguments().get(APP_CODE);
 		String appCode = appCodeJSON == null || appCodeJSON.isJsonNull() ? null : appCodeJSON.getAsString();
 
+		boolean deleteVersion = context.getArguments().get(DELETE_VERSION).getAsBoolean();
+
 		JsonElement clientCodeJSON = context.getArguments().get(CLIENT_CODE);
 		String clientCode = clientCodeJSON == null || clientCodeJSON.isJsonNull() ? null : clientCodeJSON.getAsString();
 
@@ -91,7 +98,7 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 					new JsonPrimitive("Please provide the id for which delete needs to be performed."))))));
 
 		return appDataService.delete(StringUtil.isNullOrBlank(appCode) ? null : appCode,
-				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObjectId)
+				StringUtil.isNullOrBlank(clientCode) ? null : clientCode, storageName, dataObjectId, deleteVersion)
 				.onErrorResume(
 						exception -> exception instanceof StorageObjectNotFoundException ? Mono.just(Boolean.FALSE)
 								: Mono.error(exception))
