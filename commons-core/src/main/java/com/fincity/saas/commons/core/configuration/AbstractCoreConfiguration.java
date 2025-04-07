@@ -1,25 +1,29 @@
 package com.fincity.saas.commons.core.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
-import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
-import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
+import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseInProgramConfig;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
-import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.mongodb.ReactiveMongoDatabaseFactory;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
+import org.springframework.data.mongodb.core.convert.NoOpDbRefResolver;
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-public abstract class AbstractCoreConfiguration extends AbstractJooqMongoConfig
+public abstract class AbstractCoreConfiguration extends AbstractJooqBaseInProgramConfig
         implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
 
     protected CoreMessageResourceService messageService;
@@ -30,30 +34,34 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqMongoConfig
         this.messageService = messageService;
     }
 
-    @PostConstruct
-    @Override
-    public void initialize() {
-        super.initialize();
-        this.objectMapper.registerModule(new KIRuntimeSerializationModule());
-        this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(messageService));
-        Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
-        FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
-            if (name != null) log.debug("{} - {}", name, v);
-            else log.debug(v);
-        }));
-    }
-
     @Bean
     public ReactiveHttpRequestInterceptor feignInterceptor() {
         return request -> Mono.deferContextual(ctxView -> {
-            if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
-                String key = ctxView.get(LogUtil.DEBUG_KEY);
-
-                request.headers().put(LogUtil.DEBUG_KEY, List.of(key));
-            }
+            if (ctxView.hasKey(LogUtil.DEBUG_KEY))
+                request.headers().put(LogUtil.DEBUG_KEY, List.of(ctxView.get(LogUtil.DEBUG_KEY)));
 
             return Mono.just(request);
         });
+    }
+
+    @Bean
+    MappingMongoConverter mappingConverter(
+            ReactiveMongoDatabaseFactory factory, MongoMappingContext context, BeanFactory beanFactory) {
+        MappingMongoConverter mappingConverter = new MappingMongoConverter(NoOpDbRefResolver.INSTANCE, context);
+        try {
+            mappingConverter.setCustomConversions(beanFactory.getBean(MongoCustomConversions.class));
+        } catch (NoSuchBeanDefinitionException ignore) {
+            logger.error("Unable to set converters", ignore);
+        }
+        mappingConverter.setTypeMapper(new DefaultMongoTypeMapper(null));
+        mappingConverter.setMapKeyDotReplacement("__d-o-t__");
+
+        return mappingConverter;
+    }
+
+    @Bean
+    ReactiveMongoTemplate reactiveMongoTemplate(ReactiveMongoDatabaseFactory factory, MappingMongoConverter convertor) {
+        return new ReactiveMongoTemplate(factory, convertor);
     }
 
     @Override

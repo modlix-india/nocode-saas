@@ -33,7 +33,9 @@ public abstract class AbstractJooqBaseInProgramConfig extends AbstractJooqBaseCo
         this(objectMapper, schema, null, null);
     }
 
-    protected abstract ForcedType[] getForcedTypes();
+    protected ForcedType[] getForcedTypes() {
+        return new ForcedType[0];
+    }
 
     @Bean
     Void generateJooqClasses() throws Exception {
