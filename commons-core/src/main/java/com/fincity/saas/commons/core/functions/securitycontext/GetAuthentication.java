@@ -37,8 +37,7 @@ public class GetAuthentication extends AbstractReactiveFunction {
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(
                         EVENT_DATA_AUTHENTICATION,
-                        Schema.ofRef(CoreSchemaRepository.SCHEMA_NAMESPACE_SECURITY_CONTEXT
-                                + "."
+                        Schema.ofRef(CoreSchemaRepository.SCHEMA_NAMESPACE_SECURITY_CONTEXT + "."
                                 + CoreSchemaRepository.SCHEMA_NAME_CONTEXT_AUTHENTICATION)));
 
         return new FunctionSignature()

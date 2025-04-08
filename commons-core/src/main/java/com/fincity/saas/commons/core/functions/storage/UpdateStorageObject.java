@@ -12,11 +12,11 @@ import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.saas.commons.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.commons.core.model.DataObject;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.reflect.TypeToken;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
@@ -53,10 +53,6 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
     public UpdateStorageObject(AppDataService appDataService, Gson gson) {
         this.appDataService = appDataService;
         this.gson = gson;
-    }
-
-    public AppDataService getAppDataService() {
-        return appDataService;
     }
 
     @Override

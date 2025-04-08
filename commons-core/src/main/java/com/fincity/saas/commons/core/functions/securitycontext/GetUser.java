@@ -34,8 +34,7 @@ public class GetUser extends AbstractReactiveFunction {
                 .setName(Event.OUTPUT)
                 .setParameters(Map.of(
                         EVENT_DATA_USER,
-                        Schema.ofRef(CoreSchemaRepository.SCHEMA_NAMESPACE_SECURITY_CONTEXT
-                                + "."
+                        Schema.ofRef(CoreSchemaRepository.SCHEMA_NAMESPACE_SECURITY_CONTEXT + "."
                                 + CoreSchemaRepository.SCHEMA_NAME_CONTEXT_USER)));
 
         return new FunctionSignature()

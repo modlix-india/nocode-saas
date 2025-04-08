@@ -56,9 +56,7 @@ public class IsUserBeingManaged extends AbstractReactiveFunction {
         String clientCode = context.getArguments().get(CLIENT_CODE).getAsString();
 
         return Mono.deferContextual(cv -> {
-            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) {
-                return Mono.empty();
-            }
+            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) return Mono.empty();
 
             return this.securityService
                     .isUserBeingManaged(userId, clientCode)

@@ -83,10 +83,9 @@ public class SendEmail extends AbstractReactiveFunction {
                 JsonUtil.toMap(context.getArguments().get(TEMPLATE_DATA).getAsJsonObject());
 
         return Mono.deferContextual(cv -> {
-            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) {
+            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
                 return Mono.just(new FunctionOutput(
                         List.of(EventResult.outputOf(Map.of(EVENT_DATA, new JsonPrimitive(false))))));
-            }
 
             return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> {
                         String inAppCode = appCode.trim().isEmpty() ? ca.getUrlAppCode() : appCode;

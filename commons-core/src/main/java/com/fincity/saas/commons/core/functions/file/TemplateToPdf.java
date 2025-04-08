@@ -105,10 +105,9 @@ public class TemplateToPdf extends AbstractReactiveFunction {
         boolean fileOverride = context.getArguments().get(FILE_OVERRIDE).getAsBoolean();
 
         return Mono.deferContextual(cv -> {
-                    if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) {
+                    if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
                         return Mono.just(new FunctionOutput(
                                 List.of(EventResult.outputOf(Map.of(EVENT_DATA, new JsonPrimitive(false))))));
-                    }
 
                     return FlatMapUtil.flatMapMono(
                             () -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
@@ -131,10 +130,8 @@ public class TemplateToPdf extends AbstractReactiveFunction {
     }
 
     private Mono<FunctionOutput> processOutput(Map<String, Object> fileDetails) {
-        if (fileDetails == null) {
+        if (fileDetails == null)
             return Mono.just(new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_DATA, new JsonObject())))));
-        }
-
         return Mono.just(
                 new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_DATA, gson.toJsonTree(fileDetails))))));
     }
@@ -151,13 +148,10 @@ public class TemplateToPdf extends AbstractReactiveFunction {
             ByteBuffer buffer = ByteBuffer.wrap(fileBytes);
 
             String finalFileName = fileName;
-            if (StringUtil.safeIsBlank(finalFileName)) {
+            if (StringUtil.safeIsBlank(finalFileName))
                 finalFileName = extractFileName(fileLocation, templateName, clientCode);
-            }
 
-            if (StringUtil.safeIsBlank(finalFileName)) {
-                finalFileName = "file";
-            }
+            if (StringUtil.safeIsBlank(finalFileName)) finalFileName = "file";
 
             return this.fileService.create(fileType, clientCode, override, fileLocation, finalFileName, buffer);
         } catch (Exception exception) {
@@ -166,9 +160,7 @@ public class TemplateToPdf extends AbstractReactiveFunction {
     }
 
     private String extractFileName(String fileLocation, String templateName, String clientCode) {
-        if (StringUtil.safeIsBlank(fileLocation)) {
-            return templateName + "_" + clientCode;
-        }
+        if (StringUtil.safeIsBlank(fileLocation)) return templateName + "_" + clientCode;
 
         String fileName = Path.of(fileLocation).getFileName().toString();
         return fileName.isEmpty() ? templateName + "_" + clientCode : fileName;

@@ -74,10 +74,6 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
         this.gson = gson;
     }
 
-    public AppDataService getAppDataService() {
-        return appDataService;
-    }
-
     @Override
     public FunctionSignature getSignature() {
         Schema objectSchema = new Schema()

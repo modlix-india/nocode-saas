@@ -56,9 +56,7 @@ public class IsBeingManagedByCode extends AbstractReactiveFunction {
                 context.getArguments().get(MANAGING_CLIENT_CODE).getAsString();
 
         return Mono.deferContextual(cv -> {
-            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) {
-                return Mono.empty();
-            }
+            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) return Mono.empty();
 
             return this.securityService
                     .isBeingManaged(managingClientCode, clientCode)

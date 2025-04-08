@@ -57,9 +57,7 @@ public class IsBeingManagedById extends AbstractReactiveFunction {
                 context.getArguments().get(MANAGING_CLIENT_ID).getAsBigInteger();
 
         return Mono.deferContextual(cv -> {
-            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) {
-                return Mono.empty();
-            }
+            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) return Mono.empty();
 
             return this.securityService
                     .isBeingManagedById(managingClientId, clientId)

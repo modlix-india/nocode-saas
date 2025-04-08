@@ -41,10 +41,6 @@ public class CreateManyStorageObject extends AbstractReactiveFunction {
         this.gson = gson;
     }
 
-    public AppDataService getAppDataService() {
-        return appDataService;
-    }
-
     @Override
     public FunctionSignature getSignature() {
         Event event = new Event().setName(Event.OUTPUT).setParameters(Map.of(EVENT_RESULT, Schema.ofAny(EVENT_RESULT)));
