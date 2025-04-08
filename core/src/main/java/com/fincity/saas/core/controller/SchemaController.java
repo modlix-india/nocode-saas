@@ -6,12 +6,12 @@ import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.CoreSchema;
+import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.commons.core.repository.CoreSchemaDocumentRepository;
 import com.fincity.saas.commons.core.service.CoreSchemaService;
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.core.kirun.repository.CoreSchemaRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,7 +32,6 @@ public class SchemaController
 
     @PostConstruct
     public void init() {
-
         this.coreSchemaRepo = new CoreSchemaRepository();
     }
 

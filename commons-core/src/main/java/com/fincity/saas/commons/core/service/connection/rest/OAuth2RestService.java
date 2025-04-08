@@ -2,14 +2,13 @@ package com.fincity.saas.commons.core.service.connection.rest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.dao.AbstractCoreTokenDao;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.dto.CoreToken;
 import com.fincity.saas.commons.core.dto.RestRequest;
 import com.fincity.saas.commons.core.dto.RestResponse;
 import com.fincity.saas.commons.core.enums.ConnectionType;
-import com.fincity.saas.commons.core.enums.CoreTokenType;
 import com.fincity.saas.commons.core.enums.OAuth2GrantTypes;
+import com.fincity.saas.commons.core.jooq.enums.CoreTokensTokenType;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -18,7 +17,11 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import org.jooq.UpdatableRecord;
+import java.net.URI;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -32,15 +35,8 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 
-import java.net.URI;
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Map;
-import java.util.UUID;
-
 @Service
-public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends AbstractCoreTokenDao<R>>
-        extends AbstractRestTokenService<R, O> {
+public class OAuth2RestService extends AbstractRestTokenService {
 
     private static final String AUTH_GRANT_TYPE = "grantType";
 
@@ -55,10 +51,6 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
     private static final String CONSENT_CALLBACK_URI = "/api/core/connections/oauth/callback";
 
     private ConnectionService connectionService;
-
-    protected OAuth2RestService(O coreTokenDao) {
-        super(coreTokenDao);
-    }
 
     @Autowired
     private void setConnectionService(ConnectionService connectionService) {
@@ -114,7 +106,7 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
     private Mono<String> getExistingAccessToken(String connectionName, String clientCode, String appCode) {
         return cacheService.cacheValueOrGet(
                 CACHE_NAME_REST_OAUTH2,
-                () -> this.coreTokenDao.getActiveAccessToken(clientCode, appCode, connectionName),
+                () -> this.coreTokenDAO.getActiveAccessToken(clientCode, appCode, connectionName),
                 getCacheKeys(connectionName, clientCode, appCode));
     }
 
@@ -181,14 +173,14 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
         }
 
         return FlatMapUtil.flatMapMono(
-                () -> this.coreTokenDao.create(new CoreToken()
+                () -> this.coreTokenDAO.create(new CoreToken()
                         .setClientCode(ca.getClientCode())
                         .setAppCode(ca.getUrlAppCode())
                         .setConnectionName(connection.getName())
-                        .setTokenType(CoreTokenType.ACCESS)
+                        .setTokenType(CoreTokensTokenType.ACCESS)
                         .setState(state)
                         .setUserId(ULongUtil.valueOf(ca.getUser().getId()))),
-                coreToken -> {
+                coreCoreToken -> {
 
                     // Build the base URI
                     UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(authBaseURL);
@@ -223,18 +215,18 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
         String callbackURI = "https://" + request.getHeaders().getFirst("X-Forwarded-Host") + request.getPath();
 
         return FlatMapUtil.flatMapMono(
-                () -> this.coreTokenDao.getCoreTokenByState(state),
-                coreToken -> this.connectionService.read(
-                        coreToken.getConnectionName(),
-                        coreToken.getAppCode(),
-                        coreToken.getClientCode(),
+                () -> this.coreTokenDAO.getCoreTokenByState(state),
+                coreCoreToken -> this.connectionService.read(
+                        coreCoreToken.getConnectionName(),
+                        coreCoreToken.getAppCode(),
+                        coreCoreToken.getClientCode(),
                         ConnectionType.REST_API),
-                (coreToken, connection) -> this.coreTokenDao.revokeToken(
-                        coreToken.getClientCode(), coreToken.getAppCode(), coreToken.getConnectionName()),
-                (coreToken, connection, invPrev) -> cacheService.evict(
+                (coreCoreToken, connection) -> this.coreTokenDAO.revokeToken(
+                        coreCoreToken.getClientCode(), coreCoreToken.getAppCode(), coreCoreToken.getConnectionName()),
+                (coreCoreToken, connection, invPrev) -> cacheService.evict(
                         CACHE_NAME_REST_OAUTH2,
-                        getCacheKeys(connection.getName(), coreToken.getClientCode(), coreToken.getAppCode())),
-                (coreToken, connection, invPrev, evictCache) -> {
+                        getCacheKeys(connection.getName(), coreCoreToken.getClientCode(), coreCoreToken.getAppCode())),
+                (coreCoreToken, connection, invPrev, evictCache) -> {
                     String fullPageURI =
                             basePageURL + connection.getConnectionDetails().get("pagePath");
 
@@ -267,10 +259,10 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
                             .bodyToMono(JsonNode.class)
                             .map(node -> Tuples.of(fullPageURI, node));
                 },
-                (coreToken, connection, invPrev, evictCache, tup) -> {
+                (coreCoreToken, connection, invPrev, evictCache, tup) -> {
                     Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
-                    Mono<CoreToken> token = this.coreTokenDao.update(coreToken
+                    Mono<CoreToken> token = this.coreTokenDAO.update(coreCoreToken
                             .setToken(tup.getT2()
                                     .get((String) connectionDetails.get(TOKEN_KEY))
                                     .asText())
@@ -290,18 +282,20 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
 
                     // saving refresh token if present
                     if (!StringUtil.safeIsBlank(rTokenKey))
-                        this.coreTokenDao.create(new CoreToken()
-                                .setClientCode(connection.getClientCode())
-                                .setAppCode(connection.getAppCode())
-                                .setConnectionName(connection.getName())
-                                .setUserId(coreToken.getUserId())
-                                .setExpiresAt(coreToken.getExpiresAt())
-                                .setTokenType(CoreTokenType.REFRESH)
-                                .setToken(tup.getT2().get(rTokenKey).asText()));
+                        this.coreTokenDAO
+                                .create(new CoreToken()
+                                        .setClientCode(connection.getClientCode())
+                                        .setAppCode(connection.getAppCode())
+                                        .setConnectionName(connection.getName())
+                                        .setUserId(coreCoreToken.getUserId())
+                                        .setExpiresAt(coreCoreToken.getExpiresAt())
+                                        .setTokenType(CoreTokensTokenType.REFRESH)
+                                        .setToken(tup.getT2().get(rTokenKey).asText()))
+                                .block();
 
                     return token;
                 },
-                (coreToken, connection, invPrev, evictCache, tup, updated) -> {
+                (coreCoreToken, connection, invPrev, evictCache, tup, updated) -> {
                     response.setStatusCode(HttpStatus.FOUND);
 
                     UriComponentsBuilder builder =
@@ -344,13 +338,13 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
                             .retrieve()
                             .bodyToMono(JsonNode.class);
                 },
-                (ca, tokenResponse) -> this.coreTokenDao
+                (ca, tokenResponse) -> this.coreTokenDAO
                         .create(new CoreToken()
                                 .setClientCode(connection.getClientCode())
                                 .setAppCode(connection.getAppCode())
                                 .setUserId(ULongUtil.valueOf(ca.getUser().getId()))
                                 .setConnectionName(connection.getName())
-                                .setTokenType(CoreTokenType.ACCESS)
+                                .setTokenType(CoreTokensTokenType.ACCESS)
                                 .setToken(tokenResponse
                                         .get((String) connectionDetails.get(TOKEN_KEY))
                                         .asText())
@@ -366,7 +360,7 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> Mono.just(Tuples.of(ca.getClientCode(), ca.getUrlAppCode())),
-                        (ca, tup) -> this.coreTokenDao.revokeToken(tup.getT1(), tup.getT2(), connectionName))
+                        (ca, tup) -> this.coreTokenDAO.revokeToken(tup.getT1(), tup.getT2(), connectionName))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OAuth2RestService.revokeConnectionToken"))
                 .switchIfEmpty(msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -390,13 +384,13 @@ public abstract class OAuth2RestService<R extends UpdatableRecord<R>, O extends 
         response.setStatusCode(HttpStatus.FOUND);
 
         return FlatMapUtil.flatMapMono(
-                () -> this.coreTokenDao.getCoreTokenByState(state),
-                coreToken -> this.connectionService.read(
-                        coreToken.getConnectionName(),
-                        coreToken.getAppCode(),
-                        coreToken.getClientCode(),
+                () -> this.coreTokenDAO.getCoreTokenByState(state),
+                coreCoreToken -> this.connectionService.read(
+                        coreCoreToken.getConnectionName(),
+                        coreCoreToken.getAppCode(),
+                        coreCoreToken.getClientCode(),
                         ConnectionType.REST_API),
-                (coreToken, connection) -> {
+                (coreCoreToken, connection) -> {
                     response.setStatusCode(HttpStatus.FOUND);
 
                     UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(basePageURL

@@ -123,11 +123,11 @@
             <artifactId>commons</artifactId>
             <version>${saas-commons-version}</version>
         </dependency>
-      <dependency>
-        <groupId>com.fincity.saas</groupId>
-        <artifactId>commons-core</artifactId>
-        <version>${saas-commons-core-version}</version>
-      </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-core</artifactId>
+            <version>${saas-commons-core-version}</version>
+        </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons-security</artifactId>

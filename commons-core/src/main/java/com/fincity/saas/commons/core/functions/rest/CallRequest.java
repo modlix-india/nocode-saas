@@ -95,13 +95,13 @@ public class CallRequest extends AbstractReactiveFunction {
     private final Gson gson;
     private final IFeignFilesService fileService;
     private final IFeignSecurityService securityService;
-    private final RestService<?,?> restService;
+    private final RestService restService;
     private final String name;
     private final String methodName;
     private final boolean hasPayload;
 
     public CallRequest(
-            RestService<? , ? > restService,
+            RestService restService,
             IFeignFilesService fileService,
             IFeignSecurityService securityService,
             String name,
@@ -389,12 +389,12 @@ public class CallRequest extends AbstractReactiveFunction {
         int doub = cd.indexOf('\'', index);
         String charset = cd.substring(index, doub);
         Charset cs = StandardCharsets.UTF_8;
-      try {
-          cs = Charset.forName(charset);
-      } catch (Exception e) {
-          logger.error("Charset not found: {}", charset, e);
-      }
-      index = doub + 1;
+        try {
+            cs = Charset.forName(charset);
+        } catch (Exception e) {
+            logger.error("Charset not found: {}", charset, e);
+        }
+        index = doub + 1;
         int end = cd.indexOf('\'', index);
         if (end == -1 || end >= cd.length()) return null;
         return URLDecoder.decode(cd.substring(end + 1), cs);
@@ -485,20 +485,20 @@ public class CallRequest extends AbstractReactiveFunction {
                         gson.toJsonTree(Map.of()))))));
     }
 
-  private JsonElement processFeignException(FeignException fe) {
-    Optional<ByteBuffer> op = fe.responseBody();
-    ByteBuffer byteBuffer = op.orElse(null);
+    private JsonElement processFeignException(FeignException fe) {
+        Optional<ByteBuffer> op = fe.responseBody();
+        ByteBuffer byteBuffer = op.orElse(null);
 
-    if (byteBuffer == null || !byteBuffer.hasArray()) return null;
+        if (byteBuffer == null || !byteBuffer.hasArray()) return null;
 
-    Collection<String> contentType = fe.responseHeaders().get(HttpHeaders.CONTENT_TYPE);
-    if (contentType == null || !contentType.contains("application/json")) return null;
+        Collection<String> contentType = fe.responseHeaders().get(HttpHeaders.CONTENT_TYPE);
+        if (contentType == null || !contentType.contains("application/json")) return null;
 
-    try {
-      return this.gson.fromJson(new String(byteBuffer.array()), JsonElement.class);
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
+        try {
+            return this.gson.fromJson(new String(byteBuffer.array()), JsonElement.class);
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
+        return null;
     }
-    return null;
-  }
 }

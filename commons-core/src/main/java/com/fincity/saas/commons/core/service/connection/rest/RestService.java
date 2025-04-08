@@ -1,7 +1,6 @@
 package com.fincity.saas.commons.core.service.connection.rest;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.dao.AbstractCoreTokenDao;
 import com.fincity.saas.commons.core.dto.RestRequest;
 import com.fincity.saas.commons.core.dto.RestResponse;
 import com.fincity.saas.commons.core.enums.ConnectionSubType;
@@ -10,28 +9,26 @@ import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import jakarta.annotation.PostConstruct;
-import org.jooq.UpdatableRecord;
+import java.util.EnumMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
-import java.util.EnumMap;
-
 @Service
-public abstract class RestService<R extends UpdatableRecord<R>, O extends AbstractCoreTokenDao<R>> {
+public class RestService {
 
     private final ConnectionService connectionService;
     private final BasicRestService basicRestService;
-    private final OAuth2RestService<R, O> oAuth2RestService;
-    private final RestAuthService<R, O> restAuthService;
+    private final OAuth2RestService oAuth2RestService;
+    private final RestAuthService restAuthService;
     private final EnumMap<ConnectionSubType, IRestService> services = new EnumMap<>(ConnectionSubType.class);
 
     protected RestService(
             ConnectionService connectionService,
             BasicRestService basicRestService,
-            OAuth2RestService<R, O> oAuth2RestService,
-            RestAuthService<R, O> restAuthService) {
+            OAuth2RestService oAuth2RestService,
+            RestAuthService restAuthService) {
         this.connectionService = connectionService;
         this.basicRestService = basicRestService;
         this.oAuth2RestService = oAuth2RestService;

@@ -21,11 +21,10 @@ public class WorkflowService extends AbstractOverridableDataService<Workflow, Wo
 
     @Override
     public Mono<Workflow> create(Workflow entity) {
-        if (entity.getTrigger() == null) {
+        if (entity.getTrigger() == null)
             return this.messageResourceService.throwMessage(
                     msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
                     CoreMessageResourceService.WORKFLOW_TRIGGER_MISSING);
-        }
 
         return super.create(entity).flatMap(this::addSchedulerForTriggers);
     }

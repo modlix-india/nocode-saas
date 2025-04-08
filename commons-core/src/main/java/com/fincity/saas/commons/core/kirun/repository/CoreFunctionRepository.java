@@ -35,6 +35,7 @@ import com.fincity.saas.commons.core.service.security.ClientUrlService;
 import com.fincity.saas.commons.core.service.security.ContextService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.google.gson.Gson;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,21 +48,6 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     private final Map<String, ReactiveFunction> repoMap = new HashMap<>();
 
     private final List<String> filterableNames;
-
-    @Data
-    @Accessors(chain = true)
-    public static class CoreFunctionRepositoryBuilder {
-        private AppDataService appDataService;
-        private ObjectMapper objectMapper;
-        private RestService restService;
-        private ContextService userContextService;
-        private IFeignSecurityService securityService;
-        private ClientUrlService clientUrlService;
-        private EmailService emailService;
-        private IFeignFilesService filesService;
-        private TemplateConversionService templateConversionService;
-        private Gson gson;
-    }
 
     public CoreFunctionRepository(CoreFunctionRepositoryBuilder builder) {
         this.makeStorageFunctions(builder.appDataService, builder.objectMapper, builder.gson);
@@ -86,10 +72,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction isUserBeingManaged = new IsUserBeingManaged(securityService);
         ReactiveFunction getClient = new GetClient(securityService, gson);
 
-        repoMap.put(isBeingManagedByCode.getSignature().getFullName(), isBeingManagedByCode);
-        repoMap.put(isBeingManagedById.getSignature().getFullName(), isBeingManagedById);
-        repoMap.put(isUserBeingManaged.getSignature().getFullName(), isUserBeingManaged);
-        repoMap.put(getClient.getSignature().getFullName(), getClient);
+        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, isUserBeingManaged, getClient);
     }
 
     private void makeSecurityContextFunctions(
@@ -99,10 +82,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction getUser = new GetUser(userContextService, gson);
         ReactiveFunction getAppUrl = new GetAppUrl(clientUrlService);
 
-        repoMap.put(hasAuthority.getSignature().getFullName(), hasAuthority);
-        repoMap.put(getAuthentication.getSignature().getFullName(), getAuthentication);
-        repoMap.put(getUser.getSignature().getFullName(), getUser);
-        repoMap.put(getAppUrl.getSignature().getFullName(), getAppUrl);
+        this.addToRepoMap(hasAuthority, getAuthentication, getUser, getAppUrl);
     }
 
     private void makeStorageFunctions(AppDataService appDataService, ObjectMapper objectMapper, Gson gson) {
@@ -114,13 +94,14 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper, gson);
         ReactiveFunction deleteByFilterStorage = new DeleteStorageObjectWithFilter(appDataService, objectMapper, gson);
 
-        repoMap.put(createStorage.getSignature().getFullName(), createStorage);
-        repoMap.put(createManyStorage.getSignature().getFullName(), createManyStorage);
-        repoMap.put(deleteStorage.getSignature().getFullName(), deleteStorage);
-        repoMap.put(deleteByFilterStorage.getSignature().getFullName(), deleteByFilterStorage);
-        repoMap.put(updateStorage.getSignature().getFullName(), updateStorage);
-        repoMap.put(readStorage.getSignature().getFullName(), readStorage);
-        repoMap.put(readPageStorage.getSignature().getFullName(), readPageStorage);
+        this.addToRepoMap(
+                createStorage,
+                createManyStorage,
+                deleteStorage,
+                updateStorage,
+                readStorage,
+                readPageStorage,
+                deleteByFilterStorage);
     }
 
     private void makeRESTFunctions(
@@ -141,18 +122,12 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction callRequest =
                 new CallRequest(restService, filesService, securityService, "CallRequest", "", true, gson);
 
-        repoMap.put(getRequest.getSignature().getFullName(), getRequest);
-        repoMap.put(postRequest.getSignature().getFullName(), postRequest);
-        repoMap.put(putRequest.getSignature().getFullName(), putRequest);
-        repoMap.put(patchRequest.getSignature().getFullName(), patchRequest);
-        repoMap.put(deleteRequest.getSignature().getFullName(), deleteRequest);
-        repoMap.put(callRequest.getSignature().getFullName(), callRequest);
+        this.addToRepoMap(getRequest, postRequest, putRequest, patchRequest, deleteRequest, callRequest);
     }
 
     private void makeEmailFunctions(EmailService emailService) {
         ReactiveFunction sendEmail = new SendEmail(emailService);
-
-        repoMap.put(sendEmail.getSignature().getFullName(), sendEmail);
+        this.addToRepoMap(sendEmail);
     }
 
     private void makeFileFunctions(
@@ -162,23 +137,25 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
             Gson gson) {
         ReactiveFunction fileToBase64 = new FileToBase64(filesService);
         ReactiveFunction templateToPdf = new TemplateToPdf(templateConversionService, fileService, gson);
-
-        repoMap.put(fileToBase64.getSignature().getFullName(), fileToBase64);
-        repoMap.put(templateToPdf.getSignature().getFullName(), templateToPdf);
+        this.addToRepoMap(fileToBase64, templateToPdf);
     }
 
     private void makeCryptoFunctions() {
         ReactiveFunction signer = new Signer();
         ReactiveFunction signatureValidator = new SignatureValidator();
 
-        repoMap.put(signer.getSignature().getFullName(), signer);
-        repoMap.put(signatureValidator.getSignature().getFullName(), signatureValidator);
+        this.addToRepoMap(signer, signatureValidator);
     }
 
     private void makeHashingFunctions() {
         ReactiveFunction hashData = new HashData();
 
-        repoMap.put(hashData.getSignature().getFullName(), hashData);
+        this.addToRepoMap(hashData);
+    }
+
+    private void addToRepoMap(ReactiveFunction... functions) {
+        Arrays.stream(functions)
+                .forEach(function -> repoMap.putIfAbsent(function.getSignature().getFullName(), function));
     }
 
     @Override
@@ -191,5 +168,20 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     @Override
     public Mono<ReactiveFunction> find(String namespace, String name) {
         return Mono.justOrEmpty(repoMap.get(namespace + "." + name));
+    }
+
+    @Data
+    @Accessors(chain = true)
+    public static class CoreFunctionRepositoryBuilder {
+        private AppDataService appDataService;
+        private ObjectMapper objectMapper;
+        private RestService restService;
+        private ContextService userContextService;
+        private IFeignSecurityService securityService;
+        private ClientUrlService clientUrlService;
+        private EmailService emailService;
+        private IFeignFilesService filesService;
+        private TemplateConversionService templateConversionService;
+        private Gson gson;
     }
 }

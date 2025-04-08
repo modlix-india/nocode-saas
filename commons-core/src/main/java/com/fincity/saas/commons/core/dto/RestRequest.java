@@ -1,13 +1,12 @@
 package com.fincity.saas.commons.core.dto;
 
 import com.google.gson.JsonElement;
-import lombok.Data;
-import lombok.experimental.Accessors;
-import org.springframework.util.MultiValueMap;
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
+import lombok.Data;
+import lombok.experimental.Accessors;
+import org.springframework.util.MultiValueMap;
 
 @Data
 @Accessors(chain = true)

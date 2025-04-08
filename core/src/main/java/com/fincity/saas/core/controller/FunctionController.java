@@ -7,9 +7,14 @@ import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveFunctionRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.CoreFunction;
+import com.fincity.saas.commons.core.feign.IFeignFilesService;
+import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository;
+import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.commons.core.repository.CoreFunctionDocumentRepository;
+import com.fincity.saas.commons.core.service.CoreFunctionService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.core.service.connection.email.EmailService;
+import com.fincity.saas.commons.core.service.connection.rest.RestService;
 import com.fincity.saas.commons.core.service.file.TemplateConversionService;
 import com.fincity.saas.commons.core.service.security.ClientUrlService;
 import com.fincity.saas.commons.core.service.security.ContextService;
@@ -18,11 +23,6 @@ import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.core.feign.IFeignFilesService;
-import com.fincity.saas.core.kirun.repository.CoreFunctionRepository;
-import com.fincity.saas.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
-import com.fincity.saas.core.service.CoreFunctionService;
-import com.fincity.saas.core.service.connection.rest.CoreRestService;
 import com.google.gson.Gson;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -47,7 +47,7 @@ public class FunctionController
     public FunctionController(
             AppDataService appDataService,
             ObjectMapper objectMapper,
-            CoreRestService restService,
+            RestService restService,
             ContextService userContextService,
             IFeignSecurityService securityService,
             IFeignFilesService fileService,
@@ -107,7 +107,6 @@ public class FunctionController
             @RequestParam(required = false) String clientCode,
             @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
             @RequestParam(required = false, defaultValue = "") String filter) {
-
         return FlatMapUtil.flatMapMono(
                         () -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
                         (ca) -> this.service.getFunctionRepository(ca.getT1(), ca.getT2()),

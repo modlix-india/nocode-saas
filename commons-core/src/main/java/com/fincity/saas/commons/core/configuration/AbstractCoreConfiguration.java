@@ -2,36 +2,30 @@ package com.fincity.saas.commons.core.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
-import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseInProgramConfig;
+import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
+import com.fincity.saas.commons.mongo.configuration.IMongoConfiguration;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
+import java.util.List;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.ReactiveMongoDatabaseFactory;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
-import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
-import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
-import org.springframework.data.mongodb.core.convert.NoOpDbRefResolver;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-
-public abstract class AbstractCoreConfiguration extends AbstractJooqBaseInProgramConfig
-        implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
+public abstract class AbstractCoreConfiguration extends AbstractJooqBaseConfiguration
+        implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer, IMongoConfiguration {
 
     protected CoreMessageResourceService messageService;
 
-    protected AbstractCoreConfiguration(
-            ObjectMapper objectMapper, String schema, CoreMessageResourceService messageService) {
-        super(objectMapper, schema);
-        this.messageService = messageService;
+    protected AbstractCoreConfiguration(ObjectMapper objectMapper) {
+        super(objectMapper);
     }
 
     @Bean
@@ -47,21 +41,12 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqBaseInProgra
     @Bean
     MappingMongoConverter mappingConverter(
             ReactiveMongoDatabaseFactory factory, MongoMappingContext context, BeanFactory beanFactory) {
-        MappingMongoConverter mappingConverter = new MappingMongoConverter(NoOpDbRefResolver.INSTANCE, context);
-        try {
-            mappingConverter.setCustomConversions(beanFactory.getBean(MongoCustomConversions.class));
-        } catch (NoSuchBeanDefinitionException ignore) {
-            logger.error("Unable to set converters", ignore);
-        }
-        mappingConverter.setTypeMapper(new DefaultMongoTypeMapper(null));
-        mappingConverter.setMapKeyDotReplacement("__d-o-t__");
-
-        return mappingConverter;
+        return this.getMappingMongoConverter(factory, context, beanFactory, logger);
     }
 
     @Bean
     ReactiveMongoTemplate reactiveMongoTemplate(ReactiveMongoDatabaseFactory factory, MappingMongoConverter convertor) {
-        return new ReactiveMongoTemplate(factory, convertor);
+        return this.getReactiveMongoTemplate(factory, convertor);
     }
 
     @Override

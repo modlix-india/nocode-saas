@@ -1,18 +1,18 @@
 package com.fincity.saas.commons.core.service.connection.rest;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.dao.AbstractCoreTokenDao;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.dto.CoreToken;
 import com.fincity.saas.commons.core.dto.RestRequest;
 import com.fincity.saas.commons.core.dto.RestResponse;
-import com.fincity.saas.commons.core.enums.CoreTokenType;
+import com.fincity.saas.commons.core.jooq.enums.CoreTokensTokenType;
 import com.fincity.saas.commons.core.service.CoreFunctionService;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.google.gson.JsonElement;
-import org.jooq.UpdatableRecord;
+import java.time.LocalDateTime;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,12 +23,8 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-import java.time.LocalDateTime;
-import java.util.Map;
-
 @Service
-public abstract class RestAuthService<R extends UpdatableRecord<R>, O extends AbstractCoreTokenDao<R>>
-        extends AbstractRestTokenService<R, O> {
+public class RestAuthService extends AbstractRestTokenService {
 
     private static final String AUTH_TOKEN_FUNCTION_NAME = "authTokenFunctionName";
     private static final String AUTH_TOKEN_FUNCTION_NAMESPACE = "authTokenFunctionNamespace";
@@ -40,10 +36,6 @@ public abstract class RestAuthService<R extends UpdatableRecord<R>, O extends Ab
     private static final String CACHE_NAME_REST_AUTH = "RestAuthToken";
 
     private CoreFunctionService coreFunctionService;
-
-    protected RestAuthService(O coreTokenDao) {
-        super(coreTokenDao);
-    }
 
     @Autowired
     private void setCoreFunctionService(CoreFunctionService coreFunctionService) {
@@ -71,7 +63,7 @@ public abstract class RestAuthService<R extends UpdatableRecord<R>, O extends Ab
     private Mono<Tuple2<String, LocalDateTime>> getExistingAccessToken(Connection connection) {
         return cacheService.cacheValueOrGet(
                 CACHE_NAME_REST_AUTH,
-                () -> this.coreTokenDao.getActiveAccessTokenTuple(
+                () -> this.coreTokenDAO.getActiveAccessTokenTuple(
                         connection.getClientCode(), connection.getAppCode(), connection.getName()),
                 getCacheKeys(connection));
     }
@@ -95,7 +87,7 @@ public abstract class RestAuthService<R extends UpdatableRecord<R>, O extends Ab
                                     null);
                         },
                         authTokenOutput ->
-                                Mono.just(authTokenOutput.allResults().get(0)),
+                                Mono.just(authTokenOutput.allResults().getFirst()),
                         (authTokenOutput, outputResult) ->
                                 cacheService.evict(CACHE_NAME_REST_AUTH, getCacheKeys(connection)),
                         (authTokenOutput, outputResult, removed) -> {
@@ -111,16 +103,16 @@ public abstract class RestAuthService<R extends UpdatableRecord<R>, O extends Ab
                             String authToken = eventMap.get(AUTH_TOKEN).getAsString();
                             long expiresIn = eventMap.get(EXPIRES_IN).getAsLong();
 
-                            return this.coreTokenDao.create(new CoreToken()
+                            return this.coreTokenDAO.create(new CoreToken()
                                     .setClientCode(connection.getClientCode())
                                     .setAppCode(connection.getAppCode())
                                     .setConnectionName(connection.getName())
-                                    .setTokenType(CoreTokenType.ACCESS)
+                                    .setTokenType(CoreTokensTokenType.ACCESS)
                                     .setToken(authToken)
                                     .setIsRevoked(Boolean.FALSE)
                                     .setExpiresAt(LocalDateTime.now().plusSeconds(expiresIn)));
                         })
-                .map(coreToken -> Tuples.of(coreToken.getToken(), coreToken.getExpiresAt()));
+                .map(coreCoreToken -> Tuples.of(coreCoreToken.getToken(), coreCoreToken.getExpiresAt()));
     }
 
     private Mono<RestResponse> makeRestCall(

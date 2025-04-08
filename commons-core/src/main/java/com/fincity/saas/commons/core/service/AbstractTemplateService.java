@@ -5,12 +5,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import freemarker.template.Configuration;
 import freemarker.template.TemplateExceptionHandler;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +14,13 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
+
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.TimeZone;
 
 public abstract class AbstractTemplateService {
     protected static final Configuration CONFIGURATION = new Configuration(Configuration.VERSION_2_3_32);
@@ -91,4 +92,3 @@ public abstract class AbstractTemplateService {
                 .map(e -> e.isBlank() ? template.getDefaultLanguage() : e);
     }
 }
-	

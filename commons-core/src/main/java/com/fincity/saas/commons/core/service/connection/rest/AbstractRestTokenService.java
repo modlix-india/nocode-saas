@@ -1,23 +1,22 @@
 package com.fincity.saas.commons.core.service.connection.rest;
 
-import com.fincity.saas.commons.core.dao.AbstractCoreTokenDao;
+import com.fincity.saas.commons.core.dao.CoreTokenDAO;
 import com.fincity.saas.commons.service.CacheService;
-import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public abstract class AbstractRestTokenService<R extends UpdatableRecord<R>, O extends AbstractCoreTokenDao<R>>
-        extends AbstractRestService {
+public abstract class AbstractRestTokenService extends AbstractRestService {
 
-    protected O coreTokenDao;
+    protected CoreTokenDAO coreTokenDAO;
 
     protected BasicRestService basicRestService;
 
     protected CacheService cacheService;
 
-    protected AbstractRestTokenService(O coreTokenDao) {
-        this.coreTokenDao = coreTokenDao;
+    @Autowired
+    private void setTokenDAO(CoreTokenDAO coreTokenDAO) {
+        this.coreTokenDAO = coreTokenDAO;
     }
 
     @Autowired
