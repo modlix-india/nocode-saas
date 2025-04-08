@@ -7,7 +7,7 @@ import static com.fincity.security.jooq.tables.SecurityAppRegUserProfile.*;
 import static com.fincity.security.jooq.tables.SecurityAppRegDepartment.*;
 import static com.fincity.security.jooq.tables.SecurityAppRegDesignation.*;
 import static com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.*;
-import static com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.*;
+import static com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +36,7 @@ import com.fincity.security.dto.appregistration.AbstractAppRegistration;
 import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
 import com.fincity.security.dto.appregistration.AppRegistrationDesignation;
 import com.fincity.security.dto.appregistration.AppRegistrationFileAccess;
+import com.fincity.security.dto.appregistration.AppRegistrationUserDesignation;
 import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityAppRegAccessLevel;
@@ -43,6 +44,7 @@ import com.fincity.security.jooq.enums.SecurityAppRegDepartmentLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegDesignationLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegFileAccessLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegProfileRestrictionLevel;
+import com.fincity.security.jooq.enums.SecurityAppRegUserDesignationLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegUserProfileLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegUserRoleV2Level;
 
@@ -206,6 +208,8 @@ public class AppRegistrationV2DAO {
                 });
     }
 
+    // Even though these are at client level we need to create in user registration
+    // as we need to put that in user.
     public Mono<List<AppRegistrationDepartment>> getDepartmentsForRegistration(ULong appId, ULong appClientId,
             ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
 
@@ -234,6 +238,8 @@ public class AppRegistrationV2DAO {
                 });
     }
 
+    // Even though these are at client level we need to create in user registration
+    // as we need to put that in user.
     public Mono<List<AppRegistrationDesignation>> getDesignationsForRegistration(ULong appId, ULong appClientId,
             ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
 
@@ -262,7 +268,7 @@ public class AppRegistrationV2DAO {
                 });
     }
 
-    public Mono<List<ULong>> getRoleIdsForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
+    public Mono<List<ULong>> getRoleIdsForUserRegistration(ULong appId, ULong appClientId, ULong urlClientId,
             String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_USER_ROLE_V2.APP_ID.eq(appId),
@@ -295,7 +301,7 @@ public class AppRegistrationV2DAO {
                 });
     }
 
-    public Mono<List<ULong>> getProfileIdsForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
+    public Mono<List<ULong>> getProfileIdsForUserRegistration(ULong appId, ULong appClientId, ULong urlClientId,
             String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_USER_PROFILE.APP_ID.eq(appId),
@@ -355,6 +361,34 @@ public class AppRegistrationV2DAO {
 
                         Set<ULong> list = map.getOrDefault(clientId, new HashSet<>());
                         list.add(profileId);
+                        map.put(clientId, list);
+                    }
+
+                    return new ArrayList<>(map.getOrDefault(urlClientId, map.get(appClientId)));
+                });
+    }
+
+    public Mono<List<AppRegistrationUserDesignation>> getUserDesignationsForRegistration(ULong appId, ULong appClientId,
+            ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
+
+        Condition condition = DSL.and(SECURITY_APP_REG_USER_DESIGNATION.APP_ID.eq(appId),
+                SECURITY_APP_REG_USER_DESIGNATION.CLIENT_ID.in(appClientId, urlClientId),
+                SECURITY_APP_REG_USER_DESIGNATION.CLIENT_TYPE.eq(clientType),
+                SECURITY_APP_REG_USER_DESIGNATION.LEVEL.eq(level.to(SecurityAppRegUserDesignationLevel.class)),
+                SECURITY_APP_REG_USER_DESIGNATION.BUSINESS_TYPE.eq(businessType));
+
+        return Flux.from(this.dslContext.selectFrom(SECURITY_APP_REG_USER_DESIGNATION).where(condition))
+                .map(e -> e.into(AppRegistrationUserDesignation.class)).collectList()
+                .map(e -> {
+                    if (e.isEmpty())
+                        return List.of();
+
+                    Map<ULong, List<AppRegistrationUserDesignation>> map = new HashMap<>();
+
+                    for (var r : e) {
+                        ULong clientId = r.getClientId();
+                        List<AppRegistrationUserDesignation> list = map.getOrDefault(clientId, new ArrayList<>());
+                        list.add(r);
                         map.put(clientId, list);
                     }
 
