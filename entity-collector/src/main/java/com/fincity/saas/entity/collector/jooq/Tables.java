@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.collector.jooq;
 
 
-import com.fincity.saas.entity.collector.jooq.tables.NodeIntegrations;
+import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
 
 
 /**
@@ -14,7 +14,7 @@ import com.fincity.saas.entity.collector.jooq.tables.NodeIntegrations;
 public class Tables {
 
     /**
-     * The table <code>entity_collector.node_integrations</code>.
+     * The table <code>entity_collector.entity_integrations</code>.
      */
-    public static final NodeIntegrations NODE_INTEGRATIONS = NodeIntegrations.NODE_INTEGRATIONS;
+    public static final EntityIntegrations ENTITY_INTEGRATIONS = EntityIntegrations.ENTITY_INTEGRATIONS;
 }

@@ -4,8 +4,8 @@
 package com.fincity.saas.entity.collector.jooq;
 
 
-import com.fincity.saas.entity.collector.jooq.tables.NodeIntegrations;
-import com.fincity.saas.entity.collector.jooq.tables.records.NodeIntegrationsRecord;
+import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
+import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 
 import org.jooq.TableField;
 import org.jooq.UniqueKey;
@@ -24,5 +24,5 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final UniqueKey<NodeIntegrationsRecord> KEY_NODE_INTEGRATIONS_PRIMARY = Internal.createUniqueKey(NodeIntegrations.NODE_INTEGRATIONS, DSL.name("KEY_node_integrations_PRIMARY"), new TableField[] { NodeIntegrations.NODE_INTEGRATIONS.ID }, true);
+    public static final UniqueKey<EntityIntegrationsRecord> KEY_ENTITY_INTEGRATIONS_PRIMARY = Internal.createUniqueKey(EntityIntegrations.ENTITY_INTEGRATIONS, DSL.name("KEY_entity_integrations_PRIMARY"), new TableField[] { EntityIntegrations.ENTITY_INTEGRATIONS.ID }, true);
 }

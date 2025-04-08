@@ -211,7 +211,7 @@
                             </jdbc>
                             <generator>
                                 <database>
-                                    <includes>node_integrations</includes>
+                                    <includes>.*</includes>
                                     <inputSchema>entity_collector</inputSchema>
                                 </database>
                                 <generate>

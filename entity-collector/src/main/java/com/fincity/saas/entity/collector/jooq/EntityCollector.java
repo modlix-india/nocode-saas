@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.collector.jooq;
 
 
-import com.fincity.saas.entity.collector.jooq.tables.NodeIntegrations;
+import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
 
 import java.util.Arrays;
 import java.util.List;
@@ -29,9 +29,9 @@ public class EntityCollector extends SchemaImpl {
     public static final EntityCollector ENTITY_COLLECTOR = new EntityCollector();
 
     /**
-     * The table <code>entity_collector.node_integrations</code>.
+     * The table <code>entity_collector.entity_integrations</code>.
      */
-    public final NodeIntegrations NODE_INTEGRATIONS = NodeIntegrations.NODE_INTEGRATIONS;
+    public final EntityIntegrations ENTITY_INTEGRATIONS = EntityIntegrations.ENTITY_INTEGRATIONS;
 
     /**
      * No further instances allowed
@@ -49,7 +49,7 @@ public class EntityCollector extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
-            NodeIntegrations.NODE_INTEGRATIONS
+            EntityIntegrations.ENTITY_INTEGRATIONS
         );
     }
 }
