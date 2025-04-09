@@ -13,7 +13,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.web.reactive.config.EnableWebFlux;
-
 import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @ComponentScan(basePackages = "com.fincity")
