@@ -71,14 +71,6 @@
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq-meta</artifactId>
-        </dependency>
-        <dependency>
-          <groupId>org.jooq</groupId>
-          <artifactId>jooq-codegen</artifactId>
-        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>

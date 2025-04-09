@@ -320,6 +320,7 @@ public class CoreTokensRecord extends UpdatableRecordImpl<CoreTokensRecord> {
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
         super(CoreTokens.CORE_TOKENS);
+
         setId(id);
         setUserId(userId);
         setClientCode(clientCode);
