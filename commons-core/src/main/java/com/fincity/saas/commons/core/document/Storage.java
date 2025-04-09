@@ -32,6 +32,7 @@ import reactor.util.context.Context;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Storage extends AbstractOverridableDTO<Storage> {
+
     @Serial
     private static final long serialVersionUID = -5399288837130565200L;
 
@@ -181,6 +182,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     @Accessors(chain = true)
     @NoArgsConstructor
     public static class StorageIndex implements Serializable {
+
         private List<StorageIndexField> fields;
         private boolean unique = false;
 
@@ -194,6 +196,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     @Accessors(chain = true)
     @NoArgsConstructor
     public static class StorageIndexField implements Serializable {
+
         private String fieldName;
         private Sort.Direction direction = Sort.Direction.ASC;
 

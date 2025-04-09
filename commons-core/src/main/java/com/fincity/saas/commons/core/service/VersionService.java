@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class VersionService extends AbstractVersionService {
+
     private static final Map<String, String> AUTH_NAMES = Map.ofEntries(
             Map.entry("ACTION", "Action"),
             Map.entry("CONNECTION", "Connection"),

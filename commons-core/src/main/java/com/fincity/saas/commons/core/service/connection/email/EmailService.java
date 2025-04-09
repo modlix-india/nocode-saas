@@ -21,6 +21,7 @@ import reactor.util.context.Context;
 
 @Service
 public class EmailService {
+
     private final ConnectionService connectionService;
 
     private final CoreMessageResourceService msgService;

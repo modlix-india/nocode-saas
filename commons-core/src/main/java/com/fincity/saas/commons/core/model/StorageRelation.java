@@ -17,6 +17,7 @@ import reactor.util.context.Context;
 @Accessors(chain = true)
 @NoArgsConstructor
 public class StorageRelation implements Serializable, IDifferentiable<StorageRelation> {
+
     @Serial
     private static final long serialVersionUID = 4819827598636692079L;
 

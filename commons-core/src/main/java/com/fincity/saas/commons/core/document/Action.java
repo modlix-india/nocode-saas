@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Action extends AbstractOverridableDTO<Action> {
+
     @Serial
     private static final long serialVersionUID = 3425030507970576753L;
 

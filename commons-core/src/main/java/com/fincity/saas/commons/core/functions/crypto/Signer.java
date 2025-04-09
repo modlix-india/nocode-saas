@@ -17,6 +17,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class Signer extends AbstractSignatureFunction {
+
     private static final String FUNCTION_NAME = "Signer";
 
     private static final String SECRET_KEY = "secretKey";

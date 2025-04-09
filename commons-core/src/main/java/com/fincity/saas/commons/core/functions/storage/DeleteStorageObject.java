@@ -18,6 +18,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class DeleteStorageObject extends AbstractReactiveFunction {
+
     private static final String DATA_OBJECT_ID = "dataObjectId";
 
     private static final String EVENT_RESULT = "result";

@@ -16,6 +16,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class IsBeingManagedByCode extends AbstractReactiveFunction {
+
     private static final String FUNCTION_NAME = "IsBeingManagedByCode";
 
     private static final String NAME_SPACE = "CoreServices.Security";

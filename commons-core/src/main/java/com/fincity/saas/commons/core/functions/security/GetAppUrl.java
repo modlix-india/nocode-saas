@@ -16,6 +16,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class GetAppUrl extends AbstractReactiveFunction {
+
     private static final String FUNCTION_NAME = "GetAppUrl";
 
     private static final String NAME_SPACE = "CoreServices.Security";

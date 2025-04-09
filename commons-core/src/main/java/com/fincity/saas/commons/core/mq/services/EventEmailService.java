@@ -24,7 +24,6 @@ public class EventEmailService implements IEventActionService {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Boolean> execute(EventAction action, EventActionTask task, EventQueObject queObject) {
-
         Map<String, Object> data = CommonsUtil.nonNullValue(queObject.getData(), Map.of());
 
         Map<String, Object> taskParameter = CommonsUtil.nonNullValue(task.getParameters(), Map.of());

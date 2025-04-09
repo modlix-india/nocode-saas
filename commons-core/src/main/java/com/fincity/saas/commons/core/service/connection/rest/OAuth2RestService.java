@@ -59,7 +59,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
     @Override
     public Mono<RestResponse> call(Connection connection, RestRequest request, boolean fileDownload) {
-
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> getAccessToken(connection),
                         token -> makeRestCall(connection, request, token, fileDownload))
@@ -68,26 +67,22 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
     @Override
     public Mono<RestResponse> call(Connection connection, RestRequest request) {
-
         return this.call(connection, request, false);
     }
 
     private Mono<String> getAccessToken(Connection connection) {
-
         return FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> {
-                    if (!ca.isAuthenticated()) {
+                    if (!ca.isAuthenticated())
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 CoreMessageResourceService.FORBIDDEN_EXECUTION,
                                 connection.getName());
-                    }
                     return this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode());
                 },
                 (ca, token) -> {
                     if (token == null) {
-
                         String grantTypeString =
                                 (String) connection.getConnectionDetails().get(AUTH_GRANT_TYPE);
 
@@ -111,7 +106,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
     }
 
     public Mono<String> evokeConsentAuth(String connectionName, ServerHttpRequest request) {
-
         String host = request.getHeaders().getFirst("X-Forwarded-Host");
 
         String callBackURL = "https://" + host + CONSENT_CALLBACK_URI;
@@ -135,7 +129,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
     private Mono<RestResponse> makeRestCall(
             Connection connection, RestRequest request, String accessToken, boolean fileDownload) {
-
         Object tokenPrefix = connection.getConnectionDetails().get(AUTH_HEADER_PREFIX);
 
         String authorizationHeader = (tokenPrefix != null) ? tokenPrefix + " " + accessToken : accessToken;
@@ -153,7 +146,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
     }
 
     private Mono<String> getAuthConsentURI(ContextAuthentication ca, Connection connection, String callBackURL) {
-
         String state = UUID.randomUUID().toString();
 
         Map<String, Object> connectionDetails = connection.getConnectionDetails();
@@ -181,7 +173,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
                         .setState(state)
                         .setUserId(ULongUtil.valueOf(ca.getUser().getId()))),
                 coreCoreToken -> {
-
                     // Build the base URI
                     UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(authBaseURL);
 
@@ -203,7 +194,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
     }
 
     public Mono<Void> oAuth2Callback(ServerHttpRequest request, ServerHttpResponse response) {
-
         if (request.getQueryParams().getFirst("code") == null) return invalidAuthCallback(request, response);
 
         String state = request.getQueryParams().getFirst("state");
@@ -308,7 +298,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
     }
 
     private Mono<String> createClientCredentialsToken(Connection connection) {
-
         WebClient webClient = WebClient.create();
 
         Map<String, Object> connectionDetails = connection.getConnectionDetails();
@@ -356,7 +345,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
     }
 
     public Mono<Boolean> revokeConnectionToken(String connectionName) {
-
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> Mono.just(Tuples.of(ca.getClientCode(), ca.getUrlAppCode())),
@@ -369,14 +357,12 @@ public class OAuth2RestService extends AbstractRestTokenService {
     }
 
     public Mono<String> getAccessToken(String connectionName) {
-
         return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> connectionService
                 .read(connectionName, ca.getUrlAppCode(), ca.getClientCode(), ConnectionType.REST_API)
                 .flatMap(this::getAccessToken));
     }
 
     private Mono<Void> invalidAuthCallback(ServerHttpRequest request, ServerHttpResponse response) {
-
         String state = request.getQueryParams().getFirst("state");
 
         String basePageURL = "https://" + request.getHeaders().getFirst("X-Forwarded-Host");

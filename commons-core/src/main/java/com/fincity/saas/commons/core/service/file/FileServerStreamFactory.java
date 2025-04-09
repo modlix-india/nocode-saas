@@ -20,6 +20,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class FileServerStreamFactory implements FSStreamFactory {
+
     private static final Pattern FILE_SERVER_SECURED_PATTERN = Pattern.compile(".*/api/files/secured/file/(.*)");
     private final IFeignFilesService filesService;
     private final WebClient webClient;
@@ -45,7 +46,6 @@ public class FileServerStreamFactory implements FSStreamFactory {
             }
 
             return new FSStream() {
-
                 @Override
                 public InputStream getStream() {
                     return new ByteArrayInputStream(resource);

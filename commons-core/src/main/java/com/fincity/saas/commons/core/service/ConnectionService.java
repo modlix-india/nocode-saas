@@ -23,6 +23,7 @@ import reactor.util.context.Context;
 
 @Service
 public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
+
     @Autowired(required = false)
     @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 

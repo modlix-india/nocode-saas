@@ -48,7 +48,6 @@ public class RestService {
 
     public Mono<RestResponse> doCall(
             String appCode, String clientCode, String connectionName, RestRequest request, boolean fileDownload) {
-
         return FlatMapUtil.flatMapMono(
                         () -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
                         codeTuple -> connectionService.read(

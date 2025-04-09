@@ -15,6 +15,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class ConditionWorkflowStep extends WorkflowStep {
+
     @Serial
     private static final long serialVersionUID = 2178854708270744216L;
 

@@ -27,6 +27,7 @@ import reactor.util.context.Context;
 @NoArgsConstructor
 @ToString(callSuper = true)
 public class Template extends AbstractOverridableDTO<Template> {
+
     @Serial
     private static final long serialVersionUID = -6427509976748513994L;
 

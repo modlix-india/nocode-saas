@@ -28,6 +28,7 @@ import reactor.util.context.Context;
 
 @Service
 public class PdfConversionService extends AbstractTemplateConversionService {
+
     private static final int INITIAL_BUFFER_SIZE = 8192; // 8KB initial size
     private static final String BODY_KEY = "body";
 
@@ -70,7 +71,6 @@ public class PdfConversionService extends AbstractTemplateConversionService {
     }
 
     private PdfRendererBuilder createPdfBuilder(String htmlContent, ByteArrayOutputStream os) {
-
         Document doc = this.html5ParseDocument(htmlContent);
 
         return new PdfRendererBuilder()

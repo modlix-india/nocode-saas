@@ -29,6 +29,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 public class TemplateToPdf extends AbstractReactiveFunction {
+
     private static final String EVENT_DATA = "fileData";
 
     private static final String FUNCTION_NAME = "TemplateToPdf";

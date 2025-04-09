@@ -20,6 +20,7 @@ import java.util.stream.StreamSupport;
 import reactor.core.publisher.Mono;
 
 public class ReadStorageObject extends AbstractReactiveFunction {
+
     private static final String DATA_OBJECT_ID = "dataObjectId";
 
     private static final String EVENT_RESULT = "result";

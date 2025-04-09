@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class DeletionService extends AbstractDeletionService {
+
     private final List<AbstractOverridableDataService<?, ?>> serviceList;
 
     public DeletionService(

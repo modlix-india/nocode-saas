@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 public class SendEmail extends AbstractReactiveFunction {
+
     private static final String EVENT_DATA = "sent";
 
     private static final String FUNCTION_NAME = "SendEmail";

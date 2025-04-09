@@ -16,6 +16,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class GetUser extends AbstractReactiveFunction {
+
     private static final String FUNCTION_NAME = "GetUser";
     private static final String NAME_SPACE = "CoreServices.SecurityContext";
     private static final String EVENT_DATA_USER = "user";

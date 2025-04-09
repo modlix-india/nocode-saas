@@ -19,6 +19,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class HashData extends AbstractReactiveFunction {
+
     private static final String FUNCTION_NAME = "HashData";
 
     private static final String NAMESPACE = "CoreServices.Hash";

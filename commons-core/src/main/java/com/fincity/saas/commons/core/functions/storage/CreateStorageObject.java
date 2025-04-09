@@ -22,6 +22,7 @@ import java.util.stream.StreamSupport;
 import reactor.core.publisher.Mono;
 
 public class CreateStorageObject extends AbstractReactiveFunction {
+
     private static final String DATA_OBJECT = "dataObject";
 
     private static final String EVENT_RESULT = "result";

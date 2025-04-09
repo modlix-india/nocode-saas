@@ -21,6 +21,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class GetClient extends AbstractReactiveFunction {
+
     private static final String FUNCTION_NAME = "GetClient";
 
     private static final String NAME_SPACE = "CoreServices.Security";

@@ -16,6 +16,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractSignatureFunction extends AbstractReactiveFunction {
+
     protected static final String NAMESPACE = "CoreServices.Crypto";
 
     protected static final String ALGORITHM = "alg";

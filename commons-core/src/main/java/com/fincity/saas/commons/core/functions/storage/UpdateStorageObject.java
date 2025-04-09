@@ -23,6 +23,7 @@ import java.util.stream.StreamSupport;
 import reactor.core.publisher.Mono;
 
 public class UpdateStorageObject extends AbstractReactiveFunction {
+
     private static final String DATA_OBJECT_ID = "dataObjectId";
 
     private static final String DATA_OBJECT = "dataObject";

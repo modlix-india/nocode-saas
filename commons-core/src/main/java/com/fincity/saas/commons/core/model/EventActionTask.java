@@ -20,6 +20,7 @@ import reactor.util.context.Context;
 @Accessors(chain = true)
 @NoArgsConstructor
 public class EventActionTask implements IDifferentiable<EventActionTask>, Comparable<EventActionTask>, Serializable {
+
     @Serial
     private static final long serialVersionUID = 667994849634307890L;
 

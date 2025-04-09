@@ -9,6 +9,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 public class DataObject implements Serializable {
+
     @Serial
     private static final long serialVersionUID = 2698669653996010003L;
 

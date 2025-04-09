@@ -488,7 +488,7 @@ public class AppDataService {
                                             .toList();
                                     dob.put(e.getKey(), ids);
                                 } else {
-                                    dob.put(e.getKey(), e.getValue().get(0).getId());
+                                    dob.put(e.getKey(), e.getValue().getFirst().getId());
                                 }
                             }
 

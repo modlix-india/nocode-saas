@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.core.service.connection.rest;
 
+import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.dto.CoreToken;
@@ -51,7 +52,6 @@ public class RestAuthService extends AbstractRestTokenService {
     }
 
     private Mono<String> getAccessToken(Connection connection) {
-
         return FlatMapUtil.flatMapMono(
                         () -> getExistingAccessToken(connection),
                         existingAccessToken -> existingAccessToken.getT2().isAfter(LocalDateTime.now())
@@ -69,55 +69,53 @@ public class RestAuthService extends AbstractRestTokenService {
     }
 
     private Mono<Tuple2<String, LocalDateTime>> createNewAccessToken(Connection connection) {
-
         return FlatMapUtil.flatMapMono(
-                        () -> {
-                            Map<String, Object> connectionDetails = connection.getConnectionDetails();
-
-                            String authTokenFunctionName = (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAME);
-                            String authTokenFunctionNameSpace =
-                                    (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAMESPACE);
-
-                            return coreFunctionService.execute(
-                                    authTokenFunctionNameSpace,
-                                    authTokenFunctionName,
-                                    connection.getAppCode(),
-                                    connection.getClientCode(),
-                                    null,
-                                    null);
-                        },
-                        authTokenOutput ->
-                                Mono.just(authTokenOutput.allResults().getFirst()),
-                        (authTokenOutput, outputResult) ->
-                                cacheService.evict(CACHE_NAME_REST_AUTH, getCacheKeys(connection)),
-                        (authTokenOutput, outputResult, removed) -> {
-                            if (outputResult.getName().equals(ERROR_EVENT)) {
-                                return msgService.throwMessage(
+                        () -> this.executeConnectionFunction(connection),
+                        authTokenOutput -> cacheService.evict(CACHE_NAME_REST_AUTH, getCacheKeys(connection)),
+                        (authTokenOutput, evicted) -> authTokenOutput.getName().equals(ERROR_EVENT)
+                                ? msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         CoreMessageResourceService.NOT_ABLE_TO_CREATE_TOKEN,
                                         connection.getName(),
-                                        outputResult);
-                            }
-
-                            Map<String, JsonElement> eventMap = outputResult.getResult();
-                            String authToken = eventMap.get(AUTH_TOKEN).getAsString();
-                            long expiresIn = eventMap.get(EXPIRES_IN).getAsLong();
-
-                            return this.coreTokenDAO.create(new CoreToken()
-                                    .setClientCode(connection.getClientCode())
-                                    .setAppCode(connection.getAppCode())
-                                    .setConnectionName(connection.getName())
-                                    .setTokenType(CoreTokensTokenType.ACCESS)
-                                    .setToken(authToken)
-                                    .setIsRevoked(Boolean.FALSE)
-                                    .setExpiresAt(LocalDateTime.now().plusSeconds(expiresIn)));
-                        })
+                                        authTokenOutput)
+                                : this.createCoreToken(authTokenOutput, connection))
                 .map(coreCoreToken -> Tuples.of(coreCoreToken.getToken(), coreCoreToken.getExpiresAt()));
+    }
+
+    private Mono<EventResult> executeConnectionFunction(Connection connection) {
+        Map<String, Object> connectionDetails = connection.getConnectionDetails();
+
+        String authTokenFunctionName = (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAME);
+        String authTokenFunctionNameSpace = (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAMESPACE);
+
+        return coreFunctionService
+                .execute(
+                        authTokenFunctionNameSpace,
+                        authTokenFunctionName,
+                        connection.getAppCode(),
+                        connection.getClientCode(),
+                        null,
+                        null)
+                .map(fo -> fo.allResults().getFirst());
+    }
+
+    private Mono<CoreToken> createCoreToken(EventResult authTokenOutput, Connection connection) {
+        Map<String, JsonElement> eventMap = authTokenOutput.getResult();
+        String authToken = eventMap.get(AUTH_TOKEN).getAsString();
+        long expiresIn = eventMap.get(EXPIRES_IN).getAsLong();
+
+        return this.coreTokenDAO.create(new CoreToken()
+                .setClientCode(connection.getClientCode())
+                .setAppCode(connection.getAppCode())
+                .setConnectionName(connection.getName())
+                .setTokenType(CoreTokensTokenType.ACCESS)
+                .setToken(authToken)
+                .setIsRevoked(Boolean.FALSE)
+                .setExpiresAt(LocalDateTime.now().plusSeconds(expiresIn)));
     }
 
     private Mono<RestResponse> makeRestCall(
             Connection connection, RestRequest request, String accessToken, boolean fileDownload) {
-
         Object tokenPrefix = connection.getConnectionDetails().get("headerPrefix");
 
         String authorizationHeader = (tokenPrefix != null) ? tokenPrefix + " " + accessToken : accessToken;
@@ -127,7 +125,7 @@ public class RestAuthService extends AbstractRestTokenService {
         headers.add("Authorization", authorizationHeader);
         request.setHeaders(headers);
 
-        return basicRestService.call(connection, request, fileDownload);
+        return this.basicRestService.call(connection, request, fileDownload);
     }
 
     private Object[] getCacheKeys(Connection connection) {

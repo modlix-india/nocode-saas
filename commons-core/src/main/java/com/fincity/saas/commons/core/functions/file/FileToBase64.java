@@ -18,6 +18,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class FileToBase64 extends AbstractReactiveFunction {
+
     private static final String FILE_TYPE = "fileType";
 
     private static final String METADATA_REQUIRED = "metadataRequired";

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CoreMessageResourceService extends AbstractMongoMessageResourceService {
+
     public static final String STORAGE_NOT_FOUND = "storage_not_found";
 
     public static final String CONNECTION_DETAILS_MISSING = "connection_details_missing";

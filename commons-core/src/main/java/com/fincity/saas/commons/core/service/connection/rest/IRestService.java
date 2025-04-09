@@ -6,7 +6,6 @@ import com.fincity.saas.commons.core.dto.RestResponse;
 import reactor.core.publisher.Mono;
 
 public interface IRestService {
-
     Mono<RestResponse> call(Connection connection, RestRequest request);
 
     Mono<RestResponse> call(Connection connection, RestRequest request, boolean fileDownload);

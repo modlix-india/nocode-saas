@@ -23,6 +23,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
+
     private static final String EVENT_RESULT = "result";
 
     private static final String FUNCTION_NAME = "DeleteByFilter";

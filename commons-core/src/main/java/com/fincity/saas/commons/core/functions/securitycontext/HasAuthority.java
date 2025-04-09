@@ -15,6 +15,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class HasAuthority extends AbstractReactiveFunction {
+
     private static final String AUTHORITY_PARAM = "authority";
 
     private static final String FUNCTION_NAME = "HasAuthority";

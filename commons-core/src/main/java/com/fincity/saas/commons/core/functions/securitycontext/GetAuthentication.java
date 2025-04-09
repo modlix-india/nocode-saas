@@ -17,6 +17,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public class GetAuthentication extends AbstractReactiveFunction {
+
     private static final String FUNCTION_NAME = "GetAuthentication";
 
     private static final String NAME_SPACE = "CoreServices.SecurityContext";

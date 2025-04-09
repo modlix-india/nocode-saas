@@ -45,6 +45,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class CoreFunctionRepository implements ReactiveRepository<ReactiveFunction> {
+
     private final Map<String, ReactiveFunction> repoMap = new HashMap<>();
 
     private final List<String> filterableNames;
@@ -173,6 +174,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     @Data
     @Accessors(chain = true)
     public static class CoreFunctionRepositoryBuilder {
+
         private AppDataService appDataService;
         private ObjectMapper objectMapper;
         private RestService restService;

@@ -22,6 +22,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public abstract class AbstractTemplateService {
+
     protected static final Configuration CONFIGURATION = new Configuration(Configuration.VERSION_2_3_32);
 
     static {

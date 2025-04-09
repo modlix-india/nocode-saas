@@ -24,6 +24,7 @@ import java.util.stream.StreamSupport;
 import reactor.core.publisher.Mono;
 
 public class CreateManyStorageObject extends AbstractReactiveFunction {
+
     private static final String DATA_ARRAY = "dataArray";
     private static final String EVENT_RESULT = "result";
     private static final String FUNCTION_NAME = "CreateMany";
