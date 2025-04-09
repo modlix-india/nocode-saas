@@ -1,0 +1,78 @@
+name: Pr Check
+
+on:
+  pull_request:
+    branches:
+      - master
+
+env:
+  ENVIRONMENT: development
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+        with:
+          ref: development
+      - name: Setting up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: "21"
+          distribution: "oracle"
+      - name: Building commons
+        working-directory: ./commons
+        run: mvn clean install
+      - name: Building commons-jooq
+        working-directory: ./commons-jooq
+        run: mvn clean install
+      - name: Building commons-security
+        working-directory: ./commons-security
+        run: mvn clean install
+      - name: Building commons-mongo
+        working-directory: ./commons-mongo
+        run: mvn clean install
+      - name: Building commons-mq
+        working-directory: ./commons-mq
+        run: mvn clean install
+      - name: Building config
+        working-directory: ./config
+        run: mvn clean install
+      - name: Building eureka
+        working-directory: ./eureka
+        run: mvn clean install
+      - name: Building gateway
+        working-directory: ./gateway
+        run: mvn clean install
+      - name: Building security
+        working-directory: ./security
+        run: mvn clean install
+      - name: Building ui
+        working-directory: ./ui
+        run: mvn clean install
+      - name: Building files
+        working-directory: ./files
+        run: mvn clean install
+      - name: Building core
+        working-directory: ./core
+        run: mvn clean install
+      - name: Building multi
+        working-directory: ./multi
+        run: mvn clean install
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+      - name: Moving jars to S3
+        run: |
+          aws s3 cp ./admin/target/*.jar s3://nclc-deployment/development/admin.jar
+          aws s3 cp ./config/target/*.jar s3://nclc-deployment/development/config.jar
+          aws s3 cp ./eureka/target/*.jar s3://nclc-deployment/development/eureka.jar
+          aws s3 cp ./gateway/target/*.jar s3://nclc-deployment/development/gateway.jar
+          aws s3 cp ./security/target/*.jar s3://nclc-deployment/development/security.jar
+          aws s3 cp ./ui/target/*.jar s3://nclc-deployment/development/ui.jar
+          aws s3 cp ./files/target/*.jar s3://nclc-deployment/development/files.jar
+          aws s3 cp ./core/target/*.jar s3://nclc-deployment/development/core.jar
+          aws s3 cp ./multi/target/*.jar s3://nclc-deployment/development/multi.jar
