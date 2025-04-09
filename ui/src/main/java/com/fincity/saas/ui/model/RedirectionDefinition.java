@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.http.HttpMethod;
 
-import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.enums.RedirectionType;
