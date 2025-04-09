@@ -6,6 +6,7 @@ package com.fincity.saas.entity.collector.jooq.tables;
 
 import com.fincity.saas.entity.collector.jooq.EntityCollector;
 import com.fincity.saas.entity.collector.jooq.Keys;
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 
 import java.time.LocalDateTime;
@@ -95,7 +96,7 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
      * <code>entity_collector.entity_integrations.IN_SOURCE_TYPE</code>. Type of
      * source that integration is generated
      */
-    public final TableField<EntityIntegrationsRecord, String> IN_SOURCE_TYPE = createField(DSL.name("IN_SOURCE_TYPE"), SQLDataType.VARCHAR(13).nullable(false), this, "Type of source that integration is generated");
+    public final TableField<EntityIntegrationsRecord, EntityIntegrationsInSourceType> IN_SOURCE_TYPE = createField(DSL.name("IN_SOURCE_TYPE"), SQLDataType.VARCHAR(13).nullable(false).asEnumDataType(EntityIntegrationsInSourceType.class), this, "Type of source that integration is generated");
 
     /**
      * The column <code>entity_collector.entity_integrations.CREATED_BY</code>.

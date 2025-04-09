@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.collector.jooq.tables.records;
 
 
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
 import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
 
 import java.time.LocalDateTime;
@@ -130,7 +131,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * <code>entity_collector.entity_integrations.IN_SOURCE_TYPE</code>. Type of
      * source that integration is generated
      */
-    public EntityIntegrationsRecord setInSourceType(String value) {
+    public EntityIntegrationsRecord setInSourceType(EntityIntegrationsInSourceType value) {
         set(6, value);
         return this;
     }
@@ -140,8 +141,8 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * <code>entity_collector.entity_integrations.IN_SOURCE_TYPE</code>. Type of
      * source that integration is generated
      */
-    public String getInSourceType() {
-        return (String) get(6);
+    public EntityIntegrationsInSourceType getInSourceType() {
+        return (EntityIntegrationsInSourceType) get(6);
     }
 
     /**
@@ -235,7 +236,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     /**
      * Create a detached, initialised EntityIntegrationsRecord
      */
-    public EntityIntegrationsRecord(ULong id, String clientCode, String appCode, String target, String secondaryTarget, String inSource, String inSourceType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityIntegrationsRecord(ULong id, String clientCode, String appCode, String target, String secondaryTarget, String inSource, EntityIntegrationsInSourceType inSourceType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityIntegrations.ENTITY_INTEGRATIONS);
 
         setId(id);

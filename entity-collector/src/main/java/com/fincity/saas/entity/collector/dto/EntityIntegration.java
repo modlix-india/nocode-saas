@@ -1,18 +1,25 @@
 package com.fincity.saas.entity.collector.dto;
 
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-
-public class EntityIntegration{
-
-    private String appCode;
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class EntityIntegration {
+    private Long id;
     private String clientCode;
+    private String appCode;
     private String target;
+    private String secondaryTarget;
     private String inSource;
+    private InSourceType inSourceType;
+
+    public enum InSourceType {
+        FACEBOOK_FORM,
+        GOOGLE_FORM,
+        WEBSITE
+    }
 }
