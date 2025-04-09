@@ -1,11 +1,17 @@
 package com.fincity.saas.commons.configuration;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
+import feign.FeignException;
+import jakarta.annotation.Priority;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,15 +25,6 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.reactive.result.view.ViewResolver;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.exeception.GenericException;
-
-import feign.FeignException;
-import jakarta.annotation.Priority;
-import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 @Slf4j
@@ -35,97 +32,91 @@ import reactor.core.publisher.Mono;
 @Priority(0)
 public class ControllerAdvice implements ErrorWebExceptionHandler {
 
-	private static final ErrorServerContext ERROR_SERVER_CONTEXT = new ErrorServerContext();
+    private static final ErrorServerContext ERROR_SERVER_CONTEXT = new ErrorServerContext();
 
-	@Autowired
-	private AbstractMessageService resourceService;
+    @Autowired
+    private AbstractMessageService resourceService;
 
-	@Autowired
-	private ObjectMapper objectMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-	private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
+    private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
 
-	@Override
-	public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+    @Override
+    public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
 
-		logger.debug("Exception Occurred : ", ex);
+        logger.debug("Exception Occurred : ", ex);
 
-		Mono<ServerResponse> sr = null;
+        Mono<ServerResponse> sr = null;
 
-		if (ex instanceof GenericException g) {
-			sr = ServerResponse.status(g.getStatusCode())
-					.bodyValue(g.toExceptionData());
-		} else if (ex instanceof FeignException fe) {
+        if (ex instanceof GenericException g) {
+            sr = ServerResponse.status(g.getStatusCode()).bodyValue(g.toExceptionData());
+        } else if (ex instanceof FeignException fe) {
 
-			sr = handleFeignException(sr, fe);
+            sr = handleFeignException(sr, fe);
+        }
 
-		}
+        if (sr == null) {
 
-		if (sr == null) {
+            sr = handleOtherExceptions(ex);
+        }
 
-			sr = handleOtherExceptions(ex);
-		}
+        return sr.flatMap(e -> e.writeTo(exchange, ERROR_SERVER_CONTEXT));
+    }
 
-		return sr.flatMap(e -> e.writeTo(exchange, ERROR_SERVER_CONTEXT));
-	}
+    private Mono<ServerResponse> handleOtherExceptions(Throwable ex) {
+        Mono<ServerResponse> sr;
+        String eId = GenericException.uniqueId();
+        Mono<String> msg = resourceService.getMessage(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
 
-	private Mono<ServerResponse> handleOtherExceptions(Throwable ex) {
-		Mono<ServerResponse> sr;
-		String eId = GenericException.uniqueId();
-		Mono<String> msg = resourceService.getMessage(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
+        log.error("Error : {}", eId, ex);
 
-		log.error("Error : {}", eId, ex);
+        final HttpStatus status = (ex instanceof ResponseStatusException rse)
+                ? HttpStatus.valueOf(rse.getStatusCode().value())
+                : HttpStatus.INTERNAL_SERVER_ERROR;
 
-		final HttpStatus status = (ex instanceof ResponseStatusException rse)
-				? HttpStatus.valueOf(rse.getStatusCode().value())
-				: HttpStatus.INTERNAL_SERVER_ERROR;
+        sr = msg.map(m -> new GenericException(status, eId, m, ex))
+                .flatMap(g -> ServerResponse.status(g.getStatusCode()).bodyValue(g.toExceptionData()));
+        return sr;
+    }
 
-		sr = msg.map(m -> new GenericException(status, eId, m, ex))
-				.flatMap(g -> ServerResponse.status(g.getStatusCode())
-						.bodyValue(g.toExceptionData()));
-		return sr;
-	}
+    private Mono<ServerResponse> handleFeignException(Mono<ServerResponse> sr, FeignException fe) {
+        Optional<ByteBuffer> byteBuffer = fe.responseBody();
+        if (byteBuffer.isPresent() && byteBuffer.get().hasArray()) {
 
-	private Mono<ServerResponse> handleFeignException(Mono<ServerResponse> sr, FeignException fe) {
-		Optional<ByteBuffer> byteBuffer = fe.responseBody();
-		if (byteBuffer.isPresent() && byteBuffer.get()
-				.hasArray()) {
+            Collection<String> ctype = fe.responseHeaders().get(HttpHeaders.CONTENT_TYPE);
+            if (ctype != null && ctype.contains("application/json")) {
+                try {
+                    Map<String, Object> map = this.objectMapper.readValue(
+                            byteBuffer.get().array(), new TypeReference<Map<String, Object>>() {});
+                    sr = Mono.just(new GenericException(
+                                    HttpStatus.valueOf(fe.status()),
+                                    map.get("message") == null
+                                            ? ""
+                                            : map.get("message").toString(),
+                                    fe))
+                            .flatMap(g ->
+                                    ServerResponse.status(g.getStatusCode()).bodyValue(g.toExceptionData()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return sr;
+    }
 
-			Collection<String> ctype = fe.responseHeaders()
-					.get(HttpHeaders.CONTENT_TYPE);
-			if (ctype != null && ctype.contains("application/json")) {
-				try {
-					Map<String, Object> map = this.objectMapper.readValue(byteBuffer.get()
-							.array(), new TypeReference<Map<String, Object>>() {
-							});
-					sr = Mono
-							.just(new GenericException(HttpStatus.valueOf(fe.status()),
-									map.get("message") == null ? ""
-											: map.get("message")
-													.toString(),
-									fe))
-							.flatMap(g -> ServerResponse.status(g.getStatusCode())
-									.bodyValue(g.toExceptionData()));
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		return sr;
-	}
+    private static class ErrorServerContext implements ServerResponse.Context {
 
-	private static class ErrorServerContext implements ServerResponse.Context {
+        private final HandlerStrategies strats = HandlerStrategies.withDefaults();
 
-		private final HandlerStrategies strats = HandlerStrategies.withDefaults();
+        @Override
+        public List<HttpMessageWriter<?>> messageWriters() {
+            return strats.messageWriters();
+        }
 
-		@Override
-		public List<HttpMessageWriter<?>> messageWriters() {
-			return strats.messageWriters();
-		}
-
-		@Override
-		public List<ViewResolver> viewResolvers() {
-			return strats.viewResolvers();
-		}
-	}
+        @Override
+        public List<ViewResolver> viewResolvers() {
+            return strats.viewResolvers();
+        }
+    }
 }

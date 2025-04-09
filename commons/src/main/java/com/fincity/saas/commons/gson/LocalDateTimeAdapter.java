@@ -1,14 +1,13 @@
 package com.fincity.saas.commons.gson;
 
-import java.io.IOException;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
 
@@ -31,6 +30,8 @@ public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
         }
 
         String date = in.nextString();
-        return Instant.ofEpochSecond(0, Long.parseLong(date)).atZone(ZoneOffset.UTC).toLocalDateTime();
+        return Instant.ofEpochSecond(0, Long.parseLong(date))
+                .atZone(ZoneOffset.UTC)
+                .toLocalDateTime();
     }
 }

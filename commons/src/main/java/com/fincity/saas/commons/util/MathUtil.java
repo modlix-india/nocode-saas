@@ -1,40 +1,33 @@
 package com.fincity.saas.commons.util;
 
-import org.springframework.http.HttpStatus;
-
 import com.fincity.saas.commons.exeception.GenericException;
+import org.springframework.http.HttpStatus;
 
 public class MathUtil {
 
-	public static final float max(float... nums) {
+    public static final float max(float... nums) {
 
-		if (nums == null || nums.length == 0)
-			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "No numbers found to find max.");
+        if (nums == null || nums.length == 0)
+            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "No numbers found to find max.");
 
-		float m = nums[0];
+        float m = nums[0];
 
-		for (int i = 1; i < nums.length; i++)
-			if (m < nums[i])
-				m = nums[i];
+        for (int i = 1; i < nums.length; i++) if (m < nums[i]) m = nums[i];
 
-		return m;
-	}
+        return m;
+    }
 
-	public static final float min(float... nums) {
+    public static final float min(float... nums) {
 
-		if (nums == null || nums.length == 0)
-			throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "No numbers found to find max.");
+        if (nums == null || nums.length == 0)
+            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "No numbers found to find max.");
 
-		float m = nums[0];
+        float m = nums[0];
 
-		for (int i = 1; i < nums.length; i++)
-			if (m > nums[i])
-				m = nums[i];
+        for (int i = 1; i < nums.length; i++) if (m > nums[i]) m = nums[i];
 
-		return m;
-	}
+        return m;
+    }
 
-	private MathUtil() {
-
-	}
+    private MathUtil() {}
 }

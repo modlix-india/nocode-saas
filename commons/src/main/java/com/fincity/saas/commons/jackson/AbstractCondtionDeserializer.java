@@ -1,9 +1,5 @@
 package com.fincity.saas.commons.jackson;
 
-import java.io.IOException;
-
-import org.springframework.http.HttpStatus;
-
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -15,43 +11,40 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.util.StringUtil;
+import java.io.IOException;
+import org.springframework.http.HttpStatus;
 
 public class AbstractCondtionDeserializer extends StdDeserializer<AbstractCondition> {
 
-	private static final long serialVersionUID = 1484554729924047293L;
+    private static final long serialVersionUID = 1484554729924047293L;
 
-	public AbstractCondtionDeserializer() {
-		super(AbstractCondition.class);
-	}
+    public AbstractCondtionDeserializer() {
+        super(AbstractCondition.class);
+    }
 
-	@Override
-	public AbstractCondition deserialize(JsonParser p, DeserializationContext ctxt)
-			throws IOException {
+    @Override
+    public AbstractCondition deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 
-		TreeNode node = p.readValueAsTree();
+        TreeNode node = p.readValueAsTree();
 
-		TreeNode operatorNode = node.get("operator");
-		if (StringUtil.safeIsBlank(operatorNode) || !(operatorNode instanceof TextNode)) {
-			TreeNode fieldNode = node.get("field");
-			if (StringUtil.safeIsBlank(fieldNode) || !(fieldNode instanceof TextNode)) {
-				throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid condition");
-			} else {
-				return p.getCodec()
-						.treeToValue(node, FilterCondition.class);
-			}
-		}
+        TreeNode operatorNode = node.get("operator");
+        if (StringUtil.safeIsBlank(operatorNode) || !(operatorNode instanceof TextNode)) {
+            TreeNode fieldNode = node.get("field");
+            if (StringUtil.safeIsBlank(fieldNode) || !(fieldNode instanceof TextNode)) {
+                throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid condition");
+            } else {
+                return p.getCodec().treeToValue(node, FilterCondition.class);
+            }
+        }
 
-		String operator = ((TextNode) operatorNode).asText();
+        String operator = ((TextNode) operatorNode).asText();
 
-		for (ComplexConditionOperator each : ComplexConditionOperator.values()) {
-			if (StringUtil.safeEquals(each.name(), operator)) {
-				return p.getCodec()
-						.treeToValue(node, ComplexCondition.class);
-			}
-		}
+        for (ComplexConditionOperator each : ComplexConditionOperator.values()) {
+            if (StringUtil.safeEquals(each.name(), operator)) {
+                return p.getCodec().treeToValue(node, ComplexCondition.class);
+            }
+        }
 
-		return p.getCodec()
-				.treeToValue(node, FilterCondition.class);
-	}
-
+        return p.getCodec().treeToValue(node, FilterCondition.class);
+    }
 }

@@ -3,7 +3,6 @@ package com.fincity.saas.commons.util;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -40,19 +39,14 @@ public class CodeUtil {
 
         List<String> charSets = new ArrayList<>();
 
-        if (config.numeric)
-            charSets.add(NUMBERS);
-        if (config.uppercase)
-            charSets.add(UPPERCASE);
-        if (config.lowercase)
-            charSets.add(LOWERCASE);
-        if (config.specialChars)
-            charSets.add(SPECIAL_CHARS);
+        if (config.numeric) charSets.add(NUMBERS);
+        if (config.uppercase) charSets.add(UPPERCASE);
+        if (config.lowercase) charSets.add(LOWERCASE);
+        if (config.specialChars) charSets.add(SPECIAL_CHARS);
 
         while (sb.length() != config.length) {
             int set = 0;
-            if (charSets.size() > 1)
-                set = SECURE_RANDOM.nextInt(charSets.size());
+            if (charSets.size() > 1) set = SECURE_RANDOM.nextInt(charSets.size());
             String charSet = charSets.get(set);
             sb.append(charSet.charAt(SECURE_RANDOM.nextInt(charSet.length())));
         }
@@ -66,6 +60,5 @@ public class CodeUtil {
         return sb.toString();
     }
 
-    private CodeUtil() {
-    }
+    private CodeUtil() {}
 }

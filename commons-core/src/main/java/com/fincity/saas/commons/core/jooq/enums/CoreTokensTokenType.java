@@ -3,15 +3,18 @@
  */
 package com.fincity.saas.commons.core.jooq.enums;
 
+
 import org.jooq.Catalog;
 import org.jooq.EnumType;
 import org.jooq.Schema;
 
+
 /**
  * Type of token that is generated
  */
-@SuppressWarnings({"all", "unchecked", "rawtypes", "this-escape"})
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum CoreTokensTokenType implements EnumType {
+
     ACCESS("ACCESS"),
 
     REFRESH("REFRESH");

@@ -1,15 +1,12 @@
 package com.fincity.saas.commons.configuration.service;
 
+import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.saas.commons.exeception.GenericException;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-
-
-import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.saas.commons.exeception.GenericException;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -23,8 +20,8 @@ public class AbstractMessageService {
     public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
 
     public static final String OBJECT_NOT_FOUND = "object_not_found";
-    public static final String FIELD_NOT_AVAILABLE = " field cannot be updated, it might not be available or unmodifiable"; 
-    
+    public static final String FIELD_NOT_AVAILABLE =
+            " field cannot be updated, it might not be available or unmodifiable";
 
     protected Map<Locale, ResourceBundle> bundleMap;
 
@@ -40,37 +37,28 @@ public class AbstractMessageService {
 
     public Mono<String> getMessage(String messageId, Object... params) {
 
-        return this.getMessage(messageId)
-                .map(e -> StringFormatter.format(e, params));
+        return this.getMessage(messageId).map(e -> StringFormatter.format(e, params));
     }
 
-    public GenericException nonReactiveMessage(Function<String, GenericException> genericExceptionFunction,
-            String messageId, Object... params) {
+    public GenericException nonReactiveMessage(
+            Function<String, GenericException> genericExceptionFunction, String messageId, Object... params) {
 
         return genericExceptionFunction.apply(this.getDefaultLocaleMessage(messageId, params));
     }
 
-    public <T> Mono<T> throwMessage(Function<String, GenericException> genericExceptionFunction, String messageId,
-            Object... params) {
+    public <T> Mono<T> throwMessage(
+            Function<String, GenericException> genericExceptionFunction, String messageId, Object... params) {
 
-        return Mono.defer(
-
-                () -> this.getMessage(messageId, params)
-                        .map(genericExceptionFunction)
-                        .flatMap(Mono::error)
-
-        );
+        return Mono.defer(() ->
+                this.getMessage(messageId, params).map(genericExceptionFunction).flatMap(Mono::error));
     }
 
-    public <T> Flux<T> throwFluxMessage(Function<String, GenericException> genericExceptionFunction, String messageId,
-            Object... params) {
+    public <T> Flux<T> throwFluxMessage(
+            Function<String, GenericException> genericExceptionFunction, String messageId, Object... params) {
 
-        return Flux.defer(
-                () -> Flux.from(this.getMessage(messageId, params))
-                        .map(genericExceptionFunction)
-                        .flatMap(Flux::error)
-
-        );
+        return Flux.defer(() -> Flux.from(this.getMessage(messageId, params))
+                .map(genericExceptionFunction)
+                .flatMap(Flux::error));
     }
 
     public String getDefaultLocaleMessage(String messageId) {
@@ -82,12 +70,10 @@ public class AbstractMessageService {
     }
 
     public String getLocaleLocaleMessage(Locale locale, String messageId) {
-        return this.bundleMap.get(locale)
-                .getString(messageId);
+        return this.bundleMap.get(locale).getString(messageId);
     }
 
     public String getLocaleLocaleMessage(Locale locale, String messageId, Object... params) {
-        return StringFormatter.format(this.bundleMap.get(locale)
-                .getString(messageId), params);
+        return StringFormatter.format(this.bundleMap.get(locale).getString(messageId), params);
     }
 }

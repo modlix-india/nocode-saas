@@ -1,9 +1,7 @@
 package com.fincity.saas.commons.util;
 
 import javax.annotation.Nullable;
-
 import org.springframework.expression.ParseException;
-
 import reactor.core.publisher.Mono;
 
 public class BooleanUtil {
@@ -12,22 +10,22 @@ public class BooleanUtil {
 
     public static boolean safeValueOf(Object object) {
 
-        if (object == null)
-            return false;
+        if (object == null) return false;
 
-        if (object instanceof Boolean b)
-            return b;
+        if (object instanceof Boolean b) return b;
 
-        if (object instanceof Byte)
-            return !BYTE_0.equals(object);
+        if (object instanceof Byte) return !BYTE_0.equals(object);
 
         String value = object.toString();
 
         boolean returnValue = false;
 
         if (!value.isBlank()) {
-            if ("yes".equalsIgnoreCase(value) || "y".equalsIgnoreCase(value) || "true".equalsIgnoreCase(value)
-                    || "t".equalsIgnoreCase(value) || "on".equalsIgnoreCase(value)) {
+            if ("yes".equalsIgnoreCase(value)
+                    || "y".equalsIgnoreCase(value)
+                    || "true".equalsIgnoreCase(value)
+                    || "t".equalsIgnoreCase(value)
+                    || "on".equalsIgnoreCase(value)) {
                 returnValue = true;
             } else {
                 try {
@@ -43,25 +41,19 @@ public class BooleanUtil {
         return returnValue;
     }
 
-    @Nullable
-    public static Boolean parse(Object object) {
+    @Nullable public static Boolean parse(Object object) {
 
-        if (object == null)
-            return null;
+        if (object == null) return null;
 
-        if (object instanceof Boolean b)
-            return b;
+        if (object instanceof Boolean b) return b;
 
-        if (object instanceof Byte)
-            return !BYTE_0.equals(object);
+        if (object instanceof Byte) return !BYTE_0.equals(object);
 
         String value = object.toString();
 
-        if ("true".equalsIgnoreCase(value))
-            return true;
+        if ("true".equalsIgnoreCase(value)) return true;
 
-        if ("false".equalsIgnoreCase(value))
-            return false;
+        if ("false".equalsIgnoreCase(value)) return false;
 
         throw new ParseException(0, object + " - Not a boolean value to parse");
     }
@@ -70,6 +62,5 @@ public class BooleanUtil {
         return Mono.just(safeValueOf(b)).filter(Boolean::booleanValue);
     }
 
-    private BooleanUtil() {
-    }
+    private BooleanUtil() {}
 }

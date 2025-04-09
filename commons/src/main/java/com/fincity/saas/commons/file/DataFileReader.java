@@ -1,5 +1,11 @@
 package com.fincity.saas.commons.file;
 
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.DataFileType;
+import com.fincity.saas.commons.util.StringUtil;
+import com.google.gson.Gson;
+import com.ibm.icu.text.SimpleDateFormat;
+import com.monitorjbl.xlsx.StreamingReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,9 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
 import javax.annotation.Nullable;
-
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
@@ -26,258 +30,221 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.FilePart;
-
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.DataFileType;
-import com.fincity.saas.commons.util.StringUtil;
-import com.google.gson.Gson;
-import com.ibm.icu.text.SimpleDateFormat;
-import com.monitorjbl.xlsx.StreamingReader;
-
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 public class DataFileReader implements Closeable {
 
-	private FilePart file;
-	private DataFileType fileType;
+    private FilePart file;
+    private DataFileType fileType;
 
-	private List<String> headers = new ArrayList<>();
+    private List<String> headers = new ArrayList<>();
 
-	private InputStreamReader reader;
-	private int currentRow = 0;
-	private Iterator<Row> sheet;
-	private Workbook workbook;
-	
-	private static final Logger logger = LoggerFactory.getLogger(DataFileReader.class);
+    private InputStreamReader reader;
+    private int currentRow = 0;
+    private Iterator<Row> sheet;
+    private Workbook workbook;
 
-	public DataFileReader(FilePart file, DataFileType fileType) {
-		this.file = file;
-		this.fileType = fileType;
-	}
+    private static final Logger logger = LoggerFactory.getLogger(DataFileReader.class);
 
-	public List<String> getHeaders() {
-		return this.headers;
-	}
+    public DataFileReader(FilePart file, DataFileType fileType) {
+        this.file = file;
+        this.fileType = fileType;
+    }
 
-	@Nullable
-	public List<String> readRow() {
+    public List<String> getHeaders() {
+        return this.headers;
+    }
 
-		if (this.currentRow == 0 && !this.fileType.isNestedStructure())
-			this.readHeaderRow();
+    @Nullable public List<String> readRow() {
 
-		if (!this.fileType.isNestedStructure()) {
-			if (this.fileType == DataFileType.CSV || this.fileType == DataFileType.TSV) {
-				List<String> row = this.readLineFromReaderForCSVTSV();
-				this.currentRow++;
-				return row;
-			} else if (this.sheet.hasNext()) {
+        if (this.currentRow == 0 && !this.fileType.isNestedStructure()) this.readHeaderRow();
 
-				List<String> row = this.processEachRecord(this.sheet.next());
-				this.currentRow++;
-				return row;
-			}
-		}
+        if (!this.fileType.isNestedStructure()) {
+            if (this.fileType == DataFileType.CSV || this.fileType == DataFileType.TSV) {
+                List<String> row = this.readLineFromReaderForCSVTSV();
+                this.currentRow++;
+                return row;
+            } else if (this.sheet.hasNext()) {
 
-		return null;
-	}
+                List<String> row = this.processEachRecord(this.sheet.next());
+                this.currentRow++;
+                return row;
+            }
+        }
 
-	@SuppressWarnings("unchecked")
-	@Nullable
-	public Map<String, Object> readObject() throws IOException { // NOSONAR
-		// It doesn't make sense to break this to read objects from the JSON or JSONL
+        return null;
+    }
 
-		if (!this.fileType.isNestedStructure())
-			return null;
+    @SuppressWarnings("unchecked")
+    @Nullable public Map<String, Object> readObject() throws IOException { // NOSONAR
+        // It doesn't make sense to break this to read objects from the JSON or JSONL
 
-		if (currentRow == 0)
-			this.readHeaderRow();
+        if (!this.fileType.isNestedStructure()) return null;
 
-		if (this.currentRow == 0 && this.fileType == DataFileType.JSON) {
+        if (currentRow == 0) this.readHeaderRow();
 
-			char c = (char) this.reader.read();
-			if (c == -1)
-				return null;
-			if (c != '[')
-				throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid JSON file");
-		}
+        if (this.currentRow == 0 && this.fileType == DataFileType.JSON) {
 
-		int c;
-		while ((c = this.reader.read()) != -1 && c != '{')
-			;
+            char c = (char) this.reader.read();
+            if (c == -1) return null;
+            if (c != '[') throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid JSON file");
+        }
 
-		if (c == -1)
-			return null;
+        int c;
+        while ((c = this.reader.read()) != -1 && c != '{')
+            ;
 
-		if (c != '{')
-			throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid JSON file");
-		int count = 1;
-		boolean inDoubleQuotes = false;
-		StringBuilder str = new StringBuilder();
-		str.append((char) c);
-		while (count != 0) {
-			c = this.reader.read();
-			if (c != -1) {
-				str.append((char) c);
-				if (c == '"')
-					inDoubleQuotes = !inDoubleQuotes;
-				if (inDoubleQuotes)
-					continue;
-				if (c == '{')
-					count++;
-				else if (c == '}')
-					count--;
-			}
-		}
+        if (c == -1) return null;
 
-		this.currentRow++;
-		return new Gson().fromJson(str.toString(), HashMap.class);
-	}
+        if (c != '{') throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid JSON file");
+        int count = 1;
+        boolean inDoubleQuotes = false;
+        StringBuilder str = new StringBuilder();
+        str.append((char) c);
+        while (count != 0) {
+            c = this.reader.read();
+            if (c != -1) {
+                str.append((char) c);
+                if (c == '"') inDoubleQuotes = !inDoubleQuotes;
+                if (inDoubleQuotes) continue;
+                if (c == '{') count++;
+                else if (c == '}') count--;
+            }
+        }
 
-	public void readHeaderRow() {
+        this.currentRow++;
+        return new Gson().fromJson(str.toString(), HashMap.class);
+    }
 
-		try {
+    public void readHeaderRow() {
 
-			if (this.fileType.isNestedStructure() || this.fileType == DataFileType.CSV
-			        || this.fileType == DataFileType.TSV) {
+        try {
 
-				reader = new InputStreamReader(this.getInputStreamFromFluxDataBuffer(this.file.content()));
-				if (this.fileType == DataFileType.CSV || this.fileType == DataFileType.TSV)
-					this.headers = this.readLineFromReaderForCSVTSV();
+            if (this.fileType.isNestedStructure()
+                    || this.fileType == DataFileType.CSV
+                    || this.fileType == DataFileType.TSV) {
 
-			} else if (this.fileType == DataFileType.XLSX || this.fileType == DataFileType.XLS) {
+                reader = new InputStreamReader(this.getInputStreamFromFluxDataBuffer(this.file.content()));
+                if (this.fileType == DataFileType.CSV || this.fileType == DataFileType.TSV)
+                    this.headers = this.readLineFromReaderForCSVTSV();
 
-				workbook = StreamingReader.builder()
-				        .rowCacheSize(100)
-				        .bufferSize(4096)
-				        .open(getInputStreamFromFluxDataBuffer(this.file.content()));
+            } else if (this.fileType == DataFileType.XLSX || this.fileType == DataFileType.XLS) {
 
-				this.sheet = workbook.getSheetAt(0)
-				        .iterator();
+                workbook = StreamingReader.builder()
+                        .rowCacheSize(100)
+                        .bufferSize(4096)
+                        .open(getInputStreamFromFluxDataBuffer(this.file.content()));
 
-				this.headers = this.sheet.hasNext() ? this.processEachRecord(this.sheet.next()) : List.of();
+                this.sheet = workbook.getSheetAt(0).iterator();
 
-				this.currentRow++;
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+                this.headers = this.sheet.hasNext() ? this.processEachRecord(this.sheet.next()) : List.of();
 
-	private List<String> processEachRecord(Row row) {
+                this.currentRow++;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-		List<String> excelRecord = new ArrayList<>();
+    private List<String> processEachRecord(Row row) {
 
-		for (int c = 0; c < row.getLastCellNum(); c++) {
+        List<String> excelRecord = new ArrayList<>();
 
-			Cell cell = row.getCell(c, MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        for (int c = 0; c < row.getLastCellNum(); c++) {
 
-			if (cell != null) {
-				if (cell.getCellType()
-				        .equals(CellType.NUMERIC) && DateUtil.isCellDateFormatted(cell)) {
+            Cell cell = row.getCell(c, MissingCellPolicy.RETURN_BLANK_AS_NULL);
 
-					SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-					excelRecord.add(sdf.format(cell.getDateCellValue()));
-				} else
-					excelRecord.add(cell.getStringCellValue());
-			} else
-				excelRecord.add("");
-		}
+            if (cell != null) {
+                if (cell.getCellType().equals(CellType.NUMERIC) && DateUtil.isCellDateFormatted(cell)) {
 
-		return excelRecord;
-	}
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                    excelRecord.add(sdf.format(cell.getDateCellValue()));
+                } else excelRecord.add(cell.getStringCellValue());
+            } else excelRecord.add("");
+        }
 
-	@Nullable
-	public List<String> readLineFromReaderForCSVTSV() { // NOSONAR
-		// Breaking this won't make sense
+        return excelRecord;
+    }
 
-		StringBuilder str = new StringBuilder();
+    @Nullable public List<String> readLineFromReaderForCSVTSV() { // NOSONAR
+        // Breaking this won't make sense
 
-		try {
+        StringBuilder str = new StringBuilder();
 
-			int ch;
-			boolean inDoubleQuotes = false;
-			while ((ch = reader.read()) != -1) {
+        try {
 
-				if (ch == '"')
-					inDoubleQuotes = !inDoubleQuotes;
+            int ch;
+            boolean inDoubleQuotes = false;
+            while ((ch = reader.read()) != -1) {
 
-				if (!inDoubleQuotes && ch == '\n')
-					break;
+                if (ch == '"') inDoubleQuotes = !inDoubleQuotes;
 
-				str.append((char) ch);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+                if (!inDoubleQuotes && ch == '\n') break;
 
-		int length = str.length();
-		if (length == 0)
-			return null;
+                str.append((char) ch);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-		List<String> list = new ArrayList<>();
-		StringBuilder sb = new StringBuilder();
-		boolean withIn = false;
-		int i = 0;
-		while ((i + 1) < length) {
-			char ch = str.charAt(i);
-			if (ch == (this.fileType == DataFileType.CSV ? ',' : '\t') && !withIn) {
-				list.add(StringUtil.removeLineFeedOrNewLineChars(sb.toString()));
-				sb = new StringBuilder();
-			} else if (ch == '"') {
-				int j = i;
-				while ((str.charAt(j) == '"') && (j + 1 < length))
-					j++;
-				if ((j - i) % 2 == 1)
-					withIn = !withIn;
-				if (j - i != 1) {
-					for (int k = 0; k < ((j - i) / 2); k++)
-						sb.append('"');
-					i = j - 1;
-				}
-			} else
-				sb.append(ch);
-			i++;
-		}
+        int length = str.length();
+        if (length == 0) return null;
 
-		sb.append(str.charAt(i) != '\n' ? str.charAt(i) : "");
-		if (sb.length() > 0)
-			list.add(StringUtil.removeLineFeedOrNewLineChars(sb.toString()));
+        List<String> list = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        boolean withIn = false;
+        int i = 0;
+        while ((i + 1) < length) {
+            char ch = str.charAt(i);
+            if (ch == (this.fileType == DataFileType.CSV ? ',' : '\t') && !withIn) {
+                list.add(StringUtil.removeLineFeedOrNewLineChars(sb.toString()));
+                sb = new StringBuilder();
+            } else if (ch == '"') {
+                int j = i;
+                while ((str.charAt(j) == '"') && (j + 1 < length)) j++;
+                if ((j - i) % 2 == 1) withIn = !withIn;
+                if (j - i != 1) {
+                    for (int k = 0; k < ((j - i) / 2); k++) sb.append('"');
+                    i = j - 1;
+                }
+            } else sb.append(ch);
+            i++;
+        }
 
-		if (list.isEmpty())
-			return null;
+        sb.append(str.charAt(i) != '\n' ? str.charAt(i) : "");
+        if (sb.length() > 0) list.add(StringUtil.removeLineFeedOrNewLineChars(sb.toString()));
 
-		return list;
-	}
+        if (list.isEmpty()) return null;
 
-	@Override
-	public void close() throws IOException {
+        return list;
+    }
 
-		if (this.workbook != null)
-			this.workbook.close();
-	}
+    @Override
+    public void close() throws IOException {
 
-	private InputStream getInputStreamFromFluxDataBuffer(Flux<DataBuffer> data) throws IOException {
+        if (this.workbook != null) this.workbook.close();
+    }
 
-		PipedOutputStream osPipe = new PipedOutputStream();// NOSONAR
-		// Cannot be used in try-with-resource as this has to be part of Reactor and
-		// don't know when this can be closed.
-		// Since doOnComplete is used we are closing the resource after writing the
-		// data.
-		PipedInputStream isPipe = new PipedInputStream(osPipe);
+    private InputStream getInputStreamFromFluxDataBuffer(Flux<DataBuffer> data) throws IOException {
 
-		DataBufferUtils.write(data, osPipe)
-		        .subscribeOn(Schedulers.boundedElastic())
-		        .doOnComplete(() ->
-				{
-			        try {
-				        osPipe.close();
-			        } catch (IOException ignored) {
-			        	logger.debug("Issues with accessing buffer.", ignored);
-			        }
-		        })
-		        .subscribe(DataBufferUtils.releaseConsumer());
-		return isPipe;
+        PipedOutputStream osPipe = new PipedOutputStream(); // NOSONAR
+        // Cannot be used in try-with-resource as this has to be part of Reactor and
+        // don't know when this can be closed.
+        // Since doOnComplete is used we are closing the resource after writing the
+        // data.
+        PipedInputStream isPipe = new PipedInputStream(osPipe);
 
-	}
+        DataBufferUtils.write(data, osPipe)
+                .subscribeOn(Schedulers.boundedElastic())
+                .doOnComplete(() -> {
+                    try {
+                        osPipe.close();
+                    } catch (IOException ignored) {
+                        logger.debug("Issues with accessing buffer.", ignored);
+                    }
+                })
+                .subscribe(DataBufferUtils.releaseConsumer());
+        return isPipe;
+    }
 }
