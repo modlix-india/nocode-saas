@@ -1,12 +1,11 @@
 package com.fincity.saas.core.controller;
 
+import com.fincity.saas.commons.core.document.Template;
+import com.fincity.saas.commons.core.repository.TemplateRepository;
+import com.fincity.saas.commons.core.service.TemplateService;
+import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
-import com.fincity.saas.core.document.Template;
-import com.fincity.saas.core.repository.TemplateRepository;
-import com.fincity.saas.core.service.TemplateService;
 
 @RestController
 @RequestMapping("api/core/templates")
