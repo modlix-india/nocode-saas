@@ -55,72 +55,72 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
     }
 
     /**
-     * The column <code>entity_collector.entity_integrations.ID</code>. Primary
-     * key
+     * The column <code>entity_collector.entity_integrations.id</code>. Primary
+     * key, unique identifier for each Entity Integration
      */
-    public final TableField<EntityIntegrationsRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
+    public final TableField<EntityIntegrationsRecord, ULong> ID = createField(DSL.name("id"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key, unique identifier for each Entity Integration");
 
     /**
-     * The column <code>entity_collector.entity_integrations.CLIENT_CODE</code>.
+     * The column <code>entity_collector.entity_integrations.client_code</code>.
      * Client Code
      */
-    public final TableField<EntityIntegrationsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code");
+    public final TableField<EntityIntegrationsRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client Code");
 
     /**
-     * The column <code>entity_collector.entity_integrations.APP_CODE</code>.
+     * The column <code>entity_collector.entity_integrations.app_code</code>.
      * App Code
      */
-    public final TableField<EntityIntegrationsRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(8).nullable(false), this, "App Code");
+    public final TableField<EntityIntegrationsRecord, String> APP_CODE = createField(DSL.name("app_code"), SQLDataType.CHAR(8).nullable(false), this, "App Code");
 
     /**
-     * The column <code>entity_collector.entity_integrations.TARGET</code>.
+     * The column <code>entity_collector.entity_integrations.target</code>.
      * Target
      */
-    public final TableField<EntityIntegrationsRecord, String> TARGET = createField(DSL.name("TARGET"), SQLDataType.VARCHAR(255).nullable(false), this, "Target");
+    public final TableField<EntityIntegrationsRecord, String> TARGET = createField(DSL.name("target"), SQLDataType.VARCHAR(255).nullable(false), this, "Target");
 
     /**
      * The column
-     * <code>entity_collector.entity_integrations.SECONDARY_TARGET</code>.
+     * <code>entity_collector.entity_integrations.secondary_target</code>.
      * Secondary target
      */
-    public final TableField<EntityIntegrationsRecord, String> SECONDARY_TARGET = createField(DSL.name("SECONDARY_TARGET"), SQLDataType.VARCHAR(255), this, "Secondary target");
+    public final TableField<EntityIntegrationsRecord, String> SECONDARY_TARGET = createField(DSL.name("secondary_target"), SQLDataType.VARCHAR(255), this, "Secondary target");
 
     /**
-     * The column <code>entity_collector.entity_integrations.IN_SOURCE</code>.
+     * The column <code>entity_collector.entity_integrations.in_source</code>.
      * Source
      */
-    public final TableField<EntityIntegrationsRecord, String> IN_SOURCE = createField(DSL.name("IN_SOURCE"), SQLDataType.VARCHAR(255), this, "Source");
+    public final TableField<EntityIntegrationsRecord, String> IN_SOURCE = createField(DSL.name("in_source"), SQLDataType.VARCHAR(255), this, "Source");
 
     /**
      * The column
-     * <code>entity_collector.entity_integrations.IN_SOURCE_TYPE</code>. Type of
+     * <code>entity_collector.entity_integrations.in_source_type</code>. Type of
      * source that integration is generated
      */
-    public final TableField<EntityIntegrationsRecord, EntityIntegrationsInSourceType> IN_SOURCE_TYPE = createField(DSL.name("IN_SOURCE_TYPE"), SQLDataType.VARCHAR(13).nullable(false).asEnumDataType(EntityIntegrationsInSourceType.class), this, "Type of source that integration is generated");
+    public final TableField<EntityIntegrationsRecord, EntityIntegrationsInSourceType> IN_SOURCE_TYPE = createField(DSL.name("in_source_type"), SQLDataType.VARCHAR(13).nullable(false).asEnumDataType(EntityIntegrationsInSourceType.class), this, "Type of source that integration is generated");
 
     /**
-     * The column <code>entity_collector.entity_integrations.CREATED_BY</code>.
+     * The column <code>entity_collector.entity_integrations.created_by</code>.
      * ID of the user who created this row
      */
-    public final TableField<EntityIntegrationsRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
+    public final TableField<EntityIntegrationsRecord, ULong> CREATED_BY = createField(DSL.name("created_by"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
 
     /**
-     * The column <code>entity_collector.entity_integrations.CREATED_AT</code>.
+     * The column <code>entity_collector.entity_integrations.created_at</code>.
      * Time when this row is created
      */
-    public final TableField<EntityIntegrationsRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+    public final TableField<EntityIntegrationsRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
-     * The column <code>entity_collector.entity_integrations.UPDATED_BY</code>.
+     * The column <code>entity_collector.entity_integrations.updated_by</code>.
      * ID of the user who updated this row
      */
-    public final TableField<EntityIntegrationsRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+    public final TableField<EntityIntegrationsRecord, ULong> UPDATED_BY = createField(DSL.name("updated_by"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
 
     /**
-     * The column <code>entity_collector.entity_integrations.UPDATED_AT</code>.
+     * The column <code>entity_collector.entity_integrations.updated_at</code>.
      * Time when this row is updated
      */
-    public final TableField<EntityIntegrationsRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
+    public final TableField<EntityIntegrationsRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private EntityIntegrations(Name alias, Table<EntityIntegrationsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

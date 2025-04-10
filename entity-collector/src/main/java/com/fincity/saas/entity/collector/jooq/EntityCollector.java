@@ -11,7 +11,6 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
-import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -37,7 +36,7 @@ public class EntityCollector extends SchemaImpl {
      * No further instances allowed
      */
     private EntityCollector() {
-        super(DSL.name("entity_collector"), null, DSL.comment(""));
+        super("entity_collector", null);
     }
 
 

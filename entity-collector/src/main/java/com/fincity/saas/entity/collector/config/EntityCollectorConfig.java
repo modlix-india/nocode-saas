@@ -1,26 +1,62 @@
 package com.fincity.saas.entity.collector.config;
 
-
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
+import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
+import com.fincity.saas.commons.security.ISecurityConfiguration;
+import com.fincity.saas.commons.util.LogUtil;
+
+import jakarta.annotation.PostConstruct;
+import reactivefeign.client.ReactiveHttpRequestInterceptor;
+import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @Configuration
-@EnableWebSecurity
-public class EntityCollectorConfig implements WebMvcConfigurer {
+public class EntityCollectorConfig extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                );
-        return http.build();
+    private final EntityCollectorMessageResourceService messageService;
+
+    protected EntityCollectorConfig(EntityCollectorMessageResourceService messageService, ObjectMapper objectMapper) {
+        super(objectMapper);
+        this.messageService = messageService;
     }
 
+    @Override
+    @PostConstruct
+    public void initialize() {
+        super.initialize();
+        Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
+        FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
+            if (name != null) log.debug("{} - {}", name, v);
+            else log.debug(v);
+        }));
+    }
+
+    @Bean
+    public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+        return this.springSecurityFilterChain(http, authService, this.objectMapper);
+    }
+
+    @Bean
+    public ReactiveHttpRequestInterceptor feignInterceptor() {
+        return request -> Mono.deferContextual(ctxView -> {
+            if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
+                String key = ctxView.get(LogUtil.DEBUG_KEY);
+
+                request.headers().put(LogUtil.DEBUG_KEY, List.of(key));
+            }
+
+            return Mono.just(request);
+        });
+    }
 }

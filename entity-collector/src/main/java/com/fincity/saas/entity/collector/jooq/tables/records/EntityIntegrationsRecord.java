@@ -23,8 +23,8 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.ID</code>. Primary
-     * key
+     * Setter for <code>entity_collector.entity_integrations.id</code>. Primary
+     * key, unique identifier for each Entity Integration
      */
     public EntityIntegrationsRecord setId(ULong value) {
         set(0, value);
@@ -32,15 +32,15 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.ID</code>. Primary
-     * key
+     * Getter for <code>entity_collector.entity_integrations.id</code>. Primary
+     * key, unique identifier for each Entity Integration
      */
     public ULong getId() {
         return (ULong) get(0);
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.CLIENT_CODE</code>.
+     * Setter for <code>entity_collector.entity_integrations.client_code</code>.
      * Client Code
      */
     public EntityIntegrationsRecord setClientCode(String value) {
@@ -49,7 +49,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.CLIENT_CODE</code>.
+     * Getter for <code>entity_collector.entity_integrations.client_code</code>.
      * Client Code
      */
     public String getClientCode() {
@@ -57,7 +57,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.APP_CODE</code>.
+     * Setter for <code>entity_collector.entity_integrations.app_code</code>.
      * App Code
      */
     public EntityIntegrationsRecord setAppCode(String value) {
@@ -66,7 +66,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.APP_CODE</code>.
+     * Getter for <code>entity_collector.entity_integrations.app_code</code>.
      * App Code
      */
     public String getAppCode() {
@@ -74,7 +74,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.TARGET</code>.
+     * Setter for <code>entity_collector.entity_integrations.target</code>.
      * Target
      */
     public EntityIntegrationsRecord setTarget(String value) {
@@ -83,7 +83,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.TARGET</code>.
+     * Getter for <code>entity_collector.entity_integrations.target</code>.
      * Target
      */
     public String getTarget() {
@@ -92,7 +92,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
 
     /**
      * Setter for
-     * <code>entity_collector.entity_integrations.SECONDARY_TARGET</code>.
+     * <code>entity_collector.entity_integrations.secondary_target</code>.
      * Secondary target
      */
     public EntityIntegrationsRecord setSecondaryTarget(String value) {
@@ -102,7 +102,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
 
     /**
      * Getter for
-     * <code>entity_collector.entity_integrations.SECONDARY_TARGET</code>.
+     * <code>entity_collector.entity_integrations.secondary_target</code>.
      * Secondary target
      */
     public String getSecondaryTarget() {
@@ -110,7 +110,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.IN_SOURCE</code>.
+     * Setter for <code>entity_collector.entity_integrations.in_source</code>.
      * Source
      */
     public EntityIntegrationsRecord setInSource(String value) {
@@ -119,7 +119,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.IN_SOURCE</code>.
+     * Getter for <code>entity_collector.entity_integrations.in_source</code>.
      * Source
      */
     public String getInSource() {
@@ -128,7 +128,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
 
     /**
      * Setter for
-     * <code>entity_collector.entity_integrations.IN_SOURCE_TYPE</code>. Type of
+     * <code>entity_collector.entity_integrations.in_source_type</code>. Type of
      * source that integration is generated
      */
     public EntityIntegrationsRecord setInSourceType(EntityIntegrationsInSourceType value) {
@@ -138,7 +138,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
 
     /**
      * Getter for
-     * <code>entity_collector.entity_integrations.IN_SOURCE_TYPE</code>. Type of
+     * <code>entity_collector.entity_integrations.in_source_type</code>. Type of
      * source that integration is generated
      */
     public EntityIntegrationsInSourceType getInSourceType() {
@@ -146,7 +146,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.CREATED_BY</code>.
+     * Setter for <code>entity_collector.entity_integrations.created_by</code>.
      * ID of the user who created this row
      */
     public EntityIntegrationsRecord setCreatedBy(ULong value) {
@@ -155,7 +155,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.CREATED_BY</code>.
+     * Getter for <code>entity_collector.entity_integrations.created_by</code>.
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
@@ -163,7 +163,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.CREATED_AT</code>.
+     * Setter for <code>entity_collector.entity_integrations.created_at</code>.
      * Time when this row is created
      */
     public EntityIntegrationsRecord setCreatedAt(LocalDateTime value) {
@@ -172,7 +172,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.CREATED_AT</code>.
+     * Getter for <code>entity_collector.entity_integrations.created_at</code>.
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
@@ -180,7 +180,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.UPDATED_BY</code>.
+     * Setter for <code>entity_collector.entity_integrations.updated_by</code>.
      * ID of the user who updated this row
      */
     public EntityIntegrationsRecord setUpdatedBy(ULong value) {
@@ -189,7 +189,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.UPDATED_BY</code>.
+     * Getter for <code>entity_collector.entity_integrations.updated_by</code>.
      * ID of the user who updated this row
      */
     public ULong getUpdatedBy() {
@@ -197,7 +197,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.UPDATED_AT</code>.
+     * Setter for <code>entity_collector.entity_integrations.updated_at</code>.
      * Time when this row is updated
      */
     public EntityIntegrationsRecord setUpdatedAt(LocalDateTime value) {
@@ -206,7 +206,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.UPDATED_AT</code>.
+     * Getter for <code>entity_collector.entity_integrations.updated_at</code>.
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
@@ -250,6 +250,6 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

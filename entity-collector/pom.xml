@@ -1,53 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.1</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
+        <!-- lookup parent from repository -->
     </parent>
     <groupId>com.fincity.saas</groupId>
     <artifactId>entity-collector</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>entity-collector</name>
-    <description>entity-collector</description>
+    <description>Fincity SAAS entity-collector server</description>
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <nocode-kirun-version>3.7.1</nocode-kirun-version>
+        <saas-commons-version>2.0.0</saas-commons-version>
+        <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
-        <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
-        <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
-        <jooq.version>3.20.2</jooq.version>
+        <nocode-flatmap-util-version>1.3.0</nocode-flatmap-util-version>
+        <spotless.version>2.40.0</spotless.version>
+        <palantir-java.format.version>2.61.0</palantir-java.format.version>
     </properties>
-    <dependencies>       <!-- Spring Boot Dependencies -->
-
+    <dependencies>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-pool</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.asyncer</groupId>
+            <artifactId>r2dbc-mysql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>       <!-- Spring Cloud Dependencies -->
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-config</artifactId>
-        </dependency>       <!-- Database and R2DBC -->
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq-codegen-maven</artifactId>
-            <version>${jooq.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -56,23 +78,86 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
-        </dependency>       <!-- Monitoring and Metrics -->
+        </dependency>
         <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>       <!-- Others -->
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver-dns-native-macos</artifactId>
+            <classifier>osx-aarch_64</classifier>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq-codegen-maven</artifactId>
+            <version>3.18.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.11.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>            <!-- or jjwt-gson if Gson is
+			preferred -->
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Fincity Dependencies -->
+        <dependency>
+            <groupId>com.fincity.nocode</groupId>
+            <artifactId>kirun-java</artifactId>
+            <version>${nocode-kirun-version}</version>
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mq</artifactId>
-            <version>${saas-commons-mq-version}</version>
+            <artifactId>commons</artifactId>
+            <version>${saas-commons-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-jooq</artifactId>
+            <version>${saas-commons-jooq-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-security</artifactId>
+            <version>${saas-commons-security-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.nocode</groupId>
+            <artifactId>reactor-flatmap-util</artifactId>
+            <version>${nocode-flatmap-util-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -80,24 +165,25 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>2.8.1</version>
-            <scope>compile</scope>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-webmvc</artifactId>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <version>1.0.6.RELEASE</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <groupId>org.shredzone.acme4j</groupId>
+            <artifactId>acme4j-client</artifactId>
+            <version>3.0.0</version>
         </dependency>
-
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -112,14 +198,6 @@
     </dependencyManagement>
     <repositories>
         <repository>
-            <id>spring-libs-milestone</id>
-            <url>https://repo.spring.io/libs-milestone</url>
-        </repository>
-        <repository>
-            <id>spring-libs-snapshot</id>
-            <url>https://repo.spring.io/libs-snapshot</url>
-        </repository>
-        <repository>
             <id>spring-milestones</id>
             <name>Spring Milestones</name>
             <url>https://repo.spring.io/milestone</url>
@@ -128,6 +206,22 @@
             </snapshots>
         </repository>
     </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </pluginRepository>
+        <pluginRepository>
+            <id>jcenter</id>
+            <name>JCenter</name>
+            <url>https://jcenter.bintray.com</url>
+        </pluginRepository>
+        <pluginRepository>
+            <id>gradle</id>
+            <url>https://repo.gradle.org/gradle/libs-releases-local/</url>
+        </pluginRepository>
+    </pluginRepositories>
     <build>
         <plugins>
             <plugin>
@@ -137,17 +231,6 @@
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
-                <configuration>
-                    <url>jdbc:mysql://localhost:3306/entity_collector</url>
-                    <user>root</user>
-                    <password>Sowmya@14555</password>
-                    <schemas>
-                        <schema>entity_collector</schema>
-                    </schemas>
-                    <locations>
-                        <location>filesystem:src/main/resources/db/migration</location>
-                    </locations>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
@@ -159,7 +242,7 @@
                     </from>
                     <to>
                         <image>ghcr.io/fincity-india/entity-collector</image>
-                        <tags>                      <!--suppress UnresolvedMavenProperty -->
+                        <tags>
                             <tag>${env.ENVIRONMENT}</tag>
                             <tag>${project.version}</tag>
                         </tags>
@@ -178,8 +261,6 @@
                         <artifactId>jooq-codegen-maven</artifactId>
                         <executions>
                             <execution>
-                                <id>generate-jooq</id>
-                                <phase>generate-sources</phase>
                                 <goals>
                                     <goal>generate</goal>
                                 </goals>
@@ -207,7 +288,7 @@
                                 <driver>com.mysql.cj.jdbc.Driver</driver>
                                 <url>jdbc:mysql://localhost:3306/entity_collector</url>
                                 <user>root</user>
-                                <password>Sowmya@14555</password>
+                                <password>root</password>
                             </jdbc>
                             <generator>
                                 <database>
@@ -226,6 +307,60 @@
                                     <directory>src/main/java</directory>
                                 </target>
                             </generator>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>${spotless.version}</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                    <goal>apply</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.diffplug.spotless</groupId>
+                                <artifactId>spotless-maven-plugin</artifactId>
+                                <version>${spotless.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>com.palantir.javaformat</groupId>
+                                <artifactId>palantir-java-format</artifactId>
+                                <version>${palantir-java.format.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <!-- JAVA files -->
+                            <java>
+                                <palantirJavaFormat>
+                                    <version>${palantir-java.format.version}</version>
+                                    <style>PALANTIR</style>
+                                </palantirJavaFormat>
+                                <importOrder/>
+                                <removeUnusedImports/>
+                                <formatAnnotations/>
+                                <trimTrailingWhitespace/>
+                                <endWithNewline/>
+                                <toggleOffOn/>
+                            </java>
+                            <!-- YAML files -->
+                            <yaml>
+                                <includes>
+                                    <include>src/main/resources/*.yml</include>
+                                    <include>src/main/resources/*.yaml</include>
+                                </includes>
+                            </yaml>
                         </configuration>
                     </plugin>
                 </plugins>
