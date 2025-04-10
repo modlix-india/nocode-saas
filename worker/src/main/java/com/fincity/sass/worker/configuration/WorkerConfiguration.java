@@ -22,8 +22,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 @Configuration
-public class WorkerConfiguration extends AbstractJooqBaseConfiguration
-        implements ISecurityConfiguration {
+public class WorkerConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
 
     private final WorkerMessageResourceService messageService;
 
@@ -38,11 +37,8 @@ public class WorkerConfiguration extends AbstractJooqBaseConfiguration
         super.initialize();
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
-
-            if (name != null)
-                log.debug("{} - {}", name, v);
-            else
-                log.debug(v);
+            if (name != null) log.debug("{} - {}", name, v);
+            else log.debug(v);
         }));
     }
 
@@ -54,17 +50,13 @@ public class WorkerConfiguration extends AbstractJooqBaseConfiguration
     @Bean
     public ReactiveHttpRequestInterceptor feignInterceptor() {
         return request -> Mono.deferContextual(ctxView -> {
-
             if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
                 String key = ctxView.get(LogUtil.DEBUG_KEY);
 
-                request.headers()
-                        .put(LogUtil.DEBUG_KEY, List.of(key));
+                request.headers().put(LogUtil.DEBUG_KEY, List.of(key));
             }
 
             return Mono.just(request);
         });
     }
-
 }
-

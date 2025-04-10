@@ -6,6 +6,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.web.reactive.config.EnableWebFlux;
@@ -21,6 +22,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableCaching
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 
+@EnableScheduling
 @SpringBootApplication
 public class WorkerApplication {
 
