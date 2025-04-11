@@ -15,36 +15,7 @@ import java.util.Map;
 @Service
 public class EntityIntegrationService
         extends AbstractJOOQUpdatableDataService<
-                EntityIntegrationsRecord, ULong, EntityIntegration, EntityIntegrationDAO> {
-
-    //    public EntityIntegration createIntegration(EntityIntegration entity) {
-    //        return dao.insert(entity);
-    //    }
-    //
-    //    public List<EntityIntegration> getAll() {
-    //        return dao.findAll();
-    //    }
-    //
-    //    public EntityIntegration getById(Long id) {
-    //        return dao.findById(id)
-    //                .orElseThrow(() -> new RuntimeException("EntityIntegration not found for id: " + id));
-    //    }
-    //
-    //    public void delete(Long id) {
-    //        dao.deleteById(id);
-    //    }
-    //
-    //    public List<EntityIntegration> findByClientAndApp(String clientCode, String appCode) {
-    //        return dao.findByClientCodeAndAppCode(clientCode, appCode);
-    //    }
-    //
-    //    public EntityIntegration updateIntegration(EntityIntegration entity) {
-    //        return dao.update(entity);
-    //    }
-    //
-    //    public List<EntityIntegration> getByClientCode(String clientCode) {
-    //        return dao.findByClientCode(clientCode);
-    //    }
+        EntityIntegrationsRecord, ULong, EntityIntegration, EntityIntegrationDAO> {
 
     @Override
     public Mono<EntityIntegration> updatableEntity(EntityIntegration entity) {
