@@ -44,7 +44,11 @@ public class EntityCollectorConfig extends AbstractJooqBaseConfiguration impleme
 
     @Bean
     public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-        return this.springSecurityFilterChain(http, authService, this.objectMapper);
+        return this.springSecurityFilterChain(
+                http,
+                authService,
+                this.objectMapper,
+                "/api/entity/**");
     }
 
     @Bean
