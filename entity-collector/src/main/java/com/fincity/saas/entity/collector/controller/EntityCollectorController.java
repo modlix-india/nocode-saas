@@ -21,7 +21,7 @@ public class EntityCollectorController {
     public final EntityCollectorService entityCollectorService;
 
     @PostMapping("/social/facebook")
-    public Mono<List<EntityIntegration>> handleFacebookEntity(@RequestBody JsonNode requestBody) {
+    public Mono<JsonNode> handleFacebookEntity(@RequestBody JsonNode requestBody) {
 
         return entityCollectorService.handleFaceBookEntity(requestBody);
     }

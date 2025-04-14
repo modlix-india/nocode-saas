@@ -2,14 +2,15 @@ package com.fincity.saas.entity.collector.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
+import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -18,11 +19,18 @@ import java.util.Set;
 public class EntityCollectorService {
 
     private final EntityIntegrationService entityIntegrationService;
+    private final IFeignCoreService coreService;
 
-    public Mono<List<EntityIntegration>> handleFaceBookEntity(JsonNode responseBody) {
+    private static final String CONNECTION_NAME = "meta_facebook_connection";
+    private final WebClient webClient = WebClient.create();
 
-        Set<String> formIds = EntityCollectorUtilService.extractFormIds(responseBody);
+    public Mono<JsonNode> handleFaceBookEntity(JsonNode responseBody) {
 
+        EntityCollectorUtilService.ExtractPayload payload =
+                EntityCollectorUtilService.extractFacebookLeadPayload(responseBody);
+
+        Set<String> formIds = payload.getFormIds();
+        String leadGenId = payload.getLeadGenId();
 
         return Flux.fromIterable(formIds)
                 .flatMap(formId ->
@@ -33,7 +41,35 @@ public class EntityCollectorService {
                     if (integrations.isEmpty()) {
                         return Mono.error(new RuntimeException("No matching entity integration found for any form_id"));
                     }
-                    return Mono.just(integrations);
+
+                    EntityIntegration integration = integrations.getFirst();
+
+                    return this.fetchOAuthToken(integration.getClientCode(), integration.getAppCode())
+                            .flatMap(token -> this.fetchLeadDetails(leadGenId, token));
                 });
     }
+
+    private Mono<String> fetchOAuthToken(String clientCode, String appCode) {
+        return coreService.getConnectionOAuth2Token(
+                "",
+                "",
+                "",
+                clientCode,
+                appCode,
+                CONNECTION_NAME
+        );
+    }
+
+    private Mono<JsonNode> fetchLeadDetails(String leadGenId, String accessToken) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("https")
+                        .host("graph.facebook.com")
+                        .path("/v19.0/{leadId}")
+                        .queryParam("access_token", accessToken)
+                        .build(leadGenId))
+                .retrieve()
+                .bodyToMono(JsonNode.class);
+    }
+
 }
