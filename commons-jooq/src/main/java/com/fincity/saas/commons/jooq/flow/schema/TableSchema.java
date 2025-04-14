@@ -64,7 +64,12 @@ public class TableSchema extends Schema {
     }
 
     public TableSchema addColumn(ColumnSchema columnSchema) {
-        this.columns.replace(columnSchema.getName(), columnSchema);
+        this.columns.put(columnSchema.getName(), columnSchema);
+        return this;
+    }
+
+    public TableSchema replaceColumn(ColumnSchema columnSchema) {
+        this.columns.remove(columnSchema.getName(), columnSchema);
         return this;
     }
 
