@@ -1,10 +1,15 @@
 package com.fincity.saas.commons.jooq.flow.schema;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
+import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.schema.enums.KeyType;
+import com.google.gson.JsonPrimitive;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.experimental.FieldNameConstants;
 
 import java.io.Serial;
 import java.util.ArrayList;
@@ -12,29 +17,45 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Map.entry;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
+@FieldNameConstants
 public class TableSchema extends Schema {
+
+    public static final Schema TABLE_SCHEMA = new Schema()
+            .setNamespace(Namespaces.SYSTEM)
+            .setName("TableSchema")
+            .setType(Type.of(SchemaType.OBJECT))
+            .setProperties(Map.ofEntries(
+                    entry(Fields.tableName, Schema.ofString(Fields.tableName)),
+                    entry(Fields.tableDescription, Schema.ofString(Fields.tableDescription)),
+                    entry(
+                            Fields.columns,
+                            Schema.ofObject(Fields.columns).setAllOf(List.of(ColumnSchema.COLUMN_SCHEMA))),
+                    entry(Fields.keys, Schema.ofArray(Fields.keys, KeySchema.KEY_SCHEMA)),
+                    entry(
+                            Fields.isAudited,
+                            Schema.ofBoolean(Fields.isAudited).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
+                    entry(
+                            Fields.isSoftDelete,
+                            Schema.ofBoolean(Fields.isSoftDelete).setDefaultValue(new JsonPrimitive(Boolean.FALSE)))))
+            .setRequired(List.of(Fields.tableName));
 
     @Serial
     private static final long serialVersionUID = 6766760161916997489L;
 
     private String tableName;
     private String tableDescription;
-    private Map<String, ColumnSchema> columns;
-    private List<KeySchema> keys;
+    private Map<String, ColumnSchema> columns = new HashMap<>();
+    private List<KeySchema> keys = new ArrayList<>();
     private Boolean isAudited = Boolean.FALSE;
     private Boolean isSoftDelete = Boolean.FALSE;
 
-    public TableSchema() {
-        super();
-        this.columns = new HashMap<>();
-        this.keys = new ArrayList<>();
-    }
-
     public TableSchema(String tableName) {
-        this();
+        super();
         this.tableName = tableName;
     }
 
