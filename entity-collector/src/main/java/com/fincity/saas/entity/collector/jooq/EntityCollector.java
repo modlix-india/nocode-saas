@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.collector.jooq;
 
 
-import com.fincity.saas.entity.collector.jooq.tables.CollectionLogs;
+import com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog;
 import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
 
 import java.util.Arrays;
@@ -29,9 +29,9 @@ public class EntityCollector extends SchemaImpl {
     public static final EntityCollector ENTITY_COLLECTOR = new EntityCollector();
 
     /**
-     * The table <code>entity_collector.collection_logs</code>.
+     * The table <code>entity_collector.entity_collector_log</code>.
      */
-    public final CollectionLogs COLLECTION_LOGS = CollectionLogs.COLLECTION_LOGS;
+    public final EntityCollectorLog ENTITY_COLLECTOR_LOG = EntityCollectorLog.ENTITY_COLLECTOR_LOG;
 
     /**
      * The table <code>entity_collector.entity_integrations</code>.
@@ -54,7 +54,7 @@ public class EntityCollector extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
-            CollectionLogs.COLLECTION_LOGS,
+            EntityCollectorLog.ENTITY_COLLECTOR_LOG,
             EntityIntegrations.ENTITY_INTEGRATIONS
         );
     }

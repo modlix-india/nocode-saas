@@ -7,7 +7,7 @@ package com.fincity.saas.entity.collector.jooq.tables;
 import com.fincity.saas.entity.collector.jooq.EntityCollector;
 import com.fincity.saas.entity.collector.jooq.Keys;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
-import com.fincity.saas.entity.collector.jooq.tables.CollectionLogs.CollectionLogsPath;
+import com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog.EntityCollectorLogPath;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 
 import java.time.LocalDateTime;
@@ -207,17 +207,17 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
         return Keys.KEY_ENTITY_INTEGRATIONS_PRIMARY;
     }
 
-    private transient CollectionLogsPath _collectionLogs;
+    private transient EntityCollectorLogPath _entityCollectorLog;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>entity_collector.collection_logs</code> table
+     * <code>entity_collector.entity_collector_log</code> table
      */
-    public CollectionLogsPath collectionLogs() {
-        if (_collectionLogs == null)
-            _collectionLogs = new CollectionLogsPath(this, null, Keys.FK1_COLLECTION_ENTITY_INTEGRATION_ID.getInverseKey());
+    public EntityCollectorLogPath entityCollectorLog() {
+        if (_entityCollectorLog == null)
+            _entityCollectorLog = new EntityCollectorLogPath(this, null, Keys.FK1_COLLECTOR_ENTITY_INTEGRATION_ID.getInverseKey());
 
-        return _collectionLogs;
+        return _entityCollectorLog;
     }
 
     @Override

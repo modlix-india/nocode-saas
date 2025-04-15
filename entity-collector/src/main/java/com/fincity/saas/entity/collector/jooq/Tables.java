@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.collector.jooq;
 
 
-import com.fincity.saas.entity.collector.jooq.tables.CollectionLogs;
+import com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog;
 import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
 
 
@@ -15,9 +15,9 @@ import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
 public class Tables {
 
     /**
-     * The table <code>entity_collector.collection_logs</code>.
+     * The table <code>entity_collector.entity_collector_log</code>.
      */
-    public static final CollectionLogs COLLECTION_LOGS = CollectionLogs.COLLECTION_LOGS;
+    public static final EntityCollectorLog ENTITY_COLLECTOR_LOG = EntityCollectorLog.ENTITY_COLLECTOR_LOG;
 
     /**
      * The table <code>entity_collector.entity_integrations</code>.

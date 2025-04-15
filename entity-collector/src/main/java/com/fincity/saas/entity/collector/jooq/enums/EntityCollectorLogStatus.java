@@ -13,7 +13,7 @@ import org.jooq.Schema;
  * Status of the Lead Transfer
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum CollectionLogsStatus implements EnumType {
+public enum EntityCollectorLogStatus implements EnumType {
 
     REJECTED("REJECTED"),
 
@@ -23,7 +23,7 @@ public enum CollectionLogsStatus implements EnumType {
 
     private final String literal;
 
-    private CollectionLogsStatus(String literal) {
+    private EntityCollectorLogStatus(String literal) {
         this.literal = literal;
     }
 
@@ -52,7 +52,7 @@ public enum CollectionLogsStatus implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static CollectionLogsStatus lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(CollectionLogsStatus.class, literal);
+    public static EntityCollectorLogStatus lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(EntityCollectorLogStatus.class, literal);
     }
 }

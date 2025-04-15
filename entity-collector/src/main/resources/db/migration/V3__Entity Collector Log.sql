@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS collection_logs
+CREATE TABLE IF NOT EXISTS entity_collector_log
 (
 
 `id`                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS collection_logs
 `status_message`           TEXT DEFAULT NULL COMMENT "Message given for the status",
 `created_at`               TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
   PRIMARY KEY (`id`),
-  KEY `FK1_collection_entity_integration_id` (`entity_integration_id`),
-  CONSTRAINT `FK1_collection_entity_integration_id`
+  KEY `FK1_collector_entity_integration_id` (`entity_integration_id`),
+  CONSTRAINT `FK1_collector_entity_integration_id`
          FOREIGN KEY (`entity_integration_id`)
          REFERENCES `entity_integrations` (`id`)
          ON DELETE RESTRICT

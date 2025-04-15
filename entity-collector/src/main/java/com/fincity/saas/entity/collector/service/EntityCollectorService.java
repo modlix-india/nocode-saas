@@ -1,14 +1,11 @@
 package com.fincity.saas.entity.collector.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fincity.saas.entity.collector.dto.CollectionLog;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
-import com.fincity.saas.entity.collector.jooq.enums.CollectionLogsStatus;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -23,7 +20,6 @@ public class EntityCollectorService {
 
     private final EntityIntegrationService entityIntegrationService;
     private final IFeignCoreService coreService;
-    private final CollectionLogService collectionLogService;
     private static final String CONNECTION_NAME = "meta_facebook_connection";
     private final WebClient webClient = WebClient.create();
 
@@ -79,19 +75,6 @@ public class EntityCollectorService {
                         .build(leadGenId))
                 .retrieve()
                 .bodyToMono(JsonNode.class);
-    }
-
-    private Mono<CollectionLog> logLeadTransfer(ULong entityIntegrationId, JsonNode incomingLead, String ipAddress, JsonNode outgoingLead, CollectionLogsStatus status, String statusMessage){
-        CollectionLog log = new CollectionLog();
-        log.setEntityIntegrationId(entityIntegrationId);
-        log.setIncomingLeadData(incomingLead);
-        log.setIpAddress(ipAddress);
-        log.setOutgoingLeadData(outgoingLead);
-        log.setStatus(status);
-        log.setStatusMessage(statusMessage);
-
-        return this.collectionLogService.create(log);
-
     }
 
 }

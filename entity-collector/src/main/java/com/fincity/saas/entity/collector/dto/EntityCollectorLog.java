@@ -2,7 +2,7 @@ package com.fincity.saas.entity.collector.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.entity.collector.jooq.enums.CollectionLogsStatus;
+import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -15,7 +15,7 @@ import java.io.Serial;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class CollectionLog extends AbstractUpdatableDTO<ULong, ULong>  {
+public class EntityCollectorLog extends AbstractUpdatableDTO<ULong, ULong>  {
 
     @Serial
     private static final long serialVersionUID = -1027647179030335307L;
@@ -24,7 +24,7 @@ public class CollectionLog extends AbstractUpdatableDTO<ULong, ULong>  {
     private JsonNode incomingLeadData;
     private String ipAddress;
     private JsonNode outgoingLeadData;
-    private CollectionLogsStatus status;
+    private EntityCollectorLogStatus status;
     private String statusMessage;
 
 
