@@ -18,6 +18,7 @@ public class EntityCollectorMessageResourceService extends AbstractMessageServic
     public static final String FORBIDDEN_UPDATE = "forbidden_update";
     public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
 
+
     protected EntityCollectorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
     }

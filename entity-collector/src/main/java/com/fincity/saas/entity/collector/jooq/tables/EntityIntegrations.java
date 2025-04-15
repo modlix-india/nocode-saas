@@ -7,6 +7,7 @@ package com.fincity.saas.entity.collector.jooq.tables;
 import com.fincity.saas.entity.collector.jooq.EntityCollector;
 import com.fincity.saas.entity.collector.jooq.Keys;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.jooq.tables.CollectionLogs.CollectionLogsPath;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 
 import java.time.LocalDateTime;
@@ -14,10 +15,14 @@ import java.util.Collection;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -154,6 +159,39 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
         this(DSL.name("entity_integrations"), null);
     }
 
+    public <O extends Record> EntityIntegrations(Table<O> path, ForeignKey<O, EntityIntegrationsRecord> childPath, InverseForeignKey<O, EntityIntegrationsRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_INTEGRATIONS);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityIntegrationsPath extends EntityIntegrations implements Path<EntityIntegrationsRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityIntegrationsPath(Table<O> path, ForeignKey<O, EntityIntegrationsRecord> childPath, InverseForeignKey<O, EntityIntegrationsRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityIntegrationsPath(Name alias, Table<EntityIntegrationsRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityIntegrationsPath as(String alias) {
+            return new EntityIntegrationsPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityIntegrationsPath as(Name alias) {
+            return new EntityIntegrationsPath(alias, this);
+        }
+
+        @Override
+        public EntityIntegrationsPath as(Table<?> alias) {
+            return new EntityIntegrationsPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityCollector.ENTITY_COLLECTOR;
@@ -167,6 +205,19 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
     @Override
     public UniqueKey<EntityIntegrationsRecord> getPrimaryKey() {
         return Keys.KEY_ENTITY_INTEGRATIONS_PRIMARY;
+    }
+
+    private transient CollectionLogsPath _collectionLogs;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_collector.collection_logs</code> table
+     */
+    public CollectionLogsPath collectionLogs() {
+        if (_collectionLogs == null)
+            _collectionLogs = new CollectionLogsPath(this, null, Keys.FK1_COLLECTION_ENTITY_INTEGRATION_ID.getInverseKey());
+
+        return _collectionLogs;
     }
 
     @Override
