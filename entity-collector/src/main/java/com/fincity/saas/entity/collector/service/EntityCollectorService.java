@@ -45,8 +45,14 @@ public class EntityCollectorService {
                     EntityIntegration integration = integrations.getFirst();
 
                     return this.fetchOAuthToken(integration.getClientCode(), integration.getAppCode())
-                            .flatMap(token -> this.fetchLeadDetails(leadGenId, token));
+                            .flatMap(token -> {
+                                if (token == null || token.isEmpty()) {
+                                    return Mono.error(new RuntimeException("Failed to fetch OAuth token"));
+                                }
+                                return this.fetchLeadDetails(leadGenId, token);
+                            });
                 });
+
     }
 
     private Mono<String> fetchOAuthToken(String clientCode, String appCode) {
@@ -65,7 +71,7 @@ public class EntityCollectorService {
                 .uri(uriBuilder -> uriBuilder
                         .scheme("https")
                         .host("graph.facebook.com")
-                        .path("/v19.0/{leadId}")
+                        .path("/v22.0/{leadId}")
                         .queryParam("access_token", accessToken)
                         .build(leadGenId))
                 .retrieve()
