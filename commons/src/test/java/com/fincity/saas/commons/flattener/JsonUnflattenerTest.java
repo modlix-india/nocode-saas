@@ -2,35 +2,26 @@ package com.fincity.saas.commons.flattener;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
+import org.junit.jupiter.api.Test;
+
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import org.junit.jupiter.api.Test;
 
 class JsonUnflattenerTest {
 
     @Test
     void test() {
-        Map<String, String> flatList = Map.of(
-                "professionalDetails.address.building_name",
-                "sri",
-                "professionalDetails.address.pincode",
-                "533003",
-                "professionalDetails.address.city",
-                "bnglr",
-                "basicDetails.phone",
-                "12341",
-                "userType",
-                "ACTIVE",
-                "parentsName[0].firstName",
-                "kiran",
-                "parentsName[1].firstName",
-                "kumar");
+        Map<String, String> flatList = Map.of("professionalDetails.address.building_name", "sri",
+                "professionalDetails.address.pincode", "533003", "professionalDetails.address.city", "bnglr",
+                "basicDetails.phone", "12341",
+                "userType", "ACTIVE", "parentsName[0].firstName", "kiran", "parentsName[1].firstName", "kumar");
 
         var ja = new JsonArray();
         var temp1 = new JsonObject();
@@ -53,13 +44,10 @@ class JsonUnflattenerTest {
         jsono.getAsJsonObject("basicDetails").addProperty("phone", 12341);
 
         Map<String, Set<SchemaType>> propsSchema = new TreeMap<>();
-        propsSchema.put(
-                "professionalDetails.address.building_name",
+        propsSchema.put("professionalDetails.address.building_name",
                 Type.of(SchemaType.STRING).getAllowedSchemaTypes());
-        propsSchema.put(
-                "professionalDetails.address.pincode", Type.of(SchemaType.LONG).getAllowedSchemaTypes());
-        propsSchema.put(
-                "professionalDetails.address.city", Type.of(SchemaType.STRING).getAllowedSchemaTypes());
+        propsSchema.put("professionalDetails.address.pincode", Type.of(SchemaType.LONG).getAllowedSchemaTypes());
+        propsSchema.put("professionalDetails.address.city", Type.of(SchemaType.STRING).getAllowedSchemaTypes());
         propsSchema.put("basicDetails.phone", Type.of(SchemaType.INTEGER).getAllowedSchemaTypes());
         propsSchema.put("userType", Type.of(SchemaType.STRING).getAllowedSchemaTypes());
         propsSchema.put("parentsName[0].firstName", Type.of(SchemaType.STRING).getAllowedSchemaTypes());
@@ -69,6 +57,8 @@ class JsonUnflattenerTest {
 
         JsonObject result = JsonUnflattener.unflatten(flatList, propsSchema);
 
+
         assertEquals(jsono, result);
     }
+
 }

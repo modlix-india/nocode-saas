@@ -13,7 +13,8 @@ public class MapUtil {
         // It is not possible to reduce the complexity without making the code
         // unreadable
 
-        if (StringUtil.safeIsBlank(key) || value == null) return;
+        if (StringUtil.safeIsBlank(key) || value == null)
+            return;
 
         String[] parts = key.split("\\.");
 
@@ -25,7 +26,8 @@ public class MapUtil {
             String[] arrParts = parts[i].split("\\[");
 
             if (!curMap.containsKey(arrParts[0])) {
-                curMap.put(arrParts[0], arrParts.length == 1 ? new HashMap<String, Object>() : new ArrayList<Object>());
+                curMap.put(arrParts[0],
+                        arrParts.length == 1 ? new HashMap<String, Object>() : new ArrayList<Object>());
             }
 
             if (arrParts.length == 1) {
@@ -40,20 +42,22 @@ public class MapUtil {
                 if (index >= list.size()) {
                     int size = index - list.size();
                     for (int k = 0; k <= size; k++)
-                        list.add(
-                                j + 1 == arrParts.length && i + 1 == parts.length - 1 ? null : new ArrayList<Object>());
+                        list.add(j + 1 == arrParts.length && i + 1 == parts.length - 1 ? null
+                                : new ArrayList<Object>());
                 }
                 if (j + 1 == arrParts.length) {
                     list.set(index, new HashMap<String, Object>());
                     curMap = (Map<String, Object>) list.get(index);
-                } else list = (List<Object>) list.get(index);
+                } else
+                    list = (List<Object>) list.get(index);
             }
         }
 
         String[] arrParts = parts[i].split("\\[");
 
         if (!curMap.containsKey(arrParts[0])) {
-            curMap.put(arrParts[0], arrParts.length == 1 ? value : new ArrayList<Object>());
+            curMap.put(arrParts[0],
+                    arrParts.length == 1 ? value : new ArrayList<Object>());
         }
 
         if (arrParts.length == 1) {
@@ -67,7 +71,8 @@ public class MapUtil {
 
             if (index >= list.size()) {
                 int size = index - list.size();
-                for (int k = 0; k <= size; k++) list.add(new ArrayList<Object>());
+                for (int k = 0; k <= size; k++)
+                    list.add(new ArrayList<Object>());
             }
 
             if (j + 1 == arrParts.length) {
@@ -78,5 +83,6 @@ public class MapUtil {
         }
     }
 
-    private MapUtil() {}
+    private MapUtil() {
+    }
 }

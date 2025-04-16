@@ -1,5 +1,27 @@
 package com.fincity.saas.commons.configuration;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.LocalDateTime;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.data.web.ReactivePageableHandlerMethodArgumentResolver;
+import org.springframework.http.codec.ServerCodecConfigurer;
+import org.springframework.http.codec.json.Jackson2JsonDecoder;
+import org.springframework.http.codec.json.Jackson2JsonEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.reactive.config.CorsRegistry;
+import org.springframework.web.reactive.config.WebFluxConfigurer;
+import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,32 +41,13 @@ import com.fincity.saas.commons.jackson.TupleSerializationModule;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
-import org.springframework.context.annotation.Bean;
-import org.springframework.data.web.ReactivePageableHandlerMethodArgumentResolver;
-import org.springframework.http.codec.ServerCodecConfigurer;
-import org.springframework.http.codec.json.Jackson2JsonDecoder;
-import org.springframework.http.codec.json.Jackson2JsonEncoder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.reactive.config.CorsRegistry;
-import org.springframework.web.reactive.config.WebFluxConfigurer;
-import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
 public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
@@ -82,11 +85,11 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
         AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
 
         Gson gson = new GsonBuilder()
-                .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-                .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
-                .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
-                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-                .create();
+            .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+            .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+            .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+            .create();
 
         arraySchemaTypeAdapter.setGson(gson);
         additionalTypeAdapter.setGson(gson);
@@ -96,9 +99,12 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
     @Override
     public void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
 
-        configurer.defaultCodecs().jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
-        configurer.defaultCodecs().jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
-        configurer.defaultCodecs().maxInMemorySize(this.getInMemorySize());
+        configurer.defaultCodecs()
+            .jackson2JsonDecoder(new Jackson2JsonDecoder(this.objectMapper));
+        configurer.defaultCodecs()
+            .jackson2JsonEncoder(new Jackson2JsonEncoder(this.objectMapper));
+        configurer.defaultCodecs()
+            .maxInMemorySize(this.getInMemorySize());
         WebFluxConfigurer.super.configureHttpMessageCodecs(configurer);
     }
 
@@ -118,7 +124,8 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Bean
     public RedisClient redisClient() {
-        if (redisURL == null || redisURL.isBlank()) return null;
+        if (redisURL == null || redisURL.isBlank())
+            return null;
 
         return RedisClient.create(redisURL);
     }
@@ -126,7 +133,8 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
     @Bean
     public RedisAsyncCommands<String, Object> asyncCommands(@Autowired(required = false) RedisClient client) {
 
-        if (client == null) return null;
+        if (client == null)
+            return null;
 
         StatefulRedisConnection<String, Object> connection = client.connect(objectCodec);
         return connection.async();
@@ -134,52 +142,51 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Bean
     public StatefulRedisPubSubConnection<String, String> subConnection(
-            @Autowired(required = false) RedisClient client) {
+        @Autowired(required = false) RedisClient client) {
 
-        if (client == null) return null;
+        if (client == null)
+            return null;
 
         return client.connectPubSub();
     }
 
     @Bean
     public RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
-            @Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
+        @Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
 
-        if (connection == null) return null;
+        if (connection == null)
+            return null;
 
         return connection.async();
     }
 
     @Bean
     public RedisPubSubAsyncCommands<String, String> pubRedisAsyncCommand(
-            @Autowired(required = false) RedisClient client) {
+        @Autowired(required = false) RedisClient client) {
 
-        if (client == null) return null;
+        if (client == null)
+            return null;
 
-        return client.connectPubSub().async();
+        return client.connectPubSub()
+            .async();
     }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
 
         registry.addMapping("/**")
-                .allowedOriginPatterns(
-                        "https://*.modlix.com",
-                        "https://*.dev.modlix.com",
-                        "https://*.stage.modlix.com",
-                        "https://modlix.com",
-                        "https://dev.modlix.com",
-                        "https://stage.modlix.com",
-                        "http://localhost:1234",
-                        "http://localhost:3000",
-                        "http://localhost:8080")
-                .allowedMethods("*")
-                .maxAge(3600);
+            .allowedOriginPatterns("https://*.modlix.com", "https://*.dev.modlix.com",
+                "https://*.stage.modlix.com", "https://modlix.com", "https://dev.modlix.com",
+                "https://stage.modlix.com", "http://localhost:1234", "http://localhost:3000",
+                "http://localhost:8080")
+            .allowedMethods("*")
+            .maxAge(3600);
     }
 
     @Bean
     public Caffeine<Object, Object> caffeineConfig() {
-        return Caffeine.newBuilder().expireAfterAccess(Duration.ofMinutes(5));
+        return Caffeine.newBuilder()
+            .expireAfterAccess(Duration.ofMinutes(5));
     }
 
     @Bean

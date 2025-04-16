@@ -1,95 +1,94 @@
 package com.fincity.saas.commons.enums;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
 import lombok.Getter;
 
 @Getter
 public enum StringEncoder {
-    BASE64("base64"),
-    HEX("Hex");
 
-    private static final Map<String, StringEncoder> BY_NAME = new HashMap<>();
+	BASE64("base64"),
+	HEX("Hex");
 
-    static {
-        for (StringEncoder encoder : values()) {
-            BY_NAME.put(encoder.name.toLowerCase(), encoder);
-        }
-    }
+	private static final Map<String, StringEncoder> BY_NAME = new HashMap<>();
 
-    private final String name;
+	static {
+		for (StringEncoder encoder : values()) {
+			BY_NAME.put(encoder.name.toLowerCase(), encoder);
+		}
+	}
 
-    StringEncoder(String name) {
-        this.name = name;
-    }
+	private final String name;
 
-    public static StringEncoder getByName(String name) {
-        return BY_NAME.get(name.toLowerCase());
-    }
+	StringEncoder(String name) {
+		this.name = name;
+	}
 
-    public static List<JsonElement> getAvailableEncoder(StringEncoder... encoder) {
+	public static StringEncoder getByName(String name) {
+		return BY_NAME.get(name.toLowerCase());
+	}
 
-        List<StringEncoder> selected =
-                (encoder == null || encoder.length == 0) ? List.of(StringEncoder.values()) : List.of(encoder);
+	public static List<JsonElement> getAvailableEncoder(StringEncoder... encoder) {
 
-        return selected.stream().map(algo -> new JsonPrimitive(algo.getName())).collect(Collectors.toList());
-    }
+		List<StringEncoder> selected = (encoder == null || encoder.length == 0) ? List.of(StringEncoder.values())
+				: List.of(encoder);
 
-    public JsonPrimitive encodeToJson(byte[] bytes) {
-        return new JsonPrimitive(encode(bytes));
-    }
+		return selected.stream().map(algo -> new JsonPrimitive(algo.getName())).collect(Collectors.toList());
+	}
 
-    public String encode(byte[] bytes) {
-        return switch (this) {
-            case BASE64 -> encodeBase64(bytes, false);
-            case HEX -> encodeHex(bytes);
-        };
-    }
+	public JsonPrimitive encodeToJson(byte[] bytes) {
+		return new JsonPrimitive(encode(bytes));
+	}
 
-    public String encode(byte[] bytes, boolean urlSafe) {
-        return switch (this) {
-            case BASE64 -> encodeBase64(bytes, urlSafe);
-            case HEX -> encodeHex(bytes);
-        };
-    }
+	public String encode(byte[] bytes) {
+		return switch (this) {
+			case BASE64 -> encodeBase64(bytes, false);
+			case HEX -> encodeHex(bytes);
+		};
+	}
 
-    public byte[] decode(String str, boolean urlSafe) {
-        return switch (this) {
-            case BASE64 -> decodeBase64(str, urlSafe);
-            case HEX -> decodeHex(str);
-        };
-    }
+	public String encode(byte[] bytes, boolean urlSafe) {
+		return switch (this) {
+			case BASE64 -> encodeBase64(bytes, urlSafe);
+			case HEX -> encodeHex(bytes);
+		};
+	}
 
-    public byte[] decode(String str) {
-        return switch (this) {
-            case BASE64 -> decodeBase64(str, false);
-            case HEX -> decodeHex(str);
-        };
-    }
+	public byte[] decode(String str, boolean urlSafe) {
+		return switch (this) {
+			case BASE64 -> decodeBase64(str, urlSafe);
+			case HEX -> decodeHex(str);
+		};
+	}
 
-    private String encodeBase64(byte[] bytes, boolean urlSafe) {
-        return urlSafe
-                ? Base64.getUrlEncoder().encodeToString(bytes)
-                : Base64.getEncoder().encodeToString(bytes);
-    }
+	public byte[] decode(String str) {
+		return switch (this) {
+			case BASE64 -> decodeBase64(str, false);
+			case HEX -> decodeHex(str);
+		};
+	}
 
-    private String encodeHex(byte[] bytes) {
-        return HexFormat.of().formatHex(bytes);
-    }
+	private String encodeBase64(byte[] bytes, boolean urlSafe) {
+		return urlSafe ? Base64.getUrlEncoder().encodeToString(bytes) : Base64.getEncoder().encodeToString(bytes);
+	}
 
-    private byte[] decodeBase64(String str, boolean urlSafe) {
-        return urlSafe
-                ? Base64.getUrlDecoder().decode(str)
-                : Base64.getDecoder().decode(str);
-    }
+	private String encodeHex(byte[] bytes) {
+		return HexFormat.of().formatHex(bytes);
+	}
 
-    private byte[] decodeHex(String str) {
-        return HexFormat.of().parseHex(str);
-    }
+	private byte[] decodeBase64(String str, boolean urlSafe) {
+		return urlSafe ? Base64.getUrlDecoder().decode(str) : Base64.getDecoder().decode(str);
+	}
+
+	private byte[] decodeHex(String str) {
+		return HexFormat.of().parseHex(str);
+	}
 }

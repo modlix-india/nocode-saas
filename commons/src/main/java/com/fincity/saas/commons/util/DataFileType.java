@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.util;
 
 public enum DataFileType {
+
     CSV("text/csv"),
     XLS("application/x-excel"),
     XLSX("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),

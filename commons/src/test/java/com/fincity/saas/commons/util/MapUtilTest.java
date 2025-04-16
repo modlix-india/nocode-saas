@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 class MapUtilTest {
@@ -32,19 +33,13 @@ class MapUtilTest {
 
         myMap = new HashMap<>();
         MapUtil.setValueInMap(myMap, "a.b[0].c", "kiran");
-        assertEquals(
-                "kiran",
-                ((Map<String, Object>) ((List<Object>) ((Map<String, Object>) myMap.get("a")).get("b")).get(0))
-                        .get("c"));
+        assertEquals("kiran", ((Map<String, Object>) ((List<Object>) ((Map<String, Object>) myMap.get("a")).get("b"))
+                .get(0)).get("c"));
 
         myMap = new HashMap<>();
         MapUtil.setValueInMap(myMap, "a.b[0].c[0]", "kiran");
-        assertEquals(
-                "kiran",
-                ((List<Object>) ((Map<String, Object>)
-                                        ((List<Object>) ((Map<String, Object>) myMap.get("a")).get("b")).get(0))
-                                .get("c"))
-                        .get(0));
+        assertEquals("kiran", ((List<Object>) ((Map<String, Object>) ((List<Object>) ((Map<String, Object>) myMap
+                .get("a")).get("b")).get(0)).get("c")).get(0));
     }
 
     @Test
@@ -52,12 +47,8 @@ class MapUtilTest {
     void testNestedArray() {
         Map<String, Object> mymap = new HashMap<>();
         MapUtil.setValueInMap(mymap, "a.b[0][2].c[1]", "kiran");
-        assertEquals(
-                "kiran",
-                ((List<Object>) ((Map<String, Object>) ((List<Object>)
-                                                ((List<Object>) ((Map<String, Object>) mymap.get("a")).get("b")).get(0))
-                                        .get(2))
-                                .get("c"))
-                        .get(1));
+        assertEquals("kiran",
+                ((List<Object>) ((Map<String, Object>) ((List<Object>) ((List<Object>) ((Map<String, Object>) mymap
+                        .get("a")).get("b")).get(0)).get(2)).get("c")).get(1));
     }
 }

@@ -16,19 +16,11 @@
     <name>Commons</name>
     <description>Common to all SAAS related api</description>
     <properties>
-        <!-- Paths -->
-        <main.java.dir>src/main/java</main.java.dir>
-        <test.java.dir>src/test/java</test.java.dir>
-        <resources.dir>src/main/resources</resources.dir>
-
-        <!-- Maven Versions -->
         <java.version>21</java.version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <nocode-kirun-version>3.12.0</nocode-kirun-version>
         <xlsx-streamer.version>2.1.0</xlsx-streamer.version>
-        <spotless.version>2.44.3</spotless.version>
-        <palantir-java.format.version>2.61.0</palantir-java.format.version>
     </properties>
     <dependencies>
         <dependency>
@@ -140,77 +132,4 @@
             </snapshots>
         </repository>
     </repositories>
-    <profiles>
-        <profile>
-            <id>spotless</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                        <version>${spotless.version}</version>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>check</goal>
-                                    <goal>apply</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.diffplug.spotless</groupId>
-                                <artifactId>spotless-maven-plugin</artifactId>
-                                <version>${spotless.version}</version>
-                            </dependency>
-                            <dependency>
-                                <groupId>com.palantir.javaformat</groupId>
-                                <artifactId>palantir-java-format</artifactId>
-                                <version>${palantir-java.format.version}</version>
-                            </dependency>
-                        </dependencies>
-                        <configuration>
-                            <!-- JAVA files -->
-                            <java>
-                                <includes>
-                                    <include>${main.java.dir}/**/*.java</include>
-                                    <include>${test.java.dir}/**/*.java</include>
-                                </includes>
-                                <palantirJavaFormat>
-                                    <version>${palantir-java.format.version}</version>
-                                    <style>PALANTIR</style>
-                                </palantirJavaFormat>
-                                <importOrder/>
-                                <removeUnusedImports/>
-                                <formatAnnotations/>
-                                <trimTrailingWhitespace/>
-                                <endWithNewline/>
-                                <toggleOffOn/>
-                            </java>
-                            <!-- YAML files -->
-                            <yaml>
-                                <includes>
-                                    <include>${resources.dir}/*.yml</include>
-                                    <include>${resources.dir}/*.yaml</include>
-                                </includes>
-                                <jackson>
-                                    <features>
-                                        <INDENT_OUTPUT>true</INDENT_OUTPUT>
-                                        <ORDER_MAP_ENTRIES_BY_KEYS>true</ORDER_MAP_ENTRIES_BY_KEYS>
-                                    </features>
-                                    <yamlFeatures>
-                                        <WRITE_DOC_START_MARKER>true</WRITE_DOC_START_MARKER>
-                                        <MINIMIZE_QUOTES>true</MINIMIZE_QUOTES>
-                                        <SPLIT_LINES>true</SPLIT_LINES>
-                                    </yamlFeatures>
-                                </jackson>
-                                <trimTrailingWhitespace/>
-                                <endWithNewline/>
-                            </yaml>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

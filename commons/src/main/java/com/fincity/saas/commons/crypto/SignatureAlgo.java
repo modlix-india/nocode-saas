@@ -1,9 +1,5 @@
 package com.fincity.saas.commons.crypto;
 
-import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
-import com.fincity.saas.commons.exeception.SignatureException;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import java.security.Key;
 import java.security.PrivateKey;
 import java.security.interfaces.ECKey;
@@ -12,215 +8,216 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
 import javax.crypto.SecretKey;
+
+import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.saas.commons.exeception.SignatureException;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
 import lombok.Getter;
 
 @Getter
 public enum SignatureAlgo {
-    NONE("none", "No digital signature or MAC performed", "None", "", false, 0, 0),
 
-    HS256("HS256", "HMAC using SHA-256", "HMAC", "HmacSHA256", true, 256, 256),
+	NONE("none", "No digital signature or MAC performed", "None", "", false, 0, 0),
 
-    HS384("HS384", "HMAC using SHA-384", "HMAC", "HmacSHA384", true, 384, 384),
+	HS256("HS256", "HMAC using SHA-256", "HMAC", "HmacSHA256", true, 256, 256),
 
-    HS512("HS512", "HMAC using SHA-512", "HMAC", "HmacSHA512", true, 512, 512),
+	HS384("HS384", "HMAC using SHA-384", "HMAC", "HmacSHA384", true, 384, 384),
 
-    RS256("RS256", "RSASSA-PKCS-v1_5 using SHA-256", "RSA", "SHA256withRSA", true, 256, 2048),
+	HS512("HS512", "HMAC using SHA-512", "HMAC", "HmacSHA512", true, 512, 512),
 
-    RS384("RS384", "RSASSA-PKCS-v1_5 using SHA-384", "RSA", "SHA384withRSA", true, 384, 2048),
+	RS256("RS256", "RSASSA-PKCS-v1_5 using SHA-256", "RSA", "SHA256withRSA", true, 256, 2048),
 
-    RS512("RS512", "RSASSA-PKCS-v1_5 using SHA-512", "RSA", "SHA512withRSA", true, 512, 2048),
+	RS384("RS384", "RSASSA-PKCS-v1_5 using SHA-384", "RSA", "SHA384withRSA", true, 384, 2048),
 
-    ES256("ES256", "ECDSA using P-256 and SHA-256", "ECDSA", "SHA256withECDSA", true, 256, 256),
+	RS512("RS512", "RSASSA-PKCS-v1_5 using SHA-512", "RSA", "SHA512withRSA", true, 512, 2048),
 
-    ES384("ES384", "ECDSA using P-384 and SHA-384", "ECDSA", "SHA384withECDSA", true, 384, 384),
+	ES256("ES256", "ECDSA using P-256 and SHA-256", "ECDSA", "SHA256withECDSA", true, 256, 256),
 
-    ES512("ES512", "ECDSA using P-521 and SHA-512", "ECDSA", "SHA512withECDSA", true, 512, 521),
+	ES384("ES384", "ECDSA using P-384 and SHA-384", "ECDSA", "SHA384withECDSA", true, 384, 384),
 
-    PS256("PS256", "RSASSA-PSS using SHA-256 and MGF1 with SHA-256", "RSA", "RSASSA-PSS", false, 256, 2048),
+	ES512("ES512", "ECDSA using P-521 and SHA-512", "ECDSA", "SHA512withECDSA", true, 512, 521),
 
-    PS384("PS384", "RSASSA-PSS using SHA-384 and MGF1 with SHA-384", "RSA", "RSASSA-PSS", false, 384, 2048),
+	PS256("PS256", "RSASSA-PSS using SHA-256 and MGF1 with SHA-256", "RSA", "RSASSA-PSS", false, 256, 2048),
 
-    PS512("PS512", "RSASSA-PSS using SHA-512 and MGF1 with SHA-512", "RSA", "RSASSA-PSS", false, 512, 2048);
+	PS384("PS384", "RSASSA-PSS using SHA-384 and MGF1 with SHA-384", "RSA", "RSASSA-PSS", false, 384, 2048),
 
-    // purposefully ordered higher to lower:
-    private static final List<SignatureAlgo> PREFERRED_HMAC_ALGS = List.of(HS512, HS384, HS256);
-    // purposefully ordered higher to lower:
-    private static final List<SignatureAlgo> PREFERRED_EC_ALGS = List.of(ES512, ES384, ES256);
-    private static final Map<String, SignatureAlgo> BY_NAME = new HashMap<>();
-    private static final Map<String, SignatureAlgo> BY_JCA_NAME = new HashMap<>();
+	PS512("PS512", "RSASSA-PSS using SHA-512 and MGF1 with SHA-512", "RSA", "RSASSA-PSS", false, 512, 2048);
 
-    static {
-        for (SignatureAlgo alg : values()) {
-            BY_NAME.put(alg.value.toLowerCase(), alg);
-            BY_JCA_NAME.put(alg.jcaName.toLowerCase(), alg);
-        }
-    }
+	// purposefully ordered higher to lower:
+	private static final List<SignatureAlgo> PREFERRED_HMAC_ALGS = List.of(HS512, HS384, HS256);
+	// purposefully ordered higher to lower:
+	private static final List<SignatureAlgo> PREFERRED_EC_ALGS = List.of(ES512, ES384, ES256);
+	private static final Map<String, SignatureAlgo> BY_NAME = new HashMap<>();
+	private static final Map<String, SignatureAlgo> BY_JCA_NAME = new HashMap<>();
 
-    private final String value;
-    private final String description;
-    private final String familyName;
-    private final String jcaName;
-    private final boolean jdkStandard;
-    private final int digestLength;
-    private final int minKeyLength;
+	static {
+		for (SignatureAlgo alg : values()) {
+			BY_NAME.put(alg.value.toLowerCase(), alg);
+			BY_JCA_NAME.put(alg.jcaName.toLowerCase(), alg);
+		}
+	}
 
-    SignatureAlgo(
-            String value,
-            String description,
-            String familyName,
-            String jcaName,
-            boolean jdkStandard,
-            int digestLength,
-            int minKeyLength) {
-        this.value = value;
-        this.description = description;
-        this.familyName = familyName;
-        this.jcaName = jcaName;
-        this.jdkStandard = jdkStandard;
-        this.digestLength = digestLength;
-        this.minKeyLength = minKeyLength;
-    }
+	private final String value;
+	private final String description;
+	private final String familyName;
+	private final String jcaName;
+	private final boolean jdkStandard;
+	private final int digestLength;
+	private final int minKeyLength;
 
-    private static String keyType(boolean signing) {
-        return signing ? "signing" : "verification";
-    }
+	SignatureAlgo(String value, String description, String familyName, String jcaName, boolean jdkStandard,
+			int digestLength, int minKeyLength) {
+		this.value = value;
+		this.description = description;
+		this.familyName = familyName;
+		this.jcaName = jcaName;
+		this.jdkStandard = jdkStandard;
+		this.digestLength = digestLength;
+		this.minKeyLength = minKeyLength;
+	}
 
-    public static SignatureAlgo getByName(String algorithm) {
-        return BY_NAME.get(algorithm.toLowerCase());
-    }
+	private static String keyType(boolean signing) {
+		return signing ? "signing" : "verification";
+	}
 
-    public static SignatureAlgo getByJcaName(String jcaName) {
-        return BY_JCA_NAME.get(jcaName.toLowerCase());
-    }
+	public static SignatureAlgo getByName(String algorithm) {
+		return BY_NAME.get(algorithm.toLowerCase());
+	}
 
-    public static SignatureAlgo getByKey(Key key) {
+	public static SignatureAlgo getByJcaName(String jcaName) {
+		return BY_JCA_NAME.get(jcaName.toLowerCase());
+	}
 
-        if (key == null) {
-            throw new SignatureException("Key argument cannot be null.");
-        }
+	public static SignatureAlgo getByKey(Key key) {
 
-        if (!(key instanceof SecretKey
-                || (key instanceof PrivateKey && (key instanceof ECKey || key instanceof RSAKey)))) {
-            throw new SignatureException(
-                    "The specified key is of type " + key.getClass().getName() + ". This key is not supported.");
-        }
+		if (key == null) {
+			throw new SignatureException("Key argument cannot be null.");
+		}
 
-        if (key instanceof SecretKey secretKey) {
-            int bitLength = (secretKey.getEncoded() != null ? secretKey.getEncoded().length : 0) * Byte.SIZE;
+		if (!(key instanceof SecretKey ||
+				(key instanceof PrivateKey && (key instanceof ECKey || key instanceof RSAKey)))) {
+			throw new SignatureException(
+					"The specified key is of type " + key.getClass().getName() + ". This key is not supported.");
+		}
 
-            for (SignatureAlgo alg : PREFERRED_HMAC_ALGS) {
-                if (bitLength >= alg.minKeyLength) {
-                    return alg;
-                }
-            }
+		if (key instanceof SecretKey secretKey) {
+			int bitLength = (secretKey.getEncoded() != null ? secretKey.getEncoded().length : 0) * Byte.SIZE;
 
-            throw new SignatureException("The given key is not supported yet.");
-        }
+			for (SignatureAlgo alg : PREFERRED_HMAC_ALGS) {
+				if (bitLength >= alg.minKeyLength) {
+					return alg;
+				}
+			}
 
-        // TODO check other alg based on keys
+			throw new SignatureException("The given key is not supported yet.");
+		}
 
-        return null;
-    }
+		// TODO check other alg based on keys
 
-    public static List<JsonElement> getAvailableAlgos(SignatureAlgo... algorithms) {
+		return null;
 
-        List<SignatureAlgo> selected =
-                (algorithms == null || algorithms.length == 0) ? List.of(SignatureAlgo.values()) : List.of(algorithms);
+	}
 
-        return selected.stream()
-                .map(algo -> new JsonPrimitive(algo.getJcaName()))
-                .collect(Collectors.toList());
-    }
+	public static List<JsonElement> getAvailableAlgos(SignatureAlgo... algorithms) {
 
-    public boolean isHmac() {
-        return familyName.equals("HMAC");
-    }
+		List<SignatureAlgo> selected = (algorithms == null || algorithms.length == 0) ? List.of(SignatureAlgo.values())
+				: List.of(algorithms);
 
-    public boolean isRsa() {
-        return familyName.equals("RSA");
-    }
+		return selected.stream().map(algo -> new JsonPrimitive(algo.getJcaName())).collect(Collectors.toList());
+	}
 
-    public boolean isEllipticCurve() {
-        return familyName.equals("ECDSA");
-    }
+	public boolean isHmac() {
+		return familyName.equals("HMAC");
+	}
 
-    public void isValidSigningKey(Key key) {
-        this.isValid(key, true);
-    }
+	public boolean isRsa() {
+		return familyName.equals("RSA");
+	}
 
-    public void isValidVerificationKey(Key key) {
-        this.isValid(key, false);
-    }
+	public boolean isEllipticCurve() {
+		return familyName.equals("ECDSA");
+	}
 
-    private void isValid(Key key, boolean signing) {
-        if (this == NONE) {
-            throw new SignatureException("The 'NONE' signature algorithm does not support cryptographic keys.");
-        }
+	public void isValidSigningKey(Key key) {
+		this.isValid(key, true);
+	}
 
-        if (isHmac()) {
-            this.validateHmacKey(key, signing);
-            return;
-        }
+	public void isValidVerificationKey(Key key) {
+		this.isValid(key, false);
+	}
 
-        this.validateAsymmetricKey(key, signing);
-    }
+	private void isValid(Key key, boolean signing) {
+		if (this == NONE) {
+			throw new SignatureException("The 'NONE' signature algorithm does not support cryptographic keys.");
+		}
 
-    private void validateHmacKey(Key key, boolean signing) {
-        if (!(key instanceof SecretKey secretKey)) {
-            throw new SignatureException(
-                    StringFormatter.format("$ $ key must be a SecretKey instance.", this.familyName, keyType(signing)));
-        }
+		if (isHmac()) {
+			this.validateHmacKey(key, signing);
+			return;
+		}
 
-        byte[] encoded = secretKey.getEncoded();
-        if (encoded == null || secretKey.getAlgorithm() == null) {
-            throw new SignatureException(StringFormatter.format(
-                    "$ $ key's encoded bytes and algorithm cannot be null.", this.familyName, keyType(signing)));
-        }
+		this.validateAsymmetricKey(key, signing);
+	}
 
-        this.validateKeySize(encoded.length * Byte.SIZE, signing);
-    }
+	private void validateHmacKey(Key key, boolean signing) {
+		if (!(key instanceof SecretKey secretKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key must be a SecretKey instance.", this.familyName, keyType(signing)));
+		}
 
-    private void validateAsymmetricKey(Key key, boolean signing) {
-        if (signing && !(key instanceof PrivateKey)) {
-            throw new SignatureException(
-                    StringFormatter.format("$ signing key must be a PrivateKey instance.", this.familyName));
-        }
+		byte[] encoded = secretKey.getEncoded();
+		if (encoded == null || secretKey.getAlgorithm() == null) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key's encoded bytes and algorithm cannot be null.", this.familyName,
+							keyType(signing)));
+		}
 
-        if (isEllipticCurve()) {
-            this.validateECKey(key, signing);
-        } else {
-            this.validateRSAKey(key, signing);
-        }
-    }
+		this.validateKeySize(encoded.length * Byte.SIZE, signing);
+	}
 
-    private void validateECKey(Key key, boolean signing) {
-        if (!(key instanceof ECKey ecKey)) {
-            throw new SignatureException(
-                    StringFormatter.format("$ $ key must be an ECKey instance.", this.familyName, keyType(signing)));
-        }
+	private void validateAsymmetricKey(Key key, boolean signing) {
+		if (signing && !(key instanceof PrivateKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ signing key must be a PrivateKey instance.", this.familyName));
+		}
 
-        int size = ecKey.getParams().getOrder().bitLength();
-        this.validateKeySize(size, signing);
-    }
+		if (isEllipticCurve()) {
+			this.validateECKey(key, signing);
+		} else {
+			this.validateRSAKey(key, signing);
+		}
+	}
 
-    private void validateRSAKey(Key key, boolean signing) {
-        if (!(key instanceof RSAKey rsaKey)) {
-            throw new SignatureException(
-                    StringFormatter.format("$ $ key must be an RSAKey instance.", this.familyName, keyType(signing)));
-        }
+	private void validateECKey(Key key, boolean signing) {
+		if (!(key instanceof ECKey ecKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key must be an ECKey instance.", this.familyName, keyType(signing)));
+		}
 
-        int size = rsaKey.getModulus().bitLength();
-        this.validateKeySize(size, signing);
-    }
+		int size = ecKey.getParams().getOrder().bitLength();
+		this.validateKeySize(size, signing);
+	}
 
-    private void validateKeySize(int size, boolean signing) {
-        if (size < this.minKeyLength) {
-            throw new SignatureException(StringFormatter.format(
-                    "The $ key's size is $ bits which is not secure enough for the $ algorithm.",
-                    keyType(signing),
-                    size,
-                    name()));
-        }
-    }
+	private void validateRSAKey(Key key, boolean signing) {
+		if (!(key instanceof RSAKey rsaKey)) {
+			throw new SignatureException(
+					StringFormatter.format("$ $ key must be an RSAKey instance.", this.familyName, keyType(signing)));
+		}
+
+		int size = rsaKey.getModulus().bitLength();
+		this.validateKeySize(size, signing);
+	}
+
+	private void validateKeySize(int size, boolean signing) {
+		if (size < this.minKeyLength) {
+			throw new SignatureException(
+					StringFormatter.format("The $ key's size is $ bits which is not secure enough for the $ algorithm.",
+							keyType(signing), size, name()));
+		}
+	}
+
 }

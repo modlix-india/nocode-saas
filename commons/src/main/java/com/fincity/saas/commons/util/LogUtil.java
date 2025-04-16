@@ -3,8 +3,10 @@ package com.fincity.saas.commons.util;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+
 import org.slf4j.Logger;
 import org.slf4j.MDC;
+
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Signal;
@@ -12,77 +14,87 @@ import reactor.core.scheduler.Schedulers;
 
 public class LogUtil {
 
-    public static final String DEBUG_KEY = "x-debug";
+	public static final String DEBUG_KEY = "x-debug";
 
-    public static final String METHOD_NAME = "x-method-name";
+	public static final String METHOD_NAME = "x-method-name";
 
-    public static <T> void logIfDebugKey(Signal<T> signal, BiConsumer<String, String> logStatement) {
+	public static <T> void logIfDebugKey(Signal<T> signal, BiConsumer<String, String> logStatement) {
 
-        if (!signal.isOnNext()) return;
+		if (!signal.isOnNext())
+			return;
 
-        Optional<String> toPutInMdc = signal.getContextView().getOrEmpty(DEBUG_KEY);
+		Optional<String> toPutInMdc = signal.getContextView()
+		        .getOrEmpty(DEBUG_KEY);
 
-        String mName = signal.getContextView().getOrDefault(METHOD_NAME, "");
+		String mName = signal.getContextView()
+		        .getOrDefault(METHOD_NAME, "");
 
-        toPutInMdc.ifPresent(tpim -> {
-            try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, tpim)) {
+		toPutInMdc.ifPresent(tpim -> {
+			try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, tpim)) {
 
-                logStatement.accept(
-                        mName,
-                        signal.isOnNext()
-                                ? signal.get().toString()
-                                : signal.getThrowable().getMessage());
-            }
-        });
-    }
+				logStatement.accept(mName, signal.isOnNext() ? signal.get()
+				        .toString()
+				        : signal.getThrowable()
+				                .getMessage());
+			}
+		});
+	}
 
-    public static <T> Disposable logIfDebugKey(Logger logger, T object) {
+	public static <T> Disposable logIfDebugKey(Logger logger, T object) {
 
-        if (object == null) return null;
+		if (object == null)
+			return null;
 
-        return Mono.deferContextual(ctx -> {
-                    Optional<String> toPutInMdc = ctx.getOrEmpty(DEBUG_KEY);
+		return Mono.deferContextual(ctx -> {
 
-                    if (toPutInMdc.isEmpty()) return Mono.just(false);
+			Optional<String> toPutInMdc = ctx.getOrEmpty(DEBUG_KEY);
 
-                    try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, toPutInMdc.get())) {
-                        logger.debug(object.toString());
-                    }
+			if (toPutInMdc.isEmpty())
+				return Mono.just(false);
 
-                    return Mono.just(true);
-                })
-                .subscribeOn(Schedulers.parallel())
-                .subscribe();
-    }
+			try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, toPutInMdc.get())) {
+				logger.debug(object.toString());
+			}
 
-    public static <V> Function<V, Mono<V>> logIfDebugKey(Logger logger) {
-        return value -> Mono.deferContextual(ctx -> {
-            Optional<String> toPutInMdc = ctx.getOrEmpty(DEBUG_KEY);
+			return Mono.just(true);
+		})
+		        .subscribeOn(Schedulers.parallel())
+		        .subscribe();
+	}
+	
+	public static <V> Function<V, Mono<V>> logIfDebugKey(Logger logger) {
+		return value -> Mono.deferContextual(ctx -> {
 
-            if (toPutInMdc.isEmpty()) return Mono.just(value);
+			Optional<String> toPutInMdc = ctx.getOrEmpty(DEBUG_KEY);
 
-            try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, toPutInMdc.get())) {
-                logger.debug("{}", value);
-            }
+			if (toPutInMdc.isEmpty())
+				return Mono.just(value);
 
-            return Mono.just(value);
-        });
-    }
+			try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, toPutInMdc.get())) {
+				logger.debug("{}", value);
+			}
 
-    public static <V> Function<V, Mono<V>> logIfDebugKey(Logger logger, String format, Object... objects) {
+			return Mono.just(value);
+		}); 
+	}
 
-        return value -> Mono.deferContextual(ctx -> {
-            Optional<String> toPutInMdc = ctx.getOrEmpty(DEBUG_KEY);
+	public static <V> Function<V, Mono<V>> logIfDebugKey(Logger logger, String format, Object... objects) {
 
-            if (toPutInMdc.isEmpty()) return Mono.just(value);
+		return value -> Mono.deferContextual(ctx -> {
 
-            try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, toPutInMdc.get())) {
-                logger.debug(format, objects);
-            }
+			Optional<String> toPutInMdc = ctx.getOrEmpty(DEBUG_KEY);
 
-            return Mono.just(value);
-        });
-    }
+			if (toPutInMdc.isEmpty())
+				return Mono.just(value);
 
-    private LogUtil() {}
+			try (MDC.MDCCloseable cMdc = MDC.putCloseable(DEBUG_KEY, toPutInMdc.get())) {
+				logger.debug(format, objects);
+			}
+
+			return Mono.just(value);
+		});
+	}
+
+	private LogUtil() {
+	}
 }

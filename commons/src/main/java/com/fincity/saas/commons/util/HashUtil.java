@@ -1,15 +1,17 @@
 package com.fincity.saas.commons.util;
 
-import com.fincity.saas.commons.enums.StringEncoder;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.google.gson.JsonElement;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+
+import com.fincity.saas.commons.enums.StringEncoder;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.google.gson.JsonElement;
 
 public class HashUtil {
 
@@ -19,10 +21,12 @@ public class HashUtil {
 
     private static final StringEncoder encoder = StringEncoder.HEX;
 
-    private HashUtil() {}
+    private HashUtil() {
+    }
 
     public static String sha256Hash(Object object) {
-        if (object == null) return null;
+        if (object == null)
+            return null;
 
         try {
             MessageDigest md = getMessageDigest("SHA-256");
@@ -45,11 +49,11 @@ public class HashUtil {
     }
 
     private static <T> byte[] convertToBytes(T input) {
-        if (input == null) return new byte[0];
+        if (input == null)
+            return new byte[0];
 
         if (input instanceof Number number)
-            return number instanceof Double || number instanceof Float
-                    ? doubleToBytes(number.doubleValue())
+            return number instanceof Double || number instanceof Float ? doubleToBytes(number.doubleValue())
                     : longToBytes(number.longValue());
 
         return input.toString().getBytes(StandardCharsets.UTF_8);

@@ -4,104 +4,111 @@ import java.util.Collection;
 
 public class CircularLinkedList<T> {
 
-    private DoublePointerNode<T> head;
-    private DoublePointerNode<T> tail;
+	private DoublePointerNode<T> head;
+	private DoublePointerNode<T> tail;
 
-    private int size = 0;
+	private int size = 0;
 
-    @SafeVarargs
-    public CircularLinkedList(T... elements) {
+	@SafeVarargs
+	public CircularLinkedList(T... elements) {
 
-        for (T element : elements) this.add(element);
-    }
+		for (T element : elements)
+			this.add(element);
+	}
 
-    public CircularLinkedList(Collection<T> data) {
+	public CircularLinkedList(Collection<T> data) {
 
-        for (T element : data) this.add(element);
-    }
+		for (T element : data)
+			this.add(element);
+	}
 
-    public DoublePointerNode<T> getHead() {
-        return this.head;
-    }
+	public DoublePointerNode<T> getHead() {
+		return this.head;
+	}
 
-    public DoublePointerNode<T> getTail() {
-        return this.tail;
-    }
+	public DoublePointerNode<T> getTail() {
+		return this.tail;
+	}
 
-    public int size() {
-        return this.size;
-    }
+	public int size() {
+		return this.size;
+	}
 
-    public synchronized boolean add(T element) {
+	public synchronized boolean add(T element) {
 
-        if (head == null) {
+		if (head == null) {
 
-            head = tail = new DoublePointerNode<>(element);
-            head.next = tail;
-            head.prev = tail;
-        } else if (head == tail) {
+			head = tail = new DoublePointerNode<>(element);
+			head.next = tail;
+			head.prev = tail;
+		} else if (head == tail) {
 
-            tail = new DoublePointerNode<>(head, element, head);
-            head.next = tail;
-            head.prev = tail;
-        } else {
+			tail = new DoublePointerNode<>(head, element, head);
+			head.next = tail;
+			head.prev = tail;
+		} else {
 
-            DoublePointerNode<T> node = new DoublePointerNode<>(tail, element, head);
-            tail.next = node;
-            head.prev = node;
-            tail = node;
-        }
-        this.size++;
+			DoublePointerNode<T> node = new DoublePointerNode<>(tail, element, head);
+			tail.next = node;
+			head.prev = node;
+			tail = node;
+		}
+		this.size++;
 
-        return true;
-    }
+		return true;
+	}
 
-    public Object[] toArray() {
+	public Object[] toArray() {
 
-        Object[] result = new Object[size];
+		Object[] result = new Object[size];
 
-        if (size == 0) return result;
+		if (size == 0)
+			return result;
 
-        int i = 0;
-        DoublePointerNode<T> s = this.head;
-        do {
+		int i = 0;
+		DoublePointerNode<T> s = this.head;
+		do {
 
-            result[i++] = s.item;
-            s = s.next;
-        } while (s != this.head);
+			result[i++] = s.item;
+			s = s.next;
+		} while (s != this.head);
 
-        return result;
-    }
+		return result;
+	}
 
-    @SuppressWarnings("unchecked")
-    public T[] toArray(T[] a) {
-        if (a.length < size)
-            a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
+	@SuppressWarnings("unchecked")
+	public T[] toArray(T[] a) {
+		if (a.length < size)
+			a = (T[]) java.lang.reflect.Array.newInstance(a.getClass()
+			        .getComponentType(), size);
 
-        if (size == 0) return a;
+		if (size == 0)
+			return a;
 
-        int i = 0;
-        DoublePointerNode<T> s = this.head;
-        do {
+		int i = 0;
+		DoublePointerNode<T> s = this.head;
+		do {
 
-            a[i++] = s.item;
-            s = s.next;
-        } while (s != this.head);
+			a[i++] = s.item;
+			s = s.next;
+		} while (s != this.head);
 
-        if (a.length > size) a[size] = null;
+		if (a.length > size)
+			a[size] = null;
 
-        return a;
-    }
+		return a;
+	}
 
-    public boolean addAll(Collection<? extends T> elements) {
-        boolean result = false;
-        for (T element : elements) result |= this.add(element);
-        return result;
-    }
+	public boolean addAll(Collection<? extends T> elements) {
+		boolean result = false;
+		for (T element : elements)
+			result |= this.add(element);
+		return result;
+	}
 
-    public void clear() {
-        this.head = null;
-        this.tail = null;
-        this.size = 0;
-    }
+	public void clear() {
+		this.head = null;
+		this.tail = null;
+		this.size = 0;
+	}
 }

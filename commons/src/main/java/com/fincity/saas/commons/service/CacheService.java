@@ -24,245 +24,283 @@ import reactor.core.scheduler.Schedulers;
 @Service
 public class CacheService extends RedisPubSubAdapter<String, String> {
 
-    @Autowired
-    private CacheManager cacheManager;
+	@Autowired
+	private CacheManager cacheManager;
 
-    @Autowired(required = false)
-    private RedisAsyncCommands<String, Object> redisAsyncCommand;
+	@Autowired(required = false)
+	private RedisAsyncCommands<String, Object> redisAsyncCommand;
 
-    @Autowired(required = false)
-    @Qualifier("subRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> subAsyncCommand;
+	@Autowired(required = false)
+	@Qualifier("subRedisAsyncCommand")
+	private RedisPubSubAsyncCommands<String, String> subAsyncCommand;
 
-    @Autowired(required = false)
-    @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+	@Autowired(required = false)
+	@Qualifier("pubRedisAsyncCommand")
+	private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
-    @Autowired(required = false)
-    private StatefulRedisPubSubConnection<String, String> subConnect;
+	@Autowired(required = false)
+	private StatefulRedisPubSubConnection<String, String> subConnect;
 
-    @Value("${spring.application.name}")
-    private String appName;
+	@Value("${spring.application.name}")
+	private String appName;
 
-    @Value("${redis.channel:evictionChannel}")
-    private String channel;
+	@Value("${redis.channel:evictionChannel}")
+	private String channel;
 
-    @Value("${redis.cache.prefix:unk}")
-    private String redisPrefix;
+	@Value("${redis.cache.prefix:unk}")
+	private String redisPrefix;
 
-    @Value("${spring.cache.type:}")
-    private CacheType cacheType;
+	@Value("${spring.cache.type:}")
+	private CacheType cacheType;
 
-    @PostConstruct
-    public void registerEviction() {
+	@PostConstruct
+	public void registerEviction() {
 
-        if (redisAsyncCommand == null || this.cacheType == CacheType.NONE) return;
+		if (redisAsyncCommand == null || this.cacheType == CacheType.NONE)
+			return;
 
-        subAsyncCommand.subscribe(channel);
-        subConnect.addListener(this);
-    }
+		subAsyncCommand.subscribe(channel);
+		subConnect.addListener(this);
+	}
 
-    public Mono<Boolean> evict(String cName, String key) {
+	public Mono<Boolean> evict(String cName, String key) {
 
-        if (this.cacheType == CacheType.NONE) return Mono.just(true);
+		if (this.cacheType == CacheType.NONE)
+			return Mono.just(true);
 
-        String cacheName = this.redisPrefix + "-" + cName;
+		String cacheName = this.redisPrefix + "-" + cName;
 
-        if (pubAsyncCommand != null) {
-            Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":" + key))
-                    .map(e -> true)
-                    .subscribe();
+		if (pubAsyncCommand != null) {
+			Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":" + key))
+					.map(e -> true)
+					.subscribe();
 
-            return Mono.fromCompletionStage(redisAsyncCommand.hdel(cacheName, key))
-                    .map(e -> true);
-        }
+			return Mono.fromCompletionStage(redisAsyncCommand.hdel(cacheName, key))
+					.map(e -> true);
+		}
 
-        return Mono.fromCallable(() -> this.caffineCacheEvict(cacheName, key)).onErrorResume(t -> Mono.just(false));
-    }
+		return Mono.fromCallable(() -> this.caffineCacheEvict(cacheName, key))
+				.onErrorResume(t -> Mono.just(false));
 
-    private Boolean caffineCacheEvict(String cacheName, String key) {
+	}
 
-        Cache x = cacheManager.getCache(cacheName);
-        if (x != null) x.evictIfPresent(key);
-        return true;
-    }
+	private Boolean caffineCacheEvict(String cacheName, String key) {
 
-    public Mono<Boolean> evict(String cacheName, Object... keys) {
+		Cache x = cacheManager.getCache(cacheName);
+		if (x != null)
+			x.evictIfPresent(key);
+		return true;
+	}
 
-        if (this.cacheType == CacheType.NONE) return Mono.just(true);
+	public Mono<Boolean> evict(String cacheName, Object... keys) {
 
-        return makeKey(keys).flatMap(e -> this.evict(cacheName, e));
-    }
+		if (this.cacheType == CacheType.NONE)
+			return Mono.just(true);
 
-    public Mono<String> makeKey(Object... args) {
+		return makeKey(keys).flatMap(e -> this.evict(cacheName, e));
+	}
 
-        if (args.length == 1) return Mono.just(args[0].toString());
+	public Mono<String> makeKey(Object... args) {
 
-        return Flux.fromArray(args)
-                .filter(Objects::nonNull)
-                .map(Object::toString)
-                .collect(Collectors.joining());
-    }
+		if (args.length == 1)
+			return Mono.just(args[0].toString());
 
-    public <T> Mono<T> put(String cName, T value, Object... keys) {
+		return Flux.fromArray(args)
+				.filter(Objects::nonNull)
+				.map(Object::toString)
+				.collect(Collectors.joining());
+	}
 
-        if (this.cacheType == CacheType.NONE) return Mono.just(value);
+	public <T> Mono<T> put(String cName, T value, Object... keys) {
 
-        String cacheName = this.redisPrefix + "-" + cName;
+		if (this.cacheType == CacheType.NONE)
+			return Mono.just(value);
 
-        this.makeKey(keys)
-                .flatMap(key -> {
-                    CacheObject co = new CacheObject(value);
+		String cacheName = this.redisPrefix + "-" + cName;
 
-                    this.cacheManager.getCache(cacheName).put(key, co);
+		this.makeKey(keys)
+				.flatMap(key -> {
 
-                    if (redisAsyncCommand == null) return Mono.just(true);
+					CacheObject co = new CacheObject(value);
 
-                    Mono.fromCompletionStage(redisAsyncCommand.hset(cacheName, key, co))
-                            .subscribe();
+					this.cacheManager.getCache(cacheName)
+							.put(key, co);
 
-                    return Mono.just(true);
-                })
-                .subscribe();
+					if (redisAsyncCommand == null)
+						return Mono.just(true);
 
-        return Mono.just(value);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> Mono<T> get(String cName, Object... keys) {
+					Mono.fromCompletionStage(redisAsyncCommand.hset(cacheName, key, co))
+							.subscribe();
 
-        if (this.cacheType == CacheType.NONE) return Mono.empty();
+					return Mono.just(true);
+				})
+				.subscribe();
 
-        String cacheName = this.redisPrefix + "-" + cName;
+		return Mono.just(value);
+	}
 
-        return this.makeKey(keys)
-                .flatMap(key -> {
-                    Mono<CacheObject> value = Mono.justOrEmpty(
-                            this.cacheManager.getCache(cacheName).get(key, CacheObject.class));
+	@SuppressWarnings("unchecked")
+	public <T> Mono<T> get(String cName, Object... keys) {
 
-                    if (redisAsyncCommand == null) return value;
+		if (this.cacheType == CacheType.NONE)
+			return Mono.empty();
 
-                    return value.switchIfEmpty(
-                            Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
-                                    .map(CacheObject.class::cast)));
-                })
-                .flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
-    }
+		String cacheName = this.redisPrefix + "-" + cName;
 
-    @SuppressWarnings("unchecked")
-    public <T> Mono<T> cacheValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
+		return this.makeKey(keys)
+				.flatMap(key -> {
 
-        return this.makeKey(keys)
-                .flatMap(key -> this.get(cName, key)
-                        .switchIfEmpty(Mono.defer(() -> supplier.get().flatMap(value -> this.put(cName, value, key)))))
-                .map(e -> (T) e);
-    }
+					Mono<CacheObject> value = Mono.justOrEmpty(this.cacheManager.getCache(cacheName)
+							.get(key, CacheObject.class));
 
-    @SuppressWarnings("unchecked")
-    public <T> Mono<T> cacheEmptyValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
+					if (redisAsyncCommand == null)
+						return value;
 
-        return this.makeKey(keys)
-                .flatMap(key -> this.<CacheObject>get(cName, key).switchIfEmpty(Mono.defer(() -> supplier.get()
-                        .flatMap(value -> this.put(cName, new CacheObject(value), key))
-                        .switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), key))))))
-                .flatMap(e -> Mono.justOrEmpty((T) e.getObject()))
-                .subscribeOn(Schedulers.boundedElastic());
-    }
+					return value.switchIfEmpty(
+							Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
+									.map(CacheObject.class::cast)));
+				})
+				.flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
+	}
 
-    public Mono<Boolean> evictAll(String cName) {
+	@SuppressWarnings("unchecked")
+	public <T> Mono<T> cacheValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
 
-        if (this.cacheType == CacheType.NONE) return Mono.just(true);
+		return this.makeKey(keys)
+				.flatMap(key -> this.get(cName, key)
+						.switchIfEmpty(Mono.defer(() -> supplier.get()
+								.flatMap(value -> this.put(cName, value, key)))))
+				.map(e -> (T) e);
+	}
 
-        String cacheName = this.redisPrefix + "-" + cName;
+	@SuppressWarnings("unchecked")
+	public <T> Mono<T> cacheEmptyValueOrGet(String cName, Supplier<Mono<T>> supplier, Object... keys) {
 
-        if (pubAsyncCommand != null) {
-            Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":*"))
-                    .subscribe();
+		return this.makeKey(keys)
+				.flatMap(key ->
 
-            return Mono.fromCompletionStage(redisAsyncCommand.del(cacheName))
-                    .map(e -> true)
-                    .defaultIfEmpty(true);
-        }
+				this.<CacheObject>get(cName, key)
+						.switchIfEmpty(Mono.defer(() ->
 
-        return Mono.fromCallable(() -> {
-                    this.cacheManager.getCache(cacheName).clear();
-                    return true;
-                })
-                .onErrorResume(t -> Mono.just(false));
-    }
+						supplier.get()
+								.flatMap(value -> this.put(cName, new CacheObject(value), key))
+								.switchIfEmpty(Mono.defer(() -> this.put(cName, new CacheObject(null), key))))))
+				.flatMap(e -> Mono.justOrEmpty((T) e.getObject()))
+				.subscribeOn(Schedulers.boundedElastic());
+	}
 
-    public Mono<Boolean> evictAllCaches() {
+	public Mono<Boolean> evictAll(String cName) {
 
-        if (this.cacheType == CacheType.NONE) return Mono.just(true);
+		if (this.cacheType == CacheType.NONE)
+			return Mono.just(true);
 
-        if (pubAsyncCommand != null) {
+		String cacheName = this.redisPrefix + "-" + cName;
 
-            return Mono.fromCompletionStage(redisAsyncCommand.keys(this.redisPrefix + "-*"))
-                    .flatMapMany(Flux::fromIterable)
-                    .map(e -> {
-                        Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, e + ":*"))
-                                .subscribe();
-                        return Mono.fromCompletionStage(redisAsyncCommand.del(e));
-                    })
-                    .map(e -> true)
-                    .reduce((a, b) -> a && b);
-        }
+		if (pubAsyncCommand != null) {
+			Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":*"))
+					.subscribe();
 
-        Flux<String> flux = Flux.fromIterable(this.cacheManager.getCacheNames());
+			return Mono.fromCompletionStage(redisAsyncCommand.del(cacheName))
+					.map(e -> true)
+					.defaultIfEmpty(true);
+		}
 
-        return flux.map(this.cacheManager::getCache)
-                .map(e -> {
-                    e.clear();
-                    return true;
-                })
-                .reduce((a, b) -> a && b);
-    }
+		return Mono.fromCallable(() -> {
 
-    public Mono<Collection<String>> getCacheNames() {
+			this.cacheManager.getCache(cacheName)
+					.clear();
+			return true;
+		})
+				.onErrorResume(t -> Mono.just(false));
+	}
 
-        return Mono.just(this.cacheManager.getCacheNames().stream()
-                .map(e -> e.substring(this.redisPrefix.length() + 1))
-                .toList());
-    }
+	public Mono<Boolean> evictAllCaches() {
 
-    @Override
-    public void message(String channel, String message) {
+		if (this.cacheType == CacheType.NONE)
+			return Mono.just(true);
 
-        if (channel == null || !channel.equals(this.channel)) return;
+		if (pubAsyncCommand != null) {
 
-        int colon = message.indexOf(':');
-        if (colon == -1) return;
+			return Mono.fromCompletionStage(redisAsyncCommand.keys(this.redisPrefix + "-*"))
+					.flatMapMany(Flux::fromIterable)
+					.map(e -> {
 
-        String cacheName = message.substring(0, colon);
-        String cacheKey = message.substring(colon + 1);
+						Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, e + ":*"))
+								.subscribe();
+						return Mono.fromCompletionStage(redisAsyncCommand.del(e));
 
-        Cache cache = this.cacheManager.getCache(cacheName);
+					})
+					.map(e -> true)
+					.reduce((a, b) -> a && b);
+		}
 
-        if (cache == null) return;
+		Flux<String> flux = Flux.fromIterable(this.cacheManager.getCacheNames());
 
-        if (cacheKey.equals("*")) cache.clear();
-        else cache.evictIfPresent(cacheKey);
-    }
+		return flux.map(this.cacheManager::getCache)
+				.map(e -> {
+					e.clear();
+					return true;
+				})
+				.reduce((a, b) -> a && b);
+	}
 
-    public <T> Function<T, Mono<T>> evictAllFunction(String cacheName) {
+	public Mono<Collection<String>> getCacheNames() {
 
-        return v -> this.evictAll(cacheName).map(e -> v);
-    }
+		return Mono.just(this.cacheManager.getCacheNames()
+				.stream()
+				.map(e -> e.substring(this.redisPrefix.length() + 1))
+				.toList());
+	}
 
-    public <T> Function<T, Mono<T>> evictFunction(String cacheName, Object... keys) {
-        return v -> this.evict(cacheName, keys).map(e -> v);
-    }
+	@Override
+	public void message(String channel, String message) {
 
-    @SuppressWarnings("unchecked")
-    public <T> Function<T, Mono<T>> evictFunctionWithSuppliers(String cacheName, Supplier<Object>... keySuppliers) {
+		if (channel == null || !channel.equals(this.channel))
+			return;
 
-        Object[] keys = new Object[keySuppliers.length];
+		int colon = message.indexOf(':');
+		if (colon == -1)
+			return;
 
-        for (int i = 0; i < keySuppliers.length; i++) keys[i] = keySuppliers[i].get();
+		String cacheName = message.substring(0, colon);
+		String cacheKey = message.substring(colon + 1);
 
-        return v -> this.evict(cacheName, keys).map(e -> v);
-    }
+		Cache cache = this.cacheManager.getCache(cacheName);
 
-    public <T> Function<T, Mono<T>> evictFunctionWithKeyFunction(
-            String cacheName, Function<T, String> keyMakingFunction) {
-        return v -> this.evict(cacheName, keyMakingFunction.apply(v)).map(e -> v);
-    }
+		if (cache == null)
+			return;
+
+		if (cacheKey.equals("*"))
+			cache.clear();
+		else
+			cache.evictIfPresent(cacheKey);
+	}
+
+	public <T> Function<T, Mono<T>> evictAllFunction(String cacheName) {
+
+		return v -> this.evictAll(cacheName)
+				.map(e -> v);
+	}
+
+	public <T> Function<T, Mono<T>> evictFunction(String cacheName, Object... keys) {
+		return v -> this.evict(cacheName, keys)
+				.map(e -> v);
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> Function<T, Mono<T>> evictFunctionWithSuppliers(String cacheName, Supplier<Object>... keySuppliers) {
+
+		Object[] keys = new Object[keySuppliers.length];
+
+		for (int i = 0; i < keySuppliers.length; i++)
+			keys[i] = keySuppliers[i].get();
+
+		return v -> this.evict(cacheName, keys)
+				.map(e -> v);
+	}
+
+	public <T> Function<T, Mono<T>> evictFunctionWithKeyFunction(String cacheName,
+			Function<T, String> keyMakingFunction) {
+		return v -> this.evict(cacheName, keyMakingFunction.apply(v)).map(e -> v);
+	}
 }
