@@ -203,6 +203,21 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
         return (LocalDateTime) get(10);
     }
 
+    /**
+     * Setter for <code>worker.worker_task.scheduler</code>.
+     */
+    public WorkerTaskRecord setScheduler(ULong value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>worker.worker_task.scheduler</code>.
+     */
+    public ULong getScheduler() {
+        return (ULong) get(11);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -226,7 +241,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
     /**
      * Create a detached, initialised WorkerTaskRecord
      */
-    public WorkerTaskRecord(ULong id, String jobName, String cronExpression, LocalDateTime nextExecutionTime, LocalDateTime lastExecutionTime, WorkerTaskStatus status, String lastExecutionResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public WorkerTaskRecord(ULong id, String jobName, String cronExpression, LocalDateTime nextExecutionTime, LocalDateTime lastExecutionTime, WorkerTaskStatus status, String lastExecutionResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, ULong scheduler) {
         super(WorkerTask.WORKER_TASK);
 
         setId(id);
@@ -240,6 +255,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        setScheduler(scheduler);
         resetChangedOnNotNull();
     }
 }

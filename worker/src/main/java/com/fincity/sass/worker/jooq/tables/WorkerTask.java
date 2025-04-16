@@ -8,6 +8,7 @@ import com.fincity.sass.worker.jooq.Indexes;
 import com.fincity.sass.worker.jooq.Keys;
 import com.fincity.sass.worker.jooq.Worker;
 import com.fincity.sass.worker.jooq.enums.WorkerTaskStatus;
+import com.fincity.sass.worker.jooq.tables.WorkerScheduler.WorkerSchedulerPath;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTaskRecord;
 
 import java.time.LocalDateTime;
@@ -17,11 +18,15 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -120,6 +125,11 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
      */
     public final TableField<WorkerTaskRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is last updated");
 
+    /**
+     * The column <code>worker.worker_task.scheduler</code>.
+     */
+    public final TableField<WorkerTaskRecord, ULong> SCHEDULER = createField(DSL.name("scheduler"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "");
+
     private WorkerTask(Name alias, Table<WorkerTaskRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -149,6 +159,39 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
         this(DSL.name("worker_task"), null);
     }
 
+    public <O extends Record> WorkerTask(Table<O> path, ForeignKey<O, WorkerTaskRecord> childPath, InverseForeignKey<O, WorkerTaskRecord> parentPath) {
+        super(path, childPath, parentPath, WORKER_TASK);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class WorkerTaskPath extends WorkerTask implements Path<WorkerTaskRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> WorkerTaskPath(Table<O> path, ForeignKey<O, WorkerTaskRecord> childPath, InverseForeignKey<O, WorkerTaskRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private WorkerTaskPath(Name alias, Table<WorkerTaskRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public WorkerTaskPath as(String alias) {
+            return new WorkerTaskPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public WorkerTaskPath as(Name alias) {
+            return new WorkerTaskPath(alias, this);
+        }
+
+        @Override
+        public WorkerTaskPath as(Table<?> alias) {
+            return new WorkerTaskPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Worker.WORKER;
@@ -167,6 +210,24 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
     @Override
     public UniqueKey<WorkerTaskRecord> getPrimaryKey() {
         return Keys.KEY_WORKER_TASK_PRIMARY;
+    }
+
+    @Override
+    public List<ForeignKey<WorkerTaskRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK_WORKER_TASK_SCHEDULER);
+    }
+
+    private transient WorkerSchedulerPath _workerScheduler;
+
+    /**
+     * Get the implicit join path to the <code>worker.worker_scheduler</code>
+     * table.
+     */
+    public WorkerSchedulerPath workerScheduler() {
+        if (_workerScheduler == null)
+            _workerScheduler = new WorkerSchedulerPath(this, Keys.FK_WORKER_TASK_SCHEDULER, null);
+
+        return _workerScheduler;
     }
 
     @Override

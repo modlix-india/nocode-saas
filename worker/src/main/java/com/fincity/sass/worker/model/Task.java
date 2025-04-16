@@ -21,6 +21,7 @@ public class Task extends AbstractUpdatableDTO<ULong, ULong>{
     private static final long serialVersionUID = -8484383577414055084L;
 
     private String jobName;
+    private ULong scheduler;
     private String cronExpression;
     private LocalDateTime nextExecutionTime;
     private LocalDateTime lastExecutionTime;

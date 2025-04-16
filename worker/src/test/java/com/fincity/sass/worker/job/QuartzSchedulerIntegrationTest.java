@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.Date;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.sass.worker.model.WorkerScheduler;
+import com.fincity.sass.worker.service.SchedulerService;
 import org.junit.jupiter.api.Test;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,22 +21,42 @@ import reactor.core.publisher.Mono;
 @SpringBootTest
 class QuartzSchedulerIntegrationTest {
 
-    @Autowired
-    private Scheduler scheduler;
+    private final Scheduler scheduler;
+    private final  TaskService taskService;
+    private final SchedulerService schedulerService;
 
     @Autowired
-    private TaskService taskService;
+    public QuartzSchedulerIntegrationTest( Scheduler scheduler, TaskService taskService, SchedulerService schedulerService ) {
+        this.scheduler = scheduler;
+        this.taskService = taskService;
+        this.schedulerService = schedulerService;
+    }
 
     @Test
     void testSchedulerWithJDBCStore() {
 
         FlatMapUtil.flatMapMono(
-                // Create task
+                // Create scheduler
                 () -> {
+                    WorkerScheduler workerScheduler = new WorkerScheduler();
+                    workerScheduler.setName("Test Scheduler");
+                    workerScheduler.setStatus("RUNNING");
+                    workerScheduler.setRunning(true);
+                    workerScheduler.setStandbyMode(false);
+                    workerScheduler.setShutdown(false);
+                    workerScheduler.setStartTime(LocalDateTime.now());
+                    workerScheduler.setCreatedBy(ULongUtil.valueOf(1));
+                    workerScheduler.setUpdatedBy(ULongUtil.valueOf(1));
+                    return schedulerService.create(workerScheduler);
+                },
+
+                // Create task with scheduler reference
+                workerScheduler -> {
                     Task task = new Task();
                     task.setJobName("Test Job");
                     task.setCronExpression("0/1 * * * * ?");
                     task.setNextExecutionTime(LocalDateTime.now());
+                    task.setScheduler(workerScheduler.getId());
                     task.setStatus(WorkerTaskStatus.UPCOMING);
                     task.setCreatedAt(LocalDateTime.now());
                     task.setCreatedBy(ULongUtil.valueOf(1));
@@ -42,7 +64,7 @@ class QuartzSchedulerIntegrationTest {
                 },
 
                 // Create job detail and store it first
-                task -> {
+                (workerScheduler,task) -> {
                     String taskId = task.getId().toString();
                     JobDetail jobDetail = JobBuilder.newJob(TaskExecutorJob.class)
                             .withIdentity("jdbcTest", "testGroup")
@@ -71,7 +93,7 @@ class QuartzSchedulerIntegrationTest {
 
                 // Create trigger
                 // Create trigger with longer duration
-                (task, jd) -> {
+                (workerScheduler, task, jd) -> {
                     SimpleTrigger trigger = TriggerBuilder.newTrigger()
                             .withIdentity("jdbcTrigger", "testGroup")
                             .forJob(jd.getKey())
@@ -85,7 +107,7 @@ class QuartzSchedulerIntegrationTest {
                 },
 
                 // Schedule the trigger and add verification
-                (task, jd, tg) -> {
+                (workerScheduler, task, jd, tg) -> {
                     try {
                         Date scheduledDate = scheduler.scheduleJob(tg);
                         System.out.println("Trigger scheduled for: " + scheduledDate);
@@ -110,6 +132,6 @@ class QuartzSchedulerIntegrationTest {
                         throw new RuntimeException(e);
                     }
                 },
-                (task, jd, tg, scheduledDate) -> Mono.empty()).block();
+                (workerScheduler, task, jd, tg, scheduledDate) -> Mono.empty()).block();
     }
 }

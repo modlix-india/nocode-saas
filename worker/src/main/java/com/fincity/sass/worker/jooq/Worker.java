@@ -4,6 +4,7 @@
 package com.fincity.sass.worker.jooq;
 
 
+import com.fincity.sass.worker.jooq.tables.WorkerScheduler;
 import com.fincity.sass.worker.jooq.tables.WorkerTask;
 
 import java.util.Arrays;
@@ -28,6 +29,11 @@ public class Worker extends SchemaImpl {
     public static final Worker WORKER = new Worker();
 
     /**
+     * The table <code>worker.worker_scheduler</code>.
+     */
+    public final WorkerScheduler WORKER_SCHEDULER = WorkerScheduler.WORKER_SCHEDULER;
+
+    /**
      * The table <code>worker.worker_task</code>.
      */
     public final WorkerTask WORKER_TASK = WorkerTask.WORKER_TASK;
@@ -48,6 +54,7 @@ public class Worker extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            WorkerScheduler.WORKER_SCHEDULER,
             WorkerTask.WORKER_TASK
         );
     }

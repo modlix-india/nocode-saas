@@ -4,6 +4,7 @@
 package com.fincity.sass.worker.jooq;
 
 
+import com.fincity.sass.worker.jooq.tables.WorkerScheduler;
 import com.fincity.sass.worker.jooq.tables.WorkerTask;
 
 
@@ -12,6 +13,11 @@ import com.fincity.sass.worker.jooq.tables.WorkerTask;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+    /**
+     * The table <code>worker.worker_scheduler</code>.
+     */
+    public static final WorkerScheduler WORKER_SCHEDULER = WorkerScheduler.WORKER_SCHEDULER;
 
     /**
      * The table <code>worker.worker_task</code>.
