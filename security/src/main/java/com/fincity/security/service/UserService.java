@@ -1,6 +1,6 @@
 package com.fincity.security.service;
 
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.*;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
@@ -44,8 +44,6 @@ import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.dto.Permission;
-import com.fincity.security.dto.RoleV2;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
@@ -88,6 +86,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 	private final EventCreationService ecService;
 	private final AppRegistrationV2DAO appRegistrationDAO;
 	private final ProfileService profileService;
+	private final DepartmentService departmentService;
+	private final DesignationService designationService;
 
 	@Value("${jwt.key}")
 	private String tokenKey;
@@ -96,7 +96,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 			ClientHierarchyService clientHierarchyService, PasswordEncoder passwordEncoder,
 			SecurityMessageResourceService securityMessageResourceService, SoxLogService soxLogService,
 			OtpService otpService, TokenService tokenService, EventCreationService ecService,
-			AppRegistrationV2DAO appRegistrationDAO, ProfileService profileService) {
+			AppRegistrationV2DAO appRegistrationDAO, ProfileService profileService, DepartmentService departmentService,
+			DesignationService designationService) {
 
 		this.clientService = clientService;
 		this.appService = appService;
@@ -109,6 +110,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 		this.ecService = ecService;
 		this.appRegistrationDAO = appRegistrationDAO;
 		this.profileService = profileService;
+		this.departmentService = departmentService;
+		this.designationService = designationService;
 	}
 
 	private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -958,6 +961,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 							SecurityContextUtil::getUsersContextAuthentication,
 
 							ca -> this.addDefaultRoles(appId, appClientId, urlClientId, client,
+									createdUser.getId()),
+
+							(ca, rolesAdded) -> this.addDefaultProfiles(appId, appClientId, urlClientId, client,
+									createdUser.getId()),
+
+							(ca, rolesAdded, profilesAdded) -> this.addDesignation(appId, appClientId, urlClientId,
+									client,
 									createdUser.getId()))
 							.contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createForRegistration"));
 
@@ -967,6 +977,41 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 				.switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
 	}
 
+	private Mono<Boolean> addDesignation(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+			ULong userId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.clientService.getClientLevelType(client.getId(), appId),
+
+				levelType -> this.appRegistrationDAO.getDepartmentsForRegistration(appId, appClientId,
+						urlClientId, client.getTypeCode(), levelType, client.getBusinessType()),
+
+				(levelType, departments) -> this.departmentService.createForRegistration(client, departments),
+
+				(levelType, departments, departmentIndex) -> this.appRegistrationDAO
+						.getDesignationsForRegistration(appId, appClientId, urlClientId, client.getTypeCode(),
+								levelType, client.getBusinessType()),
+
+				(levelType, departments, departmentIndex, designations) -> this.designationService
+						.createForRegistration(client, designations, departmentIndex),
+
+				(levelType, departments, departmentIndex, designations, designationIndex) -> this.appRegistrationDAO
+						.getUserDesignationsForRegistration(appId, appClientId, urlClientId, client.getTypeCode(),
+								levelType, client.getBusinessType()),
+
+				(levelType, departments, departmentIndex, designations, designationIndex, userDesignations) -> {
+					if (userDesignations.isEmpty()
+							|| !designationIndex.containsKey(userDesignations.get(0).getDesignationId()))
+						return Mono.just(true);
+
+					return this.dao.addDesignation(userId,
+							designationIndex.get(userDesignations.get(0).getDesignationId()).getT2().getId());
+				}
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDesignation"));
+	}
+
 	private Mono<Boolean> addDefaultRoles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
 			ULong userId) {
 
@@ -974,13 +1019,28 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
 				() -> this.clientService.getClientLevelType(client.getId(), appId),
 
-				levelType -> this.appRegistrationDAO.getRoleIdsForRegistration(appId, appClientId, urlClientId,
+				levelType -> this.appRegistrationDAO.getRoleIdsForUserRegistration(appId, appClientId, urlClientId,
 						client.getTypeCode(), levelType, client.getBusinessType()),
 
 				(levelType, roles) -> Flux.fromIterable(roles)
-						.flatMap(roleId -> this.dao.addRoleToUser(userId, roleId)).collectList(),
+						.flatMap(roleId -> this.dao.addRoleToUser(userId, roleId)).collectList().<Boolean>map(e -> true)
 
-				(levelType, roles, addedRoles) -> Mono.just(true)
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
+	}
+
+	private Mono<Boolean> addDefaultProfiles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+			ULong userId) {
+
+		return FlatMapUtil.flatMapMono(
+
+				() -> this.clientService.getClientLevelType(client.getId(), appId),
+
+				levelType -> this.appRegistrationDAO.getProfileIdsForUserRegistration(appId, appClientId, urlClientId,
+						client.getTypeCode(), levelType, client.getBusinessType()),
+
+				(levelType, profiles) -> Flux.fromIterable(profiles)
+						.flatMap(profileId -> this.dao.addProfileToUser(userId, profileId)).collectList()
+						.<Boolean>map(e -> true)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
 	}

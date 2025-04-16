@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.ByteUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.appregistration.AbstractAppRegistration;
 import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
@@ -47,6 +48,7 @@ import com.fincity.security.jooq.enums.SecurityAppRegProfileRestrictionLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegUserDesignationLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegUserProfileLevel;
 import com.fincity.security.jooq.enums.SecurityAppRegUserRoleV2Level;
+import com.fincity.security.service.appregistration.AppRegistrationServiceV2;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -133,7 +135,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_ACCESS.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_ACCESS.LEVEL.eq(level.to(SecurityAppRegAccessLevel.class)),
-                SECURITY_APP_REG_ACCESS.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_ACCESS.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         SelectConditionStep<Record3<ULong, ULong, Byte>> query = this.dslContext
                 .select(SECURITY_APP_REG_ACCESS.CLIENT_ID,
@@ -187,7 +190,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_FILE_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_FILE_ACCESS.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_FILE_ACCESS.LEVEL.eq(level.to(SecurityAppRegFileAccessLevel.class)),
-                SECURITY_APP_REG_FILE_ACCESS.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_FILE_ACCESS.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_APP_REG_FILE_ACCESS).where(condition))
                 .map(e -> e.into(AppRegistrationFileAccess.class)).collectList().map(e -> {
@@ -217,7 +221,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_DEPARTMENT.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_DEPARTMENT.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_DEPARTMENT.LEVEL.eq(level.to(SecurityAppRegDepartmentLevel.class)),
-                SECURITY_APP_REG_DEPARTMENT.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_DEPARTMENT.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_APP_REG_DEPARTMENT).where(condition))
                 .map(e -> e.into(AppRegistrationDepartment.class)).collectList().map(e -> {
@@ -247,7 +252,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_DESIGNATION.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_DESIGNATION.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_DESIGNATION.LEVEL.eq(level.to(SecurityAppRegDesignationLevel.class)),
-                SECURITY_APP_REG_DESIGNATION.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_DESIGNATION.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_APP_REG_DESIGNATION).where(condition))
                 .map(e -> e.into(AppRegistrationDesignation.class)).collectList().map(e -> {
@@ -275,7 +281,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_USER_ROLE_V2.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_USER_ROLE_V2.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_USER_ROLE_V2.LEVEL.eq(level.to(SecurityAppRegUserRoleV2Level.class)),
-                SECURITY_APP_REG_USER_ROLE_V2.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_USER_ROLE_V2.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         return Flux
                 .from(this.dslContext
@@ -308,7 +315,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_USER_PROFILE.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_USER_PROFILE.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_USER_PROFILE.LEVEL.eq(level.to(SecurityAppRegUserProfileLevel.class)),
-                SECURITY_APP_REG_USER_PROFILE.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_USER_PROFILE.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         return Flux
                 .from(this.dslContext
@@ -341,7 +349,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_PROFILE_RESTRICTION.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_PROFILE_RESTRICTION.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_PROFILE_RESTRICTION.LEVEL.eq(level.to(SecurityAppRegProfileRestrictionLevel.class)),
-                SECURITY_APP_REG_PROFILE_RESTRICTION.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_PROFILE_RESTRICTION.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         return Flux
                 .from(this.dslContext
@@ -375,7 +384,8 @@ public class AppRegistrationV2DAO {
                 SECURITY_APP_REG_USER_DESIGNATION.CLIENT_ID.in(appClientId, urlClientId),
                 SECURITY_APP_REG_USER_DESIGNATION.CLIENT_TYPE.eq(clientType),
                 SECURITY_APP_REG_USER_DESIGNATION.LEVEL.eq(level.to(SecurityAppRegUserDesignationLevel.class)),
-                SECURITY_APP_REG_USER_DESIGNATION.BUSINESS_TYPE.eq(businessType));
+                SECURITY_APP_REG_USER_DESIGNATION.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)));
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_APP_REG_USER_DESIGNATION).where(condition))
                 .map(e -> e.into(AppRegistrationUserDesignation.class)).collectList()

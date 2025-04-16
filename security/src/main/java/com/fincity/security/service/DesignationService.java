@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -19,11 +20,16 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.DesignationDAO;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.Department;
 import com.fincity.security.dto.Designation;
+import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
+import com.fincity.security.dto.appregistration.AppRegistrationDesignation;
 import com.fincity.security.jooq.tables.records.SecurityDesignationRecord;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 @Service
 public class DesignationService
@@ -174,4 +180,14 @@ public class DesignationService
         return super.delete(id);
     }
 
+    public Mono<Map<ULong, Tuple2<AppRegistrationDesignation, Designation>>> createForRegistration(
+            Client client,
+            List<AppRegistrationDesignation> designations,
+            Map<ULong, Tuple2<AppRegistrationDepartment, Department>> departmentIndex) {
+
+        if (designations == null || designations.isEmpty())
+            return Mono.just(Map.of());
+
+        return this.dao.createForRegistration(client, designations, departmentIndex);
+    }
 }

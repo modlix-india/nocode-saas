@@ -25,7 +25,9 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
+import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
+import com.fincity.security.jooq.tables.records.SecurityProfileClientRestrictionRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -195,5 +197,25 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
                 .and(SECURITY_CLIENT.ID.in(clientIds)))
                 .map(count -> count.value1() > 0);
+    }
+
+    public Mono<Boolean> createProfileRestrictions(ULong clientId, ULong appId, List<ULong> profileIds) {
+
+        List<SecurityProfileClientRestrictionRecord> records = profileIds.stream()
+                .map(e -> {
+
+                    SecurityProfileClientRestrictionRecord record = this.dslContext
+                            .newRecord(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION);
+                    record.setAppId(appId);
+                    record.setClientId(clientId);
+                    record.setProfileId(e);
+
+                    return record;
+                }).toList();
+
+        return Mono
+                .from(this.dslContext.insertInto(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
+                        .values(records))
+                .map(e -> e > 0);
     }
 }

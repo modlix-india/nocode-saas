@@ -427,8 +427,22 @@ public class ClientService
 				.flatMap(clientHie -> this.dao.isClientActive(clientHie));
 	}
 
-	public Mono<Boolean> addClientRegistrationObjects(ULong appId, ULong clientId, ULong loggedInFromClientId,
+	public Mono<Boolean> addClientRegistrationObjects(ULong appId, ULong appClientId, ULong urlClientId,
 			Client client) {
-		return Mono.just(Boolean.TRUE);
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.getClientLevelType(client.getId(), appId),
+
+				levelType -> this.appRegistrationDAO.getProfileRestrictionIdsForRegistration(appId, appClientId,
+						urlClientId,
+						client.getTypeCode(), levelType, client.getBusinessType()),
+
+				(levelType, profileIds) -> {
+
+					if (profileIds == null || profileIds.isEmpty())
+						return Mono.just(true);
+
+					return this.dao.createProfileRestrictions(client.getId(), appId, profileIds);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientRegistrationObjects"));
 	}
 }

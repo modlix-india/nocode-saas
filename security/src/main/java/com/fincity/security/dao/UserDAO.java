@@ -42,6 +42,7 @@ import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
+import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityV2Role;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission;
 import com.fincity.security.jooq.tables.SecurityV2RoleRole;
@@ -504,5 +505,13 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				)
 
 		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.getRoleAuthorities"));
+	}
+
+	public Mono<Boolean> addDesignation(ULong userId, ULong designationId) {
+		return Mono
+				.from(this.dslContext.update(SecurityUser.SECURITY_USER)
+						.set(SecurityUser.SECURITY_USER.DESIGNATION_ID, designationId)
+						.where(SecurityUser.SECURITY_USER.ID.eq(userId)))
+				.map(e -> e > 0);
 	}
 }
