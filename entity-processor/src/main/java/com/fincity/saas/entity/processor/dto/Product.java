@@ -1,12 +1,11 @@
 package com.fincity.saas.entity.processor.dto;
 
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-
-import java.io.Serial;
 
 @Data
 @Accessors(chain = true)
@@ -17,5 +16,4 @@ public class Product extends BaseProcessorDto<Product> {
 
     @Serial
     private static final long serialVersionUID = 8003842565130760738L;
-
 }

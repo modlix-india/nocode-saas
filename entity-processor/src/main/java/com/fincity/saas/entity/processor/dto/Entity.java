@@ -18,6 +18,7 @@ public class Entity extends BaseProcessorDto<Entity> {
     @Serial
     private static final long serialVersionUID = 7148027392286233787L;
 
+    private ULong modelId;
     private String dialCode;
     private String phoneNumber;
     private String email;

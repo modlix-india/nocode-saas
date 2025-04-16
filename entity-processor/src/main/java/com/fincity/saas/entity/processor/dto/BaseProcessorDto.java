@@ -24,6 +24,7 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ab
 
     private String name;
     private String description;
+    private ULong addedByUserId;
     private ULong currentUserId;
     private String status;
     private String subStatus;

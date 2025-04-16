@@ -1,3 +1,12 @@
 package com.fincity.saas.entity.processor.service;
 
-public class ProductService {}
+import org.springframework.stereotype.Service;
+
+import com.fincity.saas.entity.processor.dao.ProductDAO;
+import com.fincity.saas.entity.processor.dto.Product;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
+
+@Service
+public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
+
+}

@@ -5,6 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
+import com.fincity.saas.commons.jooq.flow.schema.enums.CommonSqlType;
 import com.google.gson.JsonPrimitive;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -29,6 +30,9 @@ public class ColumnSchema extends Schema {
             .setType(Type.of(SchemaType.OBJECT))
             .setProperties(Map.ofEntries(
                     entry(
+                            Fields.commonSqlType,
+                            Schema.ofString(Fields.commonSqlType).setEnums(CommonSqlType.getCommonSqlType())),
+                    entry(
                             Fields.primaryKey,
                             Schema.ofBoolean(Fields.primaryKey).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
                     entry(
@@ -52,11 +56,12 @@ public class ColumnSchema extends Schema {
                             Schema.ofBoolean(Fields.isUnsigned).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
                     entry(Fields.comment, Schema.ofString(Fields.comment)),
                     entry(Fields.afterColumn, Schema.ofString(Fields.afterColumn))))
-            .setRequired(List.of("name", "type"));
+            .setRequired(List.of("name", "type", Fields.commonSqlType));
 
     @Serial
     private static final long serialVersionUID = 4252507002565625625L;
 
+    private String commonSqlType;
     private Boolean primaryKey = Boolean.FALSE;
     private Boolean autoIncrement = Boolean.FALSE;
     private Boolean unique = Boolean.FALSE;
@@ -78,19 +83,37 @@ public class ColumnSchema extends Schema {
         super(schema);
     }
 
-    public static ColumnSchema ofColumn(String columnName, SchemaType schemaType) {
-        return (ColumnSchema) new ColumnSchema().setName(columnName).setType(Type.of(schemaType));
+    public static ColumnSchema ofColumn(String columnName, SchemaType schemaType, CommonSqlType commonSqlType) {
+        return (ColumnSchema) new ColumnSchema()
+                .setCommonSqlType(commonSqlType.getName())
+                .setName(columnName)
+                .setType(Type.of(schemaType));
+    }
+
+    public static ColumnSchema ofChar(String columnName, int length) {
+        return (ColumnSchema)
+                ofColumn(columnName, SchemaType.STRING, CommonSqlType.CHAR).setMaxLength(length);
     }
 
     public static ColumnSchema ofVarchar(String columnName, int length) {
-        return (ColumnSchema) ofColumn(columnName, SchemaType.STRING).setMaxLength(length);
+        return (ColumnSchema)
+                ofColumn(columnName, SchemaType.STRING, CommonSqlType.VARCHAR).setMaxLength(length);
     }
 
     public static ColumnSchema ofDateTime(String columnName) {
-        return (ColumnSchema) ofColumn(columnName, SchemaType.STRING).setFormat(StringFormat.DATETIME);
+        return (ColumnSchema)
+                ofColumn(columnName, SchemaType.STRING, CommonSqlType.TIMESTAMP).setFormat(StringFormat.DATETIME);
+    }
+
+    public static ColumnSchema ofDateTime(String columnName, String columnDefinition) {
+        return (ColumnSchema) ofColumn(columnName, SchemaType.STRING, CommonSqlType.TIMESTAMP)
+                .setColumnDefinition(columnDefinition)
+                .setFormat(StringFormat.DATETIME);
     }
 
     public static ColumnSchema ofDecimal(String columnName, int precision, int scale) {
-        return ofColumn(columnName, SchemaType.DOUBLE).setPrecision(precision).setScale(scale);
+        return ofColumn(columnName, SchemaType.DOUBLE, CommonSqlType.DECIMAL)
+                .setPrecision(precision)
+                .setScale(scale);
     }
 }

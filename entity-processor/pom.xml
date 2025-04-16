@@ -19,7 +19,7 @@
     <properties>
         <base.package>com.fincity.saas</base.package>
         <base.package.dir>com/fincity/saas</base.package.dir>
-        <database.schema.name>core</database.schema.name>
+        <database.schema.name>entity_processor</database.schema.name>
         <feign-reactor.version>4.2.1</feign-reactor.version>
         <java.version>21</java.version>
         <jooq.dir>${main.java.dir}/${base.package.dir}/${server.package.dir}/jooq</jooq.dir>
@@ -39,7 +39,7 @@
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <server.package>entity.processor</server.package>
-        <server.package.dir>commons/core</server.package.dir>
+        <server.package.dir>entity/processor</server.package.dir>
         <spotless.version>2.44.3</spotless.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <test.java.dir>src/test/java</test.java.dir>
