@@ -1,7 +1,4 @@
 spring:
-  threads:
-    virtual:
-      enabled=true
   application:
     name: worker
   config:

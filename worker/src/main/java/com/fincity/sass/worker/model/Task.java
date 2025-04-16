@@ -1,6 +1,7 @@
 package com.fincity.sass.worker.model;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.sass.worker.jooq.enums.WorkerTaskStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -23,7 +24,7 @@ public class Task extends AbstractUpdatableDTO<ULong, ULong>{
     private String cronExpression;
     private LocalDateTime nextExecutionTime;
     private LocalDateTime lastExecutionTime;
-    private String status;
+    private WorkerTaskStatus status;
     private String lastExecutionResult;
 
 }

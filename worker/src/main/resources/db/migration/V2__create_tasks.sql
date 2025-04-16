@@ -8,10 +8,11 @@ CREATE TABLE `worker_task` (
     `last_execution_time` TIMESTAMP DEFAULT NULL COMMENT  'last execution at',
     `status` ENUM('UPCOMING', 'FINISHED', 'FAILED', 'RUNNING') NOT NULL COMMENT 'JOB Status',
     `last_execution_result` TEXT,
-    `created_at` TIMESTAMP NOT NULL,
-    `updated_at` TIMESTAMP,
-    `created_by` VARCHAR(255),
-    `updated_by` VARCHAR(255),
+
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
     PRIMARY KEY (`ID`),
     INDEX `idx_scheduled_tasks_status` (`status`),
     INDEX `idx_scheduled_tasks_job_name` (`job_name`)

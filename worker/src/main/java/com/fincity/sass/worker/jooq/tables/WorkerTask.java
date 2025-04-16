@@ -97,24 +97,28 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
     public final TableField<WorkerTaskRecord, String> LAST_EXECUTION_RESULT = createField(DSL.name("last_execution_result"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>worker.worker_task.created_at</code>.
+     * The column <code>worker.worker_task.CREATED_BY</code>. ID of the user who
+     * created this row
      */
-    public final TableField<WorkerTaskRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "");
+    public final TableField<WorkerTaskRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
 
     /**
-     * The column <code>worker.worker_task.updated_at</code>.
+     * The column <code>worker.worker_task.CREATED_AT</code>. Time when this row
+     * is created
      */
-    public final TableField<WorkerTaskRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(0), this, "");
+    public final TableField<WorkerTaskRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     /**
-     * The column <code>worker.worker_task.created_by</code>.
+     * The column <code>worker.worker_task.UPDATED_BY</code>. ID of the user who
+     * last updated this row
      */
-    public final TableField<WorkerTaskRecord, String> CREATED_BY = createField(DSL.name("created_by"), SQLDataType.VARCHAR(255), this, "");
+    public final TableField<WorkerTaskRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who last updated this row");
 
     /**
-     * The column <code>worker.worker_task.updated_by</code>.
+     * The column <code>worker.worker_task.UPDATED_AT</code>. Time when this row
+     * is last updated
      */
-    public final TableField<WorkerTaskRecord, String> UPDATED_BY = createField(DSL.name("updated_by"), SQLDataType.VARCHAR(255), this, "");
+    public final TableField<WorkerTaskRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is last updated");
 
     private WorkerTask(Name alias, Table<WorkerTaskRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

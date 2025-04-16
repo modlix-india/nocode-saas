@@ -34,6 +34,36 @@ spring:
             predicates:
               - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/*/api/worker/**,
 
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: always
+    scheduler-name: WorkerScheduler
+    auto-startup: true
+    startup-delay: 0s
+    wait-for-jobs-to-complete-on-shutdown: true
+    overwrite-existing-jobs: true
+    datasource:
+      name: quartzDS
+      driver: com.mysql.cj.jdbc.Driver
+      url: ${worker.qdb.url}
+      username: ${worker.qdb.username}
+      password: ${worker.qdb.password}
+    properties:
+      scheduler:
+        instanceName: WorkerScheduler
+        instanceId: AUTO
+        skipUpdateCheck: true
+      jobStore:
+        class: org.quartz.impl.jdbcjobstore.JobStoreTX
+        driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+        dataSource: quartzDS
+        tablePrefix: QRTZ_
+        isClustered: true
+      threadPool:
+        class: org.quartz.simpl.SimpleThreadPool
+        threadCount: 5
+
 management:
   endpoint:
     flyway:

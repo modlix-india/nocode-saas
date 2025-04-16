@@ -136,63 +136,71 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
     }
 
     /**
-     * Setter for <code>worker.worker_task.created_at</code>.
+     * Setter for <code>worker.worker_task.CREATED_BY</code>. ID of the user who
+     * created this row
      */
-    public WorkerTaskRecord setCreatedAt(LocalDateTime value) {
+    public WorkerTaskRecord setCreatedBy(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_task.created_at</code>.
+     * Getter for <code>worker.worker_task.CREATED_BY</code>. ID of the user who
+     * created this row
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
+    public ULong getCreatedBy() {
+        return (ULong) get(7);
     }
 
     /**
-     * Setter for <code>worker.worker_task.updated_at</code>.
+     * Setter for <code>worker.worker_task.CREATED_AT</code>. Time when this row
+     * is created
      */
-    public WorkerTaskRecord setUpdatedAt(LocalDateTime value) {
+    public WorkerTaskRecord setCreatedAt(LocalDateTime value) {
         set(8, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_task.updated_at</code>.
+     * Getter for <code>worker.worker_task.CREATED_AT</code>. Time when this row
+     * is created
      */
-    public LocalDateTime getUpdatedAt() {
+    public LocalDateTime getCreatedAt() {
         return (LocalDateTime) get(8);
     }
 
     /**
-     * Setter for <code>worker.worker_task.created_by</code>.
+     * Setter for <code>worker.worker_task.UPDATED_BY</code>. ID of the user who
+     * last updated this row
      */
-    public WorkerTaskRecord setCreatedBy(String value) {
+    public WorkerTaskRecord setUpdatedBy(ULong value) {
         set(9, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_task.created_by</code>.
+     * Getter for <code>worker.worker_task.UPDATED_BY</code>. ID of the user who
+     * last updated this row
      */
-    public String getCreatedBy() {
-        return (String) get(9);
+    public ULong getUpdatedBy() {
+        return (ULong) get(9);
     }
 
     /**
-     * Setter for <code>worker.worker_task.updated_by</code>.
+     * Setter for <code>worker.worker_task.UPDATED_AT</code>. Time when this row
+     * is last updated
      */
-    public WorkerTaskRecord setUpdatedBy(String value) {
+    public WorkerTaskRecord setUpdatedAt(LocalDateTime value) {
         set(10, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_task.updated_by</code>.
+     * Getter for <code>worker.worker_task.UPDATED_AT</code>. Time when this row
+     * is last updated
      */
-    public String getUpdatedBy() {
-        return (String) get(10);
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -218,7 +226,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
     /**
      * Create a detached, initialised WorkerTaskRecord
      */
-    public WorkerTaskRecord(ULong id, String jobName, String cronExpression, LocalDateTime nextExecutionTime, LocalDateTime lastExecutionTime, WorkerTaskStatus status, String lastExecutionResult, LocalDateTime createdAt, LocalDateTime updatedAt, String createdBy, String updatedBy) {
+    public WorkerTaskRecord(ULong id, String jobName, String cronExpression, LocalDateTime nextExecutionTime, LocalDateTime lastExecutionTime, WorkerTaskStatus status, String lastExecutionResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(WorkerTask.WORKER_TASK);
 
         setId(id);
@@ -228,10 +236,10 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
         setLastExecutionTime(lastExecutionTime);
         setStatus(status);
         setLastExecutionResult(lastExecutionResult);
-        setCreatedAt(createdAt);
-        setUpdatedAt(updatedAt);
         setCreatedBy(createdBy);
+        setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }
