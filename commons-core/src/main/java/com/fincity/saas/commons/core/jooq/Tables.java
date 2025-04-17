@@ -3,12 +3,14 @@
  */
 package com.fincity.saas.commons.core.jooq;
 
+
 import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
+
 
 /**
  * Convenience access to all tables in core.
  */
-@SuppressWarnings({"all", "unchecked", "rawtypes", "this-escape"})
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
 
     /**
