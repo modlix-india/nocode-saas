@@ -16,6 +16,13 @@ import reactor.core.publisher.Mono;
 @Service
 public class EntityService extends BaseProcessorService<EntityProcessorEntitiesRecord, Entity, EntityDAO> {
 
+    private static final String ENTITY_CACHE = "entity";
+
+    @Override
+    protected String getCacheName() {
+        return ENTITY_CACHE;
+    }
+
     @Override
     protected Mono<Entity> updatableEntity(Entity entity) {
         return super.updatableEntity(entity).flatMap(e -> {

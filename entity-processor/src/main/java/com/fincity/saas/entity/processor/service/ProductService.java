@@ -9,4 +9,10 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 @Service
 public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
 
+	private static final String PRODUCT_CACHE = "product";
+
+	@Override
+	protected String getCacheName() {
+		return PRODUCT_CACHE;
+	}
 }
