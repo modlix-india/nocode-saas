@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.collector.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
@@ -30,6 +31,7 @@ public class EntityCollectorService {
 
         Set<String> formIds = payload.getFormIds();
         String leadGenId = payload.getLeadGenId();
+        ObjectMapper mapper = new ObjectMapper();
 
         return Flux.fromIterable(formIds)
                 .flatMap(formId ->
@@ -45,15 +47,19 @@ public class EntityCollectorService {
 
                     return this.fetchOAuthToken(integration.getClientCode(), integration.getAppCode())
                             .flatMap(token -> {
-                                if (token == null || token.isEmpty()) {
-                                    return Mono.error(new RuntimeException("Failed to fetch OAuth token"));
-                                }
-                                return this.fetchLeadDetails(leadGenId, token);
+                                String formId = payload.getFormIds().iterator().next();
+
+                                return this.fetchLeadDetails(leadGenId, token)
+                                        .flatMap(leadDetails ->
+                                                this.fetchFormDetails(formId, token)
+                                                        .map(formDetails -> {
+                                                            Object normalized = EntityCollectorUtilService.normalizedLeadObject(leadDetails, formDetails);
+                                                            return mapper.valueToTree(normalized);
+                                                        })
+                                        );
                             });
                 });
-
     }
-
     private Mono<String> fetchOAuthToken(String clientCode, String appCode) {
         return coreService.getConnectionOAuth2Token(
                 "",
@@ -76,5 +82,19 @@ public class EntityCollectorService {
                 .retrieve()
                 .bodyToMono(JsonNode.class);
     }
+
+    private Mono<JsonNode> fetchFormDetails(String formId, String accessToken) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("https")
+                        .host("graph.facebook.com")
+                        .path("/v22.0/{formId}")
+                        .queryParam("fields", "questions")
+                        .queryParam("access_token", accessToken)
+                        .build(formId))
+                .retrieve()
+                .bodyToMono(JsonNode.class);
+    }
+
 
 }
