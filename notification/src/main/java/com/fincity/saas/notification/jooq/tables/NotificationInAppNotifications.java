@@ -39,8 +39,8 @@ import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
-import org.jooq.impl.AutoConverter;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -109,7 +109,7 @@ public class NotificationInAppNotifications extends TableImpl<NotificationInAppN
      * <code>notification.notification_in_app_notifications.NOTIFICATION_TYPE</code>.
      * Type of notification that is sent
      */
-    public final TableField<NotificationInAppNotificationsRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)).asEnumDataType(NotificationInAppNotificationsNotificationType.class), this, "Type of notification that is sent", new AutoConverter<NotificationInAppNotificationsNotificationType, NotificationType>(NotificationInAppNotificationsNotificationType.class, NotificationType.class));
+    public final TableField<NotificationInAppNotificationsRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)).asEnumDataType(NotificationInAppNotificationsNotificationType.class), this, "Type of notification that is sent", new EnumConverter<NotificationInAppNotificationsNotificationType, NotificationType>(NotificationInAppNotificationsNotificationType.class, NotificationType.class));
 
     /**
      * The column
@@ -123,14 +123,14 @@ public class NotificationInAppNotifications extends TableImpl<NotificationInAppN
      * <code>notification.notification_in_app_notifications.NOTIFICATION_STAGE</code>.
      * Stage of the notification that is sent
      */
-    public final TableField<NotificationInAppNotificationsRecord, NotificationStage> NOTIFICATION_STAGE = createField(DSL.name("NOTIFICATION_STAGE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("PLATFORM", SQLDataType.VARCHAR)).asEnumDataType(NotificationInAppNotificationsNotificationStage.class), this, "Stage of the notification that is sent", new AutoConverter<NotificationInAppNotificationsNotificationStage, NotificationStage>(NotificationInAppNotificationsNotificationStage.class, NotificationStage.class));
+    public final TableField<NotificationInAppNotificationsRecord, NotificationStage> NOTIFICATION_STAGE = createField(DSL.name("NOTIFICATION_STAGE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("PLATFORM", SQLDataType.VARCHAR)).asEnumDataType(NotificationInAppNotificationsNotificationStage.class), this, "Stage of the notification that is sent", new EnumConverter<NotificationInAppNotificationsNotificationStage, NotificationStage>(NotificationInAppNotificationsNotificationStage.class, NotificationStage.class));
 
     /**
      * The column
      * <code>notification.notification_in_app_notifications.NOTIFICATION_DELIVERY_STATUS</code>.
      * Current Delivery status of this notification message
      */
-    public final TableField<NotificationInAppNotificationsRecord, NotificationDeliveryStatus> NOTIFICATION_DELIVERY_STATUS = createField(DSL.name("NOTIFICATION_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)).asEnumDataType(NotificationInAppNotificationsNotificationDeliveryStatus.class), this, "Current Delivery status of this notification message", new AutoConverter<NotificationInAppNotificationsNotificationDeliveryStatus, NotificationDeliveryStatus>(NotificationInAppNotificationsNotificationDeliveryStatus.class, NotificationDeliveryStatus.class));
+    public final TableField<NotificationInAppNotificationsRecord, NotificationDeliveryStatus> NOTIFICATION_DELIVERY_STATUS = createField(DSL.name("NOTIFICATION_DELIVERY_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NO_INFO", SQLDataType.VARCHAR)).asEnumDataType(NotificationInAppNotificationsNotificationDeliveryStatus.class), this, "Current Delivery status of this notification message", new EnumConverter<NotificationInAppNotificationsNotificationDeliveryStatus, NotificationDeliveryStatus>(NotificationInAppNotificationsNotificationDeliveryStatus.class, NotificationDeliveryStatus.class));
 
     /**
      * The column
