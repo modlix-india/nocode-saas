@@ -1,20 +1,10 @@
 package com.fincity.saas.notification.service.channel.email;
 
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.document.Connection;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;
-
 import jakarta.mail.Address;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
@@ -26,6 +16,13 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
@@ -33,133 +30,128 @@ import reactor.util.context.Context;
 @Service(value = "smtp")
 public class SMTPService extends AbstractEmailService implements IEmailService<SMTPService> {
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<Boolean> sendMail(EmailMessage emailMessage, Connection connection) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<Boolean> sendMail(EmailMessage emailMessage, Connection connection) {
 
-		Map<String, Object> connectionDetails = connection.getConnectionDetails();
+        Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
-		if (connectionDetails.isEmpty())
-			return Mono.just(Boolean.FALSE);
+        if (connectionDetails.isEmpty()) return Mono.just(Boolean.FALSE);
 
-		Map<String, Object> connProps = (Map<String, Object>) connectionDetails.get("mailProps");
+        Map<String, Object> connProps = (Map<String, Object>) connectionDetails.get("mailProps");
 
-		if (connProps == null || connProps.isEmpty())
-			return this.throwSendError("Connection Properties with 'mail.' are missing");
+        if (connProps == null || connProps.isEmpty())
+            return this.throwSendError("Connection Properties with 'mail.' are missing");
 
-		String username = StringUtil.safeValueOf(connectionDetails.get("username"), "");
-		String password = StringUtil.safeValueOf(connectionDetails.get("password"), "");
+        String username = StringUtil.safeValueOf(connectionDetails.get("username"), "");
+        String password = StringUtil.safeValueOf(connectionDetails.get("password"), "");
 
-		if (StringUtil.safeIsBlank(username) || StringUtil.safeIsBlank(password))
-			return this.throwSendError("Connection username/password is missing");
+        if (StringUtil.safeIsBlank(username) || StringUtil.safeIsBlank(password))
+            return this.throwSendError("Connection username/password is missing");
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
+                        () -> this.hasValidConnection(connection),
+                        isValidConnection -> this.sendMailWithSession(emailMessage, connProps, username, password))
+                .onErrorResume(ex -> {
+                    logger.error("Error while sending email: {}", ex.getMessage(), ex);
+                    return this.throwSendError(ex.getMessage());
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
+    }
 
-				() -> this.hasValidConnection(connection),
+    private Mono<Boolean> sendMailWithSession(
+            EmailMessage emailMessage, Map<String, Object> connectionProps, String username, String password) {
 
-				isValidConnection -> this.sendMailWithSession(emailMessage, connProps, username, password))
-				.onErrorResume(ex -> {
-					logger.error("Error while sending email: {}", ex.getMessage(), ex);
-					return this.throwSendError(ex.getMessage());
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
-	}
+        return Mono.fromCallable(() -> {
+                    Properties props = System.getProperties();
 
-	private Mono<Boolean> sendMailWithSession(EmailMessage emailMessage, Map<String, Object> connectionProps,
-			String username, String password) {
+                    props.putAll(connectionProps);
 
-		return Mono.fromCallable(() -> {
-			Properties props = System.getProperties();
+                    Session session = Session.getDefaultInstance(props);
 
-			props.putAll(connectionProps);
+                    MimeMessage message = this.createMimeMessage(session, emailMessage);
 
-			Session session = Session.getDefaultInstance(props);
+                    Transport transport = session.getTransport();
 
-			MimeMessage message = this.createMimeMessage(session, emailMessage);
+                    transport.connect(username, password);
+                    transport.sendMessage(message, message.getAllRecipients());
 
-			Transport transport = session.getTransport();
+                    return Boolean.TRUE;
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(IOException.class, ex -> {
+                    logger.error("Error while sending SMTP email: {}", ex.getMessage(), ex);
+                    return this.throwSendError(ex.getMessage());
+                });
+    }
 
-			transport.connect(username, password);
-			transport.sendMessage(message, message.getAllRecipients());
+    private MimeMessage createMimeMessage(Session session, EmailMessage emailMessage) throws MessagingException {
 
-			return Boolean.TRUE;
-		}).subscribeOn(Schedulers.boundedElastic())
-				.onErrorResume(IOException.class, ex -> {
-					logger.error("Error while sending SMTP email: {}", ex.getMessage(), ex);
-					return this.throwSendError(ex.getMessage());
-				});
-	}
+        MimeMessage message = new MimeMessage(session);
 
-	private MimeMessage createMimeMessage(Session session, EmailMessage emailMessage) throws MessagingException {
+        message.setFrom(new InternetAddress(emailMessage.getFromAddress()));
+        message.addRecipient(Message.RecipientType.TO, new InternetAddress(emailMessage.getToAddress()));
 
-		MimeMessage message = new MimeMessage(session);
+        this.addMessageRecipients(message, Message.RecipientType.BCC, emailMessage.getBccAddresses());
+        this.addMessageRecipients(message, Message.RecipientType.CC, emailMessage.getCcAddresses());
 
-		message.setFrom(new InternetAddress(emailMessage.getFromAddress()));
-		message.addRecipient(Message.RecipientType.TO, new InternetAddress(emailMessage.getToAddress()));
+        if (emailMessage.getReplyTo() != null) message.setReplyTo(this.getInternetAddresses(emailMessage.getReplyTo()));
 
-		this.addMessageRecipients(message, Message.RecipientType.BCC, emailMessage.getBccAddresses());
-		this.addMessageRecipients(message, Message.RecipientType.CC, emailMessage.getCcAddresses());
+        message.setSubject(emailMessage.getSubject());
 
-		if (emailMessage.getReplyTo() != null)
-			message.setReplyTo(this.getInternetAddresses(emailMessage.getReplyTo()));
+        MimeBodyPart mimeBodyPart = new MimeBodyPart();
+        mimeBodyPart.setContent(emailMessage.getBody(), "text/html; charset=utf-8");
+        mimeBodyPart.setContentID(this.generateContentId(emailMessage.getFromAddress()));
 
-		message.setSubject(emailMessage.getSubject());
+        Multipart multipart = new MimeMultipart();
+        multipart.addBodyPart(mimeBodyPart);
 
-		MimeBodyPart mimeBodyPart = new MimeBodyPart();
-		mimeBodyPart.setContent(emailMessage.getBody(), "text/html; charset=utf-8");
-		mimeBodyPart.setContentID(this.generateContentId(emailMessage.getFromAddress()));
+        message.setContent(multipart);
+        message.setSentDate(new Date());
 
-		Multipart multipart = new MimeMultipart();
-		multipart.addBodyPart(mimeBodyPart);
+        this.addMessageHeader(message, emailMessage.getHeaders());
 
-		message.setContent(multipart);
-		message.setSentDate(new Date());
+        return message;
+    }
 
-		this.addMessageHeader(message, emailMessage.getHeaders());
+    private void addMessageRecipients(Message message, Message.RecipientType type, List<String> addresses) {
 
-		return message;
-	}
+        if (addresses == null || addresses.isEmpty()) return;
 
-	private void addMessageRecipients(Message message, Message.RecipientType type, List<String> addresses) {
+        addresses.stream().filter(Objects::nonNull).forEach(address -> {
+            try {
+                message.setRecipient(type, this.getInternetAddress(address));
+            } catch (MessagingException e) {
+                logger.error("Error while sending : {}", e.getMessage(), e);
+            }
+        });
+    }
 
-		if (addresses == null || addresses.isEmpty())
-			return;
+    private void addMessageHeader(Message message, Map<String, String> headers) {
 
-		addresses.stream().filter(Objects::nonNull).forEach(address -> {
-			try {
-				message.setRecipient(type, this.getInternetAddress(address));
-			} catch (MessagingException e) {
-				logger.error("Error while sending : {}", e.getMessage(), e);
-			}
-		});
-	}
+        if (headers == null || headers.isEmpty()) return;
 
-	private void addMessageHeader(Message message, Map<String, String> headers) {
+        headers.forEach((name, value) -> this.addMessageHeader(message, name, value));
+    }
 
-		if (headers == null || headers.isEmpty())
-			return;
+    private void addMessageHeader(Message message, String name, String value) {
+        try {
+            message.addHeader(name, value);
+        } catch (MessagingException e) {
+            logger.error("Error while adding header : {}:{}", name, value);
+        }
+    }
 
-		headers.forEach((name, value) -> this.addMessageHeader(message, name, value));
-	}
+    private Address[] getInternetAddresses(List<String> addresses) {
+        return addresses.stream().map(this::getInternetAddress).toArray(Address[]::new);
+    }
 
-	private void addMessageHeader(Message message, String name, String value) {
-		try {
-			message.addHeader(name, value);
-		} catch (MessagingException e) {
-			logger.error("Error while adding header : {}:{}", name, value);
-		}
-	}
-
-	private Address[] getInternetAddresses(List<String> addresses) {
-		return addresses.stream().map(this::getInternetAddress).toArray(Address[]::new);
-	}
-
-	private Address getInternetAddress(String address) {
-		try {
-			return new InternetAddress(address);
-		} catch (AddressException addressException) {
-			logger.error("Error while getting Internet Address: {}", addressException.getMessage());
-			return null;
-		}
-	}
-
+    private Address getInternetAddress(String address) {
+        try {
+            return new InternetAddress(address);
+        } catch (AddressException addressException) {
+            logger.error("Error while getting Internet Address: {}", addressException.getMessage());
+            return null;
+        }
+    }
 }

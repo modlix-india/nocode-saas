@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.jooq.enums.notification;
+package com.fincity.saas.commons.core.enums.notification;
 
 import org.jooq.EnumType;
 

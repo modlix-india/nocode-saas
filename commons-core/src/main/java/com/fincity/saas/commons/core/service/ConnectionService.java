@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
+import com.fincity.saas.commons.core.service.notification.NotificationProcessingService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
@@ -16,6 +17,7 @@ import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -27,11 +29,19 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
     @Autowired(required = false)
     @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
+    private NotificationProcessingService notificationProcessingService;
+
     @Value("${redis.connection.eviction.channel:connectionChannel}")
     private String channel;
 
     protected ConnectionService() {
         super(Connection.class);
+    }
+
+    @Lazy
+    @Autowired
+    private void setNotificationService(NotificationProcessingService notificationProcessingService) {
+        this.notificationProcessingService = notificationProcessingService;
     }
 
     @Override
@@ -105,5 +115,23 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
                                     : Mono.empty());
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.read"));
+    }
+
+    public Mono<Boolean> hasConnection(String name, String appCode, String clientCode, ConnectionType type) {
+        return this.readInternalConnection(name, appCode, clientCode, type).hasElement()
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
+    }
+
+    public Mono<Connection> readInternalConnection(String name, String appCode, String clientCode,
+                                                   ConnectionType type) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
+
+                conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
+
+                (conn, typedConn) -> Mono.justOrEmpty(typedConn.getClientCode().equals(clientCode)
+                        || BooleanUtil.safeValueOf(typedConn.getIsAppLevel()) ? typedConn : null));
     }
 }

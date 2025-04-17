@@ -1,12 +1,5 @@
 package com.fincity.saas.notification.service.channel.email;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -19,7 +12,11 @@ import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
 import com.sendgrid.helpers.mail.objects.Personalization;
-
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
@@ -27,77 +24,73 @@ import reactor.util.context.Context;
 @Service(value = "sendgrid")
 public class SendGridService extends AbstractEmailService implements IEmailService<SendGridService> {
 
-	private static final String EMAIL_ENDPOINT = "mail/send";
+    private static final String EMAIL_ENDPOINT = "mail/send";
 
-	private static final String API_KEY = "apiKey";
+    private static final String API_KEY = "apiKey";
 
-	private final ConcurrentHashMap<String, SendGrid> sendGridClients = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SendGrid> sendGridClients = new ConcurrentHashMap<>();
 
-	@Override
-	public Mono<Boolean> sendMail(EmailMessage emailMessage, Connection connection) {
+    @Override
+    public Mono<Boolean> sendMail(EmailMessage emailMessage, Connection connection) {
 
-		Map<String, Object> connectionDetails = connection.getConnectionDetails();
+        Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
-		if (connectionDetails.isEmpty())
-			return Mono.just(Boolean.FALSE);
+        if (connectionDetails.isEmpty()) return Mono.just(Boolean.FALSE);
 
-		if (StringUtil.safeIsBlank(connectionDetails.get(API_KEY)))
-			return this.throwSendError("SENDGRID api key is not found");
+        if (StringUtil.safeIsBlank(connectionDetails.get(API_KEY)))
+            return this.throwSendError("SENDGRID api key is not found");
 
-		String apiKey = connectionDetails.get(API_KEY).toString();
+        String apiKey = connectionDetails.get(API_KEY).toString();
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
+                        () -> this.hasValidConnection(connection),
+                        isValidConnection -> this.callSendGrid(emailMessage, apiKey))
+                .onErrorResume(ex -> {
+                    logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
+                    return this.throwSendError(ex.getMessage());
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
+    }
 
-				() -> this.hasValidConnection(connection),
+    private Mono<Boolean> callSendGrid(EmailMessage emailMessage, String apiKey) {
 
-				isValidConnection -> this.callSendGrid(emailMessage, apiKey)).onErrorResume(ex -> {
-					logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
-					return this.throwSendError(ex.getMessage());
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "SendGridService.sendMail"));
+        return Mono.fromCallable(() -> {
+                    SendGrid sendGrid = sendGridClients.computeIfAbsent(apiKey, SendGrid::new);
+                    Mail mail = this.buidMail(emailMessage);
+                    Request request = new Request();
+                    request.setMethod(Method.POST);
+                    request.setEndpoint(EMAIL_ENDPOINT);
+                    request.setBody(mail.build());
 
-	}
+                    return sendGrid.api(request);
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .map(response -> HttpStatus.valueOf(response.getStatusCode()).is2xxSuccessful())
+                .onErrorResume(IOException.class, ex -> {
+                    logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
+                    return this.throwSendError(ex.getMessage());
+                });
+    }
 
-	private Mono<Boolean> callSendGrid(EmailMessage emailMessage, String apiKey) {
+    private Mail buidMail(EmailMessage emailMessage) {
 
-		return Mono.fromCallable(() -> {
+        Mail mail = new Mail();
+        mail.setFrom(new Email(emailMessage.getFromAddress()));
 
-			SendGrid sendGrid = sendGridClients.computeIfAbsent(apiKey, SendGrid::new);
-			Mail mail = this.buidMail(emailMessage);
-			Request request = new Request();
-			request.setMethod(Method.POST);
-			request.setEndpoint(EMAIL_ENDPOINT);
-			request.setBody(mail.build());
+        Content content = new Content("text/html", emailMessage.getBody());
 
-			return sendGrid.api(request);
-		}).subscribeOn(Schedulers.boundedElastic())
-				.map(response -> HttpStatus.valueOf(response.getStatusCode()).is2xxSuccessful())
-				.onErrorResume(IOException.class, ex -> {
-					logger.error("Error while sending sendgrid email: {}", ex.getMessage(), ex);
-					return this.throwSendError(ex.getMessage());
-				});
+        mail.addContent(content);
 
-	}
+        Personalization personalization = new Personalization();
 
-	private Mail buidMail(EmailMessage emailMessage) {
+        personalization.addTo(new Email(emailMessage.getToAddress()));
+        emailMessage.getBccAddresses().forEach(bcc -> personalization.addBcc(new Email(bcc)));
+        emailMessage.getCcAddresses().forEach(cc -> personalization.addCc(new Email(cc)));
+        emailMessage.getHeaders().forEach(personalization::addHeader);
+        personalization.setSubject(emailMessage.getSubject());
 
-		Mail mail = new Mail();
-		mail.setFrom(new Email(emailMessage.getFromAddress()));
-
-		Content content = new Content("text/html", emailMessage.getBody());
-
-		mail.addContent(content);
-
-		Personalization personalization = new Personalization();
-
-		personalization.addTo(new Email(emailMessage.getToAddress()));
-		emailMessage.getBccAddresses().forEach(bcc -> personalization.addBcc(new Email(bcc)));
-		emailMessage.getCcAddresses().forEach(cc -> personalization.addCc(new Email(cc)));
-		emailMessage.getHeaders().forEach(personalization::addHeader);
-		personalization.setSubject(emailMessage.getSubject());
-
-		mail.addPersonalization(personalization);
-		mail.setReplyTo(new Email(emailMessage.getReplyTo().getFirst()));
-		return mail;
-	}
-
+        mail.addPersonalization(personalization);
+        mail.setReplyTo(new Email(emailMessage.getReplyTo().getFirst()));
+        return mail;
+    }
 }

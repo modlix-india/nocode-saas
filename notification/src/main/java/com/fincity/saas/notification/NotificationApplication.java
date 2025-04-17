@@ -10,7 +10,6 @@ import org.springframework.core.Ordered;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.web.reactive.config.EnableWebFlux;
-
 import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @SpringBootApplication
@@ -24,8 +23,7 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableAspectJAutoProxy(proxyTargetClass = true, exposeProxy = true)
 public class NotificationApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(NotificationApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(NotificationApplication.class, args);
+    }
 }

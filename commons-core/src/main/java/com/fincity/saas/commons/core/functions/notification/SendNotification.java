@@ -1,4 +1,4 @@
-package com.fincity.saas.core.functions.notification;
+package com.fincity.saas.commons.core.functions.notification;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -15,7 +15,7 @@ import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
-import com.fincity.saas.core.service.notification.NotificationProcessingService;
+import com.fincity.saas.commons.core.service.notification.NotificationProcessingService;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 

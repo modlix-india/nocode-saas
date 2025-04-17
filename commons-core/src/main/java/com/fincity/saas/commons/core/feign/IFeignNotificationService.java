@@ -1,10 +1,10 @@
-package com.fincity.saas.core.feign;
+package com.fincity.saas.commons.core.feign;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-import com.fincity.saas.core.model.notification.NotificationCacheRequest;
-import com.fincity.saas.core.model.notification.NotificationRequest;
+import com.fincity.saas.commons.core.model.notification.NotificationCacheRequest;
+import com.fincity.saas.commons.core.model.notification.NotificationRequest;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
