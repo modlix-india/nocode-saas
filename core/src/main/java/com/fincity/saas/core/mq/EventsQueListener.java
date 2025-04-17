@@ -1,29 +1,27 @@
 package com.fincity.saas.core.mq;
 
-import java.util.EnumMap;
-import java.util.Map;
-
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.core.enums.EventActionTaskType;
+import com.fincity.saas.commons.core.mq.services.EventCallFunctionService;
+import com.fincity.saas.commons.core.mq.services.EventEmailService;
+import com.fincity.saas.commons.core.mq.services.IEventActionService;
+import com.fincity.saas.commons.core.service.EventActionService;
+import com.fincity.saas.commons.mq.events.EventQueObject;
+import com.fincity.saas.commons.util.LogUtil;
+import com.rabbitmq.client.Channel;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
-
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mq.events.EventQueObject;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.core.enums.EventActionTaskType;
-import com.fincity.saas.core.mq.action.services.EventCallFunctionService;
-import com.fincity.saas.core.mq.action.services.EventEmailService;
-import com.fincity.saas.core.mq.action.services.IEventActionService;
-import com.fincity.saas.core.service.EventActionService;
-import com.rabbitmq.client.Channel;
-
-import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 @Component
 public class EventsQueListener {
@@ -34,7 +32,7 @@ public class EventsQueListener {
 	private final EventCallFunctionService functionService;
 	private final EventEmailService emailService;
 
-	private Map<EventActionTaskType, IEventActionService> actionServices = new EnumMap<>(EventActionTaskType.class);
+	private final Map<EventActionTaskType, IEventActionService> actionServices = new EnumMap<>(EventActionTaskType.class);
 
 	public EventsQueListener(EventActionService eventActionService, EventCallFunctionService functionService,
 			EventEmailService emailService) {
@@ -45,9 +43,8 @@ public class EventsQueListener {
 
 	@PostConstruct
 	protected void init() {
-
 		this.actionServices.put(EventActionTaskType.SEND_EMAIL, emailService);
-		this.actionServices.put(EventActionTaskType.CALL_COREFUNCTION, functionService);
+		this.actionServices.put(EventActionTaskType.CALL_CORE_FUNCTION, functionService);
 	}
 
 	@RabbitListener(queues = "#{'${events.mq.queues:events1,events2,events3}'.split(',')}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
