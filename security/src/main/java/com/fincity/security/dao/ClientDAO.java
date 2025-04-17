@@ -44,9 +44,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
 
         return Flux.from(this.dslContext.select(SECURITY_CLIENT.TYPE_CODE, SECURITY_CLIENT.CODE)
-                .from(SECURITY_CLIENT)
-                .where(SECURITY_CLIENT.ID.eq(id))
-                .limit(1))
+                        .from(SECURITY_CLIENT)
+                        .where(SECURITY_CLIENT.ID.eq(id))
+                        .limit(1))
                 .take(1)
                 .singleOrEmpty()
                 .map(r -> Tuples.of(r.value1(), r.value2()));
@@ -92,36 +92,36 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
     public Mono<Client> readInternal(ULong id) {
         return Mono.from(this.dslContext.selectFrom(this.table)
-                .where(this.idField.eq(id))
-                .limit(1))
+                        .where(this.idField.eq(id))
+                        .limit(1))
                 .map(e -> e.into(this.pojoClass));
     }
 
     public Mono<Boolean> makeClientActiveIfInActive(ULong clientId) {
 
         return Mono.from(this.dslContext.update(SECURITY_CLIENT)
-                .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.ACTIVE)
-                .where(SECURITY_CLIENT.ID.eq(clientId)
-                        .and(SECURITY_CLIENT.STATUS_CODE
-                                .eq(SecurityClientStatusCode.INACTIVE))))
+                        .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.ACTIVE)
+                        .where(SECURITY_CLIENT.ID.eq(clientId)
+                                .and(SECURITY_CLIENT.STATUS_CODE
+                                        .eq(SecurityClientStatusCode.INACTIVE))))
                 .map(e -> e > 0);
     }
 
     public Mono<Boolean> makeClientInActive(ULong clientId) {
 
         return Mono.from(this.dslContext.update(SECURITY_CLIENT)
-                .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.INACTIVE)
-                .where(SECURITY_CLIENT.ID.eq(clientId)
-                        .and(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED))))
+                        .set(SECURITY_CLIENT.STATUS_CODE, SecurityClientStatusCode.INACTIVE)
+                        .where(SECURITY_CLIENT.ID.eq(clientId)
+                                .and(SECURITY_CLIENT.STATUS_CODE.ne(SecurityClientStatusCode.DELETED))))
                 .map(e -> e > 0);
     }
 
     public Mono<Client> getClientBy(String clientCode) {
 
         return Flux.from(this.dslContext.select(SECURITY_CLIENT.fields())
-                .from(SECURITY_CLIENT)
-                .where(SECURITY_CLIENT.CODE.eq(clientCode))
-                .limit(1))
+                        .from(SECURITY_CLIENT)
+                        .where(SECURITY_CLIENT.CODE.eq(clientCode))
+                        .limit(1))
                 .singleOrEmpty()
                 .map(e -> e.into(Client.class));
     }
@@ -135,9 +135,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     public Mono<Profile> getProfile(ULong profileId) {
 
         return Mono.from(this.dslContext.select(SECURITY_PROFILE.fields())
-                .from(SECURITY_PROFILE)
-                .where(SECURITY_PROFILE.ID.eq(profileId))
-                .limit(1))
+                        .from(SECURITY_PROFILE)
+                        .where(SECURITY_PROFILE.ID.eq(profileId))
+                        .limit(1))
                 .filter(Objects::nonNull)
                 .map(e -> e.into(Profile.class));
     }
@@ -165,9 +165,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
         return Flux.just(clientCode)
                 .expand(e -> Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
-                        .from(SECURITY_CLIENT)
-                        .where(SECURITY_CLIENT.CODE.eq(e))
-                        .limit(1))
+                                .from(SECURITY_CLIENT)
+                                .where(SECURITY_CLIENT.CODE.eq(e))
+                                .limit(1))
                         .map(Record1::value1)
                         .map(x -> {
                             if (x.length() == clientCode.length())
@@ -185,37 +185,28 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     public Mono<ULong> getSystemClientId() {
 
         return Mono.from(this.dslContext.select(SECURITY_CLIENT.ID)
-                .from(SECURITY_CLIENT)
-                .where(SECURITY_CLIENT.TYPE_CODE.eq("SYS"))
-                .limit(1))
+                        .from(SECURITY_CLIENT)
+                        .where(SECURITY_CLIENT.TYPE_CODE.eq("SYS"))
+                        .limit(1))
                 .map(Record1::value1);
     }
 
     public Mono<Boolean> isClientActive(List<ULong> clientIds) {
         return Mono.from(this.dslContext.selectCount()
-                .from(SECURITY_CLIENT)
-                .where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
-                .and(SECURITY_CLIENT.ID.in(clientIds)))
+                        .from(SECURITY_CLIENT)
+                        .where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
+                        .and(SECURITY_CLIENT.ID.in(clientIds)))
                 .map(count -> count.value1() > 0);
     }
 
     public Mono<Boolean> createProfileRestrictions(ULong clientId, ULong appId, List<ULong> profileIds) {
-
-        List<SecurityProfileClientRestrictionRecord> records = profileIds.stream()
-                .map(e -> {
-
-                    SecurityProfileClientRestrictionRecord record = this.dslContext
-                            .newRecord(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION);
-                    record.setAppId(appId);
-                    record.setClientId(clientId);
-                    record.setProfileId(e);
-
-                    return record;
-                }).toList();
-
-        return Mono
-                .from(this.dslContext.insertInto(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
-                        .values(records))
-                .map(e -> e > 0);
+        
+        return Flux.fromIterable(profileIds).flatMap(profileId -> this.dslContext
+                        .insertInto(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
+                        .columns(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID,
+                                SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID,
+                                SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
+                        .values(appId, clientId, profileId))
+                .collectList().map(List::size).map(e -> e > 0);
     }
 }

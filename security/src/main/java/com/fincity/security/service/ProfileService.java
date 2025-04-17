@@ -54,9 +54,9 @@ public class ProfileService
     private final CacheService cacheService;
 
     public ProfileService(SecurityMessageResourceService securityMessageResourceService,
-            ClientService clientService,
-            ClientHierarchyService clientHierarchyService, CacheService cacheService,
-            AppService appService) {
+                          ClientService clientService,
+                          ClientHierarchyService clientHierarchyService, CacheService cacheService,
+                          AppService appService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
         this.clientHierarchyService = clientHierarchyService;
@@ -70,80 +70,80 @@ public class ProfileService
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> {
-                    if (entity.getAppId() == null)
-                        return this.securityMessageResourceService.<Boolean>throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST,
-                                        msg),
-                                SecurityMessageResourceService.PROFILE_NEEDS_APP);
+                        ca -> {
+                            if (entity.getAppId() == null)
+                                return this.securityMessageResourceService.<Boolean>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST,
+                                                msg),
+                                        SecurityMessageResourceService.PROFILE_NEEDS_APP);
 
-                    // Checking whether the profile's client id has access to the app or not.
-                    return this.appService.hasReadAccess(entity.getAppId(), entity.getClientId())
-                            .filter(BooleanUtil::safeValueOf);
-                },
+                            // Checking whether the profile's client id has access to the app or not.
+                            return this.appService.hasReadAccess(entity.getAppId(), entity.getClientId())
+                                    .filter(BooleanUtil::safeValueOf);
+                        },
 
-                (ca, hasAppAccess) -> {
+                        (ca, hasAppAccess) -> {
 
-                    if (ca.isSystemClient())
-                        return Mono.just(true);
+                            if (ca.isSystemClient())
+                                return Mono.just(true);
 
-                    return this.appService
-                            .hasReadAccess(entity.getAppId(),
-                                    ULong.valueOf(ca.getUser().getClientId()))
-                            .filter(BooleanUtil::safeValueOf);
-                },
+                            return this.appService
+                                    .hasReadAccess(entity.getAppId(),
+                                            ULong.valueOf(ca.getUser().getClientId()))
+                                    .filter(BooleanUtil::safeValueOf);
+                        },
 
-                (ca, hasAppAccess, clientAlsoHasAppAccess) -> {
+                        (ca, hasAppAccess, clientAlsoHasAppAccess) -> {
 
-                    if (entity.getClientId() == null)
-                        return Mono.just(entity.setClientId(
-                                ULong.valueOf(ca.getUser().getClientId())));
+                            if (entity.getClientId() == null)
+                                return Mono.just(entity.setClientId(
+                                        ULong.valueOf(ca.getUser().getClientId())));
 
-                    if (ca.isSystemClient())
-                        return Mono.just(entity);
+                            if (ca.isSystemClient())
+                                return Mono.just(entity);
 
-                    return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                    entity.getClientId())
-                            .filter(BooleanUtil::safeValueOf)
-                            .map(x -> entity);
-                },
+                            return this.clientService
+                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
+                                            entity.getClientId())
+                                    .filter(BooleanUtil::safeValueOf)
+                                    .map(x -> entity);
+                        },
 
-                (ca, hasAppAccess, clientAlsoHasAppAccess, managed) -> clientHierarchyService
-                        .getClientHierarchy(entity.getClientId()),
+                        (ca, hasAppAccess, clientAlsoHasAppAccess, managed) -> clientHierarchyService
+                                .getClientHierarchy(entity.getClientId()),
 
-                (ca, hasAppAccess, clientAlsoHasAppAccess, managed,
-                        clientHierarchy) -> this.dao.hasAccessToRoles(entity.getAppId(),
+                        (ca, hasAppAccess, clientAlsoHasAppAccess, managed,
+                         clientHierarchy) -> this.dao.hasAccessToRoles(entity.getAppId(),
                                 clientHierarchy,
                                 entity),
 
-                (ca, hasAppAccess, clientAlsoHasAppAccess, managed, clientHierarchy,
-                        hasAccessToRoles) -> {
-                    if (!hasAccessToRoles) {
-                        return this.securityMessageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST,
-                                        msg),
-                                SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS);
-                    }
-                    entity.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
-                    return this.dao.create(entity, clientHierarchy);
-                }
+                        (ca, hasAppAccess, clientAlsoHasAppAccess, managed, clientHierarchy,
+                         hasAccessToRoles) -> {
+                            if (!hasAccessToRoles) {
+                                return this.securityMessageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST,
+                                                msg),
+                                        SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS);
+                            }
 
-        )
+                            return this.dao.createUpdateProfile(entity, ULong.valueOf(ca.getUser().getId()), clientHierarchy);
+                        }
+
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.create"))
                 .flatMap(e -> {
 
                     String cacheName = CACHE_NAME_ID + "_"
                             + (e.getRootProfileId() == null ? e.getId()
-                                    : e.getRootProfileId());
+                            : e.getRootProfileId());
 
                     if (e.getRootProfileId() == null)
                         return this.cacheService.evictAll(cacheName).map(x -> e);
 
                     return this.dao.isBeingUsedByManagingClients(e.getClientId(), e.getId(),
-                            e.getRootProfileId())
+                                    e.getRootProfileId())
                             .flatMap(used -> {
 
                                 if (used)
@@ -164,20 +164,20 @@ public class ProfileService
     public Mono<Profile> read(ULong id) {
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.clientHierarchyService
-                        .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+                        ca -> this.clientHierarchyService
+                                .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
 
-                (ca, clientHierarchy) -> this.dao.read(id, clientHierarchy),
+                        (ca, clientHierarchy) -> this.dao.read(id, clientHierarchy),
 
-                (ca, clientHierarchy, profile) -> this.appService
-                        .hasReadAccess(profile.getAppId(),
-                                ULong.valueOf(ca.getUser().getClientId()))
-                        .filter(BooleanUtil::safeValueOf)
-                        .<Profile>map(x -> profile)
+                        (ca, clientHierarchy, profile) -> this.appService
+                                .hasReadAccess(profile.getAppId(),
+                                        ULong.valueOf(ca.getUser().getClientId()))
+                                .filter(BooleanUtil::safeValueOf)
+                                .<Profile>map(x -> profile)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.read"));
     }
 
@@ -185,12 +185,12 @@ public class ProfileService
     public Mono<Page<Profile>> readAll(ULong appId, Pageable pageable) {
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.clientHierarchyService
-                        .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+                        ca -> this.clientHierarchyService
+                                .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
 
-                (ca, clientHierarchy) -> this.dao.readAll(appId, clientHierarchy, pageable))
+                        (ca, clientHierarchy) -> this.dao.readAll(appId, clientHierarchy, pageable))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.readAll"));
     }
 
@@ -226,26 +226,26 @@ public class ProfileService
     @Override
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.clientHierarchyService
-                        .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+                        ca -> this.clientHierarchyService
+                                .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
 
-                (ca, hierarchy) -> this.dao.delete(id, hierarchy)
+                        (ca, hierarchy) -> this.dao.delete(id, hierarchy)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.delete"))
                 .onErrorResume(
                         ex -> ex instanceof DataAccessException
                                 || ex instanceof R2dbcDataIntegrityViolationException
-                                        ? this.securityMessageResourceService
-                                                .throwMessage(
-                                                        msg -> new GenericException(
-                                                                HttpStatus.FORBIDDEN,
-                                                                msg,
-                                                                ex),
-                                                        SecurityMessageResourceService.DELETE_ROLE_ERROR)
-                                        : Mono.error(ex));
+                                ? this.securityMessageResourceService
+                                .throwMessage(
+                                        msg -> new GenericException(
+                                                HttpStatus.FORBIDDEN,
+                                                msg,
+                                                ex),
+                                        SecurityMessageResourceService.DELETE_ROLE_ERROR)
+                                : Mono.error(ex));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_READ') and hasAuthority('Authorities.Client_UPDATE')")
@@ -253,16 +253,16 @@ public class ProfileService
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
-                        .filter(BooleanUtil::safeValueOf),
+                        ca -> this.clientService
+                                .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+                                .filter(BooleanUtil::safeValueOf),
 
-                (ca, managed) -> this.dao.checkProfileAppAccess(profileId, clientId)
-                        .filter(BooleanUtil::safeValueOf),
+                        (ca, managed) -> this.dao.checkProfileAppAccess(profileId, clientId)
+                                .filter(BooleanUtil::safeValueOf),
 
-                (ca, managed, hasAppAccess) -> this.dao.restrictClient(profileId, clientId))
+                        (ca, managed, hasAppAccess) -> this.dao.restrictClient(profileId, clientId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.restrictClient"));
     }
 
@@ -270,12 +270,12 @@ public class ProfileService
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.clientHierarchyService
-                        .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+                        ca -> this.clientHierarchyService
+                                .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
 
-                (ca, clientHierarchy) -> this.dao.hasAccessToRoles(clientId, clientHierarchy, roleIds))
+                        (ca, clientHierarchy) -> this.dao.hasAccessToRoles(clientId, clientHierarchy, roleIds))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.hasAccessToRoles"));
     }
 
@@ -298,9 +298,9 @@ public class ProfileService
         return Flux.fromIterable(profileIds)
                 .flatMap(
                         pid -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_ID + "_" + pid,
-                                () -> this.dao.getProfileAuthorities(pid,
-                                        clientHierarchy),
-                                clientHierarchy.getClientId())
+                                        () -> this.dao.getProfileAuthorities(pid,
+                                                clientHierarchy),
+                                        clientHierarchy.getClientId())
                                 .flatMapMany(Flux::fromIterable))
                 .distinct()
                 .collectList();
@@ -310,19 +310,19 @@ public class ProfileService
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.dao.getProfileIds(appCode, userId),
+                        () -> this.dao.getProfileIds(appCode, userId),
 
-                profileIds -> this.clientHierarchyService.getClientHierarchy(clientId),
+                        profileIds -> this.clientHierarchyService.getClientHierarchy(clientId),
 
-                (profileIds, clientHierarchy) -> this.getProfileAuthorities(profileIds, clientHierarchy)
+                        (profileIds, clientHierarchy) -> this.getProfileAuthorities(profileIds, clientHierarchy)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.setAuthorities"));
     }
 
     @Override
     public Mono<Profile> readObject(ULong id,
-            AppRegistrationObjectType type) {
+                                    AppRegistrationObjectType type) {
         return super.read(id);
     }
 
@@ -330,13 +330,13 @@ public class ProfileService
     public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
         return FlatMapUtil.flatMapMono(
 
-                () -> super.read(id),
+                        () -> super.read(id),
 
-                role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
-                        .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
-                                : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
+                        role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
+                                .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
+                                        : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.hasAccessTo"));
     }
 }

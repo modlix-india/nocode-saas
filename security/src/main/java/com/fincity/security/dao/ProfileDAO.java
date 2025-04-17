@@ -2,12 +2,7 @@ package com.fincity.security.dao;
 
 import static com.fincity.saas.commons.util.StringUtil.*;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -99,17 +94,17 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
     public Mono<Profile> read(ULong id, ClientHierarchy hierarchy) {
 
         return FlatMapUtil.flatMapMono(
-                () -> super.readById(id),
-                profile -> {
-                    if (profile.getRootProfileId() == null
-                            && hierarchy.getClientId().equals(profile.getClientId()))
-                        return Mono.just(profile);
-                    else
-                        return this.readRootProfile(
-                                profile.getRootProfileId() == null ? profile.getId()
-                                        : profile.getRootProfileId(),
-                                hierarchy, true);
-                })
+                        () -> super.readById(id),
+                        profile -> {
+                            if (profile.getRootProfileId() == null
+                                    && hierarchy.getClientId().equals(profile.getClientId()))
+                                return Mono.just(profile);
+                            else
+                                return this.readRootProfile(
+                                        profile.getRootProfileId() == null ? profile.getId()
+                                                : profile.getRootProfileId(),
+                                        hierarchy, true);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.read"));
     }
 
@@ -118,13 +113,13 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
         return FlatMapUtil.flatMapMono(
 
                 () -> Flux.from(this.dslContext.selectFrom(SecurityProfile.SECURITY_PROFILE)
-                        .where(DSL.or(
-                                SecurityProfile.SECURITY_PROFILE.ID.eq(id),
-                                SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID.eq(id)
-                                        .and(SecurityProfile.SECURITY_PROFILE.CLIENT_ID
-                                                .in(includeClientId
-                                                        ? hierarchy.getClientIds()
-                                                        : hierarchy.getManagingClientIds())))))
+                                .where(DSL.or(
+                                        SecurityProfile.SECURITY_PROFILE.ID.eq(id),
+                                        SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID.eq(id)
+                                                .and(SecurityProfile.SECURITY_PROFILE.CLIENT_ID
+                                                        .in(includeClientId
+                                                                ? hierarchy.getClientIds()
+                                                                : hierarchy.getManagingClientIds())))))
                         .map(r -> r.into(Profile.class)).collectList(),
 
                 profiles -> {
@@ -139,7 +134,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                     for (Profile profile : profiles.stream()
                             .sorted(Comparator.comparingInt((Profile e) -> clientPref
-                                    .getOrDefault(e.getClientId(), -1))
+                                            .getOrDefault(e.getClientId(), -1))
                                     .reversed())
                             .toList()) {
 
@@ -164,111 +159,107 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.readRootProfile"));
     }
 
-    public Mono<Profile> createUpdateProfile(Profile profile, ClientHierarchy hierarchy) {
+    public Mono<Profile> createUpdateProfile(Profile profile, ULong userId, ClientHierarchy hierarchy) {
 
-        if (profile.getId() == null || !hierarchy.getClientId().equals(profile.getClientId()))
+        if (profile.getId() == null || !hierarchy.getClientId().equals(profile.getClientId())) {
+            if (profile.getId() != null) {
+                profile.setRootProfileId(profile.getId());
+            }
+            profile.setId(null);
+            profile.setCreatedBy(userId);
             return create(profile, hierarchy);
+        }
 
+        profile.setUpdatedBy(userId);
         return update(profile, hierarchy);
     }
 
     @SuppressWarnings("unchecked")
-    public Mono<Profile> create(Profile profile, ClientHierarchy hierarchy) {
+    private Mono<Profile> create(Profile profile, ClientHierarchy hierarchy) {
 
-        profile.setId(null);
         Map<String, Object> arrangements = profile.getArrangement();
 
         if (profile.getRootProfileId() == null) {
             return FlatMapUtil.flatMapMono(
-                    () -> super.create(profile),
+                            () -> super.create(profile),
 
-                    created -> this
-                            .createRoleRelations(created.getId(),
-                                    this.getRoleIdsFromArrangemnts(arrangements)
-                                            .collect(Collectors.toSet()),
-                                    Set.of())
-                            .flatMap(e -> this.read(created.getId(), hierarchy)))
+                            created -> this
+                                    .createRoleRelations(created.getId(),
+                                            this.getRoleIdsFromArrangemnts(arrangements)
+                                                    .collect(Collectors.toSet()),
+                                            Set.of())
+                                    .flatMap(e -> this.read(created.getId(), hierarchy)))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME,
                             "ProfileDao.create without rootProfileId"));
         }
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.readRootProfile(profile.getRootProfileId(), hierarchy, false),
+                        () -> this.readRootProfile(profile.getRootProfileId(), hierarchy, false),
 
-                rootProfile -> {
+                        rootProfile -> {
 
-                    if (safeEquals(profile.getName(), rootProfile.getName()))
-                        profile.setName(null);
+                            if (safeEquals(profile.getName(), rootProfile.getName()))
+                                profile.setName(null);
 
-                    if (safeEquals(profile.getDescription(), rootProfile.getDescription()))
-                        profile.setDescription(null);
+                            if (safeEquals(profile.getDescription(), rootProfile.getDescription()))
+                                profile.setDescription(null);
 
-                    return DifferenceExtractor.extract(profile.getArrangement(),
-                            rootProfile.getArrangement());
-                },
+                            return DifferenceExtractor.extract(profile.getArrangement(),
+                                    rootProfile.getArrangement());
+                        },
 
-                (rootProfile, diff) -> {
-                    profile.setArrangement((Map<String, Object>) diff);
-                    return super.create(profile);
-                },
+                        (rootProfile, diff) -> {
+                            profile.setArrangement((Map<String, Object>) diff);
+                            return super.create(profile);
+                        },
 
-                (rootProfile, diff, created) -> {
+                        (rootProfile, diff, created) -> {
 
-                    Set<ULong> roleIds = this.getRoleIdsFromArrangemnts(arrangements)
-                            .collect(Collectors.toSet());
-                    Set<ULong> rootsRoleIds = this
-                            .getRoleIdsFromArrangemnts(rootProfile.getArrangement())
-                            .collect(Collectors.toSet());
+                            Set<ULong> roleIds = this.getRoleIdsFromArrangemnts(arrangements)
+                                    .collect(Collectors.toSet());
+                            Set<ULong> rootsRoleIds = this
+                                    .getRoleIdsFromArrangemnts(rootProfile.getArrangement())
+                                    .collect(Collectors.toSet());
 
-                    Set<ULong> newRoles = roleIds.stream().filter(r -> !rootsRoleIds.contains(r))
-                            .collect(Collectors.toSet());
-                    Set<ULong> removedRoles = rootsRoleIds.stream()
-                            .filter(r -> !roleIds.contains(r))
-                            .collect(Collectors.toSet());
+                            Set<ULong> newRoles = roleIds.stream().filter(r -> !rootsRoleIds.contains(r))
+                                    .collect(Collectors.toSet());
+                            Set<ULong> removedRoles = rootsRoleIds.stream()
+                                    .filter(r -> !roleIds.contains(r))
+                                    .collect(Collectors.toSet());
 
-                    return this.createRoleRelations(created.getId(), newRoles, removedRoles)
-                            .<Profile>flatMap(e -> this.read(created.getId(), hierarchy));
-                })
+                            return this.createRoleRelations(created.getId(), newRoles, removedRoles)
+                                    .<Profile>flatMap(e -> this.read(created.getId(), hierarchy));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.create with rootProfileId"));
     }
 
     private Mono<Integer> createRoleRelations(ULong profileId, Set<ULong> newRoles, Set<ULong> removedRoles) {
 
         return FlatMapUtil.flatMapMono(
-                () -> Mono.from(this.dslContext.delete(SecurityProfileRole.SECURITY_PROFILE_ROLE)
-                        .where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
-                                .eq(profileId))),
+                        () -> Mono.from(this.dslContext.delete(SecurityProfileRole.SECURITY_PROFILE_ROLE)
+                                .where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
+                                        .eq(profileId))),
 
-                d -> {
+                        d -> {
 
-                    List<SecurityProfileRoleRecord> records = new ArrayList<>();
+                            Mono<Integer> roles = Flux.fromIterable(newRoles).distinct().flatMap(roleId -> Mono.from(this.dslContext.insertInto(SecurityProfileRole.SECURITY_PROFILE_ROLE)
+                                            .columns(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID, SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID).values(profileId, roleId).onDuplicateKeyIgnore()))
+                                    .collectList().map(List::size);
 
-                    newRoles.forEach(roleId -> {
-                        SecurityProfileRoleRecord record = new SecurityProfileRoleRecord();
-                        record.setProfileId(profileId);
-                        record.setRoleId(roleId);
-                        records.add(record);
-                    });
+                            Mono<Integer> removed = Flux.fromIterable(removedRoles).distinct().flatMap(roleId -> Mono.from(this.dslContext.insertInto(SecurityProfileRole.SECURITY_PROFILE_ROLE)
+                                            .columns(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID, SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID
+                                                    , SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE).values(profileId, roleId, ByteUtil.ONE).onDuplicateKeyUpdate().set(SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE, ByteUtil.ONE)))
+                                    .collectList().map(List::size);
 
-                    removedRoles.forEach(roleId -> {
-                        SecurityProfileRoleRecord record = new SecurityProfileRoleRecord();
-                        record.setProfileId(profileId);
-                        record.setRoleId(roleId);
-                        record.setExclude(ByteUtil.ZERO);
-                        records.add(record);
-                    });
+                            return Mono.zip(roles, removed).map(tup -> tup.getT1() + tup.getT2());
+                        }
 
-                    return Mono.from(this.dslContext
-                            .insertInto(SecurityProfileRole.SECURITY_PROFILE_ROLE)
-                            .values(records));
-                }
-
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.createRoleRelations"));
     }
 
-    @SuppressWarnings({ "unchecked" })
+    @SuppressWarnings({"unchecked"})
     private Stream<ULong> getRoleIdsFromArrangemnts(Map<String, Object> arrangements) {
 
         return arrangements.values().stream().flatMap(e -> {
@@ -289,6 +280,9 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                     else
                         return Stream.concat(Stream.of(rId), stream);
                 }
+
+                if (rId != null)
+                    return Stream.of(rId);
             }
 
             return Stream.empty();
@@ -301,101 +295,104 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
         Map<String, Object> arrangements = profile.getArrangement();
 
         if (profile.getRootProfileId() == null) {
+
             return FlatMapUtil.flatMapMono(
 
-                    () -> Mono.from(this.dslContext.update(SecurityProfile.SECURITY_PROFILE)
-                            .set(SecurityProfile.SECURITY_PROFILE.NAME, profile.getName())
-                            .set(SecurityProfile.SECURITY_PROFILE.DESCRIPTION,
-                                    profile.getDescription())
-                            .set(SecurityProfile.SECURITY_PROFILE.ARRANGEMENT,
-                                    profile.getArrangement())
-                            .where(SecurityProfile.SECURITY_PROFILE.ID
-                                    .eq(profile.getId()))),
+                            () -> Mono.from(this.dslContext.update(SecurityProfile.SECURITY_PROFILE)
+                                    .set(SecurityProfile.SECURITY_PROFILE.NAME, profile.getName())
+                                    .set(SecurityProfile.SECURITY_PROFILE.DESCRIPTION,
+                                            profile.getDescription())
+                                    .set(SecurityProfile.SECURITY_PROFILE.ARRANGEMENT,
+                                            profile.getArrangement())
+                                    .where(SecurityProfile.SECURITY_PROFILE.ID
+                                            .eq(profile.getId()))),
 
-                    updated -> this
-                            .createRoleRelations(profile.getId(),
-                                    this.getRoleIdsFromArrangemnts(arrangements)
-                                            .collect(Collectors.toSet()),
-                                    Set.of())
-                            .flatMap(e -> this.read(profile.getId(), hierarchy)))
+                            updated -> this
+                                    .createRoleRelations(profile.getId(),
+                                            this.getRoleIdsFromArrangemnts(arrangements)
+                                                    .collect(Collectors.toSet()),
+                                            Set.of())
+                                    .flatMap(e -> this.read(profile.getId(), hierarchy)))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME,
                             "ProfileDao.update without rootProfileId"));
         }
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.readRootProfile(profile.getRootProfileId(), hierarchy, false),
+                        () -> this.readRootProfile(profile.getRootProfileId(), hierarchy, false),
 
-                rootProfile -> {
+                        rootProfile -> {
 
-                    if (safeEquals(profile.getName(), rootProfile.getName()))
-                        profile.setName(null);
+                            if (safeEquals(profile.getName(), rootProfile.getName()))
+                                profile.setName(null);
 
-                    if (safeEquals(profile.getDescription(), rootProfile.getDescription()))
-                        profile.setDescription(null);
+                            if (safeEquals(profile.getDescription(), rootProfile.getDescription()))
+                                profile.setDescription(null);
 
-                    return DifferenceExtractor.extract(profile.getArrangement(),
-                            rootProfile.getArrangement());
-                },
+                            return DifferenceExtractor.extract(profile.getArrangement(),
+                                    rootProfile.getArrangement());
+                        },
 
-                (rootProfile, diff) -> {
-                    profile.setArrangement((Map<String, Object>) diff);
-                    return super.update(profile);
-                },
+                        (rootProfile, diff) -> {
+                            profile.setArrangement((Map<String, Object>) diff);
+                            return super.update(profile);
+                        },
 
-                (rootProfile, diff, updated) -> {
+                        (rootProfile, diff, updated) -> {
 
-                    Set<ULong> roleIds = this.getRoleIdsFromArrangemnts(arrangements)
-                            .collect(Collectors.toSet());
-                    Set<ULong> rootsRoleIds = this
-                            .getRoleIdsFromArrangemnts(rootProfile.getArrangement())
-                            .collect(Collectors.toSet());
+                            Set<ULong> roleIds = this.getRoleIdsFromArrangemnts(arrangements)
+                                    .collect(Collectors.toSet());
+                            Set<ULong> rootsRoleIds = this
+                                    .getRoleIdsFromArrangemnts(rootProfile.getArrangement())
+                                    .collect(Collectors.toSet());
 
-                    Set<ULong> newRoles = roleIds.stream().filter(r -> !rootsRoleIds.contains(r))
-                            .collect(Collectors.toSet());
-                    Set<ULong> removedRoles = rootsRoleIds.stream()
-                            .filter(r -> !roleIds.contains(r))
-                            .collect(Collectors.toSet());
+                            Set<ULong> newRoles = roleIds.stream().filter(r -> !rootsRoleIds.contains(r))
+                                    .collect(Collectors.toSet());
+                            Set<ULong> removedRoles = rootsRoleIds.stream()
+                                    .filter(r -> !roleIds.contains(r))
+                                    .collect(Collectors.toSet());
 
-                    return this.createRoleRelations(updated.getId(), newRoles, removedRoles)
-                            .<Profile>flatMap(e -> this.read(updated.getId(), hierarchy));
-                })
+                            return this.createRoleRelations(updated.getId(), newRoles, removedRoles)
+                                    .<Profile>flatMap(e -> this.read(updated.getId(), hierarchy));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.update with rootProfileId"));
     }
 
     public Mono<Integer> delete(ULong profileId, ClientHierarchy hierarchy) {
         return FlatMapUtil.flatMapMono(
-                () -> this.read(profileId, hierarchy),
+                        () -> this.read(profileId, hierarchy),
 
-                profile -> Mono.from(
-                        this.dslContext.selectCount().from(SecurityProfile.SECURITY_PROFILE)
-                                .where(SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID
-                                        .eq(profile.getId())))
-                        .map(Record1::value1)
-                        .map(count -> count == 0)
-                        .filter(BooleanUtil::safeValueOf),
+                        profile -> Mono.from(
+                                        this.dslContext.selectCount().from(SecurityProfile.SECURITY_PROFILE)
+                                                .where(SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID
+                                                        .eq(profile.getId())))
+                                .map(Record1::value1)
+                                .map(count -> count == 0)
+                                .filter(BooleanUtil::safeValueOf),
 
-                (profile, notUsed) -> super.delete(profile.getId())
+                        (profile, notUsed) -> super.delete(profile.getId())
 
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.delete"))
+                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.delete"))
                 .defaultIfEmpty(0);
     }
 
     public Mono<Boolean> hasAccessToRoles(ULong appId, ClientHierarchy hierarchy, Set<ULong> roleIds) {
 
         Mono<List<ULong>> profileIds = Flux.from(this.dslContext.select(SecurityProfile.SECURITY_PROFILE.ID)
-                .where(DSL.and(SecurityProfile.SECURITY_PROFILE.APP_ID.eq(appId),
-                        SecurityProfile.SECURITY_PROFILE.CLIENT_ID
-                                .in(hierarchy.getClientIds()))))
+                        .from(SecurityProfile.SECURITY_PROFILE)
+                        .where(DSL.and(SecurityProfile.SECURITY_PROFILE.APP_ID.eq(appId),
+                                SecurityProfile.SECURITY_PROFILE.CLIENT_ID
+                                        .in(hierarchy.getClientIds()))))
                 .map(Record1::value1)
                 .collectList();
 
         Mono<List<ULong>> restrictedProfiles = Flux.from(this.dslContext
-                .select(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
-                .where(DSL.and(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID
-                        .eq(appId),
-                        SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID
-                                .eq(hierarchy.getClientId()))))
+                        .select(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
+                        .from(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
+                        .where(DSL.and(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID
+                                        .eq(appId),
+                                SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID
+                                        .eq(hierarchy.getClientId()))))
                 .map(Record1::value1)
                 .collectList();
 
@@ -408,10 +405,10 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                 (restrictedProfileIds, ids) -> Flux
                         .from(this.dslContext.select(
-                                SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID)
+                                        SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID)
                                 .from(SecurityProfileRole.SECURITY_PROFILE_ROLE)
                                 .where(DSL.and(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
-                                        .in(ids),
+                                                .in(ids),
                                         SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID
                                                 .notIn(roleIds))))
                         .map(Record1::value1)
@@ -422,17 +419,17 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         return Mono.just(true);
 
                     return Mono.from(this.dslContext.selectCount()
-                            .from(SecurityV2Role.SECURITY_V2_ROLE)
-                            .where(DSL.and(
-                                    SecurityV2Role.SECURITY_V2_ROLE.ID
-                                            .in(remainingRoleIds),
-                                    DSL.or(
-                                            SecurityV2Role.SECURITY_V2_ROLE.APP_ID
-                                                    .eq(appId),
-                                            SecurityV2Role.SECURITY_V2_ROLE.APP_ID
-                                                    .isNull()),
-                                    SecurityV2Role.SECURITY_V2_ROLE.CLIENT_ID
-                                            .eq(hierarchy.getClientId()))))
+                                    .from(SecurityV2Role.SECURITY_V2_ROLE)
+                                    .where(DSL.and(
+                                            SecurityV2Role.SECURITY_V2_ROLE.ID
+                                                    .in(remainingRoleIds),
+                                            DSL.or(
+                                                    SecurityV2Role.SECURITY_V2_ROLE.APP_ID
+                                                            .eq(appId),
+                                                    SecurityV2Role.SECURITY_V2_ROLE.APP_ID
+                                                            .isNull()),
+                                            SecurityV2Role.SECURITY_V2_ROLE.CLIENT_ID
+                                                    .eq(hierarchy.getClientId()))))
                             .map(Record1::value1)
                             .map(count -> count == 0);
                 }
@@ -448,11 +445,12 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
     public Mono<Page<Profile>> readAll(ULong appId, ClientHierarchy hierarchy, Pageable pageable) {
 
         Mono<List<ULong>> restrictedProfiles = Flux.from(this.dslContext
-                .select(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
-                .where(DSL.and(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID
-                        .eq(appId),
-                        SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID
-                                .eq(hierarchy.getClientId()))))
+                        .select(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
+                        .from(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
+                        .where(DSL.and(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID
+                                        .eq(appId),
+                                SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID
+                                        .eq(hierarchy.getClientId()))))
                 .map(Record1::value1)
                 .collectList();
 
@@ -460,6 +458,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                 .from(this.dslContext
                         .select(SecurityProfile.SECURITY_PROFILE.ID,
                                 SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID)
+                        .from(SecurityProfile.SECURITY_PROFILE)
                         .where(DSL.and(SecurityProfile.SECURITY_PROFILE.APP_ID.eq(appId),
                                 SecurityProfile.SECURITY_PROFILE.CLIENT_ID
                                         .in(hierarchy.getClientIds()))))
@@ -469,30 +468,30 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
         return FlatMapUtil.flatMapMono(
 
-                () -> restrictedProfiles.flatMap(ids -> ids.isEmpty() ? profiles : Mono.just(ids)),
+                        () -> restrictedProfiles.flatMap(ids -> ids.isEmpty() ? profiles : Mono.just(ids)),
 
-                ids -> Flux
-                        .fromStream(ids.stream().skip(pageable.getOffset())
-                                .limit(pageable.getPageSize()))
-                        .flatMap(e -> this.read(e, hierarchy))
-                        .collectList()
-                        .<Page<Profile>>map(
-                                profilesList -> PageableExecutionUtils.getPage(
-                                        profilesList, pageable,
-                                        () -> (long) ids.size()))
+                        ids -> Flux
+                                .fromStream(ids.stream().skip(pageable.getOffset())
+                                        .limit(pageable.getPageSize()))
+                                .flatMap(e -> this.read(e, hierarchy))
+                                .collectList()
+                                .<Page<Profile>>map(
+                                        profilesList -> PageableExecutionUtils.getPage(
+                                                profilesList, pageable,
+                                                () -> (long) ids.size()))
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.readAll"));
     }
 
     public Mono<Boolean> checkProfileAppAccess(ULong profileId, ULong clientId) {
 
         return Mono.from(this.dslContext.selectCount().from(SecurityProfile.SECURITY_PROFILE)
-                .leftJoin(SecurityAppAccess.SECURITY_APP_ACCESS).on(
-                        SecurityProfile.SECURITY_PROFILE.APP_ID
-                                .eq(SecurityAppAccess.SECURITY_APP_ACCESS.APP_ID))
-                .where(SecurityProfile.SECURITY_PROFILE.ID.eq(profileId)
-                        .and(SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))))
+                        .leftJoin(SecurityAppAccess.SECURITY_APP_ACCESS).on(
+                                SecurityProfile.SECURITY_PROFILE.APP_ID
+                                        .eq(SecurityAppAccess.SECURITY_APP_ACCESS.APP_ID))
+                        .where(SecurityProfile.SECURITY_PROFILE.ID.eq(profileId)
+                                .and(SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId))))
                 .map(Record1::value1)
                 .map(count -> count > 0);
     }
@@ -500,7 +499,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
     public Mono<Boolean> restrictClient(ULong profileId, ULong clientId) {
         return Mono
                 .from(this.dslContext.insertInto(
-                        SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
+                                SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
                         .set(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID,
                                 profileId)
                         .set(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID,
@@ -513,23 +512,23 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
         return FlatMapUtil.flatMapMono(
 
                 () -> Flux.from(
-                        this.dslContext.select(SecurityApp.SECURITY_APP.ID)
-                                .from(SecurityApp.SECURITY_APP)
-                                .where(SecurityApp.SECURITY_APP.CLIENT_ID.eq(clientId))
-                                .union(this.dslContext.select(
-                                        SecurityAppAccess.SECURITY_APP_ACCESS.APP_ID)
-                                        .from(SecurityAppAccess.SECURITY_APP_ACCESS)
-                                        .where(SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID
-                                                .eq(clientId))))
+                                this.dslContext.select(SecurityApp.SECURITY_APP.ID)
+                                        .from(SecurityApp.SECURITY_APP)
+                                        .where(SecurityApp.SECURITY_APP.CLIENT_ID.eq(clientId))
+                                        .union(this.dslContext.select(
+                                                        SecurityAppAccess.SECURITY_APP_ACCESS.APP_ID)
+                                                .from(SecurityAppAccess.SECURITY_APP_ACCESS)
+                                                .where(SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID
+                                                        .eq(clientId))))
                         .map(Record1::value1)
                         .collectList().map(HashSet::new),
 
                 appIds -> Flux.from(this.dslContext
-                        .select(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID,
-                                SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
-                        .from(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
-                        .where(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID
-                                .eq(clientId)))
+                                .select(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID,
+                                        SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
+                                .from(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
+                                .where(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID
+                                        .eq(clientId)))
                         .collectMultimap(Record2::value1, Record2::value2),
 
                 (appIds, restrictions) -> {
@@ -554,11 +553,11 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         return Mono.just(true);
 
                     return Mono.from(this.dslContext.selectCount()
-                            .from(SecurityProfile.SECURITY_PROFILE)
-                            .where(SecurityProfile.SECURITY_PROFILE.ID
-                                    .in(finalTuple.getT2())
-                                    .and(SecurityProfile.SECURITY_PROFILE.APP_ID
-                                            .notIn(finalTuple.getT1()))))
+                                    .from(SecurityProfile.SECURITY_PROFILE)
+                                    .where(SecurityProfile.SECURITY_PROFILE.ID
+                                            .in(finalTuple.getT2())
+                                            .and(SecurityProfile.SECURITY_PROFILE.APP_ID
+                                                    .notIn(finalTuple.getT1()))))
                             .map(Record1::value1)
                             .map(count -> count == 0);
                 }
@@ -568,13 +567,13 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
     public Mono<Set<ULong>> getProfileIds(String appCode, ULong userId) {
         return Flux.from(this.dslContext.select(SecurityProfileUser.SECURITY_PROFILE_USER.ID)
-                .from(SecurityProfileUser.SECURITY_PROFILE_USER)
-                .leftJoin(SecurityProfile.SECURITY_PROFILE)
-                .on(SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID.eq(SecurityProfile.SECURITY_PROFILE.ID))
-                .leftJoin(SecurityApp.SECURITY_APP)
-                .on(SecurityProfile.SECURITY_PROFILE.APP_ID.eq(SecurityApp.SECURITY_APP.ID))
-                .where(SecurityApp.SECURITY_APP.APP_CODE.eq(appCode))
-                .and(SecurityProfileUser.SECURITY_PROFILE_USER.USER_ID.eq(userId))).map(Record1::value1)
+                        .from(SecurityProfileUser.SECURITY_PROFILE_USER)
+                        .leftJoin(SecurityProfile.SECURITY_PROFILE)
+                        .on(SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID.eq(SecurityProfile.SECURITY_PROFILE.ID))
+                        .leftJoin(SecurityApp.SECURITY_APP)
+                        .on(SecurityProfile.SECURITY_PROFILE.APP_ID.eq(SecurityApp.SECURITY_APP.ID))
+                        .where(SecurityApp.SECURITY_APP.APP_CODE.eq(appCode))
+                        .and(SecurityProfileUser.SECURITY_PROFILE_USER.USER_ID.eq(userId))).map(Record1::value1)
                 .collect(Collectors.toSet());
     }
 
@@ -583,58 +582,58 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
         ULong pId = rootProfileId == null ? profileId : rootProfileId;
 
         return Mono.from(this.dslContext.selectCount().from(SecurityProfile.SECURITY_PROFILE)
-                .leftJoin(SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY)
-                .on(SecurityProfile.SECURITY_PROFILE.CLIENT_ID
-                        .eq(SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.CLIENT_ID))
-                .where(
-                        DSL.and(
-                                SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID.eq(pId),
-                                SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0
-                                        .eq(clientId),
-                                SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1
-                                        .eq(clientId),
-                                SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2
-                                        .eq(clientId),
-                                SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_3
-                                        .eq(clientId))))
+                        .leftJoin(SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY)
+                        .on(SecurityProfile.SECURITY_PROFILE.CLIENT_ID
+                                .eq(SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.CLIENT_ID))
+                        .where(
+                                DSL.and(
+                                        SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID.eq(pId),
+                                        SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0
+                                                .eq(clientId),
+                                        SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1
+                                                .eq(clientId),
+                                        SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2
+                                                .eq(clientId),
+                                        SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_3
+                                                .eq(clientId))))
                 .map(Record1::value1).map(count -> count > 0);
     }
 
     public Mono<List<String>> getProfileAuthorities(ULong profileId, ClientHierarchy clientHierarchy) {
 
         return FlatMapUtil.flatMapMono(() -> Flux.from(this.dslContext.select(SecurityProfile.SECURITY_PROFILE.ID,
-                SecurityProfile.SECURITY_PROFILE.NAME, SecurityApp.SECURITY_APP.APP_CODE)
-                .from(SecurityProfile.SECURITY_PROFILE)
-                .leftJoin(SecurityApp.SECURITY_APP)
-                .on(SecurityApp.SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID))
-                .where(
-                        DSL.or(
-                                SecurityProfile.SECURITY_PROFILE.ID.eq(profileId),
-                                DSL.and(
-                                        SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID.eq(profileId),
-                                        SecurityProfile.SECURITY_PROFILE.CLIENT_ID
-                                                .in(clientHierarchy.getClientIds())))
+                                        SecurityProfile.SECURITY_PROFILE.NAME, SecurityApp.SECURITY_APP.APP_CODE)
+                                .from(SecurityProfile.SECURITY_PROFILE)
+                                .leftJoin(SecurityApp.SECURITY_APP)
+                                .on(SecurityApp.SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID))
+                                .where(
+                                        DSL.or(
+                                                SecurityProfile.SECURITY_PROFILE.ID.eq(profileId),
+                                                DSL.and(
+                                                        SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID.eq(profileId),
+                                                        SecurityProfile.SECURITY_PROFILE.CLIENT_ID
+                                                                .in(clientHierarchy.getClientIds())))
 
-                ))
-                .collectList(),
+                                ))
+                        .collectList(),
 
                 profiles -> Flux.from(this.dslContext.select(
-                        SecurityV2Role.SECURITY_V2_ROLE.ID,
-                        SecurityProfile.SECURITY_PROFILE.CLIENT_ID,
-                        SecurityProfile.SECURITY_PROFILE.ID,
-                        SecurityV2Role.SECURITY_V2_ROLE.NAME,
-                        SecurityApp.SECURITY_APP.APP_CODE,
-                        SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE)
-                        .from(SecurityProfileRole.SECURITY_PROFILE_ROLE)
-                        .leftJoin(SecurityV2Role.SECURITY_V2_ROLE)
-                        .on(SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID.eq(SecurityV2Role.SECURITY_V2_ROLE.ID))
-                        .leftJoin(SecurityApp.SECURITY_APP)
-                        .on(SecurityV2Role.SECURITY_V2_ROLE.APP_ID.eq(SecurityApp.SECURITY_APP.ID))
-                        .leftJoin(SecurityProfile.SECURITY_PROFILE)
-                        .on(SecurityProfile.SECURITY_PROFILE.ID
-                                .eq(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID))
-                        .where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
-                                .in(profiles.stream().map(Record3::value1).collect(Collectors.toSet()))))
+                                        SecurityV2Role.SECURITY_V2_ROLE.ID,
+                                        SecurityProfile.SECURITY_PROFILE.CLIENT_ID,
+                                        SecurityProfile.SECURITY_PROFILE.ID,
+                                        SecurityV2Role.SECURITY_V2_ROLE.NAME,
+                                        SecurityApp.SECURITY_APP.APP_CODE,
+                                        SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE)
+                                .from(SecurityProfileRole.SECURITY_PROFILE_ROLE)
+                                .leftJoin(SecurityV2Role.SECURITY_V2_ROLE)
+                                .on(SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID.eq(SecurityV2Role.SECURITY_V2_ROLE.ID))
+                                .leftJoin(SecurityApp.SECURITY_APP)
+                                .on(SecurityV2Role.SECURITY_V2_ROLE.APP_ID.eq(SecurityApp.SECURITY_APP.ID))
+                                .leftJoin(SecurityProfile.SECURITY_PROFILE)
+                                .on(SecurityProfile.SECURITY_PROFILE.ID
+                                        .eq(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID))
+                                .where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
+                                        .in(profiles.stream().map(Record3::value1).collect(Collectors.toSet()))))
 
                         .collect(Collectors.groupingBy(e -> e.get(SecurityV2Role.SECURITY_V2_ROLE.ID)))
                         .map(map -> {
@@ -647,7 +646,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                 if (entry.getValue().size() == 1) {
                                     Byte bValue = entry.getValue().get(0)
                                             .get(SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE);
-                                    if (bValue == null || bValue == 1) {
+                                    if (bValue == null || bValue == 0) {
                                         records.add(entry.getValue().get(0));
                                     }
                                     continue;
@@ -679,58 +678,62 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         }),
 
                 (profiles, roles) -> Flux.from(
-                        this.dslContext.select(
-                                SecurityV2Role.SECURITY_V2_ROLE.ID,
-                                SecurityV2Role.SECURITY_V2_ROLE.NAME,
-                                SecurityApp.SECURITY_APP.APP_CODE)
-                                .from(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE)
-                                .leftJoin(SecurityV2Role.SECURITY_V2_ROLE)
-                                .on(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID
-                                        .eq(SecurityV2Role.SECURITY_V2_ROLE.ID))
-                                .leftJoin(SecurityApp.SECURITY_APP)
-                                .on(SecurityV2Role.SECURITY_V2_ROLE.APP_ID.eq(SecurityApp.SECURITY_APP.ID))
-                                .where(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID
-                                        .in(roles.stream().map(e -> e.getValue(SecurityV2Role.SECURITY_V2_ROLE.ID))
-                                                .collect(Collectors.toSet()))))
+                                this.dslContext.select(
+                                                SecurityV2Role.SECURITY_V2_ROLE.ID,
+                                                SecurityV2Role.SECURITY_V2_ROLE.NAME,
+                                                SecurityApp.SECURITY_APP.APP_CODE)
+                                        .from(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE)
+                                        .leftJoin(SecurityV2Role.SECURITY_V2_ROLE)
+                                        .on(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID
+                                                .eq(SecurityV2Role.SECURITY_V2_ROLE.ID))
+                                        .leftJoin(SecurityApp.SECURITY_APP)
+                                        .on(SecurityV2Role.SECURITY_V2_ROLE.APP_ID.eq(SecurityApp.SECURITY_APP.ID))
+                                        .where(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.ROLE_ID
+                                                .in(roles.stream().map(e -> e.getValue(SecurityV2Role.SECURITY_V2_ROLE.ID))
+                                                        .collect(Collectors.toSet()))))
                         .collectList(),
 
                 (profiles, roles, subRoles) ->
 
-                Flux.from(this.dslContext
-                        .select(SecurityPermission.SECURITY_PERMISSION.NAME,
-                                SecurityApp.SECURITY_APP.APP_CODE)
-                        .from(SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION)
-                        .leftJoin(SecurityApp.SECURITY_APP)
-                        .on(SecurityApp.SECURITY_APP.ID.eq(SecurityPermission.SECURITY_PERMISSION.APP_ID))
-                        .where(SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION.ROLE_ID.in(Stream.concat(
-                                roles.stream().map(e -> e.getValue(SecurityV2Role.SECURITY_V2_ROLE.ID)),
-                                subRoles.stream().map(e -> e.getValue(SecurityV2Role.SECURITY_V2_ROLE.ID))).toList())))
-                        .collectList(),
+                        Flux.from(this.dslContext
+                                        .select(SecurityPermission.SECURITY_PERMISSION.NAME,
+                                                SecurityApp.SECURITY_APP.APP_CODE)
+                                        .from(SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION)
+                                        .leftJoin(SecurityPermission.SECURITY_PERMISSION)
+                                        .on(SecurityPermission.SECURITY_PERMISSION.ID.eq(SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION.PERMISSION_ID))
+                                        .leftJoin(SecurityApp.SECURITY_APP)
+                                        .on(SecurityApp.SECURITY_APP.ID.eq(SecurityPermission.SECURITY_PERMISSION.APP_ID))
+                                        .where(SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION.ROLE_ID.in(Stream.concat(
+                                                roles.stream().map(e -> e.getValue(SecurityV2Role.SECURITY_V2_ROLE.ID)),
+                                                subRoles.stream().map(e -> e.getValue(SecurityV2Role.SECURITY_V2_ROLE.ID))).toList())))
+                                .collectList(),
 
                 (profiles, roles, subRoles, permissions) -> Mono.just(Stream.of(
-                        roles.stream()
-                                .map(e -> AuthoritiesNameUtil.makeRoleName(
-                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-                                        e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
+                                roles.stream()
+                                        .map(e -> AuthoritiesNameUtil.makeRoleName(
+                                                e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                                e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
 
-                        subRoles.stream()
-                                .map(e -> AuthoritiesNameUtil.makeRoleName(
-                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-                                        e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
+                                subRoles.stream()
+                                        .map(e -> AuthoritiesNameUtil.makeRoleName(
+                                                e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                                e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
 
-                        permissions.stream()
-                                .map(e -> AuthoritiesNameUtil.makePermissionName(
-                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-                                        e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME))),
+                                permissions.stream()
+                                        .map(e -> AuthoritiesNameUtil.makePermissionName(
+                                                e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                                e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME))),
 
-                        profiles.stream()
-                                .map(e -> AuthoritiesNameUtil.makeProfileName(
-                                        e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
-                                        e.getValue(SecurityProfile.SECURITY_PROFILE.NAME))))
+                                profiles.stream()
+                                        .map(e -> AuthoritiesNameUtil.makeProfileName(
+                                                e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                                e.getValue(SecurityProfile.SECURITY_PROFILE.NAME))))
                         .flatMap(e -> e)
                         .distinct()
                         .toList())
 
-        );
+        ).contextWrite(
+                Context.of(LogUtil.METHOD_NAME,
+                        "ProfileDAO.getProfileAuthorities"));
     }
 }

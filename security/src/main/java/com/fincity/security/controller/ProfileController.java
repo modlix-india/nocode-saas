@@ -44,7 +44,8 @@ public class ProfileController {
             public void setAsText(String text) {
                 if (text == null)
                     setValue(null);
-                setValue(ULong.valueOf(text));
+                else
+                    setValue(ULong.valueOf(text));
             }
         });
         binder.registerCustomEditor(UInteger.class, new PropertyEditorSupport() {
@@ -52,7 +53,8 @@ public class ProfileController {
             public void setAsText(String text) {
                 if (text == null)
                     setValue(null);
-                setValue(UInteger.valueOf(text));
+                else
+                    setValue(UInteger.valueOf(text));
             }
         });
         binder.registerCustomEditor(UShort.class, new PropertyEditorSupport() {
@@ -60,7 +62,8 @@ public class ProfileController {
             public void setAsText(String text) {
                 if (text == null)
                     setValue(null);
-                setValue(UShort.valueOf(text));
+                else
+                    setValue(UShort.valueOf(text));
             }
         });
     }
@@ -68,7 +71,7 @@ public class ProfileController {
     @RequestMapping(method = {
             RequestMethod.POST,
             RequestMethod.PUT
-    })
+    }, value = "/profiles")
     public Mono<ResponseEntity<Profile>> createOrUpdate(@RequestBody Profile entity) {
         return this.service.create(entity)
                 .map(ResponseEntity::ok);
@@ -85,7 +88,7 @@ public class ProfileController {
 
     @GetMapping("/{appId}/profiles")
     public Mono<ResponseEntity<Page<Profile>>> readPageFilter(@PathVariable("appId") final ULong appId,
-            Pageable pageable) {
+                                                              Pageable pageable) {
 
         pageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, "id") : pageable);
         return this.service.readAll(appId, pageable)
