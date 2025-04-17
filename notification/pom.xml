@@ -46,9 +46,13 @@
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
         <!-- open source -->
         <package.o.feign-reactor.version>4.2.1</package.o.feign-reactor.version>
+        <package.o.freemarker-gae.version>2.3.34</package.o.freemarker-gae.version>
         <package.o.freemarker.version>2.3.34</package.o.freemarker.version>
+        <package.o.jakarta.mail.version>2.0.1</package.o.jakarta.mail.version>
+        <package.o.jakarta.websocket-api.version>2.2.0</package.o.jakarta.websocket-api.version>
         <package.o.jooq.version>3.20.3</package.o.jooq.version>
         <package.o.palantir-java.format.version>2.61.0</package.o.palantir-java.format.version>
+        <package.o.sendgrid-java.version>4.10.3</package.o.sendgrid-java.version>
         <package.o.spotless.version>2.44.3</package.o.spotless.version>
         <package.o.spring-cloud.version>2024.0.0-RC1</package.o.spring-cloud.version>
     </properties>
@@ -118,12 +122,12 @@
         <dependency>
             <groupId>com.sendgrid</groupId>
             <artifactId>sendgrid-java</artifactId>
-            <version>4.10.3</version>
+            <version>${package.o.sendgrid-java.version}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.mail</groupId>
             <artifactId>jakarta.mail</artifactId>
-            <version>2.0.1</version>
+            <version>${package.o.jakarta.mail.version}</version>
         </dependency>
         <dependency>
             <groupId>io.asyncer</groupId>
@@ -157,11 +161,12 @@
         <dependency>
             <groupId>org.freemarker</groupId>
             <artifactId>freemarker-gae</artifactId>
-            <version>${package.o.freemarker.version}</version>
+            <version>${package.o.freemarker-gae.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
+            <version>${package.o.jooq.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jooq</groupId>
@@ -208,7 +213,7 @@
         <dependency>
             <groupId>jakarta.websocket</groupId>
             <artifactId>jakarta.websocket-api</artifactId>
-            <version>2.2.0</version>
+            <version>${package.o.jakarta.websocket-api.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
