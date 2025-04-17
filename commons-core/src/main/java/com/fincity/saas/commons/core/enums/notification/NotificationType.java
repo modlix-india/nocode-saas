@@ -38,11 +38,11 @@ public enum NotificationType implements EnumType {
         return this.name();
     }
 
-    public static NotificationChannelType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(NotificationChannelType.class, literal);
+    public static NotificationType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(NotificationType.class, literal);
     }
 
     public static boolean isLiteralValid(String literal) {
-        return EnumType.lookupLiteral(NotificationChannelType.class, literal) == null;
+        return EnumType.lookupLiteral(NotificationType.class, literal) == null;
     }
 }

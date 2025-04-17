@@ -1,10 +1,10 @@
 package com.fincity.saas.notification.dto;
 
+import com.fincity.saas.commons.core.enums.notification.NotificationType;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
-import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.request.NotificationChannel;
 import com.fincity.saas.notification.model.request.SendRequest;

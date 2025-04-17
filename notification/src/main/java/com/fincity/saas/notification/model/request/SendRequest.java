@@ -1,9 +1,9 @@
 package com.fincity.saas.notification.model.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.core.enums.notification.NotificationType;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.UniqueUtil;
-import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.request.NotificationChannel.NotificationChannelBuilder;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
