@@ -4,7 +4,7 @@ import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceServic
 import org.springframework.stereotype.Service;
 
 @Service
-public class    CoreMessageResourceService extends AbstractMongoMessageResourceService {
+public class CoreMessageResourceService extends AbstractMongoMessageResourceService {
 
     public static final String STORAGE_NOT_FOUND = "storage_not_found";
 

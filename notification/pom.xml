@@ -15,6 +15,25 @@
     <name>notification</name>
     <description>Fincity SAAS Notification Server</description>
     <properties>
+        <!-- Package -->
+        <base.package>com.fincity.notification</base.package>
+        <server.package>notification</server.package>
+        <jooq.package>${base.package}.${server.package}.jooq</jooq.package>
+
+        <!-- Paths -->
+        <base.package.dir>com/fincity/saas</base.package.dir>
+        <server.package.dir>notification</server.package.dir>
+        <main.java.dir>src/main/java</main.java.dir>
+        <test.java.dir>src/test/java</test.java.dir>
+        <resources.dir>src/main/resources</resources.dir>
+        <jooq.dir>${main.java.dir}/${base.package.dir}/${server.package.dir}/jooq</jooq.dir>
+
+        <!-- Database -->
+        <database.schema.name>core</database.schema.name>
+        <mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</mysql.jdbc.url>
+        <mysql.jdbc.user>root</mysql.jdbc.user>
+        <mysql.jdbc.password>Vishwas123#</mysql.jdbc.password>
+
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <nocode-kirun-version>3.7.1</nocode-kirun-version>
@@ -63,13 +82,11 @@
             <artifactId>feign-reactor-spring-configuration</artifactId>
             <version>${feign-reactor.version}</version>
         </dependency>
-
         <!-- Spring Cloud Dependencies -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
-
         <!-- websockets -->
         <dependency>
             <groupId>jakarta.websocket</groupId>
@@ -77,7 +94,6 @@
             <version>2.2.0</version>
             <scope>provided</scope>
         </dependency>
-
         <!-- Database and R2DBC -->
         <dependency>
             <groupId>org.jooq</groupId>
@@ -109,20 +125,17 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
-
         <!-- Template Engine -->
         <dependency>
             <groupId>org.freemarker</groupId>
             <artifactId>freemarker-gae</artifactId>
             <version>${freemarker.version}</version>
         </dependency>
-
         <!-- Monitoring and Metrics -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
-
         <!-- Others -->
         <dependency>
             <groupId>io.projectreactor.netty</groupId>
@@ -141,7 +154,6 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
-
         <!-- Channels-->
         <!-- Mail-->
         <dependency>
@@ -154,7 +166,6 @@
             <artifactId>sendgrid-java</artifactId>
             <version>4.10.3</version>
         </dependency>
-
         <!-- Fincity Dependencies -->
         <dependency>
             <groupId>com.fincity.nocode</groupId>
@@ -196,7 +207,6 @@
             <artifactId>reactor-flatmap-util</artifactId>
             <version>${nocode-flatmap-util-version}</version>
         </dependency>
-
         <!-- Test Dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -411,6 +421,13 @@
                         <configuration>
                             <!-- JAVA files -->
                             <java>
+                                <includes>
+                                    <include>${main.java.dir}/**/*.java</include>
+                                    <include>${test.java.dir}/**/*.java</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>${jooq.dir}/**/*.java</exclude>
+                                </excludes>
                                 <palantirJavaFormat>
                                     <version>${palantir-java.format.version}</version>
                                     <style>PALANTIR</style>
@@ -425,9 +442,22 @@
                             <!-- YAML files -->
                             <yaml>
                                 <includes>
-                                    <include>src/main/resources/*.yml</include>
-                                    <include>src/main/resources/*.yaml</include>
+                                    <include>${resources.dir}/*.yml</include>
+                                    <include>${resources.dir}/*.yaml</include>
                                 </includes>
+                                <jackson>
+                                    <features>
+                                        <INDENT_OUTPUT>true</INDENT_OUTPUT>
+                                        <ORDER_MAP_ENTRIES_BY_KEYS>true</ORDER_MAP_ENTRIES_BY_KEYS>
+                                    </features>
+                                    <yamlFeatures>
+                                        <WRITE_DOC_START_MARKER>true</WRITE_DOC_START_MARKER>
+                                        <MINIMIZE_QUOTES>true</MINIMIZE_QUOTES>
+                                        <SPLIT_LINES>true</SPLIT_LINES>
+                                    </yamlFeatures>
+                                </jackson>
+                                <trimTrailingWhitespace/>
+                                <endWithNewline/>
                             </yaml>
                         </configuration>
                     </plugin>

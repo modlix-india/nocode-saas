@@ -118,20 +118,21 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
     }
 
     public Mono<Boolean> hasConnection(String name, String appCode, String clientCode, ConnectionType type) {
-        return this.readInternalConnection(name, appCode, clientCode, type).hasElement()
+        return this.readInternalConnection(name, appCode, clientCode, type)
+                .hasElement()
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Connection> readInternalConnection(String name, String appCode, String clientCode,
-                                                   ConnectionType type) {
+    public Mono<Connection> readInternalConnection(
+            String name, String appCode, String clientCode, ConnectionType type) {
 
         return FlatMapUtil.flatMapMono(
-
                 () -> super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
-
                 conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
-
-                (conn, typedConn) -> Mono.justOrEmpty(typedConn.getClientCode().equals(clientCode)
-                        || BooleanUtil.safeValueOf(typedConn.getIsAppLevel()) ? typedConn : null));
+                (conn, typedConn) -> Mono.justOrEmpty(
+                        typedConn.getClientCode().equals(clientCode)
+                                        || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
+                                ? typedConn
+                                : null));
     }
 }
