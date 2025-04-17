@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -15,107 +16,135 @@
     <name>notification</name>
     <description>Fincity SAAS Notification Server</description>
     <properties>
-        <!-- Package -->
-        <base.package>com.fincity.notification</base.package>
-        <server.package>notification</server.package>
-        <jooq.package>${base.package}.${server.package}.jooq</jooq.package>
-
-        <!-- Paths -->
-        <base.package.dir>com/fincity/saas</base.package.dir>
-        <server.package.dir>notification</server.package.dir>
-        <main.java.dir>src/main/java</main.java.dir>
-        <test.java.dir>src/test/java</test.java.dir>
-        <resources.dir>src/main/resources</resources.dir>
-        <jooq.dir>${main.java.dir}/${base.package.dir}/${server.package.dir}/jooq</jooq.dir>
-
-        <!-- Database -->
+        <!-- database -->
+        <database.mysql.jdbc.password>Vishwas123#</database.mysql.jdbc.password>
+        <database.mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</database.mysql.jdbc.url>
+        <database.mysql.jdbc.user>root</database.mysql.jdbc.user>
         <database.schema.name>notification</database.schema.name>
-        <mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</mysql.jdbc.url>
-        <mysql.jdbc.user>root</mysql.jdbc.user>
-        <mysql.jdbc.password>Vishwas123#</mysql.jdbc.password>
-
+        <!-- directories -->
+        <dir.jooq>${dir.main.java}/${dir.package.base}/${dir.package.server}/jooq</dir.jooq>
+        <dir.main.java>src/main/java</dir.main.java>
+        <dir.package.base>com/fincity/saas</dir.package.base>
+        <dir.package.server>notification</dir.package.server>
+        <dir.resources>src/main/resources</dir.resources>
+        <dir.test.java>src/test/java</dir.test.java>
+        <!-- java -->
         <java.version>21</java.version>
-        <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
-        <nocode-kirun-version>3.7.1</nocode-kirun-version>
-        <saas-commons-version>2.0.0</saas-commons-version>
-        <saas-commons-core-version>1.0.0</saas-commons-core-version>
-        <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
-        <saas-commons-security-version>2.0.0</saas-commons-security-version>
-        <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
-        <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
-        <nocode-flatmap-util-version>1.3.0</nocode-flatmap-util-version>
-        <feign-reactor.version>4.2.1</feign-reactor.version>
-        <jooq.version>3.20.3</jooq.version>
-        <spotless.version>2.44.3</spotless.version>
-        <palantir-java.format.version>2.61.0</palantir-java.format.version>
+        <!-- packages -->
+        <!-- current -->
+        <package.c.base>com.fincity.notification</package.c.base>
+        <package.c.jooq>${package.c.base}.${package.c.server}.jooq</package.c.jooq>
+        <package.c.server>notification</package.c.server>
+        <!-- internal -->
+        <package.i.nocode-flatmap-util-version>1.3.0</package.i.nocode-flatmap-util-version>
+        <package.i.nocode-kirun-version>3.7.1</package.i.nocode-kirun-version>
+        <package.i.saas-commons-core-version>1.0.0</package.i.saas-commons-core-version>
+        <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
+        <package.i.saas-commons-mongo-version>2.0.0</package.i.saas-commons-mongo-version>
+        <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
+        <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
+        <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
+        <!-- open source -->
+        <package.o.feign-reactor.version>4.2.1</package.o.feign-reactor.version>
+        <package.o.freemarker.version>2.3.34</package.o.freemarker.version>
+        <package.o.jooq.version>3.20.3</package.o.jooq.version>
+        <package.o.palantir-java.format.version>2.61.0</package.o.palantir-java.format.version>
+        <package.o.spotless.version>2.44.3</package.o.spotless.version>
+        <package.o.spring-cloud.version>2024.0.0-RC1</package.o.spring-cloud.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${package.o.spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
-        <!-- Spring Boot Dependencies -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <groupId>com.fincity.nocode</groupId>
+            <artifactId>kirun-java</artifactId>
+            <version>${package.i.nocode-kirun-version}</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
+            <groupId>com.fincity.nocode</groupId>
+            <artifactId>reactor-flatmap-util</artifactId>
+            <version>${package.i.nocode-flatmap-util-version}</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons</artifactId>
+            <version>${package.i.saas-commons-version}</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-core</artifactId>
+            <version>${package.i.saas-commons-core-version}</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-cache</artifactId>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-jooq</artifactId>
+            <version>${package.i.saas-commons-jooq-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-mongo</artifactId>
+            <version>${package.i.saas-commons-mongo-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-mq</artifactId>
+            <version>${package.i.saas-commons-mq-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-security</artifactId>
+            <version>${package.i.saas-commons-security-version}</version>
         </dependency>
         <dependency>
             <groupId>com.playtika.reactivefeign</groupId>
             <artifactId>feign-reactor-spring-cloud-starter</artifactId>
-            <version>${feign-reactor.version}</version>
+            <version>${package.o.feign-reactor.version}</version>
             <type>pom</type>
         </dependency>
         <dependency>
             <groupId>com.playtika.reactivefeign</groupId>
             <artifactId>feign-reactor-spring-configuration</artifactId>
-            <version>${feign-reactor.version}</version>
-        </dependency>
-        <!-- Spring Cloud Dependencies -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-config</artifactId>
-        </dependency>
-        <!-- websockets -->
-        <dependency>
-            <groupId>jakarta.websocket</groupId>
-            <artifactId>jakarta.websocket-api</artifactId>
-            <version>2.2.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Database and R2DBC -->
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq-codegen-maven</artifactId>
-            <version>${jooq.version}</version>
+            <version>${package.o.feign-reactor.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq-jackson-extensions</artifactId>
-            <version>${jooq.version}</version>
+            <groupId>com.sendgrid</groupId>
+            <artifactId>sendgrid-java</artifactId>
+            <version>4.10.3</version>
         </dependency>
         <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.r2dbc</groupId>
-            <artifactId>r2dbc-pool</artifactId>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.1</version>
         </dependency>
         <dependency>
             <groupId>io.asyncer</groupId>
             <artifactId>r2dbc-mysql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver-dns-native-macos</artifactId>
+            <classifier>osx-aarch_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-pool</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -125,111 +154,74 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
-        <!-- Template Engine -->
         <dependency>
             <groupId>org.freemarker</groupId>
             <artifactId>freemarker-gae</artifactId>
-            <version>${freemarker.version}</version>
-        </dependency>
-        <!-- Monitoring and Metrics -->
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>
-        <!-- Others -->
-        <dependency>
-            <groupId>io.projectreactor.netty</groupId>
-            <artifactId>reactor-netty</artifactId>
+            <version>${package.o.freemarker.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-resolver-dns-native-macos</artifactId>
-            <classifier>osx-aarch_64</classifier>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq-codegen-maven</artifactId>
+            <version>${package.o.jooq.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq-jackson-extensions</artifactId>
+            <version>${package.o.jooq.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
-        <!-- Channels-->
-        <!-- Mail-->
         <dependency>
-            <groupId>com.sun.mail</groupId>
-            <artifactId>jakarta.mail</artifactId>
-            <version>2.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sendgrid</groupId>
-            <artifactId>sendgrid-java</artifactId>
-            <version>4.10.3</version>
-        </dependency>
-        <!-- Fincity Dependencies -->
-        <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>kirun-java</artifactId>
-            <version>${nocode-kirun-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons</artifactId>
-            <version>${saas-commons-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-core</artifactId>
-            <version>${saas-commons-core-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mq</artifactId>
-            <version>${saas-commons-mq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-jooq</artifactId>
-            <version>${saas-commons-jooq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-security</artifactId>
-            <version>${saas-commons-security-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mongo</artifactId>
-            <version>${saas-commons-mongo-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>reactor-flatmap-util</artifactId>
-            <version>${nocode-flatmap-util-version}</version>
-        </dependency>
-        <!-- Test Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+            <groupId>jakarta.websocket</groupId>
+            <artifactId>jakarta.websocket-api</artifactId>
+            <version>2.2.0</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
     <repositories>
         <repository>
             <id>spring-libs-milestone</id>
@@ -240,24 +232,16 @@
             <url>https://repo.spring.io/libs-snapshot</url>
         </repository>
         <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
         </repository>
     </repositories>
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-maven-plugin</artifactId>
-            </plugin>
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
@@ -275,6 +259,14 @@
                     </to>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -285,36 +277,12 @@
                     <plugin>
                         <groupId>org.jooq</groupId>
                         <artifactId>jooq-codegen-maven</artifactId>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>generate</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.mysql</groupId>
-                                <artifactId>mysql-connector-j</artifactId>
-                                <version>9.2.0</version>
-                            </dependency>
-                            <dependency>
-                                <groupId>javax.xml.bind</groupId>
-                                <artifactId>jaxb-api</artifactId>
-                                <version>2.3.1</version>
-                            </dependency>
-                            <dependency>
-                                <groupId>org.glassfish.jaxb</groupId>
-                                <artifactId>jaxb-runtime</artifactId>
-                                <version>4.0.2</version>
-                            </dependency>
-                        </dependencies>
                         <configuration>
                             <jdbc>
                                 <driver>com.mysql.cj.jdbc.Driver</driver>
-                                <url>${mysql.jdbc.url}</url>
-                                <user>${mysql.jdbc.user}</user>
-                                <password>${mysql.jdbc.password}</password>
+                                <url>${database.mysql.jdbc.url}</url>
+                                <user>${database.mysql.jdbc.user}</user>
+                                <password>${database.mysql.jdbc.password}</password>
                             </jdbc>
                             <generator>
                                 <database>
@@ -323,36 +291,28 @@
                                     <forcedTypes>
                                         <forcedType>
                                             <userType>com.fincity.saas.notification.model.request.NotificationChannel</userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*NOTIFICATION_CHANNEL</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.notification.model.message.channel.InAppMessage</userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*IN_APP_MESSAGE</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.notification.model.response.NotificationErrorInfo</userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*ERROR_INFO</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                         </forcedType>
@@ -389,6 +349,30 @@
                                 </target>
                             </generator>
                         </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.mysql</groupId>
+                                <artifactId>mysql-connector-j</artifactId>
+                                <version>9.2.0</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>javax.xml.bind</groupId>
+                                <artifactId>jaxb-api</artifactId>
+                                <version>2.3.1</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.glassfish.jaxb</groupId>
+                                <artifactId>jaxb-runtime</artifactId>
+                                <version>4.0.2</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
@@ -400,39 +384,18 @@
                     <plugin>
                         <groupId>com.diffplug.spotless</groupId>
                         <artifactId>spotless-maven-plugin</artifactId>
-                        <version>${spotless.version}</version>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>check</goal>
-                                    <goal>apply</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.diffplug.spotless</groupId>
-                                <artifactId>spotless-maven-plugin</artifactId>
-                                <version>${spotless.version}</version>
-                            </dependency>
-                            <dependency>
-                                <groupId>com.palantir.javaformat</groupId>
-                                <artifactId>palantir-java-format</artifactId>
-                                <version>${palantir-java.format.version}</version>
-                            </dependency>
-                        </dependencies>
+                        <version>${package.o.spotless.version}</version>
                         <configuration>
-                            <!-- JAVA files -->
                             <java>
                                 <includes>
-                                    <include>${main.java.dir}/**/*.java</include>
-                                    <include>${test.java.dir}/**/*.java</include>
+                                    <include>${dir.main.java}/**/*.java</include>
+                                    <include>${dir.test.java}/**/*.java</include>
                                 </includes>
                                 <excludes>
-                                    <exclude>${jooq.dir}/**/*.java</exclude>
+                                    <exclude>${dir.jooq}/**/*.java</exclude>
                                 </excludes>
                                 <palantirJavaFormat>
-                                    <version>${palantir-java.format.version}</version>
+                                    <version>${package.o.palantir-java.format.version}</version>
                                     <style>PALANTIR</style>
                                 </palantirJavaFormat>
                                 <importOrder/>
@@ -442,11 +405,30 @@
                                 <endWithNewline/>
                                 <toggleOffOn/>
                             </java>
-                            <!-- YAML files -->
+                            <pom>
+                                <includes>
+                                    <include>pom.xml</include>
+                                </includes>
+                                <sortPom>
+                                    <encoding>UTF-8</encoding>
+                                    <endWithNewline>true</endWithNewline>
+                                    <expandEmptyElements>false</expandEmptyElements>
+                                    <indentAttribute>all</indentAttribute>
+                                    <keepBlankLines>false</keepBlankLines>
+                                    <nrOfIndentSpace>4</nrOfIndentSpace>
+                                    <sortDependencies>scope,groupId,artifactId</sortDependencies>
+                                    <sortDependencyExclusions>groupId,artifactId</sortDependencyExclusions>
+                                    <sortDependencyManagement>groupId,artifactId</sortDependencyManagement>
+                                    <sortExecutions>false</sortExecutions>
+                                    <sortModules>true</sortModules>
+                                    <sortPlugins>groupId,artifactId</sortPlugins>
+                                    <sortProperties>true</sortProperties>
+                                </sortPom>
+                            </pom>
                             <yaml>
                                 <includes>
-                                    <include>${resources.dir}/*.yml</include>
-                                    <include>${resources.dir}/*.yaml</include>
+                                    <include>${dir.resources}/*.yml</include>
+                                    <include>${dir.resources}/*.yaml</include>
                                 </includes>
                                 <jackson>
                                     <features>
@@ -463,10 +445,29 @@
                                 <endWithNewline/>
                             </yaml>
                         </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.diffplug.spotless</groupId>
+                                <artifactId>spotless-maven-plugin</artifactId>
+                                <version>${package.o.spotless.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>com.palantir.javaformat</groupId>
+                                <artifactId>palantir-java-format</artifactId>
+                                <version>${package.o.palantir-java.format.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                    <goal>apply</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
         </profile>
     </profiles>
-
 </project>
