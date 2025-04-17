@@ -461,3 +461,108 @@ CHANGE COLUMN `OBJECT_NAME` `OBJECT_NAME` ENUM('USER', 'ROLE', 'PERMISSION', 'PA
 SET SQL_SAFE_UPDATES = 0;
 DELETE FROM `security`.`security_v2_role` where short_name = 'Assign';
 SET SQL_SAFE_UPDATES = 1;
+
+select id from security.security_app where app_code = 'appbuilder' into @v_app_appbuilder;
+select id from security.security_client where code = 'system' into @v_client_system;
+
+delete from security.security_profile where app_id = @v_app_appbuilder;
+
+select id from security.security_v2_role where name = 'Actions Manager' into @v_role_actions_manager;
+select id from security.security_v2_role where name = 'Application Manager' into @v_role_app_manager;
+select id from security.security_v2_role where name = 'Client Manager' into @v_role_client_manager;
+select id from security.security_v2_role where name = 'Client Type Manager' into @v_role_client_type_manager;
+select id from security.security_v2_role where name = 'Client Update Manager' into @v_role_client_update_manager;
+select id from security.security_v2_role where name = 'Data Connection Manager' into @v_role_data_connection_manager;
+select id from security.security_v2_role where name = 'Data Manager' into @v_role_data_manager;
+select id from security.security_v2_role where name = 'EventAction Manager' into @v_role_eventaction_manager;
+select id from security.security_v2_role where name = 'EventDefinition Manager' into @v_role_eventdefinition_manager;
+select id from security.security_v2_role where name = 'Files Manager' into @v_role_files_manager;
+select id from security.security_v2_role where name = 'Function Manager' into @v_role_function_manager;
+select id from security.security_v2_role where name = 'Integration Manager' into @v_role_integration_manager;
+select id from security.security_v2_role where name = 'Owner' into @v_role_owner;
+select id from security.security_v2_role where name = 'Package Manager' into @v_role_package_manager;
+select id from security.security_v2_role where name = 'Page Manager' into @v_role_page_manager;
+select id from security.security_v2_role where name = 'Permission Manager' into @v_role_permission_manager;
+select id from security.security_v2_role where name = 'Personalization Manager' into @v_role_personalization_manager;
+select id from security.security_v2_role where name = 'Profile Manager' into @v_role_profile_manager;
+select id from security.security_v2_role where name = 'Role Manager' into @v_role_role_manager;
+select id from security.security_v2_role where name = 'Schema Manager' into @v_role_schema_manager;
+select id from security.security_v2_role where name = 'Style Manager' into @v_role_style_manager;
+select id from security.security_v2_role where name = 'System Application Manager' into @v_role_system_application_manager;
+select id from security.security_v2_role where name = 'Template Manager' into @v_role_template_manager;
+select id from security.security_v2_role where name = 'Theme Manager' into @v_role_theme_manager;
+select id from security.security_v2_role where name = 'Transport Manager' into @v_role_transport_manager;
+select id from security.security_v2_role where name = 'User Manager' into @v_role_user_manager;
+select id from security.security_v2_role where name = 'Workflow Manager' into @v_role_workflow_manager;
+
+insert into security.security_profile(client_id, app_id, name, description, arrangement) value
+(@v_client_system, @v_app_appbuilder, 'Appbuilder Owner', 'Owner of App Builder', 
+
+JSON_OBJECT(
+  
+  "r1", JSON_OBJECT( "roleId", @v_role_actions_manager),
+  "r2", JSON_OBJECT( "roleId", @v_role_app_manager),
+  "r3", JSON_OBJECT( "roleId", @v_role_client_manager),
+  "r4", JSON_OBJECT( "roleId", @v_role_client_type_manager),
+  "r5", JSON_OBJECT( "roleId", @v_role_client_update_manager),
+  "r6", JSON_OBJECT( "roleId", @v_role_data_connection_manager),
+  "r7", JSON_OBJECT( "roleId", @v_role_data_manager),
+  "r8", JSON_OBJECT( "roleId", @v_role_eventaction_manager),
+  "r9", JSON_OBJECT( "roleId", @v_role_eventdefinition_manager),
+  "r10", JSON_OBJECT( "roleId", @v_role_files_manager),
+  "r11", JSON_OBJECT( "roleId", @v_role_function_manager),
+  "r12", JSON_OBJECT( "roleId", @v_role_integration_manager),
+  "r13", JSON_OBJECT( "roleId", @v_role_owner),
+  "r14", JSON_OBJECT( "roleId", @v_role_package_manager),
+  "r15", JSON_OBJECT( "roleId", @v_role_page_manager),
+  "r16", JSON_OBJECT( "roleId", @v_role_permission_manager),
+  "r17", JSON_OBJECT( "roleId", @v_role_personalization_manager),
+  "r18", JSON_OBJECT( "roleId", @v_role_profile_manager),
+  "r19", JSON_OBJECT( "roleId", @v_role_role_manager),
+  "r20", JSON_OBJECT( "roleId", @v_role_schema_manager),
+  "r21", JSON_OBJECT( "roleId", @v_role_style_manager),
+  "r22", JSON_OBJECT( "roleId", @v_role_system_application_manager),
+  "r23", JSON_OBJECT( "roleId", @v_role_template_manager),
+  "r24", JSON_OBJECT( "roleId", @v_role_theme_manager),
+  "r25", JSON_OBJECT( "roleId", @v_role_transport_manager),
+  "r26", JSON_OBJECT( "roleId", @v_role_user_manager),
+  "r27", JSON_OBJECT( "roleId", @v_role_workflow_manager)
+
+)
+
+);
+
+select id from security.security_user where USER_NAME = 'sysadmin' into @v_user_sysadmin;
+select id from security.security_profile where name = 'Appbuilder Owner' into @v_profile_appbuilder_owner;
+
+insert into security.security_profile_role(profile_id, role_id) values
+(@v_profile_appbuilder_owner, @v_role_actions_manager),
+(@v_profile_appbuilder_owner, @v_role_app_manager),
+(@v_profile_appbuilder_owner, @v_role_client_manager),
+(@v_profile_appbuilder_owner, @v_role_client_type_manager),
+(@v_profile_appbuilder_owner, @v_role_client_update_manager),
+(@v_profile_appbuilder_owner, @v_role_data_connection_manager),
+(@v_profile_appbuilder_owner, @v_role_data_manager),
+(@v_profile_appbuilder_owner, @v_role_eventaction_manager),
+(@v_profile_appbuilder_owner, @v_role_eventdefinition_manager),
+(@v_profile_appbuilder_owner, @v_role_files_manager),
+(@v_profile_appbuilder_owner, @v_role_function_manager),
+(@v_profile_appbuilder_owner, @v_role_integration_manager),
+(@v_profile_appbuilder_owner, @v_role_owner),
+(@v_profile_appbuilder_owner, @v_role_package_manager),
+(@v_profile_appbuilder_owner, @v_role_page_manager),
+(@v_profile_appbuilder_owner, @v_role_permission_manager),
+(@v_profile_appbuilder_owner, @v_role_personalization_manager),
+(@v_profile_appbuilder_owner, @v_role_profile_manager),
+(@v_profile_appbuilder_owner, @v_role_role_manager),
+(@v_profile_appbuilder_owner, @v_role_schema_manager),
+(@v_profile_appbuilder_owner, @v_role_style_manager),
+(@v_profile_appbuilder_owner, @v_role_system_application_manager),
+(@v_profile_appbuilder_owner, @v_role_template_manager),
+(@v_profile_appbuilder_owner, @v_role_theme_manager),
+(@v_profile_appbuilder_owner, @v_role_transport_manager),
+(@v_profile_appbuilder_owner, @v_role_user_manager),
+(@v_profile_appbuilder_owner, @v_role_workflow_manager);
+
+insert into security.security_profile_user(profile_id, user_id) values
+(@v_profile_appbuilder_owner, @v_user_sysadmin);
