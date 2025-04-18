@@ -3,14 +3,13 @@ package com.fincity.security.dao;
 import static com.fincity.saas.commons.util.StringUtil.*;
 
 import java.util.*;
+import java.util.Comparator;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.jooq.Field;
-import org.jooq.Record1;
-import org.jooq.Record2;
-import org.jooq.Record3;
-import org.jooq.Record6;
+import com.fincity.security.jooq.tables.records.SecurityProfileRoleRecord;
+import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -41,11 +40,12 @@ import com.fincity.security.jooq.tables.SecurityV2Role;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission;
 import com.fincity.security.jooq.tables.SecurityV2RoleRole;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
-import com.fincity.security.jooq.tables.records.SecurityProfileRoleRecord;
 import com.fincity.security.util.AuthoritiesNameUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 
@@ -53,7 +53,7 @@ import reactor.util.function.Tuples;
 public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, ULong, Profile> {
 
     public ProfileDAO() {
-        super(Profile.class, SecurityProfile.SECURITY_PROFILE, SecurityProfile.SECURITY_PROFILE.CLIENT_ID);
+        super(Profile.class, SecurityProfile.SECURITY_PROFILE, SecurityProfile.SECURITY_PROFILE.ID);
     }
 
     @Override
@@ -185,7 +185,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                             created -> this
                                     .createRoleRelations(created.getId(),
-                                            this.getRoleIdsFromArrangemnts(arrangements)
+                                            this.getRoleIdsFromArrangements(arrangements)
                                                     .collect(Collectors.toSet()),
                                             Set.of())
                                     .flatMap(e -> this.read(created.getId(), hierarchy)))
@@ -216,10 +216,10 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                         (rootProfile, diff, created) -> {
 
-                            Set<ULong> roleIds = this.getRoleIdsFromArrangemnts(arrangements)
+                            Set<ULong> roleIds = this.getRoleIdsFromArrangements(arrangements)
                                     .collect(Collectors.toSet());
                             Set<ULong> rootsRoleIds = this
-                                    .getRoleIdsFromArrangemnts(rootProfile.getArrangement())
+                                    .getRoleIdsFromArrangements(rootProfile.getArrangement())
                                     .collect(Collectors.toSet());
 
                             Set<ULong> newRoles = roleIds.stream().filter(r -> !rootsRoleIds.contains(r))
@@ -236,31 +236,40 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
     private Mono<Integer> createRoleRelations(ULong profileId, Set<ULong> newRoles, Set<ULong> removedRoles) {
 
-        return FlatMapUtil.flatMapMono(
-                        () -> Mono.from(this.dslContext.delete(SecurityProfileRole.SECURITY_PROFILE_ROLE)
-                                .where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
-                                        .eq(profileId))),
+        var query = this.dslContext.insertInto(SecurityProfileRole.SECURITY_PROFILE_ROLE).columns(
+                SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID,
+                SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID,
+                SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE
+        );
+        InsertValuesStep3<SecurityProfileRoleRecord, ULong, ULong, Byte> vQuery = null;
 
-                        d -> {
+        for (ULong roleId : newRoles) {
+            SecurityProfileRoleRecord record = new SecurityProfileRoleRecord();
+            record.setProfileId(profileId);
+            record.setRoleId(roleId);
+            record.setExclude(ByteUtil.ZERO);
+            if (vQuery == null) vQuery = query.values(profileId, roleId, ByteUtil.ZERO);
+            else vQuery = vQuery.values(profileId, roleId, ByteUtil.ZERO);
+        }
 
-                            Mono<Integer> roles = Flux.fromIterable(newRoles).distinct().flatMap(roleId -> Mono.from(this.dslContext.insertInto(SecurityProfileRole.SECURITY_PROFILE_ROLE)
-                                            .columns(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID, SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID).values(profileId, roleId).onDuplicateKeyIgnore()))
-                                    .collectList().map(List::size);
+        for (ULong roleId : removedRoles) {
+            SecurityProfileRoleRecord record = new SecurityProfileRoleRecord();
+            record.setProfileId(profileId);
+            record.setRoleId(roleId);
+            record.setExclude(ByteUtil.ONE);
+            if (vQuery == null) vQuery = query.values(profileId, roleId, ByteUtil.ZERO);
+            else vQuery = vQuery.values(profileId, roleId, ByteUtil.ZERO);
+        }
 
-                            Mono<Integer> removed = Flux.fromIterable(removedRoles).distinct().flatMap(roleId -> Mono.from(this.dslContext.insertInto(SecurityProfileRole.SECURITY_PROFILE_ROLE)
-                                            .columns(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID, SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID
-                                                    , SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE).values(profileId, roleId, ByteUtil.ONE).onDuplicateKeyUpdate().set(SecurityProfileRole.SECURITY_PROFILE_ROLE.EXCLUDE, ByteUtil.ONE)))
-                                    .collectList().map(List::size);
+        if (vQuery == null) {
+            return Mono.from(this.dslContext.deleteFrom(SecurityProfileRole.SECURITY_PROFILE_ROLE).where(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID.eq(profileId)));
+        }
 
-                            return Mono.zip(roles, removed).map(tup -> tup.getT1() + tup.getT2());
-                        }
-
-                )
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.createRoleRelations"));
+        return Mono.from(vQuery.onDuplicateKeyIgnore());
     }
 
     @SuppressWarnings({"unchecked"})
-    private Stream<ULong> getRoleIdsFromArrangemnts(Map<String, Object> arrangements) {
+    private Stream<ULong> getRoleIdsFromArrangements(Map<String, Object> arrangements) {
 
         return arrangements.values().stream().flatMap(e -> {
 
@@ -271,10 +280,10 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                     rId = ULong.valueOf(roleId.toString());
                 }
 
-                Object subArrangments = arrangements.get("subArrangements");
-                if (subArrangments instanceof Map m1) {
+                Object subArrangements = arrangements.get("subArrangements");
+                if (subArrangements instanceof Map m1) {
 
-                    Stream<ULong> stream = this.getRoleIdsFromArrangemnts((Map<String, Object>) m1);
+                    Stream<ULong> stream = this.getRoleIdsFromArrangements((Map<String, Object>) m1);
                     if (rId == null)
                         return stream;
                     else
@@ -309,7 +318,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                             updated -> this
                                     .createRoleRelations(profile.getId(),
-                                            this.getRoleIdsFromArrangemnts(arrangements)
+                                            this.getRoleIdsFromArrangements(arrangements)
                                                     .collect(Collectors.toSet()),
                                             Set.of())
                                     .flatMap(e -> this.read(profile.getId(), hierarchy)))
@@ -340,10 +349,10 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                         (rootProfile, diff, updated) -> {
 
-                            Set<ULong> roleIds = this.getRoleIdsFromArrangemnts(arrangements)
+                            Set<ULong> roleIds = this.getRoleIdsFromArrangements(arrangements)
                                     .collect(Collectors.toSet());
                             Set<ULong> rootsRoleIds = this
-                                    .getRoleIdsFromArrangemnts(rootProfile.getArrangement())
+                                    .getRoleIdsFromArrangements(rootProfile.getArrangement())
                                     .collect(Collectors.toSet());
 
                             Set<ULong> newRoles = roleIds.stream().filter(r -> !rootsRoleIds.contains(r))
@@ -410,9 +419,13 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                 .where(DSL.and(SecurityProfileRole.SECURITY_PROFILE_ROLE.PROFILE_ID
                                                 .in(ids),
                                         SecurityProfileRole.SECURITY_PROFILE_ROLE.ROLE_ID
-                                                .notIn(roleIds))))
+                                                .in(roleIds))))
                         .map(Record1::value1)
-                        .collectList(),
+                        .collectList()
+                        .map(existing -> {
+                            Set<ULong> set = new HashSet<>(existing);
+                            return roleIds.stream().filter(Predicate.not(set::contains)).toList();
+                        }),
 
                 (restrictedProfileIds, ids, remainingRoleIds) -> {
                     if (remainingRoleIds.isEmpty())
@@ -439,7 +452,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
     public Mono<Boolean> hasAccessToRoles(ULong appId, ClientHierarchy hierarchy, Profile profile) {
         return this.hasAccessToRoles(appId, hierarchy,
-                this.getRoleIdsFromArrangemnts(profile.getArrangement()).collect(Collectors.toSet()));
+                this.getRoleIdsFromArrangements(profile.getArrangement()).collect(Collectors.toSet()));
     }
 
     public Mono<Page<Profile>> readAll(ULong appId, ClientHierarchy hierarchy, Pageable pageable) {

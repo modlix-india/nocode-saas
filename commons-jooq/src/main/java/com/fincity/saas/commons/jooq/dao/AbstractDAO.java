@@ -155,74 +155,17 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         pojo.setId(null);
 
-        R rec = this.dslContext.newRecord(this.table);
-        rec.from(pojo);
+        return Mono.from(this.dslContext.transactionPublisher(ctx -> {
+            var dsl = ctx.dsl();
 
-        List<Tuple2<Field<?>, Object>> values = new LinkedList<>();
+            R rec = dsl.newRecord(this.table);
+            rec.from(pojo);
 
-        InsertSetStep<R> insertQuery = this.dslContext.insertInto(this.table);
-
-        for (Field<?> eachField : this.table.fields()) {
-
-            Object value = rec.get(eachField);
-            if (value == null)
-                continue;
-            values.add(Tuples.of(eachField, value));
-        }
-
-        InsertValuesStepN<R> query = insertQuery.columns(values.stream()
-                        .map(Tuple2::getT1)
-                        .toList())
-                .values(values.stream()
-                        .map(Tuple2::getT2)
-                        .toList());
-
-        String sql = query.getSQL(ParamType.NAMED);
-
-        TransactionalOperator rxtx = TransactionalOperator.create(this.transactionManager);
-
-        return rxtx.execute(action -> {
-
-            GenericExecuteSpec querySpec = this.dbClient.sql(sql)
-                    .filter((statement, executeFunction) -> statement.returnGeneratedValues(this.idField.getName())
-                            .execute());
-
-            for (int i = 0; i < values.size(); i++) {
-
-                Field<?> eachField = values.get(i)
-                        .getT1();
-                Object v = values.get(i)
-                        .getT2();
-                Class<?> classs = eachField.getType();
-
-                if (v instanceof Map m) {
-
-                    JSON json = JSON_CONVERTER.to(m);
-                    v = json.data();
-                    classs = String.class;
-                } else if (CONVERTERS.containsKey(v.getClass())) {
-
-                    Tuple2<Object, Class<?>> x = CONVERTERS.get(v.getClass())
-                            .apply((UNumber) v);
-                    v = x.getT1();
-                    classs = x.getT2();
-                }
-
-                querySpec = querySpec.bind(Integer.toString(i + 1), Parameter.fromOrEmpty(v, classs));
-            }
-
-            Mono<I> id = querySpec.fetch()
-                    .first()
-                    .map(e -> (I) e.get(this.idField.getName()));
-
-            String selectQuery = this.dslContext.select(this.table.fields())
-                    .from(this.table)
-                    .getSQL() + " where " + this.idField.getName() + " = ";
-
-            return id.map(i -> dbClient.sql(selectQuery + i + " limit 1"))
-                    .flatMap(spec -> spec.map(this::rowMapper)
-                            .first());
-        }).next();
+            return Mono.from(dsl.insertInto(this.table).set(rec).returning(this.idField))
+                    .map(r -> this.idField.getDataType().convert(r.getValue(0)))
+                    .flatMap(id -> Mono.from(dsl.selectFrom(this.table).where(this.idField.eq(id)).limit(1)))
+                    .map(r -> r.into(this.pojoClass));
+        }));
     }
 
     public Mono<Integer> delete(I id) {
