@@ -47,7 +47,7 @@ public class EventsQueListener {
 		this.actionServices.put(EventActionTaskType.CALL_CORE_FUNCTION, functionService);
 	}
 
-	@RabbitListener(queues = "#{'${events.mq.queues:events1,events2,events3}'.split(',')}", containerFactory = "directMesageListener", messageConverter = "jsonMessageConverter")
+	@RabbitListener(queues = "#{'${events.mq.queues:events1,events2,events3}'.split(',')}", containerFactory = "directMessageListener", messageConverter = "jsonMessageConverter")
 	public Mono<Void> receive(@Payload EventQueObject qob, Channel channel,
 			@Header(AmqpHeaders.DELIVERY_TAG) long tag) {
 
