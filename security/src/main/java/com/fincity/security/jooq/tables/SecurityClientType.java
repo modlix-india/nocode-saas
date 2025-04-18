@@ -8,8 +8,8 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess.SecurityAppRegFileAccessPath;
-import com.fincity.security.jooq.tables.SecurityAppRegPackage.SecurityAppRegPackagePath;
-import com.fincity.security.jooq.tables.SecurityAppRegUserRole.SecurityAppRegUserRolePath;
+import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.SecurityAppRegProfileRestrictionPath;
+import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityClientTypeRecord;
 
@@ -231,30 +231,30 @@ public class SecurityClientType extends TableImpl<SecurityClientTypeRecord> {
         return _securityAppRegFileAccess;
     }
 
-    private transient SecurityAppRegPackagePath _securityAppRegPackage;
+    private transient SecurityAppRegProfileRestrictionPath _securityAppRegProfileRestriction;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_package</code> table
+     * <code>security.security_app_reg_profile_restriction</code> table
      */
-    public SecurityAppRegPackagePath securityAppRegPackage() {
-        if (_securityAppRegPackage == null)
-            _securityAppRegPackage = new SecurityAppRegPackagePath(this, null, Keys.FK4_APP_REG_PKG_CLIENT_TYPE.getInverseKey());
+    public SecurityAppRegProfileRestrictionPath securityAppRegProfileRestriction() {
+        if (_securityAppRegProfileRestriction == null)
+            _securityAppRegProfileRestriction = new SecurityAppRegProfileRestrictionPath(this, null, Keys.FK4_APP_REG_PROFILE_CLIENT_TYPE.getInverseKey());
 
-        return _securityAppRegPackage;
+        return _securityAppRegProfileRestriction;
     }
 
-    private transient SecurityAppRegUserRolePath _securityAppRegUserRole;
+    private transient SecurityAppRegUserProfilePath _securityAppRegUserProfile;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_app_reg_user_role</code> table
+     * <code>security.security_app_reg_user_profile</code> table
      */
-    public SecurityAppRegUserRolePath securityAppRegUserRole() {
-        if (_securityAppRegUserRole == null)
-            _securityAppRegUserRole = new SecurityAppRegUserRolePath(this, null, Keys.FK4_APP_REG_ROLE_CLIENT_TYPE.getInverseKey());
+    public SecurityAppRegUserProfilePath securityAppRegUserProfile() {
+        if (_securityAppRegUserProfile == null)
+            _securityAppRegUserProfile = new SecurityAppRegUserProfilePath(this, null, Keys.FK4_APP_REG_USER_PROFILE_CLIENT_TYPE.getInverseKey());
 
-        return _securityAppRegUserRole;
+        return _securityAppRegUserProfile;
     }
 
     @Override

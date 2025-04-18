@@ -22,4 +22,6 @@ public class Permission extends AbstractUpdatableDTO<ULong, ULong> {
 	private String name;
 	private String description;
 	private String authority;
+	private ULong roleId;
+	private String appName;
 }

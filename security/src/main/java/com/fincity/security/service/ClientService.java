@@ -19,7 +19,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -27,14 +26,12 @@ import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ClientDAO;
-import com.fincity.security.dao.appregistration.AppRegistrationDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.dto.Package;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
@@ -47,7 +44,6 @@ import com.fincity.security.service.policy.ClientPinPolicyService;
 import com.fincity.security.service.policy.IPolicyService;
 
 import jakarta.annotation.PostConstruct;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -67,16 +63,8 @@ public class ClientService
 	private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
 	private static final String CACHE_NAME_CLIENT_ID = "clientId";
 
-	private static final String ASSIGNED_PACKAGE = "Package is assigned to Client ";
-
-	private static final String UNASSIGNED_PACKAGE = "Package is removed from Client ";
-
 	@Autowired
 	private CacheService cacheService;
-
-	@Autowired
-	@Lazy
-	private PackageService packageService;
 
 	@Autowired
 	@Lazy
@@ -86,7 +74,7 @@ public class ClientService
 	private SecurityMessageResourceService securityMessageResourceService;
 
 	@Autowired
-	private AppRegistrationDAO appRegistrationDAO;
+	private AppRegistrationV2DAO appRegistrationDAO;
 
 	@Autowired
 	private ClientHierarchyService clientHierarchyService;
@@ -334,148 +322,12 @@ public class ClientService
 				clientId);
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
-	public Mono<Boolean> assignPackageToClient(ULong clientId, ULong packageId) {
-
-		return this.dao.checkPackageAssignedForClient(clientId, packageId).flatMap(result -> {
-			if (Boolean.TRUE.equals(result))
-				return Mono.just(Boolean.TRUE);
-
-			return FlatMapUtil.flatMapMono(
-
-					SecurityContextUtil::getUsersContextAuthentication,
-
-					ca -> this.dao.getPackage(packageId),
-
-					(ca, packageRecord) -> BooleanUtil.safeValueOfWithEmpty(packageRecord.isBase()),
-
-					(ca, packageRecord, basePackage) ->
-
-					ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-							: checkClientAndPackageManaged(ULong.valueOf(ca.getUser().getClientId()), clientId,
-									packageRecord.getClientId()),
-
-					(ca, packageRecord, basePackage, isManaged) ->
-
-					this.dao.addPackageToClient(clientId, packageId)
-							.map(e -> {
-								if (Boolean.TRUE.equals(e))
-									super.assignLog(clientId, ASSIGNED_PACKAGE + packageId);
-
-								return e;
-							})
-
-			).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.assignPackageToClient"))
-					.switchIfEmpty(securityMessageResourceService.throwMessage(
-							msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-							SecurityMessageResourceService.ASSIGN_PACKAGE_ERROR, packageId, clientId));
-
-		});
-	}
-
-	public Mono<Boolean> hasPackageAccess(ULong clientId, ULong packageId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> this.dao.getPackage(packageId),
-
-				(ca, pack) -> {
-
-					if (pack.isBase())
-						return Mono.just(Boolean.TRUE);
-
-					if (CommonsUtil.safeEquals(clientId, pack.getClientId()))
-						return Mono.just(Boolean.TRUE);
-
-					return this.dao.checkPackageAssignedForClient(clientId, packageId)
-							.flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(Boolean.TRUE)
-									: this.isBeingManagedBy(clientId, pack.getClientId()));
-				}
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.hasPackageAccess"));
-	}
-
-	private Mono<Boolean> checkClientAndPackageManaged(ULong loggedInClientId, ULong clientId, ULong packageClientId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.isBeingManagedBy(loggedInClientId, clientId)
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				clientManaged -> this.isBeingManagedBy(loggedInClientId, packageClientId)
-						.flatMap(BooleanUtil::safeValueOfWithEmpty))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.checkClientAndPackageManaged"));
-	}
-
-	public Mono<Boolean> checkPermissionExistsOrCreatedForClient(ULong clientId, ULong permissionId) {
-		return this.dao.checkPermissionExistsOrCreatedForClient(clientId, permissionId);
-	}
-
 	public Mono<Client> getClientBy(String clientCode) {
 		return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_CODE, () -> this.dao.getClientBy(clientCode), clientCode);
 	}
 
 	public Mono<ULong> getClientId(String clientCode) {
 		return this.getClientBy(clientCode).map(Client::getId);
-	}
-
-	public Mono<Boolean> checkRoleExistsOrCreatedForClient(ULong clientId, ULong roleId) {
-		return this.dao.checkRoleExistsOrCreatedForClient(clientId, roleId);
-	}
-
-	@PreAuthorize("hasAuthority('Authorities.ASSIGN_Package_To_Client')")
-	public Mono<Boolean> removePackageFromClient(ULong clientId, ULong packageId) {
-
-		return this.dao.checkPackageAssignedForClient(clientId, packageId).flatMap(result -> {
-			if (Boolean.FALSE.equals(result))
-				return securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-						AbstractMessageService.OBJECT_NOT_FOUND, clientId, packageId);
-
-			return FlatMapUtil.flatMapMono(
-
-					SecurityContextUtil::getUsersContextAuthentication,
-
-					ca -> ca.isSystemClient() ? Mono.just(true)
-							: this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
-									.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-					(ca, sysOrManaged) -> this.packageService.getRolesFromPackage(packageId),
-
-					(ca, sysOrManaged, roles) -> this.packageService.omitRolesFromBasePackage(roles),
-
-					(ca, sysOrManaged, roles, finalRoles) -> this.dao.findAndRemoveRolesFromUsers(finalRoles,
-							packageId),
-
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved) -> this.packageService
-							.getPermissionsFromPackage(packageId, finalRoles),
-
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions) -> this.packageService
-							.omitPermissionsFromBasePackage(permissions),
-
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions,
-							finalPermissions) -> this.dao.findAndRemovePermissionsFromUsers(finalPermissions,
-									packageId),
-
-					(ca, sysOrManaged, roles, finalRoles, rolesRemoved, permissions, finalPermissions,
-							rolesPermissionsRemoved) ->
-
-					this.dao.removePackage(clientId, packageId)
-							.map(e -> {
-								if (Boolean.TRUE.equals(e))
-									super.unAssignLog(packageId, UNASSIGNED_PACKAGE + clientId);
-
-								return e;
-							})
-
-			).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.removePackageFromClient"));
-		})
-				.switchIfEmpty(securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.REMOVE_PACKAGE_ERR0R, packageId, clientId));
-
 	}
 
 	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -524,27 +376,6 @@ public class ClientService
 						SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "client"));
 	}
 
-	@PreAuthorize("hasAuthority('Authorities.Client_READ') and hasAuthority('Authorities.Package_READ')")
-	public Mono<List<Package>> fetchPackages(ULong clientId) {
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca ->
-
-				ca.isSystemClient() ? Mono.just(true)
-						: this.isBeingManagedBy(ULongUtil.valueOf(ca.getLoggedInFromClientId()), clientId)
-								.flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-				(ca, sysOrManaged) -> this.dao.getPackagesAvailableForClient(clientId))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.fetchPackages"))
-				.switchIfEmpty(securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.FETCH_PACKAGE_ERROR, clientId));
-
-	}
-
 	public Mono<ULong> getSystemClientId() {
 		return this.cacheService.cacheValueOrGet("CACHE_SYSTEM_CLIENT_ID", () -> this.dao.getSystemClientId(),
 				"SYSTEM");
@@ -580,25 +411,6 @@ public class ClientService
 		return super.create(client);
 	}
 
-	public Mono<Boolean> addClientPackagesAfterRegistration(ULong appId, ULong appClientId, ULong urlClientId,
-			Client client) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.getClientLevelType(client.getId(), appId),
-
-				levelType -> this.appRegistrationDAO.getPackageIdsForRegistration(appId, appClientId, urlClientId,
-						client.getTypeCode(), levelType, client.getBusinessType()),
-
-				(levelType, packageIds) -> Flux.fromIterable(packageIds)
-						.flatMap(e -> this.dao.addPackageToClient(client.getId(), e))
-						.collectList(),
-
-				(levelType, packageIds, results) -> Mono.just(true)
-
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientPackagesAfterRegistration"));
-	}
-
 	public Mono<Client> getActiveClient(ULong clientId) {
 		return this.isClientActive(clientId)
 				.flatMap(isActive -> Boolean.TRUE.equals(isActive)
@@ -613,5 +425,24 @@ public class ClientService
 	public Mono<Boolean> isClientActive(ULong clientId) {
 		return this.clientHierarchyService.getClientHierarchyIds(clientId).collectList()
 				.flatMap(clientHie -> this.dao.isClientActive(clientHie));
+	}
+
+	public Mono<Boolean> addClientRegistrationObjects(ULong appId, ULong appClientId, ULong urlClientId,
+			Client client) {
+
+		return FlatMapUtil.flatMapMono(
+				() -> this.getClientLevelType(client.getId(), appId),
+
+				levelType -> this.appRegistrationDAO.getProfileRestrictionIdsForRegistration(appId, appClientId,
+						urlClientId,
+						client.getTypeCode(), levelType, client.getBusinessType()),
+
+				(levelType, profileIds) -> {
+
+					if (profileIds == null || profileIds.isEmpty())
+						return Mono.just(true);
+
+					return this.dao.createProfileRestrictions(client.getId(), appId, profileIds);
+				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientRegistrationObjects"));
 	}
 }

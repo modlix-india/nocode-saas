@@ -1,31 +1,28 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
-import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
-import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
-import static com.fincity.security.jooq.tables.SecurityPermission.SECURITY_PERMISSION;
-import static com.fincity.security.jooq.tables.SecurityRole.SECURITY_ROLE;
-import static com.fincity.security.jooq.tables.SecurityRolePermission.SECURITY_ROLE_PERMISSION;
-import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
-import static com.fincity.security.jooq.tables.SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
+import static com.fincity.security.jooq.tables.SecurityApp.*;
+import static com.fincity.security.jooq.tables.SecurityAppAccess.*;
+import static com.fincity.security.jooq.tables.SecurityClient.*;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
+import static com.fincity.security.jooq.tables.SecurityPastPasswords.*;
+import static com.fincity.security.jooq.tables.SecurityPastPins.*;
+import static com.fincity.security.jooq.tables.SecurityUser.*;
+import static com.fincity.security.jooq.tables.SecurityV2Role.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jooq.Condition;
-import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.Record3;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectLimitPercentStep;
-import org.jooq.SelectOrderByStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
@@ -34,22 +31,31 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dto.Permission;
-import com.fincity.security.dto.Role;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.jooq.tables.SecurityApp;
+import com.fincity.security.jooq.tables.SecurityPermission;
+import com.fincity.security.jooq.tables.SecurityProfile;
+import com.fincity.security.jooq.tables.SecurityProfileUser;
+import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityV2Role;
+import com.fincity.security.jooq.tables.SecurityV2RolePermission;
+import com.fincity.security.jooq.tables.SecurityV2RoleRole;
+import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-import com.fincity.security.jooq.tables.records.SecurityUserRolePermissionRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.service.SecurityMessageResourceService;
+import com.fincity.security.util.AuthoritiesNameUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
@@ -153,57 +159,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, (short) 0)
 				.where(SECURITY_USER.ID.eq(userId)))
 				.map(isUpdated -> isUpdated > 0);
-	}
-
-	public Mono<User> setPermissions(User user) {
-
-		SelectOrderByStep<Record3<String, String, String>> query = this.dslContext
-				.select(SECURITY_CLIENT.CODE, SECURITY_PERMISSION.NAME, SECURITY_APP.APP_CODE)
-				.from(SECURITY_USER_ROLE_PERMISSION)
-				.join(SECURITY_ROLE)
-				.on(SECURITY_ROLE.ID.eq(SECURITY_USER_ROLE_PERMISSION.ROLE_ID))
-				.join(SECURITY_ROLE_PERMISSION)
-				.on(SECURITY_ROLE_PERMISSION.ROLE_ID.eq(SECURITY_ROLE.ID))
-				.join(SECURITY_PERMISSION)
-				.on(SECURITY_PERMISSION.ID.eq(SECURITY_ROLE_PERMISSION.PERMISSION_ID))
-				.join(SECURITY_CLIENT)
-				.on(SECURITY_CLIENT.ID.eq(SECURITY_PERMISSION.CLIENT_ID))
-				.leftJoin(SECURITY_APP)
-				.on(SECURITY_APP.ID.eq(SECURITY_PERMISSION.APP_ID))
-				.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId()))
-				.union(this.dslContext.select(SECURITY_CLIENT.CODE, SECURITY_PERMISSION.NAME, SECURITY_APP.APP_CODE)
-						.from(SECURITY_USER_ROLE_PERMISSION)
-						.join(SECURITY_PERMISSION)
-						.on(SECURITY_PERMISSION.ID.eq(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID))
-						.join(SECURITY_CLIENT)
-						.on(SECURITY_CLIENT.ID.eq(SECURITY_PERMISSION.CLIENT_ID))
-						.leftJoin(SECURITY_APP)
-						.on(SECURITY_APP.ID.eq(SECURITY_PERMISSION.APP_ID))
-						.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId())))
-				.union(this.dslContext
-						.select(SECURITY_CLIENT.CODE, DSL.concat("ROLE_", SECURITY_ROLE.NAME), SECURITY_APP.APP_CODE)
-						.from(SECURITY_USER_ROLE_PERMISSION)
-						.join(SECURITY_ROLE)
-						.on(SECURITY_ROLE.ID.eq(SECURITY_USER_ROLE_PERMISSION.ROLE_ID))
-						.join(SECURITY_CLIENT)
-						.on(SECURITY_CLIENT.ID.eq(SECURITY_ROLE.CLIENT_ID))
-						.leftJoin(SECURITY_APP)
-						.on(SECURITY_APP.ID.eq(SECURITY_ROLE.APP_ID))
-						.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(user.getId())));
-
-		return Flux.from(query)
-				.map(r -> (r.value3() == null ? ""
-						: r.value3()
-								.toUpperCase() + ".")
-						+ r.value2())
-				.map(r -> "Authorities." + r.replace(' ', '_'))
-				.collectList()
-				.map(e -> {
-					List<String> auths = new ArrayList<>(e);
-					auths.add("Authorities.Logged_IN");
-					return auths;
-				})
-				.map(user::setAuthorities);
 	}
 
 	public Mono<Boolean> checkUserExistsExclude(ULong clientId, String userName, String emailId, String phoneNumber,
@@ -324,59 +279,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
 	public Mono<Integer> removeRoleForUser(ULong userId, ULong roleId) {
 
-		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
-				.deleteQuery(SECURITY_USER_ROLE_PERMISSION);
-
-		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
-				.and(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)));
-
-		return Mono.from(query);
-	}
-
-	public Mono<Integer> removePermissionFromUser(ULong userId, ULong permissionId) {
-
-		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
-				.deleteQuery(SECURITY_USER_ROLE_PERMISSION);
-
-		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
-				.and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)));
-
-		return Mono.from(query);
-	}
-
-	public Mono<Boolean> removePermissionListFromUser(List<ULong> userList, List<ULong> permissionList) {
-
-		DeleteQuery<SecurityUserRolePermissionRecord> query = this.dslContext
-				.deleteQuery(SECURITY_USER_ROLE_PERMISSION);
-
-		query.addConditions(SECURITY_USER_ROLE_PERMISSION.USER_ID.in(userList)
-				.and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.in(permissionList)));
-
-		return Mono.from(query)
-				.map(count -> count > 0);
-	}
-
-	public Mono<Boolean> assignPermissionToUser(ULong userId, ULong permissionId) {
-
-		return Mono.from(
-				this.dslContext
-						.insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
-								SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
-						.values(userId, permissionId))
-				.map(value -> value > 0);
-	}
-
-	public Mono<Boolean> checkPermissionAssignedForUser(ULong userId, ULong permissionId) {
-
-		return Mono.from(
-				this.dslContext.selectCount()
-						.from(SECURITY_USER_ROLE_PERMISSION)
-						.where(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID.eq(permissionId)
-								.and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
-
-		)
-				.map(Record1::value1)
-				.map(count -> count == 1);
+		return Mono.from(this.dslContext.delete(SecurityV2UserRole.SECURITY_V2_USER_ROLE).where(
+				SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(userId)
+						.and(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID.eq(roleId))));
 	}
 
 	public Mono<Boolean> checkRoleAssignedForUser(ULong userId, ULong roleId) {
@@ -384,9 +289,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(
 
 				this.dslContext.selectCount()
-						.from(SECURITY_USER_ROLE_PERMISSION)
-						.where(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.eq(roleId)
-								.and(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)))
+						.from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+						.where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID.eq(roleId)
+								.and(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(userId)))
 
 		)
 				.map(Record1::value1)
@@ -398,10 +303,18 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 		return Mono.from(
 
 				this.dslContext
-						.insertInto(SECURITY_USER_ROLE_PERMISSION, SECURITY_USER_ROLE_PERMISSION.USER_ID,
-								SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
+						.insertInto(SecurityV2UserRole.SECURITY_V2_USER_ROLE,
+								SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID,
+								SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID)
 						.values(userId, roleId))
 				.map(value -> value > 0);
+	}
+
+	public Mono<Integer> removeProfileForUser(ULong userId, ULong profileId) {
+
+		return Mono.from(this.dslContext.delete(SecurityProfileUser.SECURITY_PROFILE_USER).where(
+				SecurityProfileUser.SECURITY_PROFILE_USER.USER_ID.eq(userId)
+						.and(SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID.eq(profileId))));
 	}
 
 	public Mono<List<User>> getUsersBy(String userName, ULong userId, String clientCode, String appCode,
@@ -516,54 +429,89 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 				.map(e -> e > 0);
 	}
 
-	public Mono<List<Permission>> fetchPermissionsFromGivenUser(ULong userId) {
+	public Mono<Integer> addProfileToUser(ULong userId, ULong profileId) {
 
-		return Flux.from(
-				this.dslContext.select(SECURITY_PERMISSION.fields())
-						.from(SECURITY_PERMISSION)
-						.where(
-								SECURITY_PERMISSION.ID.in(
-										this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
-												.from(SECURITY_USER_ROLE_PERMISSION)
-												.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
-														.and(SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID
-																.isNotNull())))))
-				.map(e -> e.into(Permission.class))
-				.collectList();
+		return Mono.from(this.dslContext
+				.insertInto(SecurityProfileUser.SECURITY_PROFILE_USER,
+						SecurityProfileUser.SECURITY_PROFILE_USER.USER_ID,
+						SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID)
+				.values(this.dslContext
+						.select(DSL.val(userId).as("USER_ID"),
+								DSL.coalesce(SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID,
+										SecurityProfile.SECURITY_PROFILE.ID).as("PROFILE_ID"))
+						.from(SecurityProfile.SECURITY_PROFILE)
+						.where(SecurityProfile.SECURITY_PROFILE.ID.eq(profileId))
+						.fetchOne())
+				.onDuplicateKeyIgnore())
+				.map(value -> value > 0 ? 1 : 0);
 	}
 
-	public Mono<List<Role>> fetchRolesFromGivenUser(ULong userId) {
+	public Mono<List<String>> getRoleAuthorities(String appCode, ULong userId) {
 
-		return Flux.from(
-				this.dslContext.select(SECURITY_ROLE.fields())
-						.from(SECURITY_ROLE)
-						.where(
-								SECURITY_ROLE.ID.in(
-										this.dslContext.select(SECURITY_USER_ROLE_PERMISSION.ROLE_ID)
-												.from(SECURITY_USER_ROLE_PERMISSION)
-												.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(userId)
-														.and(SECURITY_USER_ROLE_PERMISSION.ROLE_ID.isNotNull())))))
-				.map(e -> e.into(Role.class))
-				.collectList();
+		return FlatMapUtil.flatMapMono(
+
+				() -> Flux.from(this.dslContext
+						.select(SECURITY_APP.APP_CODE, SECURITY_V2_ROLE.NAME, SECURITY_V2_ROLE.ID)
+						.from(SECURITY_V2_ROLE)
+						.leftJoin(SECURITY_APP)
+						.on(SECURITY_V2_ROLE.APP_ID.eq(SECURITY_APP.ID))
+						.where(SECURITY_V2_ROLE.ID.in(
+								this.dslContext
+										.select(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID)
+										.from(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE)
+										.leftJoin(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+										.on(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID
+												.eq(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.ROLE_ID))
+										.where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(userId))
+										.union(
+												this.dslContext
+														.select(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID)
+														.from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+														.where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID
+																.eq(userId))))
+								.and(SECURITY_APP.APP_CODE.eq(appCode).or(SECURITY_V2_ROLE.APP_ID.isNull()))))
+						.collectList(),
+
+				roles -> Flux
+						.from(this.dslContext.select(SECURITY_APP.APP_CODE, SecurityPermission.SECURITY_PERMISSION.NAME)
+								.from(SecurityPermission.SECURITY_PERMISSION)
+								.leftJoin(SECURITY_APP)
+								.on(SecurityPermission.SECURITY_PERMISSION.APP_ID.eq(SECURITY_APP.ID))
+								.leftJoin(SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION)
+								.on(SecurityPermission.SECURITY_PERMISSION.ID
+										.eq(SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION.PERMISSION_ID))
+								.where(DSL.and(
+										SECURITY_APP.APP_CODE.eq(appCode)
+												.or(SecurityPermission.SECURITY_PERMISSION.APP_ID.isNull()),
+										SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION.ROLE_ID
+												.in(roles.stream().map(Record3::value3).collect(Collectors.toList())))))
+						.collectList(),
+
+				(roles, permissions) -> Mono.just(
+
+						Stream.concat(
+								roles.stream()
+										.map(e -> AuthoritiesNameUtil.makeRoleName(
+												e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+												e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME))),
+								permissions
+										.stream()
+										.map(e -> AuthoritiesNameUtil.makePermissionName(
+												e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+												e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME))))
+								.distinct()
+								.toList()
+
+				)
+
+		).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.getRoleAuthorities"));
 	}
 
-	public Mono<Boolean> copyRolesNPermissionsFromUser(ULong userId, ULong referenceUserId) {
-
-		return Mono.from(
-				this.dslContext
-						.insertInto(SECURITY_USER_ROLE_PERMISSION,
-								SECURITY_USER_ROLE_PERMISSION.USER_ID,
-								SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
-								SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
-						.select(
-								this.dslContext.select(
-										DSL.val(userId),
-										SECURITY_USER_ROLE_PERMISSION.ROLE_ID,
-										SECURITY_USER_ROLE_PERMISSION.PERMISSION_ID)
-										.from(SECURITY_USER_ROLE_PERMISSION)
-										.where(SECURITY_USER_ROLE_PERMISSION.USER_ID.eq(referenceUserId)))
-						.onDuplicateKeyIgnore())
-				.map(rowsInserted -> rowsInserted > 0);
+	public Mono<Boolean> addDesignation(ULong userId, ULong designationId) {
+		return Mono
+				.from(this.dslContext.update(SecurityUser.SECURITY_USER)
+						.set(SecurityUser.SECURITY_USER.DESIGNATION_ID, designationId)
+						.where(SecurityUser.SECURITY_USER.ID.eq(userId)))
+				.map(e -> e > 0);
 	}
-
 }

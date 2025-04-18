@@ -7,7 +7,9 @@ import com.fincity.saas.commons.mongo.configuration.IMongoConfiguration;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
+
 import java.util.List;
+
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
 import org.springframework.beans.factory.BeanFactory;
@@ -30,9 +32,13 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqBaseConfigur
 
     @Bean
     ReactiveHttpRequestInterceptor feignInterceptor() {
+
         return request -> Mono.deferContextual(ctxView -> {
-            if (ctxView.hasKey(LogUtil.DEBUG_KEY))
-                request.headers().put(LogUtil.DEBUG_KEY, List.of(ctxView.get(LogUtil.DEBUG_KEY)));
+
+            if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
+                String value = ctxView.get(LogUtil.DEBUG_KEY);
+                request.headers().put(LogUtil.DEBUG_KEY, List.of(value));
+            }
 
             return Mono.just(request);
         });
@@ -51,8 +57,7 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqBaseConfigur
 
     @Override
     public void configureRabbitListeners(RabbitListenerEndpointRegistrar registrar) {
-        // This is a method in interface which requires an implementation in a concrete
-        // class
-        // that is why it is left empty.
+        // This is a method in interface that requires an implementation in a concrete
+        //  class, that is why it is left empty.
     }
 }

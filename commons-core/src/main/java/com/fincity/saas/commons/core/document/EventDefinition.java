@@ -1,19 +1,22 @@
 package com.fincity.saas.commons.core.document;
 
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
-import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
-import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
-import com.fincity.saas.commons.util.EqualsUtil;
 import java.io.Serial;
 import java.util.Map;
+
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.Accessors;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
-import org.springframework.data.mongodb.core.mapping.Document;
 import reactor.core.publisher.Mono;
 
 @Data
@@ -40,7 +43,8 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventDefinition> applyOverride(EventDefinition base) {
-        if (base == null) return Mono.just(this);
+        if (base == null)
+            return Mono.just(this);
 
         return DifferenceApplicator.apply(this.schema, base.schema)
                 .defaultIfEmpty(Map.of())
@@ -55,12 +59,13 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventDefinition> makeOverride(EventDefinition base) {
-        if (base == null) return Mono.just(this);
+        if (base == null)
+            return Mono.just(this);
 
         return Mono.just(this)
                 .flatMap(e -> DifferenceExtractor.extract(e.schema, base.schema).map(k -> {
                     e.schema = (Map<String, Object>) k;
-                    if (EqualsUtil.safeEquals(e.includeContextAuthentication, base.includeContextAuthentication))
+                    if (CommonsUtil.safeEquals(e.includeContextAuthentication, base.includeContextAuthentication))
                         e.includeContextAuthentication = null;
                     return e;
                 }));
