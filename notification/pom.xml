@@ -170,11 +170,6 @@
             <version>${package.o.jooq.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq-jackson-extensions</artifactId>
-            <version>${package.o.jooq.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>

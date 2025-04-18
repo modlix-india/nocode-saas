@@ -10,12 +10,12 @@ import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConver
 @SuppressWarnings("rawtypes")
 public class JSONMapBinding extends AbstractJooqBinding<JSON, Map> {
 
-	public JSONMapBinding() {
-		super(new JSONtoClassConverter<>(Map.class), SQLDataType.JSON.getSQLType());
-	}
+    public JSONMapBinding() {
+        super(new JSONtoClassConverter<>(Map.class), SQLDataType.JSON.getSQLType());
+    }
 
-	@Override
-	public String getConvertStringValue(JSON value) {
-		return value.data();
-	}
+    @Override
+    public String getConvertStringValue(JSON value) {
+        return value.data();
+    }
 }
