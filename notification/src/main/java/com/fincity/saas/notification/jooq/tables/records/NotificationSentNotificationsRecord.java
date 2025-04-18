@@ -4,8 +4,8 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
-import com.fincity.saas.commons.core.enums.notification.NotificationType;
 import com.fincity.saas.notification.enums.NotificationStage;
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationSentNotifications;
 import com.fincity.saas.notification.model.request.NotificationChannel;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
@@ -572,6 +572,6 @@ public class NotificationSentNotificationsRecord extends UpdatableRecordImpl<Not
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

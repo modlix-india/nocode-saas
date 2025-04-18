@@ -13,7 +13,6 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
-import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -49,7 +48,7 @@ public class Notification extends SchemaImpl {
      * No further instances allowed
      */
     private Notification() {
-        super(DSL.name("notification"), null, DSL.comment(""));
+        super("notification", null);
     }
 
 

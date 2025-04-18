@@ -9,7 +9,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.notification.document.Notification;
+import com.fincity.saas.notification.document.common.core.Notification;
 import com.fincity.saas.notification.dto.UserPreference;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;

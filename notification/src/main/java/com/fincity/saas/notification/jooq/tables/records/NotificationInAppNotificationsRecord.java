@@ -4,9 +4,9 @@
 package com.fincity.saas.notification.jooq.tables.records;
 
 
-import com.fincity.saas.commons.core.enums.notification.NotificationType;
 import com.fincity.saas.notification.enums.NotificationDeliveryStatus;
 import com.fincity.saas.notification.enums.NotificationStage;
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.tables.NotificationInAppNotifications;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;
 
@@ -514,6 +514,6 @@ public class NotificationInAppNotificationsRecord extends UpdatableRecordImpl<No
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

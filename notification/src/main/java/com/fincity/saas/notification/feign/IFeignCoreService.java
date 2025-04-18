@@ -1,7 +1,7 @@
 package com.fincity.saas.notification.feign;
 
-import com.fincity.saas.notification.document.Connection;
-import com.fincity.saas.notification.document.Notification;
+import com.fincity.saas.notification.document.common.core.Connection;
+import com.fincity.saas.notification.document.common.core.Notification;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactivefeign.spring.config.ReactiveFeignClient;

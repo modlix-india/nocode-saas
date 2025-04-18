@@ -3,7 +3,7 @@ package com.fincity.saas.notification.service.channel.inapp;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.notification.document.Connection;
+import com.fincity.saas.notification.document.common.core.Connection;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.mq.action.service.AbstractMessageService;

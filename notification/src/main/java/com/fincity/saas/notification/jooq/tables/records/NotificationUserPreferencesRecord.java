@@ -248,6 +248,6 @@ public class NotificationUserPreferencesRecord extends UpdatableRecordImpl<Notif
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

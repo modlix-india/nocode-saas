@@ -1,9 +1,9 @@
 package com.fincity.saas.notification.service.template;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.enums.notification.NotificationRecipientType;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
+import com.fincity.saas.notification.enums.channel.NotificationRecipientType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.recipient.RecipientInfo;

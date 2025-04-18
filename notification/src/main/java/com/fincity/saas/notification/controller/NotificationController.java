@@ -1,6 +1,6 @@
 package com.fincity.saas.notification.controller;
 
-import com.fincity.saas.notification.document.Notification;
+import com.fincity.saas.notification.document.common.core.Notification;
 import com.fincity.saas.notification.model.request.NotificationRequest;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.model.response.NotificationResponse;

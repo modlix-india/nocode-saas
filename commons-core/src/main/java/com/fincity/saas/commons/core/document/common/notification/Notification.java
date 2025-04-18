@@ -1,8 +1,8 @@
-package com.fincity.saas.commons.core.document;
+package com.fincity.saas.commons.core.document.common.notification;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.enums.notification.NotificationRecipientType;
+import com.fincity.saas.commons.core.enums.common.notification.NotificationRecipientType;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.commons.mongo.util.DifferenceApplicator;

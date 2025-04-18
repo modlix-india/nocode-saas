@@ -1,6 +1,7 @@
-package com.fincity.saas.notification.document;
+package com.fincity.saas.notification.document.common.core;
 
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.util.CloneUtil;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.template.NotificationTemplate;
 import java.io.Serial;
@@ -29,7 +30,8 @@ public class Notification extends AbstractOverridableDTO<Notification> {
     public Notification(Notification notification) {
         super(notification);
         this.notificationType = notification.notificationType;
-        this.channelDetails = notification.channelDetails;
+        this.channelConnections = CloneUtil.cloneMapObject(notification.channelConnections);
+        this.channelDetails = CloneUtil.cloneMapObject(notification.channelDetails);
     }
 
     @Override

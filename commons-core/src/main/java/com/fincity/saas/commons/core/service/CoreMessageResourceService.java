@@ -1,8 +1,10 @@
 package com.fincity.saas.commons.core.service;
 
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+@Primary
 @Service
 public class CoreMessageResourceService extends AbstractMongoMessageResourceService {
 

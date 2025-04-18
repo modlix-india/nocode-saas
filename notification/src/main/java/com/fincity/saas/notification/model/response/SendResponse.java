@@ -1,6 +1,6 @@
 package com.fincity.saas.notification.model.response;
 
-import com.fincity.saas.commons.core.enums.notification.NotificationType;
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;

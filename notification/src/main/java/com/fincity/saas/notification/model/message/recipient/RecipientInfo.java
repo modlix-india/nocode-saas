@@ -1,6 +1,6 @@
 package com.fincity.saas.notification.model.message.recipient;
 
-import com.fincity.saas.commons.core.enums.notification.NotificationRecipientType;
+import com.fincity.saas.notification.enums.channel.NotificationRecipientType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;

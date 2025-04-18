@@ -6,7 +6,7 @@ import com.fincity.saas.notification.configuration.MqNameProvider;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.mq.action.service.IMessageService;
-import com.fincity.saas.notification.service.channel.email.EmailService;
+import com.fincity.saas.notification.service.channel.email.NotificationEmailService;
 import com.fincity.saas.notification.service.channel.inapp.InAppService;
 import com.rabbitmq.client.Channel;
 import jakarta.annotation.PostConstruct;
@@ -27,14 +27,14 @@ public class NotificationMessageListener {
     private final Map<NotificationChannelType, IMessageService<?>> messageServices =
             new EnumMap<>(NotificationChannelType.class);
 
-    private final EmailService emailService;
+    private final NotificationEmailService notificationEmailService;
 
     private final InAppService inAppService;
 
     private MqNameProvider mqNameProvider;
 
-    public NotificationMessageListener(EmailService emailService, InAppService inAppService) {
-        this.emailService = emailService;
+    public NotificationMessageListener(NotificationEmailService notificationEmailService, InAppService inAppService) {
+        this.notificationEmailService = notificationEmailService;
         this.inAppService = inAppService;
     }
 
@@ -45,7 +45,7 @@ public class NotificationMessageListener {
 
     @PostConstruct
     public void init() {
-        this.messageServices.put(NotificationChannelType.EMAIL, emailService);
+        this.messageServices.put(NotificationChannelType.EMAIL, notificationEmailService);
         this.messageServices.put(NotificationChannelType.IN_APP, inAppService);
     }
 

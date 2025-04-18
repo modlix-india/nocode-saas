@@ -4,7 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
-import com.fincity.saas.commons.core.service.notification.NotificationProcessingService;
+import com.fincity.saas.commons.core.service.notification.CoreNotificationProcessingService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
@@ -29,7 +29,7 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
     @Autowired(required = false)
     @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
-    private NotificationProcessingService notificationProcessingService;
+    private CoreNotificationProcessingService coreNotificationProcessingService;
 
     @Value("${redis.connection.eviction.channel:connectionChannel}")
     private String channel;
@@ -40,8 +40,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
     @Lazy
     @Autowired
-    private void setNotificationService(NotificationProcessingService notificationProcessingService) {
-        this.notificationProcessingService = notificationProcessingService;
+    private void setNotificationService(CoreNotificationProcessingService coreNotificationProcessingService) {
+        this.coreNotificationProcessingService = coreNotificationProcessingService;
     }
 
     @Override

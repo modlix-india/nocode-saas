@@ -9,7 +9,7 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
-import com.fincity.saas.commons.core.service.notification.NotificationProcessingService;
+import com.fincity.saas.commons.core.service.notification.CoreNotificationProcessingService;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -30,10 +30,10 @@ public class SendNotification extends AbstractReactiveFunction {
     private static final String NOTIFICATION_NAME = "notificationName";
     private static final String OBJECT_MAP = "objectMap";
 
-    private final NotificationProcessingService notificationService;
+    private final CoreNotificationProcessingService coreNotificationProcessingService;
 
-    public SendNotification(NotificationProcessingService notificationService) {
-        this.notificationService = notificationService;
+    public SendNotification(CoreNotificationProcessingService coreNotificationProcessingService) {
+        this.coreNotificationProcessingService = coreNotificationProcessingService;
     }
 
     @Override
@@ -71,7 +71,7 @@ public class SendNotification extends AbstractReactiveFunction {
                 return Mono.just(new FunctionOutput(
                         List.of(EventResult.outputOf(Map.of(EVENT_DATA, new JsonPrimitive(Boolean.FALSE))))));
 
-            return notificationService
+            return coreNotificationProcessingService
                     .processAndSendNotification(appCode, clientCode, userId, notificationName, objectMap)
                     .switchIfEmpty(Mono.just(Boolean.FALSE))
                     .map(e -> new FunctionOutput(

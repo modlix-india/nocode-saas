@@ -4,14 +4,12 @@
 package com.fincity.saas.notification.jooq.tables;
 
 
-import com.fincity.saas.commons.core.enums.notification.NotificationType;
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.notification.enums.NotificationStage;
+import com.fincity.saas.notification.enums.NotificationType;
 import com.fincity.saas.notification.jooq.Indexes;
 import com.fincity.saas.notification.jooq.Keys;
 import com.fincity.saas.notification.jooq.Notification;
-import com.fincity.saas.notification.jooq.enums.NotificationSentNotificationsNotificationStage;
-import com.fincity.saas.notification.jooq.enums.NotificationSentNotificationsNotificationType;
 import com.fincity.saas.notification.jooq.tables.records.NotificationSentNotificationsRecord;
 import com.fincity.saas.notification.model.request.NotificationChannel;
 import com.fincity.saas.notification.model.response.NotificationErrorInfo;
@@ -107,7 +105,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.NOTIFICATION_TYPE</code>.
      * Type of notification that is sent
      */
-    public final TableField<NotificationSentNotificationsRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)).asEnumDataType(NotificationSentNotificationsNotificationType.class), this, "Type of notification that is sent", new EnumConverter<NotificationSentNotificationsNotificationType, NotificationType>(NotificationSentNotificationsNotificationType.class, NotificationType.class));
+    public final TableField<NotificationSentNotificationsRecord, NotificationType> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("INFO", SQLDataType.VARCHAR)), this, "Type of notification that is sent", new EnumConverter<String, NotificationType>(String.class, NotificationType.class));
 
     /**
      * The column
@@ -121,7 +119,7 @@ public class NotificationSentNotifications extends TableImpl<NotificationSentNot
      * <code>notification.notification_sent_notifications.NOTIFICATION_STAGE</code>.
      * Stage of the notification that is sent
      */
-    public final TableField<NotificationSentNotificationsRecord, NotificationStage> NOTIFICATION_STAGE = createField(DSL.name("NOTIFICATION_STAGE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("PLATFORM", SQLDataType.VARCHAR)).asEnumDataType(NotificationSentNotificationsNotificationStage.class), this, "Stage of the notification that is sent", new EnumConverter<NotificationSentNotificationsNotificationStage, NotificationStage>(NotificationSentNotificationsNotificationStage.class, NotificationStage.class));
+    public final TableField<NotificationSentNotificationsRecord, NotificationStage> NOTIFICATION_STAGE = createField(DSL.name("NOTIFICATION_STAGE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("PLATFORM", SQLDataType.VARCHAR)), this, "Stage of the notification that is sent", new EnumConverter<String, NotificationStage>(String.class, NotificationStage.class));
 
     /**
      * The column

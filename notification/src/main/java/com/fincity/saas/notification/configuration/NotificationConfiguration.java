@@ -3,6 +3,7 @@ package com.fincity.saas.notification.configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
+import com.fincity.saas.commons.mongo.configuration.IMongoConfiguration;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
@@ -14,8 +15,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.ReactiveMongoDatabaseFactory;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
@@ -23,7 +29,7 @@ import reactor.core.publisher.Mono;
 
 @Configuration
 public class NotificationConfiguration extends AbstractJooqBaseConfiguration
-        implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer {
+        implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer, IMongoConfiguration {
 
     private final NotificationMessageResourceService messageService;
 
@@ -42,6 +48,17 @@ public class NotificationConfiguration extends AbstractJooqBaseConfiguration
             if (name != null) log.debug("{} - {}", name, v);
             else log.debug(v);
         }));
+    }
+
+    @Bean
+    MappingMongoConverter mappingConverter(
+            ReactiveMongoDatabaseFactory factory, MongoMappingContext context, BeanFactory beanFactory) {
+        return this.getMappingMongoConverter(factory, context, beanFactory, logger);
+    }
+
+    @Bean
+    ReactiveMongoTemplate reactiveMongoTemplate(ReactiveMongoDatabaseFactory factory, MappingMongoConverter convertor) {
+        return this.getReactiveMongoTemplate(factory, convertor);
     }
 
     @Bean

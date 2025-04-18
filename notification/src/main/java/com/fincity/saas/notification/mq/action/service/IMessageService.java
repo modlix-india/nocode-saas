@@ -1,6 +1,6 @@
 package com.fincity.saas.notification.mq.action.service;
 
-import com.fincity.saas.notification.document.Connection;
+import com.fincity.saas.notification.document.common.core.Connection;
 import com.fincity.saas.notification.model.request.SendRequest;
 import reactor.core.publisher.Mono;
 

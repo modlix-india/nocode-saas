@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.core.enums;
+package com.fincity.saas.notification.enums.common.core;
 
 public enum ConnectionSubType {
     MONGO,
@@ -16,4 +16,9 @@ public enum ConnectionSubType {
     NOTIFICATION_MOBILE_PUSH,
     NOTIFICATION_WEB_PUSH,
     NOTIFICATION_SMS;
+
+    public String getProvider() {
+        String[] parts = this.name().split("_");
+        return parts[parts.length - 1].toLowerCase();
+    }
 }

@@ -2,7 +2,7 @@ package com.fincity.saas.commons.core.service.notification;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
-import com.fincity.saas.commons.core.document.Notification;
+import com.fincity.saas.commons.core.document.common.notification.Notification;
 import com.fincity.saas.commons.core.feign.IFeignNotificationService;
 import com.fincity.saas.commons.core.model.notification.NotificationCacheRequest;
 import com.fincity.saas.commons.core.model.notification.NotificationRequest;
@@ -22,14 +22,14 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class NotificationProcessingService {
+public class CoreNotificationProcessingService {
 
     private final IFeignNotificationService notificationService;
     private final IFeignSecurityService securityService;
 
     private CoreMessageResourceService coreMsgService;
 
-    public NotificationProcessingService(
+    public CoreNotificationProcessingService(
             IFeignNotificationService notificationService, IFeignSecurityService securityService) {
         this.notificationService = notificationService;
         this.securityService = securityService;

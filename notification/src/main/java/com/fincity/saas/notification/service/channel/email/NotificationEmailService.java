@@ -3,7 +3,7 @@ package com.fincity.saas.notification.service.channel.email;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.notification.document.Connection;
+import com.fincity.saas.notification.document.common.core.Connection;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.fincity.saas.notification.model.request.SendRequest;
@@ -18,14 +18,14 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class EmailService extends AbstractMessageService<EmailService> {
+public class NotificationEmailService extends AbstractMessageService<NotificationEmailService> {
 
     private final SendGridService sendGridService;
     private final SMTPService smtpService;
     private final Map<String, IEmailService<?>> services = new HashMap<>();
     private final NotificationMessageResourceService msgService;
 
-    public EmailService(
+    public NotificationEmailService(
             SendGridService sendGridService, SMTPService smtpService, NotificationMessageResourceService msgService) {
         this.sendGridService = sendGridService;
         this.smtpService = smtpService;

@@ -1,7 +1,6 @@
 package com.fincity.saas.notification.enums.channel;
 
-import com.fincity.saas.commons.core.enums.ConnectionSubType;
-import com.fincity.saas.commons.core.enums.notification.NotificationRecipientType;
+import com.fincity.saas.notification.enums.common.core.ConnectionSubType;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;

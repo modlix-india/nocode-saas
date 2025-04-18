@@ -2,7 +2,7 @@ package com.fincity.saas.notification.service.channel.inapp;
 
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.notification.document.Connection;
+import com.fincity.saas.notification.document.common.core.Connection;
 import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.model.response.SendResponse;

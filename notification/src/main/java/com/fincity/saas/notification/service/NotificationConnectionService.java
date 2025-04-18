@@ -1,7 +1,7 @@
 package com.fincity.saas.notification.service;
 
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.notification.document.Connection;
+import com.fincity.saas.notification.document.common.core.Connection;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.feign.IFeignCoreService;
 import java.util.EnumMap;

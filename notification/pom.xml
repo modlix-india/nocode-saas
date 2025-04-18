@@ -55,6 +55,7 @@
         <package.o.sendgrid-java.version>4.10.3</package.o.sendgrid-java.version>
         <package.o.spotless.version>2.44.3</package.o.spotless.version>
         <package.o.spring-cloud.version>2024.0.0-RC1</package.o.spring-cloud.version>
+        <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -82,11 +83,6 @@
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons</artifactId>
             <version>${package.i.saas-commons-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-core</artifactId>
-            <version>${package.i.saas-commons-core-version}</version>
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
@@ -322,7 +318,7 @@
                                             <genericConverter>true</genericConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.commons.core.enums.notification.NotificationType</userType>
+                                            <userType>com.fincity.saas.notification.enums.NotificationType</userType>
                                             <enumConverter>true</enumConverter>
                                             <includeExpression>.*\.NOTIFICATION_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

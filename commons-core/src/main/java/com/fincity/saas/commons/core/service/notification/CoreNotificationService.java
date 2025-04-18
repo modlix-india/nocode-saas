@@ -1,10 +1,10 @@
 package com.fincity.saas.commons.core.service.notification;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.document.Notification;
+import com.fincity.saas.commons.core.document.common.notification.Notification;
 import com.fincity.saas.commons.core.enums.ConnectionType;
-import com.fincity.saas.commons.core.enums.notification.NotificationChannelType;
-import com.fincity.saas.commons.core.enums.notification.NotificationType;
+import com.fincity.saas.commons.core.enums.common.notification.NotificationChannelType;
+import com.fincity.saas.commons.core.enums.common.notification.NotificationType;
 import com.fincity.saas.commons.core.repository.NotificationRepository;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
@@ -23,13 +23,13 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class NotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
+public class CoreNotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
 
     private final ConnectionService connectionService;
-    private final NotificationProcessingService notificationProcessingService;
+    private final CoreNotificationProcessingService notificationProcessingService;
 
-    protected NotificationService(
-            ConnectionService connectionService, NotificationProcessingService notificationProcessingService) {
+    protected CoreNotificationService(
+            ConnectionService connectionService, CoreNotificationProcessingService notificationProcessingService) {
         super(Notification.class);
         this.connectionService = connectionService;
         this.notificationProcessingService = notificationProcessingService;

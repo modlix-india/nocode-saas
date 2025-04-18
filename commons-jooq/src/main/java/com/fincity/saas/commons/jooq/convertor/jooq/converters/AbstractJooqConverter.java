@@ -1,28 +1,20 @@
 package com.fincity.saas.commons.jooq.convertor.jooq.converters;
 
-import java.time.LocalDateTime;
-
 import org.jooq.impl.AbstractConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
-import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U> {
 
 	protected static final Logger logger = LoggerFactory.getLogger(AbstractJooqConverter.class);
 
-	protected final Gson gson = new GsonBuilder()
-			.registerTypeAdapter(Type.class, new Type.SchemaTypeAdapter())
-			.registerTypeAdapter(AdditionalType.class, new ArraySchemaType.ArraySchemaTypeAdapter())
-			.registerTypeAdapter(ArraySchemaType.class, new AdditionalType.AdditionalTypeAdapter())
-			.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-			.create();
+	protected final ObjectMapper objectMapper = new ObjectMapper()
+		.registerModule(new JavaTimeModule())
+		.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
 	protected AbstractJooqConverter(Class<T> fromType, Class<U> toType) {
 		super(fromType, toType);
@@ -45,7 +37,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
 
 		try {
 			String data = this.toData(databaseObject);
-			return gson.fromJson(data, toType());
+			return objectMapper.readValue(data, toType());
 		} catch (Exception e) {
 			logger.error("Error when converting JSON to {}", toType(), e);
 			return defaultIfError();
@@ -58,7 +50,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
 			return this.valueIfNull();
 
 		try {
-			String jsonString = gson.toJson(userObject, toType());
+			String jsonString = objectMapper.writeValueAsString(userObject);
 			return this.toJson(jsonString);
 		} catch (Exception e) {
 			logger.error("Error when converting object of type {} to JSON", toType(), e);
