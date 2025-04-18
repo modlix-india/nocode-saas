@@ -23,12 +23,12 @@ public class EntityCollectorController {
     @PostMapping("/social/facebook")
     public Mono<JsonNode> handleFacebookEntity(@RequestBody JsonNode requestBody) {
 
-        return entityCollectorService.handleFaceBookEntity(requestBody);
+        return entityCollectorService.handleMetaEntity(requestBody);
     }
 
     @PostMapping("/website")
-    public Mono<String> handleWebsiteEntity() {
+    public Mono<JsonNode> handleWebsiteEntity(@RequestBody JsonNode requestBody) {
 
-        return Mono.just("Website entity handled");
+        return entityCollectorService.handleWebsiteEntity(requestBody);
     }
 }
