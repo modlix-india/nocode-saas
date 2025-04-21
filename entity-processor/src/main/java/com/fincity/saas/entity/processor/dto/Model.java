@@ -1,6 +1,9 @@
 package com.fincity.saas.entity.processor.dto;
 
 import java.io.Serial;
+
+import com.fincity.saas.entity.processor.model.ModelRequest;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -15,11 +18,20 @@ import lombok.experimental.FieldNameConstants;
 public class Model extends BaseProcessorDto<Model> {
 
     @Serial
-    private static final long serialVersionUID = 884230109954534627L;
+    private static final long serialVersionUID = 3722918782975754023L;
 
-    private String dialCode;
+    private Integer dialCode;
     private String phoneNumber;
     private String email;
     private String source;
     private String subSource;
+
+    public static Model of(ModelRequest modelRequest) {
+        return new Model()
+                .setDialCode(modelRequest.getPhoneNumber().getCountryCode())
+                .setPhoneNumber(modelRequest.getPhoneNumber().getNumber())
+                .setEmail(modelRequest.getEmail().getAddress())
+                .setSource(modelRequest.getSource())
+                .setSubSource(modelRequest.getSubSource());
+    }
 }

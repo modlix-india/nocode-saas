@@ -11,6 +11,6 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorMode
 public class ModelDAO extends BaseProcessorDAO<EntityProcessorModelsRecord, Model> {
 
     protected ModelDAO() {
-        super(Model.class, ENTITY_PROCESSOR_MODELS, ENTITY_PROCESSOR_MODELS.ID);
+        super(Model.class, ENTITY_PROCESSOR_MODELS, ENTITY_PROCESSOR_MODELS.ID, ENTITY_PROCESSOR_MODELS.CODE);
     }
 }

@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,22 +12,31 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowDTO;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.BaseProcessorDAO;
+import com.fincity.saas.entity.processor.dto.BaseDto;
 import com.fincity.saas.entity.processor.dto.BaseProcessorDto;
-import com.fincity.saas.entity.processor.dto.BaseProcessorDto.Fields;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
 @Service
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
         extends AbstractFlowUpdatableService<R, ULong, D, O> {
 
-    protected ProcessorMessageResourceService messageResourceService;
+    protected ProcessorMessageResourceService msgService;
     protected CacheService cacheService;
+    protected IFeignSecurityService securityService;
 
     protected abstract String getCacheName();
 
@@ -35,8 +45,8 @@ public abstract class BaseProcessorService<
     }
 
     @Autowired
-    public void setMessageResourceService(ProcessorMessageResourceService messageResourceService) {
-        this.messageResourceService = messageResourceService;
+    public void setMessageResourceService(ProcessorMessageResourceService msgService) {
+        this.msgService = msgService;
     }
 
     @Autowired
@@ -44,12 +54,28 @@ public abstract class BaseProcessorService<
         this.cacheService = cacheService;
     }
 
+    @Autowired
+    public void setSecurityService(IFeignSecurityService securityService) {
+        this.securityService = securityService;
+    }
+
+    @Override
+    protected Mono<ULong> getLoggedInUserId() {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.justOrEmpty(
+                        ca.isAuthenticated() ? ULong.valueOf(ca.getUser().getId()) : null))
+                .switchIfEmpty(msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT));
+    }
+
     @Override
     protected Mono<D> updatableEntity(D entity) {
 
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), e -> {
             if (e.getVersion() != entity.getVersion())
-                return this.messageResourceService.throwMessage(
+                return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                         AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
@@ -74,8 +100,10 @@ public abstract class BaseProcessorService<
 
         fields.remove("createdAt");
         fields.remove("createdBy");
-        fields.remove(Fields.addedByUserId);
-        fields.remove(Fields.code);
+        fields.remove(AbstractFlowDTO.Fields.appCode);
+        fields.remove(AbstractFlowDTO.Fields.clientCode);
+        fields.remove(BaseDto.Fields.addedByUserId);
+        fields.remove(BaseDto.Fields.code);
 
         return Mono.just(fields);
     }
@@ -109,5 +137,65 @@ public abstract class BaseProcessorService<
 
     public Mono<Boolean> evictCode(String code) {
         return this.cacheService.evict(this.getCacheName(), code);
+    }
+
+    public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasAccess(
+            String appCode, String clientCode, BigInteger userId) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
+                (ca, acTup) -> securityService
+                        .appInheritance(acTup.getT1(), ca.getUrlClientCode(), acTup.getT2())
+                        .map(clientCodes -> Mono.just(clientCodes.contains(acTup.getT2())))
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty)
+                        .switchIfEmpty(msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS)),
+                (ca, acTup, hasAppAccess) -> this.securityService
+                        .isUserBeingManaged(userId, clientCode)
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty)
+                        .switchIfEmpty(msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT)),
+                (ca, acTup, hasAppAccess, isUserManaged) -> Mono.just(Tuples.of(
+                        Tuples.of(
+                                acTup.getT1(),
+                                acTup.getT2(),
+                                ULongUtil.valueOf(ca.getUser().getId())),
+                        hasAppAccess && isUserManaged)));
+    }
+
+    public Mono<D> create(D entity, String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
+                    if (!ca.isAuthenticated())
+                        return msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT);
+
+                    return this.hasAccess(appCode, clientCode, ca.getUser().getId());
+                },
+                (ca, hasAccess) -> {
+                    entity.setAppCode(hasAccess.getT1().getT1());
+                    entity.setClientCode(hasAccess.getT1().getT2());
+                    entity.setAddedByUserId(hasAccess.getT1().getT3());
+
+                    return super.create(entity);
+                });
+    }
+
+    public Mono<D> update(D entity, String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
+                    if (!ca.isAuthenticated())
+                        return msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT);
+
+                    return this.hasAccess(appCode, clientCode, ca.getUser().getId());
+                },
+                (ca, hasAccess) -> super.create(entity));
     }
 }

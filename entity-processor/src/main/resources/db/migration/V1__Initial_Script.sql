@@ -11,6 +11,8 @@ DROP TABLE IF EXISTS `entity_processor`.`entity_processor_models`;
 CREATE TABLE `entity_processor_models` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent. References security_app table',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent. References security_user table',
     `VERSION` BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Version of this row',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
     `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Model. Model can be anything which will have entities. For Example, Lead and opportunity, Epic and Task, Account and lead',
@@ -19,8 +21,8 @@ CREATE TABLE `entity_processor_models` (
     `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this Model is assigned',
     `STATUS` CHAR(22) NULL COMMENT 'Status for this model',
     `SUB_STATUS` CHAR(22) NULL COMMENT 'Sub Status for this model',
-    `DIAL_CODE` CHAR(6) NULL DEFAULT '91' COMMENT 'Dial code of the phone number this model has',
-    `PHONE_NUMBER` CHAR(13) NULL COMMENT 'Phone number related to this model',
+    `DIAL_CODE` SMALLINT NULL DEFAULT 91 COMMENT 'Dial code of the phone number this model has',
+    `PHONE_NUMBER` CHAR(15) NULL COMMENT 'Phone number related to this model',
     `EMAIL` VARCHAR(512) NULL COMMENT 'Email related to this model',
     `SOURCE` CHAR(32) NOT NULL COMMENT 'Name of source from where we get this model',
     `SUB_SOURCE` CHAR(32) NOT NULL COMMENT 'Name of sub source of source from where we get this model',
@@ -43,6 +45,8 @@ DROP TABLE IF EXISTS `entity_processor`.`entity_processor_products`;
 CREATE TABLE `entity_processor_products` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent. References security_app table',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent. References security_user table',
     `VERSION` BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Version of this row',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
     `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Product. Product can be anything for which Entities will be created. For Example, Projects can be product for Opportunities, Board can be product for Epic',
@@ -70,6 +74,8 @@ DROP TABLE IF EXISTS `entity_processor`.`entity_processor_entities`;
 CREATE TABLE `entity_processor_entities` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent. References security_app table',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent. References security_user table',
     `VERSION` BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Version of this row',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
     `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Entity. Entity can be anything which will have a single model. For Example, Opportunity is a entity of Lead , Task is a entity of Epic, Lead is entity of Account',
@@ -79,8 +85,8 @@ CREATE TABLE `entity_processor_entities` (
     `STATUS` CHAR(32) NULL COMMENT 'Status for this entity',
     `SUB_STATUS` CHAR(32) NULL COMMENT 'Sub Status for this entity',
     `MODEL_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Model related to this entity',
-    `DIAL_CODE` CHAR(6) NULL DEFAULT '91' COMMENT 'Dial code of the phone number this entity has',
-    `PHONE_NUMBER` CHAR(13) NULL COMMENT 'Phone number related to this entity',
+    `DIAL_CODE` SMALLINT NULL DEFAULT 91 COMMENT 'Dial code of the phone number this model has',
+    `PHONE_NUMBER` CHAR(15) NULL COMMENT 'Phone number related to this model',
     `EMAIL` VARCHAR(512) NULL COMMENT 'Email related to this entity',
     `SOURCE` CHAR(32) NOT NULL COMMENT 'Name of source from where we get this entity',
     `SUB_SOURCE` CHAR(32) NOT NULL COMMENT 'Name of sub source of source from where we get this entity',

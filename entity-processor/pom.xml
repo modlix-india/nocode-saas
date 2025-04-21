@@ -57,6 +57,16 @@
     </dependencyManagement>
     <dependencies>
         <dependency>
+            <groupId>commons-validator</groupId>
+            <artifactId>commons-validator</artifactId>
+            <version>1.9.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>9.0.3</version>
+        </dependency>
+        <dependency>
             <groupId>com.fincity.nocode</groupId>
             <artifactId>kirun-java</artifactId>
             <version>${nocode-kirun-version}</version>

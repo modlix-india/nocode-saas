@@ -11,6 +11,6 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, Product> {
 
     protected ProductDAO() {
-        super(Product.class, ENTITY_PROCESSOR_PRODUCTS, ENTITY_PROCESSOR_PRODUCTS.ID);
+        super(Product.class, ENTITY_PROCESSOR_PRODUCTS, ENTITY_PROCESSOR_PRODUCTS.ID, ENTITY_PROCESSOR_PRODUCTS.CODE);
     }
 }

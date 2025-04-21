@@ -16,10 +16,10 @@ import org.jooq.types.ULong;
 public class Entity extends BaseProcessorDto<Entity> {
 
     @Serial
-    private static final long serialVersionUID = 7148027392286233787L;
+    private static final long serialVersionUID = 1639822311147907381L;
 
     private ULong modelId;
-    private String dialCode;
+    private Integer dialCode;
     private String phoneNumber;
     private String email;
     private ULong productId;
