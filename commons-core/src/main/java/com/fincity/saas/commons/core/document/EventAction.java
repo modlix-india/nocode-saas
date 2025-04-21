@@ -3,8 +3,8 @@ package com.fincity.saas.commons.core.document;
 import com.fincity.saas.commons.core.model.EventActionTask;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
-import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
-import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;
@@ -38,7 +38,8 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventAction> applyOverride(EventAction base) {
-        if (base == null) return Mono.just(this);
+        if (base == null)
+            return Mono.just(this);
 
         return DifferenceApplicator.apply(this.tasks, base.tasks)
                 .defaultIfEmpty(Map.of())
@@ -51,7 +52,8 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventAction> makeOverride(EventAction base) {
-        if (base == null) return Mono.just(this);
+        if (base == null)
+            return Mono.just(this);
 
         return Mono.just(this)
                 .flatMap(e -> DifferenceExtractor.extract(e.tasks, base.tasks).map(k -> {
