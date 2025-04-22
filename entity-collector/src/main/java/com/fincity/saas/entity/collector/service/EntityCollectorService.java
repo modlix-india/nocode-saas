@@ -50,25 +50,44 @@ public class EntityCollectorService {
 
                     EntityIntegration integration = integrations.getFirst();
 
-                    return fetchOAuthToken(integration.getClientCode(), integration.getAppCode())
-                            .flatMap(token -> {
-                                String formId = payload.getFormIds().iterator().next();
+                    return entityCollectorLogService
+                            .createInitialLog(
+                                    integration.getId(),
+                                    mapper.convertValue(responseBody, new TypeReference<>() {}),
+                                    null
+                            )
+                            .flatMap(logId -> fetchOAuthToken(integration.getClientCode(), integration.getAppCode())
+                                    .flatMap(token -> {
+                                        String formId = payload.getFormIds().iterator().next();
 
-                                return Mono.zip(
-                                        fetchMetaGraphData("/v22.0/" + leadGenId, Map.of("access_token", token)),
-                                        fetchMetaGraphData("/v22.0/" + formId, Map.of("fields", "questions", "access_token", token))
-                                ).flatMap(tuple -> {
-                                    JsonNode leadDetails = tuple.getT1();
-                                    JsonNode formDetails = tuple.getT2();
+                                        return Mono.zip(
+                                                fetchMetaGraphData("/v22.0/" + leadGenId, Map.of("access_token", token)),
+                                                fetchMetaGraphData("/v22.0/" + formId, Map.of("fields", "questions", "access_token", token))
+                                        ).flatMap(tuple -> {
+                                            JsonNode leadDetails = tuple.getT1();
+                                            JsonNode formDetails = tuple.getT2();
 
-                                    Object normalized = EntityCollectorUtilService.normalizedLeadObject(leadDetails, formDetails);
-                                    JsonNode normalizedEntity = mapper.valueToTree(normalized);
+                                            Object normalized = EntityCollectorUtilService.normalizedLeadObject(leadDetails, formDetails);
+                                            JsonNode normalizedEntity = mapper.valueToTree(normalized);
 
-                               return Mono.just(normalizedEntity);
-                                });
-                            });
+                                            return entityCollectorLogService.updateLogWithOutgoingLead(
+                                                    logId,
+                                                    mapper.convertValue(normalizedEntity, new TypeReference<>() {}),
+                                                    EntityCollectorLogStatus.SUCCESS,
+                                                    "Entity processed successfully"
+                                            ).thenReturn(normalizedEntity);
+                                        });
+                                    })
+                                    .onErrorResume(ex -> {
+                                        return entityCollectorLogService.updateLogStatus(
+                                                logId,
+                                                EntityCollectorLogStatus.REJECTED,
+                                                "Error processing meta entity: " + ex.getMessage()
+                                        ).then(Mono.error(ex));
+                                    }));
                 });
     }
+
 
     private Mono<String> fetchOAuthToken(String clientCode, String appCode) {
         return coreService.getConnectionOAuth2Token(
@@ -92,26 +111,46 @@ public class EntityCollectorService {
         return headersSpec.retrieve().bodyToMono(JsonNode.class);
     }
 
+
     public Mono<JsonNode> handleWebsiteEntity(JsonNode websiteEntity) {
 
         String inSource = websiteEntity.path("source").asText(null);
 
-        if (inSource == null) {
-            return Mono.error(new RuntimeException("inSource is missing in the website lead payload"));
-        }
+        Map<String, Object> incomingData = mapper.convertValue(websiteEntity, new TypeReference<>() {});
 
         return entityIntegrationService.findByInSourceAndType(inSource, EntityIntegrationsInSourceType.WEBSITE)
                 .switchIfEmpty(Mono.error(new RuntimeException("No matching entity integration found for inSource: " + inSource)))
-                .map(integration -> {
-                    String clientCode = integration.getClientCode();
-                    String appCode = integration.getAppCode();
+                .flatMap(integration ->
+                        entityCollectorLogService.createInitialLog(integration.getId(), incomingData, null)
+                                .flatMap(logId -> {
+                                    try {
 
-                    ObjectNode responseEntity = mapper.createObjectNode();
-                    responseEntity.setAll((ObjectNode) websiteEntity);
-                    responseEntity.put("clientCode", clientCode);
-                    responseEntity.put("appCode", appCode);
+                                        ObjectNode enrichedEntity = mapper.createObjectNode();
+                                        enrichedEntity.setAll((ObjectNode) websiteEntity);
+                                        enrichedEntity.put("clientCode", integration.getClientCode());
+                                        enrichedEntity.put("appCode", integration.getAppCode());
 
-                    return responseEntity;
-                });
+                                        Map<String, Object> outgoingData = mapper.convertValue(enrichedEntity, new TypeReference<>() {});
+
+                                        return entityCollectorLogService
+                                                .updateLogWithOutgoingLead(
+                                                        logId,
+                                                        outgoingData,
+                                                        EntityCollectorLogStatus.SUCCESS,
+                                                        "Entity processed successfully"
+                                                )
+                                                .thenReturn(enrichedEntity);
+
+                                    } catch (Exception ex) {
+                                        return entityCollectorLogService
+                                                .updateLogStatus(
+                                                        logId,
+                                                        EntityCollectorLogStatus.REJECTED,
+                                                        "Error processing website entity: " + ex.getMessage()
+                                                )
+                                                .then(Mono.error(ex));
+                                    }
+                                }));
     }
+
 }

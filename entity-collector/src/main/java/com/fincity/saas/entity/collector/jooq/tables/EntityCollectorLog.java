@@ -14,13 +14,13 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -37,6 +37,7 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.jackson.extensions.converters.JSONtoJacksonConverter;
 import org.jooq.types.ULong;
 
 
@@ -80,7 +81,7 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      * <code>entity_collector.entity_collector_log.incoming_lead_data</code>.
      * Lead Data
      */
-    public final TableField<EntityCollectorLogRecord, JSON> INCOMING_LEAD_DATA = createField(DSL.name("incoming_lead_data"), SQLDataType.JSON.nullable(false), this, "Lead Data");
+    public final TableField<EntityCollectorLogRecord, Map> INCOMING_LEAD_DATA = createField(DSL.name("incoming_lead_data"), SQLDataType.JSON, this, "Lead Data", new JSONtoJacksonConverter<Map>(Map.class));
 
     /**
      * The column <code>entity_collector.entity_collector_log.ip_address</code>.
@@ -93,13 +94,13 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      * <code>entity_collector.entity_collector_log.outgoing_lead_data</code>.
      * Lead Data Forwarded to CRM
      */
-    public final TableField<EntityCollectorLogRecord, JSON> OUTGOING_LEAD_DATA = createField(DSL.name("outgoing_lead_data"), SQLDataType.JSON.nullable(false), this, "Lead Data Forwarded to CRM");
+    public final TableField<EntityCollectorLogRecord, Map> OUTGOING_LEAD_DATA = createField(DSL.name("outgoing_lead_data"), SQLDataType.JSON, this, "Lead Data Forwarded to CRM", new JSONtoJacksonConverter<Map>(Map.class));
 
     /**
      * The column <code>entity_collector.entity_collector_log.status</code>.
      * Status of the Lead Transfer
      */
-    public final TableField<EntityCollectorLogRecord, EntityCollectorLogStatus> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(11).nullable(false).asEnumDataType(EntityCollectorLogStatus.class), this, "Status of the Lead Transfer");
+    public final TableField<EntityCollectorLogRecord, EntityCollectorLogStatus> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(11).asEnumDataType(EntityCollectorLogStatus.class), this, "Status of the Lead Transfer");
 
     /**
      * The column

@@ -150,7 +150,11 @@
             <artifactId>reactor-flatmap-util</artifactId>
             <version>${nocode-flatmap-util-version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq-jackson-extensions</artifactId>
+            <version>3.20.2</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
@@ -294,6 +298,15 @@
                                 <database>
                                     <includes>.*</includes>
                                     <inputSchema>entity_collector</inputSchema>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>org.jooq.jackson.extensions.converters.JSONtoJacksonConverter</converter>
+                                            <includeExpression>INCOMING_LEAD_DATA|OUTGOING_LEAD_DATA</includeExpression>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                        </forcedType>
+                                    </forcedTypes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>

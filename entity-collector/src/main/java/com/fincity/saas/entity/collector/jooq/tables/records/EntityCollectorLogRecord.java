@@ -8,8 +8,8 @@ import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -64,7 +64,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
      * <code>entity_collector.entity_collector_log.incoming_lead_data</code>.
      * Lead Data
      */
-    public EntityCollectorLogRecord setIncomingLeadData(JSON value) {
+    public EntityCollectorLogRecord setIncomingLeadData(Map value) {
         set(2, value);
         return this;
     }
@@ -74,8 +74,8 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
      * <code>entity_collector.entity_collector_log.incoming_lead_data</code>.
      * Lead Data
      */
-    public JSON getIncomingLeadData() {
-        return (JSON) get(2);
+    public Map getIncomingLeadData() {
+        return (Map) get(2);
     }
 
     /**
@@ -100,7 +100,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
      * <code>entity_collector.entity_collector_log.outgoing_lead_data</code>.
      * Lead Data Forwarded to CRM
      */
-    public EntityCollectorLogRecord setOutgoingLeadData(JSON value) {
+    public EntityCollectorLogRecord setOutgoingLeadData(Map value) {
         set(4, value);
         return this;
     }
@@ -110,8 +110,8 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
      * <code>entity_collector.entity_collector_log.outgoing_lead_data</code>.
      * Lead Data Forwarded to CRM
      */
-    public JSON getOutgoingLeadData() {
-        return (JSON) get(4);
+    public Map getOutgoingLeadData() {
+        return (Map) get(4);
     }
 
     /**
@@ -190,7 +190,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     /**
      * Create a detached, initialised EntityCollectorLogRecord
      */
-    public EntityCollectorLogRecord(ULong id, ULong entityIntegrationId, JSON incomingLeadData, String ipAddress, JSON outgoingLeadData, EntityCollectorLogStatus status, String statusMessage, LocalDateTime createdAt) {
+    public EntityCollectorLogRecord(ULong id, ULong entityIntegrationId, Map incomingLeadData, String ipAddress, Map outgoingLeadData, EntityCollectorLogStatus status, String statusMessage, LocalDateTime createdAt) {
         super(EntityCollectorLog.ENTITY_COLLECTOR_LOG);
 
         setId(id);

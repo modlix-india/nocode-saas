@@ -82,7 +82,7 @@ public class EntityCollectorUtilService {
         for (JsonNode field : leadDetails.path("field_data")) {
             String key = field.path("name").asText();
             JsonNode values = field.path("values");
-            String value = values.isArray() && values.size() > 0 ? values.get(0).asText() : "";
+            String value = values.isArray() && !values.isEmpty() ? values.get(0).asText() : "";
 
             String type = typeMapping.get(key);
             String label = labelMapping.get(key);

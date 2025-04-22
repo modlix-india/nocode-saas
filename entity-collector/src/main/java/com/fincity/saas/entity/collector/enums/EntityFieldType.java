@@ -1,6 +1,9 @@
 package com.fincity.saas.entity.collector.enums;
 
 
+import lombok.Getter;
+
+@Getter
 public enum EntityFieldType {
     EMAIL("email"),
     FULL_NAME("fullName"),
@@ -29,10 +32,6 @@ public enum EntityFieldType {
 
     EntityFieldType(String fieldName) {
         this.fieldName = fieldName;
-    }
-
-    public String getFieldName() {
-        return this.fieldName;
     }
 
     public static EntityFieldType fromType(String type) {
