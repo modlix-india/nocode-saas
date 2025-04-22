@@ -7,6 +7,8 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 
 import java.util.Arrays;
 import java.util.List;
@@ -46,6 +48,16 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
 
     /**
+     * The table <code>entity_processor.entity_processor_sources</code>.
+     */
+    public final EntityProcessorSources ENTITY_PROCESSOR_SOURCES = EntityProcessorSources.ENTITY_PROCESSOR_SOURCES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_stages</code>.
+     */
+    public final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
+
+    /**
      * No further instances allowed
      */
     private EntityProcessor() {
@@ -63,7 +75,9 @@ public class EntityProcessor extends SchemaImpl {
         return Arrays.asList(
             EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES,
             EntityProcessorModels.ENTITY_PROCESSOR_MODELS,
-            EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS
+            EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
+            EntityProcessorSources.ENTITY_PROCESSOR_SOURCES,
+            EntityProcessorStages.ENTITY_PROCESSOR_STAGES
         );
     }
 }

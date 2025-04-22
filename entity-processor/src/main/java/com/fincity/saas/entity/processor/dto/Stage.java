@@ -1,10 +1,8 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
+import com.fincity.saas.entity.processor.enums.StageType;
 import java.io.Serial;
-
-import org.jooq.types.ULong;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -16,8 +14,13 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Source extends BaseProductDto<Source> {
+public class Stage extends BaseProductDto<Stage> {
 
     @Serial
-    private static final long serialVersionUID = 8940700976809710359L;
+    private static final long serialVersionUID = 6408080312498009507L;
+
+    private StageType stageType;
+    private Boolean isSuccess;
+    private Boolean isFailure;
+    private Integer order;
 }

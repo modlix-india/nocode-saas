@@ -1,11 +1,10 @@
 package com.fincity.saas.entity.processor.service;
 
-import org.springframework.stereotype.Service;
-
 import com.fincity.saas.entity.processor.dao.ModelDAO;
 import com.fincity.saas.entity.processor.dto.Model;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorModelsRecord;
-
+import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service

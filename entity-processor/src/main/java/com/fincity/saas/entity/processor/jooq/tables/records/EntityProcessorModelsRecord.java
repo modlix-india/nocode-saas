@@ -23,7 +23,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Setter for <code>entity_processor.entity_processor_models.ID</code>.
-     * Primary key
+     * Primary key.
      */
     public EntityProcessorModelsRecord setId(ULong value) {
         set(0, value);
@@ -32,361 +32,399 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Getter for <code>entity_processor.entity_processor_models.ID</code>.
-     * Primary key
+     * Primary key.
      */
     public ULong getId() {
         return (ULong) get(0);
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_models.VERSION</code>.
-     * Version of this row
+     * Setter for
+     * <code>entity_processor.entity_processor_models.APP_CODE</code>. App Code
+     * on which this notification was sent.
      */
-    public EntityProcessorModelsRecord setVersion(ULong value) {
+    public EntityProcessorModelsRecord setAppCode(String value) {
         set(1, value);
         return this;
     }
 
     /**
-     * Getter for <code>entity_processor.entity_processor_models.VERSION</code>.
-     * Version of this row
+     * Getter for
+     * <code>entity_processor.entity_processor_models.APP_CODE</code>. App Code
+     * on which this notification was sent.
      */
-    public ULong getVersion() {
-        return (ULong) get(1);
+    public String getAppCode() {
+        return (String) get(1);
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_models.CODE</code>.
-     * Unique Code to identify this row
+     * Setter for
+     * <code>entity_processor.entity_processor_models.CLIENT_CODE</code>. Client
+     * Code to whom this notification we sent.
      */
-    public EntityProcessorModelsRecord setCode(String value) {
+    public EntityProcessorModelsRecord setClientCode(String value) {
         set(2, value);
         return this;
     }
 
     /**
+     * Getter for
+     * <code>entity_processor.entity_processor_models.CLIENT_CODE</code>. Client
+     * Code to whom this notification we sent.
+     */
+    public String getClientCode() {
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_models.VERSION</code>.
+     * Version of this row.
+     */
+    public EntityProcessorModelsRecord setVersion(ULong value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_models.VERSION</code>.
+     * Version of this row.
+     */
+    public ULong getVersion() {
+        return (ULong) get(3);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_models.CODE</code>.
+     * Unique Code to identify this row.
+     */
+    public EntityProcessorModelsRecord setCode(String value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
      * Getter for <code>entity_processor.entity_processor_models.CODE</code>.
-     * Unique Code to identify this row
+     * Unique Code to identify this row.
      */
     public String getCode() {
-        return (String) get(2);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>entity_processor.entity_processor_models.NAME</code>.
      * Name of the Model. Model can be anything which will have entities. For
-     * Example, Lead and opportunity, Epic and Task, Account and lead
+     * Example, Lead and opportunity, Epic and Task, Account and lead.
      */
     public EntityProcessorModelsRecord setName(String value) {
-        set(3, value);
+        set(5, value);
         return this;
     }
 
     /**
      * Getter for <code>entity_processor.entity_processor_models.NAME</code>.
      * Name of the Model. Model can be anything which will have entities. For
-     * Example, Lead and opportunity, Epic and Task, Account and lead
+     * Example, Lead and opportunity, Epic and Task, Account and lead.
      */
     public String getName() {
-        return (String) get(3);
+        return (String) get(5);
     }
 
     /**
      * Setter for
      * <code>entity_processor.entity_processor_models.DESCRIPTION</code>.
-     * Description for the Model
+     * Description for the Model.
      */
     public EntityProcessorModelsRecord setDescription(String value) {
-        set(4, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_models.DESCRIPTION</code>.
-     * Description for the Model
-     */
-    public String getDescription() {
-        return (String) get(4);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_models.ADDED_BY_USER_ID</code>.
-     * User which added this Model
-     */
-    public EntityProcessorModelsRecord setAddedByUserId(ULong value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_models.ADDED_BY_USER_ID</code>.
-     * User which added this Model
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(5);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_models.CURRENT_USER_ID</code>.
-     * User to which this Model is assigned
-     */
-    public EntityProcessorModelsRecord setCurrentUserId(ULong value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_models.CURRENT_USER_ID</code>.
-     * User to which this Model is assigned
+     * <code>entity_processor.entity_processor_models.DESCRIPTION</code>.
+     * Description for the Model.
      */
-    public ULong getCurrentUserId() {
-        return (ULong) get(6);
+    public String getDescription() {
+        return (String) get(6);
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_models.STATUS</code>.
-     * Status for this model
+     * Setter for
+     * <code>entity_processor.entity_processor_models.ADDED_BY_USER_ID</code>.
+     * User which added this Model.
      */
-    public EntityProcessorModelsRecord setStatus(String value) {
+    public EntityProcessorModelsRecord setAddedByUserId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
-     * Getter for <code>entity_processor.entity_processor_models.STATUS</code>.
-     * Status for this model
+     * Getter for
+     * <code>entity_processor.entity_processor_models.ADDED_BY_USER_ID</code>.
+     * User which added this Model.
      */
-    public String getStatus() {
-        return (String) get(7);
+    public ULong getAddedByUserId() {
+        return (ULong) get(7);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_models.SUB_STATUS</code>. Sub
-     * Status for this model
+     * <code>entity_processor.entity_processor_models.CURRENT_USER_ID</code>.
+     * User to which this Model is assigned.
      */
-    public EntityProcessorModelsRecord setSubStatus(String value) {
+    public EntityProcessorModelsRecord setCurrentUserId(ULong value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_models.SUB_STATUS</code>. Sub
-     * Status for this model
+     * <code>entity_processor.entity_processor_models.CURRENT_USER_ID</code>.
+     * User to which this Model is assigned.
      */
-    public String getSubStatus() {
-        return (String) get(8);
+    public ULong getCurrentUserId() {
+        return (ULong) get(8);
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_models.DIAL_CODE</code>. Dial
-     * code of the phone number this model has
+     * Setter for <code>entity_processor.entity_processor_models.STATUS</code>.
+     * Status for this model.
      */
-    public EntityProcessorModelsRecord setDialCode(String value) {
+    public EntityProcessorModelsRecord setStatus(String value) {
         set(9, value);
         return this;
     }
 
     /**
-     * Getter for
-     * <code>entity_processor.entity_processor_models.DIAL_CODE</code>. Dial
-     * code of the phone number this model has
+     * Getter for <code>entity_processor.entity_processor_models.STATUS</code>.
+     * Status for this model.
      */
-    public String getDialCode() {
+    public String getStatus() {
         return (String) get(9);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_models.PHONE_NUMBER</code>. Phone
-     * number related to this model
+     * <code>entity_processor.entity_processor_models.SUB_STATUS</code>. Sub
+     * Status for this model.
      */
-    public EntityProcessorModelsRecord setPhoneNumber(String value) {
+    public EntityProcessorModelsRecord setSubStatus(String value) {
         set(10, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_models.PHONE_NUMBER</code>. Phone
-     * number related to this model
+     * <code>entity_processor.entity_processor_models.SUB_STATUS</code>. Sub
+     * Status for this model.
      */
-    public String getPhoneNumber() {
+    public String getSubStatus() {
         return (String) get(10);
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_models.EMAIL</code>.
-     * Email related to this model
+     * Setter for
+     * <code>entity_processor.entity_processor_models.DIAL_CODE</code>. Dial
+     * code of the phone number this model has.
      */
-    public EntityProcessorModelsRecord setEmail(String value) {
+    public EntityProcessorModelsRecord setDialCode(Short value) {
         set(11, value);
         return this;
     }
 
     /**
-     * Getter for <code>entity_processor.entity_processor_models.EMAIL</code>.
-     * Email related to this model
+     * Getter for
+     * <code>entity_processor.entity_processor_models.DIAL_CODE</code>. Dial
+     * code of the phone number this model has.
      */
-    public String getEmail() {
-        return (String) get(11);
+    public Short getDialCode() {
+        return (Short) get(11);
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_models.SOURCE</code>.
-     * Name of source from where we get this model
+     * Setter for
+     * <code>entity_processor.entity_processor_models.PHONE_NUMBER</code>. Phone
+     * number related to this model.
      */
-    public EntityProcessorModelsRecord setSource(String value) {
+    public EntityProcessorModelsRecord setPhoneNumber(String value) {
         set(12, value);
         return this;
     }
 
     /**
-     * Getter for <code>entity_processor.entity_processor_models.SOURCE</code>.
-     * Name of source from where we get this model
+     * Getter for
+     * <code>entity_processor.entity_processor_models.PHONE_NUMBER</code>. Phone
+     * number related to this model.
      */
-    public String getSource() {
+    public String getPhoneNumber() {
         return (String) get(12);
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_models.SUB_SOURCE</code>. Name of
-     * sub source of source from where we get this model
+     * Setter for <code>entity_processor.entity_processor_models.EMAIL</code>.
+     * Email related to this model.
      */
-    public EntityProcessorModelsRecord setSubSource(String value) {
+    public EntityProcessorModelsRecord setEmail(String value) {
         set(13, value);
         return this;
     }
 
     /**
-     * Getter for
-     * <code>entity_processor.entity_processor_models.SUB_SOURCE</code>. Name of
-     * sub source of source from where we get this model
+     * Getter for <code>entity_processor.entity_processor_models.EMAIL</code>.
+     * Email related to this model.
      */
-    public String getSubSource() {
+    public String getEmail() {
         return (String) get(13);
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_models.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product
+     * Setter for <code>entity_processor.entity_processor_models.SOURCE</code>.
+     * Name of source from where we get this model.
      */
-    public EntityProcessorModelsRecord setTempActive(Byte value) {
+    public EntityProcessorModelsRecord setSource(String value) {
         set(14, value);
         return this;
     }
 
     /**
-     * Getter for
-     * <code>entity_processor.entity_processor_models.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product
+     * Getter for <code>entity_processor.entity_processor_models.SOURCE</code>.
+     * Name of source from where we get this model.
      */
-    public Byte getTempActive() {
-        return (Byte) get(14);
+    public String getSource() {
+        return (String) get(14);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_models.IS_ACTIVE</code>. Flag to
-     * check if this product is active or not
+     * <code>entity_processor.entity_processor_models.SUB_SOURCE</code>. Name of
+     * sub source of source from where we get this model.
      */
-    public EntityProcessorModelsRecord setIsActive(Byte value) {
+    public EntityProcessorModelsRecord setSubSource(String value) {
         set(15, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_models.IS_ACTIVE</code>. Flag to
-     * check if this product is active or not
+     * <code>entity_processor.entity_processor_models.SUB_SOURCE</code>. Name of
+     * sub source of source from where we get this model.
      */
-    public Byte getIsActive() {
-        return (Byte) get(15);
+    public String getSubSource() {
+        return (String) get(15);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_models.CREATED_BY</code>. ID of
-     * the user who created this row
+     * <code>entity_processor.entity_processor_models.TEMP_ACTIVE</code>.
+     * Temporary active flag fro this product.
      */
-    public EntityProcessorModelsRecord setCreatedBy(ULong value) {
+    public EntityProcessorModelsRecord setTempActive(Byte value) {
         set(16, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_models.CREATED_BY</code>. ID of
-     * the user who created this row
+     * <code>entity_processor.entity_processor_models.TEMP_ACTIVE</code>.
+     * Temporary active flag fro this product.
      */
-    public ULong getCreatedBy() {
-        return (ULong) get(16);
+    public Byte getTempActive() {
+        return (Byte) get(16);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_models.CREATED_AT</code>. Time
-     * when this row is created
+     * <code>entity_processor.entity_processor_models.IS_ACTIVE</code>. Flag to
+     * check if this product is active or not.
      */
-    public EntityProcessorModelsRecord setCreatedAt(LocalDateTime value) {
+    public EntityProcessorModelsRecord setIsActive(Byte value) {
         set(17, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_models.CREATED_AT</code>. Time
-     * when this row is created
+     * <code>entity_processor.entity_processor_models.IS_ACTIVE</code>. Flag to
+     * check if this product is active or not.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
+    public Byte getIsActive() {
+        return (Byte) get(17);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_models.UPDATED_BY</code>. ID of
-     * the user who updated this row
+     * <code>entity_processor.entity_processor_models.CREATED_BY</code>. ID of
+     * the user who created this row.
      */
-    public EntityProcessorModelsRecord setUpdatedBy(ULong value) {
+    public EntityProcessorModelsRecord setCreatedBy(ULong value) {
         set(18, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_models.UPDATED_BY</code>. ID of
-     * the user who updated this row
+     * <code>entity_processor.entity_processor_models.CREATED_BY</code>. ID of
+     * the user who created this row.
      */
-    public ULong getUpdatedBy() {
+    public ULong getCreatedBy() {
         return (ULong) get(18);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_models.UPDATED_AT</code>. Time
-     * when this row is updated
+     * <code>entity_processor.entity_processor_models.CREATED_AT</code>. Time
+     * when this row is created.
      */
-    public EntityProcessorModelsRecord setUpdatedAt(LocalDateTime value) {
+    public EntityProcessorModelsRecord setCreatedAt(LocalDateTime value) {
         set(19, value);
         return this;
     }
 
     /**
      * Getter for
+     * <code>entity_processor.entity_processor_models.CREATED_AT</code>. Time
+     * when this row is created.
+     */
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(19);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_models.UPDATED_BY</code>. ID of
+     * the user who updated this row.
+     */
+    public EntityProcessorModelsRecord setUpdatedBy(ULong value) {
+        set(20, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_models.UPDATED_BY</code>. ID of
+     * the user who updated this row.
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(20);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_models.UPDATED_AT</code>. Time
-     * when this row is updated
+     * when this row is updated.
+     */
+    public EntityProcessorModelsRecord setUpdatedAt(LocalDateTime value) {
+        set(21, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_models.UPDATED_AT</code>. Time
+     * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(21);
     }
 
     // -------------------------------------------------------------------------
@@ -412,10 +450,12 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorModelsRecord
      */
-    public EntityProcessorModelsRecord(ULong id, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, String status, String subStatus, String dialCode, String phoneNumber, String email, String source, String subSource, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorModelsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, String status, String subStatus, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorModels.ENTITY_PROCESSOR_MODELS);
 
         setId(id);
+        setAppCode(appCode);
+        setClientCode(clientCode);
         setVersion(version);
         setCode(code);
         setName(name);

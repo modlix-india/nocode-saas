@@ -7,6 +7,8 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 
 
 /**
@@ -29,4 +31,14 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_products</code>.
      */
     public static final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_sources</code>.
+     */
+    public static final EntityProcessorSources ENTITY_PROCESSOR_SOURCES = EntityProcessorSources.ENTITY_PROCESSOR_SOURCES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_stages</code>.
+     */
+    public static final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 }

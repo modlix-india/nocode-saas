@@ -23,7 +23,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for <code>entity_processor.entity_processor_products.ID</code>.
-     * Primary key
+     * Primary key.
      */
     public EntityProcessorProductsRecord setId(ULong value) {
         set(0, value);
@@ -32,7 +32,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Getter for <code>entity_processor.entity_processor_products.ID</code>.
-     * Primary key
+     * Primary key.
      */
     public ULong getId() {
         return (ULong) get(0);
@@ -40,48 +40,86 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
-     * of this row
+     * <code>entity_processor.entity_processor_products.APP_CODE</code>. App
+     * Code on which this notification was sent.
      */
-    public EntityProcessorProductsRecord setVersion(ULong value) {
+    public EntityProcessorProductsRecord setAppCode(String value) {
         set(1, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
-     * of this row
+     * <code>entity_processor.entity_processor_products.APP_CODE</code>. App
+     * Code on which this notification was sent.
      */
-    public ULong getVersion() {
-        return (ULong) get(1);
+    public String getAppCode() {
+        return (String) get(1);
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_products.CODE</code>.
-     * Unique Code to identify this row
+     * Setter for
+     * <code>entity_processor.entity_processor_products.CLIENT_CODE</code>.
+     * Client Code to whom this notification we sent.
      */
-    public EntityProcessorProductsRecord setCode(String value) {
+    public EntityProcessorProductsRecord setClientCode(String value) {
         set(2, value);
         return this;
     }
 
     /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.CLIENT_CODE</code>.
+     * Client Code to whom this notification we sent.
+     */
+    public String getClientCode() {
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
+     * of this row.
+     */
+    public EntityProcessorProductsRecord setVersion(ULong value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
+     * of this row.
+     */
+    public ULong getVersion() {
+        return (ULong) get(3);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_products.CODE</code>.
+     * Unique Code to identify this row.
+     */
+    public EntityProcessorProductsRecord setCode(String value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
      * Getter for <code>entity_processor.entity_processor_products.CODE</code>.
-     * Unique Code to identify this row
+     * Unique Code to identify this row.
      */
     public String getCode() {
-        return (String) get(2);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>entity_processor.entity_processor_products.NAME</code>.
      * Name of the Product. Product can be anything for which Entities will be
      * created. For Example, Projects can be product for Opportunities, Board
-     * can be product for Epic
+     * can be product for Epic.
      */
     public EntityProcessorProductsRecord setName(String value) {
-        set(3, value);
+        set(5, value);
         return this;
     }
 
@@ -89,219 +127,219 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Getter for <code>entity_processor.entity_processor_products.NAME</code>.
      * Name of the Product. Product can be anything for which Entities will be
      * created. For Example, Projects can be product for Opportunities, Board
-     * can be product for Epic
+     * can be product for Epic.
      */
     public String getName() {
-        return (String) get(3);
+        return (String) get(5);
     }
 
     /**
      * Setter for
      * <code>entity_processor.entity_processor_products.DESCRIPTION</code>.
-     * Description for the Product
+     * Description for the Product.
      */
     public EntityProcessorProductsRecord setDescription(String value) {
-        set(4, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_products.DESCRIPTION</code>.
-     * Description for the Product
-     */
-    public String getDescription() {
-        return (String) get(4);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
-     * User which added this product
-     */
-    public EntityProcessorProductsRecord setAddedByUserId(ULong value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
-     * User which added this product
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(5);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
-     * User to which this Product is assigned
-     */
-    public EntityProcessorProductsRecord setCurrentUserId(ULong value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
-     * User to which this Product is assigned
+     * <code>entity_processor.entity_processor_products.DESCRIPTION</code>.
+     * Description for the Product.
      */
-    public ULong getCurrentUserId() {
-        return (ULong) get(6);
+    public String getDescription() {
+        return (String) get(6);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.STATUS</code>. Status
-     * for this product
+     * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
+     * User which added this product.
      */
-    public EntityProcessorProductsRecord setStatus(String value) {
+    public EntityProcessorProductsRecord setAddedByUserId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.STATUS</code>. Status
-     * for this product
+     * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
+     * User which added this product.
      */
-    public String getStatus() {
-        return (String) get(7);
+    public ULong getAddedByUserId() {
+        return (ULong) get(7);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.SUB_STATUS</code>. Sub
-     * Status for this product
+     * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
+     * User to which this Product is assigned.
      */
-    public EntityProcessorProductsRecord setSubStatus(String value) {
+    public EntityProcessorProductsRecord setCurrentUserId(ULong value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.SUB_STATUS</code>. Sub
-     * Status for this product
+     * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
+     * User to which this Product is assigned.
      */
-    public String getSubStatus() {
-        return (String) get(8);
+    public ULong getCurrentUserId() {
+        return (ULong) get(8);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product
+     * <code>entity_processor.entity_processor_products.STATUS</code>. Status
+     * for this product.
      */
-    public EntityProcessorProductsRecord setTempActive(Byte value) {
+    public EntityProcessorProductsRecord setStatus(String value) {
         set(9, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product
+     * <code>entity_processor.entity_processor_products.STATUS</code>. Status
+     * for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(9);
+    public String getStatus() {
+        return (String) get(9);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
-     * to check if this product is active or not
+     * <code>entity_processor.entity_processor_products.SUB_STATUS</code>. Sub
+     * Status for this product.
      */
-    public EntityProcessorProductsRecord setIsActive(Byte value) {
+    public EntityProcessorProductsRecord setSubStatus(String value) {
         set(10, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
-     * to check if this product is active or not
+     * <code>entity_processor.entity_processor_products.SUB_STATUS</code>. Sub
+     * Status for this product.
      */
-    public Byte getIsActive() {
-        return (Byte) get(10);
+    public String getSubStatus() {
+        return (String) get(10);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
-     * the user who created this row
+     * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
+     * Temporary active flag fro this product.
      */
-    public EntityProcessorProductsRecord setCreatedBy(ULong value) {
+    public EntityProcessorProductsRecord setTempActive(Byte value) {
         set(11, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
-     * the user who created this row
+     * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
+     * Temporary active flag fro this product.
      */
-    public ULong getCreatedBy() {
-        return (ULong) get(11);
+    public Byte getTempActive() {
+        return (Byte) get(11);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.CREATED_AT</code>. Time
-     * when this row is created
+     * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
+     * to check if this product is active or not.
      */
-    public EntityProcessorProductsRecord setCreatedAt(LocalDateTime value) {
+    public EntityProcessorProductsRecord setIsActive(Byte value) {
         set(12, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.CREATED_AT</code>. Time
-     * when this row is created
+     * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
+     * to check if this product is active or not.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(12);
+    public Byte getIsActive() {
+        return (Byte) get(12);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.UPDATED_BY</code>. ID of
-     * the user who updated this row
+     * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
+     * the user who created this row.
      */
-    public EntityProcessorProductsRecord setUpdatedBy(ULong value) {
+    public EntityProcessorProductsRecord setCreatedBy(ULong value) {
         set(13, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.UPDATED_BY</code>. ID of
-     * the user who updated this row
+     * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
+     * the user who created this row.
      */
-    public ULong getUpdatedBy() {
+    public ULong getCreatedBy() {
         return (ULong) get(13);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.UPDATED_AT</code>. Time
-     * when this row is updated
+     * <code>entity_processor.entity_processor_products.CREATED_AT</code>. Time
+     * when this row is created.
      */
-    public EntityProcessorProductsRecord setUpdatedAt(LocalDateTime value) {
+    public EntityProcessorProductsRecord setCreatedAt(LocalDateTime value) {
         set(14, value);
         return this;
     }
 
     /**
      * Getter for
+     * <code>entity_processor.entity_processor_products.CREATED_AT</code>. Time
+     * when this row is created.
+     */
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(14);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.UPDATED_BY</code>. ID of
+     * the user who updated this row.
+     */
+    public EntityProcessorProductsRecord setUpdatedBy(ULong value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.UPDATED_BY</code>. ID of
+     * the user who updated this row.
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(15);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_products.UPDATED_AT</code>. Time
-     * when this row is updated
+     * when this row is updated.
+     */
+    public EntityProcessorProductsRecord setUpdatedAt(LocalDateTime value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.UPDATED_AT</code>. Time
+     * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -327,10 +365,12 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, String status, String subStatus, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, String status, String subStatus, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
+        setAppCode(appCode);
+        setClientCode(clientCode);
         setVersion(version);
         setCode(code);
         setName(name);

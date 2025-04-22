@@ -1,11 +1,9 @@
 package com.fincity.saas.entity.processor.model;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 import com.fincity.saas.entity.processor.model.base.Email;
 import com.fincity.saas.entity.processor.model.base.PhoneNumber;
-
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;

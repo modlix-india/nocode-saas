@@ -1,5 +1,9 @@
 package com.fincity.saas.entity.processor.controller;
 
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
@@ -10,12 +14,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.saas.entity.processor.dao.BaseProcessorDAO;
-import com.fincity.saas.entity.processor.dto.BaseProcessorDto;
-import com.fincity.saas.entity.processor.service.BaseProcessorService;
-
 import reactor.core.publisher.Mono;
 
 public abstract class BaseProcessorController<

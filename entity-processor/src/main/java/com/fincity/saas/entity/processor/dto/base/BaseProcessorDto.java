@@ -1,22 +1,20 @@
-package com.fincity.saas.entity.processor.dto;
+package com.fincity.saas.entity.processor.dto.base;
 
 import java.io.Serial;
-
-import org.jooq.types.ULong;
-import org.springframework.data.annotation.Version;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
+import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends BaseDto<BaseProcessorDto<T>>{
+public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends BaseDto<T> {
 
     @Serial
     private static final long serialVersionUID = 5174424228629814984L;
@@ -25,6 +23,6 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     private int version = 1;
 
     private ULong currentUserId;
+    private String stage;
     private String status;
-    private String subStatus;
 }

@@ -62,107 +62,121 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column <code>entity_processor.entity_processor_products.ID</code>.
-     * Primary key
+     * Primary key.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
+    public final TableField<EntityProcessorProductsRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.APP_CODE</code>. App
+     * Code on which this notification was sent.
+     */
+    public final TableField<EntityProcessorProductsRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this notification was sent.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.CLIENT_CODE</code>.
+     * Client Code to whom this notification we sent.
+     */
+    public final TableField<EntityProcessorProductsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code to whom this notification we sent.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.VERSION</code>. Version
-     * of this row
+     * of this row.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row");
+    public final TableField<EntityProcessorProductsRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
 
     /**
      * The column <code>entity_processor.entity_processor_products.CODE</code>.
-     * Unique Code to identify this row
+     * Unique Code to identify this row.
      */
-    public final TableField<EntityProcessorProductsRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row");
+    public final TableField<EntityProcessorProductsRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
 
     /**
      * The column <code>entity_processor.entity_processor_products.NAME</code>.
      * Name of the Product. Product can be anything for which Entities will be
      * created. For Example, Projects can be product for Opportunities, Board
-     * can be product for Epic
+     * can be product for Epic.
      */
-    public final TableField<EntityProcessorProductsRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Product. Product can be anything for which Entities will be created. For Example, Projects can be product for Opportunities, Board can be product for Epic");
+    public final TableField<EntityProcessorProductsRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Product. Product can be anything for which Entities will be created. For Example, Projects can be product for Opportunities, Board can be product for Epic.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.DESCRIPTION</code>.
-     * Description for the Product
+     * Description for the Product.
      */
-    public final TableField<EntityProcessorProductsRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Product");
+    public final TableField<EntityProcessorProductsRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
-     * User which added this product
+     * User which added this product.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this product");
+    public final TableField<EntityProcessorProductsRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
-     * User to which this Product is assigned
+     * User to which this Product is assigned.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this Product is assigned");
+    public final TableField<EntityProcessorProductsRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this Product is assigned.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.STATUS</code>. Status
-     * for this product
+     * for this product.
      */
-    public final TableField<EntityProcessorProductsRecord, String> STATUS = createField(DSL.name("STATUS"), SQLDataType.CHAR(32), this, "Status for this product");
+    public final TableField<EntityProcessorProductsRecord, String> STATUS = createField(DSL.name("STATUS"), SQLDataType.CHAR(32), this, "Status for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.SUB_STATUS</code>. Sub
-     * Status for this product
+     * Status for this product.
      */
-    public final TableField<EntityProcessorProductsRecord, String> SUB_STATUS = createField(DSL.name("SUB_STATUS"), SQLDataType.CHAR(32), this, "Sub Status for this product");
+    public final TableField<EntityProcessorProductsRecord, String> SUB_STATUS = createField(DSL.name("SUB_STATUS"), SQLDataType.CHAR(32), this, "Sub Status for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product
+     * Temporary active flag fro this product.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag fro this product");
+    public final TableField<EntityProcessorProductsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag fro this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
-     * to check if this product is active or not
+     * to check if this product is active or not.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not");
+    public final TableField<EntityProcessorProductsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
-     * the user who created this row
+     * the user who created this row.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
+    public final TableField<EntityProcessorProductsRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.CREATED_AT</code>. Time
-     * when this row is created
+     * when this row is created.
      */
-    public final TableField<EntityProcessorProductsRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+    public final TableField<EntityProcessorProductsRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.UPDATED_BY</code>. ID of
-     * the user who updated this row
+     * the user who updated this row.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+    public final TableField<EntityProcessorProductsRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.UPDATED_AT</code>. Time
-     * when this row is updated
+     * when this row is updated.
      */
-    public final TableField<EntityProcessorProductsRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
+    public final TableField<EntityProcessorProductsRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated.");
 
     private EntityProcessorProducts(Name alias, Table<EntityProcessorProductsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

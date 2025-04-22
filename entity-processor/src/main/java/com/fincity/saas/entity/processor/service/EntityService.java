@@ -1,16 +1,14 @@
 package com.fincity.saas.entity.processor.service;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
-
 import com.fincity.saas.entity.processor.dao.EntityDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Entity.Fields;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
-
+import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import java.util.HashMap;
+import java.util.Map;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service

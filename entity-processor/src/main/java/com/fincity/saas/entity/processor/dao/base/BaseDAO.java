@@ -1,23 +1,20 @@
-package com.fincity.saas.entity.processor.dao;
+package com.fincity.saas.entity.processor.dao.base;
 
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
-import com.fincity.saas.entity.processor.dto.BaseProcessorDto;
-
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-
 import reactor.core.publisher.Mono;
 
-public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>>
+public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
         extends AbstractFlowUpdatableDAO<R, ULong, D> {
 
     private final Field<String> codeField;
 
-    protected BaseProcessorDAO(
-            Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId, Field<String> codeField) {
+    protected BaseDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId, Field<String> codeField) {
         super(flowPojoClass, flowTable, flowTableId);
         this.codeField = codeField;
     }

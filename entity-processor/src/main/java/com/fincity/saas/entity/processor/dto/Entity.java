@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
