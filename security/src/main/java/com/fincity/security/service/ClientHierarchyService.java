@@ -29,9 +29,9 @@ public class ClientHierarchyService
 	@Getter
 	private ClientService clientService;
 
-	private static final String CLIENT_HIERARCHY_CACHE_NAME = "clientHierarchy";
+	private static final String CACHE_NAME_CLIENT_HIERARCHY = "clientHierarchy";
 
-	private static final String USER_CLIENT_HIERARCHY_CACHE_NAME = "userClientHierarchy";
+	private static final String CACHE_NAME_USER_CLIENT_HIERARCHY = "userClientHierarchy";
 
 	public ClientHierarchyService(SecurityMessageResourceService securityMessageResourceService,
 			CacheService cacheService) {
@@ -76,12 +76,12 @@ public class ClientHierarchyService
 	}
 
 	public Mono<ClientHierarchy> getClientHierarchy(ULong clientId) {
-		return this.cacheService.cacheValueOrGet(CLIENT_HIERARCHY_CACHE_NAME,
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_HIERARCHY,
 				() -> this.dao.getClientHierarchy(clientId), clientId);
 	}
 
 	public Mono<ClientHierarchy> getUserClientHierarchy(ULong userId) {
-		return this.cacheService.cacheValueOrGet(USER_CLIENT_HIERARCHY_CACHE_NAME,
+		return this.cacheService.cacheValueOrGet(CACHE_NAME_USER_CLIENT_HIERARCHY,
 				() -> this.dao.getUserClientHierarchy(userId), userId);
 	}
 

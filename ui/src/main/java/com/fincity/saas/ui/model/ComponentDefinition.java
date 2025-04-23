@@ -4,11 +4,11 @@ import java.io.Serializable;
 import java.util.Map;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mongo.difference.IDifferentiable;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.util.CloneUtil;
-import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
-import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
-import com.fincity.saas.commons.util.EqualsUtil;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 
 import lombok.Data;
@@ -106,7 +106,7 @@ public class ComponentDefinition implements Serializable, IDifferentiable<Compon
 					cd.setProperties((Map<String, Object>) propDiff);
 					cd.setChildren(childDiff);
 					cd.setStyleProperties((Map<String, Object>) styleDiff);
-					if (EqualsUtil.safeEquals(this.displayOrder, incoming.displayOrder))
+					if (!CommonsUtil.safeEquals(this.displayOrder, incoming.displayOrder))
 						cd.setDisplayOrder(null);
 					else
 						cd.setDisplayOrder(incoming.displayOrder);

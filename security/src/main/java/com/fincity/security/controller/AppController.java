@@ -32,7 +32,6 @@ import com.fincity.security.model.AppDependency;
 import com.fincity.security.model.ApplicationAccessRequest;
 import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.service.AppService;
-import com.fincity.security.service.appregistration.AppRegistrationService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -40,7 +39,7 @@ import reactor.util.function.Tuple2;
 @RestController
 @RequestMapping("api/security/applications")
 public class AppController
-    extends AbstractJOOQUpdatableDataController<SecurityAppRecord, ULong, App, AppDAO, AppService> {
+        extends AbstractJOOQUpdatableDataController<SecurityAppRecord, ULong, App, AppDAO, AppService> {
 
     private static final String SAME_ORIGIN = "SAMEORIGIN";
 
@@ -50,180 +49,174 @@ public class AppController
     @Value("${security.resourceCacheAge:604800}")
     private int cacheAge;
 
-    private final AppRegistrationService appRegistrationService;
-
-    public AppController(AppRegistrationService appRegistrationService) {
-        this.appRegistrationService = appRegistrationService;
-    }
-
     @GetMapping("/applyAppCodeSuffix")
     public Mono<ResponseEntity<String>> applyAppCodeSuffix(@RequestParam String appCode) {
         return Mono.just(ResponseEntity.ok().header("ETag", "W/" + appCode)
-            .header("Cache-Control", "max-age: " + cacheAge)
-            .header("x-frame-options", SAME_ORIGIN)
-            .header("X-Frame-Options", SAME_ORIGIN).body(appCode + appCodeSuffix));
+                .header("Cache-Control", "max-age: " + cacheAge)
+                .header("x-frame-options", SAME_ORIGIN)
+                .header("X-Frame-Options", SAME_ORIGIN).body(appCode + appCodeSuffix));
     }
 
     @GetMapping("/internal/hasReadAccess")
     public Mono<ResponseEntity<Boolean>> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode) {
 
         return this.service.hasReadAccess(appCode, clientCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/appInheritance")
     public Mono<ResponseEntity<List<String>>> appInheritance(@RequestParam String appCode,
-                                                             @RequestParam String urlClientCode, @RequestParam String clientCode) {
+            @RequestParam String urlClientCode, @RequestParam String clientCode) {
 
         return this.service.appInheritance(appCode, urlClientCode, clientCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/hasWriteAccess")
     public Mono<ResponseEntity<Boolean>> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode) {
 
         return this.service.hasWriteAccess(appCode, clientCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/everything/{id}")
     public Mono<ResponseEntity<Boolean>> deleteByAppId(@PathVariable(PATH_VARIABLE_ID) final ULong id,
-                                                       @RequestParam(required = false) final Boolean forceDelete) {
+            @RequestParam(required = false) final Boolean forceDelete) {
 
-        return this.appRegistrationService.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
-            .flatMap(e -> this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
-                .map(f -> BooleanUtil.safeValueOf(e) || BooleanUtil.safeValueOf(f)))
-            .defaultIfEmpty(Boolean.FALSE)
-            .map(ResponseEntity::ok);
+        return this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
+                .filter(BooleanUtil::safeValueOf)
+                .defaultIfEmpty(Boolean.FALSE)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/hasDeleteAccess")
-    public Mono<ResponseEntity<Boolean>> hasDeleteAccess(@RequestParam String deleteAppCode, @RequestParam String deleteClientCode) {
+    public Mono<ResponseEntity<Boolean>> hasDeleteAccess(@RequestParam String deleteAppCode,
+            @RequestParam String deleteClientCode) {
         return this.service.hasDeleteAccess(deleteAppCode, deleteClientCode)
-            .defaultIfEmpty(Boolean.FALSE).map(ResponseEntity::ok);
+                .defaultIfEmpty(Boolean.FALSE).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/appCode/{appCode}")
     public Mono<ResponseEntity<App>> getAppCode(@PathVariable("appCode") final String appCode) {
 
         return this.service.getAppByCode(appCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/appCode/{appCode}")
     public Mono<ResponseEntity<App>> getAppByCode(@PathVariable("appCode") final String appCode) {
 
         return this.service.getAppByCodeCheckAccess(appCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/explicitInfo/{appCode}")
     public Mono<ResponseEntity<com.fincity.saas.commons.security.dto.App>> getAppExplicitInfoByCode(
-        @PathVariable("appCode") final String appCode) {
+            @PathVariable("appCode") final String appCode) {
 
         return this.service.getAppExplicitInfoByCode(appCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping("/{id}/access")
     public Mono<ResponseEntity<Boolean>> addClientAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-                                                         @RequestBody final ApplicationAccessRequest request) {
+            @RequestBody final ApplicationAccessRequest request) {
         return this.service.addClientAccess(appId, request.getClientId(), request.isWriteAccess())
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @PatchMapping("/{id}/access")
     public Mono<ResponseEntity<Boolean>> updateClientAccess(
-        @RequestBody final ApplicationAccessRequest request) {
+            @RequestBody final ApplicationAccessRequest request) {
         return this.service.updateClientAccess(request.getId(), request.isWriteAccess())
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/{id}/access")
     public Mono<ResponseEntity<Boolean>> removeClientAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-                                                            @RequestParam final ULong accessId) {
+            @RequestParam final ULong accessId) {
         return this.service.removeClient(appId, accessId)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/clients/{appCode}")
     public Mono<ResponseEntity<Page<Client>>> getAppClients(@PathVariable final String appCode,
-                                                            @RequestParam(required = false) Boolean onlyWriteAccess, @RequestParam(required = false) String name,
-                                                            Pageable pageable) {
+            @RequestParam(required = false) Boolean onlyWriteAccess, @RequestParam(required = false) String name,
+            Pageable pageable) {
         return this.service.getAppClients(appCode, onlyWriteAccess, name, pageable)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/property")
     public Mono<ResponseEntity<PropertiesResponse>> getProperty(
-        @RequestParam(required = false) ULong clientId,
-        @RequestParam(required = false) ULong appId, @RequestParam(required = false) String appCode,
-        @RequestParam(required = false) String propName) {
+            @RequestParam(required = false) ULong clientId,
+            @RequestParam(required = false) ULong appId, @RequestParam(required = false) String appCode,
+            @RequestParam(required = false) String propName) {
 
         return this.service.getPropertiesWithClients(clientId, appId, appCode, propName)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping("/property")
     public Mono<ResponseEntity<Boolean>> updateProperty(@RequestBody AppProperty property) {
 
         return this.service.updateProperty(property)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/property")
     public Mono<ResponseEntity<Boolean>> deleteProperty(@RequestParam ULong clientId,
-                                                        @RequestParam ULong appId,
-                                                        @RequestParam String name) {
+            @RequestParam ULong appId,
+            @RequestParam String name) {
 
         return this.service.deleteProperty(clientId, appId, name)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/property/{propertyId}")
     public Mono<ResponseEntity<Boolean>> deleteProperty(@PathVariable("propertyId") ULong propertyId) {
 
         return this.service.deletePropertyById(propertyId)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/findBaseClientCode/{applicationCode}")
     public Mono<ResponseEntity<Tuple2<String, Boolean>>> findBaseClientCodeForOverride(
-        @PathVariable("applicationCode") String applicationCode) {
+            @PathVariable("applicationCode") String applicationCode) {
         return this.service.findBaseClientCodeForOverride(applicationCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/findAnyApps")
     public Mono<ResponseEntity<Page<App>>> findAnyApps(Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, PATH_VARIABLE_ID) : pageable);
         return this.service.findAnyAppsByPage(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/dependencies")
     public Mono<List<String>> getInternalAppDependencies(@RequestParam String appCode) {
         return this.service.getAppDependencies(appCode)
-            .map(dependencies -> dependencies.stream().map(AppDependency::getDependentAppCode)
-                .toList());
+                .map(dependencies -> dependencies.stream().map(AppDependency::getDependentAppCode)
+                        .toList());
     }
 
     @GetMapping("/dependencies")
     public Mono<ResponseEntity<List<AppDependency>>> getAppDependencies(@RequestParam String appCode) {
         return this.service.getAppDependencies(appCode)
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping("/dependency")
     public Mono<ResponseEntity<AppDependency>> addDependency(@RequestBody AppDependency dependency) {
 
         return this.service.addAppDependency(dependency.getAppCode(), dependency.getDependentAppCode())
-            .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/dependency")
     public Mono<ResponseEntity<Boolean>> removeDependency(@RequestParam String appCode,
-                                                          @RequestParam String dependencyCode) {
+            @RequestParam String dependencyCode) {
         return this.service.removeAppDependency(appCode, dependencyCode).map(ResponseEntity::ok);
     }
 }
