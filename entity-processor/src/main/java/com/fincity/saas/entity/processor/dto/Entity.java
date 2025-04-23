@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.enums.EntityType;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -26,4 +27,9 @@ public class Entity extends BaseProcessorDto<Entity> {
     private ULong productId;
     private String source;
     private String subSource;
+
+    @Override
+    public EntityType getEntityType() {
+        return EntityType.ENTITY;
+    }
 }

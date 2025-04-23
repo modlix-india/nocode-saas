@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.enums.EntityType;
 import com.fincity.saas.entity.processor.model.ModelRequest;
 import java.io.Serial;
 import lombok.Data;
@@ -24,6 +25,11 @@ public class Model extends BaseProcessorDto<Model> {
     private String email;
     private String source;
     private String subSource;
+
+    @Override
+    public EntityType getEntityType() {
+        return EntityType.MODEL;
+    }
 
     public static Model of(ModelRequest modelRequest) {
         return new Model()

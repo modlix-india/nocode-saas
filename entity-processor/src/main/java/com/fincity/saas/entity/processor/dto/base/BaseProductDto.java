@@ -1,21 +1,21 @@
 package com.fincity.saas.entity.processor.dto.base;
 
+import com.fincity.saas.entity.processor.enums.IEntityType;
 import java.io.Serial;
-
-import org.jooq.types.ULong;
-
+import java.util.stream.Stream;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class BaseProductDto<T extends BaseProductDto<T>> extends BaseDto<T> {
+public class BaseProductDto<T extends BaseProductDto<T>> extends BaseDto<T> implements IEntityType {
 
     @Serial
     private static final long serialVersionUID = 2090745028406660414L;
@@ -36,8 +36,8 @@ public class BaseProductDto<T extends BaseProductDto<T>> extends BaseDto<T> {
         return this.getId().equals(childId) || this.parentLevel0.equals(childId) || this.parentLevel1.equals(childId);
     }
 
-    public boolean isValidChild(ULong childId) {
-        return !this.getId().equals(childId);
+    public boolean isValidChild(ULong... childIds) {
+        return Stream.of(childIds).anyMatch(childId -> this.getId().equals(childId));
     }
 
     // 	These Methods are for JOOQ Compatibility.
