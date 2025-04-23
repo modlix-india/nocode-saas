@@ -48,9 +48,9 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
     private final IFeignSecurityService securityService;
 
     public StaticFileResourceService(
-        FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
-        FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
-        FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService) {
+            FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
+            FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
+            FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService) {
         super(filesAccessPathService, msgService, fileUploadDownloadService);
         this.fileSystemDao = fileSystemDao;
         this.cacheService = cacheService;
@@ -65,7 +65,7 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
         String bucketName = this.bucketPrefix + "-" + this.getResourceType().toLowerCase();
 
         this.fileSystemService = new FileSystemService(this.fileSystemDao, this.cacheService, bucketName,
-            this.s3Client, FilesFileSystemType.STATIC);
+                this.s3Client, FilesFileSystemType.STATIC);
     }
 
     @Override
@@ -83,40 +83,39 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-            SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-            ca -> (clientId == null) ? Mono.just(ca.getClientCode()) :
-                this.securityService.isBeingManagedById(ca.getUser().getClientId(), clientId.toBigInteger()).filter(Boolean::booleanValue).map(e -> clientId.toBigInteger())
-                    .flatMap(this.securityService::getClientById).map(Client::getCode),
+                ca -> (clientId == null) ? Mono.just(ca.getClientCode())
+                        : this.securityService.isBeingManagedById(ca.getUser().getClientId(), clientId.toBigInteger())
+                                .filter(Boolean::booleanValue).map(e -> clientId.toBigInteger())
+                                .flatMap(this.securityService::getClientById).map(Client::getCode),
 
-            (ca, cid) -> Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
-                .subscribeOn(Schedulers.boundedElastic()),
+                (ca, cid) -> Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
+                        .subscribeOn(Schedulers.boundedElastic()),
 
-            (ca, cid, tempDirectory) -> {
+                (ca, cid, tempDirectory) -> {
 
-                Path file = tempDirectory.resolve(fp.filename());
-                return fp.transferTo(file).thenReturn(file.toFile());
-            },
+                    Path file = tempDirectory.resolve(fp.filename());
+                    return fp.transferTo(file).thenReturn(file.toFile());
+                },
 
-            (ca, cid, tempDirectory, file) -> Mono.fromCallable(() -> ImageTransformUtil.makeSourceImage(file, fp.filename())),
+                (ca, cid, tempDirectory, file) -> Mono
+                        .fromCallable(() -> ImageTransformUtil.makeSourceImage(file, fp.filename())),
 
-            (ca, cid, temp, file, sourceTuple) ->
-                Mono.defer(() -> Mono.just(Tuples.of(
+                (ca, cid, temp, file, sourceTuple) -> Mono.defer(() -> Mono.just(Tuples.of(
                         ImageTransformUtil.transformImage(sourceTuple.getT1(), BufferedImage.TYPE_INT_ARGB, details),
                         BufferedImage.TYPE_INT_ARGB)))
-                    .subscribeOn(Schedulers.boundedElastic()),
+                        .subscribeOn(Schedulers.boundedElastic()),
 
-            (ca, cid, temp, file, sTuple, imgTuple) ->
-                Mono.fromCallable(() -> {
+                (ca, cid, temp, file, sTuple, imgTuple) -> Mono.fromCallable(() -> {
                     File finalFile = temp.resolve(cid + ".png").toFile();
                     ImageIO.write(imgTuple.getT1(), "png", finalFile);
                     return finalFile;
                 }).subscribeOn(Schedulers.boundedElastic()),
 
-            (ca, cid, temp, file, sTuple, imgTuple, finalFile) ->
-                this.getFSService().createFileFromFile("SYSTEM",
+                (ca, cid, temp, file, sTuple, imgTuple, finalFile) -> this.getFSService().createFileFromFile("SYSTEM",
                         "_clientImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
-                    .map(fd -> this.convertToFileDetailWhileCreation("/_clientImages", "SYSTEM", fd))
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StaticFileResourceService.uploadClientImage"));
+                        .<FileDetail>map(fd -> this.convertToFileDetailWhileCreation("/_clientImages", "SYSTEM", fd)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StaticFileResourceService.uploadClientImage"));
     }
 }
