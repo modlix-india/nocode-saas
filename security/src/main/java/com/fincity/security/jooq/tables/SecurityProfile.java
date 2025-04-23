@@ -31,7 +31,6 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -110,7 +109,7 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
      * The column <code>security.security_profile.ARRANGEMENT</code>.
      * Arrangement of the profile
      */
-    public final TableField<SecurityProfileRecord, Map> ARRANGEMENT = createField(DSL.name("ARRANGEMENT"), SQLDataType.JSON, this, "Arrangement of the profile", new JSONMysqlMapConvertor<JSON, Map>(JSON.class, Map.class));
+    public final TableField<SecurityProfileRecord, Map> ARRANGEMENT = createField(DSL.name("ARRANGEMENT"), SQLDataType.JSON, this, "Arrangement of the profile", new JSONMysqlMapConvertor());
 
     /**
      * The column <code>security.security_profile.CREATED_BY</code>. ID of the
