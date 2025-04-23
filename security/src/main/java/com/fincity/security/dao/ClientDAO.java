@@ -4,10 +4,8 @@ import static com.fincity.saas.commons.util.StringUtil.*;
 import static com.fincity.security.jooq.tables.SecurityClient.*;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.*;
-import static com.fincity.security.jooq.tables.SecurityProfile.*;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.jooq.Condition;
 import org.jooq.Record;
@@ -23,11 +21,9 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Client;
-import com.fincity.security.dto.Profile;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
-import com.fincity.security.jooq.tables.records.SecurityProfileClientRestrictionRecord;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -132,16 +128,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .where(SECURITY_CLIENT.ID.in(clientIds))).map(e -> e.into(Client.class)).collectList();
     }
 
-    public Mono<Profile> getProfile(ULong profileId) {
-
-        return Mono.from(this.dslContext.select(SECURITY_PROFILE.fields())
-                        .from(SECURITY_PROFILE)
-                        .where(SECURITY_PROFILE.ID.eq(profileId))
-                        .limit(1))
-                .filter(Objects::nonNull)
-                .map(e -> e.into(Profile.class));
-    }
-
     public Flux<ClientUrlPattern> readClientPatterns() {
 
         return Flux
@@ -199,14 +185,13 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .map(count -> count.value1() > 0);
     }
 
-    public Mono<Boolean> createProfileRestrictions(ULong clientId, ULong appId, List<ULong> profileIds) {
-        
+    public Mono<Boolean> createProfileRestrictions(ULong clientId, List<ULong> profileIds) {
+
         return Flux.fromIterable(profileIds).flatMap(profileId -> this.dslContext
                         .insertInto(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION)
-                        .columns(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.APP_ID,
-                                SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID,
+                        .columns(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.CLIENT_ID,
                                 SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
-                        .values(appId, clientId, profileId))
+                        .values(clientId, profileId))
                 .collectList().map(List::size).map(e -> e > 0);
     }
 }

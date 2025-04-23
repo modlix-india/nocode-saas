@@ -53,9 +53,7 @@ import reactor.util.function.Tuples;
 public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractDTO<I, I>> {
 
     private static final String OBJECT_NOT_FOUND = AbstractMessageService.OBJECT_NOT_FOUND;
-
-    private static final JSONMysqlMapConvertor<JSON, Map> JSON_CONVERTER = new JSONMysqlMapConvertor<>(JSON.class, Map.class);
-
+    
     private static final Map<Class<?>, Function<UNumber, Tuple2<Object, Class<?>>>> CONVERTERS = Map.of(ULong.class,
             x -> Tuples.of(x == null ? x : x.toBigInteger(), BigInteger.class), UInteger.class,
             x -> Tuples.of(x == null ? x : x.longValue(), Long.class), UShort.class,

@@ -18,21 +18,22 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public class RoleV2 extends AbstractUpdatableDTO<ULong, ULong> {
 
-	private static final long serialVersionUID = -7176719786090846975L;
+    private static final long serialVersionUID = -7176719786090846975L;
 
-	private ULong clientId;
-	private ULong appId;
-	// This is more for reading a role to pickup app Name to pickup authorities.
-	private String appName;
-	private String name;
-	private String shortName;
-	private String description;
-	private String authority;
+    private ULong clientId;
+    private ULong appId;
+    // This is more for reading a role to pickup app Name to pickup authorities.
+    private String appName;
+    private String name;
+    private String shortName;
+    private String description;
+    private String authority;
 
-	private ULong parentRoleId;
+    private ULong parentRoleId;
 
-	private List<RoleV2> subRoles;
+    private List<RoleV2> subRoles;
+    private App app;
 
-	@JsonIgnore
-	private List<Permission> permissions;
+    @JsonIgnore
+    private List<Permission> permissions;
 }

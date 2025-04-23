@@ -57,30 +57,11 @@ public class SecurityProfileClientRestrictionRecord extends UpdatableRecordImpl<
 
     /**
      * Setter for
-     * <code>security.security_profile_client_restriction.APP_ID</code>. App ID
-     * for which this restriction belongs to
-     */
-    public SecurityProfileClientRestrictionRecord setAppId(ULong value) {
-        set(2, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>security.security_profile_client_restriction.APP_ID</code>. App ID
-     * for which this restriction belongs to
-     */
-    public ULong getAppId() {
-        return (ULong) get(2);
-    }
-
-    /**
-     * Setter for
      * <code>security.security_profile_client_restriction.CLIENT_ID</code>.
      * Client ID for which this restriction belongs to
      */
     public SecurityProfileClientRestrictionRecord setClientId(ULong value) {
-        set(3, value);
+        set(2, value);
         return this;
     }
 
@@ -90,7 +71,7 @@ public class SecurityProfileClientRestrictionRecord extends UpdatableRecordImpl<
      * Client ID for which this restriction belongs to
      */
     public ULong getClientId() {
-        return (ULong) get(3);
+        return (ULong) get(2);
     }
 
     // -------------------------------------------------------------------------
@@ -116,12 +97,11 @@ public class SecurityProfileClientRestrictionRecord extends UpdatableRecordImpl<
     /**
      * Create a detached, initialised SecurityProfileClientRestrictionRecord
      */
-    public SecurityProfileClientRestrictionRecord(ULong id, ULong profileId, ULong appId, ULong clientId) {
+    public SecurityProfileClientRestrictionRecord(ULong id, ULong profileId, ULong clientId) {
         super(SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION);
 
         setId(id);
         setProfileId(profileId);
-        setAppId(appId);
         setClientId(clientId);
         resetChangedOnNotNull();
     }
