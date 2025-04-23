@@ -21,15 +21,16 @@ public class BaseProductDto<T extends BaseProductDto<T>> extends BaseDto<T> impl
     private static final long serialVersionUID = 2090745028406660414L;
 
     private ULong productId;
+    private Boolean isParent;
     private ULong parentLevel0;
     private ULong parentLevel1;
 
-    public boolean isParent() {
-        return this.parentLevel0 == null || this.parentLevel1 == null;
+    public boolean hasParentLevels() {
+        return this.parentLevel0 != null || this.parentLevel1 != null;
     }
 
     public boolean isChild() {
-        return !isParent();
+        return !this.isParent;
     }
 
     public boolean inFamily(ULong childId) {

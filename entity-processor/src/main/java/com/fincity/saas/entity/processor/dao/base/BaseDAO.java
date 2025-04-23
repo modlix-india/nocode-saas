@@ -1,22 +1,37 @@
 package com.fincity.saas.entity.processor.dao.base;
 
-import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+
+import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
+
 import reactor.core.publisher.Mono;
 
 public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
         extends AbstractFlowUpdatableDAO<R, ULong, D> {
 
-    private final Field<String> codeField;
+    private static final String CODE = "CODE";
+    private static final String NAME = "NAME";
+    private static final String TEMP_ACTIVE = "TEMP_ACTIVE";
+    private static final String IS_ACTIVE = "IS_ACTIVE";
 
-    protected BaseDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId, Field<String> codeField) {
+    protected final Field<String> codeField;
+    protected final Field<String> nameField;
+    protected final Field<Boolean> tempActiveField;
+    protected final Field<Boolean> isActiveField;
+
+    protected BaseDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
-        this.codeField = codeField;
+        this.codeField = flowTable.field(CODE, String.class);
+        this.nameField = flowTable.field(NAME, String.class);
+        this.tempActiveField = flowTable.field(TEMP_ACTIVE, Boolean.class);
+        this.isActiveField = flowTable.field(IS_ACTIVE, Boolean.class);
     }
 
     public Mono<D> getByCode(String code) {
@@ -30,5 +45,23 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         query.addConditions(codeField.eq(code));
 
         return Mono.from(query);
+    }
+
+    protected Condition isActiveTrue() {
+        return isActiveField.eq(Boolean.TRUE);
+    }
+
+    protected Condition isActiveFalse() {
+        return isActiveField.eq(Boolean.FALSE);
+    }
+
+    protected Condition isActive(Boolean isActive) {
+        if (isActive == null) return DSL.trueCondition();
+        return isActiveField.eq(isActive);
+    }
+
+    protected Condition isActiveWithFalse(Boolean isActive) {
+        if (isActive == null) return DSL.falseCondition();
+        return isActiveField.eq(isActive);
     }
 }
