@@ -70,7 +70,7 @@ public class EntityCollectorService {
                                             Object normalized = EntityCollectorUtilService.normalizedLeadObject(leadDetails, formDetails);
                                             JsonNode normalizedEntity = mapper.valueToTree(normalized);
 
-                                            return entityCollectorLogService.updateLogWithOutgoingLead(
+                                            return entityCollectorLogService.updateLogWithOutgoingEntity(
                                                     logId,
                                                     mapper.convertValue(normalizedEntity, new TypeReference<>() {}),
                                                     EntityCollectorLogStatus.SUCCESS,
@@ -133,7 +133,7 @@ public class EntityCollectorService {
                                         Map<String, Object> outgoingData = mapper.convertValue(enrichedEntity, new TypeReference<>() {});
 
                                         return entityCollectorLogService
-                                                .updateLogWithOutgoingLead(
+                                                .updateLogWithOutgoingEntity(
                                                         logId,
                                                         outgoingData,
                                                         EntityCollectorLogStatus.SUCCESS,

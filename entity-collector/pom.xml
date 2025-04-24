@@ -247,6 +247,7 @@
                     <to>
                         <image>ghcr.io/fincity-india/entity-collector</image>
                         <tags>
+                            <!--suppress UnresolvedMavenProperty -->
                             <tag>${env.ENVIRONMENT}</tag>
                             <tag>${project.version}</tag>
                         </tags>
@@ -302,7 +303,7 @@
                                         <forcedType>
                                             <userType>java.util.Map</userType>
                                             <converter>org.jooq.jackson.extensions.converters.JSONtoJacksonConverter</converter>
-                                            <includeExpression>INCOMING_LEAD_DATA|OUTGOING_LEAD_DATA</includeExpression>
+                                            <includeExpression>INCOMING_ENTITY_DATA|OUTGOING_ENTITY_DATA</includeExpression>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                         </forcedType>

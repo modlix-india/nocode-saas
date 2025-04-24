@@ -61,20 +61,20 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Setter for
-     * <code>entity_collector.entity_collector_log.incoming_lead_data</code>.
-     * Lead Data
+     * <code>entity_collector.entity_collector_log.incoming_entity_data</code>.
+     * Entity Data
      */
-    public EntityCollectorLogRecord setIncomingLeadData(Map value) {
+    public EntityCollectorLogRecord setIncomingEntityData(Map value) {
         set(2, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_collector.entity_collector_log.incoming_lead_data</code>.
-     * Lead Data
+     * <code>entity_collector.entity_collector_log.incoming_entity_data</code>.
+     * Entity Data
      */
-    public Map getIncomingLeadData() {
+    public Map getIncomingEntityData() {
         return (Map) get(2);
     }
 
@@ -97,26 +97,26 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Setter for
-     * <code>entity_collector.entity_collector_log.outgoing_lead_data</code>.
-     * Lead Data Forwarded to CRM
+     * <code>entity_collector.entity_collector_log.outgoing_entity_data</code>.
+     * Entity Data Forwarded to CRM
      */
-    public EntityCollectorLogRecord setOutgoingLeadData(Map value) {
+    public EntityCollectorLogRecord setOutgoingEntityData(Map value) {
         set(4, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_collector.entity_collector_log.outgoing_lead_data</code>.
-     * Lead Data Forwarded to CRM
+     * <code>entity_collector.entity_collector_log.outgoing_entity_data</code>.
+     * Entity Data Forwarded to CRM
      */
-    public Map getOutgoingLeadData() {
+    public Map getOutgoingEntityData() {
         return (Map) get(4);
     }
 
     /**
      * Setter for <code>entity_collector.entity_collector_log.status</code>.
-     * Status of the Lead Transfer
+     * Status of the Entity Transfer
      */
     public EntityCollectorLogRecord setStatus(EntityCollectorLogStatus value) {
         set(5, value);
@@ -125,7 +125,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Getter for <code>entity_collector.entity_collector_log.status</code>.
-     * Status of the Lead Transfer
+     * Status of the Entity Transfer
      */
     public EntityCollectorLogStatus getStatus() {
         return (EntityCollectorLogStatus) get(5);
@@ -190,14 +190,14 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     /**
      * Create a detached, initialised EntityCollectorLogRecord
      */
-    public EntityCollectorLogRecord(ULong id, ULong entityIntegrationId, Map incomingLeadData, String ipAddress, Map outgoingLeadData, EntityCollectorLogStatus status, String statusMessage, LocalDateTime createdAt) {
+    public EntityCollectorLogRecord(ULong id, ULong entityIntegrationId, Map incomingEntityData, String ipAddress, Map outgoingEntityData, EntityCollectorLogStatus status, String statusMessage, LocalDateTime createdAt) {
         super(EntityCollectorLog.ENTITY_COLLECTOR_LOG);
 
         setId(id);
         setEntityIntegrationId(entityIntegrationId);
-        setIncomingLeadData(incomingLeadData);
+        setIncomingEntityData(incomingEntityData);
         setIpAddress(ipAddress);
-        setOutgoingLeadData(outgoingLeadData);
+        setOutgoingEntityData(outgoingEntityData);
         setStatus(status);
         setStatusMessage(statusMessage);
         setCreatedAt(createdAt);

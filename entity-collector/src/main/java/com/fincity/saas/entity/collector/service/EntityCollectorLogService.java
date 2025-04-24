@@ -18,10 +18,10 @@ public class EntityCollectorLogService {
         this.dao = dao;
     }
 
-    public Mono<ULong> createInitialLog(ULong entityIntegrationId, Map<String, Object> incomingLeadData, String ipAddress) {
+    public Mono<ULong> createInitialLog(ULong entityIntegrationId, Map<String, Object> incomingEntityData, String ipAddress) {
         EntityCollectorLog log = new EntityCollectorLog()
                 .setEntityIntegrationId(entityIntegrationId)
-                .setIncomingLeadData(incomingLeadData)
+                .setIncomingEntityData(incomingEntityData)
                 .setIpAddress(ipAddress)
                 .setStatus(EntityCollectorLogStatus.WITH_ERRORS)
                 .setStatusMessage("Integration found. Processing started.");
@@ -29,11 +29,11 @@ public class EntityCollectorLogService {
         return dao.create(log).map(EntityCollectorLog::getId);
     }
 
-    public Mono<EntityCollectorLog> updateLogWithOutgoingLead(ULong logId, Map<String, Object> outgoingLeadData, EntityCollectorLogStatus status, String statusMessage) {
+    public Mono<EntityCollectorLog> updateLogWithOutgoingEntity(ULong logId, Map<String, Object> outgoingEntityData, EntityCollectorLogStatus status, String statusMessage) {
         return dao.getById(logId)
                 .flatMap(existingLog -> {
                     existingLog
-                            .setOutgoingLeadData(outgoingLeadData)
+                            .setOutgoingEntityData(outgoingEntityData)
                             .setStatus(status)
                             .setStatusMessage(statusMessage);
                     return dao.update(existingLog);

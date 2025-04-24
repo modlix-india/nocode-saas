@@ -18,9 +18,9 @@ public class EntityCollectorLog implements Serializable {
 
     private ULong id;
     private ULong entityIntegrationId;
-    private Map<String, Object> incomingLeadData;
+    private Map<String, Object> incomingEntityData;
     private String ipAddress;
-    private Map<String, Object> outgoingLeadData;
+    private Map<String, Object> outgoingEntityData;
     private EntityCollectorLogStatus status;
     private String statusMessage;
 

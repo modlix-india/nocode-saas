@@ -10,7 +10,7 @@ import org.jooq.Schema;
 
 
 /**
- * Status of the Lead Transfer
+ * Status of the Entity Transfer
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityCollectorLogStatus implements EnumType {
