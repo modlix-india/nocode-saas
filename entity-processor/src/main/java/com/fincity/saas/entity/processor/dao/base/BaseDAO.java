@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.dao.base;
 
+import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
@@ -7,10 +9,6 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
-
-import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
-
 import reactor.core.publisher.Mono;
 
 public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
