@@ -2,6 +2,8 @@ package com.fincity.saas.entity.processor.model;
 
 import com.fincity.saas.entity.processor.model.base.Email;
 import com.fincity.saas.entity.processor.model.base.PhoneNumber;
+import com.fincity.saas.entity.processor.model.base.Identity;
+
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
@@ -18,8 +20,7 @@ public class EntityRequest implements Serializable {
 
     private String name;
     private String description;
-    private String status;
-    private String subStatus;
+    private Identity productId;
     private PhoneNumber phoneNumber;
     private Email email;
     private String source;

@@ -85,7 +85,7 @@ public class EntityProcessorSources extends TableImpl<EntityProcessorSourcesReco
      * The column <code>entity_processor.entity_processor_sources.NAME</code>.
      * Name of the Source. Source are like Social Media, Website, Hoarding.
      */
-    public final TableField<EntityProcessorSourcesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Source. Source are like Social Media, Website, Hoarding.");
+    public final TableField<EntityProcessorSourcesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(32).nullable(false), this, "Name of the Source. Source are like Social Media, Website, Hoarding.");
 
     /**
      * The column

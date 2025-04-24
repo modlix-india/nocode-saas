@@ -3,11 +3,11 @@ package com.fincity.saas.entity.processor.service.base;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
-import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.util.Map;
 import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -16,6 +16,13 @@ import reactor.core.publisher.Mono;
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
         extends BaseService<R, D, O> {
+
+    protected abstract Mono<D> checkEntity(D entity);
+
+    @Override
+    protected Mono<Boolean> evictCache(D entity) {
+        return super.evictCache(entity);
+    }
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
@@ -26,8 +33,6 @@ public abstract class BaseProcessorService<
                         AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
             e.setCurrentUserId(entity.getCurrentUserId());
-            e.setStage(entity.getStage());
-            e.setStatus(entity.getStatus());
 
             e.setVersion(e.getVersion() + 1);
 
@@ -35,37 +40,41 @@ public abstract class BaseProcessorService<
         });
     }
 
-    public Mono<D> create(D entity, String appCode, String clientCode) {
+    @Override
+    public Mono<D> create(D entity) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> {
-                    if (!ca.isAuthenticated())
-                        return msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT);
+                super::hasAccess, hasAccess -> this.checkEntity(entity), (hasAccess, cEntity) -> {
+                    cEntity.setAppCode(hasAccess.getT1().getT1());
+                    cEntity.setClientCode(hasAccess.getT1().getT2());
+                    cEntity.setAddedByUserId(hasAccess.getT1().getT3());
 
-                    return this.hasAccess(appCode, clientCode, ca.getUser().getId());
-                },
-                (ca, hasAccess) -> {
-                    entity.setAppCode(hasAccess.getT1().getT1());
-                    entity.setClientCode(hasAccess.getT1().getT2());
-                    entity.setAddedByUserId(hasAccess.getT1().getT3());
-
-                    return super.create(entity);
+                    return super.create(cEntity);
                 });
     }
 
-    public Mono<D> update(D entity, String appCode, String clientCode) {
+    @Override
+    public Mono<D> update(ULong key, Map<String, Object> fields) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> {
-                    if (!ca.isAuthenticated())
-                        return msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT);
+                super::hasAccess,
+                hasAccess -> key != null ? this.read(key) : Mono.empty(),
+                (hasAccess, entity) -> super.update(key, fields),
+                (hasAccess, entity, updated) ->
+                        this.evictCache(entity).map(evicted -> updated).switchIfEmpty(Mono.just(updated)));
+    }
 
-                    return this.hasAccess(appCode, clientCode, ca.getUser().getId());
-                },
-                (ca, hasAccess) -> super.create(entity));
+    @Override
+    public Mono<D> update(D entity) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess, hasAccess -> super.update(entity), (hasAccess, updated) -> this.evictCache(entity)
+                        .map(evicted -> updated));
+    }
+
+    @Override
+    public Mono<Integer> delete(ULong id) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> this.read(id),
+                (hasAccess, entity) -> super.delete(entity.getId()),
+                (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 }

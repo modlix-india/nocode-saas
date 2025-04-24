@@ -124,20 +124,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_products.STATUS</code>. Status
-     * for this product.
-     */
-    public final TableField<EntityProcessorProductsRecord, String> STATUS = createField(DSL.name("STATUS"), SQLDataType.CHAR(32), this, "Status for this product.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_products.SUB_STATUS</code>. Sub
-     * Status for this product.
-     */
-    public final TableField<EntityProcessorProductsRecord, String> SUB_STATUS = createField(DSL.name("SUB_STATUS"), SQLDataType.CHAR(32), this, "Sub Status for this product.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag fro this product.
      */

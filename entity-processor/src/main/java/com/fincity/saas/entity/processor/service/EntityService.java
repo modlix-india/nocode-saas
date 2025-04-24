@@ -22,6 +22,11 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     }
 
     @Override
+    protected Mono<Entity> checkEntity(Entity entity) {
+        return null;
+    }
+
+    @Override
     protected Mono<Entity> updatableEntity(Entity entity) {
         return super.updatableEntity(entity).flatMap(e -> {
             e.setDialCode(entity.getDialCode());

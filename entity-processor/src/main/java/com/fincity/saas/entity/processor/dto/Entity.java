@@ -1,14 +1,19 @@
 package com.fincity.saas.entity.processor.dto;
 
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntityType;
-import java.io.Serial;
+import com.fincity.saas.entity.processor.model.EntityRequest;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -25,8 +30,22 @@ public class Entity extends BaseProcessorDto<Entity> {
     private String phoneNumber;
     private String email;
     private ULong productId;
+    private String stage;
+    private String status;
     private String source;
     private String subSource;
+
+    public static Entity of(EntityRequest entityRequest) {
+        return (Entity) new Entity()
+                .setDialCode(entityRequest.getPhoneNumber().getCountryCode())
+                .setPhoneNumber(entityRequest.getPhoneNumber().getNumber())
+                .setEmail(entityRequest.getEmail().getAddress())
+                .setProductId(ULongUtil.valueOf(entityRequest.getProductId().getId()))
+                .setSource(entityRequest.getSource())
+                .setSubSource(entityRequest.getSubSource() != null ? entityRequest.getSubSource() : null)
+                .setName(entityRequest.getName())
+                .setDescription(entityRequest.getDescription());
+    }
 
     @Override
     public EntityType getEntityType() {

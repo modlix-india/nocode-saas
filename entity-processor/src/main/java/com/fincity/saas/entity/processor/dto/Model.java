@@ -23,20 +23,18 @@ public class Model extends BaseProcessorDto<Model> {
     private Integer dialCode;
     private String phoneNumber;
     private String email;
-    private String source;
-    private String subSource;
+
+    public static Model of(ModelRequest modelRequest) {
+        return (Model) new Model()
+                .setDialCode(modelRequest.getPhoneNumber().getCountryCode())
+                .setPhoneNumber(modelRequest.getPhoneNumber().getNumber())
+                .setEmail(modelRequest.getEmail().getAddress())
+                .setName(modelRequest.getName())
+                .setDescription(modelRequest.getDescription());
+    }
 
     @Override
     public EntityType getEntityType() {
         return EntityType.MODEL;
-    }
-
-    public static Model of(ModelRequest modelRequest) {
-        return new Model()
-                .setDialCode(modelRequest.getPhoneNumber().getCountryCode())
-                .setPhoneNumber(modelRequest.getPhoneNumber().getNumber())
-                .setEmail(modelRequest.getEmail().getAddress())
-                .setSource(modelRequest.getSource())
-                .setSubSource(modelRequest.getSubSource());
     }
 }

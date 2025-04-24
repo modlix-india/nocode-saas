@@ -18,10 +18,14 @@ public class ModelRequest implements Serializable {
 
     private String name;
     private String description;
-    private String status;
-    private String subStatus;
     private PhoneNumber phoneNumber;
     private Email email;
-    private String source;
-    private String subSource;
+
+    public static ModelRequest of(EntityRequest entityRequest) {
+        return new ModelRequest()
+                .setName(entityRequest.getName())
+                .setDescription(entityRequest.getDescription())
+                .setPhoneNumber(entityRequest.getPhoneNumber())
+                .setEmail(entityRequest.getEmail());
+    }
 }

@@ -86,7 +86,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * The column <code>entity_processor.entity_processor_stages.NAME</code>.
      * Name of the Stage.
      */
-    public final TableField<EntityProcessorStagesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Stage.");
+    public final TableField<EntityProcessorStagesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(32).nullable(false), this, "Name of the Stage.");
 
     /**
      * The column

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProcessorMessageResourceService extends AbstractMongoMessageResourceService {
 
+    public static final String LOGIN_REQUIRED = "login_required";
     public static final String INVALID_CHILD_FOR_PARENT = "invalid_child_for_parent";
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
 }

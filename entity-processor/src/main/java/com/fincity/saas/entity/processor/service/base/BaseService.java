@@ -13,7 +13,6 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -43,6 +42,10 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
 
     protected String getCacheKey(Object... entityNames) {
         return String.join(":", Stream.of(entityNames).map(Object::toString).toArray(String[]::new));
+    }
+
+    protected Mono<Boolean> evictCache(D entity) {
+        return this.evictCode(entity.getCode());
     }
 
     @Autowired
@@ -131,25 +134,29 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return this.cacheService.evict(this.getCacheName(), code);
     }
 
-    public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasAccess(
-            String appCode, String clientCode, BigInteger userId) {
+    public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasAccess() {
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
-                (ca, acTup) -> securityService
+                ca -> Mono.just(ca.isAuthenticated())
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty)
+                        .switchIfEmpty(msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                ProcessorMessageResourceService.LOGIN_REQUIRED)),
+                (ca, isAuthenticated) -> SecurityContextUtil.resolveAppAndClientCode(null, null),
+                (ca, isAuthenticated, acTup) -> securityService
                         .appInheritance(acTup.getT1(), ca.getUrlClientCode(), acTup.getT2())
                         .map(clientCodes -> Mono.just(clientCodes.contains(acTup.getT2())))
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS)),
-                (ca, acTup, hasAppAccess) -> this.securityService
-                        .isUserBeingManaged(userId, clientCode)
+                (ca, isAuthenticated, acTup, hasAppAccess) -> this.securityService
+                        .isUserBeingManaged(ca.getUser().getId(), acTup.getT2())
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT)),
-                (ca, acTup, hasAppAccess, isUserManaged) -> Mono.just(Tuples.of(
+                (ca, isAuthenticated, acTup, hasAppAccess, isUserManaged) -> Mono.just(Tuples.of(
                         Tuples.of(
                                 acTup.getT1(),
                                 acTup.getT2(),

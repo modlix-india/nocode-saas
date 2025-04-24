@@ -11,12 +11,6 @@ import org.springframework.stereotype.Component;
 public class SourceDAO extends BaseProductDAO<EntityProcessorSourcesRecord, Source> {
 
     protected SourceDAO() {
-        super(
-                Source.class,
-                ENTITY_PROCESSOR_SOURCES,
-                ENTITY_PROCESSOR_SOURCES.ID,
-                ENTITY_PROCESSOR_SOURCES.CODE,
-                ENTITY_PROCESSOR_SOURCES.PRODUCT_ID,
-                ENTITY_PROCESSOR_SOURCES.IS_PARENT);
+        super(Source.class, ENTITY_PROCESSOR_SOURCES, ENTITY_PROCESSOR_SOURCES.ID);
     }
 }

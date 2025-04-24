@@ -121,19 +121,6 @@ public class EntityProcessorModels extends TableImpl<EntityProcessorModelsRecord
     public final TableField<EntityProcessorModelsRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this Model is assigned.");
 
     /**
-     * The column <code>entity_processor.entity_processor_models.STATUS</code>.
-     * Status for this model.
-     */
-    public final TableField<EntityProcessorModelsRecord, String> STATUS = createField(DSL.name("STATUS"), SQLDataType.CHAR(22), this, "Status for this model.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_models.SUB_STATUS</code>. Sub
-     * Status for this model.
-     */
-    public final TableField<EntityProcessorModelsRecord, String> SUB_STATUS = createField(DSL.name("SUB_STATUS"), SQLDataType.CHAR(22), this, "Sub Status for this model.");
-
-    /**
      * The column
      * <code>entity_processor.entity_processor_models.DIAL_CODE</code>. Dial
      * code of the phone number this model has.

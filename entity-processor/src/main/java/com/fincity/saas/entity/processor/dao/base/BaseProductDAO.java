@@ -1,20 +1,17 @@
 package com.fincity.saas.entity.processor.dao.base;
 
+import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
+import com.fincity.saas.entity.processor.model.base.IdAndValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
-
-import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
-import com.fincity.saas.entity.processor.model.IdAndValue;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

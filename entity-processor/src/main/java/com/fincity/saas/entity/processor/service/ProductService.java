@@ -6,6 +6,8 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.springframework.stereotype.Service;
 
+import reactor.core.publisher.Mono;
+
 @Service
 public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
 
@@ -14,5 +16,10 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     @Override
     protected String getCacheName() {
         return PRODUCT_CACHE;
+    }
+
+    @Override
+    protected Mono<Product> checkEntity(Product entity) {
+        return null;
     }
 }

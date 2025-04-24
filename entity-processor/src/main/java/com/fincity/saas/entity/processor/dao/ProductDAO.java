@@ -11,6 +11,6 @@ import org.springframework.stereotype.Component;
 public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, Product> {
 
     protected ProductDAO() {
-        super(Product.class, ENTITY_PROCESSOR_PRODUCTS, ENTITY_PROCESSOR_PRODUCTS.ID, ENTITY_PROCESSOR_PRODUCTS.CODE);
+        super(Product.class, ENTITY_PROCESSOR_PRODUCTS, ENTITY_PROCESSOR_PRODUCTS.ID);
     }
 }

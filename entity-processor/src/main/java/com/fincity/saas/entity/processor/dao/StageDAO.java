@@ -11,12 +11,6 @@ import org.springframework.stereotype.Component;
 public class StageDAO extends BaseProductDAO<EntityProcessorStagesRecord, Stage> {
 
     protected StageDAO() {
-        super(
-                Stage.class,
-                ENTITY_PROCESSOR_STAGES,
-                ENTITY_PROCESSOR_STAGES.ID,
-                ENTITY_PROCESSOR_STAGES.CODE,
-                ENTITY_PROCESSOR_STAGES.PRODUCT_ID,
-                ENTITY_PROCESSOR_STAGES.IS_PARENT);
+        super(Stage.class, ENTITY_PROCESSOR_STAGES, ENTITY_PROCESSOR_STAGES.ID);
     }
 }
