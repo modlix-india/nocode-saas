@@ -11,7 +11,9 @@ import com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog.EntityCo
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -205,6 +207,11 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
     @Override
     public UniqueKey<EntityIntegrationsRecord> getPrimaryKey() {
         return Keys.KEY_ENTITY_INTEGRATIONS_PRIMARY;
+    }
+
+    @Override
+    public List<UniqueKey<EntityIntegrationsRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_ENTITY_INTEGRATIONS_UK_CLIENT_SOURCE);
     }
 
     private transient EntityCollectorLogPath _entityCollectorLog;

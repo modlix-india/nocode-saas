@@ -293,7 +293,7 @@
                                 <driver>com.mysql.cj.jdbc.Driver</driver>
                                 <url>jdbc:mysql://localhost:3306/entity_collector</url>
                                 <user>root</user>
-                                <password>Shiva@123</password>
+                                <password>Sowmya@14555</password>
                             </jdbc>
                             <generator>
                                 <database>
