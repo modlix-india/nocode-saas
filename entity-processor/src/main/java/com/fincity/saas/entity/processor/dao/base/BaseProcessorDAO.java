@@ -9,8 +9,7 @@ import org.jooq.types.ULong;
 public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>>
         extends BaseDAO<R, D> {
 
-    protected BaseProcessorDAO(
-            Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId, Field<String> codeField) {
-        super(flowPojoClass, flowTable, flowTableId, codeField);
+    protected BaseProcessorDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
+        super(flowPojoClass, flowTable, flowTableId);
     }
 }
