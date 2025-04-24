@@ -24,6 +24,4 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     private int version = 1;
 
     private ULong currentUserId;
-    private String stage;
-    private String status;
 }
