@@ -9,6 +9,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -19,6 +20,8 @@ public class Product extends BaseProcessorDto<Product> implements IEntityType {
 
     @Serial
     private static final long serialVersionUID = 8028699089699178352L;
+
+    private ULong defaultSource;
 
     @Override
     public EntityType getEntityType() {

@@ -1,19 +1,16 @@
 package com.fincity.saas.entity.processor.dto;
 
-import java.io.Serial;
-
-import org.jooq.types.ULong;
-
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntityType;
 import com.fincity.saas.entity.processor.model.EntityRequest;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)

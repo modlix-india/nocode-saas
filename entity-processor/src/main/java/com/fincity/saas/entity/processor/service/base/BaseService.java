@@ -45,7 +45,9 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     protected Mono<Boolean> evictCache(D entity) {
-        return this.evictCode(entity.getCode());
+        return this.cacheService
+                .evict(this.getCacheName(), entity.getCode())
+                .flatMap(evicted -> this.cacheService.evict(getCacheName(), entity.getId()));
     }
 
     @Autowired
@@ -103,14 +105,18 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return Mono.just(fields);
     }
 
-    public Mono<D> getByCode(String code) {
-        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.getByCode(code), code);
+    public Mono<D> readInternal(ULong id) {
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
+    }
+
+    public Mono<D> readByCode(String code) {
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readByCode(code), code);
     }
 
     public Mono<D> updateByCode(String code, D entity) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.getByCode(code),
+                () -> this.readByCode(code),
                 e -> {
                     if (entity.getId() == null) entity.setId(e.getId());
                     return updatableEntity(entity);
@@ -122,16 +128,15 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         })
                         .defaultIfEmpty(updatableEntity),
                 (e, updatableEntity, uEntity) -> this.dao.update(uEntity),
-                (e, updatableEntity, uEntity, updated) -> this.evictCode(code).map(evicted -> updated));
+                (e, updatableEntity, uEntity, updated) ->
+                        this.evictCache(updated).map(evicted -> updated));
     }
 
     public Mono<Integer> deleteByCode(String code) {
-        return FlatMapUtil.flatMapMono(() -> this.dao.deleteByCode(code), deleted -> this.evictCode(code)
-                .map(evicted -> deleted));
-    }
-
-    public Mono<Boolean> evictCode(String code) {
-        return this.cacheService.evict(this.getCacheName(), code);
+        return FlatMapUtil.flatMapMono(
+                () -> this.readByCode(code),
+                entity -> this.dao.deleteByCode(code),
+                (entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 
     public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasAccess() {

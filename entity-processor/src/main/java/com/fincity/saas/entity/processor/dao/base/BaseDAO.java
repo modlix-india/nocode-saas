@@ -32,7 +32,15 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         this.isActiveField = flowTable.field(IS_ACTIVE, Boolean.class);
     }
 
-    public Mono<D> getByCode(String code) {
+    public Mono<D> readInternal(ULong id) {
+        return Mono.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(this.idField.eq(id))
+                        .limit(1))
+                .map(e -> e.into(this.pojoClass));
+    }
+
+    public Mono<D> readByCode(String code) {
         return Mono.from(this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
                 .map(result -> result.into(this.pojoClass));
     }

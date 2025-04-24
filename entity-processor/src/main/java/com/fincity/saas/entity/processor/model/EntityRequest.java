@@ -1,9 +1,8 @@
 package com.fincity.saas.entity.processor.model;
 
 import com.fincity.saas.entity.processor.model.base.Email;
-import com.fincity.saas.entity.processor.model.base.PhoneNumber;
 import com.fincity.saas.entity.processor.model.base.Identity;
-
+import com.fincity.saas.entity.processor.model.base.PhoneNumber;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;

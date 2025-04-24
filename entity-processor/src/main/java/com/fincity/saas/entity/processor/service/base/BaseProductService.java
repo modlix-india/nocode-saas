@@ -1,18 +1,5 @@
 package com.fincity.saas.entity.processor.service.base;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
@@ -21,7 +8,17 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
 import com.fincity.saas.entity.processor.model.base.IdAndValue;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -157,7 +154,8 @@ public abstract class BaseProductService<
                     if (!productEntityMap.get(parent).containsAll(List.of(children))) return Mono.just(Boolean.FALSE);
 
                     return Mono.just(Boolean.TRUE);
-                }).switchIfEmpty(Mono.just(Boolean.FALSE));
+                })
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
     public Mono<Map<String, Set<String>>> getAllProducts(String appCode, String clientCode, ULong productId) {

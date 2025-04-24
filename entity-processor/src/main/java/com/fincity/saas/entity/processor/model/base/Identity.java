@@ -1,16 +1,14 @@
 package com.fincity.saas.entity.processor.model.base;
 
-import java.io.IOException;
-import java.io.Serial;
-import java.io.Serializable;
-import java.math.BigInteger;
-
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
+import java.io.IOException;
+import java.io.Serial;
+import java.io.Serializable;
+import java.math.BigInteger;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -39,6 +37,10 @@ public class Identity implements Serializable {
 
     public static Identity of(String code) {
         return of(null, code);
+    }
+
+    public boolean isNull() {
+        return id == null && code == null;
     }
 
     public static class IdentityDeserializer extends JsonDeserializer<Identity> {
