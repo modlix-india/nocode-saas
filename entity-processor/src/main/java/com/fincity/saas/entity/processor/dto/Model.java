@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.ModelRequest;
+import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,7 +21,7 @@ public class Model extends BaseProcessorDto<Model> {
     @Serial
     private static final long serialVersionUID = 3722918782975754023L;
 
-    private Integer dialCode;
+    private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
     private String email;
 
@@ -31,6 +32,15 @@ public class Model extends BaseProcessorDto<Model> {
                 .setEmail(modelRequest.getEmail().getAddress())
                 .setName(modelRequest.getName())
                 .setDescription(modelRequest.getDescription());
+    }
+
+    public static Model of(Entity entity) {
+        return (Model) new Model()
+                .setDialCode(entity.getDialCode())
+                .setPhoneNumber(entity.getPhoneNumber())
+                .setEmail(entity.getEmail())
+                .setName(entity.getName())
+                .setDescription(entity.getDescription());
     }
 
     @Override

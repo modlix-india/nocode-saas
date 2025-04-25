@@ -4,6 +4,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.EntityRequest;
+import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,7 +24,7 @@ public class Entity extends BaseProcessorDto<Entity> {
     private static final long serialVersionUID = 1639822311147907381L;
 
     private ULong modelId;
-    private Integer dialCode;
+    private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
     private String email;
     private ULong productId;

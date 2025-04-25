@@ -20,6 +20,7 @@ import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 
 @Service
 public class EntityService extends BaseProcessorService<EntityProcessorEntitiesRecord, Entity, EntityDAO> {
@@ -29,11 +30,17 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     private final ProductService productService;
     private final StageService stageService;
     private final SourceService sourceService;
+    private final ModelService modelService;
 
-    public EntityService(ProductService productService, StageService stageService, SourceService sourceService) {
+    public EntityService(
+            ProductService productService,
+            StageService stageService,
+            SourceService sourceService,
+            ModelService modelService) {
         this.productService = productService;
         this.stageService = stageService;
         this.sourceService = sourceService;
+        this.modelService = modelService;
     }
 
     @Override
@@ -42,8 +49,8 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     }
 
     @Override
-    protected Mono<Entity> checkEntity(Entity entity) {
-        return null;
+    protected Mono<Entity> checkEntity(Entity entity, Tuple3<String, String, ULong> accessInfo) {
+        return this.setModel(accessInfo, entity);
     }
 
     @Override
@@ -75,7 +82,6 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     }
 
     public Mono<Entity> create(EntityRequest entityRequest) {
-
         return FlatMapUtil.flatMapMono(
                 () -> this.getEntityProduct(entityRequest),
                 product -> this.updateRequest(entityRequest, product),
@@ -135,5 +141,9 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         return sourceService
                 .readInternal(defaultSourceId)
                 .flatMap(defaultSource -> Mono.just(entityRequest.setSource(defaultSource.getName())));
+    }
+
+    private Mono<Entity> setModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {
+        return this.modelService.getOrCreateEntityModel(accessInfo, entity);
     }
 }

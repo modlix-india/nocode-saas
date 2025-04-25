@@ -7,6 +7,7 @@ import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -147,21 +148,31 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 ProcessorMessageResourceService.LOGIN_REQUIRED)),
-                (ca, isAuthenticated) -> SecurityContextUtil.resolveAppAndClientCode(null, null),
-                (ca, isAuthenticated, acTup) -> securityService
+                (ca, isAuthenticated) -> this.getAppClientUserAccessInfo(ca));
+    }
+
+    public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasPublicAccess() {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication, this::getAppClientUserAccessInfo);
+    }
+
+    private Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> getAppClientUserAccessInfo(ContextAuthentication ca) {
+        return FlatMapUtil.flatMapMono(
+                () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
+                acTup -> securityService
                         .appInheritance(acTup.getT1(), ca.getUrlClientCode(), acTup.getT2())
                         .map(clientCodes -> Mono.just(clientCodes.contains(acTup.getT2())))
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS)),
-                (ca, isAuthenticated, acTup, hasAppAccess) -> this.securityService
+                (acTup, hasAppAccess) -> this.securityService
                         .isUserBeingManaged(ca.getUser().getId(), acTup.getT2())
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT)),
-                (ca, isAuthenticated, acTup, hasAppAccess, isUserManaged) -> Mono.just(Tuples.of(
+                (acTup, hasAppAccess, isUserManaged) -> Mono.just(Tuples.of(
                         Tuples.of(
                                 acTup.getT1(),
                                 acTup.getT2(),

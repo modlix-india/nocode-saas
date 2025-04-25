@@ -11,4 +11,5 @@ public class ProcessorMessageResourceService extends AbstractMongoMessageResourc
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
     public static final String PRODUCT_IDENTITY_MISSING = "product_identity_missing";
     public static final String PRODUCT_IDENTITY_WRONG = "product_identity_wrong";
+    public static final String MODEL_NOT_CREATED = "model_not_created";
 }

@@ -11,13 +11,14 @@ import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 
 @Service
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
         extends BaseService<R, D, O> {
 
-    protected abstract Mono<D> checkEntity(D entity);
+    protected abstract Mono<D> checkEntity(D entity, Tuple3<String, String, ULong> accessInfo);
 
     @Override
     protected Mono<Boolean> evictCache(D entity) {
@@ -43,7 +44,7 @@ public abstract class BaseProcessorService<
     @Override
     public Mono<D> create(D entity) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess, hasAccess -> this.checkEntity(entity), (hasAccess, cEntity) -> {
+                super::hasAccess, hasAccess -> this.checkEntity(entity, hasAccess.getT1()), (hasAccess, cEntity) -> {
                     cEntity.setAppCode(hasAccess.getT1().getT1());
                     cEntity.setClientCode(hasAccess.getT1().getT2());
 
