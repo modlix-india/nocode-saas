@@ -226,7 +226,9 @@ public class FileSystemService {
 
                     final int finalIndex = index;
                     return Mono.fromCallable(() -> {
-                        try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + filePath.toUri()), Map.of("create", "true"))) {
+                        try (FileSystem fs = Files.exists(filePath) ?
+                                FileSystems.getFileSystem(URI.create("jar:" + filePath.toUri())) :
+                                FileSystems.newFileSystem(URI.create("jar:" + filePath.toUri()), Map.of("create", "true"))) {
                             for (Tuple2<Long, S3Object> tup : lst) {
                                 Path here = fs.getPath(tup.getT2().key().substring(finalIndex));
                                 try {
