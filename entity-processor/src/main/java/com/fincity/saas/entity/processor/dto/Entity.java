@@ -34,7 +34,7 @@ public class Entity extends BaseProcessorDto<Entity> {
     private String subSource;
 
     public static Entity of(EntityRequest entityRequest) {
-        return (Entity) new Entity()
+        return new Entity()
                 .setDialCode(entityRequest.getPhoneNumber().getCountryCode())
                 .setPhoneNumber(entityRequest.getPhoneNumber().getNumber())
                 .setEmail(entityRequest.getEmail().getAddress())

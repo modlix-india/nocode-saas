@@ -36,4 +36,14 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
         this.code = UniqueUtil.shortUUID();
         return (T) this;
     }
+
+    public T setName(String name) {
+        this.name = name.trim();
+        return (T) this;
+    }
+
+    public T setDescription(String description) {
+        this.description = description.trim();
+        return (T) this;
+    }
 }

@@ -61,14 +61,14 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
                 return Mono.just(entity);
             });
 
+        return getOrCreateEntityPhoneModel(accessInfo.getT1(), accessInfo.getT2(), entity);
+    }
+
+    public Mono<Entity> getOrCreateEntityPhoneModel(String appCode, String clientCode, Entity entity) {
         return FlatMapUtil.flatMapMono(
                 () -> this.dao
                         .readByNumberAndEmail(
-                                accessInfo.getT1(),
-                                accessInfo.getT2(),
-                                entity.getDialCode(),
-                                entity.getPhoneNumber(),
-                                entity.getEmail())
+                                appCode, clientCode, entity.getDialCode(), entity.getPhoneNumber(), entity.getEmail())
                         .switchIfEmpty(this.create(Model.of(entity))),
                 model -> {
                     if (model.getId() == null)

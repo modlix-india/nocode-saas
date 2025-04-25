@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -16,7 +17,7 @@ import reactor.util.function.Tuple3;
 @Service
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
-        extends BaseService<R, D, O> {
+        extends BaseService<R, D, O> implements IEntitySeries {
 
     protected abstract Mono<D> checkEntity(D entity, Tuple3<String, String, ULong> accessInfo);
 
@@ -36,7 +37,6 @@ public abstract class BaseProcessorService<
             e.setCurrentUserId(entity.getCurrentUserId());
 
             e.setVersion(e.getVersion() + 1);
-
             return Mono.just(e);
         });
     }

@@ -26,7 +26,7 @@ public class Model extends BaseProcessorDto<Model> {
     private String email;
 
     public static Model of(ModelRequest modelRequest) {
-        return (Model) new Model()
+        return new Model()
                 .setDialCode(modelRequest.getPhoneNumber().getCountryCode())
                 .setPhoneNumber(modelRequest.getPhoneNumber().getNumber())
                 .setEmail(modelRequest.getEmail().getAddress())
@@ -35,7 +35,7 @@ public class Model extends BaseProcessorDto<Model> {
     }
 
     public static Model of(Entity entity) {
-        return (Model) new Model()
+        return new Model()
                 .setDialCode(entity.getDialCode())
                 .setPhoneNumber(entity.getPhoneNumber())
                 .setEmail(entity.getEmail())

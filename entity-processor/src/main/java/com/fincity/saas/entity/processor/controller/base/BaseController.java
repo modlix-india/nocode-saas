@@ -1,9 +1,9 @@
-package com.fincity.saas.entity.processor.controller;
+package com.fincity.saas.entity.processor.controller.base;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
-import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import com.fincity.saas.entity.processor.dao.base.BaseDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.service.base.BaseService;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import reactor.core.publisher.Mono;
 
-public abstract class BaseProcessorController<
+public class BaseController<
                 R extends UpdatableRecord<R>,
-                D extends BaseProcessorDto<D>,
-                O extends BaseProcessorDAO<R, D>,
-                S extends BaseProcessorService<R, D, O>>
+                D extends BaseDto<D>,
+                O extends BaseDAO<R, D>,
+                S extends BaseService<R, D, O>>
         extends AbstractJOOQUpdatableDataController<R, ULong, D, O, S> {
 
     public static final String PATH_VARIABLE_ID = "code";

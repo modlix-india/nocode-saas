@@ -10,9 +10,11 @@ import com.fincity.saas.entity.processor.dao.EntityDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Entity.Fields;
 import com.fincity.saas.entity.processor.dto.Product;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
 import com.fincity.saas.entity.processor.model.EntityRequest;
 import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import java.util.HashMap;
 import java.util.Map;
@@ -49,13 +51,19 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     }
 
     @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.ENTITY;
+    }
+
+    @Override
     protected Mono<Entity> checkEntity(Entity entity, Tuple3<String, String, ULong> accessInfo) {
-        return this.setModel(accessInfo, entity);
+        return this.checkEntity(entity).flatMap(uEntity -> this.setModel(accessInfo, uEntity));
     }
 
     @Override
     protected Mono<Entity> updatableEntity(Entity entity) {
-        return super.updatableEntity(entity).flatMap(e -> {
+
+        return FlatMapUtil.flatMapMono(() -> this.updateModel(entity), super::updatableEntity, (uEntity, e) -> {
             e.setDialCode(entity.getDialCode());
             e.setPhoneNumber(entity.getPhoneNumber());
             e.setEmail(entity.getEmail());
@@ -76,22 +84,25 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         return super.updatableFields(key, fields).flatMap(f -> {
             f.remove(Fields.modelId);
             f.remove(Fields.productId);
+            f.remove(Fields.source);
+            f.remove(Fields.subSource);
 
             return Mono.just(f);
         });
     }
 
-    public Mono<Entity> create(EntityRequest entityRequest) {
+    public Mono<ProcessorResponse> create(EntityRequest entityRequest) {
+
+        Entity entity = Entity.of(entityRequest);
+
         return FlatMapUtil.flatMapMono(
-                () -> this.getEntityProduct(entityRequest),
-                product -> this.updateRequest(entityRequest, product),
-                (product, req) -> stageService.readInternal(product.getDefaultStage()),
-                (product, req, stage) -> super.create(Entity.of(req).setStage(stage.getName())));
+                () -> this.getEntityProduct(entityRequest.getProductId()),
+                product -> super.create(entity.setProductId(product.getId())),
+                (product, cEntity) ->
+                        Mono.just(ProcessorResponse.ofCreated(cEntity.getCode(), this.getEntitySeries())));
     }
 
-    private Mono<Product> getEntityProduct(EntityRequest entityRequest) {
-
-        Identity identity = entityRequest.getProductId();
+    private Mono<Product> getEntityProduct(Identity identity) {
 
         if (identity == null || identity.isNull())
             return this.msgService.throwMessage(
@@ -106,44 +117,58 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
                         ProcessorMessageResourceService.PRODUCT_IDENTITY_WRONG));
     }
 
-    private Mono<EntityRequest> updateRequest(EntityRequest entityRequest, Product product) {
+    private Mono<Entity> checkEntity(Entity entity) {
+
+        if (entity.getProductId() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.PRODUCT_IDENTITY_MISSING);
 
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(
-                        entityRequest.setProductId(Identity.of(product.getId().toBigInteger(), product.getCode()))),
-                (ca, uProduct) -> this.checkSources(ca, entityRequest, product.getDefaultSource()));
+                ca -> this.productService.readInternal(entity.getProductId()),
+                (ca, product) -> Mono.just(entity.setProductId(product.getId())),
+                (ca, product, pEntity) -> this.updateSources(ca, pEntity, product.getDefaultSource()),
+                (ca, product, pEntity, sEntity) -> this.setDefaultStage(sEntity, product.getDefaultStage()));
     }
 
-    private Mono<EntityRequest> checkSources(
-            ContextAuthentication ca, EntityRequest entityRequest, ULong defaultSourceId) {
+    private Mono<Entity> updateSources(ContextAuthentication ca, Entity entity, ULong defaultSourceId) {
 
-        if (StringUtil.safeIsBlank(entityRequest.getSource())) return setDefaultSource(entityRequest, defaultSourceId);
+        if (StringUtil.safeIsBlank(entity.getSource())) return this.setDefaultSource(entity, defaultSourceId);
 
-        entityRequest.setSource(StringUtil.toTitleCase(entityRequest.getSource()));
+        entity.setSource(StringUtil.toTitleCase(entity.getSource()));
 
-        if (entityRequest.getSubSource() != null)
-            entityRequest.setSubSource(StringUtil.toTitleCase(entityRequest.getSubSource()));
+        if (entity.getSubSource() != null) entity.setSubSource(StringUtil.toTitleCase(entity.getSubSource()));
 
         return sourceService
                 .isValidParentChild(
                         ca.getUrlAppCode(),
                         ca.getUrlClientCodeOrElse(!ca.isAuthenticated()),
-                        ULongUtil.valueOf(entityRequest.getProductId().getId()),
-                        entityRequest.getSource(),
-                        entityRequest.getSubSource())
+                        entity.getProductId(),
+                        entity.getSource(),
+                        entity.getSubSource())
                 .flatMap(isValid -> Boolean.FALSE.equals(isValid)
-                        ? this.setDefaultSource(entityRequest, defaultSourceId)
-                        : Mono.just(entityRequest));
+                        ? this.setDefaultSource(entity, defaultSourceId)
+                        : Mono.just(entity));
     }
 
-    private Mono<EntityRequest> setDefaultSource(EntityRequest entityRequest, ULong defaultSourceId) {
+    private Mono<Entity> setDefaultStage(Entity entity, ULong defaultStageId) {
+        return this.stageService
+                .readInternal(defaultStageId)
+                .flatMap(defaultStage -> Mono.just(entity.setStage(defaultStage.getName())));
+    }
+
+    private Mono<Entity> setDefaultSource(Entity entity, ULong defaultSourceId) {
         return sourceService
                 .readInternal(defaultSourceId)
-                .flatMap(defaultSource -> Mono.just(entityRequest.setSource(defaultSource.getName())));
+                .flatMap(defaultSource -> Mono.just(entity.setSource(defaultSource.getName())));
     }
 
     private Mono<Entity> setModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {
         return this.modelService.getOrCreateEntityModel(accessInfo, entity);
+    }
+
+    private Mono<Entity> updateModel(Entity entity) {
+        return this.modelService.getOrCreateEntityPhoneModel(entity.getAppCode(), entity.getClientCode(), entity);
     }
 }
