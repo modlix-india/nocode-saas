@@ -216,7 +216,7 @@ public class FileSystemService {
                                         (folder.resolve(e.getT1().toString()))))
                         .map(resp -> e), 5)
                 .buffer(20)
-                .flatMap(lst -> {
+                .flatMapSequential(lst -> {
 
                     logger.info("lst : {}", lst);
 
@@ -233,6 +233,10 @@ public class FileSystemService {
                                 Path here = fs.getPath(tup.getT2().key().substring(finalIndex));
                                 try {
                                     Files.createDirectories(here.getParent());
+                                } catch (Exception ex) {
+                                    logger.error("Error in creating directory : {} for : {}", here.getParent(), here, ex);
+                                }
+                                try {
                                     Files.copy(folder.resolve(tup.getT1().toString()), here, StandardCopyOption.REPLACE_EXISTING);
                                 } catch (Exception ex) {
                                     logger.error("Error in copying file : {} to : {}", here, folder.resolve(tup.getT1().toString()), ex);
@@ -240,8 +244,9 @@ public class FileSystemService {
                             }
                             return true;
                         }
-                    }).map(e -> true).subscribeOn(Schedulers.boundedElastic());
-                }).subscribeOn(Schedulers.boundedElastic())
+                    }).map(e -> true);
+                })
+                .subscribeOn(Schedulers.single())
                 .then(Mono.just(filePath.toFile()));
     }
 
