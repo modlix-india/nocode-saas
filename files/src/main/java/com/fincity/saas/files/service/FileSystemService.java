@@ -42,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.file.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -225,13 +226,17 @@ public class FileSystemService {
                         index--;
 
                     final int finalIndex = index;
+
+                    Map<String, String> map = new HashMap<>();
+                    if (!Files.exists(filePath))
+                        map.put("create", "true");
+
                     return Mono.fromCallable(() -> {
-                        try (FileSystem fs = Files.exists(filePath) ?
-                                FileSystems.getFileSystem(URI.create("jar:" + filePath.toUri())) :
-                                FileSystems.newFileSystem(URI.create("jar:" + filePath.toUri()), Map.of("create", "true"))) {
+                        try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + filePath.toUri()), map)) {
                             for (Tuple2<Long, S3Object> tup : lst) {
                                 Path here = fs.getPath(tup.getT2().key().substring(finalIndex));
                                 try {
+                                    if (!Files.exists(here.getParent()))
                                     Files.createDirectories(here.getParent());
                                 } catch (Exception ex) {
                                     logger.error("Error in creating directory : {} for : {}", here.getParent(), here, ex);

@@ -116,7 +116,7 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
             (ca, cid, temp, file, sTuple, imgTuple, finalFile) ->
                 this.getFSService().createFileFromFile("SYSTEM",
                         "_clientImages", finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
-                    .map(fd -> this.convertToFileDetailWhileCreation("/_clientImages", "SYSTEM", fd))
+                    .<FileDetail>map(fd -> this.convertToFileDetailWhileCreation("/_clientImages", "SYSTEM", fd))
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StaticFileResourceService.uploadClientImage"));
     }
 }
