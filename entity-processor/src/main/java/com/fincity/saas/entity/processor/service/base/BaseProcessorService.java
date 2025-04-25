@@ -46,7 +46,12 @@ public abstract class BaseProcessorService<
                 super::hasAccess, hasAccess -> this.checkEntity(entity), (hasAccess, cEntity) -> {
                     cEntity.setAppCode(hasAccess.getT1().getT1());
                     cEntity.setClientCode(hasAccess.getT1().getT2());
-                    cEntity.setAddedByUserId(hasAccess.getT1().getT3());
+
+                    if (cEntity.getAddedByUserId() == null)
+                        cEntity.setAddedByUserId(hasAccess.getT1().getT3());
+
+                    if (cEntity.getCurrentUserId() == null)
+                        cEntity.setCurrentUserId(hasAccess.getT1().getT3());
 
                     return super.create(cEntity);
                 });

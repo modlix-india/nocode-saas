@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
-import com.fincity.saas.entity.processor.enums.EntityType;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.StageType;
 import java.io.Serial;
 import lombok.Data;
@@ -26,7 +26,7 @@ public class Stage extends BaseProductDto<Stage> {
     private Integer order;
 
     @Override
-    public EntityType getEntityType() {
-        return EntityType.STAGE;
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.STAGE;
     }
 }

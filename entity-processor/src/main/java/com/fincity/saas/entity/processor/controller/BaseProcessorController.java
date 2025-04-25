@@ -29,7 +29,7 @@ public abstract class BaseProcessorController<
     @GetMapping(PATH_ID)
     public Mono<ResponseEntity<D>> getByCode(@PathVariable(PATH_VARIABLE_ID) final String code) {
         return this.service
-                .getByCode(code)
+                .readByCode(code)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));

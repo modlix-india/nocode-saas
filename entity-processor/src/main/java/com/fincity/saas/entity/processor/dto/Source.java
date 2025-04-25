@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
-import com.fincity.saas.entity.processor.enums.EntityType;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,7 +20,7 @@ public class Source extends BaseProductDto<Source> {
     private static final long serialVersionUID = 8940700976809710359L;
 
     @Override
-    public EntityType getEntityType() {
-        return EntityType.SOURCE;
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.SOURCE;
     }
 }

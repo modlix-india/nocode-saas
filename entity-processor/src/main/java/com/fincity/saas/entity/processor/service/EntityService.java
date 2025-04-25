@@ -9,6 +9,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.EntityDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Entity.Fields;
+import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
 import com.fincity.saas.entity.processor.model.EntityRequest;
 import com.fincity.saas.entity.processor.model.base.Identity;
@@ -53,6 +54,8 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
             e.setEmail(entity.getEmail());
             e.setSource(entity.getSource());
             e.setSubSource(entity.getSubSource());
+            e.setStage(entity.getStage());
+            e.setStatus(entity.getStatus());
 
             return Mono.just(e);
         });
@@ -71,7 +74,17 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         });
     }
 
-    private Mono<EntityRequest> updateRequest(EntityRequest entityRequest) {
+    public Mono<Entity> create(EntityRequest entityRequest) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.getEntityProduct(entityRequest),
+                product -> this.updateRequest(entityRequest, product),
+                (product, req) -> stageService.readInternal(product.getDefaultStage()),
+                (product, req, stage) -> super.create(Entity.of(req).setStage(stage.getName())));
+    }
+
+    private Mono<Product> getEntityProduct(EntityRequest entityRequest) {
+
         Identity identity = entityRequest.getProductId();
 
         if (identity == null || identity.isNull())
@@ -79,18 +92,21 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.PRODUCT_IDENTITY_MISSING);
 
+        return (identity.getId() == null
+                        ? this.productService.readByCode(identity.getCode())
+                        : this.productService.readInternal(ULongUtil.valueOf(identity.getId())))
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.PRODUCT_IDENTITY_WRONG));
+    }
+
+    private Mono<EntityRequest> updateRequest(EntityRequest entityRequest, Product product) {
+
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> identity.getId() == null
-                        ? this.productService.readByCode(identity.getCode())
-                        : this.productService
-                                .readInternal(ULongUtil.valueOf(identity.getId()))
-                                .switchIfEmpty(this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.PRODUCT_IDENTITY_WRONG)),
-                (ca, product) -> Mono.just(
+                ca -> Mono.just(
                         entityRequest.setProductId(Identity.of(product.getId().toBigInteger(), product.getCode()))),
-                (ca, product, uProduct) -> this.checkSources(ca, entityRequest, product.getDefaultSource()));
+                (ca, uProduct) -> this.checkSources(ca, entityRequest, product.getDefaultSource()));
     }
 
     private Mono<EntityRequest> checkSources(
@@ -99,7 +115,9 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         if (StringUtil.safeIsBlank(entityRequest.getSource())) return setDefaultSource(entityRequest, defaultSourceId);
 
         entityRequest.setSource(StringUtil.toTitleCase(entityRequest.getSource()));
-        entityRequest.setSubSource(StringUtil.toTitleCase(entityRequest.getSubSource()));
+
+        if (entityRequest.getSubSource() != null)
+            entityRequest.setSubSource(StringUtil.toTitleCase(entityRequest.getSubSource()));
 
         return sourceService
                 .isValidParentChild(

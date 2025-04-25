@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
-import com.fincity.saas.entity.processor.enums.EntityType;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.EntityRequest;
 import java.io.Serial;
 import lombok.Data;
@@ -45,7 +45,7 @@ public class Entity extends BaseProcessorDto<Entity> {
     }
 
     @Override
-    public EntityType getEntityType() {
-        return EntityType.ENTITY;
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.ENTITY;
     }
 }
