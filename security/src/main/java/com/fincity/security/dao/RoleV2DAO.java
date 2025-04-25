@@ -130,10 +130,13 @@ public class RoleV2DAO extends AbstractClientCheckDAO<SecurityV2RoleRecord, ULon
         ))).map(r -> r.into(RoleV2.class)).collectList();
     }
 
-    public Mono<List<RoleV2>> fetchSubRoles(List<ULong> roleIds) {
+    public Mono<Map<ULong, List<RoleV2>>> fetchSubRoles(List<ULong> roleIds) {
 
-        return Flux.from(this.dslContext.select(SECURITY_V2_ROLE.fields()).from(SECURITY_V2_ROLE_ROLE)
+        return Flux.from(this.dslContext.select(SECURITY_V2_ROLE.fields()).select(SECURITY_V2_ROLE_ROLE.ROLE_ID).from(SECURITY_V2_ROLE_ROLE)
                 .leftJoin(SECURITY_V2_ROLE).on(SECURITY_V2_ROLE.ID.eq(SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID))
-                .where(SECURITY_V2_ROLE_ROLE.ROLE_ID.in(roleIds))).map(r -> r.into(RoleV2.class)).collectList();
+                .where(SECURITY_V2_ROLE_ROLE.ROLE_ID.in(roleIds))).collect(Collectors.groupingBy(
+                r -> r.get(SECURITY_V2_ROLE_ROLE.ROLE_ID),
+                Collectors.mapping(r -> r.into(RoleV2.class), Collectors.toList())
+        ));
     }
 }

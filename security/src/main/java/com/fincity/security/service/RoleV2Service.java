@@ -216,6 +216,14 @@ public class RoleV2Service
 
     public Mono<List<RoleV2>> fetchSubRolesAlso(List<RoleV2> list) {
         return this.dao.fetchSubRoles(list.stream().map(RoleV2::getId).toList())
-                .map(subRoles -> Stream.concat(list.stream(), subRoles.stream()).distinct().toList());
+                .map(subRoleMap -> {
+
+                    for (RoleV2 r : list) {
+                        if (!subRoleMap.containsKey(r.getId())) continue;
+                        r.setSubRoles(subRoleMap.get(r.getId()));
+                    }
+
+                    return Stream.concat(list.stream(), subRoleMap.values().stream().flatMap(List::stream)).collect(Collectors.toList());
+                });
     }
 }

@@ -280,7 +280,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
         return FlatMapUtil.flatMapMono(
                 () -> Mono.from(this.dslContext.deleteFrom(SECURITY_PROFILE_ROLE).where(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(profileId))),
 
-                deleted -> Mono.from(finVQuery)
+                deleted -> Mono.from(finVQuery.onDuplicateKeyIgnore())
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.createRoleRelations"));
     }
 

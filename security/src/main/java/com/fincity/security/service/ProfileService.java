@@ -185,26 +185,28 @@ public class ProfileService
             i++;
         }
 
-        Map<ULong, Map<String, Object>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
-                .collect(Collectors.toMap(m -> ULong.valueOf(m.get("roleId").toString()), Functions.identity()));
+        Map<ULong, List<Map<String, Object>>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
+                .collect(Collectors.groupingBy(m -> ULong.valueOf(m.get("roleId").toString())));
 
         if (roleIndex.isEmpty()) return Mono.just(p);
 
         return this.roleService.getRolesForProfileService(roleIndex.keySet())
                 .map(map -> {
-                            roleIndex.forEach((key, arrangement) -> {
+                            roleIndex.forEach((key, arrangements) -> {
                                 RoleV2 role = map.get(key);
 
-                                arrangement.remove("role");
-                                if (safeEquals(arrangement.get("name"), role.getName()))
-                                    arrangement.remove("name");
+                                arrangements.forEach(arrangement -> {
+                                    arrangement.remove("role");
+                                    if (safeEquals(arrangement.get("name"), role.getName()))
+                                        arrangement.remove("name");
 
-                                if (safeEquals(arrangement.get("shortName"), role.getShortName()))
-                                    arrangement.remove("shortName");
+                                    if (safeEquals(arrangement.get("shortName"), role.getShortName()))
+                                        arrangement.remove("shortName");
 
-                                if (safeEquals(arrangement.get("description"), role.getDescription()))
-                                    arrangement.remove("description");
+                                    if (safeEquals(arrangement.get("description"), role.getDescription()))
+                                        arrangement.remove("description");
 
+                                });
                             });
                             return map;
                         }
