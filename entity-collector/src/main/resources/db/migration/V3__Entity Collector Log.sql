@@ -1,16 +1,16 @@
 USE `entity_collector`;
 
-CREATE TABLE IF NOT EXISTS  `entity_collector_log` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-  `entity_integration_id` bigint unsigned NOT NULL COMMENT 'Entity integration ID',
-  `incoming_entity_data` json DEFAULT NULL COMMENT 'Entity Data',
-  `ip_address` varchar(320) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Ip Address',
-  `outgoing_entity_data` json DEFAULT NULL COMMENT 'Entity Data Forwarded to CRM',
-  `status` enum('REJECTED','SUCCESS','WITH_ERRORS') COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Status of the Entity Transfer',
-  `status_message` text COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Message given for the status',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-  PRIMARY KEY (`id`),
-  KEY `FK1_collector_entity_integration_id` (`entity_integration_id`),
-  CONSTRAINT `FK1_collector_entity_integration_id` FOREIGN KEY (`entity_integration_id`)
-    REFERENCES `entity_integrations` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+CREATE TABLE IF NOT EXISTS `entity_collector_log` (
+  `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `ENTITY_INTEGRATION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Entity integration ID',
+  `INCOMING_ENTITY_DATA` JSON DEFAULT NULL COMMENT 'Entity Data',
+  `IP_ADDRESS` VARCHAR(320) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Ip address',
+  `OUTGOING_ENTITY_DATA` JSON DEFAULT NULL COMMENT 'Entity data forwarded to target',
+  `STATUS` ENUM('REJECTED','SUCCESS','WITH_ERRORS') COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Status of the entity transfer',
+  `STATUS_MESSAGE` TEXT COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Message given for the status',
+  `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+  PRIMARY KEY (`ID`),
+  KEY `FK1_COLLECTOR_ENTITY_INTEGRATION_ID` (`ENTITY_INTEGRATION_ID`),
+  CONSTRAINT `FK1_COLLECTOR_ENTITY_INTEGRATION_ID` FOREIGN KEY (`ENTITY_INTEGRATION_ID`)
+    REFERENCES `entity_integrations` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

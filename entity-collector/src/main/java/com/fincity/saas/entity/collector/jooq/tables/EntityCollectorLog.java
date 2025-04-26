@@ -64,56 +64,56 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
     }
 
     /**
-     * The column <code>entity_collector.entity_collector_log.id</code>. Primary
+     * The column <code>entity_collector.entity_collector_log.ID</code>. Primary
      * key
      */
-    public final TableField<EntityCollectorLogRecord, ULong> ID = createField(DSL.name("id"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
+    public final TableField<EntityCollectorLogRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
 
     /**
      * The column
-     * <code>entity_collector.entity_collector_log.entity_integration_id</code>.
+     * <code>entity_collector.entity_collector_log.ENTITY_INTEGRATION_ID</code>.
      * Entity integration ID
      */
-    public final TableField<EntityCollectorLogRecord, ULong> ENTITY_INTEGRATION_ID = createField(DSL.name("entity_integration_id"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Entity integration ID");
+    public final TableField<EntityCollectorLogRecord, ULong> ENTITY_INTEGRATION_ID = createField(DSL.name("ENTITY_INTEGRATION_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Entity integration ID");
 
     /**
      * The column
-     * <code>entity_collector.entity_collector_log.incoming_entity_data</code>.
+     * <code>entity_collector.entity_collector_log.INCOMING_ENTITY_DATA</code>.
      * Entity Data
      */
-    public final TableField<EntityCollectorLogRecord, Map> INCOMING_ENTITY_DATA = createField(DSL.name("incoming_entity_data"), SQLDataType.JSON, this, "Entity Data", new JSONtoJacksonConverter<Map>(Map.class));
+    public final TableField<EntityCollectorLogRecord, Map> INCOMING_ENTITY_DATA = createField(DSL.name("INCOMING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity Data", new JSONtoJacksonConverter<Map>(Map.class));
 
     /**
-     * The column <code>entity_collector.entity_collector_log.ip_address</code>.
-     * Ip Address
+     * The column <code>entity_collector.entity_collector_log.IP_ADDRESS</code>.
+     * Ip address
      */
-    public final TableField<EntityCollectorLogRecord, String> IP_ADDRESS = createField(DSL.name("ip_address"), SQLDataType.VARCHAR(320), this, "Ip Address");
+    public final TableField<EntityCollectorLogRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(320), this, "Ip address");
 
     /**
      * The column
-     * <code>entity_collector.entity_collector_log.outgoing_entity_data</code>.
-     * Entity Data Forwarded to CRM
+     * <code>entity_collector.entity_collector_log.OUTGOING_ENTITY_DATA</code>.
+     * Entity data forwarded to target
      */
-    public final TableField<EntityCollectorLogRecord, Map> OUTGOING_ENTITY_DATA = createField(DSL.name("outgoing_entity_data"), SQLDataType.JSON, this, "Entity Data Forwarded to CRM", new JSONtoJacksonConverter<Map>(Map.class));
+    public final TableField<EntityCollectorLogRecord, Map> OUTGOING_ENTITY_DATA = createField(DSL.name("OUTGOING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity data forwarded to target", new JSONtoJacksonConverter<Map>(Map.class));
 
     /**
-     * The column <code>entity_collector.entity_collector_log.status</code>.
-     * Status of the Entity Transfer
+     * The column <code>entity_collector.entity_collector_log.STATUS</code>.
+     * Status of the entity transfer
      */
-    public final TableField<EntityCollectorLogRecord, EntityCollectorLogStatus> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(11).asEnumDataType(EntityCollectorLogStatus.class), this, "Status of the Entity Transfer");
+    public final TableField<EntityCollectorLogRecord, EntityCollectorLogStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(11).asEnumDataType(EntityCollectorLogStatus.class), this, "Status of the entity transfer");
 
     /**
      * The column
-     * <code>entity_collector.entity_collector_log.status_message</code>.
+     * <code>entity_collector.entity_collector_log.STATUS_MESSAGE</code>.
      * Message given for the status
      */
-    public final TableField<EntityCollectorLogRecord, String> STATUS_MESSAGE = createField(DSL.name("status_message"), SQLDataType.CLOB, this, "Message given for the status");
+    public final TableField<EntityCollectorLogRecord, String> STATUS_MESSAGE = createField(DSL.name("STATUS_MESSAGE"), SQLDataType.CLOB, this, "Message given for the status");
 
     /**
-     * The column <code>entity_collector.entity_collector_log.created_at</code>.
+     * The column <code>entity_collector.entity_collector_log.CREATED_AT</code>.
      * Time when this row is created
      */
-    public final TableField<EntityCollectorLogRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+    public final TableField<EntityCollectorLogRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
     private EntityCollectorLog(Name alias, Table<EntityCollectorLogRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

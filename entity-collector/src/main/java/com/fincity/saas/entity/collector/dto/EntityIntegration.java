@@ -19,9 +19,10 @@ public class EntityIntegration extends AbstractUpdatableDTO<ULong, ULong> {
 
     private String clientCode;
     private String appCode;
-    private String target;
+    private String primaryTarget;
     private String secondaryTarget;
     private String inSource;
     private EntityIntegrationsInSourceType inSourceType;
-
+    private String primaryVerifyToken;
+    private String secondaryVerifyToken;
 }

@@ -29,11 +29,11 @@ public class Keys {
 
     public static final UniqueKey<EntityCollectorLogRecord> KEY_ENTITY_COLLECTOR_LOG_PRIMARY = Internal.createUniqueKey(EntityCollectorLog.ENTITY_COLLECTOR_LOG, DSL.name("KEY_entity_collector_log_PRIMARY"), new TableField[] { EntityCollectorLog.ENTITY_COLLECTOR_LOG.ID }, true);
     public static final UniqueKey<EntityIntegrationsRecord> KEY_ENTITY_INTEGRATIONS_PRIMARY = Internal.createUniqueKey(EntityIntegrations.ENTITY_INTEGRATIONS, DSL.name("KEY_entity_integrations_PRIMARY"), new TableField[] { EntityIntegrations.ENTITY_INTEGRATIONS.ID }, true);
-    public static final UniqueKey<EntityIntegrationsRecord> KEY_ENTITY_INTEGRATIONS_UK_CLIENT_SOURCE = Internal.createUniqueKey(EntityIntegrations.ENTITY_INTEGRATIONS, DSL.name("KEY_entity_integrations_uk_client_source"), new TableField[] { EntityIntegrations.ENTITY_INTEGRATIONS.CLIENT_CODE, EntityIntegrations.ENTITY_INTEGRATIONS.IN_SOURCE }, true);
+    public static final UniqueKey<EntityIntegrationsRecord> KEY_ENTITY_INTEGRATIONS_UK_CLIENT_SOURCE = Internal.createUniqueKey(EntityIntegrations.ENTITY_INTEGRATIONS, DSL.name("KEY_entity_integrations_UK_CLIENT_SOURCE"), new TableField[] { EntityIntegrations.ENTITY_INTEGRATIONS.CLIENT_CODE, EntityIntegrations.ENTITY_INTEGRATIONS.IN_SOURCE }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<EntityCollectorLogRecord, EntityIntegrationsRecord> FK1_COLLECTOR_ENTITY_INTEGRATION_ID = Internal.createForeignKey(EntityCollectorLog.ENTITY_COLLECTOR_LOG, DSL.name("FK1_collector_entity_integration_id"), new TableField[] { EntityCollectorLog.ENTITY_COLLECTOR_LOG.ENTITY_INTEGRATION_ID }, Keys.KEY_ENTITY_INTEGRATIONS_PRIMARY, new TableField[] { EntityIntegrations.ENTITY_INTEGRATIONS.ID }, true);
+    public static final ForeignKey<EntityCollectorLogRecord, EntityIntegrationsRecord> FK1_COLLECTOR_ENTITY_INTEGRATION_ID = Internal.createForeignKey(EntityCollectorLog.ENTITY_COLLECTOR_LOG, DSL.name("FK1_COLLECTOR_ENTITY_INTEGRATION_ID"), new TableField[] { EntityCollectorLog.ENTITY_COLLECTOR_LOG.ENTITY_INTEGRATION_ID }, Keys.KEY_ENTITY_INTEGRATIONS_PRIMARY, new TableField[] { EntityIntegrations.ENTITY_INTEGRATIONS.ID }, true);
 }

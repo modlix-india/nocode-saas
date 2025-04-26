@@ -4,6 +4,8 @@ package com.fincity.saas.entity.collector.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.saas.entity.collector.service.EntityCollectorService;
 
+import com.fincity.saas.entity.collector.util.EntityUtil;
+import com.fincity.saas.entity.collector.util.MetaEntityUtil;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,7 @@ import reactor.core.publisher.Mono;
 @AllArgsConstructor
 public class EntityCollectorController {
 
+    public final MetaEntityUtil metaEntityUtil;
     public final EntityCollectorService entityCollectorService;
 
     @GetMapping("/social/facebook")
@@ -26,7 +29,7 @@ public class EntityCollectorController {
             @RequestParam(name = "hub.challenge") String challenge
     ){
 
-        return entityCollectorService.verifyMetaWebhook(mode, verifyToken, challenge);
+        return metaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge);
     }
 
     @PostMapping("/social/facebook")

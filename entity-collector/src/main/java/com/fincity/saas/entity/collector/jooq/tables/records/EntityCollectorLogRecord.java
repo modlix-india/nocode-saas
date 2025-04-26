@@ -24,7 +24,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>entity_collector.entity_collector_log.id</code>. Primary
+     * Setter for <code>entity_collector.entity_collector_log.ID</code>. Primary
      * key
      */
     public EntityCollectorLogRecord setId(ULong value) {
@@ -33,7 +33,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     }
 
     /**
-     * Getter for <code>entity_collector.entity_collector_log.id</code>. Primary
+     * Getter for <code>entity_collector.entity_collector_log.ID</code>. Primary
      * key
      */
     public ULong getId() {
@@ -42,7 +42,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Setter for
-     * <code>entity_collector.entity_collector_log.entity_integration_id</code>.
+     * <code>entity_collector.entity_collector_log.ENTITY_INTEGRATION_ID</code>.
      * Entity integration ID
      */
     public EntityCollectorLogRecord setEntityIntegrationId(ULong value) {
@@ -52,7 +52,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Getter for
-     * <code>entity_collector.entity_collector_log.entity_integration_id</code>.
+     * <code>entity_collector.entity_collector_log.ENTITY_INTEGRATION_ID</code>.
      * Entity integration ID
      */
     public ULong getEntityIntegrationId() {
@@ -61,7 +61,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Setter for
-     * <code>entity_collector.entity_collector_log.incoming_entity_data</code>.
+     * <code>entity_collector.entity_collector_log.INCOMING_ENTITY_DATA</code>.
      * Entity Data
      */
     public EntityCollectorLogRecord setIncomingEntityData(Map value) {
@@ -71,7 +71,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Getter for
-     * <code>entity_collector.entity_collector_log.incoming_entity_data</code>.
+     * <code>entity_collector.entity_collector_log.INCOMING_ENTITY_DATA</code>.
      * Entity Data
      */
     public Map getIncomingEntityData() {
@@ -79,8 +79,8 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     }
 
     /**
-     * Setter for <code>entity_collector.entity_collector_log.ip_address</code>.
-     * Ip Address
+     * Setter for <code>entity_collector.entity_collector_log.IP_ADDRESS</code>.
+     * Ip address
      */
     public EntityCollectorLogRecord setIpAddress(String value) {
         set(3, value);
@@ -88,8 +88,8 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     }
 
     /**
-     * Getter for <code>entity_collector.entity_collector_log.ip_address</code>.
-     * Ip Address
+     * Getter for <code>entity_collector.entity_collector_log.IP_ADDRESS</code>.
+     * Ip address
      */
     public String getIpAddress() {
         return (String) get(3);
@@ -97,8 +97,8 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Setter for
-     * <code>entity_collector.entity_collector_log.outgoing_entity_data</code>.
-     * Entity Data Forwarded to CRM
+     * <code>entity_collector.entity_collector_log.OUTGOING_ENTITY_DATA</code>.
+     * Entity data forwarded to target
      */
     public EntityCollectorLogRecord setOutgoingEntityData(Map value) {
         set(4, value);
@@ -107,16 +107,16 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Getter for
-     * <code>entity_collector.entity_collector_log.outgoing_entity_data</code>.
-     * Entity Data Forwarded to CRM
+     * <code>entity_collector.entity_collector_log.OUTGOING_ENTITY_DATA</code>.
+     * Entity data forwarded to target
      */
     public Map getOutgoingEntityData() {
         return (Map) get(4);
     }
 
     /**
-     * Setter for <code>entity_collector.entity_collector_log.status</code>.
-     * Status of the Entity Transfer
+     * Setter for <code>entity_collector.entity_collector_log.STATUS</code>.
+     * Status of the entity transfer
      */
     public EntityCollectorLogRecord setStatus(EntityCollectorLogStatus value) {
         set(5, value);
@@ -124,8 +124,8 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     }
 
     /**
-     * Getter for <code>entity_collector.entity_collector_log.status</code>.
-     * Status of the Entity Transfer
+     * Getter for <code>entity_collector.entity_collector_log.STATUS</code>.
+     * Status of the entity transfer
      */
     public EntityCollectorLogStatus getStatus() {
         return (EntityCollectorLogStatus) get(5);
@@ -133,7 +133,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Setter for
-     * <code>entity_collector.entity_collector_log.status_message</code>.
+     * <code>entity_collector.entity_collector_log.STATUS_MESSAGE</code>.
      * Message given for the status
      */
     public EntityCollectorLogRecord setStatusMessage(String value) {
@@ -143,7 +143,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
 
     /**
      * Getter for
-     * <code>entity_collector.entity_collector_log.status_message</code>.
+     * <code>entity_collector.entity_collector_log.STATUS_MESSAGE</code>.
      * Message given for the status
      */
     public String getStatusMessage() {
@@ -151,7 +151,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     }
 
     /**
-     * Setter for <code>entity_collector.entity_collector_log.created_at</code>.
+     * Setter for <code>entity_collector.entity_collector_log.CREATED_AT</code>.
      * Time when this row is created
      */
     public EntityCollectorLogRecord setCreatedAt(LocalDateTime value) {
@@ -160,7 +160,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     }
 
     /**
-     * Getter for <code>entity_collector.entity_collector_log.created_at</code>.
+     * Getter for <code>entity_collector.entity_collector_log.CREATED_AT</code>.
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
