@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
+import com.fincity.saas.commons.util.StringUtil;
 import com.google.common.base.Functions;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.NotNull;
@@ -383,11 +384,16 @@ public class ProfileService
 
         return Flux.fromIterable(profileIds)
                 .flatMap(
-                        pid -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_ID + "_" + pid,
+                        pid -> cacheService.cacheValueOrGet(CACHE_NAME_ID + "_" + pid,
                                         () -> this.dao.getProfileAuthorities(pid,
-                                                clientHierarchy),
+                                                        clientHierarchy).defaultIfEmpty(List.of())
+                                                .map(e -> {
+                                                    System.out.println("List (" + pid + "): " + e);
+                                                    return e;
+                                                }),
                                         clientHierarchy.getClientId())
                                 .flatMapMany(Flux::fromIterable))
+                .filter(Objects::nonNull)
                 .distinct()
                 .collectList();
     }
@@ -400,7 +406,7 @@ public class ProfileService
 
                         profileIds -> this.clientHierarchyService.getClientHierarchy(clientId),
 
-                        (profileIds, clientHierarchy) -> this.getProfileAuthorities(profileIds, clientHierarchy)
+                        this::getProfileAuthorities
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getProfileAuthorities"));
@@ -441,5 +447,12 @@ public class ProfileService
                 ).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.getRolesForAssignmentInApp"))
                 .switchIfEmpty(Mono.defer(() -> this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg)
                         , SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS)));
+    }
+
+    public Mono<Boolean> checkIfUserHasAnyProfile(ULong userId, String appCode) {
+
+        if (userId == null || StringUtil.safeIsBlank(appCode)) return Mono.just(false);
+
+        return this.dao.checkIfUserHasAnyProfile(userId, appCode);
     }
 }
