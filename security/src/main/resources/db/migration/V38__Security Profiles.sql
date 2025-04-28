@@ -18,13 +18,14 @@ DROP TABLE IF EXISTS `security_profile_role`;
 DROP TABLE IF EXISTS `security_client_profile`;
 DROP TABLE IF EXISTS `security_v2_role`;
 
-ALTER TABLE `security_user` 
-  DROP CONSTRAINT `FK1_USER_DESIGNATION_ID`,
-  DROP CONSTRAINT `FK2_USER_REPORTING_TO_ID`;
-
-ALTER TABLE `security_user` 
-  DROP COLUMN `DESIGNATION_ID`,
-  DROP COLUMN `REPORTING_TO`;
+-- These are required in re runs
+-- ALTER TABLE `security_user`
+--   DROP CONSTRAINT `FK1_USER_DESIGNATION_ID`,
+--   DROP CONSTRAINT `FK2_USER_REPORTING_TO_ID`;
+--
+-- ALTER TABLE `security_user`
+--   DROP COLUMN `DESIGNATION_ID`,
+--   DROP COLUMN `REPORTING_TO`;
 
 DROP TABLE IF EXISTS `security_designation`;
 DROP TABLE IF EXISTS `security_profile`;
