@@ -10,8 +10,6 @@ import java.util.stream.Stream;
 
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dto.*;
-import org.jooq.Record;
-import org.jooq.RecordMapper;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -473,24 +471,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     e.setStatusCode(entity.getStatusCode());
                     return e;
                 });
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        if (fields == null)
-            return Mono.just(new HashMap<>());
-
-        fields.remove("clientId");
-        fields.remove("password");
-        fields.remove("passwordHashed");
-        fields.remove("accountNonExpired");
-        fields.remove("accountNonLocked");
-        fields.remove("credentialsNonExpired");
-        fields.remove("noFailedAttempt");
-        fields.remove("statusCode");
-
-        return Mono.just(fields);
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_DELETE')")
