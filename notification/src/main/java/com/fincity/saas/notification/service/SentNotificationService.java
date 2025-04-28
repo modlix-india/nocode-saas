@@ -18,7 +18,6 @@ import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
@@ -95,25 +94,6 @@ public class SentNotificationService
             e.setChannelErrors(entity.getChannelErrors());
             return e;
         });
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        if (fields == null || key == null) return Mono.just(new HashMap<>());
-
-        fields.remove("id");
-        fields.remove(SentNotification.Fields.code);
-        fields.remove(SentNotification.Fields.clientCode);
-        fields.remove(SentNotification.Fields.appCode);
-        fields.remove(SentNotification.Fields.userId);
-        fields.remove(SentNotification.Fields.notificationType);
-        fields.remove(SentNotification.Fields.notificationChannel);
-        fields.remove(SentNotification.Fields.triggerTime);
-        fields.remove("createdAt");
-        fields.remove("createdBy");
-
-        return Mono.just(fields);
     }
 
     public Mono<SendRequest> toPlatformNotification(SendRequest request) {

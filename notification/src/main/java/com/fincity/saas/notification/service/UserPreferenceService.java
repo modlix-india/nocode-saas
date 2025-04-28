@@ -144,21 +144,6 @@ public class UserPreferenceService
     }
 
     @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        if (fields == null || key == null) return Mono.just(new HashMap<>());
-
-        fields.remove("id");
-        fields.remove(UserPreference.Fields.appId);
-        fields.remove(UserPreference.Fields.userId);
-        fields.remove(UserPreference.Fields.code);
-        fields.remove("createdAt");
-        fields.remove("createdBy");
-
-        return Mono.just(fields);
-    }
-
-    @Override
     public Mono<UserPreference> create(UserPreference entity) {
 
         return FlatMapUtil.flatMapMono(
