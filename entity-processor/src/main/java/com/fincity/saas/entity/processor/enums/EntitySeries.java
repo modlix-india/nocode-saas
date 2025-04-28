@@ -17,8 +17,7 @@ public enum EntitySeries implements EnumType {
     SIMPLE_COMPLEX_CONDITION_RELATION("SIMPLE_COMPLEX_CONDITION_RELATION", 20),
     ENTITY_RULE("ENTITY_RULE", 21),
     PRODUCT_RULE("PRODUCT_RULE", 22),
-    PRODUCT_RULE_CONFIG("PRODUCT_RULE_CONFIG", 23),
-    ;
+    PRODUCT_RULE_CONFIG("PRODUCT_RULE_CONFIG", 23);
 
     private final String literal;
     private final int value;

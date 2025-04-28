@@ -242,48 +242,12 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_models.SOURCE</code>.
-     * Name of source from where we get this model.
-     */
-    public EntityProcessorModelsRecord setSource(String value) {
-        set(12, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>entity_processor.entity_processor_models.SOURCE</code>.
-     * Name of source from where we get this model.
-     */
-    public String getSource() {
-        return (String) get(12);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_models.SUB_SOURCE</code>. Name of
-     * sub source of source from where we get this model.
-     */
-    public EntityProcessorModelsRecord setSubSource(String value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_models.SUB_SOURCE</code>. Name of
-     * sub source of source from where we get this model.
-     */
-    public String getSubSource() {
-        return (String) get(13);
-    }
-
-    /**
      * Setter for
      * <code>entity_processor.entity_processor_models.TEMP_ACTIVE</code>.
      * Temporary active flag fro this product.
      */
     public EntityProcessorModelsRecord setTempActive(Byte value) {
-        set(14, value);
+        set(12, value);
         return this;
     }
 
@@ -293,7 +257,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * Temporary active flag fro this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(14);
+        return (Byte) get(12);
     }
 
     /**
@@ -302,7 +266,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * check if this product is active or not.
      */
     public EntityProcessorModelsRecord setIsActive(Byte value) {
-        set(15, value);
+        set(13, value);
         return this;
     }
 
@@ -312,7 +276,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(15);
+        return (Byte) get(13);
     }
 
     /**
@@ -321,7 +285,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * the user who created this row.
      */
     public EntityProcessorModelsRecord setCreatedBy(ULong value) {
-        set(16, value);
+        set(14, value);
         return this;
     }
 
@@ -331,7 +295,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(14);
     }
 
     /**
@@ -340,7 +304,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public EntityProcessorModelsRecord setCreatedAt(LocalDateTime value) {
-        set(17, value);
+        set(15, value);
         return this;
     }
 
@@ -350,7 +314,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -359,7 +323,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public EntityProcessorModelsRecord setUpdatedBy(ULong value) {
-        set(18, value);
+        set(16, value);
         return this;
     }
 
@@ -369,7 +333,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(16);
     }
 
     /**
@@ -378,7 +342,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public EntityProcessorModelsRecord setUpdatedAt(LocalDateTime value) {
-        set(19, value);
+        set(17, value);
         return this;
     }
 
@@ -388,7 +352,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -414,7 +378,7 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorModelsRecord
      */
-    public EntityProcessorModelsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorModelsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, Short dialCode, String phoneNumber, String email, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorModels.ENTITY_PROCESSOR_MODELS);
 
         setId(id);
@@ -429,8 +393,6 @@ public class EntityProcessorModelsRecord extends UpdatableRecordImpl<EntityProce
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);
         setEmail(email);
-        setSource(source);
-        setSubSource(subSource);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

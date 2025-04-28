@@ -25,7 +25,7 @@
         <java.version>21</java.version>
         <jooq.dir>${main.java.dir}/${base.package.dir}/${server.package.dir}/jooq</jooq.dir>
         <jooq.package>${base.package}.${server.package}.jooq</jooq.package>
-        <jooq.version>3.20.2</jooq.version>
+        <jooq.version>3.20.3</jooq.version>
         <main.java.dir>src/main/java</main.java.dir>
         <mysql.jdbc.password>Vishwas123#</mysql.jdbc.password>
         <mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</mysql.jdbc.url>
@@ -226,6 +226,28 @@
                                 <database>
                                     <includes>${database.schema.name}_.*</includes>
                                     <inputSchema>${database.schema.name}</inputSchema>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.RuleType</userType>
+                                            <includeExpression>.*\.RULE_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.StageType</userType>
+                                            <includeExpression>.*\.STAGE_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.LogicalOperator</userType>
+                                            <includeExpression>.*\.LOGICAL_OPERATOR</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.ComparisonOperator</userType>
+                                            <includeExpression>.*\.(COMPARISON_OPERATOR|MATCH_OPERATOR)</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                        </forcedType>
+                                    </forcedTypes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>

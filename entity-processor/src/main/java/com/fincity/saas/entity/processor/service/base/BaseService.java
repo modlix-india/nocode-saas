@@ -12,7 +12,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseFlowDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.HashMap;
@@ -29,7 +29,7 @@ import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
-public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDto<D>, O extends BaseDAO<R, D>>
+public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseFlowDto<D>, O extends BaseDAO<R, D>>
         extends AbstractFlowUpdatableService<R, ULong, D, O> {
 
     protected ProcessorMessageResourceService msgService;
@@ -101,8 +101,8 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         fields.remove("createdBy");
         fields.remove(AbstractFlowDTO.Fields.appCode);
         fields.remove(AbstractFlowDTO.Fields.clientCode);
-        fields.remove(BaseDto.Fields.addedByUserId);
-        fields.remove(BaseDto.Fields.code);
+        fields.remove(BaseFlowDto.Fields.addedByUserId);
+        fields.remove(BaseFlowDto.Fields.code);
 
         return Mono.just(fields);
     }
@@ -158,11 +158,11 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<BaseResponse> getBaseResponse(ULong id) {
-        return this.readInternal(id).map(BaseDto::toBaseResponse);
+        return this.readInternal(id).map(BaseFlowDto::toBaseResponse);
     }
 
     public Mono<BaseResponse> getBaseResponse(String code) {
-        return this.readByCode(code).map(BaseDto::toBaseResponse);
+        return this.readByCode(code).map(BaseFlowDto::toBaseResponse);
     }
 
     private Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> getAppClientUserAccessInfo(ContextAuthentication ca) {

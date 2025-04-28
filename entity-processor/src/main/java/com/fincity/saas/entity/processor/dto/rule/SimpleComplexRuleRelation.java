@@ -15,7 +15,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class SimpleComplexConditionRelation extends BaseRule<SimpleComplexConditionRelation> {
+public class SimpleComplexRuleRelation extends BaseRule<SimpleComplexRuleRelation> {
 
     @Serial
     private static final long serialVersionUID = 9035530855293927614L;

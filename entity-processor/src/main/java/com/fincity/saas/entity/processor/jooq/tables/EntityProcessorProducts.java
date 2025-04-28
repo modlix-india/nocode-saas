@@ -124,6 +124,22 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.DEFAULT_SOURCE</code>.
+     * Default source for this product. This will be value for entity source if
+     * source in not inferred.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_SOURCE = createField(DSL.name("DEFAULT_SOURCE"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Default source for this product. This will be value for entity source if source in not inferred.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.DEFAULT_STAGE</code>.
+     * Default stage for this product. This will be value for entity stage if
+     * stage in not inferred.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_STAGE = createField(DSL.name("DEFAULT_STAGE"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Default stage for this product. This will be value for entity stage if stage in not inferred.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag fro this product.
      */

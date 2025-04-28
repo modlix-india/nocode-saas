@@ -199,36 +199,36 @@ CREATE TABLE `entity_processor`.`entity_processor_rules` (
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_simple_conditions`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_simple_rules`;
 
-CREATE TABLE `entity_processor`.`entity_processor_simple_conditions` (
+CREATE TABLE `entity_processor`.`entity_processor_simple_rules` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
-    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Simple Condition was created.',
-    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Simple Condition.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Simple Rule was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Simple Rule.',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
-    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Simple Condition.',
-    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Simple Condition.',
-    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Simple Condition.',
-    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Simple Condition.',
-    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Simple Condition.',
-    `FIELD` VARCHAR(255) NULL COMMENT 'Field name for this Simple Condition.',
-    `OPERATOR` ENUM ('EQUALS', 'LESS_THAN', 'GREATER_THAN', 'LESS_THAN_EQUAL', 'GREATER_THAN_EQUAL', 'IS_TRUE', 'IS_FALSE', 'IS_NULL', 'BETWEEN', 'IN', 'LIKE', 'STRING_LOOSE_EQUAL', 'MATCH', 'MATCH_ALL', 'TEXT_SEARCH') NOT NULL DEFAULT 'EQUALS' COMMENT 'Operator for this Simple Condition.',
-    `VALUE` JSON NULL COMMENT 'Value for this Simple Condition.',
-    `TO_VALUE` JSON NULL COMMENT 'To value for this Simple Condition.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Simple Rule.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Simple Rule.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Simple Rule.',
+    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Simple Rule.',
+    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Simple Rule.',
+    `FIELD` VARCHAR(255) NULL COMMENT 'Field name for this Simple Rule.',
+    `COMPARISON_OPERATOR` ENUM ('EQUALS', 'LESS_THAN', 'GREATER_THAN', 'LESS_THAN_EQUAL', 'GREATER_THAN_EQUAL', 'IS_TRUE', 'IS_FALSE', 'IS_NULL', 'BETWEEN', 'IN', 'LIKE', 'STRING_LOOSE_EQUAL', 'MATCH', 'MATCH_ALL', 'TEXT_SEARCH') NOT NULL DEFAULT 'EQUALS' COMMENT 'Operator for this Simple Rule.',
+    `VALUE` JSON NULL COMMENT 'Value for this Simple Rule.',
+    `TO_VALUE` JSON NULL COMMENT 'To value for this Simple Rule.',
     `IS_VALUE_FIELD` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if value is a field.',
     `IS_TO_VALUE_FIELD` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if to value is a field.',
-    `NEGATE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if this Simple Condition is negated.',
-    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Simple Condition.',
-    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Simple Condition is active or not.',
+    `MATCH_OPERATOR` ENUM ('EQUALS', 'LESS_THAN', 'GREATER_THAN', 'LESS_THAN_EQUAL', 'GREATER_THAN_EQUAL', 'IS_TRUE', 'IS_FALSE', 'IS_NULL', 'BETWEEN', 'IN', 'LIKE', 'STRING_LOOSE_EQUAL', 'MATCH', 'MATCH_ALL', 'TEXT_SEARCH') NOT NULL DEFAULT 'EQUALS' COMMENT 'Operator for this Simple Rule.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Simple Rule.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Simple Rule is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
     `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_SIMPLE_CONDITIONS_CODE` (`CODE`),
-    CONSTRAINT `FK1_SIMPLE_CONDITIONS_RULE_ID` FOREIGN KEY (`RULE_ID`)
+    UNIQUE KEY `UK1_SIMPLE_RULES_CODE` (`CODE`),
+    CONSTRAINT `FK1_SIMPLE_RULES_RULE_ID` FOREIGN KEY (`RULE_ID`)
         REFERENCES `ENTITY_PROCESSOR_RULES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
@@ -237,32 +237,31 @@ CREATE TABLE `entity_processor`.`entity_processor_simple_conditions` (
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_complex_conditions`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_complex_rules`;
 
-CREATE TABLE `entity_processor`.`entity_processor_complex_conditions` (
+CREATE TABLE `entity_processor`.`entity_processor_complex_rules` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
-    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Complex Condition was created.',
-    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Complex Condition.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Complex Rule was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Complex Rule.',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
-    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Complex Condition.',
-    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Complex Condition.',
-    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Complex Condition.',
-    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Complex Condition.',
-    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Complex Condition.',
-    `LOGICAL_OPERATOR` ENUM ('AND', 'OR') NOT NULL COMMENT 'Logical operator for this Complex Condition.',
-    `NEGATE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if this Complex Condition is negated.',
-    `PARENT_CONDITION_ID` BIGINT UNSIGNED NULL COMMENT 'Parent Condition ID for this Complex Condition.',
-    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Complex Condition.',
-    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Complex Condition is active or not.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Complex Rule.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Complex Rule.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Complex Rule.',
+    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Complex Rule.',
+    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Complex Rule.',
+    `PARENT_CONDITION_ID` BIGINT UNSIGNED NULL COMMENT 'Parent Rule ID for this Complex Rule.',
+    `LOGICAL_OPERATOR` ENUM ('AND', 'OR') NOT NULL COMMENT 'Logical operator for this Complex Rule.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Complex Rule.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Complex Rule is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
     `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
     `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_COMPLEX_CONDITIONS_CODE` (`CODE`),
-    CONSTRAINT `FK1_COMPLEX_CONDITIONS_RULE_ID` FOREIGN KEY (`RULE_ID`)
+    UNIQUE KEY `UK1_COMPLEX_RULES_CODE` (`CODE`),
+    CONSTRAINT `FK1_COMPLEX_RULES_RULE_ID` FOREIGN KEY (`RULE_ID`)
         REFERENCES `ENTITY_PROCESSOR_RULES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
@@ -271,9 +270,9 @@ CREATE TABLE `entity_processor`.`entity_processor_complex_conditions` (
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_simple_complex_condition_relations`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_simple_complex_rule_relations`;
 
-CREATE TABLE `entity_processor`.`entity_processor_simple_complex_condition_relations` (
+CREATE TABLE `entity_processor`.`entity_processor_simple_complex_rule_relations` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
     `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Relation was created.',
@@ -282,10 +281,10 @@ CREATE TABLE `entity_processor`.`entity_processor_simple_complex_condition_relat
     `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Relation.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Relation.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Relation.',
-    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Complex Condition.',
-    `COMPLEX_CONDITION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Complex Condition ID related to this Relation.',
-    `SIMPLE_CONDITION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Simple Condition ID related to this Relation.',
-    `ORDER` INT NULL COMMENT 'Order of the Simple Condition in the Complex Condition.',
+    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Complex Rule.',
+    `COMPLEX_CONDITION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Complex Rule ID related to this Relation.',
+    `SIMPLE_CONDITION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Simple Rule ID related to this Relation.',
+    `ORDER` INT NULL COMMENT 'Order of the Simple Rule in the Complex Rule.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Relation.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Relation is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
@@ -296,11 +295,11 @@ CREATE TABLE `entity_processor`.`entity_processor_simple_complex_condition_relat
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_SIMPLE_COMPLEX_CONDITION_RELATIONS_CODE` (`CODE`),
     CONSTRAINT `FK1_RELATIONS_COMPLEX_CONDITION_ID` FOREIGN KEY (`COMPLEX_CONDITION_ID`)
-        REFERENCES `ENTITY_PROCESSOR_COMPLEX_CONDITIONS` (`ID`)
+        REFERENCES `ENTITY_PROCESSOR_COMPLEX_RULES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
     CONSTRAINT `FK2_RELATIONS_SIMPLE_CONDITION_ID` FOREIGN KEY (`SIMPLE_CONDITION_ID`)
-        REFERENCES `ENTITY_PROCESSOR_SIMPLE_CONDITIONS` (`ID`)
+        REFERENCES `ENTITY_PROCESSOR_SIMPLE_RULES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 
@@ -322,7 +321,7 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
     `ENTITY_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Entity ID related to this Product Rule.',
     `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Product Rule.',
     `RULE_ORDER` INT NOT NULL COMMENT 'Order of the rule.',
-    `PRODUCT_RULE_TYPE` ENUM ('DEAL', 'STAGE') NOT NULL COMMENT 'Type of the Product Rule.',
+    `RULE_TYPE` ENUM ('DEAL', 'STAGE') NOT NULL COMMENT 'Type of the Product Rule.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product rule.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product rule is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',

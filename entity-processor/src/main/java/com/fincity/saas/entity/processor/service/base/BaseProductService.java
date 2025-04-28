@@ -4,7 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseProductDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseFlowDto;
 import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
 import com.fincity.saas.entity.processor.model.base.IdAndValue;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -172,7 +172,7 @@ public abstract class BaseProductService<
                         this.getAllProductMap(appCode, clientCode, productId)),
                 tup -> Mono.just(tup.getT1().stream()
                         .collect(Collectors.toMap(
-                                BaseDto::getName,
+                                BaseFlowDto::getName,
                                 product -> this.getProductChildNamesSet(product, tup.getT2()),
                                 (a, b) -> b))));
     }

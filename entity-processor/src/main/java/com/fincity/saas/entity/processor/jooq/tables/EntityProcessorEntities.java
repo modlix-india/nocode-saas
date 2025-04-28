@@ -176,7 +176,7 @@ public class EntityProcessorEntities extends TableImpl<EntityProcessorEntitiesRe
      * <code>entity_processor.entity_processor_entities.SUB_SOURCE</code>. Name
      * of sub source of source from where we get this entity.
      */
-    public final TableField<EntityProcessorEntitiesRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32).nullable(false), this, "Name of sub source of source from where we get this entity.");
+    public final TableField<EntityProcessorEntitiesRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source from where we get this entity.");
 
     /**
      * The column

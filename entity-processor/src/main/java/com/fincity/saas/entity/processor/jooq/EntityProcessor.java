@@ -4,9 +4,15 @@
 package com.fincity.saas.entity.processor.jooq;
 
 
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRuleConfigs;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 
@@ -33,6 +39,11 @@ public class EntityProcessor extends SchemaImpl {
     public static final EntityProcessor ENTITY_PROCESSOR = new EntityProcessor();
 
     /**
+     * The table <code>entity_processor.entity_processor_complex_rules</code>.
+     */
+    public final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
+
+    /**
      * The table <code>entity_processor.entity_processor_entities</code>.
      */
     public final EntityProcessorEntities ENTITY_PROCESSOR_ENTITIES = EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES;
@@ -43,9 +54,36 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorModels ENTITY_PROCESSOR_MODELS = EntityProcessorModels.ENTITY_PROCESSOR_MODELS;
 
     /**
+     * The table
+     * <code>entity_processor.entity_processor_product_rule_configs</code>.
+     */
+    public final EntityProcessorProductRuleConfigs ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS = EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_product_rules</code>.
+     */
+    public final EntityProcessorProductRules ENTITY_PROCESSOR_PRODUCT_RULES = EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES;
+
+    /**
      * The table <code>entity_processor.entity_processor_products</code>.
      */
     public final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_rules</code>.
+     */
+    public final EntityProcessorRules ENTITY_PROCESSOR_RULES = EntityProcessorRules.ENTITY_PROCESSOR_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_simple_complex_rule_relations</code>.
+     */
+    public final EntityProcessorSimpleComplexRuleRelations ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS = EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_simple_rules</code>.
+     */
+    public final EntityProcessorSimpleRules ENTITY_PROCESSOR_SIMPLE_RULES = EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES;
 
     /**
      * The table <code>entity_processor.entity_processor_sources</code>.
@@ -73,9 +111,15 @@ public class EntityProcessor extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
             EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES,
             EntityProcessorModels.ENTITY_PROCESSOR_MODELS,
+            EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS,
+            EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
+            EntityProcessorRules.ENTITY_PROCESSOR_RULES,
+            EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,
+            EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES,
             EntityProcessorSources.ENTITY_PROCESSOR_SOURCES,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES
         );

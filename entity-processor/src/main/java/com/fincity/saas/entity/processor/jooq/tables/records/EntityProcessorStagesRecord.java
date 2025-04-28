@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesStageType;
+import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 
 import java.time.LocalDateTime;
@@ -230,7 +230,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.STAGE_TYPE</code>. Stage
      * type can be Open or Closed.
      */
-    public EntityProcessorStagesRecord setStageType(EntityProcessorStagesStageType value) {
+    public EntityProcessorStagesRecord setStageType(StageType value) {
         set(11, value);
         return this;
     }
@@ -240,8 +240,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.STAGE_TYPE</code>. Stage
      * type can be Open or Closed.
      */
-    public EntityProcessorStagesStageType getStageType() {
-        return (EntityProcessorStagesStageType) get(11);
+    public StageType getStageType() {
+        return (StageType) get(11);
     }
 
     /**
@@ -436,7 +436,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorStagesRecord
      */
-    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, EntityProcessorStagesStageType stageType, Byte isSuccess, Byte isFailure, Short order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, StageType stageType, Byte isSuccess, Byte isFailure, Short order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorStages.ENTITY_PROCESSOR_STAGES);
 
         setId(id);

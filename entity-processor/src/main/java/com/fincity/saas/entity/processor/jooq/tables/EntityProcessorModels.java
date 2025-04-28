@@ -141,19 +141,6 @@ public class EntityProcessorModels extends TableImpl<EntityProcessorModelsRecord
     public final TableField<EntityProcessorModelsRecord, String> EMAIL = createField(DSL.name("EMAIL"), SQLDataType.VARCHAR(512), this, "Email related to this model.");
 
     /**
-     * The column <code>entity_processor.entity_processor_models.SOURCE</code>.
-     * Name of source from where we get this model.
-     */
-    public final TableField<EntityProcessorModelsRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(32).nullable(false), this, "Name of source from where we get this model.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_models.SUB_SOURCE</code>. Name of
-     * sub source of source from where we get this model.
-     */
-    public final TableField<EntityProcessorModelsRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32).nullable(false), this, "Name of sub source of source from where we get this model.");
-
-    /**
      * The column
      * <code>entity_processor.entity_processor_models.TEMP_ACTIVE</code>.
      * Temporary active flag fro this product.

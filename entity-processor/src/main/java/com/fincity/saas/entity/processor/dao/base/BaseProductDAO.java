@@ -80,7 +80,7 @@ public abstract class BaseProductDAO<R extends UpdatableRecord<R>, D extends Bas
                     Arrays.stream(productEntityIds).filter(Objects::nonNull).toArray(ULong[]::new)));
 
         // we always need Active product entities
-        conditions.add(this.isActiveTrue());
+        conditions.add(super.isActiveTrue());
 
         return conditions;
     }
