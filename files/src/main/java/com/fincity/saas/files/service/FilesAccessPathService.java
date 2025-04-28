@@ -1,8 +1,6 @@
 package com.fincity.saas.files.service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +21,6 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.files.dao.FilesAccessPathDao;
@@ -36,359 +33,321 @@ import reactor.util.context.Context;
 
 @Service
 public class FilesAccessPathService
-		extends AbstractJOOQUpdatableDataService<FilesAccessPathRecord, ULong, FilesAccessPath, FilesAccessPathDao> {
+        extends AbstractJOOQUpdatableDataService<FilesAccessPathRecord, ULong, FilesAccessPath, FilesAccessPathDao> {
+
+    private static final String RESOURCE_TYPE = "resourceType";
+    private static final String PATH = "path";
+    private static final String WRITE_ACCESS = "writeAccess";
+    private static final String ALLOW_SUB_PATH_ACCESS = "allowSubPathAccess";
+    private static final String USER_ID = "userId";
+    private static final String ACCESS_NAME = "accessName";
+
+    @Autowired
+    private FilesMessageResourceService msgService;
+
+    @Autowired
+    private FeignAuthenticationService securityService;
+
+    @Override
+    public Mono<FilesAccessPath> create(FilesAccessPath entity) {
+
+        if (entity.getAccessName() != null) {
+            entity.setUserId(null);
+        } else if (entity.getUserId() != null) {
+            entity.setAccessName(null);
+        } else {
+            msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+        }
+
+        if (entity.getResourceType() == null)
+            msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    FilesMessageResourceService.MISSING_FIELD, "Resource Type");
+
+        entity.setPath(entity.getPath() == null || entity.getPath()
+                .isBlank() ? "/"
+                : entity.getPath()
+                .trim());
+
+        return this.checkAccessNGetClientCode(entity.getResourceType()
+                        .toString())
+                .flatMap(v -> super.create(entity.setClientCode(v)));
+    }
+
+    @Override
+    public Mono<FilesAccessPath> read(ULong id) {
+
+        return FlatMapUtil.flatMapMono(
+
+                        () -> super.read(id),
+
+                        e -> this.checkAccessNGetClientCode(e.getResourceType()
+                                .toString(), e.getClientCode()),
+
+                        (e, clientCode) -> Mono.just(e))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.read"));
+    }
+
+    @Override
+    protected Mono<FilesAccessPath> updatableEntity(FilesAccessPath entity) {
+
+        return FlatMapUtil.flatMapMono(
+
+                        () -> this.dao.readById(entity.getId()),
+
+                        e -> this.checkAccessNGetClientCode(e.getResourceType()
+                                .toString(), entity.getClientCode()),
+
+                        (e, clientCode) -> {
+                            if (entity.getAccessName() == null) {
+                                e.setUserId(entity.getUserId());
+                                e.setAccessName(null);
+                            } else if (entity.getUserId() == null) {
+                                e.setAccessName(entity.getAccessName());
+                                e.setUserId(null);
+                            } else {
+                                msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+                            }
+
+                            e.setAllowSubPathAccess(entity.isAllowSubPathAccess());
+                            e.setPath(entity.getPath() == null || entity.getPath()
+                                    .isBlank() ? "/"
+                                    : entity.getPath()
+                                    .trim());
+                            e.setWriteAccess(entity.isWriteAccess());
+
+                            return Mono.just(e);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.updatableEntity"));
+    }
 
-	private static final String RESOURCE_TYPE = "resourceType";
-	private static final String PATH = "path";
-	private static final String WRITE_ACCESS = "writeAccess";
-	private static final String ALLOW_SUB_PATH_ACCESS = "allowSubPathAccess";
-	private static final String USER_ID = "userId";
-	private static final String ACCESS_NAME = "accessName";
+    @Override
+    public Mono<Page<FilesAccessPath>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return FlatMapUtil.flatMapMono(
 
-	@Autowired
-	private FilesMessageResourceService msgService;
-
-	@Autowired
-	private FeignAuthenticationService securityService;
-
-	@Override
-	public Mono<FilesAccessPath> create(FilesAccessPath entity) {
-
-		if (entity.getAccessName() != null) {
-			entity.setUserId(null);
-		} else if (entity.getUserId() != null) {
-			entity.setAccessName(null);
-		} else {
-			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
-		}
-
-		if (entity.getResourceType() == null)
-			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					FilesMessageResourceService.MISSING_FIELD, "Resource Type");
-
-		entity.setPath(entity.getPath() == null || entity.getPath()
-				.isBlank() ? "/"
-						: entity.getPath()
-								.trim());
+                        () -> condition.findConditionWithField(RESOURCE_TYPE)
+                                .collectList(),
 
-		return this.checkAccessNGetClientCode(entity.getResourceType()
-				.toString())
-				.flatMap(v -> super.create(entity.setClientCode(v)));
-	}
+                        cs -> SecurityContextUtil.getUsersContextAuthentication(),
+
+                        (cs, ca) -> prepareConditionForRead(condition, cs, ca),
 
-	@Override
-	public Mono<FilesAccessPath> read(ULong id) {
+                        (cs, ca, newCondition) -> super.readPageFilter(pageable,
+                                new ComplexCondition()
+                                        .setConditions(List.of(newCondition, new FilterCondition().setField("clientCode")
+                                                .setValue(ca.getLoggedInFromClientCode())))
+                                        .setOperator(ComplexConditionOperator.AND)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.readPageFilter"));
+    }
 
-		return FlatMapUtil.flatMapMono(
-
-				() -> super.read(id),
+    private Mono<AbstractCondition> prepareConditionForRead(AbstractCondition condition, List<FilterCondition> cs,
+                                                            ContextAuthentication ca) {
 
-				e -> this.checkAccessNGetClientCode(e.getResourceType()
-						.toString(), e.getClientCode()),
+        if (!ca.isSystemClient() && !ca.getLoggedInFromClientId()
+                .equals(ca.getUser()
+                        .getClientId())) {
 
-				(e, clientCode) -> Mono.just(e))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.read"));
-	}
+            return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
+        }
 
-	@Override
-	protected Mono<FilesAccessPath> updatableEntity(FilesAccessPath entity) {
+        boolean hasStatic = SecurityContextUtil
+                .hasAuthority(this.getAuthority(FilesAccessPathResourceType.STATIC.toString()), ca.getAuthorities());
+        boolean hasSecured = SecurityContextUtil
+                .hasAuthority(this.getAuthority(FilesAccessPathResourceType.SECURED.toString()), ca.getAuthorities());
 
-		return FlatMapUtil.flatMapMono(
+        if (cs.isEmpty()) {
 
-				() -> this.dao.readById(entity.getId()),
-
-				e -> this.checkAccessNGetClientCode(e.getResourceType()
-						.toString(), entity.getClientCode()),
+            return processConditionWhenNoConditionsInRequest(condition, hasStatic, hasSecured);
+        }
 
-				(e, clientCode) -> {
-					if (entity.getAccessName() == null) {
-						e.setUserId(entity.getUserId());
-						e.setAccessName(null);
-					} else if (entity.getUserId() == null) {
-						e.setAccessName(entity.getAccessName());
-						e.setUserId(null);
-					} else {
-						msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
-					}
+        List<String> list = cs.stream()
+                .filter(FilterCondition.class::isInstance)
+                .map(e -> e.getValue())
+                .map(Object::toString)
+                .distinct()
+                .toList();
 
-					e.setAllowSubPathAccess(entity.isAllowSubPathAccess());
-					e.setPath(entity.getPath() == null || entity.getPath()
-							.isBlank() ? "/"
-									: entity.getPath()
-											.trim());
-					e.setWriteAccess(entity.isWriteAccess());
+        for (String rtype : list) {
 
-					return Mono.just(e);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.updatableEntity"));
-	}
+            if (rtype.contains(FilesAccessPathResourceType.STATIC.toString()) && !hasStatic) {
+                return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH");
+            }
 
-	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong id, Map<String, Object> fields) {
+            if (rtype.contains(FilesAccessPathResourceType.SECURED.toString()) && !hasSecured) {
+                return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        FilesMessageResourceService.FORBIDDEN_PERMISSION, "SECURED Files PATH");
+            }
+        }
 
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.dao.readById(id),
-
-				e -> this.checkAccessNGetClientCode(e.getResourceType()
-						.toString(), e.getClientCode()),
-
-				(e, clientCode) -> {
+        return Mono.just(condition);
+    }
 
-					Map<String, Object> map = new HashMap<>();
-
-					if (!StringUtil.safeIsBlank(fields.get(ACCESS_NAME))) {
-						if (!StringUtil.safeIsBlank(e.getUserId()))
-							map.put(USER_ID, null);
-						map.put(ACCESS_NAME, fields.get(ACCESS_NAME));
-					} else if (!StringUtil.safeIsBlank(fields.get(USER_ID))) {
-						if (!StringUtil.safeIsBlank(e.getUserId()))
-							map.put(ACCESS_NAME, null);
-						map.put(USER_ID, fields.get(USER_ID));
-					}
-
-					if (fields.containsKey(ALLOW_SUB_PATH_ACCESS))
-						map.put(ALLOW_SUB_PATH_ACCESS, BooleanUtil.safeValueOf(fields.get(ALLOW_SUB_PATH_ACCESS)));
+    private Mono<AbstractCondition> processConditionWhenNoConditionsInRequest(AbstractCondition condition,
+                                                                              boolean hasStatic, boolean hasSecured) {
+        if (!hasSecured && !hasStatic)
+            return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH / SECURED Files PATH");
 
-					if (fields.containsKey(WRITE_ACCESS))
-						map.put(WRITE_ACCESS, BooleanUtil.safeValueOf(fields.get(WRITE_ACCESS)));
+        if (hasSecured && hasStatic)
+            return Mono.just(condition);
 
-					if (!StringUtil.safeIsBlank(fields.get(PATH)))
-						map.put(PATH, fields.get(PATH));
+        if (hasSecured)
+            return Mono.just(new ComplexCondition()
+                    .setConditions(List.of(condition, new FilterCondition().setField(RESOURCE_TYPE)
+                            .setValue(FilesAccessPathResourceType.SECURED.toString())))
+                    .setOperator(ComplexConditionOperator.AND));
 
-					return Mono.just(map);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.updatableFields"));
-	}
+        return Mono.just(new ComplexCondition()
+                .setConditions(List.of(condition, new FilterCondition().setField(RESOURCE_TYPE)
+                        .setValue(FilesAccessPathResourceType.STATIC.toString())))
+                .setOperator(ComplexConditionOperator.AND));
+    }
 
-	@Override
-	public Mono<Page<FilesAccessPath>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-		return FlatMapUtil.flatMapMono(
+    public Mono<String> checkAccessNGetClientCode(String resourceType) {
 
-				() -> condition.findConditionWithField(RESOURCE_TYPE)
-						.collectList(),
+        return FlatMapUtil.flatMapMono(
 
-				cs -> SecurityContextUtil.getUsersContextAuthentication(),
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-				(cs, ca) -> prepareConditionForRead(condition, cs, ca),
+                        ca -> this.checkAccessNGetClientCode(resourceType, ca.getLoggedInFromClientCode()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));
+    }
 
-				(cs, ca, newCondition) -> super.readPageFilter(pageable,
-						new ComplexCondition()
-								.setConditions(List.of(newCondition, new FilterCondition().setField("clientCode")
-										.setValue(ca.getLoggedInFromClientCode())))
-								.setOperator(ComplexConditionOperator.AND)))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.readPageFilter"));
-	}
+    public Mono<String> checkAccessNGetClientCode(String resourceType, String clientCode) {
 
-	private Mono<AbstractCondition> prepareConditionForRead(AbstractCondition condition, List<FilterCondition> cs,
-			ContextAuthentication ca) {
+        return FlatMapUtil.flatMapMono(
 
-		if (!ca.isSystemClient() && !ca.getLoggedInFromClientId()
-				.equals(ca.getUser()
-						.getClientId())) {
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-			return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-					FilesMessageResourceService.FORBIDDEN_PERMISSION, "");
-		}
+                        ca -> {
+                            if (ca.isSystemClient() || ca.getLoggedInFromClientId()
+                                    .equals(ca.getUser()
+                                            .getClientId()))
+                                return Mono.just(true);
 
-		boolean hasStatic = SecurityContextUtil
-				.hasAuthority(this.getAuthority(FilesAccessPathResourceType.STATIC.toString()), ca.getAuthorities());
-		boolean hasSecured = SecurityContextUtil
-				.hasAuthority(this.getAuthority(FilesAccessPathResourceType.SECURED.toString()), ca.getAuthorities());
+                            return securityService.isUserBeingManaged(ca.getUser()
+                                    .getId(), clientCode);
+                        },
 
-		if (cs.isEmpty()) {
+                        (ca, managed) -> {
 
-			return processConditionWhenNoConditionsInRequest(condition, hasStatic, hasSecured);
-		}
+                            if (!managed.booleanValue() || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
+                                    ca.getAuthorities())) {
+                                return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
+                            }
 
-		List<String> list = cs.stream()
-				.filter(FilterCondition.class::isInstance)
-				.map(e -> e.getValue())
-				.map(Object::toString)
-				.distinct()
-				.toList();
+                            return Mono.just(ca.getLoggedInFromClientCode());
+                        }
 
-		for (String rtype : list) {
+                )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));
 
-			if (rtype.contains(FilesAccessPathResourceType.STATIC.toString()) && !hasStatic) {
-				return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH");
-			}
+    }
 
-			if (rtype.contains(FilesAccessPathResourceType.SECURED.toString()) && !hasSecured) {
-				return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						FilesMessageResourceService.FORBIDDEN_PERMISSION, "SECURED Files PATH");
-			}
-		}
+    private String getAuthority(String resourceType) {
+        return "Authorities." + resourceType + "_Files_PATH";
+    }
 
-		return Mono.just(condition);
-	}
+    @Override
+    public Mono<Integer> delete(ULong id) {
 
-	private Mono<AbstractCondition> processConditionWhenNoConditionsInRequest(AbstractCondition condition,
-			boolean hasStatic, boolean hasSecured) {
-		if (!hasSecured && !hasStatic)
-			return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-					FilesMessageResourceService.FORBIDDEN_PERMISSION, "STATIC Files PATH / SECURED Files PATH");
+        return FlatMapUtil.flatMapMono(
 
-		if (hasSecured && hasStatic)
-			return Mono.just(condition);
+                        () -> this.dao.readById(id),
 
-		if (hasSecured)
-			return Mono.just(new ComplexCondition()
-					.setConditions(List.of(condition, new FilterCondition().setField(RESOURCE_TYPE)
-							.setValue(FilesAccessPathResourceType.SECURED.toString())))
-					.setOperator(ComplexConditionOperator.AND));
+                        e -> this.checkAccessNGetClientCode(e.getResourceType()
+                                .toString(), e.getClientCode()),
 
-		return Mono.just(new ComplexCondition()
-				.setConditions(List.of(condition, new FilterCondition().setField(RESOURCE_TYPE)
-						.setValue(FilesAccessPathResourceType.STATIC.toString())))
-				.setOperator(ComplexConditionOperator.AND));
-	}
+                        (e, clientCode) -> super.delete(id))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.delete"));
+    }
 
-	public Mono<String> checkAccessNGetClientCode(String resourceType) {
+    public Mono<Boolean> hasReadAccess(String actualPath, String clientCode, FilesAccessPathResourceType resourceType) {
 
-		return FlatMapUtil.flatMapMono(
+        String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
 
-				SecurityContextUtil::getUsersContextAuthentication,
+        return FlatMapUtil.flatMapMono(
 
-				ca -> this.checkAccessNGetClientCode(resourceType, ca.getLoggedInFromClientCode()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));
-	}
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-	public Mono<String> checkAccessNGetClientCode(String resourceType, String clientCode) {
+                        ca -> ca.isSystemClient() ? Mono.just(true)
+                                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
 
-		return FlatMapUtil.flatMapMono(
+                        (ca, managed) -> {
+                            if (!managed.booleanValue())
+                                return Mono.just(false);
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                            return this.dao.hasPathReadAccess(path, ULong.valueOf(ca.getUser()
+                                    .getId()), clientCode, resourceType, ca.getAuthorities()
+                                    .stream()
+                                    .map(GrantedAuthority::getAuthority)
+                                    .toList());
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasReadAccess"))
+                .defaultIfEmpty(false);
 
-				ca -> {
-					if (ca.isSystemClient() || ca.getLoggedInFromClientId()
-							.equals(ca.getUser()
-									.getClientId()))
-						return Mono.just(true);
+    }
 
-					return securityService.isUserBeingManaged(ca.getUser()
-							.getId(), clientCode);
-				},
+    public Mono<Boolean> hasWriteAccess(String actualPath, String clientCode,
+                                        FilesAccessPathResourceType resourceType) {
 
-				(ca, managed) -> {
+        String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
 
-					if (!managed.booleanValue() || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
-							ca.getAuthorities())) {
-						return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								FilesMessageResourceService.FORBIDDEN_PERMISSION, this.getAuthority(resourceType));
-					}
+        return FlatMapUtil.flatMapMono(
 
-					return Mono.just(ca.getLoggedInFromClientCode());
-				}
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.checkAccessNGetClientCode"));
+                        ca -> ca.isSystemClient() ? this.securityService.isValidClientCode(clientCode)
+                                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
 
-	}
+                        (ca, managed) -> {
+                            if (!managed.booleanValue())
+                                return Mono.empty();
 
-	private String getAuthority(String resourceType) {
-		return "Authorities." + resourceType + "_Files_PATH";
-	}
+                            return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
+                                    .getId()), clientCode, resourceType, ca.getAuthorities()
+                                    .stream()
+                                    .map(GrantedAuthority::getAuthority)
+                                    .toList());
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasWriteAccess"))
+                .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        AbstractMessageService.OBJECT_NOT_FOUND, "Client", clientCode))
+                .defaultIfEmpty(false);
+    }
 
-	@Override
-	public Mono<Integer> delete(ULong id) {
+    public Mono<FilesAccessPath> createInternalAccessPath(FilesAccessPath accessPath) {
 
-		return FlatMapUtil.flatMapMono(
+        if (accessPath.getAccessName() != null) {
+            accessPath.setUserId(null);
+        } else if (accessPath.getUserId() != null) {
+            accessPath.setAccessName(null);
+        } else {
+            msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
+        }
 
-				() -> this.dao.readById(id),
+        if (accessPath.getResourceType() == null)
+            msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    FilesMessageResourceService.MISSING_FIELD, "Resource Type");
 
-				e -> this.checkAccessNGetClientCode(e.getResourceType()
-						.toString(), e.getClientCode()),
+        accessPath.setPath(accessPath.getPath() == null || accessPath.getPath().trim()
+                .isBlank() ? ""
+                : accessPath.getPath()
+                .trim());
 
-				(e, clientCode) -> super.delete(id))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.delete"));
-	}
+        return super.create(accessPath);
+    }
 
-	public Mono<Boolean> hasReadAccess(String actualPath, String clientCode, FilesAccessPathResourceType resourceType) {
+    public Mono<Boolean> isClientBeingManaged(String managingClientCode, String clientCode) {
 
-		String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
+        if (StringUtil.safeEquals(managingClientCode, clientCode))
+            return Mono.just(true);
 
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> ca.isSystemClient() ? Mono.just(true)
-						: this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
-
-				(ca, managed) -> {
-					if (!managed.booleanValue())
-						return Mono.just(false);
-
-					return this.dao.hasPathReadAccess(path, ULong.valueOf(ca.getUser()
-							.getId()), clientCode, resourceType, ca.getAuthorities()
-									.stream()
-									.map(GrantedAuthority::getAuthority)
-									.toList());
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasReadAccess"))
-				.defaultIfEmpty(false);
-
-	}
-
-	public Mono<Boolean> hasWriteAccess(String actualPath, String clientCode,
-			FilesAccessPathResourceType resourceType) {
-
-		String path = actualPath.endsWith("/") ? actualPath.substring(0, actualPath.length() - 1) : actualPath;
-
-		return FlatMapUtil.flatMapMono(
-
-				SecurityContextUtil::getUsersContextAuthentication,
-
-				ca -> ca.isSystemClient() ? this.securityService.isValidClientCode(clientCode)
-						: this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
-
-				(ca, managed) -> {
-					if (!managed.booleanValue())
-						return Mono.empty();
-
-					return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
-							.getId()), clientCode, resourceType, ca.getAuthorities()
-									.stream()
-									.map(GrantedAuthority::getAuthority)
-									.toList());
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesAccessPathService.hasWriteAccess"))
-				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-						AbstractMessageService.OBJECT_NOT_FOUND, "Client", clientCode))
-				.defaultIfEmpty(false);
-	}
-
-	public Mono<FilesAccessPath> createInternalAccessPath(FilesAccessPath accessPath) {
-
-		if (accessPath.getAccessName() != null) {
-			accessPath.setUserId(null);
-		} else if (accessPath.getUserId() != null) {
-			accessPath.setAccessName(null);
-		} else {
-			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					FilesMessageResourceService.ACCESS_ONLY_TO_ONE);
-		}
-
-		if (accessPath.getResourceType() == null)
-			msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					FilesMessageResourceService.MISSING_FIELD, "Resource Type");
-
-		accessPath.setPath(accessPath.getPath() == null || accessPath.getPath().trim()
-				.isBlank() ? ""
-						: accessPath.getPath()
-								.trim());
-
-		return super.create(accessPath);
-	}
-
-	public Mono<Boolean> isClientBeingManaged(String managingClientCode, String clientCode) {
-
-		if(StringUtil.safeEquals(managingClientCode, clientCode))
-			return Mono.just(true);
-			
-		return this.securityService.isBeingManaged(managingClientCode, clientCode);
-	}
+        return this.securityService.isBeingManaged(managingClientCode, clientCode);
+    }
 }

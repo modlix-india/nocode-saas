@@ -1,7 +1,6 @@
 package com.fincity.security.service;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -127,20 +126,6 @@ public class RoleV2Service
     @Override
     public SecuritySoxLogObjectName getSoxObjectName() {
         return SecuritySoxLogObjectName.ROLE;
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey(NAME))
-            newFields.put(NAME, fields.get(NAME));
-        if (fields.containsKey(DESCRIPTION))
-            newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
-        if (fields.containsKey(SHORT_NAME))
-            newFields.put(SHORT_NAME, fields.get(SHORT_NAME));
-
-        return Mono.just(newFields);
     }
 
     @Override

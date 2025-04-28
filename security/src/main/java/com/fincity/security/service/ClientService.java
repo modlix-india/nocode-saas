@@ -273,11 +273,6 @@ public class ClientService
     }
 
     @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-        return Mono.just(fields);
-    }
-
-    @Override
     protected Mono<ULong> getLoggedInUserId() {
         return SecurityContextUtil.getUsersContextUser()
                 .map(ContextUser::getId)
