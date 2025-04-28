@@ -15,8 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.UserDAO;
-import com.fincity.security.dto.Permission;
-import com.fincity.security.dto.Role;
+import com.fincity.security.dto.RoleV2;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -29,128 +28,106 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/users")
 public class UserController
-		extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAO, UserService> {
+        extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAO, UserService> {
 
-	private final UserService userService;
+    private final UserService userService;
 
-	public UserController(UserService userService) {
-		this.userService = userService;
-	}
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
-	@GetMapping("{userId}/removePermission/{permissionId}")
-	public Mono<ResponseEntity<Boolean>> removePermission(@PathVariable ULong userId,
-			@PathVariable ULong permissionId) {
+    @GetMapping("{userId}/removeProfile/{profileId}")
+    public Mono<ResponseEntity<Boolean>> removeProfile(@PathVariable ULong userId, @PathVariable ULong profileId) {
 
-		return this.userService.removePermissionFromUser(userId, permissionId)
-				.map(ResponseEntity::ok);
-	}
+        return userService.removeProfileFromUser(userId, profileId)
+                .map(ResponseEntity::ok);
+    }
 
-	@GetMapping("/{id}/assignPermission/{permissionId}")
-	public Mono<ResponseEntity<Boolean>> assignPermission(@PathVariable ULong id, @PathVariable ULong permissionId) {
+    @GetMapping("{userId}/assignProfile/{profileId}")
+    public Mono<ResponseEntity<Boolean>> assignProfile(@PathVariable ULong userId, @PathVariable ULong profileId) {
 
-		return this.userService.assignPermissionToUser(id, permissionId)
-				.map(ResponseEntity::ok);
-	}
+        return userService.assignProfileToUser(userId, profileId)
+                .map(ResponseEntity::ok);
+    }
 
-	@GetMapping("{userId}/removeRole/{roleId}")
-	public Mono<ResponseEntity<Boolean>> removeRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
+    @GetMapping("{userId}/removeRole/{roleId}")
+    public Mono<ResponseEntity<Boolean>> removeRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
 
-		return userService.removeRoleFromUser(userId, roleId)
-				.map(ResponseEntity::ok);
-	}
+        return userService.removeRoleFromUser(userId, roleId)
+                .map(ResponseEntity::ok);
+    }
 
-	@GetMapping("{userId}/assignRole/{roleId}")
-	public Mono<ResponseEntity<Boolean>> assignRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
+    @GetMapping("{userId}/assignRole/{roleId}")
+    public Mono<ResponseEntity<Boolean>> assignRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
 
-		return userService.assignRoleToUser(userId, roleId)
-				.map(ResponseEntity::ok);
-	}
+        return userService.assignRoleToUser(userId, roleId)
+                .map(ResponseEntity::ok);
+    }
 
-	@PostMapping("/findUserClients")
-	public Mono<ResponseEntity<List<UserClient>>> findUserClients(@RequestBody AuthenticationRequest authRequest,
-			ServerHttpRequest request) {
+    @PostMapping("/findUserClients")
+    public Mono<ResponseEntity<List<UserClient>>> findUserClients(@RequestBody AuthenticationRequest authRequest,
+                                                                  ServerHttpRequest request) {
 
-		return this.service.findUserClients(authRequest, request)
-				.map(ResponseEntity::ok);
-	}
+        return this.service.findUserClients(authRequest, request)
+                .map(ResponseEntity::ok);
+    }
 
-	@GetMapping("/makeUserActive")
-	public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
+    @GetMapping("/makeUserActive")
+    public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
 
-		return this.service.makeUserActive(userId)
-				.map(ResponseEntity::ok);
-	}
+        return this.service.makeUserActive(userId)
+                .map(ResponseEntity::ok);
+    }
 
-	@GetMapping("/makeUserInActive")
-	public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
+    @GetMapping("/makeUserInActive")
+    public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
 
-		return this.service.makeUserInActive(userId)
-				.map(ResponseEntity::ok);
-	}
+        return this.service.makeUserInActive(userId)
+                .map(ResponseEntity::ok);
+    }
 
-	@PostMapping("/unblockUser")
-	public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
+    @PostMapping("/unblockUser")
+    public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
 
-		return this.service.unblockUser(userId)
-				.map(ResponseEntity::ok);
-	}
+        return this.service.unblockUser(userId)
+                .map(ResponseEntity::ok);
+    }
 
-	@GetMapping("/availablePermissions/{userId}")
-	public Mono<ResponseEntity<List<Permission>>> getPermissionsFromUser(@PathVariable ULong userId) {
+    @PostMapping("{userId}/updatePassword")
+    public Mono<ResponseEntity<Boolean>> updatePassword(@PathVariable ULong userId,
+                                                        @RequestBody RequestUpdatePassword passwordRequest) {
 
-		return this.userService.getPermissionsFromGivenUser(userId)
-				.map(ResponseEntity::ok);
-	}
+        return this.userService.updatePassword(userId, passwordRequest)
+                .map(ResponseEntity::ok);
+    }
 
-	@GetMapping("/availableRoles/{userId}")
-	public Mono<ResponseEntity<List<Role>>> getRolesFromUser(@PathVariable ULong userId) {
+    @PostMapping("updatePassword")
+    public Mono<ResponseEntity<Boolean>> updatePassword(@RequestBody RequestUpdatePassword passwordRequest) {
 
-		return this.userService.getRolesFromGivenUser(userId)
-				.map(ResponseEntity::ok);
-	}
+        return this.userService.updatePassword(passwordRequest)
+                .map(ResponseEntity::ok);
+    }
 
-	@PostMapping("{userId}/updatePassword")
-	public Mono<ResponseEntity<Boolean>> updatePassword(@PathVariable ULong userId,
-			@RequestBody RequestUpdatePassword passwordRequest) {
+    @PostMapping("/reset/password/otp/generate")
+    public Mono<ResponseEntity<Boolean>> generateOtpResetPassword(@RequestBody AuthenticationRequest authRequest,
+                                                                  ServerHttpRequest request) {
 
-		return this.userService.updatePassword(userId, passwordRequest)
-				.map(ResponseEntity::ok);
-	}
+        return this.userService.generateOtpResetPassword(authRequest, request)
+                .map(ResponseEntity::ok);
+    }
 
-	@PostMapping("updatePassword")
-	public Mono<ResponseEntity<Boolean>> updatePassword(@RequestBody RequestUpdatePassword passwordRequest) {
+    @PostMapping("/reset/password/otp/verify")
+    public Mono<ResponseEntity<Boolean>> verifyOtpResetPassword(@RequestBody AuthenticationRequest authRequest) {
 
-		return this.userService.updatePassword(passwordRequest)
-				.map(ResponseEntity::ok);
-	}
+        return this.userService.verifyOtpResetPassword(authRequest)
+                .map(ResponseEntity::ok);
+    }
 
-	@PostMapping("/reset/password/otp/generate")
-	public Mono<ResponseEntity<Boolean>> generateOtpResetPassword(@RequestBody AuthenticationRequest authRequest,
-			ServerHttpRequest request) {
+    @PostMapping("/reset/password")
+    public Mono<ResponseEntity<Boolean>> resetPassword(@RequestBody RequestUpdatePassword reqPassword) {
 
-		return this.userService.generateOtpResetPassword(authRequest, request)
-				.map(ResponseEntity::ok);
-	}
+        return this.userService.resetPassword(reqPassword)
+                .map(ResponseEntity::ok);
+    }
 
-	@PostMapping("/reset/password/otp/verify")
-	public Mono<ResponseEntity<Boolean>> verifyOtpResetPassword(@RequestBody AuthenticationRequest authRequest) {
-
-		return this.userService.verifyOtpResetPassword(authRequest)
-				.map(ResponseEntity::ok);
-	}
-
-	@PostMapping("/reset/password")
-	public Mono<ResponseEntity<Boolean>> resetPassword(@RequestBody RequestUpdatePassword reqPassword) {
-
-		return this.userService.resetPassword(reqPassword)
-				.map(ResponseEntity::ok);
-	}
-
-	@PostMapping("/copy/authorities")
-	public Mono<ResponseEntity<Boolean>> copyUserAccess(@RequestParam ULong userId,
-			@RequestParam ULong referenceUserId) {
-
-		return this.userService.copyUserRolesNPermissions(userId, referenceUserId)
-				.map(ResponseEntity::ok);
-	}
 }

@@ -6,10 +6,10 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mongo.difference.IDifferentiable;
-import com.fincity.saas.commons.mongo.util.DifferenceApplicator;
-import com.fincity.saas.commons.mongo.util.DifferenceExtractor;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.DifferenceApplicator;
+import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.enums.URIType;
 
