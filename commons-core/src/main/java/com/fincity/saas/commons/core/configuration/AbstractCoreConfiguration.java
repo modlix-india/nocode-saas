@@ -30,10 +30,12 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqBaseConfigur
 
     @Bean
     ReactiveHttpRequestInterceptor feignInterceptor() {
+
         return request -> Mono.deferContextual(ctxView -> {
+
             if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
-                String key = ctxView.get(LogUtil.DEBUG_KEY);
-                request.headers().put(LogUtil.DEBUG_KEY, List.of(key));
+                String value = ctxView.get(LogUtil.DEBUG_KEY);
+                request.headers().put(LogUtil.DEBUG_KEY, List.of(value));
             }
 
             return Mono.just(request);
@@ -53,8 +55,7 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqBaseConfigur
 
     @Override
     public void configureRabbitListeners(RabbitListenerEndpointRegistrar registrar) {
-        // This is a method in interface which requires an implementation in a concrete
-        // class
-        // that is why it is left empty.
+        // This is a method in interface that requires an implementation in a concrete
+        //  class, that is why it is left empty.
     }
 }
