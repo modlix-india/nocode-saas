@@ -14,17 +14,21 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SuppressWarnings("rawtypes")
-public class JSONMysqlMapConvertor<F extends JSON, T extends Map> implements Converter<F, T> {
+public class JSONMysqlMapConvertor implements Converter<JSON, Map> {
 
     @Serial
     private static final long serialVersionUID = -2036360252040485619L;
     private static final Logger logger = LoggerFactory.getLogger(JSONMysqlMapConvertor.class);
 
 
-    private final Class<F> fromClass;
-    private final Class<T> toClass;
+    private final Class<JSON> fromClass;
+    private final Class<Map> toClass;
 
-    public JSONMysqlMapConvertor(Class<F> from, Class<T> to) {
+    public JSONMysqlMapConvertor() {
+        this(JSON.class, Map.class);
+    }
+
+    public JSONMysqlMapConvertor(Class<JSON> from, Class<Map> to) {
         this.fromClass = from;
         this.toClass = to;
     }
@@ -62,12 +66,12 @@ public class JSONMysqlMapConvertor<F extends JSON, T extends Map> implements Con
     }
 
     @Override
-    public Class<F> fromType() {
+    public Class<JSON> fromType() {
         return this.fromClass;
     }
 
     @Override
-    public Class<T> toType() {
+    public Class<Map> toType() {
         return this.toClass;
     }
 }

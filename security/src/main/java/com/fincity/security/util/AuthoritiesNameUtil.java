@@ -17,6 +17,8 @@ public class AuthoritiesNameUtil {
     }
 
     public static String makeProfileName(String appCode, String name) {
+        if (name == null) return null;
+
         StringBuilder sb = new StringBuilder("Authorities.");
 
         if (appCode != null)

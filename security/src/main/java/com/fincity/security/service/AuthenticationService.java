@@ -56,6 +56,7 @@ import com.fincity.security.service.appregistration.AppRegistrationIntegrationTo
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 
 @Service
 public class AuthenticationService implements IAuthenticationService {
@@ -207,7 +208,11 @@ public class AuthenticationService implements IAuthenticationService {
         return FlatMapUtil.flatMapMono(
 
                         () -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-                                clientCode, appCode, authRequest.getIdentifierType()),
+                                clientCode, appCode, authRequest.getIdentifierType()).flatMap(tup -> this.profileService.checkIfUserHasAnyProfile(tup.getT3().getId(), appCode)
+                                .flatMap(e -> {
+                                    if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
+                                    return Mono.empty();
+                                })),
 
                         tup -> this.userService.checkUserAndClient(tup, clientCode)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -453,26 +458,16 @@ public class AuthenticationService implements IAuthenticationService {
 
                             return getAuthenticationIfNotInCache(appCode, basic, bearerToken, request);
                         })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"))
                 .onErrorResume(e -> this.makeAnonySpringAuthentication(request))
                 .flatMap(e -> {
                     if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
-                        return this.profileService
-                                .getProfileAuthorities(appCode, ULong.valueOf(ca.getUser().getClientId()),
-                                        ULong.valueOf(ca.getUser().getId()))
-                                .map(auths -> {
-                                    ContextUser cu = ca.getUser();
-                                    if (cu.getAuthorities() != null && !cu.getAuthorities().isEmpty()) {
-                                        List<String> roleAuths = new ArrayList<>(cu.getStringAuthorities());
-                                        roleAuths.addAll(auths);
-                                        cu.setStringAuthorities(roleAuths);
-                                    } else
-                                        cu.setStringAuthorities(auths);
-                                    return ca;
-                                });
+                        return this.userService.getUserAuthorities(appCode, ULong.valueOf(ca.getUser().getClientId()), ULong.valueOf(ca.getUser().getId()))
+                                .map(ca.getUser()::setStringAuthorities)
+                                .map(x -> e);
                     }
                     return Mono.just(e);
-                }).contextWrite(
+                })
+                .contextWrite(
                         Context.of(LogUtil.METHOD_NAME,
                                 "AuthenticationService.getAuthentication"));
     }
