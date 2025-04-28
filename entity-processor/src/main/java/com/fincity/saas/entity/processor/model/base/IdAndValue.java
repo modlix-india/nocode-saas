@@ -28,6 +28,10 @@ public class IdAndValue<I extends Serializable, U extends Serializable> implemen
         this.value = value;
     }
 
+    public static <I extends Serializable, U extends Serializable> IdAndValue<I, U> of(I id, U value) {
+        return new IdAndValue<>(id, value);
+    }
+
     public static <I extends Serializable, U extends Serializable> Map<I, U> toMap(
             List<IdAndValue<I, U>> idAndValueList) {
         return idAndValueList.stream().collect(Collectors.toMap(IdAndValue::getId, IdAndValue::getValue, (a, b) -> b));

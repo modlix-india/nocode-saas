@@ -13,6 +13,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.HashMap;
 import java.util.Map;
@@ -154,6 +155,14 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasPublicAccess() {
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication, this::getAppClientUserAccessInfo);
+    }
+
+    public Mono<BaseResponse> getBaseResponse(ULong id) {
+        return this.readInternal(id).map(BaseDto::toBaseResponse);
+    }
+
+    public Mono<BaseResponse> getBaseResponse(String code) {
+        return this.readByCode(code).map(BaseDto::toBaseResponse);
     }
 
     private Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> getAppClientUserAccessInfo(ContextAuthentication ca) {

@@ -22,11 +22,6 @@ public abstract class BaseProcessorService<
     protected abstract Mono<D> checkEntity(D entity, Tuple3<String, String, ULong> accessInfo);
 
     @Override
-    protected Mono<Boolean> evictCache(D entity) {
-        return super.evictCache(entity);
-    }
-
-    @Override
     protected Mono<D> updatableEntity(D entity) {
         return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), e -> {
             if (e.getVersion() != entity.getVersion())

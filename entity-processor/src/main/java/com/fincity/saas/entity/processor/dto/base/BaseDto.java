@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.dto.base;
 
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -45,5 +46,24 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
     public T setDescription(String description) {
         this.description = description.trim();
         return (T) this;
+    }
+
+    public T setAddedByUserId(ULong addedByUserId) {
+        this.addedByUserId = addedByUserId;
+        return (T) this;
+    }
+
+    public T setActive(boolean isActive) {
+        this.isActive = isActive;
+        return (T) this;
+    }
+
+    public T setTempActive(boolean tempActive) {
+        this.tempActive = tempActive;
+        return (T) this;
+    }
+
+    public BaseResponse toBaseResponse() {
+        return BaseResponse.of(this.getId(), this.code, this.name);
     }
 }

@@ -164,9 +164,216 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
     `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
-
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_STAGES_CODE` (`CODE`)
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_rules`;
+
+CREATE TABLE `entity_processor`.`entity_processor_rules` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Rule was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Rule.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Rule.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Rule.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Rule.',
+    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this rule.',
+    `IS_SIMPLE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this rule is simple.',
+    `IS_COMPLEX` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if this rule is complex.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this rule.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this rule is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_RULES_CODE` (`CODE`)
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_simple_conditions`;
+
+CREATE TABLE `entity_processor`.`entity_processor_simple_conditions` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Simple Condition was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Simple Condition.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Simple Condition.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Simple Condition.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Simple Condition.',
+    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Simple Condition.',
+    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Simple Condition.',
+    `FIELD` VARCHAR(255) NULL COMMENT 'Field name for this Simple Condition.',
+    `OPERATOR` ENUM ('EQUALS', 'LESS_THAN', 'GREATER_THAN', 'LESS_THAN_EQUAL', 'GREATER_THAN_EQUAL', 'IS_TRUE', 'IS_FALSE', 'IS_NULL', 'BETWEEN', 'IN', 'LIKE', 'STRING_LOOSE_EQUAL', 'MATCH', 'MATCH_ALL', 'TEXT_SEARCH') NOT NULL DEFAULT 'EQUALS' COMMENT 'Operator for this Simple Condition.',
+    `VALUE` JSON NULL COMMENT 'Value for this Simple Condition.',
+    `TO_VALUE` JSON NULL COMMENT 'To value for this Simple Condition.',
+    `IS_VALUE_FIELD` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if value is a field.',
+    `IS_TO_VALUE_FIELD` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if to value is a field.',
+    `NEGATE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if this Simple Condition is negated.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Simple Condition.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Simple Condition is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_SIMPLE_CONDITIONS_CODE` (`CODE`),
+    CONSTRAINT `FK1_SIMPLE_CONDITIONS_RULE_ID` FOREIGN KEY (`RULE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_RULES` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_complex_conditions`;
+
+CREATE TABLE `entity_processor`.`entity_processor_complex_conditions` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Complex Condition was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Complex Condition.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Complex Condition.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Complex Condition.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Complex Condition.',
+    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Complex Condition.',
+    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Complex Condition.',
+    `LOGICAL_OPERATOR` ENUM ('AND', 'OR') NOT NULL COMMENT 'Logical operator for this Complex Condition.',
+    `NEGATE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if this Complex Condition is negated.',
+    `PARENT_CONDITION_ID` BIGINT UNSIGNED NULL COMMENT 'Parent Condition ID for this Complex Condition.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Complex Condition.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Complex Condition is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_COMPLEX_CONDITIONS_CODE` (`CODE`),
+    CONSTRAINT `FK1_COMPLEX_CONDITIONS_RULE_ID` FOREIGN KEY (`RULE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_RULES` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_simple_complex_condition_relations`;
+
+CREATE TABLE `entity_processor`.`entity_processor_simple_complex_condition_relations` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Relation was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Relation.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Relation.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Relation.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Relation.',
+    `VERSION` INT NOT NULL DEFAULT 1 COMMENT 'Version of this Complex Condition.',
+    `COMPLEX_CONDITION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Complex Condition ID related to this Relation.',
+    `SIMPLE_CONDITION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Simple Condition ID related to this Relation.',
+    `ORDER` INT NULL COMMENT 'Order of the Simple Condition in the Complex Condition.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this Relation.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this Relation is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_SIMPLE_COMPLEX_CONDITION_RELATIONS_CODE` (`CODE`),
+    CONSTRAINT `FK1_RELATIONS_COMPLEX_CONDITION_ID` FOREIGN KEY (`COMPLEX_CONDITION_ID`)
+        REFERENCES `ENTITY_PROCESSOR_COMPLEX_CONDITIONS` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_RELATIONS_SIMPLE_CONDITION_ID` FOREIGN KEY (`SIMPLE_CONDITION_ID`)
+        REFERENCES `ENTITY_PROCESSOR_SIMPLE_CONDITIONS` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_product_rules`;
+
+CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Product Rule was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Product Rule.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Product Rule.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product Rule.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Product Rule.',
+    `ENTITY_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Entity ID related to this Product Rule.',
+    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule ID related to this Product Rule.',
+    `RULE_ORDER` INT NOT NULL COMMENT 'Order of the rule.',
+    `PRODUCT_RULE_TYPE` ENUM ('DEAL', 'STAGE') NOT NULL COMMENT 'Type of the Product Rule.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product rule.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product rule is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_PRODUCT_RULES_CODE` (`CODE`),
+    CONSTRAINT `FK1_PRODUCT_RULES_RULE_ID` FOREIGN KEY (`RULE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_RULES` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_PRODUCT_RULES_ENTITY_ID` FOREIGN KEY (`ENTITY_ID`)
+        REFERENCES `ENTITY_PROCESSOR_ENTITIES` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_product_rule_configs`;
+
+CREATE TABLE `entity_processor`.`entity_processor_product_rule_configs` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Product Rule Config was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Product Rule Config.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+    `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Product Rule Config.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product Rule Config.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Product Rule Config.',
+    `PRODUCT_RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product Rule ID related to this Product Rule Config.',
+    `BREAK_AT_FIRST_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should break at first match.',
+    `EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules match.',
+    `EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules do not match.',
+    `CONTINUE_ON_NO_MATCH` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if execution should continue on no match.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product rule config.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product rule config is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_PRODUCT_RULE_CONFIGS_CODE` (`CODE`),
+    CONSTRAINT `FK1_PRODUCT_RULE_CONFIGS_PRODUCT_RULE_ID` FOREIGN KEY (`PRODUCT_RULE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_PRODUCT_RULES` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
