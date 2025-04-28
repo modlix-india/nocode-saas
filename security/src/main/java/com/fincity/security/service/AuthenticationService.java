@@ -56,6 +56,7 @@ import com.fincity.security.service.appregistration.AppRegistrationIntegrationTo
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 
 @Service
 public class AuthenticationService implements IAuthenticationService {
@@ -207,7 +208,11 @@ public class AuthenticationService implements IAuthenticationService {
         return FlatMapUtil.flatMapMono(
 
                         () -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-                                clientCode, appCode, authRequest.getIdentifierType()),
+                                clientCode, appCode, authRequest.getIdentifierType()).flatMap(tup -> this.profileService.checkIfUserHasAnyProfile(tup.getT3().getId(), appCode)
+                                .flatMap(e -> {
+                                    if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
+                                    return Mono.empty();
+                                })),
 
                         tup -> this.userService.checkUserAndClient(tup, clientCode)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -461,7 +466,8 @@ public class AuthenticationService implements IAuthenticationService {
                                 .map(x -> e);
                     }
                     return Mono.just(e);
-                }).contextWrite(
+                })
+                .contextWrite(
                         Context.of(LogUtil.METHOD_NAME,
                                 "AuthenticationService.getAuthentication"));
     }
