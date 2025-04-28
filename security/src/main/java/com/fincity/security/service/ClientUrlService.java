@@ -3,7 +3,6 @@ package com.fincity.security.service;
 import static com.fincity.security.service.AppService.APP_PROP_URL;
 import static com.fincity.security.service.ClientService.CACHE_NAME_CLIENT_URL;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,301 +37,289 @@ import reactor.util.context.Context;
 
 @Service
 public class ClientUrlService
-		extends AbstractJOOQUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO> {
+        extends AbstractJOOQUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO> {
 
-	private static final String URL_PATTERN = "urlPattern";
+    private static final String URL_PATTERN = "urlPattern";
 
-	private static final String CLIENT_URL = "Client URL";
+    private static final String CLIENT_URL = "Client URL";
 
-	private final CacheService cacheService;
+    private final CacheService cacheService;
 
-	private final SecurityMessageResourceService msgService;
+    private final SecurityMessageResourceService msgService;
 
-	private final ClientService clientService;
+    private final ClientService clientService;
 
-	private final AppService appService;
+    private final AppService appService;
 
-	@Value("${security.appCodeSuffix:}")
-	private String appCodeSuffix;
+    @Value("${security.appCodeSuffix:}")
+    private String appCodeSuffix;
 
-	private static final String CACHE_NAME_CLIENT_URI = "uri";
+    private static final String CACHE_NAME_CLIENT_URI = "uri";
 
-	// This is used in gateway
-	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+    // This is used in gateway
+    private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
 
-	private static final String HTTPS = "https://";
+    private static final String HTTPS = "https://";
 
-	private static final String SLASH = "/";
+    private static final String SLASH = "/";
 
-	public ClientUrlService(CacheService cacheService, SecurityMessageResourceService msgService,
-			ClientService clientService, AppService appService) {
+    public ClientUrlService(CacheService cacheService, SecurityMessageResourceService msgService,
+                            ClientService clientService, AppService appService) {
 
-		this.cacheService = cacheService;
-		this.msgService = msgService;
-		this.clientService = clientService;
-		this.appService = appService;
-	}
+        this.cacheService = cacheService;
+        this.msgService = msgService;
+        this.clientService = clientService;
+        this.appService = appService;
+    }
 
-	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-	@Override
-	public Mono<ClientUrl> read(ULong id) {
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    @Override
+    public Mono<ClientUrl> read(ULong id) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> super.read(id),
+                        ca -> super.read(id),
 
-				(ca, cu) -> {
+                        (ca, cu) -> {
 
-					if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
-						return Mono.just(true);
+                            if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
+                                return Mono.just(true);
 
-					return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), cu.getClientId());
-				},
+                            return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), cu.getClientId());
+                        },
 
-				(ca, cu, hasAccess) -> {
-					if (BooleanUtil.safeValueOf(hasAccess))
-						return Mono.just(cu);
-					return Mono.empty();
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
-				.switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-						AbstractMessageService.OBJECT_NOT_FOUND, CLIENT_URL, id));
-	}
+                        (ca, cu, hasAccess) -> {
+                            if (BooleanUtil.safeValueOf(hasAccess))
+                                return Mono.just(cu);
+                            return Mono.empty();
+                        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+                .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        AbstractMessageService.OBJECT_NOT_FOUND, CLIENT_URL, id));
+    }
 
-	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-	@Override
-	public Mono<Page<ClientUrl>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    @Override
+    public Mono<Page<ClientUrl>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 
-		return super.readPageFilter(pageable, condition);
-	}
+        return super.readPageFilter(pageable, condition);
+    }
 
-	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-	@Override
-	public Mono<ClientUrl> create(ClientUrl entity) {
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    @Override
+    public Mono<ClientUrl> create(ClientUrl entity) {
 
-		entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
+        entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> {
+                        ca -> {
 
-					if (ca.isSystemClient() || entity.getClientId() == null
-							|| ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
-						return Mono.just(true);
+                            if (ca.isSystemClient() || entity.getClientId() == null
+                                    || ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
+                                return Mono.just(true);
 
-					return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-							entity.getClientId());
-				},
+                            return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
+                                    entity.getClientId());
+                        },
 
-				(ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(entity) : Mono.empty(),
+                        (ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(entity) : Mono.empty(),
 
-				(ca, hasAccess, ent) -> {
+                        (ca, hasAccess, ent) -> {
 
-					ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+                            ULong clientId = ULong.valueOf(ca.getUser().getClientId());
 
-					if (ent.getClientId() == null)
-						ent.setClientId(clientId);
+                            if (ent.getClientId() == null)
+                                ent.setClientId(clientId);
 
-					return super.create(ent);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
-	}
+                            return super.create(ent);
+                        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+    }
 
-	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-	@Override
-	public Mono<ClientUrl> update(ClientUrl entity) {
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    @Override
+    public Mono<ClientUrl> update(ClientUrl entity) {
 
-		entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
+        entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
 
-		return super.update(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
-	}
+        return super.update(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+    }
 
-	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-	@Override
-	public Mono<ClientUrl> update(ULong key, Map<String, Object> updateFields) {
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    @Override
+    public Mono<ClientUrl> update(ULong key, Map<String, Object> updateFields) {
 
-		updateFields.computeIfPresent(URL_PATTERN, (k, v) -> trimBackSlash(v.toString()));
+        updateFields.computeIfPresent(URL_PATTERN, (k, v) -> trimBackSlash(v.toString()));
 
-		return super.update(key, updateFields).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
-	}
+        return super.update(key, updateFields).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+    }
 
-	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-	@Override
-	public Mono<Integer> delete(ULong id) {
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    @Override
+    public Mono<Integer> delete(ULong id) {
 
-		return this.read(id).flatMap(e -> super.delete(id))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
-	}
+        return this.read(id).flatMap(e -> super.delete(id))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+    }
 
-	@PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-	@Override
-	protected Mono<ClientUrl> updatableEntity(ClientUrl entity) {
-		return this.read(entity.getId()).map(e -> e.setUrlPattern(entity.getUrlPattern()));
-	}
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    @Override
+    protected Mono<ClientUrl> updatableEntity(ClientUrl entity) {
+        return this.read(entity.getId()).map(e -> e.setUrlPattern(entity.getUrlPattern()));
+    }
 
-	@Override
-	protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+    @Override
+    protected Mono<ULong> getLoggedInUserId() {
 
-		HashMap<String, Object> map = new HashMap<>();
-		if (fields == null)
-			return Mono.just(map);
+        return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
+    }
 
-		map.put(URL_PATTERN, fields.get(URL_PATTERN));
+    public Mono<List<String>> getUrlsBasedOnApp(@NonNull String appCode, String suffix) {
 
-		return Mono.just(map);
-	}
+        if (StringUtil.safeIsBlank(appCode))
+            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.MANDATORY_APP_CODE);
 
-	@Override
-	protected Mono<ULong> getLoggedInUserId() {
+        return FlatMapUtil.flatMapMono(
 
-		return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
-	}
+                SecurityContextUtil::getUsersContextAuthentication,
 
-	public Mono<List<String>> getUrlsBasedOnApp(@NonNull String appCode, String suffix) {
+                ca -> Mono.just(ULongUtil.valueOf(ca.getUser().getClientId())),
 
-		if (StringUtil.safeIsBlank(appCode))
-			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.MANDATORY_APP_CODE);
+                (ca, clientId) -> ca.isSystemClient() ? this.dao.getClientUrlsBasedOnAppAndClient(appCode, null)
+                        : this.dao.getClientUrlsBasedOnAppAndClient(appCode, clientId),
 
-		return FlatMapUtil.flatMapMono(
+                (ca, clientId, urlList) -> this.appService.getAppByCode(appCode),
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                (ca, clientId, urlList, app) -> {
 
-				ca -> Mono.just(ULongUtil.valueOf(ca.getUser().getClientId())),
+                    if (!StringUtil.safeIsBlank(suffix)) {
 
-				(ca, clientId) -> ca.isSystemClient() ? this.dao.getClientUrlsBasedOnAppAndClient(appCode, null)
-						: this.dao.getClientUrlsBasedOnAppAndClient(appCode, clientId),
+                        if (app.getClientId().equals(clientId))
+                            urlList.add(HTTPS + appCode + appCodeSuffix + suffix + SLASH);
+                        else
+                            urlList.add(HTTPS + appCode + appCodeSuffix + suffix + SLASH + ca.getClientCode() + SLASH
+                                    + "page" + SLASH);
+                    }
 
-				(ca, clientId, urlList) -> this.appService.getAppByCode(appCode),
+                    return Mono.just(urlList);
+                }
 
-				(ca, clientId, urlList, app) -> {
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getUrlsBasedOnApp"));
 
-					if (!StringUtil.safeIsBlank(suffix)) {
+    }
 
-						if (app.getClientId().equals(clientId))
-							urlList.add(HTTPS + appCode + appCodeSuffix + suffix + SLASH);
-						else
-							urlList.add(HTTPS + appCode + appCodeSuffix + suffix + SLASH + ca.getClientCode() + SLASH
-									+ "page" + SLASH);
-					}
+    public Mono<String> getAppUrl(String appCode, String clientCode) {
 
-					return Mono.just(urlList);
-				}
+        if (StringUtil.safeIsBlank(appCode))
+            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.MANDATORY_APP_CODE);
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getUrlsBasedOnApp"));
+        return FlatMapUtil.flatMapMono(
 
-	}
+                SecurityContextUtil::getUsersContextAuthentication,
 
-	public Mono<String> getAppUrl(String appCode, String clientCode) {
+                ca -> appService.getAppByCode(appCode),
 
-		if (StringUtil.safeIsBlank(appCode))
-			return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.MANDATORY_APP_CODE);
+                (ca, app) -> {
+                    if (StringUtil.safeIsBlank(clientCode)) {
+                        return Mono.just(
+                                ca.getUrlClientCode() != null ? ca.getUrlClientCode() : ca.getLoggedInFromClientCode());
+                    }
+                    return Mono.just(clientCode);
+                },
 
-		return FlatMapUtil.flatMapMono(
+                (ca, app, cc) -> clientService.getClientBy(cc).map(Client::getId),
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                (ca, app, cc, cId) -> appService.getProperties(cId, app.getId(), appCode, APP_PROP_URL),
 
-				ca -> appService.getAppByCode(appCode),
+                (ca, app, cc, cId, prop) -> prop == null || prop.isEmpty()
+                        ? this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId)
+                        : Mono.just(prop.get(cId).get(APP_PROP_URL).getValue()),
 
-				(ca, app) -> {
-					if (StringUtil.safeIsBlank(clientCode)) {
-						return Mono.just(
-								ca.getUrlClientCode() != null ? ca.getUrlClientCode() : ca.getLoggedInFromClientCode());
-					}
-					return Mono.just(clientCode);
-				},
+                (ca, app, cc, cId, prop, url) -> Mono.just(checkUrl(url))
 
-				(ca, app, cc) -> clientService.getClientBy(cc).map(Client::getId),
+        ).defaultIfEmpty("").contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrl"));
+    }
 
-				(ca, app, cc, cId) -> appService.getProperties(cId, app.getId(), appCode, APP_PROP_URL),
+    public Mono<Boolean> checkSubDomainAvailabilityWithSuffix(String subDomain) {
 
-				(ca, app, cc, cId, prop) -> prop == null || prop.isEmpty()
-						? this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId)
-						: Mono.just(prop.get(cId).get(APP_PROP_URL).getValue()),
+        if (StringUtil.safeIsBlank(subDomain))
+            return Mono.just(false);
 
-				(ca, app, cc, cId, prop, url) -> Mono.just(checkUrl(url))
+        return this.dao.checkSubDomainAvailability(subDomain);
+    }
 
-		).defaultIfEmpty("").contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrl"));
-	}
+    public Mono<Boolean> checkSubDomainAvailability(String subDomain, String fullURL) {
 
-	public Mono<Boolean> checkSubDomainAvailabilityWithSuffix(String subDomain) {
+        return FlatMapUtil.flatMapMono(
 
-		if (StringUtil.safeIsBlank(subDomain))
-			return Mono.just(false);
+                () -> this.checkSubDomainAvailabilityWithSuffix(fullURL),
 
-		return this.dao.checkSubDomainAvailability(subDomain);
-	}
+                exists -> {
+                    if (BooleanUtil.safeValueOf(exists))
+                        return Mono.just(exists);
 
-	public Mono<Boolean> checkSubDomainAvailability(String subDomain, String fullURL) {
+                    return this.appService.getAppByCode(subDomain).map(e -> true).defaultIfEmpty(false);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.checkSubDomainAvailability"));
+    }
 
-		return FlatMapUtil.flatMapMono(
+    public Mono<ClientUrl> createForRegistration(ClientUrl entity) {
 
-				() -> this.checkSubDomainAvailabilityWithSuffix(fullURL),
+        entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
 
-				exists -> {
-					if (BooleanUtil.safeValueOf(exists))
-						return Mono.just(exists);
+        return super.create(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+    }
 
-					return this.appService.getAppByCode(subDomain).map(e -> true).defaultIfEmpty(false);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.checkSubDomainAvailability"));
-	}
+    private String trimBackSlash(String str) {
 
-	public Mono<ClientUrl> createForRegistration(ClientUrl entity) {
+        if (StringUtil.safeIsBlank(str))
+            return str;
 
-		entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
+        String nStr = str.trim();
 
-		return super.create(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
-				.flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-				.flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
-	}
+        if (!nStr.endsWith("/"))
+            return nStr;
 
-	private String trimBackSlash(String str) {
+        int endIndex = str.length() - 1;
 
-		if (StringUtil.safeIsBlank(str))
-			return str;
+        while (endIndex >= 0 && str.charAt(endIndex) == '/')
+            endIndex--;
 
-		String nStr = str.trim();
+        return nStr.substring(0, endIndex + 1);
+    }
 
-		if (!nStr.endsWith("/"))
-			return nStr;
+    private String checkUrl(String url) {
 
-		int endIndex = str.length() - 1;
+        if (StringUtil.safeIsBlank(url))
+            return url;
 
-		while (endIndex >= 0 && str.charAt(endIndex) == '/')
-			endIndex--;
+        String nStr = trimBackSlash(url);
 
-		return nStr.substring(0, endIndex + 1);
-	}
-
-	private String checkUrl(String url) {
-
-		if (StringUtil.safeIsBlank(url))
-			return url;
-
-		String nStr = trimBackSlash(url);
-
-		return !nStr.startsWith(HTTPS) ? HTTPS + nStr : nStr;
-	}
+        return !nStr.startsWith(HTTPS) ? HTTPS + nStr : nStr;
+    }
 }

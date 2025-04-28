@@ -8,7 +8,6 @@ import static com.fincity.saas.commons.util.CommonsUtil.*;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.common.base.Functions;
 import org.apache.commons.lang3.NotImplementedException;
-import org.jetbrains.annotations.NotNull;
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -297,11 +296,6 @@ public class ProfileService
     @Override
     public SecuritySoxLogObjectName getSoxObjectName() {
         return SecuritySoxLogObjectName.PROFILE;
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, @NotNull Map<String, Object> fields) {
-        return Mono.error(NotImplementedException::new);
     }
 
     @Override

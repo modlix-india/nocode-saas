@@ -23,7 +23,7 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
 
     @Autowired
     private ObjectMapper objectMapper;
-    
+
     public Mono<D> update(I key, Map<String, Object> fields) {
 
         return this.read(key)
@@ -57,8 +57,8 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
                                         }
 
                                     } catch (SecurityException
-                                            | IllegalAccessException
-                                            | InvocationTargetException | IllegalArgumentException exception) {
+                                             | IllegalAccessException
+                                             | InvocationTargetException | IllegalArgumentException exception) {
 
                                         throw new GenericException(HttpStatus.BAD_REQUEST,
                                                 field + AbstractMessageService.FIELD_NOT_AVAILABLE);
@@ -87,7 +87,5 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
     }
 
     protected abstract Mono<D> updatableEntity(D entity);
-
-    protected abstract Mono<Map<String, Object>> updatableFields(I key, Map<String, Object> fields);
 
 }
