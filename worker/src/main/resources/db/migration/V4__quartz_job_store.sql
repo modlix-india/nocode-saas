@@ -1,7 +1,6 @@
-CREATE DATABASE IF NOT EXISTS `worker`;
-
 USE `worker`;
 
+# this script is copied from quartz-guide do not edit anything
 CREATE TABLE IF NOT EXISTS QRTZ_JOB_DETAILS
 (
     SCHED_NAME VARCHAR(120) NOT NULL,

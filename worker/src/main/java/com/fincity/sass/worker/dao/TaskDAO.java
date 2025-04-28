@@ -4,7 +4,6 @@ import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 
 import static com.fincity.sass.worker.jooq.tables.WorkerTask.WORKER_TASK;
 
-import com.fincity.sass.worker.jooq.enums.WorkerTaskStatus;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTaskRecord;
 import com.fincity.sass.worker.model.Task;
 import org.jooq.types.ULong;
@@ -26,10 +25,18 @@ public class TaskDAO extends AbstractUpdatableDAO<WorkerTaskRecord, ULong, Task>
 
         return Flux.from(this.dslContext
                         .selectFrom(WORKER_TASK)
-                        .where(WORKER_TASK.NEXT_EXECUTION_TIME.lessOrEqual(currentTime))
-                        .and(WORKER_TASK.STATUS.eq(WorkerTaskStatus.UPCOMING))
-                        .orderBy(WORKER_TASK.NEXT_EXECUTION_TIME.asc()))
+                        .where(WORKER_TASK.NEXT_FIRE_TIME.lessOrEqual(currentTime))
+                        .orderBy(WORKER_TASK.NEXT_FIRE_TIME.asc()))
                 .map(e -> e.into(this.pojoClass))
                 .collectList();
+    }
+
+    public Mono<Task> findByNameNGroup(String name, String groupName) {
+
+        return Mono.from(this.dslContext
+                        .selectFrom(WORKER_TASK)
+                        .where(WORKER_TASK.NAME.eq(name))
+                        .and(WORKER_TASK.GROUP_NAME.eq(groupName)))
+                .map(e -> e.into(this.pojoClass));
     }
 }

@@ -33,49 +33,6 @@ public class QuartzService {
         this.workerMessageResourceService = workerMessageResourceService;
     }
 
-    public Mono<Task> scheduleTask(Task task) {
-        return FlatMapUtil.flatMapMono(
-                        // Step 1: Create job data
-                        () -> {
-                            JobDataMap jobData = new JobDataMap();
-                            jobData.put("taskId", task.getId().toString());
-                            jobData.put("taskData", task.getJobName());
-                            return Mono.just(jobData);
-                        },
-
-                        // Step 2: Create job and schedule
-                        jobData -> {
-                            JobDetail job = JobBuilder.newJob(TaskExecutorJob.class)
-                                    .withIdentity(task.getJobName(), "worker-jobs")
-                                    .usingJobData(jobData)
-                                    .storeDurably()
-                                    .build();
-                            return createCronTriggerAndSchedule(job, task);
-                        },
-
-                        // Step 3: Save task
-                        (jobData, trigger) -> this.taskService.update(task))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SchedulingService.scheduleTask"));
-    }
-
-    private Mono<CronTrigger> createCronTriggerAndSchedule(JobDetail job, Task task) {
-        try {
-            CronTrigger trigger = TriggerBuilder.newTrigger()
-                    .withIdentity(task.getJobName() + "-trigger", "worker-triggers")
-                    .withSchedule(CronScheduleBuilder.cronSchedule(task.getCronExpression())
-                            .withMisfireHandlingInstructionFireAndProceed())
-                    .forJob(job)
-                    .build();
-
-            scheduler.scheduleJob(job, trigger);
-            logger.info("Scheduled cron job: {}", task.getJobName());
-            return Mono.just(trigger);
-        } catch (SchedulerException e) {
-            logger.error("Error scheduling job: {}", e.getMessage());
-            return Mono.error(new RuntimeException("Failed to schedule job", e));
-        }
-    }
-
     public Mono<Void> unscheduleTask(String jobName) {
         return Mono.fromCallable(() -> {
             scheduler.unscheduleJob(TriggerKey.triggerKey(jobName + "-trigger", "worker-triggers"));

@@ -4,6 +4,7 @@ import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.sass.worker.service.WorkerMessageResourceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -26,15 +27,16 @@ public class WorkerConfiguration extends AbstractJooqBaseConfiguration implement
 
     private final WorkerMessageResourceService messageService;
 
+    @Autowired
     protected WorkerConfiguration(WorkerMessageResourceService messageService, ObjectMapper objectMapper) {
         super(objectMapper);
         this.messageService = messageService;
     }
 
-    @Override
     @PostConstruct
+    @Override
     public void initialize() {
-        super.initialize();
+        super.initialize(messageService);
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
             if (name != null) log.debug("{} - {}", name, v);
@@ -44,7 +46,11 @@ public class WorkerConfiguration extends AbstractJooqBaseConfiguration implement
 
     @Bean
     public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-        return this.springSecurityFilterChain(http, authService, this.objectMapper);
+        return this.springSecurityFilterChain(
+                http,
+                authService,
+                this.objectMapper,
+                "/api/worker/schedulers/monitor");
     }
 
     @Bean

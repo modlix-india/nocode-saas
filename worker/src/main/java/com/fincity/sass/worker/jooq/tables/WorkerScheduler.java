@@ -6,6 +6,7 @@ package com.fincity.sass.worker.jooq.tables;
 
 import com.fincity.sass.worker.jooq.Keys;
 import com.fincity.sass.worker.jooq.Worker;
+import com.fincity.sass.worker.jooq.enums.WorkerSchedulerStatus;
 import com.fincity.sass.worker.jooq.tables.WorkerTask.WorkerTaskPath;
 import com.fincity.sass.worker.jooq.tables.records.WorkerSchedulerRecord;
 
@@ -60,40 +61,28 @@ public class WorkerScheduler extends TableImpl<WorkerSchedulerRecord> {
     }
 
     /**
-     * The column <code>worker.worker_scheduler.id</code>. Primary key, unique
+     * The column <code>worker.worker_scheduler.ID</code>. Primary key, unique
      * identifier for each Task
      */
-    public final TableField<WorkerSchedulerRecord, ULong> ID = createField(DSL.name("id"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key, unique identifier for each Task");
+    public final TableField<WorkerSchedulerRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key, unique identifier for each Task");
 
     /**
-     * The column <code>worker.worker_scheduler.name</code>.
+     * The column <code>worker.worker_scheduler.NAME</code>. name of the
+     * scheduler
      */
-    public final TableField<WorkerSchedulerRecord, String> NAME = createField(DSL.name("name"), SQLDataType.VARCHAR(100).nullable(false), this, "");
+    public final TableField<WorkerSchedulerRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(100).nullable(false), this, "name of the scheduler");
 
     /**
-     * The column <code>worker.worker_scheduler.status</code>.
+     * The column <code>worker.worker_scheduler.STATUS</code>. scheduler running
+     * flag
      */
-    public final TableField<WorkerSchedulerRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(20).nullable(false), this, "");
+    public final TableField<WorkerSchedulerRecord, WorkerSchedulerStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("STARTED", SQLDataType.VARCHAR)).asEnumDataType(WorkerSchedulerStatus.class), this, "scheduler running flag");
 
     /**
-     * The column <code>worker.worker_scheduler.is_running</code>.
+     * The column <code>worker.worker_scheduler.INSTANCE_ID</code>. scheduler
+     * instance id
      */
-    public final TableField<WorkerSchedulerRecord, Byte> IS_RUNNING = createField(DSL.name("is_running"), SQLDataType.TINYINT.defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
-
-    /**
-     * The column <code>worker.worker_scheduler.is_standby_mode</code>.
-     */
-    public final TableField<WorkerSchedulerRecord, Byte> IS_STANDBY_MODE = createField(DSL.name("is_standby_mode"), SQLDataType.TINYINT.defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
-
-    /**
-     * The column <code>worker.worker_scheduler.is_shutdown</code>.
-     */
-    public final TableField<WorkerSchedulerRecord, Byte> IS_SHUTDOWN = createField(DSL.name("is_shutdown"), SQLDataType.TINYINT.defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
-
-    /**
-     * The column <code>worker.worker_scheduler.start_time</code>.
-     */
-    public final TableField<WorkerSchedulerRecord, LocalDateTime> START_TIME = createField(DSL.name("start_time"), SQLDataType.LOCALDATETIME(0), this, "");
+    public final TableField<WorkerSchedulerRecord, String> INSTANCE_ID = createField(DSL.name("INSTANCE_ID"), SQLDataType.VARCHAR(32).nullable(false), this, "scheduler instance id");
 
     /**
      * The column <code>worker.worker_scheduler.CREATED_BY</code>. ID of the
@@ -198,7 +187,7 @@ public class WorkerScheduler extends TableImpl<WorkerSchedulerRecord> {
 
     @Override
     public List<UniqueKey<WorkerSchedulerRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_WORKER_SCHEDULER_UK_SCHEDULER_NAME);
+        return Arrays.asList(Keys.KEY_WORKER_SCHEDULER_NAME);
     }
 
     private transient WorkerTaskPath _workerTask;

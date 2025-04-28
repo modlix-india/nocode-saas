@@ -4,6 +4,7 @@
 package com.fincity.sass.worker.jooq.tables.records;
 
 
+import com.fincity.sass.worker.jooq.enums.WorkerSchedulerStatus;
 import com.fincity.sass.worker.jooq.tables.WorkerScheduler;
 
 import java.time.LocalDateTime;
@@ -22,7 +23,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>worker.worker_scheduler.id</code>. Primary key, unique
+     * Setter for <code>worker.worker_scheduler.ID</code>. Primary key, unique
      * identifier for each Task
      */
     public WorkerSchedulerRecord setId(ULong value) {
@@ -31,7 +32,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
     }
 
     /**
-     * Getter for <code>worker.worker_scheduler.id</code>. Primary key, unique
+     * Getter for <code>worker.worker_scheduler.ID</code>. Primary key, unique
      * identifier for each Task
      */
     public ULong getId() {
@@ -39,7 +40,8 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
     }
 
     /**
-     * Setter for <code>worker.worker_scheduler.name</code>.
+     * Setter for <code>worker.worker_scheduler.NAME</code>. name of the
+     * scheduler
      */
     public WorkerSchedulerRecord setName(String value) {
         set(1, value);
@@ -47,85 +49,45 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
     }
 
     /**
-     * Getter for <code>worker.worker_scheduler.name</code>.
+     * Getter for <code>worker.worker_scheduler.NAME</code>. name of the
+     * scheduler
      */
     public String getName() {
         return (String) get(1);
     }
 
     /**
-     * Setter for <code>worker.worker_scheduler.status</code>.
+     * Setter for <code>worker.worker_scheduler.STATUS</code>. scheduler running
+     * flag
      */
-    public WorkerSchedulerRecord setStatus(String value) {
+    public WorkerSchedulerRecord setStatus(WorkerSchedulerStatus value) {
         set(2, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_scheduler.status</code>.
+     * Getter for <code>worker.worker_scheduler.STATUS</code>. scheduler running
+     * flag
      */
-    public String getStatus() {
-        return (String) get(2);
+    public WorkerSchedulerStatus getStatus() {
+        return (WorkerSchedulerStatus) get(2);
     }
 
     /**
-     * Setter for <code>worker.worker_scheduler.is_running</code>.
+     * Setter for <code>worker.worker_scheduler.INSTANCE_ID</code>. scheduler
+     * instance id
      */
-    public WorkerSchedulerRecord setIsRunning(Byte value) {
+    public WorkerSchedulerRecord setInstanceId(String value) {
         set(3, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_scheduler.is_running</code>.
+     * Getter for <code>worker.worker_scheduler.INSTANCE_ID</code>. scheduler
+     * instance id
      */
-    public Byte getIsRunning() {
-        return (Byte) get(3);
-    }
-
-    /**
-     * Setter for <code>worker.worker_scheduler.is_standby_mode</code>.
-     */
-    public WorkerSchedulerRecord setIsStandbyMode(Byte value) {
-        set(4, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>worker.worker_scheduler.is_standby_mode</code>.
-     */
-    public Byte getIsStandbyMode() {
-        return (Byte) get(4);
-    }
-
-    /**
-     * Setter for <code>worker.worker_scheduler.is_shutdown</code>.
-     */
-    public WorkerSchedulerRecord setIsShutdown(Byte value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>worker.worker_scheduler.is_shutdown</code>.
-     */
-    public Byte getIsShutdown() {
-        return (Byte) get(5);
-    }
-
-    /**
-     * Setter for <code>worker.worker_scheduler.start_time</code>.
-     */
-    public WorkerSchedulerRecord setStartTime(LocalDateTime value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>worker.worker_scheduler.start_time</code>.
-     */
-    public LocalDateTime getStartTime() {
-        return (LocalDateTime) get(6);
+    public String getInstanceId() {
+        return (String) get(3);
     }
 
     /**
@@ -133,7 +95,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * user who created this row
      */
     public WorkerSchedulerRecord setCreatedBy(ULong value) {
-        set(7, value);
+        set(4, value);
         return this;
     }
 
@@ -142,7 +104,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(4);
     }
 
     /**
@@ -150,7 +112,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * this row is created
      */
     public WorkerSchedulerRecord setCreatedAt(LocalDateTime value) {
-        set(8, value);
+        set(5, value);
         return this;
     }
 
@@ -159,7 +121,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(5);
     }
 
     /**
@@ -167,7 +129,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * user who last updated this row
      */
     public WorkerSchedulerRecord setUpdatedBy(ULong value) {
-        set(9, value);
+        set(6, value);
         return this;
     }
 
@@ -176,7 +138,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * user who last updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(6);
     }
 
     /**
@@ -184,7 +146,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * this row is last updated
      */
     public WorkerSchedulerRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
+        set(7, value);
         return this;
     }
 
@@ -193,7 +155,7 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
      * this row is last updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(7);
     }
 
     // -------------------------------------------------------------------------
@@ -219,16 +181,13 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
     /**
      * Create a detached, initialised WorkerSchedulerRecord
      */
-    public WorkerSchedulerRecord(ULong id, String name, String status, Byte isRunning, Byte isStandbyMode, Byte isShutdown, LocalDateTime startTime, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public WorkerSchedulerRecord(ULong id, String name, WorkerSchedulerStatus status, String instanceId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(WorkerScheduler.WORKER_SCHEDULER);
 
         setId(id);
         setName(name);
         setStatus(status);
-        setIsRunning(isRunning);
-        setIsStandbyMode(isStandbyMode);
-        setIsShutdown(isShutdown);
-        setStartTime(startTime);
+        setInstanceId(instanceId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

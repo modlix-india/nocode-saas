@@ -27,13 +27,14 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<WorkerSchedulerRecord> KEY_WORKER_SCHEDULER_NAME = Internal.createUniqueKey(WorkerScheduler.WORKER_SCHEDULER, DSL.name("KEY_worker_scheduler_NAME"), new TableField[] { WorkerScheduler.WORKER_SCHEDULER.NAME }, true);
     public static final UniqueKey<WorkerSchedulerRecord> KEY_WORKER_SCHEDULER_PRIMARY = Internal.createUniqueKey(WorkerScheduler.WORKER_SCHEDULER, DSL.name("KEY_worker_scheduler_PRIMARY"), new TableField[] { WorkerScheduler.WORKER_SCHEDULER.ID }, true);
-    public static final UniqueKey<WorkerSchedulerRecord> KEY_WORKER_SCHEDULER_UK_SCHEDULER_NAME = Internal.createUniqueKey(WorkerScheduler.WORKER_SCHEDULER, DSL.name("KEY_worker_scheduler_uk_scheduler_name"), new TableField[] { WorkerScheduler.WORKER_SCHEDULER.NAME }, true);
     public static final UniqueKey<WorkerTaskRecord> KEY_WORKER_TASK_PRIMARY = Internal.createUniqueKey(WorkerTask.WORKER_TASK, DSL.name("KEY_worker_task_PRIMARY"), new TableField[] { WorkerTask.WORKER_TASK.ID }, true);
+    public static final UniqueKey<WorkerTaskRecord> KEY_WORKER_TASK_UNQ_WORKER_TASK_NAME_GROUP = Internal.createUniqueKey(WorkerTask.WORKER_TASK, DSL.name("KEY_worker_task_UNQ_WORKER_TASK_NAME_GROUP"), new TableField[] { WorkerTask.WORKER_TASK.NAME, WorkerTask.WORKER_TASK.GROUP_NAME }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<WorkerTaskRecord, WorkerSchedulerRecord> FK_WORKER_TASK_SCHEDULER = Internal.createForeignKey(WorkerTask.WORKER_TASK, DSL.name("fk_worker_task_scheduler"), new TableField[] { WorkerTask.WORKER_TASK.SCHEDULER }, Keys.KEY_WORKER_SCHEDULER_PRIMARY, new TableField[] { WorkerScheduler.WORKER_SCHEDULER.ID }, true);
+    public static final ForeignKey<WorkerTaskRecord, WorkerSchedulerRecord> FK_WORKER_TASK_SCHEDULER = Internal.createForeignKey(WorkerTask.WORKER_TASK, DSL.name("FK_WORKER_TASK_SCHEDULER"), new TableField[] { WorkerTask.WORKER_TASK.SCHEDULER_ID }, Keys.KEY_WORKER_SCHEDULER_PRIMARY, new TableField[] { WorkerScheduler.WORKER_SCHEDULER.ID }, true);
 }

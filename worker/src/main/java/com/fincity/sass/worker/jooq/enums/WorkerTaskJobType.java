@@ -10,22 +10,18 @@ import org.jooq.Schema;
 
 
 /**
- * JOB Status
+ * job type
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum WorkerTaskStatus implements EnumType {
+public enum WorkerTaskJobType implements EnumType {
 
-    UPCOMING("UPCOMING"),
+    SIMPLE("SIMPLE"),
 
-    FINISHED("FINISHED"),
-
-    FAILED("FAILED"),
-
-    RUNNING("RUNNING");
+    CRON("CRON");
 
     private final String literal;
 
-    private WorkerTaskStatus(String literal) {
+    private WorkerTaskJobType(String literal) {
         this.literal = literal;
     }
 
@@ -54,7 +50,7 @@ public enum WorkerTaskStatus implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static WorkerTaskStatus lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(WorkerTaskStatus.class, literal);
+    public static WorkerTaskJobType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(WorkerTaskJobType.class, literal);
     }
 }

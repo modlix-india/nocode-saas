@@ -22,6 +22,5 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
-    public static final Index WORKER_TASK_IDX_SCHEDULED_TASKS_JOB_NAME = Internal.createIndex(DSL.name("idx_scheduled_tasks_job_name"), WorkerTask.WORKER_TASK, new OrderField[] { WorkerTask.WORKER_TASK.JOB_NAME }, false);
-    public static final Index WORKER_TASK_IDX_SCHEDULED_TASKS_STATUS = Internal.createIndex(DSL.name("idx_scheduled_tasks_status"), WorkerTask.WORKER_TASK, new OrderField[] { WorkerTask.WORKER_TASK.STATUS }, false);
+    public static final Index WORKER_TASK_IDX_WORKER_TASK_NAME = Internal.createIndex(DSL.name("IDX_WORKER_TASK_NAME"), WorkerTask.WORKER_TASK, new OrderField[] { WorkerTask.WORKER_TASK.NAME }, false);
 }

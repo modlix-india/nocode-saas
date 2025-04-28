@@ -7,7 +7,8 @@ package com.fincity.sass.worker.jooq.tables;
 import com.fincity.sass.worker.jooq.Indexes;
 import com.fincity.sass.worker.jooq.Keys;
 import com.fincity.sass.worker.jooq.Worker;
-import com.fincity.sass.worker.jooq.enums.WorkerTaskStatus;
+import com.fincity.sass.worker.jooq.enums.WorkerTaskJobType;
+import com.fincity.sass.worker.jooq.enums.WorkerTaskLastFireStatus;
 import com.fincity.sass.worker.jooq.tables.WorkerScheduler.WorkerSchedulerPath;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTaskRecord;
 
@@ -22,6 +23,7 @@ import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -63,43 +65,114 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
     }
 
     /**
-     * The column <code>worker.worker_task.id</code>. Primary key, unique
+     * The column <code>worker.worker_task.ID</code>. Primary key, unique
      * identifier for each Task
      */
-    public final TableField<WorkerTaskRecord, ULong> ID = createField(DSL.name("id"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key, unique identifier for each Task");
+    public final TableField<WorkerTaskRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key, unique identifier for each Task");
 
     /**
-     * The column <code>worker.worker_task.job_name</code>. name of job
+     * The column <code>worker.worker_task.NAME</code>. name of job
      */
-    public final TableField<WorkerTaskRecord, String> JOB_NAME = createField(DSL.name("job_name"), SQLDataType.VARCHAR(255).nullable(false), this, "name of job");
+    public final TableField<WorkerTaskRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(255).nullable(false), this, "name of job");
 
     /**
-     * The column <code>worker.worker_task.cron_expression</code>. job schedule
-     * expression
+     * The column <code>worker.worker_task.CLIENT_ID</code>. Identifier for the
+     * client to which this job belongs. References security_client table
      */
-    public final TableField<WorkerTaskRecord, String> CRON_EXPRESSION = createField(DSL.name("cron_expression"), SQLDataType.VARCHAR(100).nullable(false), this, "job schedule expression");
+    public final TableField<WorkerTaskRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the client to which this job belongs. References security_client table");
 
     /**
-     * The column <code>worker.worker_task.next_execution_time</code>. upcoming
+     * The column <code>worker.worker_task.APP_ID</code>. Identifier for the
+     * application to which this job belongs. References security_app table
+     */
+    public final TableField<WorkerTaskRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application to which this job belongs. References security_app table");
+
+    /**
+     * The column <code>worker.worker_task.SCHEDULER_ID</code>. Identifier for
+     * the scheduler to which this job belongs. References worker_scheduler
+     * table
+     */
+    public final TableField<WorkerTaskRecord, ULong> SCHEDULER_ID = createField(DSL.name("SCHEDULER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the scheduler to which this job belongs. References worker_scheduler table");
+
+    /**
+     * The column <code>worker.worker_task.GROUP_NAME</code>. job group name
+     */
+    public final TableField<WorkerTaskRecord, String> GROUP_NAME = createField(DSL.name("GROUP_NAME"), SQLDataType.VARCHAR(255).nullable(false), this, "job group name");
+
+    /**
+     * The column <code>worker.worker_task.DESCRIPTION</code>. description about
+     * the job
+     */
+    public final TableField<WorkerTaskRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.VARCHAR(255), this, "description about the job");
+
+    /**
+     * The column <code>worker.worker_task.JOB_TYPE</code>. job type
+     */
+    public final TableField<WorkerTaskRecord, WorkerTaskJobType> JOB_TYPE = createField(DSL.name("JOB_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("SIMPLE", SQLDataType.VARCHAR)).asEnumDataType(WorkerTaskJobType.class), this, "job type");
+
+    /**
+     * The column <code>worker.worker_task.JOB_DATA</code>. job data
+     */
+    public final TableField<WorkerTaskRecord, JSON> JOB_DATA = createField(DSL.name("JOB_DATA"), SQLDataType.JSON, this, "job data");
+
+    /**
+     * The column <code>worker.worker_task.DURABLE</code>. if we want to keep
+     * job even if it does not have any trigger
+     */
+    public final TableField<WorkerTaskRecord, Byte> DURABLE = createField(DSL.name("DURABLE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "if we want to keep job even if it does not have any trigger");
+
+    /**
+     * The column <code>worker.worker_task.START_TIME</code>. task start
+     * datetime
+     */
+    public final TableField<WorkerTaskRecord, LocalDateTime> START_TIME = createField(DSL.name("START_TIME"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "task start datetime");
+
+    /**
+     * The column <code>worker.worker_task.END_TIME</code>. task end datetime
+     */
+    public final TableField<WorkerTaskRecord, LocalDateTime> END_TIME = createField(DSL.name("END_TIME"), SQLDataType.LOCALDATETIME(0), this, "task end datetime");
+
+    /**
+     * The column <code>worker.worker_task.SCHEDULE</code>. job schedule
+     * expression for simple/cron job
+     */
+    public final TableField<WorkerTaskRecord, String> SCHEDULE = createField(DSL.name("SCHEDULE"), SQLDataType.VARCHAR(255).nullable(false), this, "job schedule expression for simple/cron job");
+
+    /**
+     * The column <code>worker.worker_task.REPEAT_INTERVAL</code>. total times
+     * this job will repeat, only applicable for simple jobs
+     */
+    public final TableField<WorkerTaskRecord, Integer> REPEAT_INTERVAL = createField(DSL.name("REPEAT_INTERVAL"), SQLDataType.INTEGER, this, "total times this job will repeat, only applicable for simple jobs");
+
+    /**
+     * The column <code>worker.worker_task.RECOVERABLE</code>. re-run the job if
+     * the scheduler crashed before finishing
+     */
+    public final TableField<WorkerTaskRecord, Byte> RECOVERABLE = createField(DSL.name("RECOVERABLE"), SQLDataType.TINYINT.defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "re-run the job if the scheduler crashed before finishing");
+
+    /**
+     * The column <code>worker.worker_task.NEXT_FIRE_TIME</code>. upcoming
      * execution at
      */
-    public final TableField<WorkerTaskRecord, LocalDateTime> NEXT_EXECUTION_TIME = createField(DSL.name("next_execution_time"), SQLDataType.LOCALDATETIME(0), this, "upcoming execution at");
+    public final TableField<WorkerTaskRecord, LocalDateTime> NEXT_FIRE_TIME = createField(DSL.name("NEXT_FIRE_TIME"), SQLDataType.LOCALDATETIME(0), this, "upcoming execution at");
 
     /**
-     * The column <code>worker.worker_task.last_execution_time</code>. last
-     * execution at
+     * The column <code>worker.worker_task.LAST_FIRE_TIME</code>. last execution
+     * at
      */
-    public final TableField<WorkerTaskRecord, LocalDateTime> LAST_EXECUTION_TIME = createField(DSL.name("last_execution_time"), SQLDataType.LOCALDATETIME(0), this, "last execution at");
+    public final TableField<WorkerTaskRecord, LocalDateTime> LAST_FIRE_TIME = createField(DSL.name("LAST_FIRE_TIME"), SQLDataType.LOCALDATETIME(0), this, "last execution at");
 
     /**
-     * The column <code>worker.worker_task.status</code>. JOB Status
+     * The column <code>worker.worker_task.LAST_FIRE_STATUS</code>. last task
+     * execution status
      */
-    public final TableField<WorkerTaskRecord, WorkerTaskStatus> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(8).nullable(false).asEnumDataType(WorkerTaskStatus.class), this, "JOB Status");
+    public final TableField<WorkerTaskRecord, WorkerTaskLastFireStatus> LAST_FIRE_STATUS = createField(DSL.name("LAST_FIRE_STATUS"), SQLDataType.VARCHAR(7).asEnumDataType(WorkerTaskLastFireStatus.class), this, "last task execution status");
 
     /**
-     * The column <code>worker.worker_task.last_execution_result</code>.
+     * The column <code>worker.worker_task.LAST_FIRE_RESULT</code>. last
+     * execution log
      */
-    public final TableField<WorkerTaskRecord, String> LAST_EXECUTION_RESULT = createField(DSL.name("last_execution_result"), SQLDataType.CLOB, this, "");
+    public final TableField<WorkerTaskRecord, String> LAST_FIRE_RESULT = createField(DSL.name("LAST_FIRE_RESULT"), SQLDataType.CLOB, this, "last execution log");
 
     /**
      * The column <code>worker.worker_task.CREATED_BY</code>. ID of the user who
@@ -124,11 +197,6 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
      * is last updated
      */
     public final TableField<WorkerTaskRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is last updated");
-
-    /**
-     * The column <code>worker.worker_task.scheduler</code>.
-     */
-    public final TableField<WorkerTaskRecord, ULong> SCHEDULER = createField(DSL.name("scheduler"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "");
 
     private WorkerTask(Name alias, Table<WorkerTaskRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -199,7 +267,7 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.WORKER_TASK_IDX_SCHEDULED_TASKS_JOB_NAME, Indexes.WORKER_TASK_IDX_SCHEDULED_TASKS_STATUS);
+        return Arrays.asList(Indexes.WORKER_TASK_IDX_WORKER_TASK_NAME);
     }
 
     @Override
@@ -210,6 +278,11 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
     @Override
     public UniqueKey<WorkerTaskRecord> getPrimaryKey() {
         return Keys.KEY_WORKER_TASK_PRIMARY;
+    }
+
+    @Override
+    public List<UniqueKey<WorkerTaskRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_WORKER_TASK_UNQ_WORKER_TASK_NAME_GROUP);
     }
 
     @Override

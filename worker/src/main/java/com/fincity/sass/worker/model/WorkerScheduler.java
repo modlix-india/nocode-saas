@@ -1,13 +1,13 @@
 package com.fincity.sass.worker.model;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.sass.worker.jooq.enums.WorkerSchedulerStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.jooq.types.ULong;
 
 import java.io.Serial;
-import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -18,12 +18,6 @@ public class WorkerScheduler extends AbstractUpdatableDTO<ULong, ULong> {
     private static final long serialVersionUID = 8014247343448800096L;
 
     private String name;
-    private String status;
-    private boolean isRunning;
-    private boolean isStandbyMode;
-    private boolean isShutdown;
-    private LocalDateTime startTime;
-
-
-
+    private WorkerSchedulerStatus status;
+    private String instanceId;
 }
