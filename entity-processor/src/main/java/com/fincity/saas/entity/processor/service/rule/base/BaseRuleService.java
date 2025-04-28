@@ -6,10 +6,7 @@ import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceServic
 import com.fincity.saas.entity.processor.dao.rule.base.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.service.base.BaseService;
-import java.util.HashMap;
-import java.util.Map;
 import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -28,17 +25,6 @@ public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends Ba
 
             e.setVersion(e.getVersion() + 1);
             return Mono.just(e);
-        });
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        if (fields == null || key == null) return Mono.just(new HashMap<>());
-
-        return super.updatableFields(key, fields).flatMap(f -> {
-            f.remove(BaseRule.Fields.ruleId);
-            return Mono.just(f);
         });
     }
 }

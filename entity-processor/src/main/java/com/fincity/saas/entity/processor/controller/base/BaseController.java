@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.controller.base;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseFlowDto;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import org.jooq.UpdatableRecord;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 
 public class BaseController<
                 R extends UpdatableRecord<R>,
-                D extends BaseFlowDto<D>,
+                D extends BaseDto<D>,
                 O extends BaseDAO<R, D>,
                 S extends BaseService<R, D, O>>
         extends AbstractJOOQUpdatableDataController<R, ULong, D, O, S> {

@@ -8,7 +8,6 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.EntityDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
-import com.fincity.saas.entity.processor.dto.Entity.Fields;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
@@ -16,8 +15,6 @@ import com.fincity.saas.entity.processor.model.EntityRequest;
 import com.fincity.saas.entity.processor.model.base.Identity;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-import java.util.HashMap;
-import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -73,21 +70,6 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
             e.setStatus(entity.getStatus());
 
             return Mono.just(e);
-        });
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        if (fields == null || key == null) return Mono.just(new HashMap<>());
-
-        return super.updatableFields(key, fields).flatMap(f -> {
-            f.remove(Fields.modelId);
-            f.remove(Fields.productId);
-            f.remove(Fields.source);
-            f.remove(Fields.subSource);
-
-            return Mono.just(f);
         });
     }
 

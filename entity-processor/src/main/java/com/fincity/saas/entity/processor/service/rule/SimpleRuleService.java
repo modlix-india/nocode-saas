@@ -1,13 +1,11 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.rule.SimpleRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleRulesRecord;
 import com.fincity.saas.entity.processor.service.rule.base.BaseRuleService;
-
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service

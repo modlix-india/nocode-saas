@@ -16,7 +16,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class BaseFlowDto<T extends BaseFlowDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong> {
+public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong> {
 
     @Serial
     private static final long serialVersionUID = 1844345864104376760L;

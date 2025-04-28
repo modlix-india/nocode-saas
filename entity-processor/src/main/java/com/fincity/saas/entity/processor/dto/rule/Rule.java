@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
-import com.fincity.saas.entity.processor.dto.base.BaseFlowDto;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import java.io.Serial;
@@ -16,7 +16,7 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Rule extends BaseFlowDto<Rule> implements IEntitySeries {
+public class Rule extends BaseDto<Rule> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 3634716140733876196L;

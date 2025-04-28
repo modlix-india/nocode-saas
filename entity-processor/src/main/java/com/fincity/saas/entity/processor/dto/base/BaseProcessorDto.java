@@ -15,7 +15,7 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends BaseFlowDto<T> implements IEntitySeries {
+public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends BaseDto<T> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 5174424228629814984L;

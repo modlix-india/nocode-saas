@@ -4,11 +4,10 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseProductDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseFlowDto;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
 import com.fincity.saas.entity.processor.model.base.IdAndValue;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -69,18 +68,6 @@ public abstract class BaseProductService<
             e.setIsParent(entity.getParentLevel0() == null && entity.getParentLevel1() == null);
 
             return Mono.just(e);
-        });
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        if (fields == null || key == null) return Mono.just(new HashMap<>());
-
-        return super.updatableFields(key, fields).flatMap(f -> {
-            f.remove(BaseProductDto.Fields.productId);
-
-            return Mono.just(f);
         });
     }
 
@@ -172,7 +159,7 @@ public abstract class BaseProductService<
                         this.getAllProductMap(appCode, clientCode, productId)),
                 tup -> Mono.just(tup.getT1().stream()
                         .collect(Collectors.toMap(
-                                BaseFlowDto::getName,
+                                BaseDto::getName,
                                 product -> this.getProductChildNamesSet(product, tup.getT2()),
                                 (a, b) -> b))));
     }
