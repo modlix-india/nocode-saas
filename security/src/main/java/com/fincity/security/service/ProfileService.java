@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
+import com.fincity.saas.commons.util.StringUtil;
 import com.google.common.base.Functions;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.NotNull;
@@ -185,26 +186,28 @@ public class ProfileService
             i++;
         }
 
-        Map<ULong, Map<String, Object>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
-                .collect(Collectors.toMap(m -> ULong.valueOf(m.get("roleId").toString()), Functions.identity()));
+        Map<ULong, List<Map<String, Object>>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
+                .collect(Collectors.groupingBy(m -> ULong.valueOf(m.get("roleId").toString())));
 
         if (roleIndex.isEmpty()) return Mono.just(p);
 
         return this.roleService.getRolesForProfileService(roleIndex.keySet())
                 .map(map -> {
-                            roleIndex.forEach((key, arrangement) -> {
+                            roleIndex.forEach((key, arrangements) -> {
                                 RoleV2 role = map.get(key);
 
-                                arrangement.remove("role");
-                                if (safeEquals(arrangement.get("name"), role.getName()))
-                                    arrangement.remove("name");
+                                arrangements.forEach(arrangement -> {
+                                    arrangement.remove("role");
+                                    if (safeEquals(arrangement.get("name"), role.getName()))
+                                        arrangement.remove("name");
 
-                                if (safeEquals(arrangement.get("shortName"), role.getShortName()))
-                                    arrangement.remove("shortName");
+                                    if (safeEquals(arrangement.get("shortName"), role.getShortName()))
+                                        arrangement.remove("shortName");
 
-                                if (safeEquals(arrangement.get("description"), role.getDescription()))
-                                    arrangement.remove("description");
+                                    if (safeEquals(arrangement.get("description"), role.getDescription()))
+                                        arrangement.remove("description");
 
+                                });
                             });
                             return map;
                         }
@@ -381,11 +384,16 @@ public class ProfileService
 
         return Flux.fromIterable(profileIds)
                 .flatMap(
-                        pid -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_ID + "_" + pid,
+                        pid -> cacheService.cacheValueOrGet(CACHE_NAME_ID + "_" + pid,
                                         () -> this.dao.getProfileAuthorities(pid,
-                                                clientHierarchy),
+                                                        clientHierarchy).defaultIfEmpty(List.of())
+                                                .map(e -> {
+                                                    System.out.println("List (" + pid + "): " + e);
+                                                    return e;
+                                                }),
                                         clientHierarchy.getClientId())
                                 .flatMapMany(Flux::fromIterable))
+                .filter(Objects::nonNull)
                 .distinct()
                 .collectList();
     }
@@ -398,7 +406,7 @@ public class ProfileService
 
                         profileIds -> this.clientHierarchyService.getClientHierarchy(clientId),
 
-                        (profileIds, clientHierarchy) -> this.getProfileAuthorities(profileIds, clientHierarchy)
+                        this::getProfileAuthorities
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getProfileAuthorities"));
@@ -439,5 +447,19 @@ public class ProfileService
                 ).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.getRolesForAssignmentInApp"))
                 .switchIfEmpty(Mono.defer(() -> this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg)
                         , SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS)));
+    }
+
+    public Mono<Boolean> checkIfUserHasAnyProfile(ULong userId, String appCode) {
+
+        if (userId == null || StringUtil.safeIsBlank(appCode)) return Mono.just(false);
+
+        return this.dao.checkIfUserHasAnyProfile(userId, appCode);
+    }
+
+    public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {
+        return this.dao.getAssignedProfileIds(userId, appId)
+                .distinct()
+                .flatMap(this::read)
+                .collectList();
     }
 }

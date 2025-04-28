@@ -436,17 +436,18 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
     public Mono<Integer> addProfileToUser(ULong userId, ULong profileId) {
 
         return Mono.from(this.dslContext
-                        .insertInto(SecurityProfileUser.SECURITY_PROFILE_USER,
-                                SecurityProfileUser.SECURITY_PROFILE_USER.USER_ID,
-                                SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID)
-                        .values(this.dslContext
-                                .select(DSL.val(userId).as("USER_ID"),
-                                        DSL.coalesce(SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID,
-                                                SecurityProfile.SECURITY_PROFILE.ID).as("PROFILE_ID"))
-                                .from(SecurityProfile.SECURITY_PROFILE)
-                                .where(SecurityProfile.SECURITY_PROFILE.ID.eq(profileId))
-                                .fetchOne())
-                        .onDuplicateKeyIgnore())
+                        .select(DSL.val(userId).as("USER_ID"),
+                                DSL.coalesce(SecurityProfile.SECURITY_PROFILE.ROOT_PROFILE_ID,
+                                        SecurityProfile.SECURITY_PROFILE.ID).as("PROFILE_ID"))
+                        .from(SecurityProfile.SECURITY_PROFILE)
+                        .where(SecurityProfile.SECURITY_PROFILE.ID.eq(profileId)).limit(1))
+                .flatMap(rec ->
+                        Mono.from(this.dslContext
+                                .insertInto(SecurityProfileUser.SECURITY_PROFILE_USER,
+                                        SecurityProfileUser.SECURITY_PROFILE_USER.USER_ID,
+                                        SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID)
+                                .values(rec.value1(), rec.value2())
+                                .onDuplicateKeyIgnore()))
                 .map(value -> value > 0 ? 1 : 0);
     }
 
