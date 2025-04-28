@@ -2,6 +2,7 @@ package com.fincity.security.controller;
 
 import java.util.List;
 
+import com.fincity.security.dto.Profile;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -48,6 +49,11 @@ public class UserController
 
         return userService.assignProfileToUser(userId, profileId)
                 .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("{userId}/app/{appId}/assignedProfiles")
+    public Mono<ResponseEntity<List<Profile>>> assignedProfiles(@PathVariable ULong userId, @PathVariable ULong appId) {
+        return userService.assignedProfiles(userId, appId).map(ResponseEntity::ok);
     }
 
     @GetMapping("{userId}/removeRole/{roleId}")

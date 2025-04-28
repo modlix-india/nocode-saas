@@ -9,6 +9,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.security.dto.*;
+import org.jooq.Record;
+import org.jooq.RecordMapper;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -39,11 +42,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
-import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.dto.TokenObject;
-import com.fincity.security.dto.User;
-import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -1168,5 +1166,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .length() - 50))
                 .setExpiresAt(token.getT2())
                 .setIpAddress(hostAddress));
+    }
+
+    public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {
+        return this.profileService.assignedProfiles(userId, appId);
     }
 }

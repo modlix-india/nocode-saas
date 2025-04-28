@@ -455,4 +455,11 @@ public class ProfileService
 
         return this.dao.checkIfUserHasAnyProfile(userId, appCode);
     }
+
+    public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {
+        return this.dao.getAssignedProfileIds(userId, appId)
+                .distinct()
+                .flatMap(this::read)
+                .collectList();
+    }
 }

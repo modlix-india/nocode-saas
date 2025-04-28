@@ -805,4 +805,14 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         SECURITY_APP.APP_CODE.eq((appCode))
                 ))).map(Record1::value1).map(count -> count > 0);
     }
+
+    public Flux<ULong> getAssignedProfileIds(ULong userId, ULong appId) {
+        return Flux.from(this.dslContext.select(SECURITY_PROFILE_USER.PROFILE_ID)
+                .from(SECURITY_PROFILE_USER)
+                .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                .where(DSL.and(
+                        SECURITY_PROFILE_USER.USER_ID.eq(userId),
+                        SECURITY_PROFILE.APP_ID.eq(appId)
+                ))).map(Record1::value1);
+    }
 }
