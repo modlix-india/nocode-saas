@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.model.ModelRequest;
+import com.fincity.saas.entity.processor.model.request.ModelRequest;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
 import lombok.Data;

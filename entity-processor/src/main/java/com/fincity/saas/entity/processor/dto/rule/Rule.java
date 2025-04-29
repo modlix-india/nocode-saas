@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.dto.rule;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.model.rule.RuleRequest;
+import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

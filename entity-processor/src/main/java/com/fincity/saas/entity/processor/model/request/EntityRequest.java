@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model;
+package com.fincity.saas.entity.processor.model.request;
 
 import com.fincity.saas.entity.processor.model.base.Email;
 import com.fincity.saas.entity.processor.model.base.Identity;

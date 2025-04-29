@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model;
+package com.fincity.saas.entity.processor.model.request;
 
 import java.io.Serial;
 import java.io.Serializable;

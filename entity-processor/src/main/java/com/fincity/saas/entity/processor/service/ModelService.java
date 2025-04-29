@@ -7,7 +7,7 @@ import com.fincity.saas.entity.processor.dao.ModelDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Model;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorModelsRecord;
-import com.fincity.saas.entity.processor.model.ModelRequest;
+import com.fincity.saas.entity.processor.model.request.ModelRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
