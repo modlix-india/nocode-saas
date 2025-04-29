@@ -4,7 +4,7 @@ package com.fincity.saas.entity.collector.enums;
 import lombok.Getter;
 
 @Getter
-public enum EntityFieldType {
+public enum LeadFieldType {
     EMAIL("email"),
     FULL_NAME("fullName"),
     PHONE("phone"),
@@ -30,15 +30,15 @@ public enum EntityFieldType {
 
     private final String fieldName;
 
-    EntityFieldType(String fieldName) {
+    LeadFieldType(String fieldName) {
         this.fieldName = fieldName;
     }
 
-    public static EntityFieldType fromType(String type) {
+    public static LeadFieldType fromType(String type) {
         if (type == null) return null;
 
         try {
-            return EntityFieldType.valueOf(type);
+            return LeadFieldType.valueOf(type);
         } catch (IllegalArgumentException e) {
             return null;
         }

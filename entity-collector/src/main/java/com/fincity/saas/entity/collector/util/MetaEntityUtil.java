@@ -1,44 +1,45 @@
 package com.fincity.saas.entity.collector.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fincity.saas.entity.collector.dto.CampaignDetails;
+import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
-import com.fincity.saas.entity.collector.enums.EntityFieldType;
-import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
+import com.fincity.saas.entity.collector.dto.LeadDetails;
+import com.fincity.saas.entity.collector.enums.LeadFieldType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
+import static com.fincity.saas.entity.collector.util.EntityUtil.populateStaticFields;
 import static org.flywaydb.core.internal.util.ClassUtils.setFieldValue;
 
-
 @Slf4j
+@Component 
 public class MetaEntityUtil {
 
-    private final IFeignCoreService coreService;
-
-    private static final WebClient webClient = WebClient.create();
-
+    private static final String ID = "id";
+    private static final String NAME = "name";
+    private static final String META_HOST = "graph.facebook.com";
+    private static final String SCHEME = "https";
     private static final String META_VERSION = "/v22.0/";
     private static final String ACCESS_TOKEN = "access_token";
-    public static final String CONNECTION_NAME = "meta_facebook_connection";
     private static final String META_FIELD = "fields";
     private static final String META_QUESTION = "questions";
-    private static final  String KEY = "key";
+    private static final String KEY = "key";
     private static final String TYPE = "type";
     private static final String LABEL = "label";
-    private static final String NAME = "name";
     private static final String VALUES = "values";
     private static final String CUSTOM = "CUSTOM";
     private static final String FORM_ID = "form_id";
@@ -47,77 +48,170 @@ public class MetaEntityUtil {
     private static final String ENTRY = "entry";
     private static final String CHANGES = "changes";
     private static final String SUBSCRIBE = "subscribe";
+    private static final String VALUE = "value";
+    private static final String AD_ID = "ad_id";
+    private static final String ADSET = "adset";
+    private static final String CAMPAIGN = "campaign";
+    private static final String AD_FIELDS = "id,name,adset,campaign";
+    private static final String BASIC_ENTITY_FIELDS = "id,name";
 
+    private static final WebClient webClient = WebClient.create();
 
     @Value("${entity-collector.meta.webhook.verify-token}")
     private String token;
 
-    public MetaEntityUtil(IFeignCoreService coreService) {
-        this.coreService = coreService;
+    public static Mono<JsonNode> fetchMetaGraphData(String path, Map<String, String> queryParams) {
+        return webClient.get()
+                .uri(uriBuilder -> {
+                    var builder = uriBuilder.scheme(SCHEME)
+                            .host(META_HOST)
+                            .path(path);
+                    queryParams.forEach(builder::queryParam);
+                    return builder.build();
+                })
+                .retrieve()
+                .bodyToMono(JsonNode.class);
     }
 
+    private static Map<String, String> buildParams(String token, String fields) {
+        return Map.of(
+                ACCESS_TOKEN, token,
+                META_FIELD, fields
+        );
+    }
 
-    public static Mono<JsonNode> fetchMetaGraphData(String path, Map<String, String> queryParams) {
-        WebClient.RequestHeadersUriSpec<?> uriSpec = webClient.get();
+    public static Mono<JsonNode> fetchMetaAdDetails(String adId, String token) {
+        return fetchMetaGraphData(META_VERSION + adId, buildParams(token, AD_FIELDS));
+    }
 
-        WebClient.RequestHeadersSpec<?> headersSpec = uriSpec.uri(uriBuilder -> {
-            var builder = uriBuilder.scheme("https").host("graph.facebook.com").path(path);
-            queryParams.forEach(builder::queryParam);
-            return builder.build();
-        });
-        return headersSpec.retrieve().bodyToMono(JsonNode.class);
+    public static Mono<JsonNode> fetchMetaCampaignDetails(String campaignId, String token) {
+        return fetchMetaGraphData(META_VERSION + campaignId, buildParams(token, BASIC_ENTITY_FIELDS));
+    }
+
+    public static Mono<JsonNode> fetchMetaAdSetDetails(String adSetId, String token) {
+        return fetchMetaGraphData(META_VERSION + adSetId, buildParams(token, BASIC_ENTITY_FIELDS));
     }
 
     public static Mono<Tuple2<JsonNode, JsonNode>> fetchMetaData(String leadGenId, String formId, String token) {
-        return fetchMetaGraphData(META_VERSION + leadGenId, Map.of(ACCESS_TOKEN, token))
-                .flatMap(leadData -> fetchMetaGraphData(META_VERSION + formId,
-                        Map.of(META_FIELD, META_QUESTION, ACCESS_TOKEN, token))
-                        .map(formData -> Tuples.of(leadData, formData))
-                );
+        Mono<JsonNode> leadDataMono = fetchMetaGraphData(META_VERSION + leadGenId,
+                Map.of(ACCESS_TOKEN, token));
+
+        Mono<JsonNode> formDataMono = fetchMetaGraphData(META_VERSION + formId,
+                Map.of(ACCESS_TOKEN, token, META_FIELD, META_QUESTION));
+
+        return leadDataMono.flatMap(leadData ->
+                formDataMono.map(formData -> Tuples.of(leadData, formData))
+        );
     }
 
 
-    public static EntityResponse normalizeMetaEntity(JsonNode leadDetails, JsonNode formDetails) {
-        ObjectNode normalized = JsonNodeFactory.instance.objectNode();
-        ObjectNode customFieldsObject = JsonNodeFactory.instance.objectNode();
-        EntityResponse response =new EntityResponse();
+    private static EntityResponse buildEntityResponse(LeadDetails lead, CampaignDetails campaignDetails) {
+        EntityResponse response = new EntityResponse();
+        response.setLeadDetails(lead);
+        response.setCampaignDetails(campaignDetails);
+        return response;
+    }
+
+    public static List<ExtractPayload> extractMetaPayload(JsonNode payload) {
+        if (payload == null || !payload.has(ENTRY)) {
+            throw new RuntimeException("Invalid Facebook payload structure.");
+        }
+
+        List<ExtractPayload> payloads = new ArrayList<>();
+        payload.get(ENTRY).forEach(entry ->
+                entry.path(CHANGES).forEach(change -> {
+                    JsonNode value = change.path(VALUE);
+                    String formId = value.path(FORM_ID).asText(null);
+                    String leadGenId = value.path(LEADGEN_ID).asText(null);
+                    String adId = value.path(AD_ID).asText(null);
+
+                    if (formId != null && leadGenId != null && adId != null) {
+                        payloads.add(new ExtractPayload(formId, leadGenId, adId));
+                    }
+                })
+        );
+
+        if (payloads.isEmpty()) throw new RuntimeException("No valid leadgen data found in Facebook payload.");
+        return payloads;
+    }
+
+    public static Mono<EntityResponse> normalizeMetaEntity(
+            JsonNode incomingLead,
+            JsonNode formDetails,
+            String adId,
+            String token,
+            EntityIntegration integration
+    ) {
+        return buildCampaignDetails(adId, token)
+                .flatMap(campaignDetails -> {
+                    LeadDetails leadDetails = buildLeadDetails(incomingLead, formDetails, integration);
+                    return Mono.just(buildEntityResponse(leadDetails, campaignDetails));
+                });
+    }
+
+    private static Mono<CampaignDetails> buildCampaignDetails(String adId, String token) {
+        Mono<JsonNode> adDetailsMono = fetchMetaAdDetails(adId, token);
+        Mono<JsonNode> campaignDetailsMono = adDetailsMono.flatMap(ad -> fetchMetaCampaignDetails(ad.path(CAMPAIGN).path(ID).asText(), token));
+        Mono<JsonNode> adSetDetailsMono = adDetailsMono.flatMap(ad -> fetchMetaAdSetDetails(ad.path(ADSET).path(ID).asText(), token));
+
+        return Mono.zip(adDetailsMono, campaignDetailsMono, adSetDetailsMono)
+                .map(tuple -> {
+                    JsonNode ad = tuple.getT1();
+                    JsonNode campaign = tuple.getT2();
+                    JsonNode adSet = tuple.getT3();
+
+                    CampaignDetails cd = new CampaignDetails();
+                    cd.setAdId(ad.path(ID).asText());
+                    cd.setAdName(ad.path(NAME).asText());
+                    cd.setCampaignId(campaign.path(ID).asText());
+                    cd.setCampaignName(campaign.path(NAME).asText());
+                    cd.setAdSetId(adSet.path(ID).asText());
+                    cd.setAdSetName(adSet.path(NAME).asText());
+
+                    return cd;
+                });
+    }
+
+    private static LeadDetails buildLeadDetails(JsonNode incomingLead, JsonNode formDetails, EntityIntegration integration) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode customFieldsNode = JsonNodeFactory.instance.objectNode();
+        LeadDetails lead = new LeadDetails();
 
         Map<String, String> typeMapping = new HashMap<>();
         Map<String, String> labelMapping = new HashMap<>();
-        JsonNode questions = formDetails.path(META_QUESTION);
 
-        for (JsonNode question : questions) {
+        for (JsonNode question : formDetails.path(META_QUESTION)) {
             String key = question.path(KEY).asText();
-            String type = question.path(TYPE).asText();
-            String label = question.path(LABEL).asText();
-
-            typeMapping.put(key, type);
-            labelMapping.put(key, label);
+            typeMapping.put(key, question.path(TYPE).asText());
+            labelMapping.put(key, question.path(LABEL).asText());
         }
 
-        JsonNode fieldData = leadDetails.path(FIELD_DATA);
-
-        for (JsonNode field : leadDetails.path(FIELD_DATA)) {
+        for (JsonNode field : incomingLead.path(FIELD_DATA)) {
             String key = field.path(NAME).asText();
-            JsonNode values = field.path(VALUES);
-            String value = values.isArray() && !values.isEmpty() ? values.get(0).asText() : "";
+            String value = field.path(VALUES).isArray() && !field.path(VALUES).isEmpty()
+                    ? field.path(VALUES).get(0).asText() : "";
 
             String type = typeMapping.get(key);
             String label = labelMapping.get(key);
 
             if (CUSTOM.equalsIgnoreCase(type)) {
-                customFieldsObject.put(label, value);
+                customFieldsNode.put(label, value);
             } else {
-                EntityFieldType fieldType = EntityFieldType.fromType(type);
+                LeadFieldType fieldType = LeadFieldType.fromType(type);
                 if (fieldType != null) {
-                    setFieldValue(response, fieldType.getFieldName(), value);
+                    setFieldValue(lead, fieldType.getFieldName(), value);
                 }
-
             }
         }
 
-        response.setCustomFields(customFieldsObject);
-        return response;
+        populateStaticFields(lead, integration, "Facebook", "socialMedia", "Facebook");
+
+        Map<String, String> customFields = mapper.convertValue(
+                customFieldsNode, new TypeReference<Map<String, String>>() {
+                });
+        lead.setCustomFields(customFields);
+
+        return lead;
     }
 
     public Mono<ResponseEntity<String>> verifyMetaWebhook(String mode, String verifyToken, String challenge) {
@@ -128,43 +222,7 @@ public class MetaEntityUtil {
         );
     }
 
-    private Mono<String> fetchOAuthToken(String clientCode, String appCode) {
-        return coreService.getConnectionOAuth2Token(
-                "",
-                "",
-                "",
-                clientCode,
-                appCode,
-                CONNECTION_NAME
-        );
-    }
-
-    public record ExtractPayload(Set<String> formIds, String leadGenId) { }
-
-    public static ExtractPayload extractMetaPayload(JsonNode payload) {
-        if (payload == null || !payload.has(ENTRY)) {
-            throw new RuntimeException("Invalid Facebook payload structure.");
-        }
-
-        Set<String> formIds = new HashSet<>();
-        String[] leadGenIdHolder = new String[1];
-
-        payload.get(ENTRY).forEach(entry ->
-                entry.path(CHANGES).forEach(change -> {
-                    JsonNode value = change.path(VALUES);
-                    String formId = value.path(FORM_ID).asText(null);
-                    if (formId != null) formIds.add(formId);
-
-                    if (leadGenIdHolder[0] == null && value.has(LEADGEN_ID)) {
-                        leadGenIdHolder[0] = value.get(LEADGEN_ID).asText();
-                    }
-                })
-        );
-
-        if (formIds.isEmpty()) throw new RuntimeException("No form_id found in Facebook payload.");
-        if (leadGenIdHolder[0] == null) throw new RuntimeException("leadgen_id not found in Facebook payload.");
-
-        return new ExtractPayload(formIds, leadGenIdHolder[0]);
+    public record ExtractPayload(String formId, String leadGenId, String adId) {
     }
 
 }

@@ -1,7 +1,8 @@
 package com.fincity.saas.entity.collector.util;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
+import com.fincity.saas.entity.collector.dto.EntityResponse;
+import com.fincity.saas.entity.collector.dto.LeadDetails;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -14,26 +15,26 @@ public class EntityUtil {
 
     private static final WebClient webClient = WebClient.create();
 
+    public static final String CONNECTION_NAME = "meta_facebook_connection";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
 
-
-    public static Mono<Void> sendEntityToTarget(EntityIntegration integration, JsonNode entityData) {
+    public static Mono<Void> sendEntityToTarget(EntityIntegration integration, EntityResponse leadData) {
         if (integration.getPrimaryTarget() == null || integration.getPrimaryTarget().isBlank()) {
-            return Mono.error(new RuntimeException("No target URL configured in entity integration."));
+            return Mono.error(new RuntimeException("Primary target URL is not configured in entity integration."));
         }
 
-        Mono<Void> primarySend = sendToUrl(integration.getPrimaryTarget(), entityData);
+        Mono<Void> primarySend = sendToUrl(integration.getPrimaryTarget(), leadData);
         Mono<Void> secondarySend = Optional.ofNullable(integration.getSecondaryTarget())
                 .filter(s -> !s.isBlank())
-                .map(url -> sendToUrl(url, entityData))
+                .map(url -> sendToUrl(url, leadData))
                 .orElse(Mono.empty());
 
         return Mono.when(primarySend, secondarySend);
     }
 
-    private static Mono<Void> sendToUrl(String url, JsonNode body) {
-        return webClient.post()
+    private static Mono<Void> sendToUrl(String url, EntityResponse body) {
+        return EntityUtil.webClient.post()
                 .uri(url)
                 .header(CONTENT_TYPE, APPLICATION_JSON)
                 .bodyValue(body)
@@ -42,15 +43,22 @@ public class EntityUtil {
                 .then();
     }
 
-    public static Mono<String> fetchOAuthToken(IFeignCoreService coreService, String clientCode, String appCode, String connectionName) {
+    public static Mono<String> fetchOAuthToken(IFeignCoreService coreService, String clientCode, String appCode) {
         return coreService.getConnectionOAuth2Token(
                 "",
                 "",
                 "",
                 clientCode,
                 appCode,
-                connectionName);
+                CONNECTION_NAME
+        );
     }
 
+    public static void populateStaticFields(LeadDetails lead, EntityIntegration integration, String platform, String source, String subSource) {
+        lead.setClientCode(integration.getClientCode());
+        lead.setAppCode(integration.getAppCode());
+        lead.setPlatform(platform);
+        lead.setSource(source);
+        lead.setSubSource(subSource);
+    }
 }
-

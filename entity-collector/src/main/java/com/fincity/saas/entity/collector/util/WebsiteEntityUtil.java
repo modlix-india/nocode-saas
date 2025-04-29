@@ -3,6 +3,8 @@ package com.fincity.saas.entity.collector.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fincity.saas.entity.collector.dto.EntityIntegration;
+import reactor.core.publisher.Mono;
 
 public class WebsiteEntityUtil {
 
@@ -16,6 +18,10 @@ public class WebsiteEntityUtil {
         enrichedEntity.put(CLIENT_CODE, clientCode);
         enrichedEntity.put(APP_CODE, appCode);
         return enrichedEntity;
+    }
+
+    public static Mono<Object> normalizeWebsiteEntity(JsonNode websiteEntityPayload, EntityIntegration integration) {
+        return null;
     }
 }
 

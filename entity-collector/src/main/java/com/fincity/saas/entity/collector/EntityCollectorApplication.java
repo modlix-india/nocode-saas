@@ -24,8 +24,8 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @SpringBootApplication
 public class EntityCollectorApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(EntityCollectorApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(EntityCollectorApplication.class, args);
+    }
 
 }

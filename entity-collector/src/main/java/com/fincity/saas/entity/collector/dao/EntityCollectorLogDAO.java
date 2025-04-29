@@ -1,9 +1,10 @@
 package com.fincity.saas.entity.collector.dao;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.entity.collector.dto.EntityCollectorLog;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityCollectorLogRecord;
-import org.jooq.DSLContext;
+import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
@@ -11,44 +12,22 @@ import reactor.core.publisher.Mono;
 import static com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog.ENTITY_COLLECTOR_LOG;
 
 @Repository
-public class EntityCollectorLogDAO {
+public class EntityCollectorLogDAO extends AbstractUpdatableDAO<EntityCollectorLogRecord, ULong, EntityCollectorLog> {
 
-    private final DSLContext dsl;
-    private final ObjectMapper objectMapper;
-
-    public EntityCollectorLogDAO(DSLContext dsl, ObjectMapper objectMapper) {
-        this.dsl = dsl;
-        this.objectMapper = objectMapper;
+    protected EntityCollectorLogDAO() {
+        super(EntityCollectorLog.class, ENTITY_COLLECTOR_LOG, ENTITY_COLLECTOR_LOG.ID);
     }
 
-    public Mono<EntityCollectorLog> create(EntityCollectorLog log) {
-        return Mono.from(dsl
-                        .insertInto(ENTITY_COLLECTOR_LOG)
-                        .set(toRecord(log))
-                        .returning(ENTITY_COLLECTOR_LOG.ID))
-                .flatMap(r -> getById(r.getId()));
-    }
+    @Override
+    public <A extends AbstractUpdatableDTO<ULong, ULong>> Mono<EntityCollectorLog> update(A entity) {
 
-    public Mono<EntityCollectorLog> getById(ULong id) {
-        return Mono.from(
-                        dsl.selectFrom(ENTITY_COLLECTOR_LOG)
-                                .where(ENTITY_COLLECTOR_LOG.ID.eq(id)))
-                .map(r -> r.into(EntityCollectorLog.class));
-    }
-
-    public Mono<EntityCollectorLog> update(EntityCollectorLog log) {
-        return Mono.from(
-                        dsl.update(ENTITY_COLLECTOR_LOG)
-                                .set(toRecord(log))
-                                .where(ENTITY_COLLECTOR_LOG.ID.eq(log.getId()))
-                                .returning(ENTITY_COLLECTOR_LOG.ID))
-                .flatMap(r -> getById(r.getId()));
-    }
-
-
-    private EntityCollectorLogRecord toRecord(EntityCollectorLog log) {
-        EntityCollectorLogRecord record = dsl.newRecord(ENTITY_COLLECTOR_LOG);
-        record.from(log);
-        return record;
+        entity.setUpdatedAt(null);
+        UpdatableRecord<EntityCollectorLogRecord> rec = this.dslContext.newRecord(this.table);
+        rec.from(entity);
+        rec.reset("CREATED_AT");
+        return Mono.from(this.dslContext.update(this.table)
+                        .set(rec)
+                        .where(this.idField.eq(entity.getId())))
+                .thenReturn(rec.into(this.pojoClass));
     }
 }

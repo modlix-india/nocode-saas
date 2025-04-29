@@ -1,19 +1,22 @@
 package com.fincity.saas.entity.collector.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.collector.dao.EntityIntegrationDAO;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,18 +25,74 @@ public class EntityIntegrationService
         extends AbstractJOOQUpdatableDataService<
         EntityIntegrationsRecord, ULong, EntityIntegration, EntityIntegrationDAO> {
 
+    private static final String HUB_MODE = "hub.mode";
+    private static final String HUB_VERIFY_TOKEN = "hub.verify_token";
+    private static final String SUBSCRIBE = "subscribe";
+    private static final String HUB_CHALLENGE = "hub.challenge";
+
+    protected final EntityCollectorMessageResourceService entityCollectorMessageResourceService;
+
+    public EntityIntegrationService(EntityCollectorMessageResourceService entityCollectorMessageResourceService) {
+        this.entityCollectorMessageResourceService = entityCollectorMessageResourceService;
+    }
 
     public Mono<EntityIntegration> findByInSourceAndType(String inSource, EntityIntegrationsInSourceType inSourceType) {
         return this.dao.findByInSourceAndInSourceType(inSource, inSourceType);
     }
 
     @Override
+    public Mono<EntityIntegration> create(EntityIntegration entity) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
+                    return verifyTargetUrl(entity)
+                            .flatMap(isVerified -> {
+                                if (!isVerified) {
+                                    return entityCollectorMessageResourceService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            EntityCollectorMessageResourceService.VERIFICATION_FAILED);
+                                }
+                                return super.create(entity);
+                            });
+                });
+    }
+
+    @Override
+    public Mono<EntityIntegration> update(EntityIntegration entity) {
+        return this.read(entity.getId())
+                .flatMap(existingEntity -> {
+                    return SecurityContextUtil.getUsersContextAuthentication()
+                            .flatMap(ca -> {
+                                return verifyTargetUrl(entity)
+                                        .flatMap(isVerified -> {
+                                            if (!isVerified) {
+                                                return entityCollectorMessageResourceService.throwMessage(
+                                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                                        EntityCollectorMessageResourceService.VERIFICATION_FAILED
+                                                );
+                                            }
+                                            return super.update(entity);
+                                        });
+                            });
+                })
+                .switchIfEmpty(
+                        entityCollectorMessageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                                EntityCollectorMessageResourceService.OBJECT_NOT_FOUND
+                        ));
+    }
+
+    @Override
     public Mono<EntityIntegration> updatableEntity(EntityIntegration entity) {
-        return this.read(entity.getId()).flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-                .map(ca -> {
-                    // TO:DO add fields
-                    return existing;
-                }));
+        return this.read(entity.getId()).map(existing -> {
+            existing.setPrimaryTarget(entity.getPrimaryTarget());
+            existing.setSecondaryTarget(entity.getSecondaryTarget());
+            existing.setPrimaryVerifyToken(entity.getPrimaryVerifyToken());
+            existing.setSecondaryVerifyToken(entity.getSecondaryVerifyToken());
+            existing.setInSource(entity.getInSource());
+            existing.setInSourceType(entity.getInSourceType());
+            return existing;
+        });
     }
 
     @Override
@@ -41,49 +100,74 @@ public class EntityIntegrationService
 
         Map<String, Object> newFields = new HashMap<>();
 
-        // TO:DO add updatable fields to map
+        if (fields.containsKey("inSource")) {
+            newFields.put("inSource", fields.get("inSource"));
+        }
+        if (fields.containsKey("secondaryTarget")) {
+            newFields.put("secondaryTarget", fields.get("secondaryTarget"));
+        }
+        if (fields.containsKey("primaryTarget")) {
+            newFields.put("primaryTarget", fields.get("primaryTarget"));
+        }
+        if (fields.containsKey("inSourceType")) {
+            newFields.put("inSourceType", fields.get("inSourceType"));
+        }
+        if (fields.containsKey("primaryVerifyToken")) {
+            newFields.put("primaryVerifyToken", fields.get("primaryVerifyToken"));
+        }
+        if (fields.containsKey("secondaryVerifyToken")) {
+            newFields.put("secondaryVerifyToken", fields.get("secondaryVerifyToken"));
+        }
 
         return Mono.just(newFields);
     }
 
+
+
     @Override
-    public Mono<EntityIntegration> create(EntityIntegration entity){
-        return FlatMapUtil.flatMapMono(
-                () -> verifyTargetUrl(entity),
-                isVerified -> {
-                    if (!isVerified) {
-                        return Mono.error(new RuntimeException("Verification failed!"));
-                    }
-                    return super.create(entity);
-                }
-        );
+    protected Mono<ULong> getLoggedInUserId() {
+        return SecurityContextUtil.getUsersContextUser()
+                .map(ContextUser::getId)
+                .map(ULong::valueOf);
     }
 
-
-    private Mono<Boolean> verifyTargetUrl(EntityIntegration entity){
-        String challenge = "1243";
-        URI targetUri;
+    private Mono<Boolean> sendVerificationRequest(String targetUrl, String verifyToken, int challenge) {
+        URI targetUri =URI.create(targetUrl);
 
         WebClient webClient = WebClient.builder().build();
-
-        try {
-            targetUri = new URI(entity.getPrimaryTarget());
-        } catch (URISyntaxException e) {
-            return Mono.error(new RuntimeException("Invalid URL in target: " + entity.getPrimaryTarget(), e));
-        }
 
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme(targetUri.getScheme())
                         .host(targetUri.getHost())
                         .path(targetUri.getPath())
-                        .queryParam("hub.mode", "subscribe")
-                        .queryParam("hub.verify_token", entity.getPrimaryVerifyToken())
-                        .queryParam("hub.challenge", challenge)
+                        .queryParam(HUB_MODE, SUBSCRIBE)
+                        .queryParam(HUB_VERIFY_TOKEN, verifyToken)
+                        .queryParam(HUB_CHALLENGE, challenge)
                         .build())
                 .retrieve()
                 .bodyToMono(String.class)
-                .map(response -> response != null && response.equals(challenge));
+                .map(response -> Integer.parseInt(response) == challenge)
+                .onErrorResume(e -> {
+                    return Mono.just(false);
+                });
+    }
 
+
+    private Mono<Boolean> verifyTargetUrl(EntityIntegration entity){
+
+        int challenge = UniqueUtil.shortUUID().hashCode();
+
+        return FlatMapUtil.flatMapMono(
+                () -> sendVerificationRequest(entity.getPrimaryTarget(), entity.getPrimaryVerifyToken(), challenge),
+                primaryVerified -> {
+                    if (!primaryVerified)
+                        return Mono.just(false);
+                    if (entity.getSecondaryTarget() == null || entity.getSecondaryVerifyToken() == null) {
+                        return Mono.just(true);
+                    }
+                    return sendVerificationRequest(entity.getSecondaryTarget(), entity.getSecondaryVerifyToken(), challenge);
+                }
+        );
     }
 }

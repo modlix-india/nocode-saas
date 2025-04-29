@@ -2,26 +2,24 @@ package com.fincity.saas.entity.collector.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
-import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
-import com.fincity.saas.entity.collector.util.EntityUtil;
 import com.fincity.saas.entity.collector.util.MetaEntityUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.entity.collector.util.WebsiteEntityUtil;
+import com.fincity.saas.entity.collector.util.EntityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuples;
 
+import static com.fincity.saas.entity.collector.util.EntityUtil.fetchOAuthToken;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.extractMetaPayload;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.fetchMetaData;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.normalizeMetaEntity;
-import static com.fincity.saas.entity.collector.util.EntityUtil.fetchOAuthToken;
-import static com.fincity.saas.entity.collector.util.EntityUtil.sendEntityToTarget;
 
 @Slf4j
 @Service
@@ -30,16 +28,76 @@ public class EntityCollectorService {
 
     private final EntityIntegrationService entityIntegrationService;
     private final EntityCollectorLogService entityCollectorLogService;
-    private final EntityCollectorMessageResourceService entityCollectorMessageResourceService;
+    private final EntityCollectorMessageResourceService entityCollectorMessageResponseService;
     private final ObjectMapper mapper;
-    private final MetaEntityUtil metaEntityUtil;
     private final IFeignCoreService coreService;
 
-    private static final String SUCCESS_ENTITY_MESSAGE = "SUCCESS_ENTITY_MESSAGE";
-    private static final String FAILED_ENTITY_MESSAGE = "FAILED_ENTITY_MESSAGE";
 
-    public Mono<JsonNode> handleMetaEntity(JsonNode responseBody) {
+    public Mono<Void> handleMetaEntity(JsonNode responseBody) {
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> Mono.just(extractMetaPayload(responseBody)),
 
-        return Mono.just(responseBody);
+                extractList -> Flux.fromIterable(extractList)
+                        .flatMap(extract -> processSingleExtract(extract, responseBody))
+                        .then(),
+                (extractList, ex) -> Mono.empty()
+
+        );
+    }
+
+    private Mono<Void> processSingleExtract(MetaEntityUtil.ExtractPayload extract, JsonNode responseBody) {
+
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> Mono.just(extract),
+
+                extractPayload -> entityIntegrationService
+                        .findByInSourceAndType(extractPayload.formId(), EntityIntegrationsInSourceType.FACEBOOK_FORM),
+
+                (extractPayload, integration) -> entityCollectorLogService.create(
+                        integration.getId(),
+                        mapper.convertValue(responseBody, new TypeReference<>() {
+                        }), null),
+                (extractPayload, integration, logId) -> fetchOAuthToken(
+                        coreService,
+                        integration.getClientCode(),
+                        integration.getAppCode()),
+                (extractPayload, integration, logId, token) -> fetchMetaData(
+                        extractPayload.leadGenId(),
+                        extractPayload.formId(),
+                        token),
+                (extractPayload, integration, logId, token, metaData) -> Mono.just(
+
+                        normalizeMetaEntity(metaData.getT1(), metaData.getT2(), extractPayload.adId(), token, integration)),
+
+                (extractPayload, integration, logId, token, metaData, normalizedEntity) ->
+                        normalizedEntity.flatMap(response ->
+                                entityCollectorMessageResponseService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
+                                        .flatMap(successMessage ->
+                                                EntityUtil.sendEntityToTarget(integration, response)
+                                                        .then(entityCollectorLogService.update(
+                                                                logId,
+                                                                mapper.convertValue(response, new TypeReference<>() {
+                                                                }),
+                                                                EntityCollectorLogStatus.SUCCESS,
+                                                                successMessage
+                                                        ))
+                                        ))
+        ).then();
+    }
+
+
+    public Mono<Void> handleWebsiteEntity(JsonNode websiteEntity) {
+
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> Mono.just(websiteEntity),
+                websiteEntityPayload -> entityIntegrationService
+                        .findByInSourceAndType(websiteEntityPayload.path("formId").asText(), EntityIntegrationsInSourceType.WEBSITE),
+                (websiteEntityPayload, integration) -> entityCollectorLogService.create(
+                        integration.getId(),
+                        mapper.convertValue(websiteEntity, new TypeReference<>() {
+                        }), null),
+                (websiteEntityPayload, integration, logId) -> WebsiteEntityUtil.normalizeWebsiteEntity(websiteEntityPayload, integration)
+
+        ).then();
     }
 }

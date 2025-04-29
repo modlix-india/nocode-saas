@@ -167,6 +167,23 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
         return (LocalDateTime) get(7);
     }
 
+    /**
+     * Setter for <code>entity_collector.entity_collector_log.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public EntityCollectorLogRecord setUpdatedAt(LocalDateTime value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_collector.entity_collector_log.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(8);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -190,7 +207,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
     /**
      * Create a detached, initialised EntityCollectorLogRecord
      */
-    public EntityCollectorLogRecord(ULong id, ULong entityIntegrationId, Map incomingEntityData, String ipAddress, Map outgoingEntityData, EntityCollectorLogStatus status, String statusMessage, LocalDateTime createdAt) {
+    public EntityCollectorLogRecord(ULong id, ULong entityIntegrationId, Map incomingEntityData, String ipAddress, Map outgoingEntityData, EntityCollectorLogStatus status, String statusMessage, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(EntityCollectorLog.ENTITY_COLLECTOR_LOG);
 
         setId(id);
@@ -201,6 +218,7 @@ public class EntityCollectorLogRecord extends UpdatableRecordImpl<EntityCollecto
         setStatus(status);
         setStatusMessage(statusMessage);
         setCreatedAt(createdAt);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

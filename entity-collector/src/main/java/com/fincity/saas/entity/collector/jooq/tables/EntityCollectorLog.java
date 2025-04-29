@@ -115,6 +115,12 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      */
     public final TableField<EntityCollectorLogRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
 
+    /**
+     * The column <code>entity_collector.entity_collector_log.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public final TableField<EntityCollectorLogRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
+
     private EntityCollectorLog(Name alias, Table<EntityCollectorLogRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

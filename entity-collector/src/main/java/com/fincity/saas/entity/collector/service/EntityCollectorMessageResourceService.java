@@ -12,9 +12,14 @@ import java.util.ResourceBundle;
 @Service
 public class EntityCollectorMessageResourceService extends AbstractMessageService {
 
+    public static final String VERIFICATION_FAILED = "verification_failed";
+    public static final String SUCCESS_ENTITY_MESSAGE = "success_entity";
+    public static final String INTEGRATION_FOUND_MESSAGE = "integration_found_message";
+    public static final String MESSAGES = "messages";
+
 
     protected EntityCollectorMessageResourceService() {
-        super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
+        super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle(MESSAGES, Locale.ENGLISH)));
     }
 
     @Override
