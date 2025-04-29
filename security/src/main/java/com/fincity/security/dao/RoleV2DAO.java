@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 public class RoleV2DAO extends AbstractClientCheckDAO<SecurityV2RoleRecord, ULong, RoleV2> {
 
     public RoleV2DAO() {
-        super(RoleV2.class, SecurityV2Role.SECURITY_V2_ROLE, SecurityV2Role.SECURITY_V2_ROLE.CLIENT_ID);
+        super(RoleV2.class, SecurityV2Role.SECURITY_V2_ROLE, SecurityV2Role.SECURITY_V2_ROLE.ID);
     }
 
     @Override

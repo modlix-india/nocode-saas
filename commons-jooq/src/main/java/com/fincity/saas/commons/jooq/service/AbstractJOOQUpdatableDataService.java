@@ -33,39 +33,36 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
 
                     return pojoClass.flatMap(e -> {
 
-                        fields.entrySet()
-                                .forEach(entry -> {
+                        fields.forEach((field, value) -> {
 
-                                    String field = entry.getKey();
+                            String methodName = "set" + field.substring(0, 1).toUpperCase()
+                                    + field.substring(1);
 
-                                    String methodName = "set" + field.substring(0, 1).toUpperCase()
-                                            + field.substring(1);
+                            try {
 
-                                    try {
+                                for (Method method : e.getDeclaredMethods()) {
 
-                                        for (Method method : e.getDeclaredMethods()) {
+                                    if (method.getName().equals(methodName)) {
 
-                                            if (method.getName().equals(methodName)) {
+                                        Parameter[] params = method.getParameters();
 
-                                                Parameter[] params = method.getParameters();
-
-                                                method.invoke(retrievedObject,
-                                                        this.objectMapper.convertValue(entry.getValue(),
-                                                                params[0].getType()));
-                                            }
-
-                                        }
-
-                                    } catch (SecurityException
-                                             | IllegalAccessException
-                                             | InvocationTargetException | IllegalArgumentException exception) {
-
-                                        throw new GenericException(HttpStatus.BAD_REQUEST,
-                                                field + AbstractMessageService.FIELD_NOT_AVAILABLE);
-
+                                        method.invoke(retrievedObject,
+                                                this.objectMapper.convertValue(value,
+                                                        params[0].getType()));
                                     }
 
-                                });
+                                }
+
+                            } catch (SecurityException
+                                     | IllegalAccessException
+                                     | InvocationTargetException | IllegalArgumentException exception) {
+
+                                throw new GenericException(HttpStatus.BAD_REQUEST,
+                                        field + AbstractMessageService.FIELD_NOT_AVAILABLE);
+
+                            }
+
+                        });
 
                         return Mono.just(retrievedObject);
                     });
@@ -77,12 +74,12 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
     public Mono<D> update(D entity) {
 
         return this.updatableEntity(entity)
-                .flatMap(updateableEntity -> this.getLoggedInUserId()
+                .flatMap(updatableEntity -> this.getLoggedInUserId()
                         .map(e -> {
-                            updateableEntity.setUpdatedBy(e);
-                            return updateableEntity;
+                            updatableEntity.setUpdatedBy(e);
+                            return updatableEntity;
                         })
-                        .defaultIfEmpty(updateableEntity)
+                        .defaultIfEmpty(updatableEntity)
                         .flatMap(ent -> this.dao.update(ent)));
     }
 
