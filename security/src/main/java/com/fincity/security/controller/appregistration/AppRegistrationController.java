@@ -37,7 +37,7 @@ public class AppRegistrationController {
         binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
             @Override
             public void setAsText(String text) {
-                setValue(text == null ? null : Long.valueOf(text));
+                setValue(text == null ? null : ULong.valueOf(text));
             }
         });
     }
@@ -49,8 +49,8 @@ public class AppRegistrationController {
 
     @PostMapping("/{appCode}/{urlPart}")
     public Mono<ResponseEntity<AbstractAppRegistration>> create(@PathVariable String appCode,
-            @PathVariable String urlPart,
-            @RequestBody Map<String, Object> entity) {
+                                                                @PathVariable String urlPart,
+                                                                @RequestBody Map<String, Object> entity) {
 
         AppRegistrationObjectType type = AppRegistrationObjectType.fromUrlPart(urlPart);
         if (type == null) {
