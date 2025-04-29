@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.enums.rule;
 
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import lombok.Getter;
 import org.jooq.EnumType;
 
@@ -29,6 +30,10 @@ public enum ComparisonOperator implements EnumType {
 
     public static ComparisonOperator lookupLiteral(String literal) {
         return EnumType.lookupLiteral(ComparisonOperator.class, literal);
+    }
+
+    public static ComparisonOperator lookup(FilterConditionOperator operator) {
+        return lookupLiteral(operator.name());
     }
 
     @Override

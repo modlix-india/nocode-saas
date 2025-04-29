@@ -123,6 +123,13 @@ public class EntityProcessorComplexRules extends TableImpl<EntityProcessorComple
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_complex_rules.NEGATE</code>. Flag
+     * to check if this Complex Rule is negative.
+     */
+    public final TableField<EntityProcessorComplexRulesRecord, Byte> NEGATE = createField(DSL.name("NEGATE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this Complex Rule is negative.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_complex_rules.PARENT_CONDITION_ID</code>.
      * Parent Rule ID for this Complex Rule.
      */

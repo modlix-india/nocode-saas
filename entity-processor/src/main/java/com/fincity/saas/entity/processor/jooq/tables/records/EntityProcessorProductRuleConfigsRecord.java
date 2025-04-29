@@ -4,9 +4,11 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRuleConfigs;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -156,21 +158,40 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_rule_configs.PRODUCT_RULE_ID</code>.
+     * <code>entity_processor.entity_processor_product_rule_configs.ENTITY_ID</code>.
      * Product Rule ID related to this Product Rule Config.
      */
-    public EntityProcessorProductRuleConfigsRecord setProductRuleId(ULong value) {
+    public EntityProcessorProductRuleConfigsRecord setEntityId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_rule_configs.PRODUCT_RULE_ID</code>.
+     * <code>entity_processor.entity_processor_product_rule_configs.ENTITY_ID</code>.
      * Product Rule ID related to this Product Rule Config.
      */
-    public ULong getProductRuleId() {
+    public ULong getEntityId() {
         return (ULong) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_rule_configs.RULE_TYPE</code>.
+     * Rule type for this Product Rule Config.
+     */
+    public EntityProcessorProductRuleConfigsRecord setRuleType(RuleType value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_rule_configs.RULE_TYPE</code>.
+     * Rule type for this Product Rule Config.
+     */
+    public RuleType getRuleType() {
+        return (RuleType) get(8);
     }
 
     /**
@@ -179,7 +200,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Flag to check if execution should break at first match.
      */
     public EntityProcessorProductRuleConfigsRecord setBreakAtFirstMatch(Byte value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -189,7 +210,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Flag to check if execution should break at first match.
      */
     public Byte getBreakAtFirstMatch() {
-        return (Byte) get(8);
+        return (Byte) get(9);
     }
 
     /**
@@ -199,7 +220,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * match.
      */
     public EntityProcessorProductRuleConfigsRecord setExecuteOnlyIfAllPreviousMatch(Byte value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -210,7 +231,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * match.
      */
     public Byte getExecuteOnlyIfAllPreviousMatch() {
-        return (Byte) get(9);
+        return (Byte) get(10);
     }
 
     /**
@@ -220,7 +241,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * not match.
      */
     public EntityProcessorProductRuleConfigsRecord setExecuteOnlyIfAllPreviousNotMatch(Byte value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -231,7 +252,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * not match.
      */
     public Byte getExecuteOnlyIfAllPreviousNotMatch() {
-        return (Byte) get(10);
+        return (Byte) get(11);
     }
 
     /**
@@ -240,7 +261,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Flag to check if execution should continue on no match.
      */
     public EntityProcessorProductRuleConfigsRecord setContinueOnNoMatch(Byte value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -250,7 +271,26 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Flag to check if execution should continue on no match.
      */
     public Byte getContinueOnNoMatch() {
-        return (Byte) get(11);
+        return (Byte) get(12);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_rule_configs.RULES</code>.
+     * Rules for this Product Rule Config.
+     */
+    public EntityProcessorProductRuleConfigsRecord setRules(Map value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_rule_configs.RULES</code>.
+     * Rules for this Product Rule Config.
+     */
+    public Map getRules() {
+        return (Map) get(13);
     }
 
     /**
@@ -259,7 +299,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Temporary active flag for this product rule config.
      */
     public EntityProcessorProductRuleConfigsRecord setTempActive(Byte value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -269,7 +309,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Temporary active flag for this product rule config.
      */
     public Byte getTempActive() {
-        return (Byte) get(12);
+        return (Byte) get(14);
     }
 
     /**
@@ -278,7 +318,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Flag to check if this product rule config is active or not.
      */
     public EntityProcessorProductRuleConfigsRecord setIsActive(Byte value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -288,7 +328,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Flag to check if this product rule config is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(13);
+        return (Byte) get(15);
     }
 
     /**
@@ -297,7 +337,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * ID of the user who created this row.
      */
     public EntityProcessorProductRuleConfigsRecord setCreatedBy(ULong value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -307,7 +347,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(16);
     }
 
     /**
@@ -316,7 +356,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Time when this row is created.
      */
     public EntityProcessorProductRuleConfigsRecord setCreatedAt(LocalDateTime value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -326,7 +366,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(17);
     }
 
     /**
@@ -335,7 +375,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * ID of the user who updated this row.
      */
     public EntityProcessorProductRuleConfigsRecord setUpdatedBy(ULong value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -345,7 +385,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(18);
     }
 
     /**
@@ -354,7 +394,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Time when this row is updated.
      */
     public EntityProcessorProductRuleConfigsRecord setUpdatedAt(LocalDateTime value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -364,7 +404,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(19);
     }
 
     // -------------------------------------------------------------------------
@@ -390,7 +430,7 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
     /**
      * Create a detached, initialised EntityProcessorProductRuleConfigsRecord
      */
-    public EntityProcessorProductRuleConfigsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productRuleId, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductRuleConfigsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong entityId, RuleType ruleType, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS);
 
         setId(id);
@@ -400,11 +440,13 @@ public class EntityProcessorProductRuleConfigsRecord extends UpdatableRecordImpl
         setName(name);
         setDescription(description);
         setAddedByUserId(addedByUserId);
-        setProductRuleId(productRuleId);
+        setEntityId(entityId);
+        setRuleType(ruleType);
         setBreakAtFirstMatch(breakAtFirstMatch);
         setExecuteOnlyIfAllPreviousMatch(executeOnlyIfAllPreviousMatch);
         setExecuteOnlyIfAllPreviousNotMatch(executeOnlyIfAllPreviousNotMatch);
         setContinueOnNoMatch(continueOnNoMatch);
+        setRules(rules);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

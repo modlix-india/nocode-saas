@@ -4,14 +4,18 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
+import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRuleConfigsRuleType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRuleConfigsRecord;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -27,6 +31,7 @@ import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
+import org.jooq.impl.AutoConverter;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
@@ -106,10 +111,17 @@ public class EntityProcessorProductRuleConfigs extends TableImpl<EntityProcessor
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_rule_configs.PRODUCT_RULE_ID</code>.
+     * <code>entity_processor.entity_processor_product_rule_configs.ENTITY_ID</code>.
      * Product Rule ID related to this Product Rule Config.
      */
-    public final TableField<EntityProcessorProductRuleConfigsRecord, ULong> PRODUCT_RULE_ID = createField(DSL.name("PRODUCT_RULE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Rule ID related to this Product Rule Config.");
+    public final TableField<EntityProcessorProductRuleConfigsRecord, ULong> ENTITY_ID = createField(DSL.name("ENTITY_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Rule ID related to this Product Rule Config.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_rule_configs.RULE_TYPE</code>.
+     * Rule type for this Product Rule Config.
+     */
+    public final TableField<EntityProcessorProductRuleConfigsRecord, RuleType> RULE_TYPE = createField(DSL.name("RULE_TYPE"), SQLDataType.VARCHAR(5).nullable(false).asEnumDataType(EntityProcessorProductRuleConfigsRuleType.class), this, "Rule type for this Product Rule Config.", new AutoConverter<EntityProcessorProductRuleConfigsRuleType, RuleType>(EntityProcessorProductRuleConfigsRuleType.class, RuleType.class));
 
     /**
      * The column
@@ -140,6 +152,13 @@ public class EntityProcessorProductRuleConfigs extends TableImpl<EntityProcessor
      * Flag to check if execution should continue on no match.
      */
     public final TableField<EntityProcessorProductRuleConfigsRecord, Byte> CONTINUE_ON_NO_MATCH = createField(DSL.name("CONTINUE_ON_NO_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if execution should continue on no match.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_rule_configs.RULES</code>.
+     * Rules for this Product Rule Config.
+     */
+    public final TableField<EntityProcessorProductRuleConfigsRecord, Map> RULES = createField(DSL.name("RULES"), SQLDataType.JSON, this, "Rules for this Product Rule Config.", new JSONMysqlMapConvertor());
 
     /**
      * The column

@@ -228,6 +228,13 @@
                                     <inputSchema>${database.schema.name}</inputSchema>
                                     <forcedTypes>
                                         <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor</converter>
+                                            <includeExpression>RULES</includeExpression>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>false</genericConverter>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.rule.RuleType</userType>
                                             <includeExpression>.*\.RULE_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

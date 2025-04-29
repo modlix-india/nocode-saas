@@ -8,7 +8,6 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRuleConfigs;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
@@ -19,7 +18,6 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComp
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorModelsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRuleConfigsRecord;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleComplexRuleRelationsRecord;
@@ -54,8 +52,6 @@ public class Keys {
     public static final UniqueKey<EntityProcessorModelsRecord> KEY_ENTITY_PROCESSOR_MODELS_UK1_MODELS_CODE = Internal.createUniqueKey(EntityProcessorModels.ENTITY_PROCESSOR_MODELS, DSL.name("KEY_entity_processor_models_UK1_MODELS_CODE"), new TableField[] { EntityProcessorModels.ENTITY_PROCESSOR_MODELS.CODE }, true);
     public static final UniqueKey<EntityProcessorProductRuleConfigsRecord> KEY_ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS_PRIMARY = Internal.createUniqueKey(EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS, DSL.name("KEY_entity_processor_product_rule_configs_PRIMARY"), new TableField[] { EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS.ID }, true);
     public static final UniqueKey<EntityProcessorProductRuleConfigsRecord> KEY_ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS_UK1_PRODUCT_RULE_CONFIGS_CODE = Internal.createUniqueKey(EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS, DSL.name("KEY_entity_processor_product_rule_configs_UK1_PRODUCT_RULE_CONFIGS_CODE"), new TableField[] { EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS.CODE }, true);
-    public static final UniqueKey<EntityProcessorProductRulesRecord> KEY_ENTITY_PROCESSOR_PRODUCT_RULES_PRIMARY = Internal.createUniqueKey(EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES, DSL.name("KEY_entity_processor_product_rules_PRIMARY"), new TableField[] { EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES.ID }, true);
-    public static final UniqueKey<EntityProcessorProductRulesRecord> KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK1_PRODUCT_RULES_CODE = Internal.createUniqueKey(EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES, DSL.name("KEY_entity_processor_product_rules_UK1_PRODUCT_RULES_CODE"), new TableField[] { EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES.CODE }, true);
     public static final UniqueKey<EntityProcessorProductsRecord> KEY_ENTITY_PROCESSOR_PRODUCTS_PRIMARY = Internal.createUniqueKey(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS, DSL.name("KEY_entity_processor_products_PRIMARY"), new TableField[] { EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID }, true);
     public static final UniqueKey<EntityProcessorProductsRecord> KEY_ENTITY_PROCESSOR_PRODUCTS_UK1_PRODUCTS_CODE = Internal.createUniqueKey(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS, DSL.name("KEY_entity_processor_products_UK1_PRODUCTS_CODE"), new TableField[] { EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.CODE }, true);
     public static final UniqueKey<EntityProcessorRulesRecord> KEY_ENTITY_PROCESSOR_RULES_PRIMARY = Internal.createUniqueKey(EntityProcessorRules.ENTITY_PROCESSOR_RULES, DSL.name("KEY_entity_processor_rules_PRIMARY"), new TableField[] { EntityProcessorRules.ENTITY_PROCESSOR_RULES.ID }, true);

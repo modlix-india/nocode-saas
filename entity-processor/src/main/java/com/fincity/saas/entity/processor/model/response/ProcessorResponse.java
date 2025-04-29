@@ -4,6 +4,9 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.base.ProcessorStatus;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -25,19 +28,32 @@ public class ProcessorResponse implements Serializable {
         return new ProcessorResponse().setTransId(transId).setStatus(status).setDetails(details);
     }
 
-    private static ProcessorResponse of(String transId, ProcessorStatus status) {
-        return new ProcessorResponse().setTransId(transId).setStatus(status).setDetails(status.getReasonPhrase());
+    private static ProcessorResponse of(String transId, ProcessorStatus status, String... details) {
+        return new ProcessorResponse()
+                .setTransId(transId)
+                .setStatus(status)
+                .setDetails(status.getReasonPhrase(), details);
     }
 
-    public static ProcessorResponse ofSuccess(String transId, EntitySeries series) {
-        return of(transId, ProcessorStatus.of(series, HttpStatus.OK));
+    public static ProcessorResponse ofSuccess(String transId, EntitySeries series, String... details) {
+        return of(transId, ProcessorStatus.of(series, HttpStatus.OK), details);
     }
 
-    public static ProcessorResponse ofCreated(String transId, EntitySeries series) {
-        return of(transId, ProcessorStatus.of(series, HttpStatus.CREATED));
+    public static ProcessorResponse ofCreated(String transId, EntitySeries series, String... details) {
+        return of(transId, ProcessorStatus.of(series, HttpStatus.CREATED), details);
     }
 
-    public static ProcessorResponse ofBadRequest(String transId, EntitySeries series) {
-        return of(transId, ProcessorStatus.of(series, HttpStatus.BAD_REQUEST));
+    public static ProcessorResponse ofBadRequest(String transId, EntitySeries series, String... details) {
+        return of(transId, ProcessorStatus.of(series, HttpStatus.BAD_REQUEST), details);
+    }
+
+    public ProcessorResponse setDetails(String detail, String... extraDetails) {
+        this.details = Stream.concat(
+                        Stream.of(detail),
+                        extraDetails == null
+                                ? Stream.empty()
+                                : Arrays.stream(extraDetails).filter(s -> s != null && !s.isEmpty()))
+                .collect(Collectors.joining(":"));
+        return this;
     }
 }

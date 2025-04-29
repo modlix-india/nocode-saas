@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.model.rule;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import java.io.Serial;
@@ -19,16 +20,15 @@ public class RuleRequest implements Serializable {
 
     private String name;
     private String description;
-    private ComplexCondition complexCondition;
-    private FilterCondition filterCondition;
+    private AbstractCondition condition;
 
     @JsonIgnore
-    private boolean isSimple() {
-        return !filterCondition.isEmpty() && complexCondition.isEmpty();
+    public boolean isSimple() {
+        return condition instanceof FilterCondition;
     }
 
     @JsonIgnore
-    private boolean isComplex() {
-        return filterCondition.isEmpty() && !complexCondition.isEmpty();
+    public boolean isComplex() {
+        return condition instanceof ComplexCondition;
     }
 }

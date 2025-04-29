@@ -3,12 +3,12 @@ package com.fincity.saas.entity.processor.service.rule;
 import com.fincity.saas.entity.processor.dao.rule.SimpleComplexRuleRelationDAO;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleComplexRuleRelationsRecord;
-import com.fincity.saas.entity.processor.service.rule.base.BaseRuleService;
+import com.fincity.saas.entity.processor.service.base.BaseService;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SimpleComplexRuleRelationService
-        extends BaseRuleService<
+        extends BaseService<
                 EntityProcessorSimpleComplexRuleRelationsRecord,
                 SimpleComplexRuleRelation,
                 SimpleComplexRuleRelationDAO> {

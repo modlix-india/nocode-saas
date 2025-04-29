@@ -125,6 +125,13 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_simple_rules.NEGATE</code>. Flag
+     * to check if this Simple Rule is negative.
+     */
+    public final TableField<EntityProcessorSimpleRulesRecord, Byte> NEGATE = createField(DSL.name("NEGATE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this Simple Rule is negative.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_simple_rules.FIELD</code>. Field
      * name for this Simple Rule.
      */

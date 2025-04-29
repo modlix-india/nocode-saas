@@ -8,7 +8,6 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRuleConfigs;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
@@ -58,11 +57,6 @@ public class EntityProcessor extends SchemaImpl {
      * <code>entity_processor.entity_processor_product_rule_configs</code>.
      */
     public final EntityProcessorProductRuleConfigs ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS = EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS;
-
-    /**
-     * The table <code>entity_processor.entity_processor_product_rules</code>.
-     */
-    public final EntityProcessorProductRules ENTITY_PROCESSOR_PRODUCT_RULES = EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES;
 
     /**
      * The table <code>entity_processor.entity_processor_products</code>.
@@ -115,7 +109,6 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES,
             EntityProcessorModels.ENTITY_PROCESSOR_MODELS,
             EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS,
-            EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
             EntityProcessorRules.ENTITY_PROCESSOR_RULES,
             EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,

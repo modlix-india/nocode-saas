@@ -26,4 +26,13 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseDto<T> impleme
 
     private ULong ruleId;
     private boolean negate = false;
+
+    public T setNegate(boolean negate) {
+        this.negate = negate;
+        return (T) this;
+    }
+
+    public T setName() {
+        return this.setName(this.getCode());
+    }
 }

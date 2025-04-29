@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dto.rule;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.model.rule.RuleRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -26,6 +27,14 @@ public class Rule extends BaseDto<Rule> implements IEntitySeries {
 
     private boolean isSimple = true;
     private boolean isComplex = false;
+
+    public static Rule of(RuleRequest ruleRequest) {
+        return new Rule()
+                .setName(ruleRequest.getName())
+                .setDescription(ruleRequest.getDescription())
+                .setComplex(ruleRequest.isComplex())
+                .setSimple(ruleRequest.isSimple());
+    }
 
     @Override
     public EntitySeries getEntitySeries() {

@@ -23,8 +23,8 @@ public abstract class RuleExecutionConfig<T extends RuleExecutionConfig<T>> exte
     @Serial
     private static final long serialVersionUID = 1844345864104376762L;
 
+    private ULong entityId;
     private RuleType ruleType;
-
     private boolean breakAtFirstMatch = false;
     private boolean executeOnlyIfAllPreviousMatch = false;
     private boolean executeOnlyIfAllPreviousNotMatch = false;
