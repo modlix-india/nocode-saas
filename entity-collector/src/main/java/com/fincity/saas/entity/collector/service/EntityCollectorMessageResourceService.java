@@ -15,6 +15,7 @@ public class EntityCollectorMessageResourceService extends AbstractMessageServic
     public static final String VERIFICATION_FAILED = "verification_failed";
     public static final String SUCCESS_ENTITY_MESSAGE = "success_entity";
     public static final String INTEGRATION_FOUND_MESSAGE = "integration_found_message";
+    public static final String INTEGRATION_NOT_FOUND = "integration_not_found";
     public static final String MESSAGES = "messages";
 
 

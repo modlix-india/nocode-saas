@@ -37,7 +37,13 @@ public class EntityIntegrationService
     }
 
     public Mono<EntityIntegration> findByInSourceAndType(String inSource, EntityIntegrationsInSourceType inSourceType) {
-        return this.dao.findByInSourceAndInSourceType(inSource, inSourceType);
+        return this.dao.findByInSourceAndInSourceType(inSource, inSourceType)
+                .switchIfEmpty(
+                        entityCollectorMessageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                EntityCollectorMessageResourceService.INTEGRATION_NOT_FOUND
+                        ));
+
     }
 
     @Override

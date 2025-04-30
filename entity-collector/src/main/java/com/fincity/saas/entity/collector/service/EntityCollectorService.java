@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.entity.collector.dto.EntityResponse;
+import com.fincity.saas.entity.collector.dto.WebsiteDetails;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
@@ -12,14 +14,20 @@ import com.fincity.saas.entity.collector.util.WebsiteEntityUtil;
 import com.fincity.saas.entity.collector.util.EntityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.fincity.saas.entity.collector.util.EntityUtil.fetchOAuthToken;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.extractMetaPayload;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.fetchMetaData;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.normalizeMetaEntity;
+import static com.fincity.saas.entity.collector.util.WebsiteEntityUtil.getHost;
+import static com.fincity.saas.entity.collector.util.WebsiteEntityUtil.handleWebsiteLeadNormalization;
 
 @Slf4j
 @Service
@@ -37,11 +45,10 @@ public class EntityCollectorService {
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> Mono.just(extractMetaPayload(responseBody)),
 
-                extractList -> Flux.fromIterable(extractList)
+                extractList -> extractList.flatMapMany(Flux::fromIterable)
                         .flatMap(extract -> processSingleExtract(extract, responseBody))
                         .then(),
                 (extractList, ex) -> Mono.empty()
-
         );
     }
 
@@ -74,9 +81,7 @@ public class EntityCollectorService {
                                 entityCollectorMessageResponseService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
                                         .flatMap(successMessage ->
                                                 EntityUtil.sendEntityToTarget(integration, response)
-                                                        .then(entityCollectorLogService.update(
-                                                                logId,
-                                                                mapper.convertValue(response, new TypeReference<>() {
+                                                        .then(entityCollectorLogService.update(logId, mapper.convertValue(response, new TypeReference<>() {
                                                                 }),
                                                                 EntityCollectorLogStatus.SUCCESS,
                                                                 successMessage
@@ -86,18 +91,31 @@ public class EntityCollectorService {
     }
 
 
-    public Mono<Void> handleWebsiteEntity(JsonNode websiteEntity) {
+    public Mono<EntityResponse> handleWebsiteEntity(WebsiteDetails websiteBody, ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> Mono.just(websiteEntity),
-                websiteEntityPayload -> entityIntegrationService
-                        .findByInSourceAndType(websiteEntityPayload.path("formId").asText(), EntityIntegrationsInSourceType.WEBSITE),
-                (websiteEntityPayload, integration) -> entityCollectorLogService.create(
+                () -> Mono.just(getHost(request)),
+                host -> entityIntegrationService.findByInSourceAndType(host, EntityIntegrationsInSourceType.WEBSITE),
+                (host, integration) -> entityCollectorLogService.create(
                         integration.getId(),
-                        mapper.convertValue(websiteEntity, new TypeReference<>() {
-                        }), null),
-                (websiteEntityPayload, integration, logId) -> WebsiteEntityUtil.normalizeWebsiteEntity(websiteEntityPayload, integration)
-
-        ).then();
+                        mapper.convertValue(websiteBody, new TypeReference<>() {
+                        }),
+                        null
+                ),
+                (host, integration, logId) -> handleWebsiteLeadNormalization(websiteBody, integration, coreService)
+                        .flatMap(response ->
+                                entityCollectorMessageResponseService
+                                        .getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
+                                        .flatMap(successMessage ->
+                                                EntityUtil.sendEntityToTarget(integration, response)
+                                                        .then(entityCollectorLogService.update(logId, mapper.convertValue(response, new TypeReference<>() {
+                                                                }),
+                                                                EntityCollectorLogStatus.SUCCESS, successMessage
+                                                        ))
+                                                        .thenReturn(response)
+                                        )
+                        )
+        );
     }
+
 }

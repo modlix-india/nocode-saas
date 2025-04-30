@@ -2,17 +2,23 @@ package com.fincity.saas.entity.collector.controller;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fincity.saas.entity.collector.dto.EntityResponse;
+import com.fincity.saas.entity.collector.dto.WebsiteDetails;
 import com.fincity.saas.entity.collector.service.EntityCollectorService;
 
 import com.fincity.saas.entity.collector.util.MetaEntityUtil;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
+import java.util.Map;
+
 
 @RestController
-@RequestMapping("/api/entity")
+@RequestMapping("/api/entity-collector/entry")
 @AllArgsConstructor
 public class EntityCollectorController {
 
@@ -34,9 +40,10 @@ public class EntityCollectorController {
         return entityCollectorService.handleMetaEntity(requestBody);
     }
 
-    @PostMapping("/website")
-    public Mono<Void> handleWebsiteEntity(@RequestBody JsonNode requestBody) {
 
-        return entityCollectorService.handleWebsiteEntity(requestBody);
+    @PostMapping("/website")
+    public Mono<EntityResponse> handleWebsiteEntity(@RequestBody WebsiteDetails requestBodyMono, ServerHttpRequest request) {
+
+        return entityCollectorService.handleWebsiteEntity(requestBodyMono, request);
     }
 }
