@@ -38,16 +38,21 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
 
     @Override
     protected Mono<ComplexRule> updatableEntity(ComplexRule complexRule) {
-        return super.updatableEntity(complexRule).flatMap(e -> {
-            e.setParentConditionId(complexRule.getParentConditionId());
-            e.setLogicalOperator(complexRule.getLogicalOperator());
-            return Mono.just(e);
+        return super.updatableEntity(complexRule).flatMap(existing -> {
+            existing.setParentConditionId(complexRule.getParentConditionId());
+            existing.setLogicalOperator(complexRule.getLogicalOperator());
+            return Mono.just(existing);
         });
     }
 
     @Override
     public Mono<ComplexRule> createForCondition(Rule rule, ComplexCondition condition) {
         return this.createComplexRuleInternal(rule, condition, null);
+    }
+
+    @Override
+    public Mono<Integer> deleteByRuleId(ULong ruleId) {
+        return this.dao.deleteByRuleId(ruleId);
     }
 
     public Mono<ComplexRule> createForConditionWithParent(Rule rule, ComplexCondition condition, ULong parentId) {

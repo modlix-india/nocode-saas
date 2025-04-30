@@ -80,12 +80,12 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     @Override
     protected Mono<D> updatableEntity(D entity) {
 
-        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), e -> {
-            e.setName(entity.getName());
-            e.setDescription(entity.getDescription());
-            e.setTempActive(entity.isTempActive());
-            e.setActive(entity.isActive());
-            return Mono.just(e);
+        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
+            existing.setName(entity.getName());
+            existing.setDescription(entity.getDescription());
+            existing.setTempActive(entity.isTempActive());
+            existing.setActive(entity.isActive());
+            return Mono.just(existing);
         });
     }
 

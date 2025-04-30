@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.service.rule.base;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.entity.processor.dao.rule.base.BaseRuleDAO;
@@ -17,14 +16,14 @@ public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends Ba
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
-        return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), e -> {
-            if (e.getVersion() != entity.getVersion())
+        return super.updatableEntity(entity).flatMap(existing -> {
+            if (existing.getVersion() != entity.getVersion())
                 return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                         AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-            e.setVersion(e.getVersion() + 1);
-            return Mono.just(e);
+            existing.setVersion(existing.getVersion() + 1);
+            return Mono.just(existing);
         });
     }
 }

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import reactor.core.publisher.Mono;
 
-public class BaseController<
+public abstract class BaseController<
                 R extends UpdatableRecord<R>,
                 D extends BaseDto<D>,
                 O extends BaseDAO<R, D>,

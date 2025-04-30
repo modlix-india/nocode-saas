@@ -23,16 +23,16 @@ public abstract class BaseProcessorService<
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
-        return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), e -> {
-            if (e.getVersion() != entity.getVersion())
+        return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), existing -> {
+            if (existing.getVersion() != entity.getVersion())
                 return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                         AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-            e.setCurrentUserId(entity.getCurrentUserId());
+            existing.setCurrentUserId(entity.getCurrentUserId());
 
-            e.setVersion(e.getVersion() + 1);
-            return Mono.just(e);
+            existing.setVersion(existing.getVersion() + 1);
+            return Mono.just(existing);
         });
     }
 

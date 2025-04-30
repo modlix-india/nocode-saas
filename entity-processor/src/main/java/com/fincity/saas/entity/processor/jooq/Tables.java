@@ -7,7 +7,7 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRuleConfigs;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
@@ -38,10 +38,9 @@ public class Tables {
     public static final EntityProcessorModels ENTITY_PROCESSOR_MODELS = EntityProcessorModels.ENTITY_PROCESSOR_MODELS;
 
     /**
-     * The table
-     * <code>entity_processor.entity_processor_product_rule_configs</code>.
+     * The table <code>entity_processor.entity_processor_product_rules</code>.
      */
-    public static final EntityProcessorProductRuleConfigs ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS = EntityProcessorProductRuleConfigs.ENTITY_PROCESSOR_PRODUCT_RULE_CONFIGS;
+    public static final EntityProcessorProductRules ENTITY_PROCESSOR_PRODUCT_RULES = EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES;
 
     /**
      * The table <code>entity_processor.entity_processor_products</code>.

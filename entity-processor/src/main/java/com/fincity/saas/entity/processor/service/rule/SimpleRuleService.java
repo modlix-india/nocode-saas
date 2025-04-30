@@ -37,15 +37,15 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
 
     @Override
     protected Mono<SimpleRule> updatableEntity(SimpleRule entity) {
-        return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), e -> {
-            e.setField(entity.getField());
-            e.setComparisonOperator(entity.getComparisonOperator());
-            e.setValue(entity.getValue());
-            e.setToValue(entity.getToValue());
-            e.setValueField(entity.isValueField());
-            e.setToValueField(entity.isToValueField());
-            e.setMatchOperator(entity.getMatchOperator());
-            return Mono.just(e);
+        return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), existing -> {
+            existing.setField(entity.getField());
+            existing.setComparisonOperator(entity.getComparisonOperator());
+            existing.setValue(entity.getValue());
+            existing.setToValue(entity.getToValue());
+            existing.setValueField(entity.isValueField());
+            existing.setToValueField(entity.isToValueField());
+            existing.setMatchOperator(entity.getMatchOperator());
+            return Mono.just(existing);
         });
     }
 
@@ -53,6 +53,11 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     public Mono<SimpleRule> createForCondition(Rule rule, FilterCondition condition) {
         SimpleRule simpleRule = SimpleRule.of(rule.getId(), condition);
         return super.create(simpleRule);
+    }
+
+    @Override
+    public Mono<Integer> deleteByRuleId(ULong ruleId) {
+        return this.dao.deleteByRuleId(ruleId);
     }
 
     public Mono<SimpleRule> createForConditionWithParent(

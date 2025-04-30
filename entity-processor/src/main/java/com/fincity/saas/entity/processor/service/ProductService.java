@@ -1,10 +1,14 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
+import com.fincity.saas.entity.processor.model.base.Identity;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
@@ -22,5 +26,31 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     @Override
     protected Mono<Product> checkEntity(Product entity, Tuple3<String, String, ULong> accessInfo) {
         return Mono.just(entity);
+    }
+
+    public Mono<Product> readWithAccess(Identity identity) {
+        return super.hasAccess().flatMap(hasAccess -> {
+            if (Boolean.FALSE.equals(hasAccess.getT2()))
+                return this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        ProcessorMessageResourceService.PRODUCT_FORBIDDEN_ACCESS);
+
+            return this.readInternal(identity);
+        });
+    }
+
+    public Mono<Product> readInternal(Identity identity) {
+
+        if (identity == null || identity.isNull())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.PRODUCT_IDENTITY_MISSING);
+
+        return (identity.getId() == null
+                        ? this.readByCode(identity.getCode())
+                        : this.readInternal(ULongUtil.valueOf(identity.getId())))
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.PRODUCT_IDENTITY_WRONG));
     }
 }

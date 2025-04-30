@@ -10,7 +10,10 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorRule
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseService;
+import java.util.Map;
+import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -34,15 +37,40 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
     @Override
     protected Mono<Rule> updatableEntity(Rule rule) {
 
-        return super.updatableEntity(rule).flatMap(e -> {
-            e.setComplex(rule.isComplex());
+        return super.updatableEntity(rule).flatMap(existing -> {
+            existing.setComplex(rule.isComplex());
 
-            if (!rule.isComplex()) e.setSimple(rule.isSimple());
-            return Mono.just(e);
+            if (!rule.isComplex()) existing.setSimple(rule.isSimple());
+            return Mono.just(existing);
         });
     }
 
     public Mono<ProcessorResponse> create(RuleRequest ruleRequest) {
+
+        if (ruleRequest.getCondition() == null || ruleRequest.getCondition().isEmpty()) return Mono.empty();
+
+        return this.createInternal(ruleRequest)
+                .map(result -> ProcessorResponse.ofCreated(result.getCode(), this.getEntitySeries()));
+    }
+
+    public Mono<Map<Integer, ULong>> create(Map<Integer, RuleRequest> ruleRequests) {
+
+        if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
+
+        return Flux.fromIterable(ruleRequests.entrySet())
+                .flatMap(entry -> {
+                    Integer order = entry.getKey();
+                    RuleRequest ruleRequest = entry.getValue();
+
+                    if (ruleRequest.getCondition() == null
+                            || ruleRequest.getCondition().isEmpty()) return Flux.empty();
+
+                    return this.createInternal(ruleRequest).map(rule -> Map.entry(order, rule.getId()));
+                })
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+    }
+
+    private Mono<Rule> createInternal(RuleRequest ruleRequest) {
 
         Rule rule = Rule.of(ruleRequest);
 
@@ -61,14 +89,25 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                     if (rule.isComplex() && ruleRequest.getCondition() instanceof ComplexCondition complexCondition)
                         return complexRuleService
                                 .createForCondition(cRule, complexCondition)
-                                .map(result -> ProcessorResponse.ofCreated(cRule.getCode(), this.getEntitySeries()));
+                                .map(result -> cRule);
 
                     if (rule.isSimple() && ruleRequest.getCondition() instanceof FilterCondition filterCondition)
                         return simpleRuleService
                                 .createForCondition(cRule, filterCondition)
-                                .map(result -> ProcessorResponse.ofCreated(cRule.getCode(), this.getEntitySeries()));
+                                .map(result -> cRule);
 
-                    return Mono.just(ProcessorResponse.ofCreated(cRule.getCode(), this.getEntitySeries()));
+                    return Mono.just(cRule);
                 });
+    }
+
+    public Mono<Integer> deleteRelatedRules(ULong ruleId) {
+        return FlatMapUtil.flatMapMono(
+                () -> simpleRuleService.deleteByRuleId(ruleId),
+                simpleDeleted -> complexRuleService.deleteByRuleId(ruleId),
+                (simpleDeleted, complexDeleted) -> Mono.just(simpleDeleted + complexDeleted));
+    }
+
+    public Mono<Integer> deleteRelatedRulesByCode(String code) {
+        return FlatMapUtil.flatMapMono(() -> this.readByCode(code), rule -> this.deleteRelatedRules(rule.getId()));
     }
 }

@@ -32,12 +32,12 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
 
     @Override
     protected Mono<Model> updatableEntity(Model entity) {
-        return super.updatableEntity(entity).flatMap(e -> {
-            e.setDialCode(entity.getDialCode());
-            e.setPhoneNumber(entity.getPhoneNumber());
-            e.setEmail(entity.getEmail());
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setDialCode(entity.getDialCode());
+            existing.setPhoneNumber(entity.getPhoneNumber());
+            existing.setEmail(entity.getEmail());
 
-            return Mono.just(e);
+            return Mono.just(existing);
         });
     }
 

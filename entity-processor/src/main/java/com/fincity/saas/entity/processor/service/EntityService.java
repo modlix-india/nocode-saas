@@ -2,16 +2,13 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.EntityDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
-import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
-import com.fincity.saas.entity.processor.model.base.Identity;
 import com.fincity.saas.entity.processor.model.request.EntityRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -60,16 +57,16 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     @Override
     protected Mono<Entity> updatableEntity(Entity entity) {
 
-        return FlatMapUtil.flatMapMono(() -> this.updateModel(entity), super::updatableEntity, (uEntity, e) -> {
-            e.setDialCode(entity.getDialCode());
-            e.setPhoneNumber(entity.getPhoneNumber());
-            e.setEmail(entity.getEmail());
-            e.setSource(entity.getSource());
-            e.setSubSource(entity.getSubSource());
-            e.setStage(entity.getStage());
-            e.setStatus(entity.getStatus());
+        return FlatMapUtil.flatMapMono(() -> this.updateModel(entity), super::updatableEntity, (uEntity, existing) -> {
+            existing.setDialCode(entity.getDialCode());
+            existing.setPhoneNumber(entity.getPhoneNumber());
+            existing.setEmail(entity.getEmail());
+            existing.setSource(entity.getSource());
+            existing.setSubSource(entity.getSubSource());
+            existing.setStage(entity.getStage());
+            existing.setStatus(entity.getStatus());
 
-            return Mono.just(e);
+            return Mono.just(existing);
         });
     }
 
@@ -78,25 +75,10 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         Entity entity = Entity.of(entityRequest);
 
         return FlatMapUtil.flatMapMono(
-                () -> this.getEntityProduct(entityRequest.getProductId()),
+                () -> this.productService.readInternal(entityRequest.getProductId()),
                 product -> super.create(entity.setProductId(product.getId())),
                 (product, cEntity) ->
                         Mono.just(ProcessorResponse.ofCreated(cEntity.getCode(), this.getEntitySeries())));
-    }
-
-    private Mono<Product> getEntityProduct(Identity identity) {
-
-        if (identity == null || identity.isNull())
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.PRODUCT_IDENTITY_MISSING);
-
-        return (identity.getId() == null
-                        ? this.productService.readByCode(identity.getCode())
-                        : this.productService.readInternal(ULongUtil.valueOf(identity.getId())))
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.PRODUCT_IDENTITY_WRONG));
     }
 
     private Mono<Entity> checkEntity(Entity entity) {

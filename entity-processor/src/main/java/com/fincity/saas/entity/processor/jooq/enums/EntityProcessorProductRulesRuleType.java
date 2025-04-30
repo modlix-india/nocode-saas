@@ -13,7 +13,7 @@ import org.jooq.Schema;
  * Rule type for this Product Rule Config.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum EntityProcessorProductRuleConfigsRuleType implements EnumType {
+public enum EntityProcessorProductRulesRuleType implements EnumType {
 
     DEAL("DEAL"),
 
@@ -21,7 +21,7 @@ public enum EntityProcessorProductRuleConfigsRuleType implements EnumType {
 
     private final String literal;
 
-    private EntityProcessorProductRuleConfigsRuleType(String literal) {
+    private EntityProcessorProductRulesRuleType(String literal) {
         this.literal = literal;
     }
 
@@ -50,7 +50,7 @@ public enum EntityProcessorProductRuleConfigsRuleType implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static EntityProcessorProductRuleConfigsRuleType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(EntityProcessorProductRuleConfigsRuleType.class, literal);
+    public static EntityProcessorProductRulesRuleType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(EntityProcessorProductRulesRuleType.class, literal);
     }
 }

@@ -57,17 +57,17 @@ public abstract class BaseProductService<
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
-        return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), e -> {
-            if (e.isValidChild(entity.getParentLevel0(), entity.getParentLevel1()))
+        return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), existing -> {
+            if (existing.isValidChild(entity.getParentLevel0(), entity.getParentLevel1()))
                 return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                         ProcessorMessageResourceService.INVALID_CHILD_FOR_PARENT);
 
-            e.setParentLevel0(entity.getParentLevel0());
-            e.setParentLevel1(entity.getParentLevel1());
-            e.setIsParent(entity.getParentLevel0() == null && entity.getParentLevel1() == null);
+            existing.setParentLevel0(entity.getParentLevel0());
+            existing.setParentLevel1(entity.getParentLevel1());
+            existing.setIsParent(entity.getParentLevel0() == null && entity.getParentLevel1() == null);
 
-            return Mono.just(e);
+            return Mono.just(existing);
         });
     }
 

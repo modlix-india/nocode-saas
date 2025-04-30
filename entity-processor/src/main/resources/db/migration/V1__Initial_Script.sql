@@ -266,6 +266,10 @@ CREATE TABLE `entity_processor`.`entity_processor_complex_rules` (
     CONSTRAINT `FK1_COMPLEX_RULES_RULE_ID` FOREIGN KEY (`RULE_ID`)
         REFERENCES `ENTITY_PROCESSOR_RULES` (`ID`)
         ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_COMPLEX_RULES_PARENT_ID` FOREIGN KEY (`PARENT_CONDITION_ID`)
+        REFERENCES `ENTITY_PROCESSOR_COMPLEX_RULES` (`ID`)
+        ON DELETE CASCADE
         ON UPDATE CASCADE
 
 ) ENGINE = InnoDB
@@ -309,9 +313,9 @@ CREATE TABLE `entity_processor`.`entity_processor_simple_complex_rule_relations`
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_product_rule_configs`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_product_rules`;
 
-CREATE TABLE `entity_processor`.`entity_processor_product_rule_configs` (
+CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
     `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Product Rule Config was created.',
@@ -320,7 +324,7 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rule_configs` (
     `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Product Rule Config.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product Rule Config.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Product Rule Config.',
-    `ENTITY_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product Rule ID related to this Product Rule Config.',
+    `PRODUCT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product Rule ID related to this Product Rule Config.',
     `RULE_TYPE` ENUM ('DEAL', 'STAGE') NOT NULL COMMENT 'Rule type for this Product Rule Config.',
     `BREAK_AT_FIRST_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should break at first match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules match.',
@@ -335,7 +339,11 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rule_configs` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_PRODUCT_RULE_CONFIGS_CODE` (`CODE`)
+    UNIQUE KEY `UK1_PRODUCT_RULES_CODE` (`CODE`),
+    CONSTRAINT `FK1_PRODUCT_RULES_PRODUCT_ID` FOREIGN KEY (`PRODUCT_ID`)
+        REFERENCES `ENTITY_PROCESSOR_PRODUCTS` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`

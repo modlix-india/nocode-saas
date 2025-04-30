@@ -17,13 +17,11 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class RuleExecutionConfig<T extends RuleExecutionConfig<T>> extends BaseDto<T>
-        implements IEntitySeries {
+public abstract class RuleConfig<T extends RuleConfig<T>> extends BaseDto<T> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 1844345864104376762L;
 
-    private ULong entityId;
     private RuleType ruleType;
     private boolean breakAtFirstMatch = false;
     private boolean executeOnlyIfAllPreviousMatch = false;
@@ -31,4 +29,8 @@ public abstract class RuleExecutionConfig<T extends RuleExecutionConfig<T>> exte
     private boolean continueOnNoMatch = true;
 
     private Map<Integer, ULong> rules;
+
+    public abstract ULong getEntityId();
+
+    public abstract T setEntityId(ULong entityId);
 }
