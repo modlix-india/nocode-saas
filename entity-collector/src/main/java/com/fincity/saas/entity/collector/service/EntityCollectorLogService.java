@@ -74,4 +74,13 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
                     return super.create(log).map(EntityCollectorLog::getId);
                 });
     }
+
+    public Mono<EntityCollectorLog> updateOnError(ULong logId, String statusMessage) {
+        EntityCollectorLog errorLog = new EntityCollectorLog()
+                .setId(logId)
+                .setStatus(EntityCollectorLogStatus.REJECTED)
+                .setStatusMessage(statusMessage);
+        return super.update(errorLog);
+    }
+
 }

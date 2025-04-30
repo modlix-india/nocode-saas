@@ -11,7 +11,10 @@ import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.dto.LeadDetails;
 import com.fincity.saas.entity.collector.enums.LeadFieldType;
+import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
+import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
 import lombok.extern.slf4j.Slf4j;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,6 +58,8 @@ public class MetaEntityUtil {
     private static final String CAMPAIGN = "campaign";
     private static final String AD_FIELDS = "id,name,adset,campaign";
     private static final String BASIC_ENTITY_FIELDS = "id,name";
+    private static final String FACEBOOK = "facebook";
+    private static final String SOCIAL_MEDIA = "socialMedia";
 
     private static final WebClient webClient = WebClient.create();
 
@@ -93,7 +98,7 @@ public class MetaEntityUtil {
         return fetchMetaGraphData(META_VERSION + adSetId, buildParams(token, BASIC_ENTITY_FIELDS));
     }
 
-    public static Mono<Tuple2<JsonNode, JsonNode>> fetchMetaData(String leadGenId, String formId, String token) {
+    public static Mono<Tuple2<JsonNode, JsonNode>> fetchMetaData(String leadGenId, String formId, String token, EntityCollectorMessageResourceService messageService, EntityCollectorLogService logService, ULong logId) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -104,7 +109,9 @@ public class MetaEntityUtil {
                         Map.of(ACCESS_TOKEN, token, META_FIELD, META_QUESTION)),
 
                 (leadData, formData) -> Mono.just(Tuples.of(leadData, formData))
-        );
+        ).onErrorResume(error ->
+                logService.updateOnError(logId, "hi")
+                        .then(Mono.empty()));
     }
 
     private static EntityResponse buildEntityResponse(LeadDetails lead, CampaignDetails campaignDetails) {
@@ -142,12 +149,16 @@ public class MetaEntityUtil {
         ).defaultIfEmpty(Collections.emptyList());
     }
 
-    public static Mono<EntityResponse> normalizeMetaEntity(JsonNode incomingLead, JsonNode formDetails, String adId, String token, EntityIntegration integration) {
+    public static Mono<EntityResponse> normalizeMetaEntity(JsonNode incomingLead, JsonNode formDetails, String adId, String token, EntityIntegration integration, EntityCollectorMessageResourceService messageService, EntityCollectorLogService logService, ULong logId) {
         return buildCampaignDetails(adId, token)
                 .flatMap(campaignDetails -> {
                     LeadDetails leadDetails = buildLeadDetails(incomingLead, formDetails, integration);
                     return Mono.just(buildEntityResponse(leadDetails, campaignDetails));
-                });
+                }).switchIfEmpty(
+                        messageService.getMessage(EntityCollectorMessageResourceService.FAILED_NORMALIZE_ENTITY)
+                                .flatMap(msg -> logService.updateOnError(logId, msg)
+                                        .then(Mono.empty()))
+                );
     }
 
     public static Mono<CampaignDetails> buildCampaignDetails(String adId, String token) {
@@ -202,7 +213,7 @@ public class MetaEntityUtil {
             }
         }
 
-        populateStaticFields(lead, integration, "Facebook", "socialMedia", "Facebook");
+        populateStaticFields(lead, integration, FACEBOOK, SOCIAL_MEDIA, FACEBOOK);
 
         Map<String, String> customFields = mapper.convertValue(
                 customFieldsNode, new TypeReference<Map<String, String>>() {

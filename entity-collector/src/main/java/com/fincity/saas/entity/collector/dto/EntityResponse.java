@@ -6,5 +6,4 @@ public class EntityResponse {
 
     private LeadDetails leadDetails;
     private CampaignDetails campaignDetails;
-    private WebsiteDetails websiteDetails;
 }

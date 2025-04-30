@@ -5,7 +5,11 @@ import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.dto.LeadDetails;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
+import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
+import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
 import lombok.extern.slf4j.Slf4j;
+import org.jooq.types.ULong;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -52,6 +56,19 @@ public class EntityUtil {
         );
     }
 
+    public static Mono<String> fetchOAuthToken(IFeignCoreService coreService, String clientCode, String appCode, EntityCollectorMessageResourceService messageService, EntityCollectorLogService logService, ULong logId) {
+        return coreService.getConnectionOAuth2Token(
+                "",
+                "",
+                "",
+                clientCode,
+                appCode,
+                CONNECTION_NAME
+        ).onErrorResume(error ->
+                logService.updateOnError(logId, error.getMessage())
+                        .then(Mono.empty()));
+    }
+
     public static void populateStaticFields(LeadDetails lead, EntityIntegration integration, String platform, String source, String subSource) {
         lead.setClientCode(integration.getClientCode());
         lead.setAppCode(integration.getAppCode());
@@ -59,4 +76,18 @@ public class EntityUtil {
         lead.setSource(source);
         lead.setSubSource(subSource);
     }
+
+    public static String getClientIpAddress(ServerHttpRequest request) {
+        String ipFromHeader = request.getHeaders().getFirst("X-Forwarded-For");
+
+        if (ipFromHeader != null && !ipFromHeader.isBlank()) {
+            return ipFromHeader.split(",")[0].trim();
+        }
+        if (request.getRemoteAddress() != null) {
+            return request.getRemoteAddress().getAddress().getHostAddress();
+        }
+
+        return "UNKNOWN";
+    }
+
 }
