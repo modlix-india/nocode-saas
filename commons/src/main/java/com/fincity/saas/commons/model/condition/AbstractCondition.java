@@ -6,9 +6,11 @@ import java.io.Serializable;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 import reactor.core.publisher.Flux;
 
 @Data
+@Accessors(chain = true)
 public abstract class AbstractCondition implements Serializable {
 
 	@Serial

@@ -11,5 +11,5 @@ public interface IConditionRuleService<
 
     Mono<D> createForCondition(Rule rule, C condition);
 
-    Mono<Integer> deleteByRuleId(ULong ruleId);
+    Mono<AbstractCondition> getCondition(ULong ruleId);
 }

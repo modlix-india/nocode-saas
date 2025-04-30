@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -31,7 +32,7 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     private boolean isToValueField = false;
     private ComparisonOperator matchOperator = ComparisonOperator.EQUALS;
 
-    public static SimpleRule of(ULong ruleId, FilterCondition condition) {
+    public static SimpleRule fromCondition(ULong ruleId, FilterCondition condition) {
         SimpleRule simpleRule = new SimpleRule()
                 .setRuleId(ruleId)
                 .setField(condition.getField())
@@ -44,6 +45,18 @@ public class SimpleRule extends BaseRule<SimpleRule> {
                 .setNegate(condition.isNegate());
 
         return simpleRule.setName();
+    }
+
+    public static AbstractCondition toCondition(SimpleRule rule) {
+        return new FilterCondition()
+                .setField(rule.getField())
+                .setOperator(rule.getComparisonOperator().getConditionOperator())
+                .setValue(rule.getValue())
+                .setToValue(rule.getToValue())
+                .setValueField(rule.isValueField())
+                .setToValueField(rule.isToValueField())
+                .setMatchOperator(rule.getMatchOperator().getConditionOperator())
+                .setNegate(rule.isNegate());
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.SimpleRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
@@ -13,6 +14,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -51,13 +53,17 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
 
     @Override
     public Mono<SimpleRule> createForCondition(Rule rule, FilterCondition condition) {
-        SimpleRule simpleRule = SimpleRule.of(rule.getId(), condition);
+        SimpleRule simpleRule = SimpleRule.fromCondition(rule.getId(), condition);
         return super.create(simpleRule);
     }
 
     @Override
-    public Mono<Integer> deleteByRuleId(ULong ruleId) {
-        return this.dao.deleteByRuleId(ruleId);
+    public Mono<AbstractCondition> getCondition(ULong ruleId) {
+        return this.read(ruleId).map(SimpleRule::toCondition);
+    }
+
+    public Flux<AbstractCondition> getConditionByComplexRule(ULong complexRuleId) {
+        return this.dao.readByComplexRuleId(complexRuleId).map(SimpleRule::toCondition);
     }
 
     public Mono<SimpleRule> createForConditionWithParent(

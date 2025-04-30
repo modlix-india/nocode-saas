@@ -34,9 +34,7 @@ public class ProductRuleService
 
     @Override
     protected Mono<ULong> getEntityId(String appCode, String clientCode, ULong userId, Identity productId) {
-        return productService
-                .readWithAccess(productId)
-                .map(Product::getId);
+        return productService.readWithAccess(productId).map(Product::getId);
     }
 
     @Override
