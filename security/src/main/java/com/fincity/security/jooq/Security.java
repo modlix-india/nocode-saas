@@ -10,37 +10,44 @@ import com.fincity.security.jooq.tables.SecurityAppAccess;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
+import com.fincity.security.jooq.tables.SecurityAppRegDepartment;
+import com.fincity.security.jooq.tables.SecurityAppRegDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegFileAccess;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
-import com.fincity.security.jooq.tables.SecurityAppRegPackage;
-import com.fincity.security.jooq.tables.SecurityAppRegUserRole;
+import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction;
+import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
+import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
+import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
-import com.fincity.security.jooq.tables.SecurityClientPackage;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
-import com.fincity.security.jooq.tables.SecurityOrgStructure;
+import com.fincity.security.jooq.tables.SecurityDepartment;
+import com.fincity.security.jooq.tables.SecurityDesignation;
 import com.fincity.security.jooq.tables.SecurityOtp;
-import com.fincity.security.jooq.tables.SecurityPackage;
-import com.fincity.security.jooq.tables.SecurityPackageRole;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
 import com.fincity.security.jooq.tables.SecurityPermission;
-import com.fincity.security.jooq.tables.SecurityRole;
-import com.fincity.security.jooq.tables.SecurityRolePermission;
+import com.fincity.security.jooq.tables.SecurityProfile;
+import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
+import com.fincity.security.jooq.tables.SecurityProfileRole;
+import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserAddress;
-import com.fincity.security.jooq.tables.SecurityUserRolePermission;
 import com.fincity.security.jooq.tables.SecurityUserToken;
+import com.fincity.security.jooq.tables.SecurityV2Role;
+import com.fincity.security.jooq.tables.SecurityV2RolePermission;
+import com.fincity.security.jooq.tables.SecurityV2RoleRole;
+import com.fincity.security.jooq.tables.SecurityV2UserRole;
 
 import java.util.Arrays;
 import java.util.List;
@@ -94,6 +101,16 @@ public class Security extends SchemaImpl {
     public final SecurityAppRegAccess SECURITY_APP_REG_ACCESS = SecurityAppRegAccess.SECURITY_APP_REG_ACCESS;
 
     /**
+     * The table <code>security.security_app_reg_department</code>.
+     */
+    public final SecurityAppRegDepartment SECURITY_APP_REG_DEPARTMENT = SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT;
+
+    /**
+     * The table <code>security.security_app_reg_designation</code>.
+     */
+    public final SecurityAppRegDesignation SECURITY_APP_REG_DESIGNATION = SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION;
+
+    /**
      * The table <code>security.security_app_reg_file_access</code>.
      */
     public final SecurityAppRegFileAccess SECURITY_APP_REG_FILE_ACCESS = SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS;
@@ -109,14 +126,24 @@ public class Security extends SchemaImpl {
     public final SecurityAppRegIntegrationTokens SECURITY_APP_REG_INTEGRATION_TOKENS = SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS;
 
     /**
-     * The table <code>security.security_app_reg_package</code>.
+     * The table <code>security.security_app_reg_profile_restriction</code>.
      */
-    public final SecurityAppRegPackage SECURITY_APP_REG_PACKAGE = SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE;
+    public final SecurityAppRegProfileRestriction SECURITY_APP_REG_PROFILE_RESTRICTION = SecurityAppRegProfileRestriction.SECURITY_APP_REG_PROFILE_RESTRICTION;
 
     /**
-     * The table <code>security.security_app_reg_user_role</code>.
+     * The table <code>security.security_app_reg_user_designation</code>.
      */
-    public final SecurityAppRegUserRole SECURITY_APP_REG_USER_ROLE = SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE;
+    public final SecurityAppRegUserDesignation SECURITY_APP_REG_USER_DESIGNATION = SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION;
+
+    /**
+     * The table <code>security.security_app_reg_user_profile</code>.
+     */
+    public final SecurityAppRegUserProfile SECURITY_APP_REG_USER_PROFILE = SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE;
+
+    /**
+     * The table <code>security.security_app_reg_user_role_v2</code>.
+     */
+    public final SecurityAppRegUserRoleV2 SECURITY_APP_REG_USER_ROLE_V2 = SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2;
 
     /**
      * The table <code>security.security_client</code>.
@@ -139,11 +166,6 @@ public class Security extends SchemaImpl {
     public final SecurityClientOtpPolicy SECURITY_CLIENT_OTP_POLICY = SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY;
 
     /**
-     * The table <code>security.security_client_package</code>.
-     */
-    public final SecurityClientPackage SECURITY_CLIENT_PACKAGE = SecurityClientPackage.SECURITY_CLIENT_PACKAGE;
-
-    /**
      * The table <code>security.security_client_password_policy</code>.
      */
     public final SecurityClientPasswordPolicy SECURITY_CLIENT_PASSWORD_POLICY = SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY;
@@ -164,24 +186,19 @@ public class Security extends SchemaImpl {
     public final SecurityClientUrl SECURITY_CLIENT_URL = SecurityClientUrl.SECURITY_CLIENT_URL;
 
     /**
-     * The table <code>security.security_org_structure</code>.
+     * The table <code>security.security_department</code>.
      */
-    public final SecurityOrgStructure SECURITY_ORG_STRUCTURE = SecurityOrgStructure.SECURITY_ORG_STRUCTURE;
+    public final SecurityDepartment SECURITY_DEPARTMENT = SecurityDepartment.SECURITY_DEPARTMENT;
+
+    /**
+     * The table <code>security.security_designation</code>.
+     */
+    public final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
 
     /**
      * The table <code>security.security_otp</code>.
      */
     public final SecurityOtp SECURITY_OTP = SecurityOtp.SECURITY_OTP;
-
-    /**
-     * The table <code>security.security_package</code>.
-     */
-    public final SecurityPackage SECURITY_PACKAGE = SecurityPackage.SECURITY_PACKAGE;
-
-    /**
-     * The table <code>security.security_package_role</code>.
-     */
-    public final SecurityPackageRole SECURITY_PACKAGE_ROLE = SecurityPackageRole.SECURITY_PACKAGE_ROLE;
 
     /**
      * The table <code>security.security_past_passwords</code>.
@@ -199,14 +216,24 @@ public class Security extends SchemaImpl {
     public final SecurityPermission SECURITY_PERMISSION = SecurityPermission.SECURITY_PERMISSION;
 
     /**
-     * The table <code>security.security_role</code>.
+     * The table <code>security.security_profile</code>.
      */
-    public final SecurityRole SECURITY_ROLE = SecurityRole.SECURITY_ROLE;
+    public final SecurityProfile SECURITY_PROFILE = SecurityProfile.SECURITY_PROFILE;
 
     /**
-     * The table <code>security.security_role_permission</code>.
+     * The table <code>security.security_profile_client_restriction</code>.
      */
-    public final SecurityRolePermission SECURITY_ROLE_PERMISSION = SecurityRolePermission.SECURITY_ROLE_PERMISSION;
+    public final SecurityProfileClientRestriction SECURITY_PROFILE_CLIENT_RESTRICTION = SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION;
+
+    /**
+     * The table <code>security.security_profile_role</code>.
+     */
+    public final SecurityProfileRole SECURITY_PROFILE_ROLE = SecurityProfileRole.SECURITY_PROFILE_ROLE;
+
+    /**
+     * The table <code>security.security_profile_user</code>.
+     */
+    public final SecurityProfileUser SECURITY_PROFILE_USER = SecurityProfileUser.SECURITY_PROFILE_USER;
 
     /**
      * The table <code>security.security_sox_log</code>.
@@ -239,14 +266,29 @@ public class Security extends SchemaImpl {
     public final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
 
     /**
-     * The table <code>security.security_user_role_permission</code>.
-     */
-    public final SecurityUserRolePermission SECURITY_USER_ROLE_PERMISSION = SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION;
-
-    /**
      * The table <code>security.security_user_token</code>.
      */
     public final SecurityUserToken SECURITY_USER_TOKEN = SecurityUserToken.SECURITY_USER_TOKEN;
+
+    /**
+     * The table <code>security.security_v2_role</code>.
+     */
+    public final SecurityV2Role SECURITY_V2_ROLE = SecurityV2Role.SECURITY_V2_ROLE;
+
+    /**
+     * The table <code>security.security_v2_role_permission</code>.
+     */
+    public final SecurityV2RolePermission SECURITY_V2_ROLE_PERMISSION = SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION;
+
+    /**
+     * The table <code>security.security_v2_role_role</code>.
+     */
+    public final SecurityV2RoleRole SECURITY_V2_ROLE_ROLE = SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE;
+
+    /**
+     * The table <code>security.security_v2_user_role</code>.
+     */
+    public final SecurityV2UserRole SECURITY_V2_USER_ROLE = SecurityV2UserRole.SECURITY_V2_USER_ROLE;
 
     /**
      * No further instances allowed
@@ -270,37 +312,44 @@ public class Security extends SchemaImpl {
             SecurityAppDependency.SECURITY_APP_DEPENDENCY,
             SecurityAppProperty.SECURITY_APP_PROPERTY,
             SecurityAppRegAccess.SECURITY_APP_REG_ACCESS,
+            SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT,
+            SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION,
             SecurityAppRegFileAccess.SECURITY_APP_REG_FILE_ACCESS,
             SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION,
             SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS,
-            SecurityAppRegPackage.SECURITY_APP_REG_PACKAGE,
-            SecurityAppRegUserRole.SECURITY_APP_REG_USER_ROLE,
+            SecurityAppRegProfileRestriction.SECURITY_APP_REG_PROFILE_RESTRICTION,
+            SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION,
+            SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE,
+            SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY,
             SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY,
-            SecurityClientPackage.SECURITY_CLIENT_PACKAGE,
             SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY,
             SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY,
             SecurityClientType.SECURITY_CLIENT_TYPE,
             SecurityClientUrl.SECURITY_CLIENT_URL,
-            SecurityOrgStructure.SECURITY_ORG_STRUCTURE,
+            SecurityDepartment.SECURITY_DEPARTMENT,
+            SecurityDesignation.SECURITY_DESIGNATION,
             SecurityOtp.SECURITY_OTP,
-            SecurityPackage.SECURITY_PACKAGE,
-            SecurityPackageRole.SECURITY_PACKAGE_ROLE,
             SecurityPastPasswords.SECURITY_PAST_PASSWORDS,
             SecurityPastPins.SECURITY_PAST_PINS,
             SecurityPermission.SECURITY_PERMISSION,
-            SecurityRole.SECURITY_ROLE,
-            SecurityRolePermission.SECURITY_ROLE_PERMISSION,
+            SecurityProfile.SECURITY_PROFILE,
+            SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION,
+            SecurityProfileRole.SECURITY_PROFILE_ROLE,
+            SecurityProfileUser.SECURITY_PROFILE_USER,
             SecuritySoxLog.SECURITY_SOX_LOG,
             SecuritySslCertificate.SECURITY_SSL_CERTIFICATE,
             SecuritySslChallenge.SECURITY_SSL_CHALLENGE,
             SecuritySslRequest.SECURITY_SSL_REQUEST,
             SecurityUser.SECURITY_USER,
             SecurityUserAddress.SECURITY_USER_ADDRESS,
-            SecurityUserRolePermission.SECURITY_USER_ROLE_PERMISSION,
-            SecurityUserToken.SECURITY_USER_TOKEN
+            SecurityUserToken.SECURITY_USER_TOKEN,
+            SecurityV2Role.SECURITY_V2_ROLE,
+            SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION,
+            SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE,
+            SecurityV2UserRole.SECURITY_V2_USER_ROLE
         );
     }
 }

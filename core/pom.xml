@@ -19,6 +19,7 @@
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <saas-commons-version>2.0.0</saas-commons-version>
+        <saas-commons-core-version>1.0.0</saas-commons-core-version>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
         <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
@@ -121,6 +122,11 @@
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons</artifactId>
             <version>${saas-commons-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-core</artifactId>
+            <version>${saas-commons-core-version}</version>
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
