@@ -4,7 +4,7 @@ on:
   #To trigger manually
   workflow_dispatch:
   push:
-    branches: [oci-production]
+    branches: [ oci-production ]
 
 env:
   ENVIRONMENT: ociprod
@@ -35,6 +35,9 @@ jobs:
         run: mvn clean install
       - name: Building commons-mq
         working-directory: ./commons-mq
+        run: mvn clean install
+      - name: Building commons-core
+        working-directory: ./commons-core
         run: mvn clean install
       - name: Building config
         working-directory: ./config
