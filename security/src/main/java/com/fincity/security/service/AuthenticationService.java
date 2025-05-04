@@ -85,12 +85,19 @@ public class AuthenticationService implements IAuthenticationService {
 
     private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
-    public AuthenticationService(UserService userService, ClientService clientService, AppService appService,
-                                 TokenService tokenService, OtpService otpService, SecurityMessageResourceService resourceService,
-                                 SoxLogService soxLogService, PasswordEncoder pwdEncoder, CacheService cacheService,
-                                 AppRegistrationIntegrationTokenDao integrationTokenDao,
-                                 AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
-                                 ProfileService profileService) {
+    public AuthenticationService(
+            UserService userService,
+            ClientService clientService,
+            AppService appService,
+            TokenService tokenService,
+            OtpService otpService,
+            SecurityMessageResourceService resourceService,
+            SoxLogService soxLogService,
+            PasswordEncoder pwdEncoder,
+            CacheService cacheService,
+            AppRegistrationIntegrationTokenDao integrationTokenDao,
+            AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
+            ProfileService profileService) {
         this.userService = userService;
         this.clientService = clientService;
         this.appService = appService;
@@ -123,8 +130,7 @@ public class AuthenticationService implements IAuthenticationService {
 
         if (bearerToken == null || bearerToken.isBlank()) {
             HttpCookie cookie = request.getCookies().getFirst(HttpHeaders.AUTHORIZATION);
-            if (cookie != null)
-                bearerToken = cookie.getValue();
+            if (cookie != null) bearerToken = cookie.getValue();
         }
 
         if (bearerToken != null) {
@@ -138,66 +144,67 @@ public class AuthenticationService implements IAuthenticationService {
             }
         }
 
-        if (bearerToken == null)
-            return Mono.just(1);
+        if (bearerToken == null) return Mono.just(1);
 
         final String finToken = bearerToken;
 
         cacheService.evict(CACHE_NAME_TOKEN, finToken).subscribe();
 
         return tokenService
-                .readAllFilter(new FilterCondition().setField("partToken").setOperator(FilterConditionOperator.EQUALS)
+                .readAllFilter(new FilterCondition()
+                        .setField("partToken")
+                        .setOperator(FilterConditionOperator.EQUALS)
                         .setValue(toPartToken(finToken)))
-                .filter(e -> e.getToken().equals(finToken)).map(TokenObject::getId).collectList()
-                .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst())).flatMap(tokenService::delete)
+                .filter(e -> e.getToken().equals(finToken))
+                .map(TokenObject::getId)
+                .collectList()
+                .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst()))
+                .flatMap(tokenService::delete)
                 .defaultIfEmpty(1);
     }
 
     public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
 
-        if (!authRequest.isGenerateOtp())
-            return Mono.just(Boolean.FALSE);
+        if (!authRequest.isGenerateOtp()) return Mono.just(Boolean.FALSE);
 
         String appCode = request.getHeaders().getFirst(AppService.AC);
         String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
         OtpPurpose purpose = OtpPurpose.LOGIN;
 
-        if (authRequest.getIdentifierType() == null)
-            authRequest.setIdentifierType();
+        if (authRequest.getIdentifierType() == null) authRequest.setIdentifierType();
 
         return FlatMapUtil.flatMapMono(
-
-                        () -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-                                clientCode, appCode, authRequest.getIdentifierType()),
-
-                        tup -> this.userService.checkUserAndClient(tup, clientCode)
+                        () -> this.userService.findNonDeletedUserNClient(
+                                authRequest.getUserName(),
+                                authRequest.getUserId(),
+                                clientCode,
+                                appCode,
+                                authRequest.getIdentifierType()),
+                        tup -> this.userService
+                                .checkUserAndClient(tup, clientCode)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
                         (tup, linCCheck) -> this.appService.getAppByCode(appCode),
-
-                        (tup, linCCheck, app) -> Mono.just(
-                                new OtpGenerationRequestInternal()
-                                        .setClientOption(tup.getT1())
-                                        .setAppOption(app)
-                                        .setWithUserOption(tup.getT3())
-                                        .setIpAddress(request.getRemoteAddress())
-                                        .setResend(authRequest.isResend())
-                                        .setPurpose(purpose)),
-
+                        (tup, linCCheck, app) -> Mono.just(new OtpGenerationRequestInternal()
+                                .setClientOption(tup.getT1())
+                                .setAppOption(app)
+                                .setWithUserOption(tup.getT3())
+                                .setIpAddress(request.getRemoteAddress())
+                                .setResend(authRequest.isResend())
+                                .setPurpose(purpose)),
                         (app, tup, linCCheck, targetReq) -> this.otpService.generateOtpInternal(targetReq))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [" + purpose.name() + "]"))
-                .switchIfEmpty(Mono.just(Boolean.FALSE)).log();
+                .switchIfEmpty(Mono.just(Boolean.FALSE))
+                .log();
     }
 
-    public Mono<AuthenticationResponse> authenticate(AuthenticationRequest authRequest, ServerHttpRequest request,
-                                                     ServerHttpResponse response) {
+    public Mono<AuthenticationResponse> authenticate(
+            AuthenticationRequest authRequest, ServerHttpRequest request, ServerHttpResponse response) {
 
         String appCode = request.getHeaders().getFirst(AppService.AC);
         String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
-        if (authRequest.getIdentifierType() == null)
-            authRequest.setIdentifierType();
+        if (authRequest.getIdentifierType() == null) authRequest.setIdentifierType();
 
         AuthenticationPasswordType passwordType = authRequest.getInputPassType();
 
@@ -206,35 +213,37 @@ public class AuthenticationService implements IAuthenticationService {
         }
 
         return FlatMapUtil.flatMapMono(
-
-                        () -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(), authRequest.getUserId(),
-                                clientCode, appCode, authRequest.getIdentifierType()).flatMap(tup -> this.profileService.checkIfUserHasAnyProfile(tup.getT3().getId(), appCode)
-                                .flatMap(e -> {
-                                    if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
-                                    return Mono.empty();
-                                })),
-
-                        tup -> this.userService.checkUserAndClient(tup, clientCode)
+                        () -> this.userService
+                                .findNonDeletedUserNClient(
+                                        authRequest.getUserName(),
+                                        authRequest.getUserId(),
+                                        clientCode,
+                                        appCode,
+                                        authRequest.getIdentifierType())
+                                .flatMap(tup -> this.profileService
+                                        .checkIfUserHasAnyProfile(tup.getT3().getId(), appCode)
+                                        .flatMap(e -> {
+                                            if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
+                                            return Mono.empty();
+                                        })),
+                        tup -> this.userService
+                                .checkUserAndClient(tup, clientCode)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
                         (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
-
-                        (tup, linCCheck, user) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), appCode,
-                                passwordType),
-
-                        (tup, linCCheck, user, policy) -> this.checkPassword(authRequest.getInputPass(), appCode, user,
-                                policy, passwordType),
-
+                        (tup, linCCheck, user) -> this.clientService.getClientAppPolicy(
+                                tup.getT2().getId(), appCode, passwordType),
+                        (tup, linCCheck, user, policy) ->
+                                this.checkPassword(authRequest.getInputPass(), appCode, user, policy, passwordType),
                         (tup, linCCheck, user, policy, passwordChecked) -> this.resetUserAttempts(user, passwordType),
-
-                        (tup, linCCheck, user, policy, passwordChecked, attemptsReset) -> logAndMakeToken(authRequest,
-                                request, response, user, tup.getT2(), tup.getT1()))
+                        (tup, linCCheck, user, policy, passwordChecked, attemptsReset) ->
+                                logAndMakeToken(authRequest, request, response, user, tup.getT2(), tup.getT1()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate"))
-                .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED)).log();
+                .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))
+                .log();
     }
 
-    public Mono<AuthenticationResponse> authenticateWSocial(AuthenticationRequest authRequest,
-                                                            ServerHttpRequest request, ServerHttpResponse response) {
+    public Mono<AuthenticationResponse> authenticateWSocial(
+            AuthenticationRequest authRequest, ServerHttpRequest request, ServerHttpResponse response) {
 
         if (StringUtil.safeIsBlank(authRequest.getSocialRegisterState()))
             return this.resourceService.throwMessage(
@@ -248,33 +257,39 @@ public class AuthenticationService implements IAuthenticationService {
             authRequest.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
 
         return FlatMapUtil.flatMapMono(
-
-                        () -> this.userService.findNonDeletedUserNClient(authRequest.getUserName(),
-                                authRequest.getUserId(), clientCode, appCode, authRequest.getIdentifierType()),
-
-                        tup -> this.userService.checkUserAndClient(tup, clientCode)
+                        () -> this.userService
+                                .findNonDeletedUserNClient(
+                                        authRequest.getUserName(),
+                                        authRequest.getUserId(),
+                                        clientCode,
+                                        appCode,
+                                        authRequest.getIdentifierType())
+                                .flatMap(tup -> this.profileService
+                                        .checkIfUserHasAnyProfile(tup.getT3().getId(), appCode)
+                                        .flatMap(e -> {
+                                            if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
+                                            return Mono.empty();
+                                        })),
+                        tup -> this.userService
+                                .checkUserAndClient(tup, clientCode)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
                         (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
-
-                        (tup, linCCheck, user) -> this.appRegistrationIntegrationTokenService
-                                .verifyIntegrationState(authRequest.getSocialRegisterState()),
-
-                        (tup, linCCheck, user, appRegIntgToken) -> Mono
-                                .just(appRegIntgToken.getUsername().equals(authRequest.getUserName()))
+                        (tup, linCCheck, user) -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
+                                authRequest.getSocialRegisterState()),
+                        (tup, linCCheck, user, appRegIntgToken) -> Mono.just(
+                                        appRegIntgToken.getUsername().equals(authRequest.getUserName()))
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
                         (tup, linCCheck, user, appRegIntgToken, usernameChecked) -> {
-
                             appRegIntgToken.setCreatedBy(user.getId());
                             appRegIntgToken.setUpdatedBy(user.getId());
 
                             return this.integrationTokenDao.update(appRegIntgToken);
                         },
-                        (tup, linCCheck, user, appRegIntgToken, usernameChecked, updatedToken) -> logAndMakeToken(authRequest,
-                                request, response, user, tup.getT2(), tup.getT1()))
+                        (tup, linCCheck, user, appRegIntgToken, usernameChecked, updatedToken) ->
+                                logAndMakeToken(authRequest, request, response, user, tup.getT2(), tup.getT1()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateWSocial"))
-                .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED)).log();
+                .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))
+                .log();
     }
 
     private Mono<User> checkUserStatus(User user) {
@@ -282,7 +297,7 @@ public class AuthenticationService implements IAuthenticationService {
             case ACTIVE -> Mono.just(user);
             case LOCKED -> this.checkUserLockStatus(user);
             case PASSWORD_EXPIRED ->
-                    this.authError(SecurityMessageResourceService.USER_ACCOUNT_PASS_EXPIRED, user.getLockedDueTo());
+                this.authError(SecurityMessageResourceService.USER_ACCOUNT_PASS_EXPIRED, user.getLockedDueTo());
             default -> this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED);
         };
     }
@@ -290,55 +305,71 @@ public class AuthenticationService implements IAuthenticationService {
     private Mono<User> checkUserLockStatus(User user) {
 
         if (user.getLockedUntil().isBefore(LocalDateTime.now()))
-            return this.userService.unlockUserInternal(user.getId())
-                    .flatMap(unblocked -> Boolean.TRUE.equals(unblocked) ? Mono.just(user)
+            return this.userService
+                    .unlockUserInternal(user.getId())
+                    .flatMap(unblocked -> Boolean.TRUE.equals(unblocked)
+                            ? Mono.just(user)
                             : this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED));
 
-        return this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED_LIMIT, user.getLockedDueTo(),
-                user.getLockedUntil() == null ? 5
-                        : user.getLockedUntil().minusMinutes(LocalDateTime.now().getMinute()).getMinute());
+        return this.authError(
+                SecurityMessageResourceService.USER_ACCOUNT_BLOCKED_LIMIT,
+                user.getLockedDueTo(),
+                user.getLockedUntil() == null
+                        ? 5
+                        : user.getLockedUntil()
+                                .minusMinutes(LocalDateTime.now().getMinute())
+                                .getMinute());
     }
 
-    private <T extends AbstractPolicy> Mono<Boolean> checkPassword(String passwordString, String appCode,
-                                                                   User user, T policy, AuthenticationPasswordType passwordType) {
+    private <T extends AbstractPolicy> Mono<Boolean> checkPassword(
+            String passwordString, String appCode, User user, T policy, AuthenticationPasswordType passwordType) {
 
         return FlatMapUtil.flatMapMono(
-
                         () -> switch (passwordType) {
-                            case PASSWORD -> user.isPasswordHashed()
-                                    ? Mono.just(
-                                    pwdEncoder.matches(user.getId() + passwordString, user.getPassword()))
-                                    : Mono.just(StringUtil.safeEquals(passwordString, user.getPassword()));
-                            case PIN -> user.isPinHashed()
-                                    ? Mono.just(
-                                    pwdEncoder.matches(user.getId() + passwordString, user.getPin()))
-                                    : Mono.just(StringUtil.safeEquals(passwordString, user.getPin()));
-                            case OTP -> this.otpService.verifyOtpInternal(appCode, user,
-                                    new OtpVerificationRequest().setPurpose(OtpPurpose.PASSWORD_RESET).setOtp(passwordString));
+                            case PASSWORD ->
+                                user.isPasswordHashed()
+                                        ? Mono.just(
+                                                pwdEncoder.matches(user.getId() + passwordString, user.getPassword()))
+                                        : Mono.just(StringUtil.safeEquals(passwordString, user.getPassword()));
+                            case PIN ->
+                                user.isPinHashed()
+                                        ? Mono.just(pwdEncoder.matches(user.getId() + passwordString, user.getPin()))
+                                        : Mono.just(StringUtil.safeEquals(passwordString, user.getPin()));
+                            case OTP ->
+                                this.otpService.verifyOtpInternal(
+                                        appCode,
+                                        user,
+                                        new OtpVerificationRequest()
+                                                .setPurpose(OtpPurpose.PASSWORD_RESET)
+                                                .setOtp(passwordString));
                         },
-                        isValid -> Boolean.FALSE.equals(isValid) ? checkFailedAttempts(user, policy, passwordType)
+                        isValid -> Boolean.FALSE.equals(isValid)
+                                ? checkFailedAttempts(user, policy, passwordType)
                                 : Mono.just(Boolean.TRUE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.checkPassword"));
     }
 
-    private <T extends AbstractPolicy> Mono<Boolean> checkFailedAttempts(User user, T policy,
-                                                                         AuthenticationPasswordType passwordType) {
+    private <T extends AbstractPolicy> Mono<Boolean> checkFailedAttempts(
+            User user, T policy, AuthenticationPasswordType passwordType) {
 
         if (policy.getNoFailedAttempts() != null && compareFailedAttempts(user, policy, passwordType) >= 0) {
 
-            soxLogService.createLog(user.getId(), SecuritySoxLogActionName.LOGIN, SecuritySoxLogObjectName.USER,
+            soxLogService.createLog(
+                    user.getId(),
+                    SecuritySoxLogActionName.LOGIN,
+                    SecuritySoxLogObjectName.USER,
                     "Failed password attempts are more than the configuration");
 
             return FlatMapUtil.flatMapMono(
-                    () -> this.lockUser(user, LocalDateTime.now().plusMinutes(policy.getUserLockTime()),
-                            passwordType.getName()),
+                    () -> this.lockUser(
+                            user, LocalDateTime.now().plusMinutes(policy.getUserLockTime()), passwordType.getName()),
                     userLocked -> this.authError(SecurityMessageResourceService.USER_ACCOUNT_BLOCKED));
         }
         return handleAuthFailure(user, policy, passwordType);
     }
 
-    private <T extends AbstractPolicy> int compareFailedAttempts(User user, T policy,
-                                                                 AuthenticationPasswordType passwordType) {
+    private <T extends AbstractPolicy> int compareFailedAttempts(
+            User user, T policy, AuthenticationPasswordType passwordType) {
 
         return switch (passwordType) {
             case PASSWORD -> user.getNoFailedAttempt().compareTo(policy.getNoFailedAttempts());
@@ -348,157 +379,189 @@ public class AuthenticationService implements IAuthenticationService {
     }
 
     private Mono<Boolean> lockUser(User user, LocalDateTime lockUntil, String lockedDueTo) {
-        return userService.lockUserInternal(user.getId(), lockUntil, lockedDueTo)
+        return userService
+                .lockUserInternal(user.getId(), lockUntil, lockedDueTo)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.lockUser"));
     }
 
-    private <T extends AbstractPolicy> Mono<Boolean> handleAuthFailure(User user, T policy,
-                                                                       AuthenticationPasswordType passwordType) {
+    private <T extends AbstractPolicy> Mono<Boolean> handleAuthFailure(
+            User user, T policy, AuthenticationPasswordType passwordType) {
 
-        return userService.increaseFailedAttempt(user.getId(), passwordType)
-                .flatMap(increasedAttempts -> {
+        return userService.increaseFailedAttempt(user.getId(), passwordType).flatMap(increasedAttempts -> {
+            int remainingAttempts = Math.max(policy.getNoFailedAttempts().intValue() - increasedAttempts, 0);
 
-                    int remainingAttempts = Math.max(policy.getNoFailedAttempts().intValue() - increasedAttempts, 0);
+            soxLogService.createLog(
+                    user.getId(),
+                    SecuritySoxLogActionName.UPDATE,
+                    SecuritySoxLogObjectName.USER,
+                    "Given Password is mismatching with existing.");
 
-                    soxLogService.createLog(user.getId(), SecuritySoxLogActionName.UPDATE,
-                            SecuritySoxLogObjectName.USER, "Given Password is mismatching with existing.");
-
-                    return this.authError(SecurityMessageResourceService.USER_PASSWORD_INVALID_ATTEMPTS,
-                            passwordType.getName(), remainingAttempts);
-                });
+            return this.authError(
+                    SecurityMessageResourceService.USER_PASSWORD_INVALID_ATTEMPTS,
+                    passwordType.getName(),
+                    remainingAttempts);
+        });
     }
 
     private <T> Mono<T> authError(String message, Object... params) {
-        return resourceService.getMessage(message, params)
+        return resourceService
+                .getMessage(message, params)
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.FORBIDDEN, msg)));
     }
 
     private Mono<Boolean> resetUserAttempts(User user, AuthenticationPasswordType passwordType) {
 
         if (passwordType.equals(AuthenticationPasswordType.OTP))
-            return userService.resetFailedAttempt(user.getId(), passwordType)
+            return userService
+                    .resetFailedAttempt(user.getId(), passwordType)
                     .flatMap(reset -> userService.resetResendAttempt(user.getId()))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
 
-        return userService.resetFailedAttempt(user.getId(), passwordType)
+        return userService
+                .resetFailedAttempt(user.getId(), passwordType)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
     }
 
-    private Mono<AuthenticationResponse> logAndMakeToken(AuthenticationRequest authRequest, ServerHttpRequest request,
-                                                         ServerHttpResponse response, User user, Client client, Client linClient) {
+    private Mono<AuthenticationResponse> logAndMakeToken(
+            AuthenticationRequest authRequest,
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            User user,
+            Client client,
+            Client linClient) {
 
-        soxLogService.createLog(user.getId(), SecuritySoxLogActionName.LOGIN, SecuritySoxLogObjectName.USER,
-                "Successful");
+        soxLogService.createLog(
+                user.getId(), SecuritySoxLogActionName.LOGIN, SecuritySoxLogObjectName.USER, "Successful");
 
         InetSocketAddress inetAddress = request.getRemoteAddress();
 
-        return makeToken(authRequest, request, response, inetAddress == null ? null : inetAddress.getHostString(), user,
-                client, linClient);
+        return makeToken(
+                authRequest,
+                request,
+                response,
+                inetAddress == null ? null : inetAddress.getHostString(),
+                user,
+                client,
+                linClient);
     }
 
-    private Mono<AuthenticationResponse> makeToken(AuthenticationRequest authRequest, ServerHttpRequest request,
-                                                   ServerHttpResponse response, final String setAddress, User user, Client client, Client linClient) {
+    private Mono<AuthenticationResponse> makeToken(
+            AuthenticationRequest authRequest,
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            final String setAddress,
+            User user,
+            Client client,
+            Client linClient) {
 
         int timeInMinutes = authRequest.isRememberMe() ? remembermeExpiryInMinutes : client.getTokenValidityMinutes();
-        if (timeInMinutes <= 0)
-            timeInMinutes = this.defaultExpiryInMinutes;
+        if (timeInMinutes <= 0) timeInMinutes = this.defaultExpiryInMinutes;
 
         String host = request.getURI().getHost();
         String port = "" + request.getURI().getPort();
 
         List<String> forwardedHost = request.getHeaders().get("X-Forwarded-Host");
 
-        if (forwardedHost != null && !forwardedHost.isEmpty())
-            host = forwardedHost.getFirst();
+        if (forwardedHost != null && !forwardedHost.isEmpty()) host = forwardedHost.getFirst();
 
         List<String> forwardedPort = request.getHeaders().get("X-Forwarded-Port");
 
-        if (forwardedPort != null && !forwardedPort.isEmpty())
-            port = forwardedPort.getFirst();
+        if (forwardedPort != null && !forwardedPort.isEmpty()) port = forwardedPort.getFirst();
 
         Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(JWTGenerateTokenParameters.builder()
-                .userId(user.getId().toBigInteger()).secretKey(tokenKey).expiryInMin(timeInMinutes).host(host)
+                .userId(user.getId().toBigInteger())
+                .secretKey(tokenKey)
+                .expiryInMin(timeInMinutes)
+                .host(host)
                 .port(port)
-                .loggedInClientId(linClient.getId().toBigInteger()).loggedInClientCode(linClient.getCode()).build());
+                .loggedInClientId(linClient.getId().toBigInteger())
+                .loggedInClientCode(linClient.getCode())
+                .build());
 
         if (authRequest.isCookie())
-            response.addCookie(ResponseCookie.from("Authentication", token.getT1()).path("/")
-                    .maxAge(Duration.ofMinutes(timeInMinutes)).build());
+            response.addCookie(ResponseCookie.from("Authentication", token.getT1())
+                    .path("/")
+                    .maxAge(Duration.ofMinutes(timeInMinutes))
+                    .build());
 
         return tokenService
-                .create(new TokenObject().setUserId(user.getId()).setToken(token.getT1())
+                .create(new TokenObject()
+                        .setUserId(user.getId())
+                        .setToken(token.getT1())
                         .setPartToken(
-                                token.getT1().length() < 50 ? token.getT1()
+                                token.getT1().length() < 50
+                                        ? token.getT1()
                                         : token.getT1().substring(token.getT1().length() - 50))
-                        .setExpiresAt(token.getT2()).setIpAddress(setAddress))
-                .map(t -> new AuthenticationResponse().setUser(user.toContextUser()).setClient(client)
+                        .setExpiresAt(token.getT2())
+                        .setIpAddress(setAddress))
+                .map(t -> new AuthenticationResponse()
+                        .setUser(user.toContextUser())
+                        .setClient(client)
                         .setLoggedInClientCode(linClient.getCode())
                         .setLoggedInClientId(linClient.getId().toBigInteger())
-                        .setAccessToken(token.getT1()).setAccessTokenExpiryAt(token.getT2()))
+                        .setAccessToken(token.getT1())
+                        .setAccessTokenExpiryAt(token.getT2()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeToken"));
     }
 
     @Override
-    public Mono<Authentication> getAuthentication(boolean basic, String bearerToken, String clientCode, String appCode,
-                                                  ServerHttpRequest request) {
+    public Mono<Authentication> getAuthentication(
+            boolean basic, String bearerToken, String clientCode, String appCode, ServerHttpRequest request) {
 
-        if (StringUtil.safeIsBlank(bearerToken))
-            return this.makeAnonySpringAuthentication(request);
+        if (StringUtil.safeIsBlank(bearerToken)) return this.makeAnonySpringAuthentication(request);
 
         return FlatMapUtil.flatMapMonoWithNull(
-
                         () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken).map(ContextAuthentication.class::cast),
-
                         cachedCA -> basic ? Mono.empty() : checkTokenOrigin(request, this.extractClaims(bearerToken)),
-
                         (cachedCA, claims) -> {
-
-                            if (cachedCA != null)
-                                return Mono.just(cachedCA);
+                            if (cachedCA != null) return Mono.just(cachedCA);
 
                             return getAuthenticationIfNotInCache(appCode, basic, bearerToken, request);
                         })
                 .onErrorResume(e -> this.makeAnonySpringAuthentication(request))
                 .flatMap(e -> {
                     if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
-                        return this.userService.getUserAuthorities(appCode, ULong.valueOf(ca.getUser().getClientId()), ULong.valueOf(ca.getUser().getId()))
+                        return this.userService
+                                .getUserAuthorities(
+                                        appCode,
+                                        ULong.valueOf(ca.getUser().getClientId()),
+                                        ULong.valueOf(ca.getUser().getId()))
                                 .map(ca.getUser()::setStringAuthorities)
                                 .map(x -> e);
                     }
                     return Mono.just(e);
                 })
-                .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME,
-                                "AuthenticationService.getAuthentication"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.getAuthentication"));
     }
 
-    private Mono<Authentication> getAuthenticationIfNotInCache(String appCode, boolean basic, String bearerToken,
-                                                               ServerHttpRequest request) {
+    private Mono<Authentication> getAuthenticationIfNotInCache(
+            String appCode, boolean basic, String bearerToken, ServerHttpRequest request) {
 
         if (!basic) {
 
             final var claims = extractClaims(bearerToken);
 
             return FlatMapUtil.flatMapMono(
-
-                            () -> tokenService.readAllFilter(new FilterCondition().setField("partToken")
-                                            .setOperator(FilterConditionOperator.EQUALS).setValue(toPartToken(bearerToken)))
-                                    .filter(e -> e.getToken().equals(bearerToken)).take(1).single(),
-
+                            () -> tokenService
+                                    .readAllFilter(new FilterCondition()
+                                            .setField("partToken")
+                                            .setOperator(FilterConditionOperator.EQUALS)
+                                            .setValue(toPartToken(bearerToken)))
+                                    .filter(e -> e.getToken().equals(bearerToken))
+                                    .take(1)
+                                    .single(),
                             token -> this.makeSpringAuthentication(appCode, request, claims, token),
-
                             (token, ca) -> {
-
                                 if (claims.isOneTime())
                                     return tokenService.delete(token.getId()).map(e -> ca);
 
                                 return cacheService.put(CACHE_NAME_TOKEN, ca, bearerToken);
                             })
-                    .contextWrite(
-                            Context.of(LogUtil.METHOD_NAME,
-                                    "AuthenticationService.getAuthenticationIfNotInCache [Bearer]"))
+                    .contextWrite(Context.of(
+                            LogUtil.METHOD_NAME, "AuthenticationService.getAuthenticationIfNotInCache [Bearer]"))
                     .map(Authentication.class::cast)
-                    .switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
+                    .switchIfEmpty(Mono.error(new GenericException(
+                            HttpStatus.UNAUTHORIZED,
                             resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
 
         } else {
@@ -520,29 +583,32 @@ public class AuthenticationService implements IAuthenticationService {
             String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
             return FlatMapUtil.flatMapMono(
-
-                            () -> this.userService.findNonDeletedUserNClient(username, null, clientCode, reqAppCode,
-                                    AuthenticationIdentifierType.USER_NAME),
-
-                            tup -> this.userService.checkUserAndClient(tup, clientCode)
+                            () -> this.userService.findNonDeletedUserNClient(
+                                    username, null, clientCode, reqAppCode, AuthenticationIdentifierType.USER_NAME),
+                            tup -> this.userService
+                                    .checkUserAndClient(tup, clientCode)
                                     .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
                             (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
-
-                            (tup, linCCheck, user) -> this.clientService.getClientAppPolicy(tup.getT2().getId(), reqAppCode,
-                                    AuthenticationPasswordType.PASSWORD),
-
-                            (tup, linCCheck, user, policy) -> this.checkPassword(password, null, user, policy,
-                                    AuthenticationPasswordType.PASSWORD),
-
+                            (tup, linCCheck, user) -> this.clientService.getClientAppPolicy(
+                                    tup.getT2().getId(), reqAppCode, AuthenticationPasswordType.PASSWORD),
+                            (tup, linCCheck, user, policy) -> this.checkPassword(
+                                    password, null, user, policy, AuthenticationPasswordType.PASSWORD),
                             (tup, linCCheck, user, policy, passwordChecked) -> Mono.just(new ContextAuthentication(
-                                    user.toContextUser(), true, tup.getT1().getId().toBigInteger(),
-                                    tup.getT1().getCode(), tup.getT2().getTypeCode(), tup.getT2().getCode(), finToken,
-                                    LocalDateTime.now().plusYears(1), clientCode, reqAppCode)))
-                    .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                            "AuthenticationService.getAuthenticationIfNotInCache [Basic]"))
+                                    user.toContextUser(),
+                                    true,
+                                    tup.getT1().getId().toBigInteger(),
+                                    tup.getT1().getCode(),
+                                    tup.getT2().getTypeCode(),
+                                    tup.getT2().getCode(),
+                                    finToken,
+                                    LocalDateTime.now().plusYears(1),
+                                    clientCode,
+                                    reqAppCode)))
+                    .contextWrite(Context.of(
+                            LogUtil.METHOD_NAME, "AuthenticationService.getAuthenticationIfNotInCache [Basic]"))
                     .map(Authentication.class::cast)
-                    .switchIfEmpty(Mono.error(new GenericException(HttpStatus.UNAUTHORIZED,
+                    .switchIfEmpty(Mono.error(new GenericException(
+                            HttpStatus.UNAUTHORIZED,
                             resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.UNKNOWN_TOKEN))));
         }
     }
@@ -553,8 +619,10 @@ public class AuthenticationService implements IAuthenticationService {
         try {
             claims = JWTUtil.getClaimsFromToken(this.tokenKey, bearerToken);
         } catch (Exception ex) {
-            throw new GenericException(HttpStatus.UNAUTHORIZED,
-                    resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.TOKEN_EXPIRED), ex);
+            throw new GenericException(
+                    HttpStatus.UNAUTHORIZED,
+                    resourceService.getDefaultLocaleMessage(SecurityMessageResourceService.TOKEN_EXPIRED),
+                    ex);
         }
 
         return claims;
@@ -564,23 +632,24 @@ public class AuthenticationService implements IAuthenticationService {
         return bearerToken.length() > 50 ? bearerToken.substring(bearerToken.length() - 50) : bearerToken;
     }
 
-    private Mono<ContextAuthentication> makeSpringAuthentication(String appCode, ServerHttpRequest request,
-                                                                 JWTClaims jwtClaims,
-                                                                 TokenObject tokenObject) {
+    private Mono<ContextAuthentication> makeSpringAuthentication(
+            String appCode, ServerHttpRequest request, JWTClaims jwtClaims, TokenObject tokenObject) {
 
         return FlatMapUtil.flatMapMono(
-
                         () -> checkTokenOrigin(request, jwtClaims),
-
                         claims -> this.userService.readInternal(appCode, tokenObject.getUserId()),
-
                         (claims, u) -> this.clientService.getClientTypeNCode(u.getClientId()),
-
-                        (claims, u,
-                         typ) -> Mono.just(new ContextAuthentication(u.toContextUser(), true,
+                        (claims, u, typ) -> Mono.just(new ContextAuthentication(
+                                u.toContextUser(),
+                                true,
                                 claims.getLoggedInClientId(),
-                                claims.getLoggedInClientCode(), typ.getT1(), typ.getT2(), tokenObject.getToken(),
-                                tokenObject.getExpiresAt(), null, null)))
+                                claims.getLoggedInClientCode(),
+                                typ.getT1(),
+                                typ.getT2(),
+                                tokenObject.getToken(),
+                                tokenObject.getExpiresAt(),
+                                null,
+                                null)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeSpringAuthentication"));
     }
 
@@ -589,11 +658,11 @@ public class AuthenticationService implements IAuthenticationService {
         List<String> clientCode = request.getHeaders().get(ClientService.CC);
 
         Mono<Client> loggedInClient = ((clientCode != null && !clientCode.isEmpty())
-                ? this.clientService.getClientBy(clientCode.getFirst())
-                : this.clientService.getClientBy(request))
-                .switchIfEmpty(
-                        this.resourceService.throwMessage(msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
-                                SecurityMessageResourceService.UNKNOWN_CLIENT));
+                        ? this.clientService.getClientBy(clientCode.getFirst())
+                        : this.clientService.getClientBy(request))
+                .switchIfEmpty(this.resourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
+                        SecurityMessageResourceService.UNKNOWN_CLIENT));
 
         return loggedInClient.map(e -> new ContextAuthentication(
                 new ContextUser()
@@ -616,7 +685,14 @@ public class AuthenticationService implements IAuthenticationService {
                         .setCredentialsNonExpired(true)
                         .setNoFailedAttempt((short) 0)
                         .setStringAuthorities(List.of("Authorities._Anonymous")),
-                false, e.getId().toBigInteger(), e.getCode(), e.getTypeCode(), e.getCode(), "", LocalDateTime.MAX, null,
+                false,
+                e.getId().toBigInteger(),
+                e.getCode(),
+                e.getTypeCode(),
+                e.getCode(),
+                "",
+                LocalDateTime.MAX,
+                null,
                 null));
     }
 
@@ -631,7 +707,8 @@ public class AuthenticationService implements IAuthenticationService {
         }
 
         if (!host.equals(jwtClaims.getHostName())) {
-            return resourceService.throwMessage(msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
+            return resourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
                     SecurityMessageResourceService.UNKNOWN_TOKEN);
         }
 
@@ -641,76 +718,83 @@ public class AuthenticationService implements IAuthenticationService {
     public Mono<AuthenticationResponse> refreshToken(ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> {
+                            if (!ca.isAuthenticated())
+                                return Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                            return this.clientService.getClientInfoById(
+                                    ca.getUser().getClientId());
+                        },
+                        (ca, client) -> {
+                            if (LocalDateTime.ofInstant(
+                                            Instant.now().plus(Duration.ofMinutes(this.defaultRefreshInMinutes)),
+                                            ZoneOffset.UTC)
+                                    .isAfter(ca.getAccessTokenExpiryAt()))
+                                return this.revoke(request).map(e -> true);
 
-                ca -> {
+                            return Mono.just(false);
+                        },
+                        (ca, client, revoked) -> {
+                            if (Boolean.TRUE.equals(revoked)) return this.generateNewToken(ca, request, client);
 
-                    if (!ca.isAuthenticated())
-                        return Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
-
-                    return this.clientService.getClientInfoById(ca.getUser().getClientId());
-                },
-
-                (ca, client) -> {
-
-                    if (LocalDateTime
-                            .ofInstant(Instant.now().plus(Duration.ofMinutes(this.defaultRefreshInMinutes)),
-                                    ZoneOffset.UTC)
-                            .isAfter(ca.getAccessTokenExpiryAt()))
-                        return this.revoke(request).map(e -> true);
-
-                    return Mono.just(false);
-                },
-
-                (ca, client, revoked) -> {
-
-                    if (Boolean.TRUE.equals(revoked))
-                        return this.generateNewToken(ca, request, client);
-
-                    return Mono.just(new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
-                            .setLoggedInClientCode(ca.getLoggedInFromClientCode())
-                            .setLoggedInClientId(ca.getLoggedInFromClientId())
-                            .setAccessToken(ca.getAccessToken()).setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt()));
-                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
+                            return Mono.just(new AuthenticationResponse()
+                                    .setUser(ca.getUser())
+                                    .setClient(client)
+                                    .setLoggedInClientCode(ca.getLoggedInFromClientCode())
+                                    .setLoggedInClientId(ca.getLoggedInFromClientId())
+                                    .setAccessToken(ca.getAccessToken())
+                                    .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt()));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
     }
 
-    private Mono<AuthenticationResponse> generateNewToken(ContextAuthentication ca, ServerHttpRequest request,
-                                                          Client client) {
+    private Mono<AuthenticationResponse> generateNewToken(
+            ContextAuthentication ca, ServerHttpRequest request, Client client) {
 
-        return FlatMapUtil.flatMapMono(() -> {
-                    JWTClaims claims = JWTUtil.getClaimsFromToken(tokenKey, ca.getAccessToken());
+        return FlatMapUtil.flatMapMono(
+                        () -> {
+                            JWTClaims claims = JWTUtil.getClaimsFromToken(tokenKey, ca.getAccessToken());
 
-                    JWTGenerateTokenParameters params = JWTGenerateTokenParameters.builder().userId(ca.getUser().getId())
-                            .secretKey(tokenKey)
-                            .expiryInMin(
-                                    client.getTokenValidityMinutes() <= 0 ? this.defaultExpiryInMinutes
-                                            : client.getTokenValidityMinutes())
-                            .host(claims.getHostName()).port(claims.getPort()).loggedInClientId(claims.getLoggedInClientId())
-                            .loggedInClientCode(claims.getLoggedInClientCode()).build();
+                            JWTGenerateTokenParameters params = JWTGenerateTokenParameters.builder()
+                                    .userId(ca.getUser().getId())
+                                    .secretKey(tokenKey)
+                                    .expiryInMin(
+                                            client.getTokenValidityMinutes() <= 0
+                                                    ? this.defaultExpiryInMinutes
+                                                    : client.getTokenValidityMinutes())
+                                    .host(claims.getHostName())
+                                    .port(claims.getPort())
+                                    .loggedInClientId(claims.getLoggedInClientId())
+                                    .loggedInClientCode(claims.getLoggedInClientCode())
+                                    .build();
 
-                    return Mono.just(JWTUtil.generateToken(params));
-                },
+                            return Mono.just(JWTUtil.generateToken(params));
+                        },
+                        token -> {
+                            InetSocketAddress inetAddress = request.getRemoteAddress();
+                            final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
 
-                token -> {
-                    InetSocketAddress inetAddress = request.getRemoteAddress();
-                    final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
-
-                    return tokenService.create(new TokenObject().setUserId(ULong.valueOf(ca.getUser().getId()))
-                            .setToken(token.getT1())
-                            .setPartToken(
-                                    token.getT1().length() < 50 ? token.getT1()
-                                            : token.getT1().substring(token.getT1().length() - 50))
-                            .setExpiresAt(token.getT2()).setIpAddress(hostAddress));
-                },
-
-                (token,
-                 t) -> Mono.just(new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
-                        .setLoggedInClientCode(ca.getLoggedInFromClientCode())
-                        .setLoggedInClientId(ca.getLoggedInFromClientId())
-                        .setAccessToken(token.getT1()).setAccessTokenExpiryAt(token.getT2()))
-
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.generateNewToken"));
+                            return tokenService.create(new TokenObject()
+                                    .setUserId(ULong.valueOf(ca.getUser().getId()))
+                                    .setToken(token.getT1())
+                                    .setPartToken(
+                                            token.getT1().length() < 50
+                                                    ? token.getT1()
+                                                    : token.getT1()
+                                                            .substring(token.getT1()
+                                                                            .length()
+                                                                    - 50))
+                                    .setExpiresAt(token.getT2())
+                                    .setIpAddress(hostAddress));
+                        },
+                        (token, t) -> Mono.just(new AuthenticationResponse()
+                                .setUser(ca.getUser())
+                                .setClient(client)
+                                .setLoggedInClientCode(ca.getLoggedInFromClientCode())
+                                .setLoggedInClientId(ca.getLoggedInFromClientId())
+                                .setAccessToken(token.getT1())
+                                .setAccessTokenExpiryAt(token.getT2())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.generateNewToken"));
     }
-
 }

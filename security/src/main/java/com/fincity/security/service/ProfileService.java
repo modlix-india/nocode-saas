@@ -125,7 +125,7 @@ public class ProfileService
 
                         (ca, hasAppAccess, clientAlsoHasAppAccess, managed, clientHierarchy,
                          hasAccessToRoles) -> {
-                            if (!hasAccessToRoles) {
+                            if (hasAccessToRoles) {
                                 return this.securityMessageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST,
                                                 msg),
