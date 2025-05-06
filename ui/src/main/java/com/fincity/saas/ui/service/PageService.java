@@ -118,25 +118,20 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
                 ca -> this.appServiceForProps.readProperties(appCode, appCode, clientCode),
 
                 (ca, props) -> {
-
-                    logger.debug("Is Authenticated: {}", ca.isAuthenticated());
-                    logger.debug("Authority Required: {}", page.getPermission());
-                    logger.debug("Users's Authorities: {}", ca.getAuthorities().size());
-
                     if (ca.isAuthenticated()
                             && !SecurityContextUtil.hasAuthority(page.getPermission(), ca.getAuthorities())) {
 
-                        logger.debug("User does not have authority to access this page : {} - {} - {}", clientCode, appCode, name);
                         if (StringUtil.safeIsBlank(props.get("forbiddenPage")))
                             return this.messageResourceService.throwMessage(
                                     msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                     AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, page.getPermission());
 
-                        return super.read(props.get("forbiddenPage")
-                                .toString(), appCode, clientCode);
+                        String fbName = props.get("forbiddenPage").toString();
+
+                        if (!fbName.equals(name))
+                            return super.read(fbName, appCode, clientCode);
                     }
 
-                    logger.debug("Creating unique id for : {} - {} - {} - {}", clientCode, appCode, name, checksumString);
                     return Mono.just(new ObjectWithUniqueID<>(page, checksumString));
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.applyChange"))
                 .defaultIfEmpty(new ObjectWithUniqueID<>(page, checksumString));
