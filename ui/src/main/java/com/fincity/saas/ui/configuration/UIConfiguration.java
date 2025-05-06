@@ -25,42 +25,42 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Configuration
 public class UIConfiguration extends AbstractMongoConfiguration implements ISecurityConfiguration {
 
-	public UIConfiguration(ObjectMapper objectMapper) {
-		super(objectMapper);
-	}
+    public UIConfiguration(ObjectMapper objectMapper) {
+        super(objectMapper);
+    }
 
-	@Override
-	@PostConstruct
-	public void initialize() {
-		super.initialize();
-		this.objectMapper.registerModule(new KIRuntimeSerializationModule());
-		Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
-		FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
+    @Override
+    @PostConstruct
+    public void initialize() {
+        super.initialize();
+        this.objectMapper.registerModule(new KIRuntimeSerializationModule());
+        Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
+        FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
-			if (name != null)
-				log.debug("{} - {}", name, v);
-			else
-				log.debug(v);
-		}));
-	}
+            if (name != null)
+                log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
+            else
+                log.debug(v);
+        }));
+    }
 
-	@Bean
-	public ReactiveHttpRequestInterceptor feignInterceptor() {
-		return request -> Mono.deferContextual(ctxView -> {
+    @Bean
+    public ReactiveHttpRequestInterceptor feignInterceptor() {
+        return request -> Mono.deferContextual(ctxView -> {
 
-			if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
-				String key = ctxView.get(LogUtil.DEBUG_KEY);
+            if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
+                String key = ctxView.get(LogUtil.DEBUG_KEY);
 
-				request.headers()
-						.put(LogUtil.DEBUG_KEY, List.of(key));
-			}
+                request.headers()
+                        .put(LogUtil.DEBUG_KEY, List.of(key));
+            }
 
-			return Mono.just(request);
-		});
-	}
+            return Mono.just(request);
+        });
+    }
 
-	@Bean
-	public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-		return this.springSecurityFilterChain(http, authService, this.objectMapper, "/**");
-	}
+    @Bean
+    public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+        return this.springSecurityFilterChain(http, authService, this.objectMapper, "/**");
+    }
 }

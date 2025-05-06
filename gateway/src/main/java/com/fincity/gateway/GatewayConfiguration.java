@@ -20,27 +20,27 @@ import jakarta.annotation.PostConstruct;
 @Configuration
 public class GatewayConfiguration extends AbstractBaseConfiguration {
 
-	public GatewayConfiguration(ObjectMapper objectMapper) {
-		super(objectMapper);
-	}
+    public GatewayConfiguration(ObjectMapper objectMapper) {
+        super(objectMapper);
+    }
 
-	@PostConstruct
-	@Override
-	protected void initialize() {
-		super.initialize();
-		Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
-		FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
+    @PostConstruct
+    @Override
+    protected void initialize() {
+        super.initialize();
+        Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
+        FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
-			if (name != null)
-				log.debug("{} - {}", name, v);
-			else
-				log.debug(v);
-		}));
-	}
+            if (name != null)
+                log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
+            else
+                log.debug(v);
+        }));
+    }
 
-	@Bean
-	public RouteLocator applicationRoutes(RouteLocatorBuilder builder) {
-		return builder.routes()
-				.build();
-	}
+    @Bean
+    public RouteLocator applicationRoutes(RouteLocatorBuilder builder) {
+        return builder.routes()
+                .build();
+    }
 }

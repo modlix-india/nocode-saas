@@ -30,7 +30,7 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
         this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(messageService));
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
-            if (name != null) log.debug("{} - {}", name, v);
+            if (name != null) log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
             else log.debug(v);
         }));
     }
