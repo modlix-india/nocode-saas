@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import java.io.Serial;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -28,6 +29,7 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     private ComparisonOperator comparisonOperator = ComparisonOperator.EQUALS;
     private Object value;
     private Object toValue;
+    private List<Object> multiValue;
     private boolean isValueField = false;
     private boolean isToValueField = false;
     private ComparisonOperator matchOperator = ComparisonOperator.EQUALS;
@@ -40,6 +42,7 @@ public class SimpleRule extends BaseRule<SimpleRule> {
                 .setValue(condition.getValue())
                 .setToValue(condition.getToValue())
                 .setValueField(condition.isValueField())
+                .setMultiValue((List<Object>) condition.getMultiValue())
                 .setToValueField(condition.isToValueField())
                 .setMatchOperator(ComparisonOperator.lookup(condition.getMatchOperator()))
                 .setNegate(condition.isNegate());
@@ -55,6 +58,7 @@ public class SimpleRule extends BaseRule<SimpleRule> {
                 .setToValue(rule.getToValue())
                 .setValueField(rule.isValueField())
                 .setToValueField(rule.isToValueField())
+                .setMultiValue(rule.getMultiValue())
                 .setMatchOperator(rule.getMatchOperator().getConditionOperator())
                 .setNegate(rule.isNegate());
     }

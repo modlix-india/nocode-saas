@@ -1,7 +1,6 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
@@ -37,20 +36,5 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
             return this.readInternal(identity);
         });
-    }
-
-    public Mono<Product> readInternal(Identity identity) {
-
-        if (identity == null || identity.isNull())
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.PRODUCT_IDENTITY_MISSING);
-
-        return (identity.getId() == null
-                        ? this.readByCode(identity.getCode())
-                        : this.readInternal(ULongUtil.valueOf(identity.getId())))
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.PRODUCT_IDENTITY_WRONG));
     }
 }

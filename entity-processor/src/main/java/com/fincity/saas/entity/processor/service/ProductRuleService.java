@@ -38,7 +38,7 @@ public class ProductRuleService
     }
 
     @Override
-    protected ProductRule createNewInstance() {
-        return new ProductRule();
+    protected Mono<ProductRule> createNewInstance() {
+        return Mono.just(new ProductRule());
     }
 }

@@ -17,6 +17,7 @@ public abstract class RuleConfigRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 5784534925780897041L;
 
+    private Identity ruleConfigId;
     private RuleType ruleType;
     private boolean breakAtFirstMatch = false;
     private boolean executeOnlyIfAllPreviousMatch = false;

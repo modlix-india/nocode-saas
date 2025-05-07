@@ -70,15 +70,27 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         });
     }
 
-    public Mono<ProcessorResponse> create(EntityRequest entityRequest) {
+    public Mono<Entity> create(EntityRequest entityRequest) {
 
         Entity entity = Entity.of(entityRequest);
 
         return FlatMapUtil.flatMapMono(
                 () -> this.productService.readInternal(entityRequest.getProductId()),
-                product -> super.create(entity.setProductId(product.getId())),
-                (product, cEntity) ->
-                        Mono.just(ProcessorResponse.ofCreated(cEntity.getCode(), this.getEntitySeries())));
+                product -> super.create(entity.setProductId(product.getId())));
+    }
+
+    public Mono<Entity> createPublic(EntityRequest entityRequest) {
+        Entity entity = Entity.of(entityRequest);
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.productService.readInternal(entityRequest.getProductId()),
+                product -> super.createPublic(entity.setProductId(product.getId())));
+    }
+
+    public Mono<ProcessorResponse> createResponse(EntityRequest entityRequest) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.createPublic(entityRequest),
+                cEntity -> Mono.just(ProcessorResponse.ofCreated(cEntity.getCode(), this.getEntitySeries())));
     }
 
     private Mono<Entity> checkEntity(Entity entity) {
@@ -86,7 +98,7 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         if (entity.getProductId() == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.PRODUCT_IDENTITY_MISSING);
+                    ProcessorMessageResourceService.IDENTITY_MISSING);
 
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,

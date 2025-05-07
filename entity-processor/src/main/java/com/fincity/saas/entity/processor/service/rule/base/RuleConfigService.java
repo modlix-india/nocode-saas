@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service.rule.base;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.rule.base.RuleConfigDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
+import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
@@ -20,7 +21,7 @@ public abstract class RuleConfigService<
                 R extends UpdatableRecord<R>,
                 D extends RuleConfig<D>,
                 O extends RuleConfigDAO<R, D>>
-        extends BaseService<R, D, O> {
+        extends BaseService<R, D, O> implements IEntitySeries {
 
     private RuleService ruleService;
 
@@ -32,7 +33,7 @@ public abstract class RuleConfigService<
 
     protected abstract Mono<ULong> getEntityId(String appCode, String clientCode, ULong userId, Identity entityId);
 
-    protected abstract D createNewInstance();
+    protected abstract Mono<D> createNewInstance();
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
@@ -69,13 +70,43 @@ public abstract class RuleConfigService<
                 });
     }
 
-    @SuppressWarnings("unchecked")
+    public Mono<D> update(T ruleConfigRequest) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> this.getEntityId(
+                        hasAccess.getT1().getT1(),
+                        hasAccess.getT1().getT2(),
+                        hasAccess.getT1().getT3(),
+                        ruleConfigRequest.getIdentity()),
+                (hasAccess, entityId) -> ruleService.update(ruleConfigRequest.getRules()),
+                (hasAccess, entityId, rules) -> this.updateFromRequest(ruleConfigRequest),
+                (hasAccess, entityId, rules, ruleConfig) -> {
+                    ruleConfig.setRules(rules);
+                    return super.create(ruleConfig);
+                });
+    }
+
+    public Mono<Integer> delete(T ruleConfigRequest) {
+        return this.readInternal(ruleConfigRequest.getRuleConfigId())
+                .flatMap(ruleConfig -> super.delete(ruleConfig.getId()));
+    }
+
+    private Mono<D> updateFromRequest(T ruleConfigRequest) {
+        return super.readInternal(ruleConfigRequest.getRuleConfigId())
+                .map(existing -> this.updateRuleConfigFromRequest(existing, ruleConfigRequest));
+    }
+
     private Mono<D> createFromRequest(T ruleConfigRequest) {
-        return Mono.just((D) createNewInstance()
-                .setRuleType(ruleConfigRequest.getRuleType())
-                .setBreakAtFirstMatch(ruleConfigRequest.isBreakAtFirstMatch())
-                .setExecuteOnlyIfAllPreviousMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousMatch())
-                .setExecuteOnlyIfAllPreviousNotMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousNotMatch())
-                .setContinueOnNoMatch(ruleConfigRequest.isContinueOnNoMatch()));
+        return this.createNewInstance()
+                .map(ruleConfig -> this.updateRuleConfigFromRequest(ruleConfig, ruleConfigRequest));
+    }
+
+    private D updateRuleConfigFromRequest(D ruleConfig, T ruleConfigRequest) {
+        ruleConfig.setRuleType(ruleConfigRequest.getRuleType());
+        ruleConfig.setBreakAtFirstMatch(ruleConfigRequest.isBreakAtFirstMatch());
+        ruleConfig.setExecuteOnlyIfAllPreviousMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousMatch());
+        ruleConfig.setExecuteOnlyIfAllPreviousNotMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousNotMatch());
+        ruleConfig.setContinueOnNoMatch(ruleConfigRequest.isContinueOnNoMatch());
+        return ruleConfig;
     }
 }

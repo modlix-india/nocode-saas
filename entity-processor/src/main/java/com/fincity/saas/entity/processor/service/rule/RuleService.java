@@ -1,16 +1,21 @@
 package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorRulesRecord;
+import com.fincity.saas.entity.processor.model.base.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseService;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -70,6 +75,50 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue);
     }
 
+    public Mono<Map<Integer, ULong>> update(Map<Integer, RuleRequest> ruleRequests) {
+
+        if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.deleteRulesInternal(ruleRequests.values().stream()
+                        .map(RuleRequest::getRuleId)
+                        .toList()),
+                deleted -> this.create(ruleRequests));
+    }
+
+    public Mono<Integer> deleteRuleInternal(Identity rule) {
+        return this.readInternal(rule).flatMap(existing -> super.delete(existing.getId()));
+    }
+
+    private Mono<Integer> deleteRulesInternal(List<Identity> rules) {
+
+        Map<Boolean, List<Identity>> requestsByType =
+                rules.stream().collect(Collectors.partitioningBy(Identity::isCode));
+
+        List<String> codeList =
+                requestsByType.get(true).stream().map(Identity::getCode).toList();
+
+        List<ULong> idList = requestsByType.get(false).stream()
+                .map(Identity::getId)
+                .map(ULongUtil::valueOf)
+                .toList();
+
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> codeList.isEmpty()
+                        ? Mono.just(List.of())
+                        : this.readByCodes(codeList).collectList(),
+                (hasAccess, codeRules) -> idList.isEmpty()
+                        ? Mono.just(List.of())
+                        : this.readAllFilter(
+                                        new FilterCondition().setField("ID").setMultiValue(idList))
+                                .collectList(),
+                (hasAccess, codeRules, idRules) -> codeRules.isEmpty() && idRules.isEmpty()
+                        ? Mono.just(0)
+                        : super.deleteMultiple(Stream.concat(codeRules.stream(), idRules.stream())
+                                .toList()));
+    }
+
     private Mono<Rule> createInternal(RuleRequest ruleRequest) {
 
         Rule rule = Rule.of(ruleRequest);
@@ -98,16 +147,5 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
 
                     return Mono.just(cRule);
                 });
-    }
-
-    public Mono<Integer> deleteRelatedRules(ULong ruleId) {
-        return FlatMapUtil.flatMapMono(
-                () -> simpleRuleService.deleteByRuleId(ruleId),
-                simpleDeleted -> complexRuleService.deleteByRuleId(ruleId),
-                (simpleDeleted, complexDeleted) -> Mono.just(simpleDeleted + complexDeleted));
-    }
-
-    public Mono<Integer> deleteRelatedRulesByCode(String code) {
-        return FlatMapUtil.flatMapMono(() -> this.readByCode(code), rule -> this.deleteRelatedRules(rule.getId()));
     }
 }

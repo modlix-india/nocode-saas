@@ -12,6 +12,7 @@ import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 
 @Service
@@ -38,19 +39,26 @@ public abstract class BaseProcessorService<
 
     @Override
     public Mono<D> create(D entity) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess, hasAccess -> this.checkEntity(entity, hasAccess.getT1()), (hasAccess, cEntity) -> {
-                    cEntity.setAppCode(hasAccess.getT1().getT1());
-                    cEntity.setClientCode(hasAccess.getT1().getT2());
+        return super.hasAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess));
+    }
 
-                    if (cEntity.getAddedByUserId() == null)
-                        cEntity.setAddedByUserId(hasAccess.getT1().getT3());
+    public Mono<D> createPublic(D entity) {
+        return super.hasPublicAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess));
+    }
 
-                    if (cEntity.getCurrentUserId() == null)
-                        cEntity.setCurrentUserId(hasAccess.getT1().getT3());
+    private Mono<D> createInternal(D entity, Tuple2<Tuple3<String, String, ULong>, Boolean> hasAccess) {
+        return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, hasAccess.getT1()), cEntity -> {
+            cEntity.setAppCode(hasAccess.getT1().getT1());
+            cEntity.setClientCode(hasAccess.getT1().getT2());
 
-                    return super.create(cEntity);
-                });
+            if (cEntity.getAddedByUserId() == null)
+                cEntity.setAddedByUserId(hasAccess.getT1().getT3());
+
+            if (cEntity.getCurrentUserId() == null)
+                cEntity.setCurrentUserId(hasAccess.getT1().getT3());
+
+            return super.create(cEntity);
+        });
     }
 
     @Override

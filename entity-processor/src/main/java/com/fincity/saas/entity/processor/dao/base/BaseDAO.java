@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.dao.base;
 
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import java.util.List;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
@@ -50,6 +51,12 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         DeleteQuery<R> query = dslContext.deleteQuery(table);
         query.addConditions(codeField.eq(code));
 
+        return Mono.from(query);
+    }
+
+    public Mono<Integer> deleteMultiple(List<ULong> ids) {
+        DeleteQuery<R> query = dslContext.deleteQuery(table);
+        query.addConditions(this.idField.in(ids));
         return Mono.from(query);
     }
 

@@ -43,6 +43,14 @@ public class Identity implements Serializable {
         return id == null && code == null;
     }
 
+    public boolean isCode() {
+        return code != null && id == null;
+    }
+
+    public boolean isId() {
+        return id != null;
+    }
+
     public static class IdentityDeserializer extends JsonDeserializer<Identity> {
 
         @Override

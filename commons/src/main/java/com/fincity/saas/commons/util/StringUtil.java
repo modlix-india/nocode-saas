@@ -2,6 +2,9 @@ package com.fincity.saas.commons.util;
 
 public class StringUtil {
 
+    private StringUtil() {
+    }
+
     public static String safeValueOf(Object obj, String... defaultValue) {
 
         if (obj == null) {
@@ -13,11 +16,7 @@ public class StringUtil {
 
             return null;
         }
-
         return obj.toString();
-    }
-
-    private StringUtil() {
     }
 
     public static boolean safeIsBlank(Object object) {
@@ -133,6 +132,5 @@ public class StringUtil {
 		}
 		return new String(chars);
 	}
-
 
     }

@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -13,13 +14,16 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.model.base.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.util.List;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
@@ -47,6 +51,11 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return this.cacheService
                 .evict(this.getCacheName(), entity.getCode())
                 .flatMap(evicted -> this.cacheService.evict(getCacheName(), entity.getId()));
+    }
+
+    protected Mono<Boolean> evictCaches(Flux<D> entities) {
+        return entities.flatMap(this::evictCache).collectList().map(results -> results.stream()
+                .allMatch(Boolean::booleanValue));
     }
 
     @Autowired
@@ -97,6 +106,25 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readByCode(code), code);
     }
 
+    public Flux<D> readByCodes(List<String> codes) {
+        return Flux.fromIterable(codes).flatMap(this::readByCode);
+    }
+
+    public Mono<D> readInternal(Identity identity) {
+
+        if (identity == null || identity.isNull())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING);
+
+        return (identity.isCode()
+                        ? this.readByCode(identity.getCode())
+                        : this.readInternal(ULongUtil.valueOf(identity.getId())))
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.IDENTITY_WRONG));
+    }
+
     public Mono<D> updateByCode(String code, D entity) {
 
         return FlatMapUtil.flatMapMono(
@@ -121,6 +149,20 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                 () -> this.readByCode(code),
                 entity -> this.dao.deleteByCode(code),
                 (entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
+    }
+
+    @Override
+    public Mono<Integer> delete(ULong id) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(id), entity -> super.delete(id), (entity, deleted) -> this.evictCache(entity)
+                        .map(evicted -> deleted));
+    }
+
+    public Mono<Integer> deleteMultiple(List<D> entities) {
+        return this.dao
+                .deleteMultiple(entities.stream().map(AbstractDTO::getId).toList())
+                .flatMap(
+                        deleted -> this.evictCaches(Flux.fromIterable(entities)).map(evicted -> deleted));
     }
 
     public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasAccess() {
