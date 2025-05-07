@@ -31,6 +31,7 @@ import com.fincity.saas.commons.mongo.service.AbstractFunctionService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
+import com.fincity.saas.commons.security.util.AuthoritiesTokenExtractor;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -39,11 +40,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import jakarta.annotation.PostConstruct;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -160,18 +163,21 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                             if (fun instanceof DefinitionFunction df
                                     && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
                                     && !SecurityContextUtil.hasAuthority(
-                                            df.getExecutionAuthorization(), ca.getAuthorities()))
+                                    df.getExecutionAuthorization(), ca.getAuthorities()))
                                 return this.messageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
 
+                            AuthoritiesTokenExtractor ate = new AuthoritiesTokenExtractor(ca.getAuthorities());
+
                             return fun.execute(new ReactiveFunctionExecutionParameters(
-                                            new ReactiveHybridRepository<>(
-                                                    new KIRunReactiveFunctionRepository(),
-                                                    this.coreFunctionRepository,
-                                                    funRepo),
-                                            schRepo)
-                                    .setArguments(args));
+                                    new ReactiveHybridRepository<>(
+                                            new KIRunReactiveFunctionRepository(),
+                                            this.coreFunctionRepository,
+                                            funRepo),
+                                    schRepo)
+                                    .setArguments(args)
+                                    .setValuesMap(Map.of(ate.getPrefix(), ate)));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CoreFunctionService.execute"));
     }
