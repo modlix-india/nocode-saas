@@ -2,23 +2,17 @@ package com.fincity.saas.commons.security.util;
 
 import java.math.BigInteger;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 
 import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
-import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenValueExtractor;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.util.StringUtil;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
@@ -91,36 +85,4 @@ public class SecurityContextUtil {
     private SecurityContextUtil() {
     }
 
-    private static class AuthoritiesTokenExtractor extends TokenValueExtractor {
-
-        private Set<? extends GrantedAuthority> authorities;
-
-        public AuthoritiesTokenExtractor(Collection<? extends GrantedAuthority> authorities) {
-
-            if (authorities instanceof Set<? extends GrantedAuthority> setAuth)
-                this.authorities = setAuth;
-            else
-                this.authorities = new HashSet<>(authorities);
-        }
-
-        @Override
-        protected JsonElement getValueInternal(String token) {
-            return new JsonPrimitive(authorities.contains(new SimpleGrantedAuthority(token)));
-        }
-
-        @Override
-        public String getPrefix() {
-            return "Authorities.";
-        }
-
-        @Override
-        public JsonElement getStore() {
-
-            JsonArray arr = new JsonArray();
-            authorities.stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .forEach(arr::add);
-            return arr;
-        }
-    }
 }

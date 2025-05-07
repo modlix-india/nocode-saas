@@ -446,7 +446,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                             SECURITY_V2_ROLE.CLIENT_ID
                                                     .eq(hierarchy.getClientId()))))
                             .map(Record1::value1)
-                            .map(count -> count == 0);
+                            .map(count -> count == remainingRoleIds.size());
                 }
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDao.hasAccessToRoles"));
