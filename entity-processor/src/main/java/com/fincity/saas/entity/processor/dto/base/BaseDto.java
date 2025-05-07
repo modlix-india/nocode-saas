@@ -23,7 +23,7 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
 
     private String code = UniqueUtil.shortUUID();
 
-    private String name;
+    private String name = this.code;
     private String description;
     private ULong addedByUserId;
 
@@ -31,15 +31,15 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
     private boolean isActive = Boolean.TRUE;
 
     public T setCode() {
-
         if (this.code != null) return (T) this;
-
         this.code = UniqueUtil.shortUUID();
         return (T) this;
     }
 
     public T setName(String name) {
-        this.name = name.trim();
+        if (name == null || name.isBlank()) this.name = this.getCode();
+        else this.name = name.trim();
+
         return (T) this;
     }
 

@@ -80,6 +80,7 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     }
 
     public Mono<Entity> createPublic(EntityRequest entityRequest) {
+
         Entity entity = Entity.of(entityRequest);
 
         return FlatMapUtil.flatMapMono(

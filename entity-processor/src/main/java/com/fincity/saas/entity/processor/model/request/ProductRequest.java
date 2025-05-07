@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.model.request;
 
+import com.fincity.saas.entity.processor.model.base.Identity;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
@@ -16,6 +17,6 @@ public class ProductRequest implements Serializable {
 
     private String name;
     private String description;
-    private String status;
-    private String subStatus;
+    private Identity defaultSource;
+    private Identity defaultStage;
 }

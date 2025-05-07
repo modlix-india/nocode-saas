@@ -36,15 +36,18 @@ public abstract class RuleConfigService<
     protected abstract Mono<D> createNewInstance();
 
     @Override
+    public Mono<D> create(D entity) {
+        return Mono.empty();
+    }
+
+    @Override
+    public Mono<D> update(D entity) {
+        return Mono.empty();
+    }
+
+    @Override
     protected Mono<D> updatableEntity(D entity) {
-        return super.updatableEntity(entity).flatMap(existing -> {
-            existing.setBreakAtFirstMatch(entity.isBreakAtFirstMatch());
-            existing.setExecuteOnlyIfAllPreviousMatch(entity.isExecuteOnlyIfAllPreviousMatch());
-            existing.setExecuteOnlyIfAllPreviousNotMatch(entity.isExecuteOnlyIfAllPreviousNotMatch());
-            existing.setContinueOnNoMatch(entity.isContinueOnNoMatch());
-            existing.setRules(entity.getRules());
-            return Mono.just(existing);
-        });
+        return Mono.empty();
     }
 
     public Mono<D> create(T ruleConfigRequest) {
@@ -62,6 +65,7 @@ public abstract class RuleConfigService<
                     ruleConfig.setRules(rules);
                     ruleConfig.setAppCode(hasAccess.getT1().getT1());
                     ruleConfig.setClientCode(hasAccess.getT1().getT2());
+                    ruleConfig.setAddedByUserId(hasAccess.getT1().getT3());
 
                     if (ruleConfig.getAddedByUserId() == null)
                         ruleConfig.setAddedByUserId(hasAccess.getT1().getT3());
@@ -86,9 +90,8 @@ public abstract class RuleConfigService<
                 });
     }
 
-    public Mono<Integer> delete(T ruleConfigRequest) {
-        return this.readInternal(ruleConfigRequest.getRuleConfigId())
-                .flatMap(ruleConfig -> super.delete(ruleConfig.getId()));
+    public Mono<Integer> delete(Identity identity) {
+        return this.readInternal(identity).flatMap(ruleConfig -> super.delete(ruleConfig.getId()));
     }
 
     private Mono<D> updateFromRequest(T ruleConfigRequest) {

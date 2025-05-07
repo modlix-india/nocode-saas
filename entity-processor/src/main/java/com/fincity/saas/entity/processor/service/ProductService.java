@@ -5,6 +5,7 @@ import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
@@ -27,10 +28,14 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         return Mono.just(entity);
     }
 
+    public Mono<Product> create(ProductRequest productRequest) {
+        return super.create(Product.of(productRequest));
+    }
+
     public Mono<Product> readWithAccess(Identity identity) {
         return super.hasAccess().flatMap(hasAccess -> {
-            if (Boolean.FALSE.equals(hasAccess.getT2()))
-                return this.msgService.throwMessage(
+            if (!hasAccess.getT2()) // NOSONAR
+            return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         ProcessorMessageResourceService.PRODUCT_FORBIDDEN_ACCESS);
 

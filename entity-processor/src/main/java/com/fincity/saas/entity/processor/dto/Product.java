@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,6 +24,15 @@ public class Product extends BaseProcessorDto<Product> implements IEntitySeries 
 
     private ULong defaultSource;
     private ULong defaultStage;
+
+    public static Product of(ProductRequest productRequest) {
+        return new Product()
+                .setName(productRequest.getName())
+                .setDescription(productRequest.getDescription())
+                .setDefaultSource(
+                        ULong.valueOf(productRequest.getDefaultSource().getId()))
+                .setDefaultStage(ULong.valueOf(productRequest.getDefaultStage().getId()));
+    }
 
     @Override
     public EntitySeries getEntitySeries() {
