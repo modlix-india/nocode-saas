@@ -10,21 +10,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public interface IMQConfiguration {
 
-	@Bean
-	default DirectRabbitListenerContainerFactory directMessageListener(CachingConnectionFactory connectionFactory) {
+    @Bean
+    default DirectRabbitListenerContainerFactory directMessageListener(CachingConnectionFactory connectionFactory) {
 
-		DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
-		factory.setAcknowledgeMode(AcknowledgeMode.AUTO);
-		factory.setConsumersPerQueue(1);
-		factory.setMessagesPerAck(1);
-		factory.setPrefetchCount(0);
-		factory.setConnectionFactory(connectionFactory);
-		factory.setMessageConverter(new Jackson2JsonMessageConverter());
-		return factory;
-	}
+        DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+        factory.setAcknowledgeMode(AcknowledgeMode.AUTO);
+        factory.setConsumersPerQueue(1);
+        factory.setMessagesPerAck(1);
+        factory.setPrefetchCount(0);
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(new Jackson2JsonMessageConverter());
+        return factory;
+    }
 
-	@Bean
-	default Jackson2JsonMessageConverter jsonMessageConverter(ObjectMapper mapper) {
-		return new Jackson2JsonMessageConverter(mapper);
-	}
+    @Bean
+    default Jackson2JsonMessageConverter jsonMessageConverter(ObjectMapper mapper) {
+        return new Jackson2JsonMessageConverter(mapper);
+    }
 }

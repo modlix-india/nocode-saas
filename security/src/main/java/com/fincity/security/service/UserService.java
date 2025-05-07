@@ -161,6 +161,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                 roleAuths -> this.profileService.getProfileAuthorities(appCode, clientId, userId).map(auths -> {
                     roleAuths.addAll(auths);
+                    roleAuths.add("Authorities.Logged_IN");
                     return roleAuths;
                 })
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserAuthorities"));

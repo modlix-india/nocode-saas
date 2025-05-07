@@ -409,18 +409,25 @@ public class ProfileService
     @Override
     public Mono<Profile> readObject(ULong id,
                                     AppRegistrationObjectType type) {
-        return super.read(id);
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+
+                        (ca, hierarchy) -> this.dao.read(id, hierarchy))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.readObject"));
     }
 
     @Override
     public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
         return FlatMapUtil.flatMapMono(
 
-                        () -> super.read(id),
+                        () -> this.clientHierarchyService.getClientHierarchy(clientId).flatMap(x -> this.dao.read(id, x)),
 
-                        role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
+                        profile -> this.clientService.isBeingManagedBy(profile.getClientId(), clientId)
                                 .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
-                                        : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
+                                        : this.clientService.isBeingManagedBy(clientId, profile.getClientId()))
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.hasAccessTo"));
