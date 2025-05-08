@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.*;
 import com.fincity.security.dto.RoleV2;
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -35,9 +35,6 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.ByteUtil;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp;
@@ -457,5 +454,25 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                         .set(SecurityUser.SECURITY_USER.DESIGNATION_ID, designationId)
                         .where(SecurityUser.SECURITY_USER.ID.eq(userId)))
                 .map(e -> e > 0);
+    }
+
+    public Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.from(this.dslContext.selectCount().from(SECURITY_USER).where(DSL.and(
+                        SECURITY_USER.ID.eq(reportingTo),
+                        SECURITY_USER.CLIENT_ID.eq(clientId)
+                ))).map(r -> r.value1() == 1),
+
+                sameClient -> {
+                    if (!BooleanUtil.safeValueOf(sameClient) || reportingTo.equals(userId)) return Mono.just(false);
+                    if (userId == null) return Mono.just(true);
+
+                    return Mono.just(List.of(userId))
+                            .expand(userList -> Flux.from(this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER).where(SECURITY_USER.REPORTING_TO.in(userList))).map(Record1::value1).collectList())
+                            .map(userList -> userList.contains(reportingTo))
+                            .reduce(Boolean::logicalAnd);
+                }
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
 }
