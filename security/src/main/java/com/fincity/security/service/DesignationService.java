@@ -155,4 +155,9 @@ public class DesignationService
 
         return this.dao.createForRegistration(client, designations, departmentIndex);
     }
+
+    public Mono<Boolean> canAssignDesignation(ULong clientId, ULong designationId) {
+        if (designationId == null) return Mono.just(true);
+        return this.dao.canAssignDesignation(clientId, designationId);
+    }
 }
