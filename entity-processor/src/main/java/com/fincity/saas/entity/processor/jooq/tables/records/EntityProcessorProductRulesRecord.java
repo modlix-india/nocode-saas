@@ -4,12 +4,14 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -295,11 +297,68 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTION_TYPE</code>.
+     * User distribution strategy for this rule.
+     */
+    public EntityProcessorProductRulesRecord setUserDistributionType(DistributionType value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTION_TYPE</code>.
+     * User distribution strategy for this rule.
+     */
+    public DistributionType getUserDistributionType() {
+        return (DistributionType) get(14);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTIONS</code>.
+     * User distributions for this rule.
+     */
+    public EntityProcessorProductRulesRecord setUserDistributions(JSON value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTIONS</code>.
+     * User distributions for this rule.
+     */
+    public JSON getUserDistributions() {
+        return (JSON) get(15);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_rules.LAST_USED_USER_ID</code>.
+     * Last User id used in this rule.
+     */
+    public EntityProcessorProductRulesRecord setLastUsedUserId(ULong value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_rules.LAST_USED_USER_ID</code>.
+     * Last User id used in this rule.
+     */
+    public ULong getLastUsedUserId() {
+        return (ULong) get(16);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_product_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this product rule config.
      */
     public EntityProcessorProductRulesRecord setTempActive(Byte value) {
-        set(14, value);
+        set(17, value);
         return this;
     }
 
@@ -309,7 +368,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Temporary active flag for this product rule config.
      */
     public Byte getTempActive() {
-        return (Byte) get(14);
+        return (Byte) get(17);
     }
 
     /**
@@ -318,7 +377,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this product rule config is active or not.
      */
     public EntityProcessorProductRulesRecord setIsActive(Byte value) {
-        set(15, value);
+        set(18, value);
         return this;
     }
 
@@ -328,7 +387,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this product rule config is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(15);
+        return (Byte) get(18);
     }
 
     /**
@@ -337,7 +396,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public EntityProcessorProductRulesRecord setCreatedBy(ULong value) {
-        set(16, value);
+        set(19, value);
         return this;
     }
 
@@ -347,7 +406,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(19);
     }
 
     /**
@@ -356,7 +415,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public EntityProcessorProductRulesRecord setCreatedAt(LocalDateTime value) {
-        set(17, value);
+        set(20, value);
         return this;
     }
 
@@ -366,7 +425,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(20);
     }
 
     /**
@@ -375,7 +434,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public EntityProcessorProductRulesRecord setUpdatedBy(ULong value) {
-        set(18, value);
+        set(21, value);
         return this;
     }
 
@@ -385,7 +444,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(21);
     }
 
     /**
@@ -394,7 +453,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public EntityProcessorProductRulesRecord setUpdatedAt(LocalDateTime value) {
-        set(19, value);
+        set(22, value);
         return this;
     }
 
@@ -404,7 +463,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(22);
     }
 
     // -------------------------------------------------------------------------
@@ -430,7 +489,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorProductRulesRecord
      */
-    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, RuleType ruleType, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, RuleType ruleType, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, DistributionType userDistributionType, JSON userDistributions, ULong lastUsedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES);
 
         setId(id);
@@ -447,6 +506,9 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
         setExecuteOnlyIfAllPreviousNotMatch(executeOnlyIfAllPreviousNotMatch);
         setContinueOnNoMatch(continueOnNoMatch);
         setRules(rules);
+        setUserDistributionType(userDistributionType);
+        setUserDistributions(userDistributions);
+        setLastUsedUserId(lastUsedUserId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

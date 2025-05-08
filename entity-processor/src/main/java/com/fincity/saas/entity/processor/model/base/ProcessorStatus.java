@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.model.base;
 
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +12,9 @@ import org.springframework.http.HttpStatus;
 @Data
 @Accessors(chain = true)
 public class ProcessorStatus implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 6415447399628261212L;
 
     private static final Map<EntitySeries, Map<HttpStatus, ProcessorStatus>> STATUS_MAP = new ConcurrentHashMap<>();
 

@@ -29,8 +29,8 @@ import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
-import org.jooq.impl.AutoConverter;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -140,7 +140,7 @@ public class EntityProcessorComplexRules extends TableImpl<EntityProcessorComple
      * <code>entity_processor.entity_processor_complex_rules.LOGICAL_OPERATOR</code>.
      * Logical operator for this Complex Rule.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, LogicalOperator> LOGICAL_OPERATOR = createField(DSL.name("LOGICAL_OPERATOR"), SQLDataType.VARCHAR(3).nullable(false).asEnumDataType(EntityProcessorComplexRulesLogicalOperator.class), this, "Logical operator for this Complex Rule.", new AutoConverter<EntityProcessorComplexRulesLogicalOperator, LogicalOperator>(EntityProcessorComplexRulesLogicalOperator.class, LogicalOperator.class));
+    public final TableField<EntityProcessorComplexRulesRecord, LogicalOperator> LOGICAL_OPERATOR = createField(DSL.name("LOGICAL_OPERATOR"), SQLDataType.VARCHAR(3).nullable(false).asEnumDataType(EntityProcessorComplexRulesLogicalOperator.class), this, "Logical operator for this Complex Rule.", new EnumConverter<EntityProcessorComplexRulesLogicalOperator, LogicalOperator>(EntityProcessorComplexRulesLogicalOperator.class, LogicalOperator.class));
 
     /**
      * The column

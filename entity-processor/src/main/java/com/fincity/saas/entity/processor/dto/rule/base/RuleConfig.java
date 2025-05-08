@@ -1,16 +1,21 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import java.io.Serial;
 import java.util.Map;
+
+import org.jooq.types.ULong;
+
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
+import com.fincity.saas.entity.processor.enums.rule.RuleType;
+import com.fincity.saas.entity.processor.model.base.UserDistribution;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -29,6 +34,9 @@ public abstract class RuleConfig<T extends RuleConfig<T>> extends BaseDto<T> imp
     private boolean continueOnNoMatch = true;
 
     private Map<Integer, ULong> rules;
+    private DistributionType userDistributionType;
+    private Map<ULong, UserDistribution> userDistributions;
+    private ULong lastUsedUserId;
 
     public abstract ULong getEntityId();
 

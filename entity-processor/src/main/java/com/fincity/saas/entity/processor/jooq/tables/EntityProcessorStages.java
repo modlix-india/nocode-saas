@@ -29,8 +29,8 @@ import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
-import org.jooq.impl.AutoConverter;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -137,7 +137,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * <code>entity_processor.entity_processor_stages.STAGE_TYPE</code>. Stage
      * type can be Open or Closed.
      */
-    public final TableField<EntityProcessorStagesRecord, StageType> STAGE_TYPE = createField(DSL.name("STAGE_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("OPEN", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesStageType.class), this, "Stage type can be Open or Closed.", new AutoConverter<EntityProcessorStagesStageType, StageType>(EntityProcessorStagesStageType.class, StageType.class));
+    public final TableField<EntityProcessorStagesRecord, StageType> STAGE_TYPE = createField(DSL.name("STAGE_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("OPEN", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesStageType.class), this, "Stage type can be Open or Closed.", new EnumConverter<EntityProcessorStagesStageType, StageType>(EntityProcessorStagesStageType.class, StageType.class));
 
     /**
      * The column

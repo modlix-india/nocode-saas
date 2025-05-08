@@ -31,8 +31,8 @@ import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
-import org.jooq.impl.AutoConverter;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -142,7 +142,7 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.COMPARISON_OPERATOR</code>.
      * Operator for this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> COMPARISON_OPERATOR = createField(DSL.name("COMPARISON_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorSimpleRulesComparisonOperator.class), this, "Operator for this Simple Rule.", new AutoConverter<EntityProcessorSimpleRulesComparisonOperator, ComparisonOperator>(EntityProcessorSimpleRulesComparisonOperator.class, ComparisonOperator.class));
+    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> COMPARISON_OPERATOR = createField(DSL.name("COMPARISON_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorSimpleRulesComparisonOperator.class), this, "Operator for this Simple Rule.", new EnumConverter<EntityProcessorSimpleRulesComparisonOperator, ComparisonOperator>(EntityProcessorSimpleRulesComparisonOperator.class, ComparisonOperator.class));
 
     /**
      * The column
@@ -177,7 +177,7 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.MATCH_OPERATOR</code>.
      * Operator for this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> MATCH_OPERATOR = createField(DSL.name("MATCH_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorSimpleRulesMatchOperator.class), this, "Operator for this Simple Rule.", new AutoConverter<EntityProcessorSimpleRulesMatchOperator, ComparisonOperator>(EntityProcessorSimpleRulesMatchOperator.class, ComparisonOperator.class));
+    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> MATCH_OPERATOR = createField(DSL.name("MATCH_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorSimpleRulesMatchOperator.class), this, "Operator for this Simple Rule.", new EnumConverter<EntityProcessorSimpleRulesMatchOperator, ComparisonOperator>(EntityProcessorSimpleRulesMatchOperator.class, ComparisonOperator.class));
 
     /**
      * The column

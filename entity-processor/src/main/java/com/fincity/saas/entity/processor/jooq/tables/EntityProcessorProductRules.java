@@ -5,10 +5,12 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRulesRuleType;
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRulesUserDistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
 
 import java.time.LocalDateTime;
@@ -20,6 +22,7 @@ import java.util.Map;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Identity;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
@@ -31,8 +34,8 @@ import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
-import org.jooq.impl.AutoConverter;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -121,7 +124,7 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
      * <code>entity_processor.entity_processor_product_rules.RULE_TYPE</code>.
      * Rule type for this Product Rule Config.
      */
-    public final TableField<EntityProcessorProductRulesRecord, RuleType> RULE_TYPE = createField(DSL.name("RULE_TYPE"), SQLDataType.VARCHAR(5).nullable(false).asEnumDataType(EntityProcessorProductRulesRuleType.class), this, "Rule type for this Product Rule Config.", new AutoConverter<EntityProcessorProductRulesRuleType, RuleType>(EntityProcessorProductRulesRuleType.class, RuleType.class));
+    public final TableField<EntityProcessorProductRulesRecord, RuleType> RULE_TYPE = createField(DSL.name("RULE_TYPE"), SQLDataType.VARCHAR(5).nullable(false).asEnumDataType(EntityProcessorProductRulesRuleType.class), this, "Rule type for this Product Rule Config.", new EnumConverter<EntityProcessorProductRulesRuleType, RuleType>(EntityProcessorProductRulesRuleType.class, RuleType.class));
 
     /**
      * The column
@@ -159,6 +162,27 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
      * for this Product Rule Config.
      */
     public final TableField<EntityProcessorProductRulesRecord, Map> RULES = createField(DSL.name("RULES"), SQLDataType.JSON, this, "Rules for this Product Rule Config.", new JSONMysqlMapConvertor());
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTION_TYPE</code>.
+     * User distribution strategy for this rule.
+     */
+    public final TableField<EntityProcessorProductRulesRecord, DistributionType> USER_DISTRIBUTION_TYPE = createField(DSL.name("USER_DISTRIBUTION_TYPE"), SQLDataType.VARCHAR(14).nullable(false).defaultValue(DSL.inline("ROUND_ROBIN", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductRulesUserDistributionType.class), this, "User distribution strategy for this rule.", new EnumConverter<EntityProcessorProductRulesUserDistributionType, DistributionType>(EntityProcessorProductRulesUserDistributionType.class, DistributionType.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTIONS</code>.
+     * User distributions for this rule.
+     */
+    public final TableField<EntityProcessorProductRulesRecord, JSON> USER_DISTRIBUTIONS = createField(DSL.name("USER_DISTRIBUTIONS"), SQLDataType.JSON, this, "User distributions for this rule.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_rules.LAST_USED_USER_ID</code>.
+     * Last User id used in this rule.
+     */
+    public final TableField<EntityProcessorProductRulesRecord, ULong> LAST_USED_USER_ID = createField(DSL.name("LAST_USED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Last User id used in this rule.");
 
     /**
      * The column

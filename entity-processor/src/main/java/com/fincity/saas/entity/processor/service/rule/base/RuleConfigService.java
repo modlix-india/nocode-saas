@@ -1,17 +1,26 @@
 package com.fincity.saas.entity.processor.service.rule.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.rule.base.RuleConfigDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.base.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -60,9 +69,11 @@ public abstract class RuleConfigService<
                         ruleConfigRequest.getIdentity()),
                 (hasAccess, entityId) -> ruleService.create(ruleConfigRequest.getRules()),
                 (hasAccess, entityId, rules) -> this.createFromRequest(ruleConfigRequest),
-                (hasAccess, entityId, rules, ruleConfig) -> {
+                (hasAccess, entityId, rules, ruleConfig) -> this.createUserDistributions(ruleConfigRequest),
+                (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
                     ruleConfig.setEntityId(entityId);
                     ruleConfig.setRules(rules);
+                    ruleConfig.setUserDistributions(userDistributions);
                     ruleConfig.setAppCode(hasAccess.getT1().getT1());
                     ruleConfig.setClientCode(hasAccess.getT1().getT2());
                     ruleConfig.setAddedByUserId(hasAccess.getT1().getT3());
@@ -84,7 +95,9 @@ public abstract class RuleConfigService<
                         ruleConfigRequest.getIdentity()),
                 (hasAccess, entityId) -> ruleService.update(ruleConfigRequest.getRules()),
                 (hasAccess, entityId, rules) -> this.updateFromRequest(ruleConfigRequest),
-                (hasAccess, entityId, rules, ruleConfig) -> {
+                (hasAccess, entityId, rules, ruleConfig) -> this.createUserDistributions(ruleConfigRequest),
+                (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
+                    ruleConfig.setUserDistributions(userDistributions);
                     ruleConfig.setRules(rules);
                     return super.create(ruleConfig);
                 });
@@ -110,6 +123,29 @@ public abstract class RuleConfigService<
         ruleConfig.setExecuteOnlyIfAllPreviousMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousMatch());
         ruleConfig.setExecuteOnlyIfAllPreviousNotMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousNotMatch());
         ruleConfig.setContinueOnNoMatch(ruleConfigRequest.isContinueOnNoMatch());
+        ruleConfig.setUserDistributionType(ruleConfigRequest.getUserDistributionType());
+
         return ruleConfig;
+    }
+
+    private Mono<Map<ULong, UserDistribution>> createUserDistributions(T ruleConfigRequest) {
+        DistributionType distributionType = ruleConfigRequest.getUserDistributionType();
+        Map<BigInteger, UserDistribution> distributions = ruleConfigRequest.getUserDistributions();
+
+        if (distributionType == null || distributions == null || distributions.isEmpty())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING);
+
+        boolean allValid = distributions.values().stream().allMatch(dist -> dist.isValidForType(distributionType));
+
+        if (!allValid)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.USER_DISTRIBUTION_INVALID);
+
+        return Mono.just(distributions.entrySet().stream()
+                .collect(Collectors.toMap(
+                        entry -> ULong.valueOf(entry.getKey()), Map.Entry::getValue, (v1, v2) -> v1, HashMap::new)));
     }
 }

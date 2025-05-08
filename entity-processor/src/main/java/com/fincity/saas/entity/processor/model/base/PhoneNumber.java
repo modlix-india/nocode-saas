@@ -22,7 +22,7 @@ import lombok.experimental.FieldNameConstants;
 public class PhoneNumber implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = -3758390379133935836L;
+    private static final long serialVersionUID = 1855000683356483889L;
 
     private Integer countryCode;
     private String number;

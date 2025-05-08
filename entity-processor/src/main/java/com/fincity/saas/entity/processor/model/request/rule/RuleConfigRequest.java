@@ -1,9 +1,12 @@
 package com.fincity.saas.entity.processor.model.request.rule;
 
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.base.UserDistribution;
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,6 +28,8 @@ public abstract class RuleConfigRequest implements Serializable {
     private boolean continueOnNoMatch = true;
 
     private Map<Integer, RuleRequest> rules;
+    private DistributionType userDistributionType;
+    private Map<BigInteger, UserDistribution> userDistributions;
 
     public abstract Identity getIdentity();
 }

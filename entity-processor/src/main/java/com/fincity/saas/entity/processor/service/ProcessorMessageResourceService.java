@@ -13,4 +13,6 @@ public class ProcessorMessageResourceService extends AbstractMongoMessageResourc
     public static final String IDENTITY_WRONG = "product_identity_wrong";
     public static final String PRODUCT_FORBIDDEN_ACCESS = "product_forbidden_access";
     public static final String MODEL_NOT_CREATED = "model_not_created";
+    public static final String USER_DISTRIBUTION_MISSING = "user_distribution_missing";
+    public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";
 }
