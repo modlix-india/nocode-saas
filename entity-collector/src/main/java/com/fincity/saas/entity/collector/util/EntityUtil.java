@@ -23,6 +23,8 @@ public class EntityUtil {
     public static final String CONNECTION_NAME = "meta_facebook_connection";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
+    private static final String FORWARDED_FOR = "X-Forwarded-For";
+    private static final String UNKNOWN = "UNKNOWN";
 
 
     public static Mono<Void> sendEntityToTarget(EntityIntegration integration, EntityResponse leadData) {
@@ -78,7 +80,7 @@ public class EntityUtil {
     }
 
     public static String getClientIpAddress(ServerHttpRequest request) {
-        String ipFromHeader = request.getHeaders().getFirst("X-Forwarded-For");
+        String ipFromHeader = request.getHeaders().getFirst(FORWARDED_FOR);
 
         if (ipFromHeader != null && !ipFromHeader.isBlank()) {
             return ipFromHeader.split(",")[0].trim();
@@ -86,8 +88,7 @@ public class EntityUtil {
         if (request.getRemoteAddress() != null) {
             return request.getRemoteAddress().getAddress().getHostAddress();
         }
-
-        return "UNKNOWN";
+        return UNKNOWN;
     }
 
 }

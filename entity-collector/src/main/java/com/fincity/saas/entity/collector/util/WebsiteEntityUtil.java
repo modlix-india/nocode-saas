@@ -30,9 +30,7 @@ public class WebsiteEntityUtil {
         return request.getHeaders().getFirst(FORWARDED_HOST);
     }
 
-    public static Mono<EntityResponse> handleWebsiteLeadNormalization(WebsiteDetails websiteDetails,
-                                                                      EntityIntegration integration,
-                                                                      IFeignCoreService coreService, EntityCollectorMessageResourceService messageService, EntityCollectorLogService logService, ULong logId) {
+    public static Mono<EntityResponse> handleWebsiteLeadNormalization(WebsiteDetails websiteDetails, EntityIntegration integration, IFeignCoreService coreService, EntityCollectorMessageResourceService messageService, EntityCollectorLogService logService, ULong logId) {
 
         LeadDetails lead = buildLeadDetailsFromWebsite(websiteDetails, integration);
 

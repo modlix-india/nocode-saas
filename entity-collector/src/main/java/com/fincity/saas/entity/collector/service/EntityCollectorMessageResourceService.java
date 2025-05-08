@@ -17,9 +17,9 @@ public class EntityCollectorMessageResourceService extends AbstractMessageServic
     public static final String INTEGRATION_FOUND_MESSAGE = "integration_found_message";
     public static final String INTEGRATION_NOT_FOUND = "integration_not_found";
     public static final String MESSAGES = "messages";
-    public static final String TOKEN_UNAVAILABLE ="token_unavailable";
-    public static final String METADATA_FETCH_FAILED="meta_fetch_failed";
-    public static final String FAILED_NORMALIZE_ENTITY="failed_normalize_entity";
+    public static final String TOKEN_UNAVAILABLE = "token_unavailable";
+    public static final String METADATA_FETCH_FAILED= "meta_fetch_failed";
+    public static final String FAILED_NORMALIZE_ENTITY= "failed_normalize_entity";
 
 
 

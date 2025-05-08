@@ -110,7 +110,7 @@ public class MetaEntityUtil {
 
                 (leadData, formData) -> Mono.just(Tuples.of(leadData, formData))
         ).onErrorResume(error ->
-                logService.updateOnError(logId, "hi")
+                logService.updateOnError(logId, error.getMessage())
                         .then(Mono.empty()));
     }
 
@@ -128,7 +128,7 @@ public class MetaEntityUtil {
                         .filter(p -> p.has(ENTRY)),
 
                 validPayload -> {
-                    List<ExtractPayload> payloads = new ArrayList<>();
+                    List<ExtractPayload> resultList  = new ArrayList<>();
 
                     validPayload.get(ENTRY).forEach(entry ->
                             entry.path(CHANGES).forEach(change -> {
@@ -138,14 +138,13 @@ public class MetaEntityUtil {
                                 String adId = value.path(AD_ID).asText(null);
 
                                 if (formId != null && leadGenId != null && adId != null) {
-                                    payloads.add(new ExtractPayload(formId, leadGenId, adId));
+                                    resultList .add(new ExtractPayload(formId, leadGenId, adId));
                                 }
-                            })
-                    );
-                    return Mono.justOrEmpty(payloads)
+                            }));
+                    return Mono.justOrEmpty(resultList)
                             .filter(list -> !list.isEmpty());
                 },
-                (validPayload, payloads) -> Mono.just(payloads)
+                (validPayload, resultList) -> Mono.just(resultList)
         ).defaultIfEmpty(Collections.emptyList());
     }
 

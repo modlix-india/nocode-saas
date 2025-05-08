@@ -13,9 +13,6 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-import java.util.HashMap;
-import java.util.Map;
-
 
 @RestController
 @RequestMapping("/api/entity-collector/entry")
@@ -29,8 +26,7 @@ public class EntityCollectorController {
     public Mono<ResponseEntity<String>> verifyMetaWebhook(
             @RequestParam(name = "hub.mode") String mode,
             @RequestParam(name = "hub.verify_token") String verifyToken,
-            @RequestParam(name = "hub.challenge") String challenge
-    ) {
+            @RequestParam(name = "hub.challenge") String challenge) {
 
         return metaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge);
     }

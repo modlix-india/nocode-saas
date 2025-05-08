@@ -68,7 +68,7 @@ public class EntityCollectorService {
                 (extractPayload, integration, logId, token) -> fetchMetaData(
                         extractPayload.leadGenId(),
                         extractPayload.formId(),
-                        token, entityCollectorMessageResponseService, entityCollectorLogService, logId),
+                        token, entityCollectorLogService, logId),
                 (extractPayload, integration, logId, token, metaData) -> Mono.just(
 
                         normalizeMetaEntity(metaData.getT1(), metaData.getT2(), extractPayload.adId(), token, integration, entityCollectorMessageResponseService, entityCollectorLogService, logId)),
