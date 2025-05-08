@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
-import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
@@ -37,7 +36,6 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration
     @PostConstruct
     public void initialize() {
         super.initialize();
-        this.objectMapper.registerModule(new KIRuntimeSerializationModule());
         this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(messageService));
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
@@ -47,15 +45,17 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration
     }
 
     @Bean
-    SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
+    public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
         return this.springSecurityFilterChain(http, authService, this.objectMapper);
     }
 
     @Bean
-    ReactiveHttpRequestInterceptor feignInterceptor() {
+    public ReactiveHttpRequestInterceptor feignInterceptor() {
         return request -> Mono.deferContextual(ctxView -> {
-            if (ctxView.hasKey(LogUtil.DEBUG_KEY))
-                request.headers().put(LogUtil.DEBUG_KEY, List.of(ctxView.get(LogUtil.DEBUG_KEY)));
+            if (ctxView.hasKey(LogUtil.DEBUG_KEY)) {
+                String value = ctxView.get(LogUtil.DEBUG_KEY);
+                request.headers().put(LogUtil.DEBUG_KEY, List.of(value));
+            }
             return Mono.just(request);
         });
     }

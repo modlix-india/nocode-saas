@@ -59,6 +59,10 @@ public abstract class RuleConfigService<
         return Mono.empty();
     }
 
+    public Mono<D> read(Identity identity) {
+        return this.readInternal(identity);
+    }
+
     public Mono<D> create(T ruleConfigRequest) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
@@ -71,16 +75,13 @@ public abstract class RuleConfigService<
                 (hasAccess, entityId, rules) -> this.createFromRequest(ruleConfigRequest),
                 (hasAccess, entityId, rules, ruleConfig) -> this.createUserDistributions(ruleConfigRequest),
                 (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
-                    ruleConfig.setEntityId(entityId);
-                    ruleConfig.setRules(rules);
-                    ruleConfig.setUserDistributions(userDistributions);
-                    ruleConfig.setAppCode(hasAccess.getT1().getT1());
-                    ruleConfig.setClientCode(hasAccess.getT1().getT2());
-                    ruleConfig.setAddedByUserId(hasAccess.getT1().getT3());
-
-                    if (ruleConfig.getAddedByUserId() == null)
-                        ruleConfig.setAddedByUserId(hasAccess.getT1().getT3());
-
+                    ruleConfig
+                            .setEntityId(entityId)
+                            .setRules(rules)
+                            .setUserDistributions(userDistributions)
+                            .setAddedByUserId(hasAccess.getT1().getT3())
+                            .setAppCode(hasAccess.getT1().getT1())
+                            .setClientCode(hasAccess.getT1().getT2());
                     return super.create(ruleConfig);
                 });
     }
@@ -97,10 +98,11 @@ public abstract class RuleConfigService<
                 (hasAccess, entityId, rules) -> this.updateFromRequest(ruleConfigRequest),
                 (hasAccess, entityId, rules, ruleConfig) -> this.createUserDistributions(ruleConfigRequest),
                 (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
-                    ruleConfig.setUserDistributions(userDistributions);
-                    ruleConfig.setRules(rules);
-                    return super.create(ruleConfig);
-                });
+                    ruleConfig.setUserDistributions(userDistributions).setRules(rules);
+                    return super.update(ruleConfig);
+                },
+                (hasAccess, entityId, rules, ruleConfig, userDistributions, updated) ->
+                        this.evictCache(updated).map(evicted -> updated));
     }
 
     public Mono<Integer> delete(Identity identity) {
@@ -118,6 +120,7 @@ public abstract class RuleConfigService<
     }
 
     private D updateRuleConfigFromRequest(D ruleConfig, T ruleConfigRequest) {
+
         ruleConfig.setRuleType(ruleConfigRequest.getRuleType());
         ruleConfig.setBreakAtFirstMatch(ruleConfigRequest.isBreakAtFirstMatch());
         ruleConfig.setExecuteOnlyIfAllPreviousMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousMatch());

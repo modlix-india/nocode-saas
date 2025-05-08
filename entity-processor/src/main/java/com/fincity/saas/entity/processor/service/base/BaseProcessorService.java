@@ -2,10 +2,10 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -28,7 +28,7 @@ public abstract class BaseProcessorService<
             if (existing.getVersion() != entity.getVersion())
                 return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                        AbstractMongoMessageResourceService.VERSION_MISMATCH);
+                        ProcessorMessageResourceService.VERSION_MISMATCH);
 
             existing.setCurrentUserId(entity.getCurrentUserId());
 

@@ -5,7 +5,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
-import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -198,7 +197,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS)),
+                                ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS)),
                 (acTup, hasAppAccess) -> this.securityService
                         .isUserBeingManaged(ca.getUser().getId(), acTup.getT2())
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)

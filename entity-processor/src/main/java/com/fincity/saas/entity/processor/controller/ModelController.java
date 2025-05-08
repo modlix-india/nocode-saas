@@ -9,6 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/entity-processor/models")
+@RequestMapping("api/entity/processor/models")
 public class ModelController
         extends BaseProcessorController<EntityProcessorModelsRecord, Model, ModelDAO, ModelService> {}

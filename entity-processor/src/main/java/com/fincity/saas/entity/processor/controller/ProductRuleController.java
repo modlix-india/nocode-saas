@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/entity-processor/products/rules")
+@RequestMapping("api/entity/processor/products/rules")
 public class ProductRuleController
         extends RuleConfigController<
                 ProductRuleRequest,

@@ -9,6 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/entity-processor/products")
+@RequestMapping("api/entity/processor/products")
 public class ProductController
         extends BaseProcessorController<EntityProcessorProductsRecord, Product, ProductDAO, ProductService> {}

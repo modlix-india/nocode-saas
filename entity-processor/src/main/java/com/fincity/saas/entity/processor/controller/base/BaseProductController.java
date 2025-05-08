@@ -5,7 +5,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
 import com.fincity.saas.entity.processor.service.base.BaseProductService;
 import org.jooq.UpdatableRecord;
 
-public class BaseProductController<
+public abstract class BaseProductController<
                 R extends UpdatableRecord<R>,
                 D extends BaseProductDto<D>,
                 O extends BaseProductDAO<R, D>,
