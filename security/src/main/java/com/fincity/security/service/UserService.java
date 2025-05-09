@@ -257,9 +257,22 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                             if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
                                 return Mono.just(entity);
 
-                            return clientService
-                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
-                                    .flatMap(e -> Boolean.TRUE.equals(e) ? Mono.just(entity) : Mono.empty());
+                            return Mono.zip(clientService
+                                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId()),
+                                            this.designationService.canAssignDesignation(entity.getClientId(), entity.getDesignationId()),
+                                            this.canReportTo(entity.getClientId(), entity.getReportingTo(), null)
+                                    )
+                                    .flatMap(e -> {
+
+                                        if (!BooleanUtil.safeValueOf(e.getT2())) {
+                                            return this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), SecurityMessageResourceService.USER_DESIGNATION_MISMATCH);
+                                        }
+
+                                        if (!BooleanUtil.safeValueOf(e.getT3())) {
+                                            return this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), SecurityMessageResourceService.USER_REPORTING_ERROR);
+                                        }
+                                        return BooleanUtil.safeValueOf(e.getT1()) ? Mono.just(entity) : Mono.empty();
+                                    });
                         },
                         (ca, user) -> checkUserIdentificationKeys(entity),
 
@@ -282,6 +295,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.create"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
     }
+
+    private Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
+        return this.dao.canReportTo(clientId, reportingTo, userId);
+    }
+
 
     private void updateUserIdentificationKeys(User entity) {
 
@@ -434,22 +452,39 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                         () -> this.clientService.getClientTypeNCode(entity.getClientId()).map(Tuple2::getT1),
 
-                        clientType -> switch (clientType) {
-                            case "INDV" ->
-                                    this.clientHierarchyService.getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
-                                            .flatMap(managingClientId -> this.dao.checkUserExistsExclude(managingClientId,
-                                                    entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber(), "INDV",
-                                                    entity.getId()));
-                            case "BUS" ->
-                                    this.dao.checkUserExists(entity.getClientId(), entity.getUserName(), entity.getEmailId(),
-                                            entity.getPhoneNumber(), null);
-                            default -> Mono.empty();
-                        },
+                        clientType -> Mono.zip(
+                                        this.designationService.canAssignDesignation(entity.getClientId(), entity.getDesignationId()),
+                                        this.canReportTo(entity.getClientId(), entity.getReportingTo(), null)
+                                )
+                                .flatMap(e -> {
 
-                        (clientType, userExists) -> Boolean.TRUE.equals(userExists) ? Mono.empty()
+                                    if (!BooleanUtil.safeValueOf(e.getT1())) {
+                                        return this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), SecurityMessageResourceService.USER_DESIGNATION_MISMATCH);
+                                    }
+
+                                    if (!BooleanUtil.safeValueOf(e.getT2())) {
+                                        return this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), SecurityMessageResourceService.USER_REPORTING_ERROR);
+                                    }
+                                    return Mono.just(entity);
+                                }),
+
+                        (clientType, updatableEntity) ->
+                                switch (clientType) {
+                                    case "INDV" ->
+                                            this.clientHierarchyService.getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
+                                                    .flatMap(managingClientId -> this.dao.checkUserExistsExclude(managingClientId,
+                                                            entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber(), "INDV",
+                                                            entity.getId()));
+                                    case "BUS" ->
+                                            this.dao.checkUserExists(entity.getClientId(), entity.getUserName(), entity.getEmailId(),
+                                                    entity.getPhoneNumber(), null);
+                                    default -> Mono.empty();
+                                },
+
+                        (clientType, updatableEntity, userExists) -> Boolean.TRUE.equals(userExists) ? Mono.empty()
                                 : super.update(entity),
 
-                        (clientType, userExists, updated) -> this.evictTokens(updated.getId())
+                        (clientType, updatableEntity, userExists, updated) -> this.evictTokens(updated.getId())
                                 .<User>map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
     }
