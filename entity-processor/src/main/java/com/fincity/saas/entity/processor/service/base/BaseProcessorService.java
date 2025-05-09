@@ -73,9 +73,11 @@ public abstract class BaseProcessorService<
 
     @Override
     public Mono<D> update(D entity) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess, hasAccess -> super.update(entity), (hasAccess, updated) -> this.evictCache(entity)
-                        .map(evicted -> updated));
+        return super.hasAccess().flatMap(hasAccess -> this.updateInternal(entity));
+    }
+
+    public Mono<D> updateInternal(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
     }
 
     @Override

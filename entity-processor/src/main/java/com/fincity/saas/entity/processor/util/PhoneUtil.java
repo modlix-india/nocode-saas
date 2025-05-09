@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.util;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.entity.processor.model.base.PhoneNumber;
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber;

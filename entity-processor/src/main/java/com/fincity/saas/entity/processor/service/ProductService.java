@@ -1,10 +1,11 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
-import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
@@ -34,12 +35,19 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
     public Mono<Product> readWithAccess(Identity identity) {
         return super.hasAccess().flatMap(hasAccess -> {
-            if (!hasAccess.getT2()) // NOSONAR
-            return this.msgService.throwMessage(
+            if (!hasAccess.getT2())
+                return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         ProcessorMessageResourceService.PRODUCT_FORBIDDEN_ACCESS);
 
-            return this.readInternal(identity);
+            return this.readIdentity(identity);
+        });
+    }
+
+    public Mono<Product> updateProductTemplate(Identity identity, ULong valueTemplateId) {
+        return FlatMapUtil.flatMapMono(() -> super.readIdentity(identity), product -> {
+            product.setValueTemplateId(valueTemplateId);
+            return super.updateInternal(product);
         });
     }
 }

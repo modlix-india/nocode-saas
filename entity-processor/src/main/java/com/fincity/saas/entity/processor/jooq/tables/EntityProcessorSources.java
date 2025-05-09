@@ -103,10 +103,10 @@ public class EntityProcessorSources extends TableImpl<EntityProcessorSourcesReco
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_sources.PRODUCT_ID</code>.
-     * Product related to this Source.
+     * <code>entity_processor.entity_processor_sources.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Source.
      */
-    public final TableField<EntityProcessorSourcesRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product related to this Source.");
+    public final TableField<EntityProcessorSourcesRecord, ULong> VALUE_TEMPLATE_ID = createField(DSL.name("VALUE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Value Template related to this Source.");
 
     /**
      * The column

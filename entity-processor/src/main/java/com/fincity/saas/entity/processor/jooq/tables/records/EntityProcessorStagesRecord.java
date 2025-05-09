@@ -151,20 +151,20 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_stages.PRODUCT_ID</code>. Product
-     * related to this Stage.
+     * <code>entity_processor.entity_processor_stages.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Stage.
      */
-    public EntityProcessorStagesRecord setProductId(ULong value) {
+    public EntityProcessorStagesRecord setValueTemplateId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_stages.PRODUCT_ID</code>. Product
-     * related to this Stage.
+     * <code>entity_processor.entity_processor_stages.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Stage.
      */
-    public ULong getProductId() {
+    public ULong getValueTemplateId() {
         return (ULong) get(7);
     }
 
@@ -436,7 +436,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorStagesRecord
      */
-    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, StageType stageType, Byte isSuccess, Byte isFailure, Short order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong valueTemplateId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, StageType stageType, Byte isSuccess, Byte isFailure, Short order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorStages.ENTITY_PROCESSOR_STAGES);
 
         setId(id);
@@ -446,7 +446,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
         setName(name);
         setDescription(description);
         setAddedByUserId(addedByUserId);
-        setProductId(productId);
+        setValueTemplateId(valueTemplateId);
         setIsParent(isParent);
         setParentLevel_0(parentLevel_0);
         setParentLevel_1(parentLevel_1);

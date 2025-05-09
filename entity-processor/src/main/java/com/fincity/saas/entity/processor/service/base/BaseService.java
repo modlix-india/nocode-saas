@@ -13,7 +13,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
-import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.List;
 import java.util.stream.Stream;
@@ -97,7 +97,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         });
     }
 
-    public Mono<D> readInternal(ULong id) {
+    public Mono<D> readIdentity(ULong id) {
         return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
     }
 
@@ -109,7 +109,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return Flux.fromIterable(codes).flatMap(this::readByCode);
     }
 
-    public Mono<D> readInternal(Identity identity) {
+    public Mono<D> readIdentity(Identity identity) {
 
         if (identity == null || identity.isNull())
             return this.msgService.throwMessage(
@@ -118,7 +118,36 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
 
         return (identity.isCode()
                         ? this.readByCode(identity.getCode())
-                        : this.readInternal(ULongUtil.valueOf(identity.getId())))
+                        : this.readIdentity(ULongUtil.valueOf(identity.getId())))
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.IDENTITY_WRONG));
+    }
+
+    public Mono<Identity> updateIdentity(Identity identity) {
+
+        if (identity.isId()) return Mono.just(identity);
+
+        return this.readByCode(identity.getCode())
+                .map(entity -> identity.setId(entity.getId().toBigInteger()));
+    }
+
+    public Mono<Identity> checkAndUpdateIdentity(Identity identity) {
+
+        if (identity == null || identity.isNull())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING);
+
+        if (identity.isId())
+            return this.readIdentity(ULongUtil.valueOf(identity.getId()))
+                    .map(entity -> identity)
+                    .switchIfEmpty(this.msgService.throwMessage(
+                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                            ProcessorMessageResourceService.IDENTITY_WRONG));
+
+        return this.readByCode(identity.getCode())
+                .map(entity -> identity.setId(entity.getId().toBigInteger()))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG));
@@ -181,7 +210,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<BaseResponse> getBaseResponse(ULong id) {
-        return this.readInternal(id).map(BaseDto::toBaseResponse);
+        return this.readIdentity(id).map(BaseDto::toBaseResponse);
     }
 
     public Mono<BaseResponse> getBaseResponse(String code) {

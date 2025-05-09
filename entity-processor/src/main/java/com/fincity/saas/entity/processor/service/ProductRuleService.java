@@ -4,7 +4,7 @@ import com.fincity.saas.entity.processor.dao.ProductRuleDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductRule;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
-import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductRuleRequest;
 import com.fincity.saas.entity.processor.service.rule.base.RuleConfigService;
 import org.jooq.types.ULong;

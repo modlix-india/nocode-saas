@@ -124,6 +124,13 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Product.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> VALUE_TEMPLATE_ID = createField(DSL.name("VALUE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Value Template related to this Product.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.DEFAULT_SOURCE</code>.
      * Default source for this product. This will be value for entity source if
      * source in not inferred.

@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.model.response;
 
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.model.base.ProcessorStatus;
+import com.fincity.saas.entity.processor.model.common.ProcessorStatus;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Arrays;

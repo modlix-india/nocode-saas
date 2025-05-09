@@ -14,6 +14,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComple
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComplexRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorModelsRecord;
@@ -24,6 +25,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimp
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSourcesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplatesRecord;
 
 import org.jooq.ForeignKey;
 import org.jooq.TableField;
@@ -64,6 +66,8 @@ public class Keys {
     public static final UniqueKey<EntityProcessorSourcesRecord> KEY_ENTITY_PROCESSOR_SOURCES_UK1_SOURCES_CODE = Internal.createUniqueKey(EntityProcessorSources.ENTITY_PROCESSOR_SOURCES, DSL.name("KEY_entity_processor_sources_UK1_SOURCES_CODE"), new TableField[] { EntityProcessorSources.ENTITY_PROCESSOR_SOURCES.CODE }, true);
     public static final UniqueKey<EntityProcessorStagesRecord> KEY_ENTITY_PROCESSOR_STAGES_PRIMARY = Internal.createUniqueKey(EntityProcessorStages.ENTITY_PROCESSOR_STAGES, DSL.name("KEY_entity_processor_stages_PRIMARY"), new TableField[] { EntityProcessorStages.ENTITY_PROCESSOR_STAGES.ID }, true);
     public static final UniqueKey<EntityProcessorStagesRecord> KEY_ENTITY_PROCESSOR_STAGES_UK1_STAGES_CODE = Internal.createUniqueKey(EntityProcessorStages.ENTITY_PROCESSOR_STAGES, DSL.name("KEY_entity_processor_stages_UK1_STAGES_CODE"), new TableField[] { EntityProcessorStages.ENTITY_PROCESSOR_STAGES.CODE }, true);
+    public static final UniqueKey<EntityProcessorValueTemplatesRecord> KEY_ENTITY_PROCESSOR_VALUE_TEMPLATES_PRIMARY = Internal.createUniqueKey(EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES, DSL.name("KEY_entity_processor_value_templates_PRIMARY"), new TableField[] { EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES.ID }, true);
+    public static final UniqueKey<EntityProcessorValueTemplatesRecord> KEY_ENTITY_PROCESSOR_VALUE_TEMPLATES_UK1_VALUE_TEMPLATES_CODE = Internal.createUniqueKey(EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES, DSL.name("KEY_entity_processor_value_templates_UK1_VALUE_TEMPLATES_CODE"), new TableField[] { EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES.CODE }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions

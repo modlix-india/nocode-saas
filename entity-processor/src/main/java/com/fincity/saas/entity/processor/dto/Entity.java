@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.dto;
 
-import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.EntityRequest;
@@ -38,7 +37,6 @@ public class Entity extends BaseProcessorDto<Entity> {
                 .setDialCode(entityRequest.getPhoneNumber().getCountryCode())
                 .setPhoneNumber(entityRequest.getPhoneNumber().getNumber())
                 .setEmail(entityRequest.getEmail().getAddress())
-                .setProductId(ULongUtil.valueOf(entityRequest.getProductId().getId()))
                 .setSource(entityRequest.getSource())
                 .setSubSource(entityRequest.getSubSource() != null ? entityRequest.getSubSource() : null)
                 .setName(entityRequest.getName())

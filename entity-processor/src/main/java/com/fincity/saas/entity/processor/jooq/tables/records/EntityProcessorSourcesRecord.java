@@ -150,20 +150,20 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_sources.PRODUCT_ID</code>.
-     * Product related to this Source.
+     * <code>entity_processor.entity_processor_sources.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Source.
      */
-    public EntityProcessorSourcesRecord setProductId(ULong value) {
+    public EntityProcessorSourcesRecord setValueTemplateId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_sources.PRODUCT_ID</code>.
-     * Product related to this Source.
+     * <code>entity_processor.entity_processor_sources.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Source.
      */
-    public ULong getProductId() {
+    public ULong getValueTemplateId() {
         return (ULong) get(7);
     }
 
@@ -361,7 +361,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorSourcesRecord
      */
-    public EntityProcessorSourcesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSourcesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong valueTemplateId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSources.ENTITY_PROCESSOR_SOURCES);
 
         setId(id);
@@ -371,7 +371,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
         setName(name);
         setDescription(description);
         setAddedByUserId(addedByUserId);
-        setProductId(productId);
+        setValueTemplateId(valueTemplateId);
         setIsParent(isParent);
         setParentLevel_0(parentLevel_0);
         setParentLevel_1(parentLevel_1);

@@ -6,9 +6,10 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorRulesRecord;
-import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseService;
@@ -37,6 +38,11 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
     @Override
     protected String getCacheName() {
         return RULE;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.RULE;
     }
 
     @Override
@@ -87,7 +93,7 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
     }
 
     public Mono<Integer> deleteRuleInternal(Identity rule) {
-        return this.readInternal(rule).flatMap(existing -> super.delete(existing.getId()));
+        return super.readIdentity(rule).flatMap(existing -> super.delete(existing.getId()));
     }
 
     private Mono<Integer> deleteRulesInternal(List<Identity> rules) {

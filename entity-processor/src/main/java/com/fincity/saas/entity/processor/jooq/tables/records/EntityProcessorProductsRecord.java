@@ -192,12 +192,31 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_products.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Product.
+     */
+    public EntityProcessorProductsRecord setValueTemplateId(ULong value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.VALUE_TEMPLATE_ID</code>.
+     * Value Template related to this Product.
+     */
+    public ULong getValueTemplateId() {
+        return (ULong) get(9);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_products.DEFAULT_SOURCE</code>.
      * Default source for this product. This will be value for entity source if
      * source in not inferred.
      */
     public EntityProcessorProductsRecord setDefaultSource(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -208,7 +227,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * source in not inferred.
      */
     public ULong getDefaultSource() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -218,7 +237,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * stage in not inferred.
      */
     public EntityProcessorProductsRecord setDefaultStage(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -229,7 +248,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * stage in not inferred.
      */
     public ULong getDefaultStage() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -238,7 +257,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag fro this product.
      */
     public EntityProcessorProductsRecord setTempActive(Byte value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -248,7 +267,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag fro this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(11);
+        return (Byte) get(12);
     }
 
     /**
@@ -257,7 +276,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * to check if this product is active or not.
      */
     public EntityProcessorProductsRecord setIsActive(Byte value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -267,7 +286,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * to check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(12);
+        return (Byte) get(13);
     }
 
     /**
@@ -276,7 +295,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public EntityProcessorProductsRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -286,7 +305,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(14);
     }
 
     /**
@@ -295,7 +314,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public EntityProcessorProductsRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -305,7 +324,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -314,7 +333,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public EntityProcessorProductsRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -324,7 +343,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(16);
     }
 
     /**
@@ -333,7 +352,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public EntityProcessorProductsRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -343,7 +362,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -369,7 +388,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong defaultSource, ULong defaultStage, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong valueTemplateId, ULong defaultSource, ULong defaultStage, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
@@ -381,6 +400,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
         setDescription(description);
         setAddedByUserId(addedByUserId);
         setCurrentUserId(currentUserId);
+        setValueTemplateId(valueTemplateId);
         setDefaultSource(defaultSource);
         setDefaultStage(defaultStage);
         setTempActive(tempActive);

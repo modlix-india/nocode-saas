@@ -5,15 +5,17 @@ import org.jooq.EnumType;
 
 @Getter
 public enum StageType implements EnumType {
-    OPEN("OPEN", "Open"),
-    CLOSED("CLOSED", "Closed");
+    OPEN("OPEN", "Open", false),
+    CLOSED("CLOSED", "Closed", true);
 
     private final String literal;
     private final String displayName;
+    private final boolean hasSuccessFailure;
 
-    StageType(String literal, String displayName) {
+    StageType(String literal, String displayName, boolean hasSuccessFailure) {
         this.literal = literal;
         this.displayName = displayName;
+        this.hasSuccessFailure = hasSuccessFailure;
     }
 
     public static StageType lookupLiteral(String literal) {

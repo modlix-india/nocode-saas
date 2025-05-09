@@ -15,12 +15,12 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class BaseProductDto<T extends BaseProductDto<T>> extends BaseDto<T> implements IEntitySeries {
+public class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 2090745028406660414L;
 
-    private ULong productId;
+    private ULong valueTemplateId;
     private Boolean isParent;
     private ULong parentLevel0;
     private ULong parentLevel1;

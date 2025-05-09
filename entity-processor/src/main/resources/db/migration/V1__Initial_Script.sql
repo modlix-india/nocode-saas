@@ -49,6 +49,7 @@ CREATE TABLE `entity_processor_products` (
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this product.',
     `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this Product is assigned.',
+    `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template related to this Product.',
     `DEFAULT_SOURCE` BIGINT UNSIGNED NOT NULL COMMENT 'Default source for this product. This will be value for entity source if source in not inferred.',
     `DEFAULT_STAGE` BIGINT UNSIGNED NOT NULL COMMENT 'Default stage for this product. This will be value for entity stage if stage in not inferred.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag fro this product.',
@@ -59,7 +60,19 @@ CREATE TABLE `entity_processor_products` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_PRODUCTS_CODE` (`CODE`)
+    UNIQUE KEY `UK1_PRODUCTS_CODE` (`CODE`),
+    CONSTRAINT `FK1_PRODUCTS_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
+        REFERENCES `entity_processor_value_templates` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_PRODUCTS_DEFAULT_SOURCE` FOREIGN KEY (`DEFAULT_SOURCE`)
+        REFERENCES `entity_processor_sources` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK3_PRODUCTS_DEFAULT_STAGE` FOREIGN KEY (`DEFAULT_STAGE`)
+        REFERENCES `entity_processor_stages` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
@@ -109,6 +122,32 @@ CREATE TABLE `entity_processor_entities` (
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_value_templates`;
+
+CREATE TABLE `entity_processor`.`entity_processor_value_templates` (
+
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Value Template was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Value Template.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+    `NAME` CHAR(32) NOT NULL COMMENT 'Name of the Value Template. Value Template are like value type for product, Entities, model.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Value Template.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Value Template.',
+    `VALUE_TEMPLATE_TYPE` ENUM ('ENTITY', 'PRODUCT') NOT NULL DEFAULT 'PRODUCT' COMMENT 'Type of Value Template.',
+    `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag fro this product.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_VALUE_TEMPLATES_CODE` (`CODE`)
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
 DROP TABLE IF EXISTS `entity_processor`.`entity_processor_sources`;
 
 CREATE TABLE `entity_processor`.`entity_processor_sources` (
@@ -120,7 +159,7 @@ CREATE TABLE `entity_processor`.`entity_processor_sources` (
     `NAME` CHAR(32) NOT NULL COMMENT 'Name of the Source. Source are like Social Media, Website, Hoarding.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Source.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Source.',
-    `PRODUCT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product related to this Source.',
+    `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template related to this Source.',
     `IS_PARENT` TINYINT NOT NULL DEFAULT 1 NOT NULL COMMENT 'Is this the main Source or not.',
     `PARENT_LEVEL_0` BIGINT UNSIGNED NULL COMMENT 'Parent source for this source.',
     `PARENT_LEVEL_1` BIGINT UNSIGNED NULL COMMENT 'Parent source level 1 for this source.',
@@ -132,7 +171,19 @@ CREATE TABLE `entity_processor`.`entity_processor_sources` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_SOURCES_CODE` (`CODE`)
+    UNIQUE KEY `UK1_SOURCES_CODE` (`CODE`),
+    CONSTRAINT `FK1_SOURCES_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
+        REFERENCES `entity_processor_value_templates` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_SOURCES_PARENT_LEVEL_0` FOREIGN KEY (`PARENT_LEVEL_0`)
+        REFERENCES `entity_processor_sources` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK3_SOURCES_PARENT_LEVEL_1` FOREIGN KEY (`PARENT_LEVEL_1`)
+        REFERENCES `entity_processor_sources` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
@@ -149,7 +200,7 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
     `NAME` CHAR(32) NOT NULL COMMENT 'Name of the Stage.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Stage.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Stage.',
-    `PRODUCT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product related to this Stage.',
+    `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template related to this Stage.',
     `IS_PARENT` TINYINT NOT NULL DEFAULT 1 NOT NULL COMMENT 'Is this the main Source or not.',
     `PARENT_LEVEL_0` BIGINT UNSIGNED NULL COMMENT 'Parent Stage for this stage.',
     `PARENT_LEVEL_1` BIGINT UNSIGNED NULL COMMENT 'Parent stage level 1 for this stage.',
@@ -165,7 +216,19 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_STAGES_CODE` (`CODE`)
+    UNIQUE KEY `UK1_STAGES_CODE` (`CODE`),
+    CONSTRAINT `FK1_STAGES_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
+        REFERENCES `entity_processor_value_templates` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_STAGES_PARENT_LEVEL_0` FOREIGN KEY (`PARENT_LEVEL_0`)
+        REFERENCES `entity_processor_stages` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK3_STAGES_PARENT_LEVEL_1` FOREIGN KEY (`PARENT_LEVEL_1`)
+        REFERENCES `entity_processor_stages` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`

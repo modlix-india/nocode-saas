@@ -48,7 +48,7 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
     public Mono<Entity> getOrCreateEntityModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {
 
         if (entity.getModelId() != null)
-            return FlatMapUtil.flatMapMono(() -> this.readInternal(ULongUtil.valueOf(entity.getModelId())), model -> {
+            return FlatMapUtil.flatMapMono(() -> this.readIdentity(ULongUtil.valueOf(entity.getModelId())), model -> {
                 entity.setModelId(model.getId());
 
                 if (model.getDialCode() != null && model.getPhoneNumber() != null) {

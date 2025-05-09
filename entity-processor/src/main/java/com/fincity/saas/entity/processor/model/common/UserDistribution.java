@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model.base;
+package com.fincity.saas.entity.processor.model.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;

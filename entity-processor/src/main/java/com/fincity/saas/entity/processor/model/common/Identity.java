@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model.base;
+package com.fincity.saas.entity.processor.model.common;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;

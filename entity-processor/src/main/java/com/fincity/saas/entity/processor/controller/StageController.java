@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.controller;
 
-import com.fincity.saas.entity.processor.controller.base.BaseProductController;
+import com.fincity.saas.entity.processor.controller.base.BaseValueController;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
@@ -10,5 +10,4 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("api/entity/processor/stages")
-public class StageController
-        extends BaseProductController<EntityProcessorStagesRecord, Stage, StageDAO, StageService> {}
+public class StageController extends BaseValueController<EntityProcessorStagesRecord, Stage, StageDAO, StageService> {}

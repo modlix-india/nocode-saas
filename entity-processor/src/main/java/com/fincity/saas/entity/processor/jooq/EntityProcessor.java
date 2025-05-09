@@ -14,6 +14,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComple
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
 import java.util.Arrays;
 import java.util.List;
@@ -89,6 +90,11 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 
     /**
+     * The table <code>entity_processor.entity_processor_value_templates</code>.
+     */
+    public final EntityProcessorValueTemplates ENTITY_PROCESSOR_VALUE_TEMPLATES = EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES;
+
+    /**
      * No further instances allowed
      */
     private EntityProcessor() {
@@ -113,7 +119,8 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,
             EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES,
             EntityProcessorSources.ENTITY_PROCESSOR_SOURCES,
-            EntityProcessorStages.ENTITY_PROCESSOR_STAGES
+            EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
+            EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES
         );
     }
 }

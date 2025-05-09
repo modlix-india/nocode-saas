@@ -6,8 +6,8 @@ import com.fincity.saas.entity.processor.dao.rule.base.RuleConfigDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
-import com.fincity.saas.entity.processor.model.base.Identity;
-import com.fincity.saas.entity.processor.model.base.UserDistribution;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
@@ -60,7 +60,7 @@ public abstract class RuleConfigService<
     }
 
     public Mono<D> read(Identity identity) {
-        return this.readInternal(identity);
+        return super.readIdentity(identity);
     }
 
     public Mono<D> create(T ruleConfigRequest) {
@@ -106,11 +106,11 @@ public abstract class RuleConfigService<
     }
 
     public Mono<Integer> delete(Identity identity) {
-        return this.readInternal(identity).flatMap(ruleConfig -> super.delete(ruleConfig.getId()));
+        return super.readIdentity(identity).flatMap(ruleConfig -> super.delete(ruleConfig.getId()));
     }
 
     private Mono<D> updateFromRequest(T ruleConfigRequest) {
-        return super.readInternal(ruleConfigRequest.getRuleConfigId())
+        return super.readIdentity(ruleConfigRequest.getRuleConfigId())
                 .map(existing -> this.updateRuleConfigFromRequest(existing, ruleConfigRequest));
     }
 

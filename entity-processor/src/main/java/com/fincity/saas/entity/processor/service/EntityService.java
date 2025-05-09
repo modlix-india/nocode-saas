@@ -71,26 +71,15 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     }
 
     public Mono<Entity> create(EntityRequest entityRequest) {
-
-        Entity entity = Entity.of(entityRequest);
-
         return FlatMapUtil.flatMapMono(
-                () -> this.productService.readInternal(entityRequest.getProductId()),
-                product -> super.create(entity.setProductId(product.getId())));
-    }
-
-    public Mono<Entity> createPublic(EntityRequest entityRequest) {
-
-        Entity entity = Entity.of(entityRequest);
-
-        return FlatMapUtil.flatMapMono(
-                () -> this.productService.readInternal(entityRequest.getProductId()),
-                product -> super.createPublic(entity.setProductId(product.getId())));
+                () -> this.productService.checkAndUpdateIdentity(entityRequest.getProductId()),
+                productIdentity -> Mono.just(entityRequest.setProductId(productIdentity)),
+                (productIdentity, req) -> super.create(Entity.of(req)));
     }
 
     public Mono<ProcessorResponse> createResponse(EntityRequest entityRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> this.createPublic(entityRequest),
+                () -> this.create(entityRequest),
                 cEntity -> Mono.just(ProcessorResponse.ofCreated(cEntity.getCode(), this.getEntitySeries())));
     }
 
@@ -103,7 +92,7 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
 
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> this.productService.readInternal(entity.getProductId()),
+                ca -> this.productService.readIdentity(entity.getProductId()),
                 (ca, product) -> Mono.just(entity.setProductId(product.getId())),
                 (ca, product, pEntity) -> this.updateSources(ca, pEntity, product.getDefaultSource()),
                 (ca, product, pEntity, sEntity) -> this.setDefaultStage(sEntity, product.getDefaultStage()));
@@ -131,13 +120,13 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
 
     private Mono<Entity> setDefaultStage(Entity entity, ULong defaultStageId) {
         return this.stageService
-                .readInternal(defaultStageId)
+                .readIdentity(defaultStageId)
                 .flatMap(defaultStage -> Mono.just(entity.setStage(defaultStage.getName())));
     }
 
     private Mono<Entity> setDefaultSource(Entity entity, ULong defaultSourceId) {
         return sourceService
-                .readInternal(defaultSourceId)
+                .readIdentity(defaultSourceId)
                 .flatMap(defaultSource -> Mono.just(entity.setSource(defaultSource.getName())));
     }
 

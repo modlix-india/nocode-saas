@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model.base;
+package com.fincity.saas.entity.processor.model.common;
 
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;

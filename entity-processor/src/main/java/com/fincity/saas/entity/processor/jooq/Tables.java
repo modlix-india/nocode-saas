@@ -14,6 +14,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComple
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
 
 /**
@@ -72,4 +73,9 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public static final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_value_templates</code>.
+     */
+    public static final EntityProcessorValueTemplates ENTITY_PROCESSOR_VALUE_TEMPLATES = EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES;
 }

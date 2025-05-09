@@ -3,10 +3,10 @@ package com.fincity.saas.entity.processor.service.base;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.entity.processor.dao.base.BaseProductDAO;
+import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.dto.base.BaseProductDto;
-import com.fincity.saas.entity.processor.model.base.IdAndValue;
+import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.List;
 import java.util.Map;
@@ -21,17 +21,17 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public abstract class BaseProductService<
-                R extends UpdatableRecord<R>, D extends BaseProductDto<D>, O extends BaseProductDAO<R, D>>
+public abstract class BaseValueService<
+                R extends UpdatableRecord<R>, D extends BaseValueDto<D>, O extends BaseValueDAO<R, D>>
         extends BaseService<R, D, O> {
 
-    private static final String PRODUCT_ET_KEY = "productEtKey";
+    private static final String VALUE_ET_KEY = "valueEtKey";
 
-    public String getProductEtKey() {
-        return PRODUCT_ET_KEY;
+    public String getValueEtKey() {
+        return VALUE_ET_KEY;
     }
 
-    public String getProductIdValueKey() {
+    public String getValueIdValueKey() {
         return IdAndValue.ID_CACHE_KEY;
     }
 
@@ -42,17 +42,17 @@ public abstract class BaseProductService<
                 baseEvicted -> super.cacheService.evict(
                         getCacheName(),
                         super.getCacheKey(
-                                this.getProductEtKey(),
+                                this.getValueEtKey(),
                                 entity.getAppCode(),
                                 entity.getClientCode(),
-                                entity.getProductId())),
+                                entity.getValueTemplateId())),
                 (baseEvicted, mapEvicted) -> super.cacheService.evict(
                         getCacheName(),
                         super.getCacheKey(
-                                this.getProductIdValueKey(),
+                                this.getValueIdValueKey(),
                                 entity.getAppCode(),
                                 entity.getClientCode(),
-                                entity.getProductId())));
+                                entity.getValueTemplateId())));
     }
 
     @Override
@@ -79,7 +79,7 @@ public abstract class BaseProductService<
                         ? this.existsById(
                                 hasAccess.getT1().getT1(),
                                 hasAccess.getT1().getT2(),
-                                entity.getProductId(),
+                                entity.getValueTemplateId(),
                                 entity.getParentLevel0(),
                                 entity.getParentLevel1())
                         : Mono.just(Boolean.TRUE),
@@ -120,55 +120,55 @@ public abstract class BaseProductService<
                 (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 
-    protected Mono<Boolean> existsById(String appCode, String clientCode, ULong productId, ULong... productEntityIds) {
-        return this.dao.existsById(appCode, clientCode, productId, productEntityIds);
+    protected Mono<Boolean> existsById(String appCode, String clientCode, ULong valueId, ULong... valueEntityIds) {
+        return this.dao.existsById(appCode, clientCode, valueId, valueEntityIds);
     }
 
-    public Mono<Map<Integer, String>> getAllProductMap(String appCode, String clientCode, ULong productId) {
+    public Mono<Map<Integer, String>> getAllValueMap(String appCode, String clientCode, ULong valueId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao
-                        .getAllProductIdAndNames(appCode, clientCode, productId)
+                        .getAllValueTemplateIdAndNames(appCode, clientCode, valueId)
                         .map(IdAndValue::toMap),
-                super.getCacheKey(this.getProductIdValueKey(), appCode, clientCode, productId));
+                super.getCacheKey(this.getValueIdValueKey(), appCode, clientCode, valueId));
     }
 
     public Mono<Boolean> isValidParentChild(
-            String appCode, String clientCode, ULong productId, String parent, String... children) {
-        return FlatMapUtil.flatMapMono(() -> this.getAllProducts(appCode, clientCode, productId), productEntityMap -> {
-                    if (!productEntityMap.containsKey(parent)) return Mono.just(Boolean.FALSE);
+            String appCode, String clientCode, ULong valueId, String parent, String... children) {
+        return FlatMapUtil.flatMapMono(() -> this.getAllValues(appCode, clientCode, valueId), valueEntityMap -> {
+                    if (!valueEntityMap.containsKey(parent)) return Mono.just(Boolean.FALSE);
 
-                    if (!productEntityMap.get(parent).containsAll(List.of(children))) return Mono.just(Boolean.FALSE);
+                    if (!valueEntityMap.get(parent).containsAll(List.of(children))) return Mono.just(Boolean.FALSE);
 
                     return Mono.just(Boolean.TRUE);
                 })
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Map<String, Set<String>>> getAllProducts(String appCode, String clientCode, ULong productId) {
+    public Mono<Map<String, Set<String>>> getAllValues(String appCode, String clientCode, ULong valueId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.getAllProductsInternal(appCode, clientCode, productId),
-                super.getCacheKey(this.getProductEtKey(), appCode, clientCode, productId));
+                () -> this.getAllValuesInternal(appCode, clientCode, valueId),
+                super.getCacheKey(this.getValueEtKey(), appCode, clientCode, valueId));
     }
 
-    private Mono<Map<String, Set<String>>> getAllProductsInternal(String appCode, String clientCode, ULong productId) {
+    private Mono<Map<String, Set<String>>> getAllValuesInternal(String appCode, String clientCode, ULong valueId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.dao.getAllProducts(appCode, clientCode, productId, null),
-                        this.getAllProductMap(appCode, clientCode, productId)),
+                        this.dao.getAllValues(appCode, clientCode, valueId, null),
+                        this.getAllValueMap(appCode, clientCode, valueId)),
                 tup -> Mono.just(tup.getT1().stream()
                         .collect(Collectors.toMap(
                                 BaseDto::getName,
-                                product -> this.getProductChildNamesSet(product, tup.getT2()),
+                                value -> this.getValueChildNamesSet(value, tup.getT2()),
                                 (a, b) -> b))));
     }
 
-    private Set<String> getProductChildNamesSet(D productEntity, Map<Integer, String> productEntityMap) {
-        return Stream.of(productEntity.getParentLevel0(), productEntity.getParentLevel1())
+    private Set<String> getValueChildNamesSet(D valueEntity, Map<Integer, String> valueEntityMap) {
+        return Stream.of(valueEntity.getParentLevel0(), valueEntity.getParentLevel1())
                 .filter(Objects::nonNull)
                 .map(ULong::intValue)
-                .map(productEntityMap::get)
+                .map(valueEntityMap::get)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
     }

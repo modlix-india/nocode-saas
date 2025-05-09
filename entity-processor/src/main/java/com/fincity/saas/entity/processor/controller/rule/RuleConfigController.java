@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.controller.rule;
 import com.fincity.saas.entity.processor.controller.base.BaseController;
 import com.fincity.saas.entity.processor.dao.rule.base.RuleConfigDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
-import com.fincity.saas.entity.processor.model.base.Identity;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
 import com.fincity.saas.entity.processor.service.rule.base.RuleConfigService;
 import org.jooq.UpdatableRecord;

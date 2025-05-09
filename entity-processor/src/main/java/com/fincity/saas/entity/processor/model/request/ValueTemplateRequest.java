@@ -1,9 +1,8 @@
 package com.fincity.saas.entity.processor.model.request;
 
+import com.fincity.saas.entity.processor.enums.ValueTemplateType;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
-import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,14 +13,11 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-public class EntityRequest extends BaseRequest<EntityRequest> {
+public class ValueTemplateRequest extends BaseRequest<ValueTemplateRequest> {
 
     @Serial
-    private static final long serialVersionUID = 3948634318723751023L;
+    private static final long serialVersionUID = 5482351537919948018L;
 
-    private Identity productId;
-    private PhoneNumber phoneNumber;
-    private Email email;
-    private String source;
-    private String subSource;
+    private ValueTemplateType valueTemplateType;
+    private Identity valueEntityId;
 }

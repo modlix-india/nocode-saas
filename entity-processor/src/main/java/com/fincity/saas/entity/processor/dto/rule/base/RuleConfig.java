@@ -4,7 +4,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.enums.rule.RuleType;
-import com.fincity.saas.entity.processor.model.base.UserDistribution;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;
