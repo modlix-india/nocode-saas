@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.model.condition;
 
+import java.io.Serial;
 import java.util.List;
 
 import com.fincity.saas.commons.util.StringUtil;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Flux;
 @EqualsAndHashCode(callSuper = true)
 public class FilterCondition extends AbstractCondition {
 
+	@Serial
 	private static final long serialVersionUID = -4542270694019365457L;
 
 	private String field;
@@ -24,6 +26,18 @@ public class FilterCondition extends AbstractCondition {
 	private boolean isValueField = false;
 	private boolean isToValueField = false;
 	private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;
+
+	public static FilterCondition make(String field, Object value) {
+
+		return new FilterCondition().setField(field)
+				.setValue(value);
+	}
+
+	public static FilterCondition of(String field, Object value, FilterConditionOperator operator) {
+
+		return new FilterCondition().setField(field)
+				.setValue(value).setOperator(operator);
+	}
 
 	@Override
 	public Flux<FilterCondition> findConditionWithField(String fieldName) {
@@ -38,17 +52,5 @@ public class FilterCondition extends AbstractCondition {
 	public boolean isEmpty() {
 
 		return false;
-	}
-
-	public static FilterCondition make(String field, Object value) {
-
-		return new FilterCondition().setField(field)
-				.setValue(value);
-	}
-
-	public static FilterCondition of(String field, Object value, FilterConditionOperator operator) {
-
-		return new FilterCondition().setField(field)
-				.setValue(value).setOperator(operator);
 	}
 }
