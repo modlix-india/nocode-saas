@@ -25,6 +25,7 @@ public class Task extends AbstractUpdatableDTO<ULong, ULong>{
     private String groupName;
     private ULong clientId;
     private ULong appId;
+    private String status;
 //    private Trigger.TriggerState status;
     private ULong schedulerId;
     private String description;

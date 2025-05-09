@@ -4390,6 +4390,438 @@ values (@v_profile_appbuilder_owner, @v_r_1),
        (@v_profile_appbuilder_owner, @v_r_164);
 
 
+-- V1__initial_script.sql (Worker)
+
+CREATE DATABASE IF NOT EXISTS `worker`;
+
+-- V2__worker_scheduler.sql (Worker)
+
+USE `worker`;
+
+-- Create Scheduler Table
+CREATE TABLE IF NOT EXISTS `worker_scheduler`
+(
+    `ID`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
+    `NAME`        VARCHAR(100)    NOT NULL COMMENT 'name of the scheduler',
+    `STATUS`      ENUM ('STARTED', 'STANDBY', 'SHUTDOWN') DEFAULT 'STARTED' NOT NULL COMMENT 'scheduler running flag',
+    `INSTANCE_ID` VARCHAR(32)     NOT NULL COMMENT 'scheduler instance id',
+
+    `CREATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY (NAME)
+);
+
+-- V3__worker_task.sql (Worker)
+
+USE `worker`;
+
+-- create worker task/jobs
+CREATE TABLE IF NOT EXISTS `worker_task`
+(
+    `ID`               BIGINT UNSIGNED                                                   NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
+    `NAME`             VARCHAR(255)                                                      NOT NULL COMMENT 'name of job',
+    `CLIENT_ID`        BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the client to which this job belongs. References security_client table',
+    `APP_ID`           BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the application to which this job belongs. References security_app table',
+    `SCHEDULER_ID`     BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the scheduler to which this job belongs. References worker_scheduler table',
+    `GROUP_NAME`       VARCHAR(255)                                                      NOT NULL COMMENT 'job group name',
+    `DESCRIPTION`      VARCHAR(255)                                                               DEFAULT NULL COMMENT 'description about the job',
+    `STATE`            ENUM ('NONE', 'NORMAL', 'PAUSED', 'COMPLETE', 'ERROR', 'BLOCKED') NOT NULL DEFAULT 'NORMAL' COMMENT 'task triggering state',
+    `JOB_TYPE`         ENUM ('SIMPLE', 'CRON')                                                    DEFAULT 'SIMPLE' NOT NULL COMMENT 'job type',
+    `JOB_DATA`         JSON                                                                       DEFAULT NULL COMMENT 'job data',
+    `DURABLE`          BOOLEAN                                                           NOT NULL DEFAULT FALSE COMMENT 'if we want to keep job even if it does not have any trigger',
+    `START_TIME`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'task start datetime',
+    `END_TIME`         TIMESTAMP                                                                  DEFAULT NULL COMMENT 'task end datetime',
+    `SCHEDULE`         VARCHAR(255)                                                      NOT NULL COMMENT 'job schedule expression for simple/cron job',
+    `REPEAT_INTERVAL`  INT                                                                        DEFAULT NULL COMMENT 'total times this job will repeat, only applicable for simple jobs',
+    `RECOVERABLE`      BOOLEAN                                                                    DEFAULT TRUE COMMENT 're-run the job if the scheduler crashed before finishing',
+    `NEXT_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'upcoming execution at',
+    `LAST_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'last execution at',
+    `LAST_FIRE_STATUS` ENUM ('SUCCESS', 'FAILED')                                                 DEFAULT NULL COMMENT 'last task execution status',
+    `LAST_FIRE_RESULT` TEXT                                                                       DEFAULT NULL COMMENT 'last execution log',
+
+    `CREATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UNQ_WORKER_TASK_NAME_GROUP` (`NAME`, `GROUP_NAME`),
+    INDEX `IDX_WORKER_TASK_NAME` (`NAME`),
+    CONSTRAINT `FK_WORKER_TASK_SCHEDULER` FOREIGN KEY (`SCHEDULER_ID`) REFERENCES `worker_scheduler` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+#     `MISFIRE_POLICY`  INT   DEFAULT NULL COMMENT 'what to do if job trigger missed', -- not including right now, having different properties for simple and cron jobs
+
+-- V4__quartz_job_store.sql (Worker)
+
+USE `worker`;
+
+# this script is copied from quartz-guide do not edit anything
+CREATE TABLE IF NOT EXISTS QRTZ_JOB_DETAILS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    JOB_NAME  VARCHAR(200) NOT NULL,
+    JOB_GROUP VARCHAR(200) NOT NULL,
+    DESCRIPTION VARCHAR(250) NULL,
+    JOB_CLASS_NAME   VARCHAR(250) NOT NULL,
+    IS_DURABLE VARCHAR(1) NOT NULL,
+    IS_NONCONCURRENT VARCHAR(1) NOT NULL,
+    IS_UPDATE_DATA VARCHAR(1) NOT NULL,
+    REQUESTS_RECOVERY VARCHAR(1) NOT NULL,
+    JOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    JOB_NAME  VARCHAR(200) NOT NULL,
+    JOB_GROUP VARCHAR(200) NOT NULL,
+    DESCRIPTION VARCHAR(250) NULL,
+    NEXT_FIRE_TIME BIGINT(13) NULL,
+    PREV_FIRE_TIME BIGINT(13) NULL,
+    PRIORITY INTEGER NULL,
+    TRIGGER_STATE VARCHAR(16) NOT NULL,
+    TRIGGER_TYPE VARCHAR(8) NOT NULL,
+    START_TIME BIGINT(13) NOT NULL,
+    END_TIME BIGINT(13) NULL,
+    CALENDAR_NAME VARCHAR(200) NULL,
+    MISFIRE_INSTR SMALLINT(2) NULL,
+    JOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
+    REFERENCES QRTZ_JOB_DETAILS(SCHED_NAME,JOB_NAME,JOB_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_SIMPLE_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    REPEAT_COUNT BIGINT(7) NOT NULL,
+    REPEAT_INTERVAL BIGINT(12) NOT NULL,
+    TIMES_TRIGGERED BIGINT(10) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_CRON_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    CRON_EXPRESSION VARCHAR(200) NOT NULL,
+    TIME_ZONE_ID VARCHAR(80),
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_SIMPROP_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    STR_PROP_1 VARCHAR(512) NULL,
+    STR_PROP_2 VARCHAR(512) NULL,
+    STR_PROP_3 VARCHAR(512) NULL,
+    INT_PROP_1 INT NULL,
+    INT_PROP_2 INT NULL,
+    LONG_PROP_1 BIGINT NULL,
+    LONG_PROP_2 BIGINT NULL,
+    DEC_PROP_1 NUMERIC(13,4) NULL,
+    DEC_PROP_2 NUMERIC(13,4) NULL,
+    BOOL_PROP_1 VARCHAR(1) NULL,
+    BOOL_PROP_2 VARCHAR(1) NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_BLOB_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    BLOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_CALENDARS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    CALENDAR_NAME  VARCHAR(200) NOT NULL,
+    CALENDAR BLOB NOT NULL,
+    PRIMARY KEY (SCHED_NAME,CALENDAR_NAME)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_PAUSED_TRIGGER_GRPS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_GROUP  VARCHAR(200) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_FIRED_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    ENTRY_ID VARCHAR(95) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    INSTANCE_NAME VARCHAR(200) NOT NULL,
+    FIRED_TIME BIGINT(13) NOT NULL,
+    SCHED_TIME BIGINT(13) NOT NULL,
+    PRIORITY INTEGER NOT NULL,
+    STATE VARCHAR(16) NOT NULL,
+    JOB_NAME VARCHAR(200) NULL,
+    JOB_GROUP VARCHAR(200) NULL,
+    IS_NONCONCURRENT VARCHAR(1) NULL,
+    REQUESTS_RECOVERY VARCHAR(1) NULL,
+    PRIMARY KEY (SCHED_NAME,ENTRY_ID)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_SCHEDULER_STATE
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    INSTANCE_NAME VARCHAR(200) NOT NULL,
+    LAST_CHECKIN_TIME BIGINT(13) NOT NULL,
+    CHECKIN_INTERVAL BIGINT(13) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,INSTANCE_NAME)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_LOCKS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    LOCK_NAME  VARCHAR(40) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,LOCK_NAME)
+    );
+
+
+-- V1__initial_script.sql (Worker)
+
+CREATE DATABASE IF NOT EXISTS `worker`;
+
+-- V2__worker_scheduler.sql (Worker)
+
+USE `worker`;
+
+-- Create Scheduler Table
+CREATE TABLE IF NOT EXISTS `worker_scheduler`
+(
+    `ID`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
+    `NAME`        VARCHAR(100)    NOT NULL COMMENT 'name of the scheduler',
+    `STATUS`      ENUM ('STARTED', 'STANDBY', 'SHUTDOWN') DEFAULT 'STARTED' NOT NULL COMMENT 'scheduler running flag',
+    `INSTANCE_ID` VARCHAR(32)     NOT NULL COMMENT 'scheduler instance id',
+
+    `CREATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY (NAME)
+);
+
+-- V3__worker_task.sql (Worker)
+
+USE `worker`;
+
+-- create worker task/jobs
+CREATE TABLE IF NOT EXISTS `worker_task`
+(
+    `ID`               BIGINT UNSIGNED                                                   NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
+    `NAME`             VARCHAR(255)                                                      NOT NULL COMMENT 'name of job',
+    `CLIENT_ID`        BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the client to which this job belongs. References security_client table',
+    `APP_ID`           BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the application to which this job belongs. References security_app table',
+    `SCHEDULER_ID`     BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the scheduler to which this job belongs. References worker_scheduler table',
+    `GROUP_NAME`       VARCHAR(255)                                                      NOT NULL COMMENT 'job group name',
+    `DESCRIPTION`      VARCHAR(255)                                                               DEFAULT NULL COMMENT 'description about the job',
+    `STATE`            ENUM ('NONE', 'NORMAL', 'PAUSED', 'COMPLETE', 'ERROR', 'BLOCKED') NOT NULL DEFAULT 'NORMAL' COMMENT 'task triggering state',
+    `JOB_TYPE`         ENUM ('SIMPLE', 'CRON')                                                    DEFAULT 'SIMPLE' NOT NULL COMMENT 'job type',
+    `JOB_DATA`         JSON                                                                       DEFAULT NULL COMMENT 'job data',
+    `DURABLE`          BOOLEAN                                                           NOT NULL DEFAULT FALSE COMMENT 'if we want to keep job even if it does not have any trigger',
+    `START_TIME`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'task start datetime',
+    `END_TIME`         TIMESTAMP                                                                  DEFAULT NULL COMMENT 'task end datetime',
+    `SCHEDULE`         VARCHAR(255)                                                      NOT NULL COMMENT 'job schedule expression for simple/cron job',
+    `REPEAT_INTERVAL`  INT                                                                        DEFAULT NULL COMMENT 'total times this job will repeat, only applicable for simple jobs',
+    `RECOVERABLE`      BOOLEAN                                                                    DEFAULT TRUE COMMENT 're-run the job if the scheduler crashed before finishing',
+    `NEXT_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'upcoming execution at',
+    `LAST_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'last execution at',
+    `LAST_FIRE_STATUS` ENUM ('SUCCESS', 'FAILED')                                                 DEFAULT NULL COMMENT 'last task execution status',
+    `LAST_FIRE_RESULT` TEXT                                                                       DEFAULT NULL COMMENT 'last execution log',
+
+    `CREATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UNQ_WORKER_TASK_NAME_GROUP` (`NAME`, `GROUP_NAME`),
+    INDEX `IDX_WORKER_TASK_NAME` (`NAME`),
+    CONSTRAINT `FK_WORKER_TASK_SCHEDULER` FOREIGN KEY (`SCHEDULER_ID`) REFERENCES `worker_scheduler` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+
+#     `MISFIRE_POLICY`  INT   DEFAULT NULL COMMENT 'what to do if job trigger missed', -- not including right now, having different properties for simple and cron jobs
+
+-- V4__quartz_job_store.sql (Worker)
+
+USE `worker`;
+
+# this script is copied from quartz-guide do not edit anything
+CREATE TABLE IF NOT EXISTS QRTZ_JOB_DETAILS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    JOB_NAME  VARCHAR(200) NOT NULL,
+    JOB_GROUP VARCHAR(200) NOT NULL,
+    DESCRIPTION VARCHAR(250) NULL,
+    JOB_CLASS_NAME   VARCHAR(250) NOT NULL,
+    IS_DURABLE VARCHAR(1) NOT NULL,
+    IS_NONCONCURRENT VARCHAR(1) NOT NULL,
+    IS_UPDATE_DATA VARCHAR(1) NOT NULL,
+    REQUESTS_RECOVERY VARCHAR(1) NOT NULL,
+    JOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    JOB_NAME  VARCHAR(200) NOT NULL,
+    JOB_GROUP VARCHAR(200) NOT NULL,
+    DESCRIPTION VARCHAR(250) NULL,
+    NEXT_FIRE_TIME BIGINT(13) NULL,
+    PREV_FIRE_TIME BIGINT(13) NULL,
+    PRIORITY INTEGER NULL,
+    TRIGGER_STATE VARCHAR(16) NOT NULL,
+    TRIGGER_TYPE VARCHAR(8) NOT NULL,
+    START_TIME BIGINT(13) NOT NULL,
+    END_TIME BIGINT(13) NULL,
+    CALENDAR_NAME VARCHAR(200) NULL,
+    MISFIRE_INSTR SMALLINT(2) NULL,
+    JOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
+    REFERENCES QRTZ_JOB_DETAILS(SCHED_NAME,JOB_NAME,JOB_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_SIMPLE_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    REPEAT_COUNT BIGINT(7) NOT NULL,
+    REPEAT_INTERVAL BIGINT(12) NOT NULL,
+    TIMES_TRIGGERED BIGINT(10) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_CRON_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    CRON_EXPRESSION VARCHAR(200) NOT NULL,
+    TIME_ZONE_ID VARCHAR(80),
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_SIMPROP_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    STR_PROP_1 VARCHAR(512) NULL,
+    STR_PROP_2 VARCHAR(512) NULL,
+    STR_PROP_3 VARCHAR(512) NULL,
+    INT_PROP_1 INT NULL,
+    INT_PROP_2 INT NULL,
+    LONG_PROP_1 BIGINT NULL,
+    LONG_PROP_2 BIGINT NULL,
+    DEC_PROP_1 NUMERIC(13,4) NULL,
+    DEC_PROP_2 NUMERIC(13,4) NULL,
+    BOOL_PROP_1 VARCHAR(1) NULL,
+    BOOL_PROP_2 VARCHAR(1) NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_BLOB_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    BLOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_CALENDARS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    CALENDAR_NAME  VARCHAR(200) NOT NULL,
+    CALENDAR BLOB NOT NULL,
+    PRIMARY KEY (SCHED_NAME,CALENDAR_NAME)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_PAUSED_TRIGGER_GRPS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_GROUP  VARCHAR(200) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,TRIGGER_GROUP)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_FIRED_TRIGGERS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    ENTRY_ID VARCHAR(95) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    INSTANCE_NAME VARCHAR(200) NOT NULL,
+    FIRED_TIME BIGINT(13) NOT NULL,
+    SCHED_TIME BIGINT(13) NOT NULL,
+    PRIORITY INTEGER NOT NULL,
+    STATE VARCHAR(16) NOT NULL,
+    JOB_NAME VARCHAR(200) NULL,
+    JOB_GROUP VARCHAR(200) NULL,
+    IS_NONCONCURRENT VARCHAR(1) NULL,
+    REQUESTS_RECOVERY VARCHAR(1) NULL,
+    PRIMARY KEY (SCHED_NAME,ENTRY_ID)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_SCHEDULER_STATE
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    INSTANCE_NAME VARCHAR(200) NOT NULL,
+    LAST_CHECKIN_TIME BIGINT(13) NOT NULL,
+    CHECKIN_INTERVAL BIGINT(13) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,INSTANCE_NAME)
+    );
+
+CREATE TABLE IF NOT EXISTS QRTZ_LOCKS
+(
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    LOCK_NAME  VARCHAR(40) NOT NULL,
+    PRIMARY KEY (SCHED_NAME,LOCK_NAME)
+    );
+
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....

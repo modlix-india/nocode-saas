@@ -1,8 +1,10 @@
 package com.fincity.sass.worker.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.sass.worker.dao.TaskDAO;
+import com.fincity.sass.worker.enums.TaskOperationType;
 import com.fincity.sass.worker.job.TaskExecutorJob;
 import com.fincity.sass.worker.jooq.enums.WorkerTaskJobType;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTaskRecord;
@@ -11,6 +13,7 @@ import com.fincity.sass.worker.model.WorkerScheduler;
 import org.jooq.types.ULong;
 import org.quartz.*;
 import org.quartz.impl.SchedulerRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -28,83 +31,85 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTaskReco
     private static final String CRON_EXPRESSION = "cronExpression";
     private static final String NEXT_EXECUTION_TIME = "nextExecutionTime";
     private static final String STATUS = "status";
-    private static final ZoneId DEFAULT_ZONE = ZoneId.systemDefault();
 
     private final SchedulerRepository schedulerRepository;
     private final SchedulerService schedulerService;
 
-    private TaskService(SchedulerRepository schedulerRepository, SchedulerService schedulerService) {
+    private final QuartzService quartzService;
+
+    private TaskService(
+            SchedulerRepository schedulerRepository, SchedulerService schedulerService, QuartzService quartzService) {
         this.schedulerRepository = schedulerRepository;
         this.schedulerService = schedulerService;
-    }
-
-    public Mono<Task> initialize(WorkerScheduler scheduler, Task task) {
-
-        return Mono.fromCallable(() -> {
-                    logger.info("Initializing job: {}", task.getName());
-
-                    // get the scheduler
-                    Scheduler qScheduler = schedulerRepository.lookup(scheduler.getName());
-
-                    // Define the JobDetail
-                    JobBuilder jobBuilder = JobBuilder.newJob(TaskExecutorJob.class)
-                            .withIdentity(task.getName(), task.getGroupName())
-                            .withDescription(task.getDescription());
-
-                    if (task.getDurable())
-                        jobBuilder.storeDurably(); // Optional: allows the job to persist without a trigger
-
-                    JobDetail jobDetail = jobBuilder.build();
-
-                    // Define a Trigger (Simple or Cron)
-                    TriggerBuilder<Trigger> triggerBuilder = TriggerBuilder.newTrigger()
-                            .withIdentity(task.getName(), task.getGroupName()); // Trigger name and group
-
-                    triggerBuilder.withSchedule(getJobSchedule(task));
-
-                    if (task.getStartTime() != null)
-                        triggerBuilder.startAt(Date.from(
-                                task.getStartTime().atZone(DEFAULT_ZONE).toInstant()));
-
-                    if (task.getEndTime() != null)
-                        triggerBuilder.endAt(
-                                Date.from(task.getEndTime().atZone(DEFAULT_ZONE).toInstant()));
-
-                    Trigger trigger = triggerBuilder.build();
-
-//                    qScheduler.getTriggerState();
-
-                    // Register a job and trigger
-                    qScheduler.scheduleJob(jobDetail, trigger);
-
-                    return task;
-                })
-                .subscribeOn(Schedulers.boundedElastic());
-    }
-
-    public ScheduleBuilder<? extends Trigger> getJobSchedule(Task task) {
-
-        if (task.getJobType().equals(WorkerTaskJobType.CRON)) {
-
-            return CronScheduleBuilder.cronSchedule(task.getSchedule());
-        }
-
-        SimpleScheduleBuilder simpleScheduleBuilder =
-                SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(Integer.parseInt(task.getSchedule()));
-
-        if (task.getRepeatForever()) simpleScheduleBuilder.repeatForever();
-        else simpleScheduleBuilder.withRepeatCount(task.getRepeatCount());
-
-        return simpleScheduleBuilder;
+        this.quartzService = quartzService;
     }
 
     @Override
-    public Mono<Task> create(Task entity) {
+    public Mono<Task> create(Task task) {
         return FlatMapUtil.flatMapMono(
-                () -> this.schedulerService.read(entity.getSchedulerId()),
-                scheduler -> initialize(scheduler, entity).flatMap(super::create));
+                () -> this.schedulerService.read(task.getSchedulerId()),
+                scheduler -> Mono.fromCallable(() -> this.quartzService.initializeTask(scheduler, task))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .onErrorResume(e -> {
+                            logger.error("Error initializing scheduler: {}", task.getName(), e);
+                            return Mono.error(new RuntimeException("Failed to initialize scheduler", e));
+                        })
+                        .flatMap(super::create));
     }
 
+    // TODO exclude delete api
+    @Override
+    public Mono<Integer> delete(ULong id) {
+
+        return Mono.error(new GenericException(HttpStatus.BAD_REQUEST, "Task deletion is not allowed"));
+    }
+
+    // mark task-status as stopped and cancel job triggers
+    public Mono<Task> cancelTask(ULong taskId) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(taskId),
+                task -> this.schedulerService.read(task.getSchedulerId()),
+                (task, workerScheduler) -> Mono.fromCallable(
+                                () -> this.quartzService.updateTask(workerScheduler, task, TaskOperationType.CANCEL))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .onErrorResume(e -> {
+                            logger.error("Error canceling task: {}", task.getName(), e);
+                            return Mono.error(new RuntimeException("Failed to cancel task", e));
+                        })
+                        .flatMap(super::update));
+    }
+
+    // mark task-status as stopped and pause job triggers
+    public Mono<Task> pauseTask(ULong taskId) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(taskId),
+                task -> this.schedulerService.read(task.getSchedulerId()),
+                (task, workerScheduler) -> Mono.fromCallable(
+                                () -> this.quartzService.updateTask(workerScheduler, task, TaskOperationType.PAUSE))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .onErrorResume(e -> {
+                            logger.error("Error pausing task: {}", task.getName(), e);
+                            return Mono.error(new RuntimeException("Failed to pause task", e));
+                        })
+                        .flatMap(super::update));
+    }
+
+    public Mono<Task> resumeTask(ULong taskId) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(taskId),
+                task -> this.schedulerService.read(task.getSchedulerId()),
+                (task, workerScheduler) -> Mono.fromCallable(
+                                () -> this.quartzService.updateTask(workerScheduler, task, TaskOperationType.RESUME))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .onErrorResume(e -> {
+                            logger.error("Error resuming task: {}", task.getName(), e);
+                            return Mono.error(new RuntimeException("Failed to resume task", e));
+                        })
+                        .flatMap(super::update));
+    }
+
+    // testing jobExecutionContext
     public Mono<Task> test(ULong taskId) {
         return FlatMapUtil.flatMapMono(
                 // Step 1: Read the task from database
@@ -112,7 +117,6 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTaskReco
 
                 // Step 2: Get job data from JobExecutionContext
                 task -> this.schedulerService.read(task.getSchedulerId()),
-
                 (task, ws) -> {
                     logger.info("Testing job: {}", task.getName());
 
@@ -146,56 +150,54 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTaskReco
 
     public Mono<Boolean> deleteJob(WorkerScheduler workerScheduler, Task workerTask) {
         return Mono.fromCallable(() -> {
-            try {
-                logger.debug("Attempting to delete job: {} from group: {} in scheduler: {}",
-                        workerTask.getName(), workerTask.getGroupName(), workerScheduler.getName());
+                    try {
+                        logger.debug(
+                                "Attempting to delete job: {} from group: {} in scheduler: {}",
+                                workerTask.getName(),
+                                workerTask.getGroupName(),
+                                workerScheduler.getName());
 
-                Scheduler scheduler = schedulerRepository.lookup(workerScheduler.getName());
-                if (scheduler == null) {
-                    logger.warn("Scheduler not found: {}", workerScheduler.getName());
-                    return false;
-                }
+                        Scheduler scheduler = schedulerRepository.lookup(workerScheduler.getName());
+                        if (scheduler == null) {
+                            logger.warn("Scheduler not found: {}", workerScheduler.getName());
+                            return false;
+                        }
 
-                JobKey jobKey = new JobKey(workerTask.getName(), workerTask.getGroupName());
-                boolean result = scheduler.deleteJob(jobKey);
+                        JobKey jobKey = new JobKey(workerTask.getName(), workerTask.getGroupName());
+                        boolean result = scheduler.deleteJob(jobKey);
 
-                if (result) {
-                    logger.info("Successfully deleted job: {} from group: {}",
-                            workerTask.getName(), workerTask.getGroupName());
-                } else {
-                    logger.warn("Failed to delete job: {} from group: {} (job not found)",
-                            workerTask.getName(), workerTask.getGroupName());
-                }
+                        if (result) {
+                            logger.info(
+                                    "Successfully deleted job: {} from group: {}",
+                                    workerTask.getName(),
+                                    workerTask.getGroupName());
+                        } else {
+                            logger.warn(
+                                    "Failed to delete job: {} from group: {} (job not found)",
+                                    workerTask.getName(),
+                                    workerTask.getGroupName());
+                        }
 
-                return result;
-            } catch (SchedulerException e) {
-                logger.error("Error deleting job: {} from group: {} in scheduler: {}",
-                        workerTask.getName(), workerTask.getGroupName(), workerScheduler.getName(), e);
-                throw new RuntimeException("Failed to delete job: " + workerTask.getName() +
-                        " from group: " + workerTask.getGroupName(), e);
-            }
-        }).subscribeOn(Schedulers.boundedElastic());
-    }
-
-    // TODO exclude delete api
-    @Override
-    public Mono<Integer> delete(ULong id) {
-
-        return FlatMapUtil.flatMapMono(
-                () -> this.read(id),
-
-                wt -> this.schedulerService.read(wt.getSchedulerId()),
-
-                (wt, ws) -> this.deleteJob(ws, wt),
-
-                (wt, ws, deleted) -> super.delete(id)
-         );
+                        return result;
+                    } catch (SchedulerException e) {
+                        logger.error(
+                                "Error deleting job: {} from group: {} in scheduler: {}",
+                                workerTask.getName(),
+                                workerTask.getGroupName(),
+                                workerScheduler.getName(),
+                                e);
+                        throw new RuntimeException(
+                                "Failed to delete job: " + workerTask.getName() + " from group: "
+                                        + workerTask.getGroupName(),
+                                e);
+                    }
+                })
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<Task> findByNameNGroup(String name, String groupName) {
 
         return this.dao.findByNameNGroup(name, groupName);
-
     }
 
     @Override
@@ -228,11 +230,7 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTaskReco
     public Mono<String> test1(ULong id) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.read(id),
-
-                wt -> this.schedulerService.read(wt.getSchedulerId()),
-
-                (wt, ws) -> {
+                () -> this.read(id), wt -> this.schedulerService.read(wt.getSchedulerId()), (wt, ws) -> {
                     // get qs from scheduler repo
 
                     Scheduler qs = schedulerRepository.lookup(ws.getName());
@@ -240,13 +238,11 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTaskReco
                     TriggerKey triggerKey = new TriggerKey(wt.getName(), wt.getGroupName());
 
                     try {
-                        Trigger.TriggerState ts =  qs.getTriggerState(triggerKey);
+                        Trigger.TriggerState ts = qs.getTriggerState(triggerKey);
                         return Mono.just(ts.toString());
                     } catch (SchedulerException e) {
                         throw new RuntimeException(e);
                     }
-
-                }
-        );
+                });
     }
 }

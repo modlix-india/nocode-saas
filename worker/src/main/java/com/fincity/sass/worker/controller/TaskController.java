@@ -16,6 +16,21 @@ public class TaskController
         extends AbstractJOOQDataController<WorkerTaskRecord, ULong, Task, TaskDAO, TaskService> {
 
 
+    @PostMapping("cancel/{taskId}")
+    public Mono<ResponseEntity<Task>> cancel(@PathVariable final ULong taskId) {
+        return this.service.cancelTask(taskId).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("pause/{taskId}")
+    public Mono<ResponseEntity<Task>> pause(@PathVariable final ULong taskId) {
+        return this.service.pauseTask(taskId).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("resume/{taskId}")
+    public Mono<ResponseEntity<Task>> resume(@PathVariable final ULong taskId) {
+        return this.service.resumeTask(taskId).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/test/{taskId}")
     public Mono<ResponseEntity<Task>> test(@PathVariable String taskId) {
         return this.service.test(ULong.valueOf(taskId)).map(ResponseEntity::ok);

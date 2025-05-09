@@ -29,6 +29,10 @@ spring:
           uri: lb://multi
           predicates:
             - Path=/api/multi/**, /*/api/multi/**, /*/*/api/multi/**, /*/*/*/api/multi/**, /*/*/*/*/api/multi/**, /*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/api/multi/**,
+        - id: worker
+          uri: lb://worker
+          predicates:
+            - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**,
         - id: ui
           uri: lb://ui
           predicates:
