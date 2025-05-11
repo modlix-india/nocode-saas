@@ -454,7 +454,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                         clientType -> Mono.zip(
                                         this.designationService.canAssignDesignation(entity.getClientId(), entity.getDesignationId()),
-                                        this.canReportTo(entity.getClientId(), entity.getReportingTo(), null)
+                                        this.canReportTo(entity.getClientId(), entity.getReportingTo(), entity.getId())
                                 )
                                 .flatMap(e -> {
 

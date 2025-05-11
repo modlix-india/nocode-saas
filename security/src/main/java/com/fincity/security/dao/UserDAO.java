@@ -337,18 +337,19 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                                                                String appCode, AuthenticationIdentifierType authenticationIdentifierType,
                                                                SecurityUserStatusCode[] userStatusCodes, Field<?>... fields) {
 
-        TableField<SecurityUserRecord, String> userIdentificationField;
-
-        switch (authenticationIdentifierType) {
-            case PHONE_NUMBER -> userIdentificationField = SECURITY_USER.PHONE_NUMBER;
-            case EMAIL_ID -> userIdentificationField = SECURITY_USER.EMAIL_ID;
-            default -> userIdentificationField = SECURITY_USER.USER_NAME;
-        }
 
         List<Condition> conditions = new ArrayList<>();
 
-        if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName))
+        if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName)) {
+            TableField<SecurityUserRecord, String> userIdentificationField;
+
+            switch (authenticationIdentifierType) {
+                case PHONE_NUMBER -> userIdentificationField = SECURITY_USER.PHONE_NUMBER;
+                case EMAIL_ID -> userIdentificationField = SECURITY_USER.EMAIL_ID;
+                default -> userIdentificationField = SECURITY_USER.USER_NAME;
+            }
             conditions.add(userIdentificationField.eq(userName));
+        }
 
         if (userStatusCodes != null && userStatusCodes.length > 0)
             conditions.add(SECURITY_USER.STATUS_CODE.in(userStatusCodes));
