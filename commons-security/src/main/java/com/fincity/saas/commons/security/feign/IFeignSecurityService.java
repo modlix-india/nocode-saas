@@ -4,6 +4,9 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,11 +27,11 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
     Mono<ContextAuthentication> contextAuthentication(
-        @RequestHeader(name = "Authorization", required = false) String authorization,
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String appCode);
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String appCode);
 
     @GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
     Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
@@ -85,39 +88,39 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.transport:/api/security/transports/makeTransport}")
     Mono<Map<String, Object>> makeTransport(
-        @RequestHeader(name = "Authorization", required = false) String authorization,
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @RequestParam("applicationCode") String applicationCode);
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @RequestParam("applicationCode") String applicationCode);
 
     @PostMapping("${security.feign.createApp:/api/security/applications/}")
     Mono<App> createApp(
-        @RequestHeader(name = "Authorization", required = false) String authorization,
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @RequestBody App application);
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @RequestBody App application);
 
     @PostMapping("${security.feign.transportApply:/api/security/transports/createAndApply}")
     Mono<Boolean> createAndApplyTransport(
-        @RequestHeader(name = "Authorization", required = false) String authorization,
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @RequestBody Object securityDefinition);
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @RequestBody Object securityDefinition);
 
     @GetMapping("${security.feign.findBaseClientCodeForOverride:/api/security/applications/findBaseClientCode/{applicationCode}}")
     Mono<Tuple2<String, Boolean>> findBaseClientCodeForOverride(
-        @RequestHeader(name = "Authorization", required = false) String authorization,
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @PathVariable("applicationCode") String applicationCode);
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @PathVariable("applicationCode") String applicationCode);
 
     @GetMapping("${security.feign.dependencies:/api/security/applications/internal/dependencies}")
     Mono<List<String>> getDependencies(@RequestParam String appCode);
@@ -141,4 +144,11 @@ public interface IFeignSecurityService {
                                   @RequestHeader("clientCode") String headerClientCode,
                                   @RequestHeader("appCode") String headerAppCode,
                                   @RequestParam("deleteAppCode") String deleteAppCode, @RequestParam("deleteClientCode") String deleteClientCode);
+
+    @GetMapping(value = "${security.feign.authenticateWithOneTimeToken:/api/security/authenticateWithOneTimeToken/{pathToken}}")
+    Mono<ContextAuthentication> authenticateWithOneTimeToken(@PathVariable("pathToken") String pathToken,
+                                                             @RequestHeader("X-Forwarded-Host") String forwardedHost,
+                                                             @RequestHeader(name = "clientCode", required = false) String clientCode,
+                                                             @RequestHeader(name = "appCode", required = false) String headerAppCode,
+                                                             @RequestHeader("X-Real-IP") String ipAddress);
 }
