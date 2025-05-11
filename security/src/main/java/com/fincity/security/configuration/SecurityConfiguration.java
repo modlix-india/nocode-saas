@@ -99,8 +99,11 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "api/security/clientPasswordPolicy/codes/policy",
 
-                "api/security/clientPinPolicy/codes/policy"
+                "api/security/clientPinPolicy/codes/policy",
 
+                "/api/security/makeOneTimeToken",
+
+                "/api/security/authenticateWithOneTimeToken"
         );
     }
 
