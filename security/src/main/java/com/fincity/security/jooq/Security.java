@@ -29,6 +29,7 @@ import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
 import com.fincity.security.jooq.tables.SecurityDesignation;
+import com.fincity.security.jooq.tables.SecurityOneTimeToken;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
@@ -196,6 +197,11 @@ public class Security extends SchemaImpl {
     public final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
 
     /**
+     * The table <code>security.security_one_time_token</code>.
+     */
+    public final SecurityOneTimeToken SECURITY_ONE_TIME_TOKEN = SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN;
+
+    /**
      * The table <code>security.security_otp</code>.
      */
     public final SecurityOtp SECURITY_OTP = SecurityOtp.SECURITY_OTP;
@@ -331,6 +337,7 @@ public class Security extends SchemaImpl {
             SecurityClientUrl.SECURITY_CLIENT_URL,
             SecurityDepartment.SECURITY_DEPARTMENT,
             SecurityDesignation.SECURITY_DESIGNATION,
+            SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN,
             SecurityOtp.SECURITY_OTP,
             SecurityPastPasswords.SECURITY_PAST_PASSWORDS,
             SecurityPastPins.SECURITY_PAST_PINS,
