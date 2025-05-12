@@ -1,15 +1,19 @@
 package com.fincity.saas.entity.processor.dto.base;
 
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -27,7 +31,9 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
     private String description;
     private ULong addedByUserId;
 
+    @JsonIgnore
     private boolean tempActive = Boolean.FALSE;
+
     private boolean isActive = Boolean.TRUE;
 
     public T setCode() {
@@ -44,6 +50,7 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
     }
 
     public T setDescription(String description) {
+        if (description == null || description.isBlank()) return (T) this;
         this.description = description.trim();
         return (T) this;
     }

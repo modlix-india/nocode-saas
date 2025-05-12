@@ -26,9 +26,6 @@ public abstract class RuleConfigController<
                 S extends RuleConfigService<T, R, D, O>>
         extends BaseController<R, D, O, S> {
 
-    public static final String REQ_PATH = "/req";
-    public static final String REQ_PATH_ID = REQ_PATH + "/{" + PATH_VARIABLE_ID + "}";
-
     protected S ruleConfigService;
 
     @Autowired
@@ -54,6 +51,6 @@ public abstract class RuleConfigController<
     @DeleteMapping(REQ_PATH_ID)
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     public Mono<Integer> deleteFromRequest(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
-        return this.ruleConfigService.delete(identity);
+        return this.ruleConfigService.deleteIdentity(identity);
     }
 }

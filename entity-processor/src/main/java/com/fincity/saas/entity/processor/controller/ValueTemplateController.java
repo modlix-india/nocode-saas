@@ -10,24 +10,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.saas.entity.processor.controller.base.BaseValueController;
-import com.fincity.saas.entity.processor.dao.SourceDAO;
-import com.fincity.saas.entity.processor.dto.Source;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSourcesRecord;
+import com.fincity.saas.entity.processor.controller.base.BaseController;
+import com.fincity.saas.entity.processor.dao.ValueTemplateDAO;
+import com.fincity.saas.entity.processor.dto.ValueTemplate;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.model.request.SourceRequest;
-import com.fincity.saas.entity.processor.service.SourceService;
+import com.fincity.saas.entity.processor.model.request.ValueTemplateRequest;
+import com.fincity.saas.entity.processor.service.ValueTemplateService;
 
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/entity/processor/sources")
-public class SourceController
-        extends BaseValueController<EntityProcessorSourcesRecord, Source, SourceDAO, SourceService> {
+@RequestMapping("api/entity/processor/values/templates")
+public class ValueTemplateController
+        extends BaseController<
+                EntityProcessorValueTemplatesRecord, ValueTemplate, ValueTemplateDAO, ValueTemplateService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Source>> createFromRequest(@RequestBody SourceRequest sourceRequest) {
-        return this.service.create(sourceRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<ValueTemplate>> createFromRequest(
+            @RequestBody ValueTemplateRequest valueTemplateRequest) {
+        return this.service.create(valueTemplateRequest).map(ResponseEntity::ok);
     }
 
     @DeleteMapping(REQ_PATH_ID)

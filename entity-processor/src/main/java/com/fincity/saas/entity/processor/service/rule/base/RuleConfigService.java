@@ -105,10 +105,6 @@ public abstract class RuleConfigService<
                         this.evictCache(updated).map(evicted -> updated));
     }
 
-    public Mono<Integer> delete(Identity identity) {
-        return super.readIdentity(identity).flatMap(ruleConfig -> super.delete(ruleConfig.getId()));
-    }
-
     private Mono<D> updateFromRequest(T ruleConfigRequest) {
         return super.readIdentity(ruleConfigRequest.getRuleConfigId())
                 .map(existing -> this.updateRuleConfigFromRequest(existing, ruleConfigRequest));

@@ -9,6 +9,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -20,9 +21,18 @@ public class Source extends BaseValueDto<Source> {
     @Serial
     private static final long serialVersionUID = 8940700976809710359L;
 
-    public Source ofParent(SourceRequest sourceRequest) {
+    public static Source ofParent(SourceRequest sourceRequest) {
         return new Source()
                 .setIsParent(Boolean.TRUE)
+                .setName(sourceRequest.getName())
+                .setDescription(sourceRequest.getDescription());
+    }
+
+    public static Source ofChild(SourceRequest sourceRequest, ULong... parents) {
+        return new Source()
+                .setIsParent(Boolean.FALSE)
+                .setParentLevel0(parents[0])
+                .setParentLevel1(parents[1])
                 .setName(sourceRequest.getName())
                 .setDescription(sourceRequest.getDescription());
     }

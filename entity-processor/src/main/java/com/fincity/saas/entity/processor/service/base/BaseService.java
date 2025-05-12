@@ -1,5 +1,14 @@
 package com.fincity.saas.entity.processor.service.base;
 
+import java.util.List;
+import java.util.stream.Stream;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
@@ -15,13 +24,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import java.util.List;
-import java.util.stream.Stream;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -153,6 +156,10 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         ProcessorMessageResourceService.IDENTITY_WRONG));
     }
 
+    public Mono<Integer> deleteIdentity(Identity identity) {
+        return this.readIdentity(identity).flatMap(entity -> this.delete(entity.getId()));
+    }
+
     public Mono<D> updateByCode(String code, D entity) {
 
         return FlatMapUtil.flatMapMono(
@@ -222,7 +229,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                 () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
                 acTup -> securityService
                         .appInheritance(acTup.getT1(), ca.getUrlClientCode(), acTup.getT2())
-                        .map(clientCodes -> Mono.just(clientCodes.contains(acTup.getT2())))
+                        .map(clientCodes -> clientCodes.contains(acTup.getT2()))
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),

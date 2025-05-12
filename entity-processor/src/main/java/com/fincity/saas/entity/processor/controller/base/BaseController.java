@@ -31,6 +31,9 @@ public abstract class BaseController<
     public static final String PATH_BASE_CODE = PATH_BASE + PATH_CODE;
     public static final String PATH_BASE_ID = PATH_BASE + PATH_ID;
 
+    public static final String REQ_PATH = "/req";
+    public static final String REQ_PATH_ID = REQ_PATH + "/{" + PATH_VARIABLE_ID + "}";
+
     @GetMapping(PATH_CODE)
     public Mono<ResponseEntity<D>> getByCode(@PathVariable(PATH_VARIABLE_CODE) final String code) {
         return this.service
