@@ -124,7 +124,7 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
      * <code>entity_processor.entity_processor_product_rules.RULE_TYPE</code>.
      * Rule type for this Product Rule Config.
      */
-    public final TableField<EntityProcessorProductRulesRecord, RuleType> RULE_TYPE = createField(DSL.name("RULE_TYPE"), SQLDataType.VARCHAR(5).nullable(false).asEnumDataType(EntityProcessorProductRulesRuleType.class), this, "Rule type for this Product Rule Config.", new EnumConverter<EntityProcessorProductRulesRuleType, RuleType>(EntityProcessorProductRulesRuleType.class, RuleType.class));
+    public final TableField<EntityProcessorProductRulesRecord, RuleType> RULE_TYPE = createField(DSL.name("RULE_TYPE"), SQLDataType.VARCHAR(23).nullable(false).asEnumDataType(EntityProcessorProductRulesRuleType.class), this, "Rule type for this Product Rule Config.", new EnumConverter<EntityProcessorProductRulesRuleType, RuleType>(EntityProcessorProductRulesRuleType.class, RuleType.class));
 
     /**
      * The column

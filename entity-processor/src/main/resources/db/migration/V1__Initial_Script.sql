@@ -384,7 +384,7 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product Rule Config.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Product Rule Config.',
     `PRODUCT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product Rule ID related to this Product Rule Config.',
-    `RULE_TYPE` ENUM ('DEAL', 'STAGE') NOT NULL COMMENT 'Rule type for this Product Rule Config.',
+    `RULE_TYPE` ENUM ('ENTITY_ASSIGNMENT', 'STAGE_ENTITY_ASSIGNMENT', 'PRODUCT_ASSIGNMENT') NOT NULL COMMENT 'Rule type for this Product Rule Config.',
     `BREAK_AT_FIRST_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should break at first match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules do not match.',

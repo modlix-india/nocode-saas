@@ -15,9 +15,11 @@ import org.jooq.Schema;
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityProcessorProductRulesRuleType implements EnumType {
 
-    DEAL("DEAL"),
+    ENTITY_ASSIGNMENT("ENTITY_ASSIGNMENT"),
 
-    STAGE("STAGE");
+    STAGE_ENTITY_ASSIGNMENT("STAGE_ENTITY_ASSIGNMENT"),
+
+    PRODUCT_ASSIGNMENT("PRODUCT_ASSIGNMENT");
 
     private final String literal;
 
