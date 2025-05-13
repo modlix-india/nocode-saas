@@ -1,14 +1,5 @@
 package com.fincity.saas.entity.processor.service.base;
 
-import java.util.List;
-import java.util.stream.Stream;
-
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
@@ -24,7 +15,13 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-
+import java.util.List;
+import java.util.stream.Stream;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -101,11 +98,19 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<D> readIdentity(ULong id) {
-        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
+        return this.dao
+                .readInternal(id)
+                .flatMap(value -> value != null
+                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), id)
+                        : Mono.empty());
     }
 
     public Mono<D> readByCode(String code) {
-        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readByCode(code), code);
+        return this.dao
+                .readByCode(code)
+                .flatMap(value -> value != null
+                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), code)
+                        : Mono.empty());
     }
 
     public Flux<D> readByCodes(List<String> codes) {

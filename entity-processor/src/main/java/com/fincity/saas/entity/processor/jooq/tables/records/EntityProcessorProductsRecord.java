@@ -215,7 +215,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Default source for this product. This will be value for entity source if
      * source in not inferred.
      */
-    public EntityProcessorProductsRecord setDefaultSource(ULong value) {
+    public EntityProcessorProductsRecord setDefaultSource(String value) {
         set(10, value);
         return this;
     }
@@ -226,8 +226,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Default source for this product. This will be value for entity source if
      * source in not inferred.
      */
-    public ULong getDefaultSource() {
-        return (ULong) get(10);
+    public String getDefaultSource() {
+        return (String) get(10);
     }
 
     /**
@@ -236,7 +236,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Default stage for this product. This will be value for entity stage if
      * stage in not inferred.
      */
-    public EntityProcessorProductsRecord setDefaultStage(ULong value) {
+    public EntityProcessorProductsRecord setDefaultStage(String value) {
         set(11, value);
         return this;
     }
@@ -247,8 +247,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Default stage for this product. This will be value for entity stage if
      * stage in not inferred.
      */
-    public ULong getDefaultStage() {
-        return (ULong) get(11);
+    public String getDefaultStage() {
+        return (String) get(11);
     }
 
     /**
@@ -388,7 +388,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong valueTemplateId, ULong defaultSource, ULong defaultStage, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong valueTemplateId, String defaultSource, String defaultStage, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);

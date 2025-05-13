@@ -1,26 +1,26 @@
 package com.fincity.saas.entity.processor.service.base;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-
+import com.fincity.saas.entity.processor.service.ValueTemplateService;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -29,6 +29,7 @@ public abstract class BaseValueService<
         extends BaseService<R, D, O> {
 
     private static final String VALUE_ET_KEY = "valueEtKey";
+    protected ValueTemplateService valueTemplateService;
 
     public String getValueEtKey() {
         return VALUE_ET_KEY;
@@ -36,6 +37,11 @@ public abstract class BaseValueService<
 
     public String getValueIdValueKey() {
         return IdAndValue.ID_CACHE_KEY;
+    }
+
+    @Autowired
+    private void setValueTemplateService(ValueTemplateService valueTemplateService) {
+        this.valueTemplateService = valueTemplateService;
     }
 
     @Override
@@ -74,27 +80,55 @@ public abstract class BaseValueService<
         });
     }
 
-    @Override
-    public Mono<D> create(D entity) {
+    private Mono<D> validateEntity(D entity, String appCode, String clientCode) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                hasAccess -> entity.hasParentLevels()
+                () -> entity.hasParentLevels()
                         ? this.existsById(
-                                hasAccess.getT1().getT1(),
-                                hasAccess.getT1().getT2(),
+                                appCode,
+                                clientCode,
+                                entity.getPlatform(),
                                 entity.getValueTemplateId(),
                                 entity.getParentLevel0(),
                                 entity.getParentLevel1())
                         : Mono.just(Boolean.TRUE),
-                (hasAccess, parentExists) -> {
-                    entity.setName(StringUtil.toTitleCase(entity.getName()));
-                    entity.setAppCode(hasAccess.getT1().getT1());
-                    entity.setClientCode(hasAccess.getT1().getT2());
-                    entity.setAddedByUserId(hasAccess.getT1().getT3());
-                    entity.setIsParent(entity.getParentLevel0() == null || entity.getParentLevel1() == null);
+                parentExists -> this.existsByName(
+                        appCode,
+                        clientCode,
+                        entity.getPlatform(),
+                        entity.getValueTemplateId(),
+                        entity.getName()),
+                (parentExists, nameExists) -> {
+                    if (Boolean.TRUE.equals(nameExists))
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                ProcessorMessageResourceService.INVALID_NAME_FOR_ENTITY);
 
-                    return super.create(entity);
+                    entity.setName(StringUtil.toTitleCase(entity.getName()));
+                    return Mono.just(entity);
                 });
+    }
+
+    @Override
+    public Mono<D> create(D entity) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> validateEntity(entity, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()),
+                (hasAccess, validated) -> {
+                    validated.setAppCode(hasAccess.getT1().getT1());
+                    validated.setClientCode(hasAccess.getT1().getT2());
+                    validated.setAddedByUserId(hasAccess.getT1().getT3());
+                    validated.setIsParent(validated.getParentLevel0() == null || validated.getParentLevel1() == null);
+
+                    return super.create(validated);
+                });
+    }
+
+    @Override
+    public Mono<D> update(D entity) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> validateEntity(entity, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()),
+                (hasAccess, validated) -> this.updateInternal(validated));
     }
 
     public Mono<D> createChild(D entity, D parentEntity) {
@@ -102,7 +136,7 @@ public abstract class BaseValueService<
         entity.setAppCode(parentEntity.getAppCode());
         entity.setClientCode(parentEntity.getClientCode());
         entity.setAddedByUserId(parentEntity.getAddedByUserId());
-        entity.setIsParent(Boolean.TRUE);
+        entity.setIsParent(Boolean.FALSE);
         entity.setParentLevel0(parentEntity.getId());
 
         if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
@@ -120,11 +154,6 @@ public abstract class BaseValueService<
                         this.evictCache(entity).map(evicted -> updated).switchIfEmpty(Mono.just(updated)));
     }
 
-    @Override
-    public Mono<D> update(D entity) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, hasAccess -> this.updateInternal(entity));
-    }
-
     public Mono<D> updateInternal(D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> super.update(entity), updated -> this.evictCache(entity).map(evicted -> updated));
@@ -139,43 +168,59 @@ public abstract class BaseValueService<
                 (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 
-    protected Mono<Boolean> existsById(String appCode, String clientCode, ULong valueTemplateId, ULong... valueEntityIds) {
-        return this.dao.existsById(appCode, clientCode, valueTemplateId, valueEntityIds);
+    protected Mono<Boolean> existsById(
+            String appCode, String clientCode, Platform platform, ULong valueTemplateId, ULong... valueEntityIds) {
+        return this.dao.existsById(appCode, clientCode, platform, valueTemplateId, valueEntityIds);
     }
 
-    public Mono<Map<Integer, String>> getAllValueMap(String appCode, String clientCode, ULong valueTemplateId) {
+    protected Mono<Boolean> existsByName(
+            String appCode, String clientCode, Platform platform, ULong valueTemplateId, String... names) {
+        return this.dao.existsByName(appCode, clientCode, platform, valueTemplateId, names);
+    }
+
+    public Mono<Map<Integer, String>> getAllValueMap(
+            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao
-                        .getAllValueTemplateIdAndNames(appCode, clientCode, valueTemplateId)
+                        .getAllValueTemplateIdAndNames(appCode, clientCode, platform, valueTemplateId)
                         .map(IdAndValue::toMap),
                 super.getCacheKey(this.getValueIdValueKey(), appCode, clientCode, valueTemplateId));
     }
 
     public Mono<Boolean> isValidParentChild(
-            String appCode, String clientCode, ULong valueTemplateId, String parent, String... children) {
-        return FlatMapUtil.flatMapMono(() -> this.getAllValues(appCode, clientCode, valueTemplateId), valueEntityMap -> {
-                    if (!valueEntityMap.containsKey(parent)) return Mono.just(Boolean.FALSE);
+            String appCode,
+            String clientCode,
+            Platform platform,
+            ULong valueTemplateId,
+            String parent,
+            String... children) {
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getAllValues(appCode, clientCode, platform, valueTemplateId), valueEntityMap -> {
+                            if (!valueEntityMap.containsKey(parent)) return Mono.just(Boolean.FALSE);
 
-                    if (!valueEntityMap.get(parent).containsAll(List.of(children))) return Mono.just(Boolean.FALSE);
+                            if (!valueEntityMap.get(parent).containsAll(List.of(children)))
+                                return Mono.just(Boolean.FALSE);
 
-                    return Mono.just(Boolean.TRUE);
-                })
+                            return Mono.just(Boolean.TRUE);
+                        })
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Map<String, Set<String>>> getAllValues(String appCode, String clientCode, ULong valueTemplateId) {
+    public Mono<Map<String, Set<String>>> getAllValues(
+            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.getAllValuesInternal(appCode, clientCode, valueTemplateId),
+                () -> this.getAllValuesInternal(appCode, clientCode, platform, valueTemplateId),
                 super.getCacheKey(this.getValueEtKey(), appCode, clientCode, valueTemplateId));
     }
 
-    private Mono<Map<String, Set<String>>> getAllValuesInternal(String appCode, String clientCode, ULong valueTemplateId) {
+    private Mono<Map<String, Set<String>>> getAllValuesInternal(
+            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.dao.getAllValues(appCode, clientCode, valueTemplateId, null),
-                        this.getAllValueMap(appCode, clientCode, valueTemplateId)),
+                        this.dao.getAllValues(appCode, clientCode, platform, valueTemplateId, null),
+                        this.getAllValueMap(appCode, clientCode, platform, valueTemplateId)),
                 tup -> Mono.just(tup.getT1().stream()
                         .collect(Collectors.toMap(
                                 BaseDto::getName,

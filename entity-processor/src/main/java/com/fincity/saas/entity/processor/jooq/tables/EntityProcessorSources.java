@@ -4,8 +4,12 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorSourcesPlatform;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources.EntityProcessorSourcesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates.EntityProcessorValueTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSourcesRecord;
 
 import java.time.LocalDateTime;
@@ -15,10 +19,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -28,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -100,6 +109,14 @@ public class EntityProcessorSources extends TableImpl<EntityProcessorSourcesReco
      * User which added this Source.
      */
     public final TableField<EntityProcessorSourcesRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Source.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_sources.PLATFORM</code>. Platform
+     * is where this source will be displayed in CRM, can be GLOBAL,
+     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     */
+    public final TableField<EntityProcessorSourcesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("GLOBAL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorSourcesPlatform.class), this, "Platform is where this source will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorSourcesPlatform, Platform>(EntityProcessorSourcesPlatform.class, Platform.class));
 
     /**
      * The column
@@ -203,6 +220,39 @@ public class EntityProcessorSources extends TableImpl<EntityProcessorSourcesReco
         this(DSL.name("entity_processor_sources"), null);
     }
 
+    public <O extends Record> EntityProcessorSources(Table<O> path, ForeignKey<O, EntityProcessorSourcesRecord> childPath, InverseForeignKey<O, EntityProcessorSourcesRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_PROCESSOR_SOURCES);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityProcessorSourcesPath extends EntityProcessorSources implements Path<EntityProcessorSourcesRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityProcessorSourcesPath(Table<O> path, ForeignKey<O, EntityProcessorSourcesRecord> childPath, InverseForeignKey<O, EntityProcessorSourcesRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityProcessorSourcesPath(Name alias, Table<EntityProcessorSourcesRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityProcessorSourcesPath as(String alias) {
+            return new EntityProcessorSourcesPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityProcessorSourcesPath as(Name alias) {
+            return new EntityProcessorSourcesPath(alias, this);
+        }
+
+        @Override
+        public EntityProcessorSourcesPath as(Table<?> alias) {
+            return new EntityProcessorSourcesPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -220,7 +270,53 @@ public class EntityProcessorSources extends TableImpl<EntityProcessorSourcesReco
 
     @Override
     public List<UniqueKey<EntityProcessorSourcesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_SOURCES_UK1_SOURCES_CODE);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_SOURCES_UK1_SOURCES_CODE, Keys.KEY_ENTITY_PROCESSOR_SOURCES_UK2_SOURCES_NAME);
+    }
+
+    @Override
+    public List<ForeignKey<EntityProcessorSourcesRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_SOURCES_VALUE_TEMPLATE_ID, Keys.FK2_SOURCES_PARENT_LEVEL_0, Keys.FK3_SOURCES_PARENT_LEVEL_1);
+    }
+
+    private transient EntityProcessorValueTemplatesPath _entityProcessorValueTemplates;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_value_templates</code> table.
+     */
+    public EntityProcessorValueTemplatesPath entityProcessorValueTemplates() {
+        if (_entityProcessorValueTemplates == null)
+            _entityProcessorValueTemplates = new EntityProcessorValueTemplatesPath(this, Keys.FK1_SOURCES_VALUE_TEMPLATE_ID, null);
+
+        return _entityProcessorValueTemplates;
+    }
+
+    private transient EntityProcessorSourcesPath _fk2SourcesParentLevel_0;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_sources</code> table, via the
+     * <code>FK2_SOURCES_PARENT_LEVEL_0</code> key.
+     */
+    public EntityProcessorSourcesPath fk2SourcesParentLevel_0() {
+        if (_fk2SourcesParentLevel_0 == null)
+            _fk2SourcesParentLevel_0 = new EntityProcessorSourcesPath(this, Keys.FK2_SOURCES_PARENT_LEVEL_0, null);
+
+        return _fk2SourcesParentLevel_0;
+    }
+
+    private transient EntityProcessorSourcesPath _fk3SourcesParentLevel_1;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_sources</code> table, via the
+     * <code>FK3_SOURCES_PARENT_LEVEL_1</code> key.
+     */
+    public EntityProcessorSourcesPath fk3SourcesParentLevel_1() {
+        if (_fk3SourcesParentLevel_1 == null)
+            _fk3SourcesParentLevel_1 = new EntityProcessorSourcesPath(this, Keys.FK3_SOURCES_PARENT_LEVEL_1, null);
+
+        return _fk3SourcesParentLevel_1;
     }
 
     @Override

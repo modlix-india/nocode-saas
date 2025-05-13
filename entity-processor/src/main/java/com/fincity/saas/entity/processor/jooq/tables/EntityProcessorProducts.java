@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities.EntityProcessorEntitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates.EntityProcessorValueTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 
 import java.time.LocalDateTime;
@@ -135,7 +136,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * Default source for this product. This will be value for entity source if
      * source in not inferred.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_SOURCE = createField(DSL.name("DEFAULT_SOURCE"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Default source for this product. This will be value for entity source if source in not inferred.");
+    public final TableField<EntityProcessorProductsRecord, String> DEFAULT_SOURCE = createField(DSL.name("DEFAULT_SOURCE"), SQLDataType.CHAR(32), this, "Default source for this product. This will be value for entity source if source in not inferred.");
 
     /**
      * The column
@@ -143,7 +144,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * Default stage for this product. This will be value for entity stage if
      * stage in not inferred.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_STAGE = createField(DSL.name("DEFAULT_STAGE"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Default stage for this product. This will be value for entity stage if stage in not inferred.");
+    public final TableField<EntityProcessorProductsRecord, String> DEFAULT_STAGE = createField(DSL.name("DEFAULT_STAGE"), SQLDataType.CHAR(32), this, "Default stage for this product. This will be value for entity stage if stage in not inferred.");
 
     /**
      * The column
@@ -270,6 +271,24 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
     @Override
     public List<UniqueKey<EntityProcessorProductsRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCTS_UK1_PRODUCTS_CODE);
+    }
+
+    @Override
+    public List<ForeignKey<EntityProcessorProductsRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_PRODUCTS_VALUE_TEMPLATE_ID);
+    }
+
+    private transient EntityProcessorValueTemplatesPath _entityProcessorValueTemplates;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_value_templates</code> table.
+     */
+    public EntityProcessorValueTemplatesPath entityProcessorValueTemplates() {
+        if (_entityProcessorValueTemplates == null)
+            _entityProcessorValueTemplates = new EntityProcessorValueTemplatesPath(this, Keys.FK1_PRODUCTS_VALUE_TEMPLATE_ID, null);
+
+        return _entityProcessorValueTemplates;
     }
 
     private transient EntityProcessorEntitiesPath _entityProcessorEntities;

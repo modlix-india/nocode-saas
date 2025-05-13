@@ -1,12 +1,14 @@
 package com.fincity.saas.entity.processor.enums.rule;
 
-import lombok.Getter;
 import org.jooq.EnumType;
+
+import lombok.Getter;
 
 @Getter
 public enum RuleType implements EnumType {
     DEAL("DEAL"),
-    STAGE("STAGE");
+    STAGE("STAGE"),
+    PRODUCT("PRODUCT");
 
     private final String literal;
 

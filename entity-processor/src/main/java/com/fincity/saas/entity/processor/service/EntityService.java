@@ -110,6 +110,7 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
                 .isValidParentChild(
                         ca.getUrlAppCode(),
                         ca.getUrlClientCodeOrElse(!ca.isAuthenticated()),
+                        null,
                         entity.getProductId(),
                         entity.getSource(),
                         entity.getSubSource())

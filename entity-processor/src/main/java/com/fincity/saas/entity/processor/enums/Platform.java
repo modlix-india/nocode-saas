@@ -2,18 +2,20 @@ package com.fincity.saas.entity.processor.enums;
 
 import org.jooq.EnumType;
 
-public enum StagePlatform implements EnumType {
-    PRE_MAIN("PRE_MAIN"),
+public enum Platform implements EnumType {
+    GLOBAL("GLOBAL"),
+    PRE_QUALIFICATION("PRE_QUALIFICATION"),
+    QUALIFICATION("QUALIFICATION"),
     MAIN("MAIN");
 
     private final String literal;
 
-    StagePlatform(String literal) {
+    Platform(String literal) {
         this.literal = literal;
     }
 
-    public static StagePlatform lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(StagePlatform.class, literal);
+    public static Platform lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(Platform.class, literal);
     }
 
     @Override

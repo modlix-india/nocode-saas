@@ -1,9 +1,5 @@
 package com.fincity.saas.entity.processor.service;
 
-import org.jooq.types.ULong;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
@@ -14,7 +10,9 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
 

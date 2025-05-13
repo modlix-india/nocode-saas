@@ -15,4 +15,9 @@ public abstract class BaseValueTemplate<T extends BaseValueTemplate<T>> extends 
 
     private Identity valueTemplateId;
     private Map<Integer, T> children;
+
+    public T setValueTemplateId(Identity valueTemplateId) {
+        this.valueTemplateId = valueTemplateId;
+        return (T) this;
+    }
 }

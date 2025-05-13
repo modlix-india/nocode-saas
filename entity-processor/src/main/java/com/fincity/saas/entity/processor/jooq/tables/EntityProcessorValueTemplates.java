@@ -8,6 +8,9 @@ import com.fincity.saas.entity.processor.enums.ValueTemplateType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorValueTemplatesValueTemplateType;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources.EntityProcessorSourcesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplatesRecord;
 
 import java.time.LocalDateTime;
@@ -17,10 +20,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -191,6 +198,39 @@ public class EntityProcessorValueTemplates extends TableImpl<EntityProcessorValu
         this(DSL.name("entity_processor_value_templates"), null);
     }
 
+    public <O extends Record> EntityProcessorValueTemplates(Table<O> path, ForeignKey<O, EntityProcessorValueTemplatesRecord> childPath, InverseForeignKey<O, EntityProcessorValueTemplatesRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_PROCESSOR_VALUE_TEMPLATES);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityProcessorValueTemplatesPath extends EntityProcessorValueTemplates implements Path<EntityProcessorValueTemplatesRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityProcessorValueTemplatesPath(Table<O> path, ForeignKey<O, EntityProcessorValueTemplatesRecord> childPath, InverseForeignKey<O, EntityProcessorValueTemplatesRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityProcessorValueTemplatesPath(Name alias, Table<EntityProcessorValueTemplatesRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityProcessorValueTemplatesPath as(String alias) {
+            return new EntityProcessorValueTemplatesPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityProcessorValueTemplatesPath as(Name alias) {
+            return new EntityProcessorValueTemplatesPath(alias, this);
+        }
+
+        @Override
+        public EntityProcessorValueTemplatesPath as(Table<?> alias) {
+            return new EntityProcessorValueTemplatesPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -209,6 +249,45 @@ public class EntityProcessorValueTemplates extends TableImpl<EntityProcessorValu
     @Override
     public List<UniqueKey<EntityProcessorValueTemplatesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATES_UK1_VALUE_TEMPLATES_CODE);
+    }
+
+    private transient EntityProcessorProductsPath _entityProcessorProducts;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_products</code> table
+     */
+    public EntityProcessorProductsPath entityProcessorProducts() {
+        if (_entityProcessorProducts == null)
+            _entityProcessorProducts = new EntityProcessorProductsPath(this, null, Keys.FK1_PRODUCTS_VALUE_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorProducts;
+    }
+
+    private transient EntityProcessorSourcesPath _entityProcessorSources;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_sources</code> table
+     */
+    public EntityProcessorSourcesPath entityProcessorSources() {
+        if (_entityProcessorSources == null)
+            _entityProcessorSources = new EntityProcessorSourcesPath(this, null, Keys.FK1_SOURCES_VALUE_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorSources;
+    }
+
+    private transient EntityProcessorStagesPath _entityProcessorStages;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_stages</code> table
+     */
+    public EntityProcessorStagesPath entityProcessorStages() {
+        if (_entityProcessorStages == null)
+            _entityProcessorStages = new EntityProcessorStagesPath(this, null, Keys.FK1_STAGES_VALUE_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorStages;
     }
 
     @Override

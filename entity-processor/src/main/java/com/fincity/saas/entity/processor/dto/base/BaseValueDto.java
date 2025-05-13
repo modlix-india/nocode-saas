@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.Platform;
 import java.io.Serial;
 import java.util.stream.Stream;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implemen
     @Serial
     private static final long serialVersionUID = 2090745028406660414L;
 
+    private Platform platform = Platform.GLOBAL;
     private ULong valueTemplateId;
     private Boolean isParent;
     private ULong parentLevel0;

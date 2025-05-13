@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.SourceRequest;
@@ -9,7 +10,6 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -23,16 +23,20 @@ public class Source extends BaseValueDto<Source> {
 
     public static Source ofParent(SourceRequest sourceRequest) {
         return new Source()
+                .setValueTemplateId(
+                        ULongUtil.valueOf(sourceRequest.getValueTemplateId().getId()))
                 .setIsParent(Boolean.TRUE)
                 .setName(sourceRequest.getName())
                 .setDescription(sourceRequest.getDescription());
     }
 
-    public static Source ofChild(SourceRequest sourceRequest, ULong... parents) {
+    public static Source ofChild(SourceRequest sourceRequest, Source... parents) {
         return new Source()
+                .setValueTemplateId(
+                        ULongUtil.valueOf(sourceRequest.getValueTemplateId().getId()))
                 .setIsParent(Boolean.FALSE)
-                .setParentLevel0(parents[0])
-                .setParentLevel1(parents[1])
+                .setParentLevel0(parents[0].getId())
+                .setParentLevel1(parents.length > 1 ? parents[1].getParentLevel0() : null)
                 .setName(sourceRequest.getName())
                 .setDescription(sourceRequest.getDescription());
     }

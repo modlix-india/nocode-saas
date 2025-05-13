@@ -243,6 +243,12 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.Platform</userType>
+                                            <includeExpression>.*\.PLATFORM</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.StageType</userType>
                                             <includeExpression>.*\.STAGE_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

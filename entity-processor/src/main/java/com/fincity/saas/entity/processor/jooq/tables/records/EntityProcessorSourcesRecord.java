@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 
 import java.time.LocalDateTime;
@@ -150,11 +151,32 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_sources.PLATFORM</code>. Platform
+     * is where this source will be displayed in CRM, can be GLOBAL,
+     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     */
+    public EntityProcessorSourcesRecord setPlatform(Platform value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_sources.PLATFORM</code>. Platform
+     * is where this source will be displayed in CRM, can be GLOBAL,
+     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     */
+    public Platform getPlatform() {
+        return (Platform) get(7);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_sources.VALUE_TEMPLATE_ID</code>.
      * Value Template related to this Source.
      */
     public EntityProcessorSourcesRecord setValueTemplateId(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -164,7 +186,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * Value Template related to this Source.
      */
     public ULong getValueTemplateId() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -173,7 +195,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * the main Source or not.
      */
     public EntityProcessorSourcesRecord setIsParent(Byte value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -183,7 +205,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * the main Source or not.
      */
     public Byte getIsParent() {
-        return (Byte) get(8);
+        return (Byte) get(9);
     }
 
     /**
@@ -192,7 +214,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * Parent source for this source.
      */
     public EntityProcessorSourcesRecord setParentLevel_0(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -202,7 +224,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * Parent source for this source.
      */
     public ULong getParentLevel_0() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -211,7 +233,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * Parent source level 1 for this source.
      */
     public EntityProcessorSourcesRecord setParentLevel_1(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -221,7 +243,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * Parent source level 1 for this source.
      */
     public ULong getParentLevel_1() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -230,7 +252,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag fro this product.
      */
     public EntityProcessorSourcesRecord setTempActive(Byte value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -240,7 +262,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag fro this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(11);
+        return (Byte) get(12);
     }
 
     /**
@@ -249,7 +271,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public EntityProcessorSourcesRecord setIsActive(Byte value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -259,7 +281,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(12);
+        return (Byte) get(13);
     }
 
     /**
@@ -268,7 +290,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public EntityProcessorSourcesRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -278,7 +300,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(14);
     }
 
     /**
@@ -287,7 +309,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorSourcesRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -297,7 +319,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -306,7 +328,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorSourcesRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -316,7 +338,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(16);
     }
 
     /**
@@ -325,7 +347,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorSourcesRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -335,7 +357,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -361,7 +383,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorSourcesRecord
      */
-    public EntityProcessorSourcesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong valueTemplateId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSourcesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, Platform platform, ULong valueTemplateId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSources.ENTITY_PROCESSOR_SOURCES);
 
         setId(id);
@@ -371,6 +393,7 @@ public class EntityProcessorSourcesRecord extends UpdatableRecordImpl<EntityProc
         setName(name);
         setDescription(description);
         setAddedByUserId(addedByUserId);
+        setPlatform(platform);
         setValueTemplateId(valueTemplateId);
         setIsParent(isParent);
         setParentLevel_0(parentLevel_0);
