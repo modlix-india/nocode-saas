@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.jooq.Field;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -41,88 +42,97 @@ public class DesignationDAO extends AbstractClientCheckDAO<SecurityDesignationRe
     }
 
     public Mono<Boolean> checkSameClient(ULong clientId, ULong parentDesignationId, ULong nextDesignationId,
-            ULong departmentId) {
+                                         ULong departmentId) {
         Mono<Boolean> parentDesignation = parentDesignationId == null ? Mono.just(true)
                 : Mono.from(this.dslContext.selectCount()
                         .from(SECURITY_DESIGNATION)
                         .where(SECURITY_DESIGNATION.ID.eq(parentDesignationId))
                         .and(SECURITY_DESIGNATION.CLIENT_ID.eq(clientId)))
-                        .map(r -> r.value1() == 1);
+                .map(r -> r.value1() == 1);
 
         Mono<Boolean> nextDesignation = nextDesignationId == null ? Mono.just(true)
                 : Mono.from(this.dslContext.selectCount()
                         .from(SECURITY_DESIGNATION)
                         .where(SECURITY_DESIGNATION.ID.eq(nextDesignationId))
                         .and(SECURITY_DESIGNATION.CLIENT_ID.eq(clientId)))
-                        .map(r -> r.value1() == 1);
+                .map(r -> r.value1() == 1);
 
         Mono<Boolean> department = departmentId == null ? Mono.just(true)
                 : Mono.from(this.dslContext.selectCount()
                         .from(SECURITY_DEPARTMENT)
                         .where(SECURITY_DEPARTMENT.ID.eq(departmentId))
                         .and(SECURITY_DEPARTMENT.CLIENT_ID.eq(clientId)))
-                        .map(r -> r.value1() == 1);
+                .map(r -> r.value1() == 1);
 
         return Mono.zip(parentDesignation, nextDesignation, department)
                 .map(tuple -> tuple.getT1() && tuple.getT2() && tuple.getT3());
 
     }
 
-    static record DesignationRelation(ULong designationId, ULong parentDesignationId, ULong nextDesignationid) {
+    public Mono<Boolean> canAssignDesignation(ULong clientId, ULong designationId) {
+        return Mono.from(this.dslContext.selectCount().from(SECURITY_DESIGNATION).where(
+                DSL.and(
+                        SECURITY_DESIGNATION.ID.eq(designationId),
+                        SECURITY_DESIGNATION.CLIENT_ID.eq(clientId)
+                )
+        )).map(r -> r.value1() == 1);
+    }
+
+    record DesignationRelation(ULong designationId, ULong parentDesignationId, ULong nextDesignationId) {
     }
 
     private Mono<Boolean> createRelations(List<DesignationRelation> relations) {
         return Flux.fromIterable(relations).flatMap(tup -> Mono.from(
-                this.dslContext.update(SECURITY_DESIGNATION)
-                        .set(SECURITY_DESIGNATION.PARENT_DESIGNATION_ID,
-                                tup.parentDesignationId())
-                        .set(SECURITY_DESIGNATION.NEXT_DESIGNATION_ID, tup.nextDesignationid())
-                        .where(SECURITY_DESIGNATION.ID.eq(tup.designationId()))))
+                        this.dslContext.update(SECURITY_DESIGNATION)
+                                .set(SECURITY_DESIGNATION.PARENT_DESIGNATION_ID,
+                                        tup.parentDesignationId())
+                                .set(SECURITY_DESIGNATION.NEXT_DESIGNATION_ID, tup.nextDesignationId())
+                                .where(SECURITY_DESIGNATION.ID.eq(tup.designationId()))))
                 .collectList().map(list -> true);
     }
 
     public Mono<Map<ULong, Tuple2<AppRegistrationDesignation, Designation>>> createForRegistration(Client client,
-            List<AppRegistrationDesignation> departments,
-            Map<ULong, Tuple2<AppRegistrationDepartment, Department>> departmentIndex) {
+                                                                                                   List<AppRegistrationDesignation> departments,
+                                                                                                   Map<ULong, Tuple2<AppRegistrationDepartment, Department>> departmentIndex) {
 
         return FlatMapUtil.flatMapMono(
-                () -> Flux.fromIterable(departments)
-                        .flatMap(e -> this.create(new Designation().setClientId(client.getId())
-                                .setName(e.getName())
-                                .setDescription(e.getDescription())
-                                .setDepartmentId(e.getDepartmentId() == null ? null
-                                        : departmentIndex.get(e.getDepartmentId()).getT2().getId()))
-                                .map(d -> Tuples.of(e, d)))
-                        .collectList(),
+                        () -> Flux.fromIterable(departments)
+                                .flatMap(e -> this.create(new Designation().setClientId(client.getId())
+                                                .setName(e.getName())
+                                                .setDescription(e.getDescription())
+                                                .setDepartmentId(e.getDepartmentId() == null ? null
+                                                        : departmentIndex.get(e.getDepartmentId()).getT2().getId()))
+                                        .map(d -> Tuples.of(e, d)))
+                                .collectList(),
 
-                list -> {
-                    Map<ULong, Tuple2<AppRegistrationDesignation, Designation>> index = list.stream()
-                            .collect(Collectors.toMap(
-                                    e -> e.getT1().getId(), Function.identity()));
+                        list -> {
+                            Map<ULong, Tuple2<AppRegistrationDesignation, Designation>> index = list.stream()
+                                    .collect(Collectors.toMap(
+                                            e -> e.getT1().getId(), Function.identity()));
 
-                    List<DesignationRelation> relations = new ArrayList<>();
-                    for (Tuple2<AppRegistrationDesignation, Designation> tuple : list) {
-                        if (tuple.getT1().getParentDesignationId() == null
-                                && tuple.getT1().getNextDesignationId() == null)
-                            continue;
+                            List<DesignationRelation> relations = new ArrayList<>();
+                            for (Tuple2<AppRegistrationDesignation, Designation> tuple : list) {
+                                if (tuple.getT1().getParentDesignationId() == null
+                                        && tuple.getT1().getNextDesignationId() == null)
+                                    continue;
 
-                        var parent = index.get(tuple.getT1().getParentDesignationId());
-                        var next = index.get(tuple.getT1().getNextDesignationId());
-                        relations.add(new DesignationRelation(tuple.getT2().getId(),
-                                parent == null ? null
-                                        : parent.getT2()
+                                var parent = index.get(tuple.getT1().getParentDesignationId());
+                                var next = index.get(tuple.getT1().getNextDesignationId());
+                                relations.add(new DesignationRelation(tuple.getT2().getId(),
+                                        parent == null ? null
+                                                : parent.getT2()
                                                 .getId(),
-                                next == null ? null
-                                        : next.getT2()
+                                        next == null ? null
+                                                : next.getT2()
                                                 .getId()));
-                    }
+                            }
 
-                    if (relations.isEmpty())
-                        return Mono.just(index);
+                            if (relations.isEmpty())
+                                return Mono.just(index);
 
-                    return this.createRelations(relations)
-                            .map(x -> index);
-                })
+                            return this.createRelations(relations)
+                                    .map(x -> index);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationDAO.createForRegistration"));
     }
 }

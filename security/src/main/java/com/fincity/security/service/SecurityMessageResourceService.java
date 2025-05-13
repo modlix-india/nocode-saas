@@ -117,6 +117,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String PROFILE_NEEDS_APP = "profile_needs_app";
     public static final String FORBIDDEN_ROLE_ACCESS = "forbidden_role_access";
     public static final String NO_PROFILE_ASSIGNED_TO_USER = "no_profile_assigned_to_user";
+    public static final String USER_DESIGNATION_MISMATCH = "user_designation_mismatch";
+    public static final String USER_REPORTING_ERROR = "user_reporting_error";
 
     public SecurityMessageResourceService() {
 
