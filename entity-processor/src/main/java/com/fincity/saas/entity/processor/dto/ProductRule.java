@@ -24,7 +24,7 @@ public class ProductRule extends RuleConfig<ProductRule> {
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.PRODUCT_RULE_CONFIG;
+        return EntitySeries.PRODUCT_RULE;
     }
 
     @Override
