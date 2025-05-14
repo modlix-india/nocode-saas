@@ -1,10 +1,8 @@
 package com.fincity.saas.entity.processor.model.request;
 
-import java.io.Serial;
-
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
