@@ -71,7 +71,7 @@ public abstract class RuleConfigService<
                         hasAccess.getT1().getT2(),
                         hasAccess.getT1().getT3(),
                         ruleConfigRequest.getIdentity()),
-                (hasAccess, entityId) -> ruleService.create(ruleConfigRequest.getRules()),
+                (hasAccess, entityId) -> ruleService.createWithUserDistribution(ruleConfigRequest.getRules()),
                 (hasAccess, entityId, rules) -> this.createFromRequest(ruleConfigRequest),
                 (hasAccess, entityId, rules, ruleConfig) -> this.createUserDistributions(ruleConfigRequest),
                 (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
@@ -126,7 +126,7 @@ public abstract class RuleConfigService<
         return ruleConfig;
     }
 
-    private Mono<Map<ULong, UserDistribution>> createUserDistributions(T ruleConfigRequest) {
+    private Mono<Map<ULong, UserDistribution>> createUserDistributions(T ruleConfigRequest, ) {
         DistributionType distributionType = ruleConfigRequest.getUserDistributionType();
         Map<BigInteger, UserDistribution> distributions = ruleConfigRequest.getUserDistributions();
 

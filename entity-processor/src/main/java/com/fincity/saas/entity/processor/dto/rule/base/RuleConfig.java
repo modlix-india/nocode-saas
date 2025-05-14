@@ -1,7 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
 import java.io.Serial;
-import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
@@ -42,32 +41,4 @@ public abstract class RuleConfig<T extends RuleConfig<T>> extends BaseDto<T> imp
     public abstract ULong getEntityId();
 
     public abstract T setEntityId(ULong entityId);
-
-    public Map<Integer, ULong> getRules() {
-        return this.rules;
-    }
-
-    public boolean isBreakAtFirstMatch() {
-        return this.breakAtFirstMatch;
-    }
-
-    public boolean isExecuteOnlyIfAllPreviousMatch() {
-        return this.executeOnlyIfAllPreviousMatch;
-    }
-
-    public boolean isExecuteOnlyIfAllPreviousNotMatch() {
-        return this.executeOnlyIfAllPreviousNotMatch;
-    }
-
-    public boolean isContinueOnNoMatch() {
-        return this.continueOnNoMatch;
-    }
-
-    public DistributionType getUserDistributionType() {
-        return this.userDistributionType;
-    }
-
-    public Map<ULong, UserDistribution> getUserDistributions() {
-        return this.userDistributions;
-    }
 }

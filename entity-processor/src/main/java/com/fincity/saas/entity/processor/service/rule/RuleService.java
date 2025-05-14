@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -10,17 +18,15 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseService;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, RuleDAO> implements IEntitySeries {
@@ -64,7 +70,7 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                 .map(result -> ProcessorResponse.ofCreated(result.getCode(), this.getEntitySeries()));
     }
 
-    public Mono<Map<Integer, ULong>> create(Map<Integer, RuleRequest> ruleRequests) {
+    public Mono<Map<ULong, Integer>> createWithOrder(Map<Integer, RuleRequest> ruleRequests) {
 
         if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
 
@@ -76,12 +82,32 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                     if (ruleRequest.getCondition() == null
                             || ruleRequest.getCondition().isEmpty()) return Flux.empty();
 
-                    return this.createInternal(ruleRequest).map(rule -> Map.entry(order, rule.getId()));
+                    return this.createInternal(ruleRequest).map(rule -> Map.entry(rule.getId(), order));
                 })
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue);
     }
 
-    public Mono<Map<Integer, ULong>> update(Map<Integer, RuleRequest> ruleRequests) {
+    public Mono<Map<ULong, Tuple2<Integer, UserDistribution>>> createWithUserDistribution(
+            Map<Integer, RuleRequest> ruleRequests) {
+
+        if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
+
+        return Flux.fromIterable(ruleRequests.entrySet())
+                .flatMap(entry -> {
+                    Integer order = entry.getKey();
+                    UserDistribution userDistribution = entry.getValue().getUserDistribution();
+                    RuleRequest ruleRequest = entry.getValue();
+
+                    if (ruleRequest.getCondition() == null
+                            || ruleRequest.getCondition().isEmpty()) return Flux.empty();
+
+                    return this.createInternal(ruleRequest)
+                            .map(rule -> Map.entry(rule.getId(), Tuples.of(order, userDistribution)));
+                })
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+    }
+
+    public Mono<Map<ULong, Integer>> update(Map<Integer, RuleRequest> ruleRequests) {
 
         if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
 
@@ -89,7 +115,7 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                 () -> this.deleteRulesInternal(ruleRequests.values().stream()
                         .map(RuleRequest::getRuleId)
                         .toList()),
-                deleted -> this.create(ruleRequests));
+                deleted -> this.createWithOrder(ruleRequests));
     }
 
     public Mono<Integer> deleteRuleInternal(Identity rule) {
