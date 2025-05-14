@@ -6,7 +6,6 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities.EntityProcessorEntitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorModelsRecord;
 
 import java.time.LocalDateTime;
@@ -16,14 +15,10 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
-import org.jooq.InverseForeignKey;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -143,9 +138,9 @@ public class EntityProcessorModels extends TableImpl<EntityProcessorModelsRecord
     /**
      * The column
      * <code>entity_processor.entity_processor_models.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorModelsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag fro this product.");
+    public final TableField<EntityProcessorModelsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
 
     /**
      * The column
@@ -214,39 +209,6 @@ public class EntityProcessorModels extends TableImpl<EntityProcessorModelsRecord
         this(DSL.name("entity_processor_models"), null);
     }
 
-    public <O extends Record> EntityProcessorModels(Table<O> path, ForeignKey<O, EntityProcessorModelsRecord> childPath, InverseForeignKey<O, EntityProcessorModelsRecord> parentPath) {
-        super(path, childPath, parentPath, ENTITY_PROCESSOR_MODELS);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class EntityProcessorModelsPath extends EntityProcessorModels implements Path<EntityProcessorModelsRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> EntityProcessorModelsPath(Table<O> path, ForeignKey<O, EntityProcessorModelsRecord> childPath, InverseForeignKey<O, EntityProcessorModelsRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private EntityProcessorModelsPath(Name alias, Table<EntityProcessorModelsRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public EntityProcessorModelsPath as(String alias) {
-            return new EntityProcessorModelsPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public EntityProcessorModelsPath as(Name alias) {
-            return new EntityProcessorModelsPath(alias, this);
-        }
-
-        @Override
-        public EntityProcessorModelsPath as(Table<?> alias) {
-            return new EntityProcessorModelsPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -265,19 +227,6 @@ public class EntityProcessorModels extends TableImpl<EntityProcessorModelsRecord
     @Override
     public List<UniqueKey<EntityProcessorModelsRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_MODELS_UK1_MODELS_CODE);
-    }
-
-    private transient EntityProcessorEntitiesPath _entityProcessorEntities;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_entities</code> table
-     */
-    public EntityProcessorEntitiesPath entityProcessorEntities() {
-        if (_entityProcessorEntities == null)
-            _entityProcessorEntities = new EntityProcessorEntitiesPath(this, null, Keys.FK1_ENTITIES_MODEL_ID.getInverseKey());
-
-        return _entityProcessorEntities;
     }
 
     @Override

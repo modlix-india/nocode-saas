@@ -12,8 +12,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
 
@@ -65,14 +65,15 @@ public class Tables {
     public static final EntityProcessorSimpleRules ENTITY_PROCESSOR_SIMPLE_RULES = EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES;
 
     /**
-     * The table <code>entity_processor.entity_processor_sources</code>.
-     */
-    public static final EntityProcessorSources ENTITY_PROCESSOR_SOURCES = EntityProcessorSources.ENTITY_PROCESSOR_SOURCES;
-
-    /**
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public static final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_value_template_rules</code>.
+     */
+    public static final EntityProcessorValueTemplateRules ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES = EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES;
 
     /**
      * The table <code>entity_processor.entity_processor_value_templates</code>.

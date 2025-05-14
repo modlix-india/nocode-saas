@@ -6,8 +6,6 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels.EntityProcessorModelsPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
 
 import java.time.LocalDateTime;
@@ -17,14 +15,10 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
-import org.jooq.InverseForeignKey;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -124,18 +118,17 @@ public class EntityProcessorEntities extends TableImpl<EntityProcessorEntitiesRe
     public final TableField<EntityProcessorEntitiesRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this entity is assigned.");
 
     /**
-     * The column
-     * <code>entity_processor.entity_processor_entities.STATUS</code>. Status
-     * for this entity.
+     * The column <code>entity_processor.entity_processor_entities.STAGE</code>.
+     * Status for this entity.
      */
-    public final TableField<EntityProcessorEntitiesRecord, String> STATUS = createField(DSL.name("STATUS"), SQLDataType.CHAR(32), this, "Status for this entity.");
+    public final TableField<EntityProcessorEntitiesRecord, ULong> STAGE = createField(DSL.name("STAGE"), SQLDataType.BIGINTUNSIGNED, this, "Status for this entity.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_entities.SUB_STATUS</code>. Sub
+     * <code>entity_processor.entity_processor_entities.STATUS</code>. Sub
      * Status for this entity.
      */
-    public final TableField<EntityProcessorEntitiesRecord, String> SUB_STATUS = createField(DSL.name("SUB_STATUS"), SQLDataType.CHAR(32), this, "Sub Status for this entity.");
+    public final TableField<EntityProcessorEntitiesRecord, ULong> STATUS = createField(DSL.name("STATUS"), SQLDataType.BIGINTUNSIGNED, this, "Sub Status for this entity.");
 
     /**
      * The column
@@ -167,16 +160,16 @@ public class EntityProcessorEntities extends TableImpl<EntityProcessorEntitiesRe
     /**
      * The column
      * <code>entity_processor.entity_processor_entities.SOURCE</code>. Name of
-     * source from where we get this entity.
+     * source form where we get this entity.
      */
-    public final TableField<EntityProcessorEntitiesRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(32).nullable(false), this, "Name of source from where we get this entity.");
+    public final TableField<EntityProcessorEntitiesRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(32).nullable(false), this, "Name of source form where we get this entity.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_entities.SUB_SOURCE</code>. Name
-     * of sub source of source from where we get this entity.
+     * of sub source of source form where we get this entity.
      */
-    public final TableField<EntityProcessorEntitiesRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source from where we get this entity.");
+    public final TableField<EntityProcessorEntitiesRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source form where we get this entity.");
 
     /**
      * The column
@@ -188,9 +181,9 @@ public class EntityProcessorEntities extends TableImpl<EntityProcessorEntitiesRe
     /**
      * The column
      * <code>entity_processor.entity_processor_entities.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorEntitiesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag fro this product.");
+    public final TableField<EntityProcessorEntitiesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
 
     /**
      * The column
@@ -259,39 +252,6 @@ public class EntityProcessorEntities extends TableImpl<EntityProcessorEntitiesRe
         this(DSL.name("entity_processor_entities"), null);
     }
 
-    public <O extends Record> EntityProcessorEntities(Table<O> path, ForeignKey<O, EntityProcessorEntitiesRecord> childPath, InverseForeignKey<O, EntityProcessorEntitiesRecord> parentPath) {
-        super(path, childPath, parentPath, ENTITY_PROCESSOR_ENTITIES);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class EntityProcessorEntitiesPath extends EntityProcessorEntities implements Path<EntityProcessorEntitiesRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> EntityProcessorEntitiesPath(Table<O> path, ForeignKey<O, EntityProcessorEntitiesRecord> childPath, InverseForeignKey<O, EntityProcessorEntitiesRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private EntityProcessorEntitiesPath(Name alias, Table<EntityProcessorEntitiesRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public EntityProcessorEntitiesPath as(String alias) {
-            return new EntityProcessorEntitiesPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public EntityProcessorEntitiesPath as(Name alias) {
-            return new EntityProcessorEntitiesPath(alias, this);
-        }
-
-        @Override
-        public EntityProcessorEntitiesPath as(Table<?> alias) {
-            return new EntityProcessorEntitiesPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -310,37 +270,6 @@ public class EntityProcessorEntities extends TableImpl<EntityProcessorEntitiesRe
     @Override
     public List<UniqueKey<EntityProcessorEntitiesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_ENTITIES_UK1_ENTITIES_CODE);
-    }
-
-    @Override
-    public List<ForeignKey<EntityProcessorEntitiesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_ENTITIES_MODEL_ID, Keys.FK2_ENTITIES_PRODUCT_ID);
-    }
-
-    private transient EntityProcessorModelsPath _entityProcessorModels;
-
-    /**
-     * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_models</code> table.
-     */
-    public EntityProcessorModelsPath entityProcessorModels() {
-        if (_entityProcessorModels == null)
-            _entityProcessorModels = new EntityProcessorModelsPath(this, Keys.FK1_ENTITIES_MODEL_ID, null);
-
-        return _entityProcessorModels;
-    }
-
-    private transient EntityProcessorProductsPath _entityProcessorProducts;
-
-    /**
-     * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_products</code> table.
-     */
-    public EntityProcessorProductsPath entityProcessorProducts() {
-        if (_entityProcessorProducts == null)
-            _entityProcessorProducts = new EntityProcessorProductsPath(this, Keys.FK2_ENTITIES_PRODUCT_ID, null);
-
-        return _entityProcessorProducts;
     }
 
     @Override

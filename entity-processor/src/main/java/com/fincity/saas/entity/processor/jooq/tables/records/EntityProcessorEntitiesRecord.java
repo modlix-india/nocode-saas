@@ -191,41 +191,39 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_entities.STATUS</code>. Status
-     * for this entity.
+     * Setter for <code>entity_processor.entity_processor_entities.STAGE</code>.
+     * Status for this entity.
      */
-    public EntityProcessorEntitiesRecord setStatus(String value) {
+    public EntityProcessorEntitiesRecord setStage(ULong value) {
         set(9, value);
         return this;
     }
 
     /**
-     * Getter for
-     * <code>entity_processor.entity_processor_entities.STATUS</code>. Status
-     * for this entity.
+     * Getter for <code>entity_processor.entity_processor_entities.STAGE</code>.
+     * Status for this entity.
      */
-    public String getStatus() {
-        return (String) get(9);
+    public ULong getStage() {
+        return (ULong) get(9);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_entities.SUB_STATUS</code>. Sub
+     * <code>entity_processor.entity_processor_entities.STATUS</code>. Sub
      * Status for this entity.
      */
-    public EntityProcessorEntitiesRecord setSubStatus(String value) {
+    public EntityProcessorEntitiesRecord setStatus(ULong value) {
         set(10, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_entities.SUB_STATUS</code>. Sub
+     * <code>entity_processor.entity_processor_entities.STATUS</code>. Sub
      * Status for this entity.
      */
-    public String getSubStatus() {
-        return (String) get(10);
+    public ULong getStatus() {
+        return (ULong) get(10);
     }
 
     /**
@@ -305,7 +303,7 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Setter for
      * <code>entity_processor.entity_processor_entities.SOURCE</code>. Name of
-     * source from where we get this entity.
+     * source form where we get this entity.
      */
     public EntityProcessorEntitiesRecord setSource(String value) {
         set(15, value);
@@ -315,7 +313,7 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Getter for
      * <code>entity_processor.entity_processor_entities.SOURCE</code>. Name of
-     * source from where we get this entity.
+     * source form where we get this entity.
      */
     public String getSource() {
         return (String) get(15);
@@ -324,7 +322,7 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Setter for
      * <code>entity_processor.entity_processor_entities.SUB_SOURCE</code>. Name
-     * of sub source of source from where we get this entity.
+     * of sub source of source form where we get this entity.
      */
     public EntityProcessorEntitiesRecord setSubSource(String value) {
         set(16, value);
@@ -334,7 +332,7 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Getter for
      * <code>entity_processor.entity_processor_entities.SUB_SOURCE</code>. Name
-     * of sub source of source from where we get this entity.
+     * of sub source of source form where we get this entity.
      */
     public String getSubSource() {
         return (String) get(16);
@@ -362,7 +360,7 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Setter for
      * <code>entity_processor.entity_processor_entities.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public EntityProcessorEntitiesRecord setTempActive(Byte value) {
         set(18, value);
@@ -372,7 +370,7 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Getter for
      * <code>entity_processor.entity_processor_entities.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public Byte getTempActive() {
         return (Byte) get(18);
@@ -496,7 +494,7 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorEntitiesRecord
      */
-    public EntityProcessorEntitiesRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, String status, String subStatus, ULong modelId, Short dialCode, String phoneNumber, String email, String source, String subSource, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorEntitiesRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong stage, ULong status, ULong modelId, Short dialCode, String phoneNumber, String email, String source, String subSource, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES);
 
         setId(id);
@@ -508,8 +506,8 @@ public class EntityProcessorEntitiesRecord extends UpdatableRecordImpl<EntityPro
         setDescription(description);
         setAddedByUserId(addedByUserId);
         setCurrentUserId(currentUserId);
+        setStage(stage);
         setStatus(status);
-        setSubStatus(subStatus);
         setModelId(modelId);
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);

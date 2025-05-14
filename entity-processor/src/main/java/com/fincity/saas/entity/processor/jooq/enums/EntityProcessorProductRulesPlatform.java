@@ -10,20 +10,23 @@ import org.jooq.Schema;
 
 
 /**
- * Rule type for this Product Rule Config.
+ * Platform is where this stage will be displayed in CRM, can be GLOBAL,
+ * PRE_QUALIFICATION, QUALIFICATION or MAIN.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum EntityProcessorProductRulesRuleType implements EnumType {
+public enum EntityProcessorProductRulesPlatform implements EnumType {
 
-    ENTITY_ASSIGNMENT("ENTITY_ASSIGNMENT"),
+    GLOBAL("GLOBAL"),
 
-    STAGE_ENTITY_ASSIGNMENT("STAGE_ENTITY_ASSIGNMENT"),
+    PRE_QUALIFICATION("PRE_QUALIFICATION"),
 
-    PRODUCT_ASSIGNMENT("PRODUCT_ASSIGNMENT");
+    QUALIFICATION("QUALIFICATION"),
+
+    MAIN("MAIN");
 
     private final String literal;
 
-    private EntityProcessorProductRulesRuleType(String literal) {
+    private EntityProcessorProductRulesPlatform(String literal) {
         this.literal = literal;
     }
 
@@ -52,7 +55,7 @@ public enum EntityProcessorProductRulesRuleType implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static EntityProcessorProductRulesRuleType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(EntityProcessorProductRulesRuleType.class, literal);
+    public static EntityProcessorProductRulesPlatform lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(EntityProcessorProductRulesPlatform.class, literal);
     }
 }

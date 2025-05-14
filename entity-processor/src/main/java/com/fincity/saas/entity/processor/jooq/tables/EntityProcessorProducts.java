@@ -6,8 +6,6 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities.EntityProcessorEntitiesPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates.EntityProcessorValueTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 
 import java.time.LocalDateTime;
@@ -17,14 +15,10 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
-import org.jooq.InverseForeignKey;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -128,15 +122,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * <code>entity_processor.entity_processor_products.VALUE_TEMPLATE_ID</code>.
      * Value Template related to this Product.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> VALUE_TEMPLATE_ID = createField(DSL.name("VALUE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Value Template related to this Product.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_products.DEFAULT_SOURCE</code>.
-     * Default source for this product. This will be value for entity source if
-     * source in not inferred.
-     */
-    public final TableField<EntityProcessorProductsRecord, String> DEFAULT_SOURCE = createField(DSL.name("DEFAULT_SOURCE"), SQLDataType.CHAR(32), this, "Default source for this product. This will be value for entity source if source in not inferred.");
+    public final TableField<EntityProcessorProductsRecord, ULong> VALUE_TEMPLATE_ID = createField(DSL.name("VALUE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Value Template related to this Product.");
 
     /**
      * The column
@@ -144,14 +130,22 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * Default stage for this product. This will be value for entity stage if
      * stage in not inferred.
      */
-    public final TableField<EntityProcessorProductsRecord, String> DEFAULT_STAGE = createField(DSL.name("DEFAULT_STAGE"), SQLDataType.CHAR(32), this, "Default stage for this product. This will be value for entity stage if stage in not inferred.");
+    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_STAGE = createField(DSL.name("DEFAULT_STAGE"), SQLDataType.BIGINTUNSIGNED, this, "Default stage for this product. This will be value for entity stage if stage in not inferred.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.DEFAULT_STATUS</code>.
+     * Default status for this product. This will be value for entity status if
+     * status in not inferred.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_STATUS = createField(DSL.name("DEFAULT_STATUS"), SQLDataType.BIGINTUNSIGNED, this, "Default status for this product. This will be value for entity status if status in not inferred.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag fro this product.");
+    public final TableField<EntityProcessorProductsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
 
     /**
      * The column
@@ -220,39 +214,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
         this(DSL.name("entity_processor_products"), null);
     }
 
-    public <O extends Record> EntityProcessorProducts(Table<O> path, ForeignKey<O, EntityProcessorProductsRecord> childPath, InverseForeignKey<O, EntityProcessorProductsRecord> parentPath) {
-        super(path, childPath, parentPath, ENTITY_PROCESSOR_PRODUCTS);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class EntityProcessorProductsPath extends EntityProcessorProducts implements Path<EntityProcessorProductsRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> EntityProcessorProductsPath(Table<O> path, ForeignKey<O, EntityProcessorProductsRecord> childPath, InverseForeignKey<O, EntityProcessorProductsRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private EntityProcessorProductsPath(Name alias, Table<EntityProcessorProductsRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public EntityProcessorProductsPath as(String alias) {
-            return new EntityProcessorProductsPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public EntityProcessorProductsPath as(Name alias) {
-            return new EntityProcessorProductsPath(alias, this);
-        }
-
-        @Override
-        public EntityProcessorProductsPath as(Table<?> alias) {
-            return new EntityProcessorProductsPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -271,37 +232,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
     @Override
     public List<UniqueKey<EntityProcessorProductsRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCTS_UK1_PRODUCTS_CODE);
-    }
-
-    @Override
-    public List<ForeignKey<EntityProcessorProductsRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PRODUCTS_VALUE_TEMPLATE_ID);
-    }
-
-    private transient EntityProcessorValueTemplatesPath _entityProcessorValueTemplates;
-
-    /**
-     * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_value_templates</code> table.
-     */
-    public EntityProcessorValueTemplatesPath entityProcessorValueTemplates() {
-        if (_entityProcessorValueTemplates == null)
-            _entityProcessorValueTemplates = new EntityProcessorValueTemplatesPath(this, Keys.FK1_PRODUCTS_VALUE_TEMPLATE_ID, null);
-
-        return _entityProcessorValueTemplates;
-    }
-
-    private transient EntityProcessorEntitiesPath _entityProcessorEntities;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_entities</code> table
-     */
-    public EntityProcessorEntitiesPath entityProcessorEntities() {
-        if (_entityProcessorEntities == null)
-            _entityProcessorEntities = new EntityProcessorEntitiesPath(this, null, Keys.FK2_ENTITIES_PRODUCT_ID.getInverseKey());
-
-        return _entityProcessorEntities;
     }
 
     @Override

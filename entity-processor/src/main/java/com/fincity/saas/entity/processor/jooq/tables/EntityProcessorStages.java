@@ -10,8 +10,6 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesPlatform;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesStageType;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates.EntityProcessorValueTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 
 import java.time.LocalDateTime;
@@ -21,14 +19,10 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
-import org.jooq.InverseForeignKey;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -178,9 +172,9 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag fro this product.");
+    public final TableField<EntityProcessorStagesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
 
     /**
      * The column
@@ -249,39 +243,6 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
         this(DSL.name("entity_processor_stages"), null);
     }
 
-    public <O extends Record> EntityProcessorStages(Table<O> path, ForeignKey<O, EntityProcessorStagesRecord> childPath, InverseForeignKey<O, EntityProcessorStagesRecord> parentPath) {
-        super(path, childPath, parentPath, ENTITY_PROCESSOR_STAGES);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class EntityProcessorStagesPath extends EntityProcessorStages implements Path<EntityProcessorStagesRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> EntityProcessorStagesPath(Table<O> path, ForeignKey<O, EntityProcessorStagesRecord> childPath, InverseForeignKey<O, EntityProcessorStagesRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private EntityProcessorStagesPath(Name alias, Table<EntityProcessorStagesRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public EntityProcessorStagesPath as(String alias) {
-            return new EntityProcessorStagesPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public EntityProcessorStagesPath as(Name alias) {
-            return new EntityProcessorStagesPath(alias, this);
-        }
-
-        @Override
-        public EntityProcessorStagesPath as(Table<?> alias) {
-            return new EntityProcessorStagesPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -300,52 +261,6 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
     @Override
     public List<UniqueKey<EntityProcessorStagesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_STAGES_UK1_STAGES_CODE, Keys.KEY_ENTITY_PROCESSOR_STAGES_UK2_STAGES_NAME);
-    }
-
-    @Override
-    public List<ForeignKey<EntityProcessorStagesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_STAGES_VALUE_TEMPLATE_ID, Keys.FK2_STAGES_PARENT_LEVEL_0, Keys.FK3_STAGES_PARENT_LEVEL_1);
-    }
-
-    private transient EntityProcessorValueTemplatesPath _entityProcessorValueTemplates;
-
-    /**
-     * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_value_templates</code> table.
-     */
-    public EntityProcessorValueTemplatesPath entityProcessorValueTemplates() {
-        if (_entityProcessorValueTemplates == null)
-            _entityProcessorValueTemplates = new EntityProcessorValueTemplatesPath(this, Keys.FK1_STAGES_VALUE_TEMPLATE_ID, null);
-
-        return _entityProcessorValueTemplates;
-    }
-
-    private transient EntityProcessorStagesPath _fk2StagesParentLevel_0;
-
-    /**
-     * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_stages</code> table, via the
-     * <code>FK2_STAGES_PARENT_LEVEL_0</code> key.
-     */
-    public EntityProcessorStagesPath fk2StagesParentLevel_0() {
-        if (_fk2StagesParentLevel_0 == null)
-            _fk2StagesParentLevel_0 = new EntityProcessorStagesPath(this, Keys.FK2_STAGES_PARENT_LEVEL_0, null);
-
-        return _fk2StagesParentLevel_0;
-    }
-
-    private transient EntityProcessorStagesPath _fk3StagesParentLevel_1;
-
-    /**
-     * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_stages</code> table, via the
-     * <code>FK3_STAGES_PARENT_LEVEL_1</code> key.
-     */
-    public EntityProcessorStagesPath fk3StagesParentLevel_1() {
-        if (_fk3StagesParentLevel_1 == null)
-            _fk3StagesParentLevel_1 = new EntityProcessorStagesPath(this, Keys.FK3_STAGES_PARENT_LEVEL_1, null);
-
-        return _fk3StagesParentLevel_1;
     }
 
     @Override

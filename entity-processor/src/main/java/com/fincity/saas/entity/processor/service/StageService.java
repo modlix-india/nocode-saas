@@ -49,7 +49,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     private Mono<Boolean> updateOrder(Map<Integer, Identity> stageMap) {
         return FlatMapUtil.flatMapMono(super::hasAccess, hasAccess -> Flux.fromIterable(stageMap.entrySet())
-                .flatMap(entry -> super.readIdentity(entry.getValue()).map(stage -> stage.setOrder(entry.getKey())))
+                .flatMap(entry ->
+                        super.readIdentityInternal(entry.getValue()).map(stage -> stage.setOrder(entry.getKey())))
                 .flatMap(super::updateInternal)
                 .then(Mono.just(Boolean.TRUE)));
     }

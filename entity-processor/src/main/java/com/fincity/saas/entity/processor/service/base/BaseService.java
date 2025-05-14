@@ -97,7 +97,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         });
     }
 
-    public Mono<D> readIdentity(ULong id) {
+    public Mono<D> readIdentityInternal(ULong id) {
         return this.dao
                 .readInternal(id)
                 .flatMap(value -> value != null
@@ -118,6 +118,10 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<D> readIdentity(Identity identity) {
+        return FlatMapUtil.flatMapMono(this::hasAccess, hasAccess -> this.readIdentityInternal(identity));
+    }
+
+    public Mono<D> readIdentityInternal(Identity identity) {
 
         if (identity == null || identity.isNull())
             return this.msgService.throwMessage(
@@ -126,7 +130,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
 
         return (identity.isCode()
                         ? this.readByCode(identity.getCode())
-                        : this.readIdentity(ULongUtil.valueOf(identity.getId())))
+                        : this.readIdentityInternal(ULongUtil.valueOf(identity.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG));
@@ -148,7 +152,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                     ProcessorMessageResourceService.IDENTITY_MISSING);
 
         if (identity.isId())
-            return this.readIdentity(ULongUtil.valueOf(identity.getId()))
+            return this.readIdentityInternal(ULongUtil.valueOf(identity.getId()))
                     .map(entity -> identity)
                     .switchIfEmpty(this.msgService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -162,7 +166,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<Integer> deleteIdentity(Identity identity) {
-        return this.readIdentity(identity).flatMap(entity -> this.delete(entity.getId()));
+        return this.readIdentityInternal(identity).flatMap(entity -> this.delete(entity.getId()));
     }
 
     public Mono<D> updateByCode(String code, D entity) {
@@ -222,7 +226,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<BaseResponse> getBaseResponse(ULong id) {
-        return this.readIdentity(id).map(BaseDto::toBaseResponse);
+        return this.readIdentityInternal(id).map(BaseDto::toBaseResponse);
     }
 
     public Mono<BaseResponse> getBaseResponse(String code) {

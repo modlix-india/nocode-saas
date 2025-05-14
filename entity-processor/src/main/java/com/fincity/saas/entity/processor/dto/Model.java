@@ -24,6 +24,8 @@ public class Model extends BaseProcessorDto<Model> {
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
     private String email;
+    private String source;
+    private String subSource;
 
     public static Model of(ModelRequest modelRequest) {
         return new Model()

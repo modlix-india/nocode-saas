@@ -23,8 +23,8 @@ public class Product extends BaseProcessorDto<Product> implements IEntitySeries 
     private static final long serialVersionUID = 8028699089699178352L;
 
     private ULong valueTemplateId;
-    private ULong defaultSource;
-    private ULong defaultStage;
+    private ULong defaultStageId;
+    private ULong defaultStatusId;
 
     public static Product of(ProductRequest productRequest) {
         return new Product().setName(productRequest.getName()).setDescription(productRequest.getDescription());

@@ -2,8 +2,8 @@ package com.fincity.saas.entity.processor.dto.rule.base;
 
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
-import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import java.io.Serial;
 import java.util.Map;
@@ -24,7 +24,7 @@ public abstract class RuleConfig<T extends RuleConfig<T>> extends BaseDto<T> imp
     @Serial
     private static final long serialVersionUID = 1844345864104376762L;
 
-    private RuleType ruleType;
+    private Platform platform;
     private boolean breakAtFirstMatch = false;
     private boolean executeOnlyIfAllPreviousMatch = false;
     private boolean executeOnlyIfAllPreviousNotMatch = false;

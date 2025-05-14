@@ -12,8 +12,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
 import java.util.Arrays;
@@ -80,14 +80,15 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorSimpleRules ENTITY_PROCESSOR_SIMPLE_RULES = EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES;
 
     /**
-     * The table <code>entity_processor.entity_processor_sources</code>.
-     */
-    public final EntityProcessorSources ENTITY_PROCESSOR_SOURCES = EntityProcessorSources.ENTITY_PROCESSOR_SOURCES;
-
-    /**
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_value_template_rules</code>.
+     */
+    public final EntityProcessorValueTemplateRules ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES = EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES;
 
     /**
      * The table <code>entity_processor.entity_processor_value_templates</code>.
@@ -118,8 +119,8 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorRules.ENTITY_PROCESSOR_RULES,
             EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,
             EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES,
-            EntityProcessorSources.ENTITY_PROCESSOR_SOURCES,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
+            EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES,
             EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES
         );
     }

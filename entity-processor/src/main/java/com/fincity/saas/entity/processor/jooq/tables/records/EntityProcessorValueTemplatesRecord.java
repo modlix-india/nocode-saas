@@ -179,7 +179,7 @@ public class EntityProcessorValueTemplatesRecord extends UpdatableRecordImpl<Ent
     /**
      * Setter for
      * <code>entity_processor.entity_processor_value_templates.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public EntityProcessorValueTemplatesRecord setTempActive(Byte value) {
         set(8, value);
@@ -189,7 +189,7 @@ public class EntityProcessorValueTemplatesRecord extends UpdatableRecordImpl<Ent
     /**
      * Getter for
      * <code>entity_processor.entity_processor_value_templates.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public Byte getTempActive() {
         return (Byte) get(8);

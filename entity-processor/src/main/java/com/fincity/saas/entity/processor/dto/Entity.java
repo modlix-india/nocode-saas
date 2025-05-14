@@ -27,8 +27,8 @@ public class Entity extends BaseProcessorDto<Entity> {
     private String phoneNumber;
     private String email;
     private ULong productId;
-    private String stage;
-    private String status;
+    private ULong stage;
+    private ULong status;
     private String source;
     private String subSource;
 

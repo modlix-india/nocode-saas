@@ -324,7 +324,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Setter for
      * <code>entity_processor.entity_processor_stages.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public EntityProcessorStagesRecord setTempActive(Byte value) {
         set(16, value);
@@ -334,7 +334,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_stages.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public Byte getTempActive() {
         return (Byte) get(16);

@@ -60,7 +60,7 @@ public abstract class RuleConfigService<
     }
 
     public Mono<D> read(Identity identity) {
-        return super.readIdentity(identity);
+        return super.readIdentityInternal(identity);
     }
 
     public Mono<D> create(T ruleConfigRequest) {
@@ -106,7 +106,7 @@ public abstract class RuleConfigService<
     }
 
     private Mono<D> updateFromRequest(T ruleConfigRequest) {
-        return super.readIdentity(ruleConfigRequest.getRuleConfigId())
+        return super.readIdentityInternal(ruleConfigRequest.getRuleConfigId())
                 .map(existing -> this.updateRuleConfigFromRequest(existing, ruleConfigRequest));
     }
 
@@ -117,7 +117,6 @@ public abstract class RuleConfigService<
 
     private D updateRuleConfigFromRequest(D ruleConfig, T ruleConfigRequest) {
 
-        ruleConfig.setRuleType(ruleConfigRequest.getRuleType());
         ruleConfig.setBreakAtFirstMatch(ruleConfigRequest.isBreakAtFirstMatch());
         ruleConfig.setExecuteOnlyIfAllPreviousMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousMatch());
         ruleConfig.setExecuteOnlyIfAllPreviousNotMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousNotMatch());

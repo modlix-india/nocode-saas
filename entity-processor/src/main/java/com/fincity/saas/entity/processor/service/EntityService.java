@@ -2,9 +2,7 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.EntityDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -25,17 +23,11 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
 
     private final ProductService productService;
     private final StageService stageService;
-    private final SourceService sourceService;
     private final ModelService modelService;
 
-    public EntityService(
-            ProductService productService,
-            StageService stageService,
-            SourceService sourceService,
-            ModelService modelService) {
+    public EntityService(ProductService productService, StageService stageService, ModelService modelService) {
         this.productService = productService;
         this.stageService = stageService;
-        this.sourceService = sourceService;
         this.modelService = modelService;
     }
 
@@ -92,43 +84,18 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
 
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> this.productService.readIdentity(entity.getProductId()),
+                ca -> this.productService.readIdentityInternal(entity.getProductId()),
                 (ca, product) -> Mono.just(entity.setProductId(product.getId())),
-                (ca, product, pEntity) -> this.updateSources(ca, pEntity, product.getDefaultSource()),
-                (ca, product, pEntity, sEntity) -> this.setDefaultStage(sEntity, product.getDefaultStage()));
+                (ca, product, pEntity) ->
+                        this.setDefaultStage(pEntity, product.getDefaultStageId(), product.getDefaultStatusId()));
     }
 
-    private Mono<Entity> updateSources(ContextAuthentication ca, Entity entity, ULong defaultSourceId) {
+    private Mono<Entity> setDefaultStage(Entity entity, ULong defaultStageId, ULong defaultStatusId) {
 
-        if (StringUtil.safeIsBlank(entity.getSource())) return this.setDefaultSource(entity, defaultSourceId);
+        entity.setStage(defaultStageId);
+        entity.setStatus(defaultStatusId);
 
-        entity.setSource(StringUtil.toTitleCase(entity.getSource()));
-
-        if (entity.getSubSource() != null) entity.setSubSource(StringUtil.toTitleCase(entity.getSubSource()));
-
-        return sourceService
-                .isValidParentChild(
-                        ca.getUrlAppCode(),
-                        ca.getUrlClientCodeOrElse(!ca.isAuthenticated()),
-                        null,
-                        entity.getProductId(),
-                        entity.getSource(),
-                        entity.getSubSource())
-                .flatMap(isValid -> Boolean.FALSE.equals(isValid)
-                        ? this.setDefaultSource(entity, defaultSourceId)
-                        : Mono.just(entity));
-    }
-
-    private Mono<Entity> setDefaultStage(Entity entity, ULong defaultStageId) {
-        return this.stageService
-                .readIdentity(defaultStageId)
-                .flatMap(defaultStage -> Mono.just(entity.setStage(defaultStage.getName())));
-    }
-
-    private Mono<Entity> setDefaultSource(Entity entity, ULong defaultSourceId) {
-        return sourceService
-                .readIdentity(defaultSourceId)
-                .flatMap(defaultSource -> Mono.just(entity.setSource(defaultSource.getName())));
+        return Mono.just(entity);
     }
 
     private Mono<Entity> setModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {

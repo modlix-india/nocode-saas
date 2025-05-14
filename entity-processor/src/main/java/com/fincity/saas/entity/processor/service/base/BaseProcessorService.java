@@ -46,7 +46,7 @@ public abstract class BaseProcessorService<
         return super.hasPublicAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess));
     }
 
-    private Mono<D> createInternal(D entity, Tuple2<Tuple3<String, String, ULong>, Boolean> hasAccess) {
+    protected Mono<D> createInternal(D entity, Tuple2<Tuple3<String, String, ULong>, Boolean> hasAccess) {
         return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, hasAccess.getT1()), cEntity -> {
             cEntity.setAppCode(hasAccess.getT1().getT1());
             cEntity.setClientCode(hasAccess.getT1().getT2());
@@ -73,7 +73,10 @@ public abstract class BaseProcessorService<
 
     @Override
     public Mono<D> update(D entity) {
-        return super.hasAccess().flatMap(hasAccess -> this.updateInternal(entity));
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> this.checkEntity(entity, hasAccess.getT1()),
+                (hasAccess, cEntity) -> this.updateInternal(cEntity));
     }
 
     public Mono<D> updateInternal(D entity) {

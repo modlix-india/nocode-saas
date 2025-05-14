@@ -5,11 +5,11 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
-import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRulesRuleType;
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRulesPlatform;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRulesUserDistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
 
@@ -121,10 +121,11 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_rules.RULE_TYPE</code>.
-     * Rule type for this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_rules.PLATFORM</code>.
+     * Platform is where this stage will be displayed in CRM, can be GLOBAL,
+     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
      */
-    public final TableField<EntityProcessorProductRulesRecord, RuleType> RULE_TYPE = createField(DSL.name("RULE_TYPE"), SQLDataType.VARCHAR(23).nullable(false).asEnumDataType(EntityProcessorProductRulesRuleType.class), this, "Rule type for this Product Rule Config.", new EnumConverter<EntityProcessorProductRulesRuleType, RuleType>(EntityProcessorProductRulesRuleType.class, RuleType.class));
+    public final TableField<EntityProcessorProductRulesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("GLOBAL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductRulesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorProductRulesPlatform, Platform>(EntityProcessorProductRulesPlatform.class, Platform.class));
 
     /**
      * The column

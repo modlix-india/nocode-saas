@@ -211,50 +211,50 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.DEFAULT_SOURCE</code>.
-     * Default source for this product. This will be value for entity source if
-     * source in not inferred.
+     * <code>entity_processor.entity_processor_products.DEFAULT_STAGE</code>.
+     * Default stage for this product. This will be value for entity stage if
+     * stage in not inferred.
      */
-    public EntityProcessorProductsRecord setDefaultSource(String value) {
+    public EntityProcessorProductsRecord setDefaultStage(ULong value) {
         set(10, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.DEFAULT_SOURCE</code>.
-     * Default source for this product. This will be value for entity source if
-     * source in not inferred.
-     */
-    public String getDefaultSource() {
-        return (String) get(10);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_products.DEFAULT_STAGE</code>.
      * Default stage for this product. This will be value for entity stage if
      * stage in not inferred.
      */
-    public EntityProcessorProductsRecord setDefaultStage(String value) {
+    public ULong getDefaultStage() {
+        return (ULong) get(10);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.DEFAULT_STATUS</code>.
+     * Default status for this product. This will be value for entity status if
+     * status in not inferred.
+     */
+    public EntityProcessorProductsRecord setDefaultStatus(ULong value) {
         set(11, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.DEFAULT_STAGE</code>.
-     * Default stage for this product. This will be value for entity stage if
-     * stage in not inferred.
+     * <code>entity_processor.entity_processor_products.DEFAULT_STATUS</code>.
+     * Default status for this product. This will be value for entity status if
+     * status in not inferred.
      */
-    public String getDefaultStage() {
-        return (String) get(11);
+    public ULong getDefaultStatus() {
+        return (ULong) get(11);
     }
 
     /**
      * Setter for
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public EntityProcessorProductsRecord setTempActive(Byte value) {
         set(12, value);
@@ -264,7 +264,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Getter for
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
-     * Temporary active flag fro this product.
+     * Temporary active flag for this product.
      */
     public Byte getTempActive() {
         return (Byte) get(12);
@@ -388,7 +388,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong valueTemplateId, String defaultSource, String defaultStage, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong valueTemplateId, ULong defaultStage, ULong defaultStatus, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
@@ -401,8 +401,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
         setAddedByUserId(addedByUserId);
         setCurrentUserId(currentUserId);
         setValueTemplateId(valueTemplateId);
-        setDefaultSource(defaultSource);
         setDefaultStage(defaultStage);
+        setDefaultStatus(defaultStatus);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

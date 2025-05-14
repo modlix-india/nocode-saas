@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
@@ -45,6 +46,18 @@ public class Identity implements Serializable {
 
     public boolean isCode() {
         return code != null && id == null;
+    }
+
+    public Identity setCode(String code) {
+        if (code.length() == BaseDto.CODE_LENGTH) this.code = code;
+
+        try {
+            this.id = new BigInteger(code);
+        } catch (NumberFormatException e) {
+            // nothing
+        }
+
+        return this;
     }
 
     public boolean isId() {

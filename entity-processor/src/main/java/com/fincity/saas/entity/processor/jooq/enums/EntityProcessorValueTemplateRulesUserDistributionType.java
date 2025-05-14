@@ -10,23 +10,28 @@ import org.jooq.Schema;
 
 
 /**
- * Platform is where this source will be displayed in CRM, can be GLOBAL,
- * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+ * User distribution strategy for this rule.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum EntityProcessorSourcesPlatform implements EnumType {
+public enum EntityProcessorValueTemplateRulesUserDistributionType implements EnumType {
 
-    GLOBAL("GLOBAL"),
+    ROUND_ROBIN("ROUND_ROBIN"),
 
-    PRE_QUALIFICATION("PRE_QUALIFICATION"),
+    PERCENTAGE("PERCENTAGE"),
 
-    QUALIFICATION("QUALIFICATION"),
+    WEIGHTED("WEIGHTED"),
 
-    MAIN("MAIN");
+    LOAD_BALANCED("LOAD_BALANCED"),
+
+    PRIORITY_QUEUE("PRIORITY_QUEUE"),
+
+    RANDOM("RANDOM"),
+
+    HYBRID("HYBRID");
 
     private final String literal;
 
-    private EntityProcessorSourcesPlatform(String literal) {
+    private EntityProcessorValueTemplateRulesUserDistributionType(String literal) {
         this.literal = literal;
     }
 
@@ -55,7 +60,7 @@ public enum EntityProcessorSourcesPlatform implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static EntityProcessorSourcesPlatform lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(EntityProcessorSourcesPlatform.class, literal);
+    public static EntityProcessorValueTemplateRulesUserDistributionType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(EntityProcessorValueTemplateRulesUserDistributionType.class, literal);
     }
 }

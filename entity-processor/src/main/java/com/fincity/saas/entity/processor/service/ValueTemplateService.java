@@ -1,6 +1,15 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.EnumMap;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.ValueTemplateDAO;
 import com.fincity.saas.entity.processor.dto.ValueTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -10,10 +19,8 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValu
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ValueTemplateRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
+
 import jakarta.annotation.PostConstruct;
-import java.util.EnumMap;
-import java.util.Map;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -22,12 +29,12 @@ public class ValueTemplateService
         implements IEntitySeries {
 
     private static final String VALUE_TEMPLATE = "valueTemplate";
-
-    private final ProductService productService;
-
     private final Map<ValueTemplateType, IValueTemplateService> services = new EnumMap<>(ValueTemplateType.class);
+    private ProductService productService;
 
-    public ValueTemplateService(ProductService productService) {
+    @Lazy
+    @Autowired
+    private void setProductService(ProductService productService) {
         this.productService = productService;
     }
 
@@ -49,6 +56,17 @@ public class ValueTemplateService
 
     public Mono<ValueTemplate> create(ValueTemplateRequest valueTemplateRequest) {
 
+        if (valueTemplateRequest.getValueTemplateType() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING);
+
+        if (valueTemplateRequest.getValueTemplateType().isAppLevel()
+                && valueTemplateRequest.getValueEntityId().isNull())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING);
+
         ValueTemplate valueTemplate = ValueTemplate.of(valueTemplateRequest);
 
         return FlatMapUtil.flatMapMono(
@@ -62,10 +80,24 @@ public class ValueTemplateService
 
                     return super.create(valueTemplate);
                 },
-                (hasAccess, created) -> updateDependentServices(created, valueTemplateRequest.getValueEntityId()));
+                (hasAccess, created) -> this.updateDependentServices(created, valueTemplateRequest.getValueEntityId()));
+    }
+
+    public Mono<ValueTemplate> readWithAccess(Identity identity) {
+        return super.hasAccess().flatMap(hasAccess -> {
+            if (Boolean.FALSE.equals(hasAccess.getT2()))
+                return this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        ProcessorMessageResourceService.PRODUCT_FORBIDDEN_ACCESS);
+
+            return this.readIdentityInternal(identity);
+        });
     }
 
     private Mono<ValueTemplate> updateDependentServices(ValueTemplate valueTemplate, Identity identity) {
+
+        if (valueTemplate.getValueTemplateType().isAppLevel()) return Mono.just(valueTemplate);
+
         IValueTemplateService service = services.get(valueTemplate.getValueTemplateType());
 
         if (service == null) return Mono.just(valueTemplate);

@@ -22,6 +22,8 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
     @Serial
     private static final long serialVersionUID = 1844345864104376760L;
 
+    public static final int CODE_LENGTH = 22;
+
     private String code = UniqueUtil.shortUUID();
 
     private String name = this.code;

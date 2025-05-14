@@ -4,6 +4,7 @@ import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataControl
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -72,5 +73,16 @@ public abstract class BaseController<
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     public Mono<Integer> delete(@PathVariable(PATH_VARIABLE_CODE) final String code) {
         return this.service.deleteByCode(code);
+    }
+
+    @GetMapping(REQ_PATH_ID)
+    public Mono<ResponseEntity<D>> getFromRequest(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+        return this.service.readIdentity(identity).map(ResponseEntity::ok);
+    }
+
+    @DeleteMapping(REQ_PATH_ID)
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    public Mono<Integer> deleteFromRequest(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+        return this.service.deleteIdentity(identity);
     }
 }

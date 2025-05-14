@@ -4,8 +4,8 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
-import com.fincity.saas.entity.processor.enums.rule.RuleType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 
 import java.time.LocalDateTime;
@@ -179,21 +179,23 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_rules.RULE_TYPE</code>.
-     * Rule type for this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_rules.PLATFORM</code>.
+     * Platform is where this stage will be displayed in CRM, can be GLOBAL,
+     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
      */
-    public EntityProcessorProductRulesRecord setRuleType(RuleType value) {
+    public EntityProcessorProductRulesRecord setPlatform(Platform value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_rules.RULE_TYPE</code>.
-     * Rule type for this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_rules.PLATFORM</code>.
+     * Platform is where this stage will be displayed in CRM, can be GLOBAL,
+     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
      */
-    public RuleType getRuleType() {
-        return (RuleType) get(8);
+    public Platform getPlatform() {
+        return (Platform) get(8);
     }
 
     /**
@@ -489,7 +491,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorProductRulesRecord
      */
-    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, RuleType ruleType, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, DistributionType userDistributionType, JSON userDistributions, ULong lastUsedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Platform platform, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, DistributionType userDistributionType, JSON userDistributions, ULong lastUsedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES);
 
         setId(id);
@@ -500,7 +502,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
         setDescription(description);
         setAddedByUserId(addedByUserId);
         setProductId(productId);
-        setRuleType(ruleType);
+        setPlatform(platform);
         setBreakAtFirstMatch(breakAtFirstMatch);
         setExecuteOnlyIfAllPreviousMatch(executeOnlyIfAllPreviousMatch);
         setExecuteOnlyIfAllPreviousNotMatch(executeOnlyIfAllPreviousNotMatch);

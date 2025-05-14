@@ -48,18 +48,19 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
     public Mono<Entity> getOrCreateEntityModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {
 
         if (entity.getModelId() != null)
-            return FlatMapUtil.flatMapMono(() -> this.readIdentity(ULongUtil.valueOf(entity.getModelId())), model -> {
-                entity.setModelId(model.getId());
+            return FlatMapUtil.flatMapMono(
+                    () -> this.readIdentityInternal(ULongUtil.valueOf(entity.getModelId())), model -> {
+                        entity.setModelId(model.getId());
 
-                if (model.getDialCode() != null && model.getPhoneNumber() != null) {
-                    entity.setDialCode(model.getDialCode());
-                    entity.setPhoneNumber(model.getPhoneNumber());
-                }
+                        if (model.getDialCode() != null && model.getPhoneNumber() != null) {
+                            entity.setDialCode(model.getDialCode());
+                            entity.setPhoneNumber(model.getPhoneNumber());
+                        }
 
-                if (model.getEmail() != null) entity.setEmail(model.getEmail());
+                        if (model.getEmail() != null) entity.setEmail(model.getEmail());
 
-                return Mono.just(entity);
-            });
+                        return Mono.just(entity);
+                    });
 
         return getOrCreateEntityPhoneModel(accessInfo.getT1(), accessInfo.getT2(), entity);
     }

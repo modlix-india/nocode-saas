@@ -93,7 +93,7 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
     }
 
     public Mono<Integer> deleteRuleInternal(Identity rule) {
-        return super.readIdentity(rule).flatMap(existing -> super.delete(existing.getId()));
+        return super.readIdentityInternal(rule).flatMap(existing -> super.delete(existing.getId()));
     }
 
     private Mono<Integer> deleteRulesInternal(List<Identity> rules) {
