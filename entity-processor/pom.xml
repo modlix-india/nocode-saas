@@ -237,12 +237,6 @@
                                             <genericConverter>false</genericConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.rule.RuleType</userType>
-                                            <includeExpression>.*\.RULE_TYPE</includeExpression>
-                                            <includeTypes>ENUM</includeTypes>
-                                            <enumConverter>true</enumConverter>
-                                        </forcedType>
-                                        <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.Platform</userType>
                                             <includeExpression>.*\.PLATFORM</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
