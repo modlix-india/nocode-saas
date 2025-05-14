@@ -11,7 +11,9 @@ import com.google.gson.JsonPrimitive;
 
 public class ConditionEvaluator {
 
-    public boolean evaluate(AbstractCondition condition, JsonElement json) {
+    private ConditionEvaluator() {}
+
+    public static boolean evaluate(AbstractCondition condition, JsonElement json) {
         if (condition == null || condition.isEmpty()) return true;
         if (json == null || !json.isJsonObject()) return false;
 
@@ -22,7 +24,7 @@ public class ConditionEvaluator {
         };
     }
 
-    private boolean evaluateComplex(ComplexCondition cc, JsonElement json) {
+    private static boolean evaluateComplex(ComplexCondition cc, JsonElement json) {
         List<AbstractCondition> conds = cc.getConditions();
         if (conds == null || conds.isEmpty()) return true;
 
@@ -35,7 +37,7 @@ public class ConditionEvaluator {
         return isAnd;
     }
 
-    private boolean evaluateFilter(FilterCondition fc, JsonElement json) {
+    private static boolean evaluateFilter(FilterCondition fc, JsonElement json) {
         JsonObject obj = json.getAsJsonObject();
         JsonElement target = getNestedField(obj, fc.getField());
         Object filterVal = fc.getValue();
@@ -67,7 +69,7 @@ public class ConditionEvaluator {
         };
     }
 
-    private boolean valueEquals(JsonElement jsonVal, Object filterVal) {
+    private static boolean valueEquals(JsonElement jsonVal, Object filterVal) {
         if (jsonVal == null || jsonVal.isJsonNull()) return filterVal == null;
         if (filterVal == null) return false;
 
@@ -81,7 +83,7 @@ public class ConditionEvaluator {
         return jsonVal.toString().equals(filterVal.toString());
     }
 
-    private int compare(JsonElement jsonVal, Object filterVal) {
+    private static int compare(JsonElement jsonVal, Object filterVal) {
         if (jsonVal == null || jsonVal.isJsonNull() || filterVal == null) return 0;
         if (!jsonVal.isJsonPrimitive()) return 0;
 
@@ -90,7 +92,7 @@ public class ConditionEvaluator {
         return compareNumber(jsonVal, filterVal);
     }
 
-    private int compareDate(JsonElement jsonVal, Object filterVal) {
+    private static int compareDate(JsonElement jsonVal, Object filterVal) {
         try {
             LocalDateTime jsonDate = LocalDateTime.parse(jsonVal.getAsString());
             LocalDateTime compareDate = LocalDateTime.parse(filterVal.toString());
@@ -100,7 +102,7 @@ public class ConditionEvaluator {
         }
     }
 
-    private int compareNumber(JsonElement jsonVal, Object filterVal) {
+    private static int compareNumber(JsonElement jsonVal, Object filterVal) {
         try {
             double jsonNumber = jsonVal.getAsDouble();
             double compareTo = Double.parseDouble(filterVal.toString());
@@ -110,7 +112,7 @@ public class ConditionEvaluator {
         }
     }
 
-    private JsonElement getNestedField(JsonObject obj, String field) {
+    private static JsonElement getNestedField(JsonObject obj, String field) {
         if (obj == null || field == null) return JsonNull.INSTANCE;
 
         String[] parts = field.split("\\.");

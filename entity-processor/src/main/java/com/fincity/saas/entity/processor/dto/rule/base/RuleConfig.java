@@ -1,18 +1,22 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
+import java.io.Serial;
+import java.util.List;
+import java.util.Map;
+
+import org.jooq.types.ULong;
+
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
-import java.io.Serial;
-import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -38,4 +42,32 @@ public abstract class RuleConfig<T extends RuleConfig<T>> extends BaseDto<T> imp
     public abstract ULong getEntityId();
 
     public abstract T setEntityId(ULong entityId);
+
+    public Map<Integer, ULong> getRules() {
+        return this.rules;
+    }
+
+    public boolean isBreakAtFirstMatch() {
+        return this.breakAtFirstMatch;
+    }
+
+    public boolean isExecuteOnlyIfAllPreviousMatch() {
+        return this.executeOnlyIfAllPreviousMatch;
+    }
+
+    public boolean isExecuteOnlyIfAllPreviousNotMatch() {
+        return this.executeOnlyIfAllPreviousNotMatch;
+    }
+
+    public boolean isContinueOnNoMatch() {
+        return this.continueOnNoMatch;
+    }
+
+    public DistributionType getUserDistributionType() {
+        return this.userDistributionType;
+    }
+
+    public Map<ULong, UserDistribution> getUserDistributions() {
+        return this.userDistributions;
+    }
 }

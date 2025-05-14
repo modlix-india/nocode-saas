@@ -4,7 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
+
+import org.jooq.types.ULong;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -15,6 +19,7 @@ public class UserDistribution implements Serializable {
     @Serial
     private static final long serialVersionUID = 7428944421074508272L;
 
+    private List<ULong> profileIds;
     private Integer percentage;
     private Integer maxLoad;
     private Integer weight;

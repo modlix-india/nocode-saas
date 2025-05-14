@@ -11,6 +11,7 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.Version;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -29,15 +30,33 @@ public class Rule extends BaseDto<Rule> implements IEntitySeries {
     private boolean isComplex = false;
 
     public static Rule of(RuleRequest ruleRequest) {
-        return new Rule()
-                .setName(ruleRequest.getName())
-                .setDescription(ruleRequest.getDescription())
-                .setComplex(ruleRequest.isComplex())
-                .setSimple(ruleRequest.isSimple());
+        Rule rule = new Rule();
+        if (ruleRequest.getName() != null) {
+            rule.setName(ruleRequest.getName());
+        }
+        if (ruleRequest.getDescription() != null) {
+            rule.setDescription(ruleRequest.getDescription());
+        }
+        rule.setComplex(ruleRequest.isComplex())
+            .setSimple(ruleRequest.isSimple());
+        return rule;
     }
 
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.RULE;
+    }
+
+    public boolean isSimple() {
+        return this.isSimple;
+    }
+
+    public boolean isComplex() {
+        return this.isComplex;
+    }
+
+    @Override
+    public ULong getId() {
+        return super.getId();
     }
 }
