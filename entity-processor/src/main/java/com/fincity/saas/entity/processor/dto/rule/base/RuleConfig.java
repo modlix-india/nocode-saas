@@ -26,9 +26,6 @@ public abstract class RuleConfig<T extends RuleConfig<T>> extends BaseDto<T> imp
 
     private Platform platform;
     private boolean breakAtFirstMatch = false;
-    private boolean executeOnlyIfAllPreviousMatch = false;
-    private boolean executeOnlyIfAllPreviousNotMatch = false;
-    private boolean continueOnNoMatch = true;
 
     private Map<Integer, ULong> rules;
     private DistributionType userDistributionType;

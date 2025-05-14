@@ -1,22 +1,19 @@
 package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ConditionEvaluator;
-import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Service
 public class RuleExecutionService {
@@ -24,6 +21,7 @@ public class RuleExecutionService {
     private final RuleService ruleService;
     private final SimpleRuleService simpleRuleService;
     private final ComplexRuleService complexRuleService;
+    private final Random random = new Random();
 
     public RuleExecutionService(
             RuleService ruleService, SimpleRuleService simpleRuleService, ComplexRuleService complexRuleService) {
@@ -32,90 +30,172 @@ public class RuleExecutionService {
         this.complexRuleService = complexRuleService;
     }
 
-    public <T extends RuleConfig<T>> Mono<Map<ULong, List<ULong>>> executeRulesAndGetUsers(
-            T ruleConfig, JsonElement data) {
-        if (ruleConfig == null
-                || ruleConfig.getRules() == null
-                || ruleConfig.getRules().isEmpty()) {
-            return Mono.just(Map.of());
-        }
-
-        return this.executeRulesInternal(ruleConfig, data)
-                .flatMap(matchedRules -> this.getDistributedUsersForRules(ruleConfig, matchedRules));
-    }
-
-    private <T extends RuleConfig<T>> Mono<Map<ULong, List<ULong>>> getDistributedUsersForRules(
-            T ruleConfig, List<ULong> matchedRules) {
-        return Flux.fromIterable(matchedRules)
-                .flatMap(ruleId -> this.getUsersForRule(ruleConfig, ruleId).map(users -> Tuples.of(ruleId, users)))
-                .collectMap(Tuple2::getT1, Tuple2::getT2, HashMap::new);
-    }
-
-    private <T extends RuleConfig<T>> Mono<List<ULong>> getUsersForRule(T ruleConfig, ULong ruleId) {
-        Map<ULong, UserDistribution> distributions = ruleConfig.getUserDistributions();
-        if (distributions == null || !distributions.containsKey(ruleId)) return Mono.just(List.of());
-
-        UserDistribution distribution = distributions.get(ruleId);
-        if (!distribution.isValidForType(ruleConfig.getUserDistributionType())) return Mono.just(List.of());
-
-        // Here we would implement the logic to get users from profiles based on distribution
-        // For now returning empty list as placeholder
+    private Mono<List<ULong>> getUsersFromProfiles(List<ULong> profileIds) {
+        // TODO: Implement actual logic to fetch users from profiles
+        // For now, return an empty list
         return Mono.just(List.of());
     }
 
-    private <T extends RuleConfig<T>> Mono<List<ULong>> executeRulesInternal(T ruleConfig, JsonElement data) {
-        List<ULong> matchedRules = new ArrayList<>();
-        Map<Integer, ULong> orderedRules = ruleConfig.getRules();
+    public <T extends RuleConfig<T>> Mono<List<ULong>> executeRules(T ruleConfig, JsonElement data) {
+        if (ruleConfig == null
+                || ruleConfig.getRules() == null
+                || ruleConfig.getRules().isEmpty()) {
+            return Mono.just(List.of());
+        }
 
-        return Flux.fromIterable(orderedRules.entrySet())
+        return Flux.fromIterable(ruleConfig.getRules().entrySet())
                 .sort(Map.Entry.comparingByKey())
                 .flatMap(entry -> {
                     ULong ruleId = entry.getValue();
-                    return this.evaluateRule(ruleId, data, ruleConfig, matchedRules);
+                    return this.evaluateRule(ruleId, data)
+                            .filter(matches -> matches)
+                            .map(matches -> ruleId);
                 })
+                .take(1) // Break at first match
                 .collectList()
-                .map(results -> matchedRules);
+                .flatMap(matchedRules -> {
+                    if (matchedRules.isEmpty()) {
+                        return Mono.just(List.<ULong>of());
+                    }
+
+                    ULong matchedRuleId = matchedRules.getFirst();
+                    UserDistribution distribution =
+                            ruleConfig.getUserDistributions().get(matchedRuleId);
+
+                    if (distribution == null
+                            || distribution.getProfileIds() == null
+                            || distribution.getProfileIds().isEmpty()) {
+                        return Mono.just(List.of());
+                    }
+
+                    return getUsersFromProfiles(distribution.getProfileIds())
+                            .flatMap(userIds -> distributeUsers(ruleConfig, distribution, matchedRuleId, userIds));
+                });
     }
 
-    private <T extends RuleConfig<T>> Mono<Boolean> evaluateRule(
-            ULong ruleId, JsonElement data, T ruleConfig, List<ULong> matchedRules) {
+    private <T extends RuleConfig<T>> Mono<List<ULong>> distributeUsers(
+            T ruleConfig, UserDistribution distribution, ULong ruleId, List<ULong> userIds) {
 
-        return FlatMapUtil.flatMapMono(() -> ruleService.read(ruleId), this::getConditionForRule, (rule, condition) -> {
-            if (condition == null) return Mono.just(false);
+        if (userIds == null || userIds.isEmpty()) {
+            return Mono.just(List.of());
+        }
 
-            boolean shouldExecute = this.checkPreviousRulesCondition(ruleConfig, matchedRules);
-            if (!shouldExecute) return Mono.just(false);
+        DistributionType type = ruleConfig.getUserDistributionType();
 
-            boolean matches = ConditionEvaluator.evaluate(condition, data);
-            if (matches) {
-                matchedRules.add(ruleId);
-                if (ruleConfig.isBreakAtFirstMatch()) {
-                    return Mono.just(true);
-                }
-            } else if (!ruleConfig.isContinueOnNoMatch()) {
-                return Mono.just(true);
-            }
+        if (type == null) {
+            return Mono.just(userIds);
+        }
 
-            return Mono.just(false);
-        });
+        return switch (type) {
+            case ROUND_ROBIN -> handleRoundRobin(ruleConfig, userIds, ruleId);
+            case RANDOM -> Mono.just(List.of(userIds.get(random.nextInt(userIds.size()))));
+            case PERCENTAGE -> handlePercentage(distribution, userIds);
+            case WEIGHTED -> handleWeighted(distribution, userIds);
+            case LOAD_BALANCED -> handleLoadBalanced(distribution, userIds);
+            case PRIORITY_QUEUE -> handlePriorityQueue(distribution, userIds);
+            case HYBRID -> handleHybrid(distribution, userIds);
+            default -> Mono.just(userIds);
+        };
     }
 
-    private Mono<AbstractCondition> getConditionForRule(Rule rule) {
-        if (rule == null) return Mono.empty();
+    private <T extends RuleConfig<T>> Mono<List<ULong>> handleRoundRobin(
+            T ruleConfig, List<ULong> userIds, ULong ruleId) {
 
-        if (rule.isSimple()) return simpleRuleService.getCondition(rule.getId());
+        ULong lastUsedId = ruleConfig.getLastUsedUserId();
+        int currentIndex = 0;
 
-        if (rule.isComplex()) return complexRuleService.getCondition(rule.getId());
+        if (lastUsedId != null) {
+            int lastIndex = userIds.indexOf(lastUsedId);
+            currentIndex = (lastIndex + 1) % userIds.size();
+        }
 
-        return Mono.empty();
+        ULong nextUserId = userIds.get(currentIndex);
+        ruleConfig.setLastUsedUserId(nextUserId);
+
+        return Mono.just(List.of(nextUserId));
     }
 
-    private <T extends RuleConfig<T>> boolean checkPreviousRulesCondition(T ruleConfig, List<ULong> matchedRules) {
-        if (ruleConfig.isExecuteOnlyIfAllPreviousMatch() && !matchedRules.isEmpty())
-            return matchedRules.size() == ruleConfig.getRules().size() - 1;
+    private Mono<List<ULong>> handlePercentage(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getPercentage() == null || distribution.getPercentage() <= 0) {
+            return Mono.just(List.of());
+        }
 
-        if (ruleConfig.isExecuteOnlyIfAllPreviousNotMatch()) return matchedRules.isEmpty();
+        int count = (int) Math.ceil((distribution.getPercentage() / 100.0) * userIds.size());
+        return Mono.just(userIds.subList(0, Math.min(count, userIds.size())));
+    }
 
-        return true;
+    private Mono<List<ULong>> handleWeighted(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getWeight() == null || distribution.getWeight() <= 0) {
+            return Mono.just(List.of());
+        }
+
+        int count = Math.min(distribution.getWeight(), userIds.size());
+        return Mono.just(userIds.subList(0, count));
+    }
+
+    private Mono<List<ULong>> handleLoadBalanced(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getMaxLoad() == null || distribution.getMaxLoad() <= 0) {
+            return Mono.just(List.of());
+        }
+
+        Integer currentCount = distribution.getCurrentCount();
+        if (currentCount == null) currentCount = 0;
+
+        if (currentCount >= distribution.getMaxLoad()) {
+            return Mono.just(List.of());
+        }
+
+        distribution.setCurrentCount(currentCount + 1);
+        return Mono.just(List.of(userIds.get(currentCount % userIds.size())));
+    }
+
+    private Mono<List<ULong>> handlePriorityQueue(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getPriority() == null || distribution.getPriority() < 0) {
+            return Mono.just(List.of());
+        }
+
+        int count = Math.min(distribution.getPriority() + 1, userIds.size());
+        return Mono.just(userIds.subList(0, count));
+    }
+
+    private Mono<List<ULong>> handleHybrid(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getHybridWeights() == null
+                || distribution.getHybridWeights().isEmpty()) {
+            return Mono.just(userIds);
+        }
+
+        List<ULong> selectedUsers = new ArrayList<>();
+        Map<DistributionType, Integer> weights = distribution.getHybridWeights();
+
+        for (Map.Entry<DistributionType, Integer> entry : weights.entrySet()) {
+            int weight = entry.getValue();
+            if (weight <= 0) continue;
+
+            int count = Math.min(weight, userIds.size());
+            selectedUsers.addAll(userIds.subList(0, count));
+        }
+
+        return Mono.just(selectedUsers);
+    }
+
+    private Mono<Boolean> evaluateRule(ULong ruleId, JsonElement data) {
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> ruleService.read(ruleId),
+                rule -> {
+                    if (rule == null) return Mono.empty();
+
+                    if (rule.isSimple()) return simpleRuleService.getCondition(rule.getId());
+
+                    if (rule.isComplex()) return complexRuleService.getCondition(rule.getId());
+
+                    return Mono.empty();
+                },
+                (rule, condition) -> {
+                    if (condition == null) {
+                        return Mono.just(false);
+                    }
+
+                    return Mono.just(ConditionEvaluator.evaluate(condition, data));
+                });
     }
 }

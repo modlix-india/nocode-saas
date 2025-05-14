@@ -10,7 +10,6 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
 @Data
@@ -44,18 +43,5 @@ public class Rule extends BaseDto<Rule> implements IEntitySeries {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.RULE;
-    }
-
-    public boolean isSimple() {
-        return this.isSimple;
-    }
-
-    public boolean isComplex() {
-        return this.isComplex;
-    }
-
-    @Override
-    public ULong getId() {
-        return super.getId();
     }
 }
