@@ -6,11 +6,9 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
-
-import org.jooq.types.ULong;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)

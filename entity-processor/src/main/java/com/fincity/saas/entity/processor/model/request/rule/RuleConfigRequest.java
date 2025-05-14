@@ -1,13 +1,11 @@
 package com.fincity.saas.entity.processor.model.request.rule;
 
-import java.io.Serial;
-import java.io.Serializable;
-import java.util.Map;
-
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Identity;
-
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;

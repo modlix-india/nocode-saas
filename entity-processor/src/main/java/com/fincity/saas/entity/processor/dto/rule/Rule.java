@@ -10,8 +10,8 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.springframework.data.annotation.Version;
 import org.jooq.types.ULong;
+import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
@@ -37,8 +37,7 @@ public class Rule extends BaseDto<Rule> implements IEntitySeries {
         if (ruleRequest.getDescription() != null) {
             rule.setDescription(ruleRequest.getDescription());
         }
-        rule.setComplex(ruleRequest.isComplex())
-            .setSimple(ruleRequest.isSimple());
+        rule.setComplex(ruleRequest.isComplex()).setSimple(ruleRequest.isSimple());
         return rule;
     }
 

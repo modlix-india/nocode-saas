@@ -12,9 +12,9 @@ import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 @Service
 public abstract class RuleConfigService<
@@ -73,11 +74,12 @@ public abstract class RuleConfigService<
                         ruleConfigRequest.getIdentity()),
                 (hasAccess, entityId) -> ruleService.createWithUserDistribution(ruleConfigRequest.getRules()),
                 (hasAccess, entityId, rules) -> this.createFromRequest(ruleConfigRequest),
-                (hasAccess, entityId, rules, ruleConfig) -> this.createUserDistributions(ruleConfigRequest),
+                (hasAccess, entityId, rules, ruleConfig) ->
+                        this.createUserDistributions(ruleConfigRequest.getUserDistributionType(), rules),
                 (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
                     ruleConfig
                             .setEntityId(entityId)
-                            .setRules(rules)
+                            .setRules(this.getOrderToIdMap(rules))
                             .setUserDistributions(userDistributions)
                             .setAddedByUserId(hasAccess.getT1().getT3())
                             .setAppCode(hasAccess.getT1().getT1())
@@ -94,11 +96,12 @@ public abstract class RuleConfigService<
                         hasAccess.getT1().getT2(),
                         hasAccess.getT1().getT3(),
                         ruleConfigRequest.getIdentity()),
-                (hasAccess, entityId) -> ruleService.update(ruleConfigRequest.getRules()),
+                (hasAccess, entityId) -> ruleService.updateWithUserDistribution(ruleConfigRequest.getRules()),
                 (hasAccess, entityId, rules) -> this.updateFromRequest(ruleConfigRequest),
-                (hasAccess, entityId, rules, ruleConfig) -> this.createUserDistributions(ruleConfigRequest),
+                (hasAccess, entityId, rules, ruleConfig) ->
+                        this.createUserDistributions(ruleConfigRequest.getUserDistributionType(), rules),
                 (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
-                    ruleConfig.setUserDistributions(userDistributions).setRules(rules);
+                    ruleConfig.setUserDistributions(userDistributions).setRules(this.getOrderToIdMap(rules));
                     return super.update(ruleConfig);
                 },
                 (hasAccess, entityId, rules, ruleConfig, userDistributions, updated) ->
@@ -126,24 +129,35 @@ public abstract class RuleConfigService<
         return ruleConfig;
     }
 
-    private Mono<Map<ULong, UserDistribution>> createUserDistributions(T ruleConfigRequest, ) {
-        DistributionType distributionType = ruleConfigRequest.getUserDistributionType();
-        Map<BigInteger, UserDistribution> distributions = ruleConfigRequest.getUserDistributions();
+    private Mono<Map<ULong, UserDistribution>> createUserDistributions(
+            DistributionType distributionType, Map<ULong, Tuple2<Integer, UserDistribution>> rules) {
 
-        if (distributionType == null || distributions == null || distributions.isEmpty())
+        if (distributionType == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING);
 
-        boolean allValid = distributions.values().stream().allMatch(dist -> dist.isValidForType(distributionType));
+        Map<ULong, UserDistribution> distributionMap = this.getDistributionMap(rules);
+
+        boolean allValid = distributionMap.values().stream().allMatch(dist -> dist.isValidForType(distributionType));
 
         if (!allValid)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.USER_DISTRIBUTION_INVALID);
 
-        return Mono.just(distributions.entrySet().stream()
+        return Mono.just(distributionMap);
+    }
+
+    private Map<Integer, ULong> getOrderToIdMap(Map<ULong, Tuple2<Integer, UserDistribution>> rules) {
+        return rules.entrySet().stream()
                 .collect(Collectors.toMap(
-                        entry -> ULong.valueOf(entry.getKey()), Map.Entry::getValue, (v1, v2) -> v1, HashMap::new)));
+                        entry -> entry.getValue().getT1(), Map.Entry::getKey, (v1, v2) -> v1, TreeMap::new));
+    }
+
+    private Map<ULong, UserDistribution> getDistributionMap(Map<ULong, Tuple2<Integer, UserDistribution>> rules) {
+        return rules.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey, entry -> entry.getValue().getT2(), (v1, v2) -> v1, HashMap::new));
     }
 }

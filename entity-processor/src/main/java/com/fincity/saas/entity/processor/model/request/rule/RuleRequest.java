@@ -7,7 +7,6 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
-
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;

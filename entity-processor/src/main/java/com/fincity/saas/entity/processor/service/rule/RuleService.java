@@ -1,14 +1,7 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -21,8 +14,15 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
-
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -96,6 +96,9 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                 .flatMap(entry -> {
                     Integer order = entry.getKey();
                     UserDistribution userDistribution = entry.getValue().getUserDistribution();
+
+                    if (userDistribution == null) return Flux.empty();
+
                     RuleRequest ruleRequest = entry.getValue();
 
                     if (ruleRequest.getCondition() == null
@@ -104,10 +107,13 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                     return this.createInternal(ruleRequest)
                             .map(rule -> Map.entry(rule.getId(), Tuples.of(order, userDistribution)));
                 })
-                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING));
     }
 
-    public Mono<Map<ULong, Integer>> update(Map<Integer, RuleRequest> ruleRequests) {
+    public Mono<Map<ULong, Integer>> updateWIthOrder(Map<Integer, RuleRequest> ruleRequests) {
 
         if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
 
@@ -116,6 +122,18 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                         .map(RuleRequest::getRuleId)
                         .toList()),
                 deleted -> this.createWithOrder(ruleRequests));
+    }
+
+    public Mono<Map<ULong, Tuple2<Integer, UserDistribution>>> updateWithUserDistribution(
+            Map<Integer, RuleRequest> ruleRequests) {
+
+        if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.deleteRulesInternal(ruleRequests.values().stream()
+                        .map(RuleRequest::getRuleId)
+                        .toList()),
+                deleted -> this.createWithUserDistribution(ruleRequests));
     }
 
     public Mono<Integer> deleteRuleInternal(Identity rule) {
