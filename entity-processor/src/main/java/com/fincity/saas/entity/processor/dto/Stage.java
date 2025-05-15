@@ -42,7 +42,7 @@ public class Stage extends BaseValueDto<Stage> {
                 .setIsFailure(stageRequest.getIsFailure());
     }
 
-    public static Stage ofChild(StageRequest stageRequest, Integer order, Platform platform, Stage... parents) {
+    public static Stage ofChild(StageRequest stageRequest, Integer order, Platform platform, StageType stageType, Stage... parents) {
         return new Stage()
                 .setValueTemplateId(
                         ULongUtil.valueOf(stageRequest.getValueTemplateId().getId()))
@@ -52,7 +52,7 @@ public class Stage extends BaseValueDto<Stage> {
                 .setName(stageRequest.getName())
                 .setDescription(stageRequest.getDescription())
                 .setPlatform(platform)
-                .setStageType(stageRequest.getStageType())
+                .setStageType(stageType)
                 .setIsSuccess(stageRequest.getIsSuccess())
                 .setIsFailure(stageRequest.getIsFailure())
                 .setOrder(order);

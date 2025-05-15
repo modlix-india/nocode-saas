@@ -51,6 +51,8 @@ public class Identity implements Serializable {
     }
 
     public Identity setCode(String code) {
+
+        if (code == null) return this;
         if (code.length() == BaseDto.CODE_LENGTH) this.code = code;
 
         try {
@@ -71,6 +73,14 @@ public class Identity implements Serializable {
         return ULongUtil.valueOf(this.getId());
     }
 
+    @Override
+    public String toString() {
+        if (isNull()) return "Identity{null}";
+        if (isCode()) return "Identity{code='" + code + "'}";
+        if (isId()) return "Identity{id=" + id + "}";
+        return "Identity{id=" + id + ", code='" + code + "'}";
+    }
+
     public static class IdentityDeserializer extends JsonDeserializer<Identity> {
 
         @Override
@@ -87,13 +97,5 @@ public class Identity implements Serializable {
 
             return Identity.of(id, code);
         }
-    }
-
-    @Override
-    public String toString() {
-        if (isNull()) return "Identity{null}";
-        if (isCode()) return "Identity{code='" + code + "'}";
-        if (isId()) return "Identity{id=" + id + "}";
-        return "Identity{id=" + id + ", code='" + code + "'}";
     }
 }

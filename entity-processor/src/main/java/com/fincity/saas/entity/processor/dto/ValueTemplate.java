@@ -1,11 +1,13 @@
 package com.fincity.saas.entity.processor.dto;
 
+import java.io.Serial;
+
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.ValueTemplateType;
 import com.fincity.saas.entity.processor.model.request.ValueTemplateRequest;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

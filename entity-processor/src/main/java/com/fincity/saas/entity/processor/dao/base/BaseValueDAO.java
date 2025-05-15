@@ -35,18 +35,30 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
 
     public Mono<Boolean> existsById(
             String appCode, String clientCode, Platform platform, ULong valueTemplateId, ULong... valueEntityIds) {
-        return Mono.just(this.dslContext.fetchExists(this.dslContext
-                .selectFrom(this.table)
+
+        if (valueEntityIds == null || valueEntityIds.length == 0) return Mono.just(Boolean.FALSE);
+
+        return Mono.from(this.dslContext
+                .selectOne()
+                .from(this.table)
                 .where(DSL.and(this.getBaseValueConditions(
-                        appCode, clientCode, platform, valueTemplateId, null, valueEntityIds)))));
+                        appCode, clientCode, platform, valueTemplateId, null, valueEntityIds))))
+                .map(record -> Boolean.TRUE)
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     public Mono<Boolean> existsByName(
             String appCode, String clientCode, Platform platform, ULong valueTemplateId, String... valueEntityNames) {
-        return Mono.just(this.dslContext.fetchExists(this.dslContext
-                .selectFrom(this.table)
+
+        if (valueEntityNames == null || valueEntityNames.length == 0) return Mono.just(Boolean.FALSE);
+
+        return Mono.from(this.dslContext
+                .selectOne()
+                .from(this.table)
                 .where(DSL.and(this.getBaseValueNameConditions(
-                        appCode, clientCode, platform, valueTemplateId, null, valueEntityNames)))));
+                        appCode, clientCode, platform, valueTemplateId, null, valueEntityNames))))
+                .map(record -> Boolean.TRUE)
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     public Mono<List<D>> getAllValues(

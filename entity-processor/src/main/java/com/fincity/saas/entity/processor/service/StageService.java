@@ -47,6 +47,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                 childRequest.getValue().setValueTemplateId(valueTemplateId),
                                 childRequest.getKey(),
                                 parent.getPlatform(),
+                                parent.getStageType(),
                                 parent),
                         parent))
                 .collectList()

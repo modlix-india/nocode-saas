@@ -95,9 +95,9 @@ public abstract class BaseValueService<
                     if (Boolean.TRUE.equals(nameExists))
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                ProcessorMessageResourceService.INVALID_NAME_FOR_ENTITY,
+                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                 entity.getName(),
-                                entity.getEntitySeries());
+                                entity.getEntityName());
 
                     entity.setName(StringUtil.toTitleCase(entity.getName()));
                     return Mono.just(entity);

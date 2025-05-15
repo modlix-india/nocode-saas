@@ -72,6 +72,17 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 });
     }
 
+    @Override
+    protected Mono<Product> updatableEntity(Product entity) {
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setValueTemplateId(entity.getValueTemplateId());
+            existing.setDefaultStageId(entity.getDefaultStageId());
+            existing.setDefaultStatusId(entity.getDefaultStatusId());
+
+            return Mono.just(existing);
+        });
+    }
+
     public Mono<Product> create(ProductRequest productRequest) {
         return super.create(Product.of(productRequest));
     }
@@ -90,7 +101,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
     @Override
     public Mono<ValueTemplate> updateValueTemplate(Identity identity, ValueTemplate valueTemplate) {
-        return FlatMapUtil.flatMapMono(() -> super.readIdentityInternal(identity), product -> {
+        return FlatMapUtil.flatMapMono(() -> super.readIdentity(identity), product -> {
             product.setValueTemplateId(valueTemplate.getId());
             return super.updateInternal(product).map(updated -> valueTemplate);
         });

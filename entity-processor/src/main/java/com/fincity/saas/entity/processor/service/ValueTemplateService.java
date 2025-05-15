@@ -60,13 +60,6 @@ public class ValueTemplateService
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.VALUE_TEMPLATE_TYPE_MISSING);
 
-        if (!valueTemplateType.isAppLevel()
-                && valueTemplateRequest.getValueEntityId().isNull())
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.VALUE_TEMPLATE_TYPE_ID_MISSING,
-                    valueTemplateType.getDisplayName());
-
         ValueTemplate valueTemplate = ValueTemplate.of(valueTemplateRequest);
 
         return FlatMapUtil.flatMapMono(
@@ -81,6 +74,12 @@ public class ValueTemplateService
                     return super.create(valueTemplate);
                 },
                 (hasAccess, created) -> this.updateDependentServices(created, valueTemplateRequest.getValueEntityId()));
+    }
+
+    public Mono<ValueTemplate> attachEntity(Identity identity, ValueTemplateRequest valueTemplateRequest) {
+        return FlatMapUtil.flatMapMono(
+                () -> super.readIdentityInternal(identity),
+                valueTemplate -> this.updateDependentServices(valueTemplate, valueTemplateRequest.getValueEntityId()));
     }
 
     public Mono<ValueTemplate> readWithAccess(Identity identity) {

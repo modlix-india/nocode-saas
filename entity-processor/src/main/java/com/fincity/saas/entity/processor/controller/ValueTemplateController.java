@@ -30,6 +30,13 @@ public class ValueTemplateController
         return this.service.create(valueTemplateRequest).map(ResponseEntity::ok);
     }
 
+    @PostMapping(REQ_PATH_ID + "/attach")
+    public Mono<ResponseEntity<ValueTemplate>> createFromRequest(
+            @PathVariable(PATH_VARIABLE_ID) final Identity identity,
+            @RequestBody ValueTemplateRequest valueTemplateRequest) {
+        return this.service.attachEntity(identity, valueTemplateRequest).map(ResponseEntity::ok);
+    }
+
     @DeleteMapping(REQ_PATH_ID)
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     public Mono<Integer> deleteFromRequest(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
