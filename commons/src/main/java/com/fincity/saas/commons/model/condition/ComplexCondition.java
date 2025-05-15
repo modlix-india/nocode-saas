@@ -8,10 +8,14 @@ import com.fincity.saas.commons.util.StringUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Flux;
 
 @Data
+@Getter
+@Setter
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 public class ComplexCondition extends AbstractCondition {
@@ -44,5 +48,24 @@ public class ComplexCondition extends AbstractCondition {
 	@Override
 	public boolean isEmpty() {
 		return conditions.isEmpty();
+	}
+
+	// Explicit getters and setters
+	public ComplexConditionOperator getOperator() {
+		return operator;
+	}
+
+	public ComplexCondition setOperator(ComplexConditionOperator operator) {
+		this.operator = operator;
+		return this;
+	}
+
+	public List<AbstractCondition> getConditions() {
+		return conditions;
+	}
+
+	public ComplexCondition setConditions(List<AbstractCondition> conditions) {
+		this.conditions = conditions;
+		return this;
 	}
 }

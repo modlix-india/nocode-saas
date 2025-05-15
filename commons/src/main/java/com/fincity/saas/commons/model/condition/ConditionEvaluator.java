@@ -1,132 +1,184 @@
 package com.fincity.saas.commons.model.condition;
 
+import static com.fincity.saas.commons.model.condition.ComplexConditionOperator.AND;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Objects;
+
+import org.springframework.stereotype.Component;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@Component
 public class ConditionEvaluator {
 
-    private ConditionEvaluator() {}
-
-    public static boolean evaluate(AbstractCondition condition, JsonElement json) {
-        if (condition == null || condition.isEmpty()) return true;
-        if (json == null || !json.isJsonObject()) return false;
+    public Mono<Boolean> evaluate(AbstractCondition condition, JsonElement json) {
+        if (condition == null || condition.isEmpty()) return Mono.just(Boolean.FALSE);
+        if (json == null) return Mono.just(Boolean.FALSE);
 
         return switch (condition) {
             case ComplexCondition cc -> evaluateComplex(cc, json);
             case FilterCondition fc -> evaluateFilter(fc, json);
-            default -> true;
+            default -> Mono.just(Boolean.FALSE);
         };
     }
 
-    private static boolean evaluateComplex(ComplexCondition cc, JsonElement json) {
+    private Mono<Boolean> evaluateComplex(ComplexCondition cc, JsonElement json) {
         List<AbstractCondition> conds = cc.getConditions();
-        if (conds == null || conds.isEmpty()) return true;
+        if (conds == null || conds.isEmpty()) return Mono.just(Boolean.FALSE);
 
-        boolean isAnd = cc.getOperator() == ComplexConditionOperator.AND;
-        for (AbstractCondition sub : conds) {
-            boolean result = evaluate(sub, json);
-            if (isAnd && !result) return false;
-            if (!isAnd && result) return true;
-        }
-        return isAnd;
+        boolean isAnd = cc.getOperator() == AND;
+
+        return Flux.fromIterable(conds)
+                .flatMap(sub -> evaluate(sub, json))
+                .reduce((acc, result) -> isAnd ? (acc && result) : (acc || result))
+                .defaultIfEmpty(isAnd);
     }
 
-    private static boolean evaluateFilter(FilterCondition fc, JsonElement json) {
-        JsonObject obj = json.getAsJsonObject();
-        JsonElement target = getNestedField(obj, fc.getField());
-        Object filterVal = fc.getValue();
-        Object toVal = fc.getToValue();
+    private Mono<Boolean> evaluateFilter(FilterCondition fc, JsonElement json) {
+        return Mono.just(json.getAsJsonObject())
+                .flatMap(obj -> getNestedField(obj, fc.getField()))
+                .flatMap(target -> {
+                    JsonElement filterValElement = convertToJsonElement(fc.getValue());
+                    JsonElement toValElement = convertToJsonElement(fc.getToValue());
 
-        return switch (fc.getOperator()) {
-            case EQUALS -> valueEquals(target, filterVal);
-            case GREATER_THAN -> compare(target, filterVal) > 0;
-            case GREATER_THAN_EQUAL -> compare(target, filterVal) >= 0;
-            case LESS_THAN -> compare(target, filterVal) < 0;
-            case LESS_THAN_EQUAL -> compare(target, filterVal) <= 0;
-            case BETWEEN -> compare(target, filterVal) >= 0 && compare(target, toVal) <= 0;
-            case IN ->
-                fc.getMultiValue() != null && fc.getMultiValue().stream().anyMatch(val -> valueEquals(target, val));
-            case LIKE ->
-                target != null
-                        && target.isJsonPrimitive()
-                        && target.getAsString().contains(String.valueOf(filterVal));
-            case STRING_LOOSE_EQUAL ->
-                target != null
-                        && target.isJsonPrimitive()
-                        && target.getAsString()
-                                .toLowerCase()
-                                .contains(String.valueOf(filterVal).toLowerCase());
-            case IS_NULL -> target == null || target.isJsonNull();
-            case IS_TRUE -> target != null && target.getAsBoolean();
-            case IS_FALSE -> target != null && !target.getAsBoolean();
-            default -> false;
+                    return switch (fc.getOperator()) {
+                        case EQUALS -> valueEquals(target, filterValElement);
+                        case GREATER_THAN -> compare(target, filterValElement).map(result -> result > 0);
+                        case GREATER_THAN_EQUAL ->
+                            compare(target, filterValElement).map(result -> result >= 0);
+                        case LESS_THAN -> compare(target, filterValElement).map(result -> result < 0);
+                        case LESS_THAN_EQUAL ->
+                            compare(target, filterValElement).map(result -> result <= 0);
+                        case BETWEEN ->
+                            Mono.zip(
+                                    compare(target, filterValElement).map(result -> result >= 0),
+                                    compare(target, toValElement).map(result -> result <= 0),
+                                    (first, second) -> first && second);
+                        case IN -> {
+                            List<?> multiValue = fc.getMultiValue();
+                            if (multiValue == null || multiValue.isEmpty()) yield Mono.just(Boolean.FALSE);
+
+                            yield Flux.fromIterable(multiValue)
+                                    .map(this::convertToJsonElement)
+                                    .flatMap(val -> valueEquals(target, val))
+                                    .any(result -> result)
+                                    .defaultIfEmpty(Boolean.FALSE);
+                        }
+                        case LIKE ->
+                            Mono.just(target != null
+                                    && target.isJsonPrimitive()
+                                    && target.getAsString().contains(Objects.toString(fc.getValue(), "")));
+                        case STRING_LOOSE_EQUAL ->
+                            Mono.just(target != null
+                                    && target.isJsonPrimitive()
+                                    && target.getAsString()
+                                            .toLowerCase()
+                                            .contains(Objects.toString(fc.getValue(), "")
+                                                    .toLowerCase()));
+                        case IS_NULL -> Mono.just(target == null || target.isJsonNull());
+                        case IS_TRUE ->
+                            Mono.just(target != null
+                                    && target.isJsonPrimitive()
+                                    && target.getAsJsonPrimitive().getAsBoolean());
+                        case IS_FALSE ->
+                            Mono.just(target != null
+                                    && target.isJsonPrimitive()
+                                    && !target.getAsJsonPrimitive().getAsBoolean());
+                        default -> Mono.just(Boolean.FALSE);
+                    };
+                })
+                .defaultIfEmpty(Boolean.FALSE);
+    }
+
+    private JsonElement convertToJsonElement(Object value) {
+        return switch (value) {
+            case null -> JsonNull.INSTANCE;
+            case Number n -> new JsonPrimitive(n);
+            case Boolean b -> new JsonPrimitive(b);
+            case String s -> new JsonPrimitive(s);
+            case JsonElement je -> je;
+            default -> new JsonPrimitive(value.toString());
         };
     }
 
-    private static boolean valueEquals(JsonElement jsonVal, Object filterVal) {
-        if (jsonVal == null || jsonVal.isJsonNull()) return filterVal == null;
-        if (filterVal == null) return false;
+    private Mono<Boolean> valueEquals(JsonElement jsonVal, JsonElement filterVal) { // NOSONAR
+        if (jsonVal == null || jsonVal.isJsonNull()) return Mono.just(filterVal == null || filterVal.isJsonNull());
+        if (filterVal == null || filterVal.isJsonNull()) return Mono.just(Boolean.FALSE);
 
-        if (jsonVal.isJsonPrimitive()) {
-            JsonPrimitive p = jsonVal.getAsJsonPrimitive();
-            if (p.isNumber()) return compare(jsonVal, filterVal) == 0;
-            if (p.isBoolean()) return p.getAsBoolean() == Boolean.parseBoolean(filterVal.toString());
-            if (p.isString()) return p.getAsString().equals(filterVal.toString());
+        if (jsonVal.isJsonPrimitive() && filterVal.isJsonPrimitive()) {
+            JsonPrimitive p1 = jsonVal.getAsJsonPrimitive();
+            JsonPrimitive p2 = filterVal.getAsJsonPrimitive();
+
+            if (p1.isNumber() && p2.isNumber())
+                return compare(jsonVal, filterVal).map(result -> result == 0);
+            if (p1.isBoolean() && p2.isBoolean()) return Mono.just(p1.getAsBoolean() == p2.getAsBoolean());
+            if (p1.isString() && p2.isString())
+                return Mono.just(p1.getAsString().equals(p2.getAsString()));
         }
 
-        return jsonVal.toString().equals(filterVal.toString());
+        return Mono.just(jsonVal.toString().equals(filterVal.toString()));
     }
 
-    private static int compare(JsonElement jsonVal, Object filterVal) {
-        if (jsonVal == null || jsonVal.isJsonNull() || filterVal == null) return 0;
-        if (!jsonVal.isJsonPrimitive()) return 0;
+    private Mono<Integer> compare(JsonElement jsonVal, JsonElement filterVal) {
+        if (jsonVal == null || jsonVal.isJsonNull() || filterVal == null || filterVal.isJsonNull()) return Mono.just(0);
+        if (!jsonVal.isJsonPrimitive() || !filterVal.isJsonPrimitive()) return Mono.just(0);
 
-        if (jsonVal.getAsJsonPrimitive().isString()) return compareDate(jsonVal, filterVal);
-
-        return compareNumber(jsonVal, filterVal);
-    }
-
-    private static int compareDate(JsonElement jsonVal, Object filterVal) {
-        try {
-            LocalDateTime jsonDate = LocalDateTime.parse(jsonVal.getAsString());
-            LocalDateTime compareDate = LocalDateTime.parse(filterVal.toString());
-            return jsonDate.compareTo(compareDate);
-        } catch (DateTimeParseException e) {
-            return 0;
-        }
-    }
-
-    private static int compareNumber(JsonElement jsonVal, Object filterVal) {
-        try {
-            double jsonNumber = jsonVal.getAsDouble();
-            double compareTo = Double.parseDouble(filterVal.toString());
-            return Double.compare(jsonNumber, compareTo);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private static JsonElement getNestedField(JsonObject obj, String field) {
-        if (obj == null || field == null) return JsonNull.INSTANCE;
-
-        String[] parts = field.split("\\.");
-        JsonElement current = obj;
-
-        for (String part : parts) {
-            if (!current.isJsonObject()) return JsonNull.INSTANCE;
-
-            JsonObject currentObj = current.getAsJsonObject();
-            if (!currentObj.has(part)) return JsonNull.INSTANCE;
-
-            current = currentObj.get(part);
+        if (jsonVal.getAsJsonPrimitive().isString()
+                && filterVal.getAsJsonPrimitive().isString()) {
+            return this.compareDate(jsonVal, filterVal);
         }
 
-        return current;
+        return this.compareNumber(jsonVal, filterVal);
+    }
+
+    private Mono<Integer> compareDate(JsonElement jsonVal, JsonElement filterVal) {
+        return Mono.fromCallable(() -> {
+            try {
+                LocalDateTime jsonDate = LocalDateTime.parse(jsonVal.getAsString());
+                LocalDateTime compareDate = LocalDateTime.parse(filterVal.getAsString());
+                return jsonDate.compareTo(compareDate);
+            } catch (DateTimeParseException e) {
+                return 0;
+            }
+        });
+    }
+
+    private Mono<Integer> compareNumber(JsonElement jsonVal, JsonElement filterVal) {
+        return Mono.fromCallable(() -> {
+            try {
+                double jsonNumber = jsonVal.getAsDouble();
+                double compareTo = filterVal.getAsDouble();
+                return Double.compare(jsonNumber, compareTo);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        });
+    }
+
+    private Mono<JsonElement> getNestedField(JsonObject obj, String field) {
+        if (obj == null || field == null) return Mono.just(JsonNull.INSTANCE);
+
+        return Mono.just(field.split("\\."))
+                .flatMapMany(Flux::fromArray)
+                .reduce(
+                        Mono.just((JsonElement) obj),
+                        (monoAcc, part) -> monoAcc.flatMap(current -> {
+                            if (!current.isJsonObject()) return Mono.just(JsonNull.INSTANCE);
+
+                            JsonObject currentObj = current.getAsJsonObject();
+                            if (!currentObj.has(part)) return Mono.just(JsonNull.INSTANCE);
+
+                            return Mono.just(currentObj.get(part));
+                        }))
+                .flatMap(mono -> mono);
     }
 }
