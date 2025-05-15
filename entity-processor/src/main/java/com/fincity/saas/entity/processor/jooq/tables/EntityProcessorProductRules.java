@@ -125,7 +125,7 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
      * Platform is where this stage will be displayed in CRM, can be GLOBAL,
      * PRE_QUALIFICATION, QUALIFICATION or MAIN.
      */
-    public final TableField<EntityProcessorProductRulesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("GLOBAL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductRulesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorProductRulesPlatform, Platform>(EntityProcessorProductRulesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorProductRulesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductRulesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorProductRulesPlatform, Platform>(EntityProcessorProductRulesPlatform.class, Platform.class));
 
     /**
      * The column

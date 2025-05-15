@@ -42,14 +42,14 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
     }
 
     public Mono<Model> create(ModelRequest modelRequest) {
-        return this.create(Model.of(modelRequest));
+        return super.create(Model.of(modelRequest));
     }
 
     public Mono<Entity> getOrCreateEntityModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {
 
         if (entity.getModelId() != null)
             return FlatMapUtil.flatMapMono(
-                    () -> this.readIdentityInternal(ULongUtil.valueOf(entity.getModelId())), model -> {
+                    () -> this.readById(ULongUtil.valueOf(entity.getModelId())), model -> {
                         entity.setModelId(model.getId());
 
                         if (model.getDialCode() != null && model.getPhoneNumber() != null) {
@@ -62,7 +62,7 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
                         return Mono.just(entity);
                     });
 
-        return getOrCreateEntityPhoneModel(accessInfo.getT1(), accessInfo.getT2(), entity);
+        return this.getOrCreateEntityPhoneModel(accessInfo.getT1(), accessInfo.getT2(), entity);
     }
 
     public Mono<Entity> getOrCreateEntityPhoneModel(String appCode, String clientCode, Entity entity) {

@@ -125,7 +125,7 @@ public class EntityProcessorValueTemplateRules extends TableImpl<EntityProcessor
      * Platform is where this stage will be displayed in CRM, can be GLOBAL,
      * PRE_QUALIFICATION, QUALIFICATION or MAIN.
      */
-    public final TableField<EntityProcessorValueTemplateRulesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("GLOBAL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorValueTemplateRulesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorValueTemplateRulesPlatform, Platform>(EntityProcessorValueTemplateRulesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorValueTemplateRulesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorValueTemplateRulesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorValueTemplateRulesPlatform, Platform>(EntityProcessorValueTemplateRulesPlatform.class, Platform.class));
 
     /**
      * The column

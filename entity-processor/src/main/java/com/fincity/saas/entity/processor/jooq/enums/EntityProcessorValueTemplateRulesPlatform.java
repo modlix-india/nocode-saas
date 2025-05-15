@@ -16,8 +16,6 @@ import org.jooq.Schema;
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityProcessorValueTemplateRulesPlatform implements EnumType {
 
-    GLOBAL("GLOBAL"),
-
     PRE_QUALIFICATION("PRE_QUALIFICATION"),
 
     QUALIFICATION("QUALIFICATION"),
