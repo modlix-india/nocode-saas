@@ -6,6 +6,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.ComplexRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComplexRulesRecord;
 import com.fincity.saas.entity.processor.service.rule.base.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.base.IConditionRuleService;
@@ -34,6 +35,11 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     @Override
     protected String getCacheName() {
         return COMPLEX_RULE;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.COMPLEX_RULE;
     }
 
     @Override

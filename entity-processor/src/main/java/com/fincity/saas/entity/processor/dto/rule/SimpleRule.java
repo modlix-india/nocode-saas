@@ -65,6 +65,6 @@ public class SimpleRule extends BaseRule<SimpleRule> {
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.SIMPLE_CONDITION;
+        return EntitySeries.SIMPLE_RULE;
     }
 }

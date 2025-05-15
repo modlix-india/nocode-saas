@@ -4,7 +4,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
@@ -18,7 +17,7 @@ import reactor.util.function.Tuple3;
 @Service
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
-        extends BaseService<R, D, O> implements IEntitySeries {
+        extends BaseService<R, D, O> {
 
     protected abstract Mono<D> checkEntity(D entity, Tuple3<String, String, ULong> accessInfo);
 

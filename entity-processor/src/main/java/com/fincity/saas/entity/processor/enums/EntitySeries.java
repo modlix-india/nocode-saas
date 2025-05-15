@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductRule;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.ValueTemplate;
+import com.fincity.saas.entity.processor.dto.ValueTemplateRule;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
@@ -15,24 +16,27 @@ import org.jooq.EnumType;
 
 @Getter
 public enum EntitySeries implements EnumType {
-    XXX("XXX", 11),
-    ENTITY("ENTITY", 12),
-    MODEL("MODEL", 13),
-    PRODUCT("PRODUCT", 14),
-    VALUE_TEMPLATE("VALUE_TEMPLATE", 15),
-    STAGE("STAGE", 16),
-    RULE("RULE", 17),
-    SIMPLE_CONDITION("SIMPLE_CONDITION", 18),
-    COMPLEX_CONDITION("COMPLEX_CONDITION", 19),
-    SIMPLE_COMPLEX_CONDITION_RELATION("SIMPLE_COMPLEX_CONDITION_RELATION", 20),
-    ENTITY_RULE("ENTITY_RULE", 21),
-    PRODUCT_RULE("PRODUCT_RULE", 22);
+    XXX("XXX", "Unknown", 11),
+    ENTITY("ENTITY", "Entity", 12),
+    MODEL("MODEL", "Model", 13),
+    PRODUCT("PRODUCT", "Product", 14),
+    VALUE_TEMPLATE("VALUE_TEMPLATE", "Value Template", 15),
+    STAGE("STAGE", "Stage", 16),
+    RULE("RULE", "Rule", 17),
+    SIMPLE_RULE("SIMPLE_RULE", "Simple Rule", 18),
+    COMPLEX_RULE("COMPLEX_RULE", "Complex Rule", 19),
+    SIMPLE_COMPLEX_CONDITION_RELATION("SIMPLE_COMPLEX_CONDITION_RELATION", "Simple Complex Condition Relation", 20),
+    ENTITY_RULE("ENTITY_RULE", "Entity Rule", 21),
+    PRODUCT_RULE("PRODUCT_RULE", "Product Rule", 22),
+    VALUE_TEMPLATE_RULE("VALUE_TEMPLATE_RULE", "Value Template Rule", 23);
 
     private final String literal;
+    private final String displayName;
     private final int value;
 
-    EntitySeries(String literal, int value) {
+    EntitySeries(String literal, String displayName, int value) {
         this.literal = literal;
+        this.displayName = displayName;
         this.value = value;
     }
 
@@ -47,7 +51,7 @@ public enum EntitySeries implements EnumType {
 
     @Override
     public String getName() {
-        return null;
+        return this.displayName;
     }
 
     public Class<?> getDtoClass() {
@@ -59,11 +63,12 @@ public enum EntitySeries implements EnumType {
             case VALUE_TEMPLATE -> ValueTemplate.class;
             case STAGE -> Stage.class;
             case RULE -> Rule.class;
-            case SIMPLE_CONDITION -> SimpleRule.class;
-            case COMPLEX_CONDITION -> ComplexRule.class;
+            case SIMPLE_RULE -> SimpleRule.class;
+            case COMPLEX_RULE -> ComplexRule.class;
             case SIMPLE_COMPLEX_CONDITION_RELATION -> SimpleComplexRuleRelation.class;
             case ENTITY_RULE -> null;
             case PRODUCT_RULE -> ProductRule.class;
+            case VALUE_TEMPLATE_RULE -> ValueTemplateRule.class;
         };
     }
 }

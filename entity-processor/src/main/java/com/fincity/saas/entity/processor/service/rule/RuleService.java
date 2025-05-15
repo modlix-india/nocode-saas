@@ -98,9 +98,10 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                     UserDistribution userDistribution = entry.getValue().getUserDistribution();
 
                     if (userDistribution == null)
-                           return this.msgService.throwMessage(
-                                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                    ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING, entry.getValue().getRuleId());
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING,
+                                entry.getValue().getRuleId());
 
                     RuleRequest ruleRequest = entry.getValue();
 

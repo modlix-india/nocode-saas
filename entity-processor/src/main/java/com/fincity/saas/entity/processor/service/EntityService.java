@@ -93,7 +93,8 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         if (entity.getProductId() == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.IDENTITY_MISSING);
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    productService.getEntityName());
 
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,

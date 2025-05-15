@@ -38,6 +38,11 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     }
 
     @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.PRODUCT;
+    }
+
+    @Override
     protected Mono<Product> checkEntity(Product product, Tuple3<String, String, ULong> accessInfo) {
 
         if (product.getName().isEmpty())
@@ -59,7 +64,9 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     if (Boolean.FALSE.equals(isValid))
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.INVALID_CHILD_FOR_PARENT, product.getDefaultStatusId(), product.getDefaultStageId());
+                                ProcessorMessageResourceService.INVALID_CHILD_FOR_PARENT,
+                                product.getDefaultStatusId(),
+                                product.getDefaultStageId());
 
                     return Mono.just(product);
                 });
@@ -74,15 +81,11 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
             if (Boolean.FALSE.equals(hasAccess.getT2()))
                 return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        ProcessorMessageResourceService.PRODUCT_FORBIDDEN_ACCESS, identity.toString());
+                        ProcessorMessageResourceService.PRODUCT_FORBIDDEN_ACCESS,
+                        identity.toString());
 
             return this.readIdentityInternal(identity);
         });
-    }
-
-    @Override
-    public EntitySeries getEntitySeries() {
-        return EntitySeries.PRODUCT;
     }
 
     @Override

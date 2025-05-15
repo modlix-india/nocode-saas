@@ -53,6 +53,6 @@ public class ComplexRule extends BaseRule<ComplexRule> {
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.COMPLEX_CONDITION;
+        return EntitySeries.COMPLEX_RULE;
     }
 }

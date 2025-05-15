@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductRuleDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductRule;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -40,6 +41,11 @@ public class ProductRuleService
     @Override
     protected String getCacheName() {
         return PRODUCT_RULE_CONFIG;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.PRODUCT_RULE;
     }
 
     @Override

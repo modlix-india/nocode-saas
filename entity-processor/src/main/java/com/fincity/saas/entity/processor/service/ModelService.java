@@ -6,6 +6,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dao.ModelDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Model;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorModelsRecord;
 import com.fincity.saas.entity.processor.model.request.ModelRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -23,6 +24,11 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
     @Override
     protected String getCacheName() {
         return MODEL_CACHE;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.MODEL;
     }
 
     @Override
@@ -48,19 +54,18 @@ public class ModelService extends BaseProcessorService<EntityProcessorModelsReco
     public Mono<Entity> getOrCreateEntityModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {
 
         if (entity.getModelId() != null)
-            return FlatMapUtil.flatMapMono(
-                    () -> this.readById(ULongUtil.valueOf(entity.getModelId())), model -> {
-                        entity.setModelId(model.getId());
+            return FlatMapUtil.flatMapMono(() -> this.readById(ULongUtil.valueOf(entity.getModelId())), model -> {
+                entity.setModelId(model.getId());
 
-                        if (model.getDialCode() != null && model.getPhoneNumber() != null) {
-                            entity.setDialCode(model.getDialCode());
-                            entity.setPhoneNumber(model.getPhoneNumber());
-                        }
+                if (model.getDialCode() != null && model.getPhoneNumber() != null) {
+                    entity.setDialCode(model.getDialCode());
+                    entity.setPhoneNumber(model.getPhoneNumber());
+                }
 
-                        if (model.getEmail() != null) entity.setEmail(model.getEmail());
+                if (model.getEmail() != null) entity.setEmail(model.getEmail());
 
-                        return Mono.just(entity);
-                    });
+                return Mono.just(entity);
+            });
 
         return this.getOrCreateEntityPhoneModel(accessInfo.getT1(), accessInfo.getT2(), entity);
     }

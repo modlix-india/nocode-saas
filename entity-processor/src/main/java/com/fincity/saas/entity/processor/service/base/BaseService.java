@@ -12,6 +12,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -30,7 +31,7 @@ import reactor.util.function.Tuples;
 
 @Service
 public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDto<D>, O extends BaseDAO<R, D>>
-        extends AbstractFlowUpdatableService<R, ULong, D, O> {
+        extends AbstractFlowUpdatableService<R, ULong, D, O> implements IEntitySeries {
 
     protected ProcessorMessageResourceService msgService;
     protected CacheService cacheService;
@@ -121,18 +122,21 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         if (identity == null || identity.isNull())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.IDENTITY_MISSING);
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    this.getEntityName());
 
         return (identity.isCode()
                         ? this.readByCode(identity.getCode())
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.IDENTITY_WRONG,
+                                        this.getEntityName(),
                                         identity.getCode()))
                         : this.readById(ULongUtil.valueOf(identity.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
+                        this.getEntityName(),
                         identity.getId()));
     }
 
@@ -156,13 +160,17 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                     .map(entity -> identity)
                     .switchIfEmpty(this.msgService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            ProcessorMessageResourceService.IDENTITY_WRONG));
+                            ProcessorMessageResourceService.IDENTITY_WRONG,
+                            this.getEntityName(),
+                            identity.getId()));
 
         return this.readByCode(identity.getCode())
                 .map(entity -> identity.setId(entity.getId().toBigInteger()))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.IDENTITY_WRONG));
+                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                        this.getEntityName(),
+                        identity.getCode()));
     }
 
     public Mono<Integer> deleteIdentity(Identity identity) {

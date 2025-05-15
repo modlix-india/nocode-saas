@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dao.rule.SimpleRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleRulesRecord;
 import com.fincity.saas.entity.processor.service.rule.base.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.base.IConditionRuleService;
@@ -35,6 +36,11 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     @Override
     protected String getCacheName() {
         return SIMPLE_RULE;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.SIMPLE_RULE;
     }
 
     @Override

@@ -53,16 +53,19 @@ public class ValueTemplateService
 
     public Mono<ValueTemplate> create(ValueTemplateRequest valueTemplateRequest) {
 
-        if (valueTemplateRequest.getValueTemplateType() == null)
+        ValueTemplateType valueTemplateType = valueTemplateRequest.getValueTemplateType();
+
+        if (valueTemplateType == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.IDENTITY_MISSING);
+                    ProcessorMessageResourceService.VALUE_TEMPLATE_TYPE_MISSING);
 
-        if (valueTemplateRequest.getValueTemplateType().isAppLevel()
+        if (!valueTemplateType.isAppLevel()
                 && valueTemplateRequest.getValueEntityId().isNull())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.IDENTITY_MISSING);
+                    ProcessorMessageResourceService.VALUE_TEMPLATE_TYPE_ID_MISSING,
+                    valueTemplateType.getDisplayName());
 
         ValueTemplate valueTemplate = ValueTemplate.of(valueTemplateRequest);
 

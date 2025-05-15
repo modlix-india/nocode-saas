@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ValueTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ValueTemplate;
 import com.fincity.saas.entity.processor.dto.ValueTemplateRule;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplateRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -37,6 +38,11 @@ public class ValueTemplateRuleService
     @Override
     protected String getCacheName() {
         return VALUE_TEMPLATE_RULE_CONFIG;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.VALUE_TEMPLATE_RULE;
     }
 
     @Override

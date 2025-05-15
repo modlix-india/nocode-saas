@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
@@ -20,6 +21,11 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     @Override
     protected String getCacheName() {
         return STAGE_CACHE;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.STAGE;
     }
 
     public Mono<Stage> create(StageRequest stageRequest) {
