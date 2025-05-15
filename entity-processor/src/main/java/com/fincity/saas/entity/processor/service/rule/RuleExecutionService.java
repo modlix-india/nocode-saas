@@ -1,17 +1,19 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -41,11 +43,11 @@ public class RuleExecutionService {
         return Mono.just(List.of());
     }
 
-    public <T extends RuleConfig<T>> Mono<List<ULong>> executeRules(T ruleConfig, JsonElement data) {
+    public <T extends RuleConfig<T>> Mono<ULong> executeRules(T ruleConfig, JsonElement data) {
         if (ruleConfig == null
                 || ruleConfig.getRules() == null
                 || ruleConfig.getRules().isEmpty()) {
-            return Mono.just(List.of());
+            return Mono.empty();
         }
 
         return Flux.fromIterable(ruleConfig.getRules().entrySet())
@@ -60,7 +62,7 @@ public class RuleExecutionService {
                 .collectList()
                 .flatMap(matchedRules -> {
                     if (matchedRules.isEmpty()) {
-                        return Mono.just(List.of());
+                        return Mono.empty();
                     }
 
                     ULong matchedRuleId = matchedRules.getFirst();
@@ -70,7 +72,7 @@ public class RuleExecutionService {
                     if (distribution == null
                             || distribution.getProfileIds() == null
                             || distribution.getProfileIds().isEmpty()) {
-                        return Mono.just(List.of());
+                        return Mono.empty();
                     }
 
                     return getUsersFromProfiles(distribution.getProfileIds())
@@ -78,18 +80,18 @@ public class RuleExecutionService {
                 });
     }
 
-    private <T extends RuleConfig<T>> Mono<List<ULong>> distributeUsers(
+    private <T extends RuleConfig<T>> Mono<ULong> distributeUsers(
             T ruleConfig, UserDistribution distribution, List<ULong> userIds) {
 
-        if (userIds == null || userIds.isEmpty()) return Mono.just(List.of());
+        if (userIds == null || userIds.isEmpty()) return Mono.empty();
 
         DistributionType type = ruleConfig.getUserDistributionType();
 
-        if (type == null) return Mono.just(userIds);
+        if (type == null) type = DistributionType.RANDOM;
 
         return switch (type) {
             case ROUND_ROBIN -> this.handleRoundRobin(ruleConfig, userIds);
-            case RANDOM -> Mono.just(List.of(userIds.get(random.nextInt(userIds.size()))));
+            case RANDOM -> this.getRandom(userIds);
             case PERCENTAGE -> this.handlePercentage(distribution, userIds);
             case WEIGHTED -> this.handleWeighted(distribution, userIds);
             case LOAD_BALANCED -> this.handleLoadBalanced(distribution, userIds);
@@ -98,71 +100,79 @@ public class RuleExecutionService {
         };
     }
 
-    private <T extends RuleConfig<T>> Mono<List<ULong>> handleRoundRobin(T ruleConfig, List<ULong> userIds) {
+    private <T extends RuleConfig<T>> Mono<ULong> handleRoundRobin(T ruleConfig, List<ULong> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Mono.empty();
+
+        List<ULong> sortedUserIds = userIds.stream().sorted().toList();
 
         ULong lastUsedId = ruleConfig.getLastUsedUserId();
         int currentIndex = 0;
 
         if (lastUsedId != null) {
-            int lastIndex = userIds.indexOf(lastUsedId);
-            currentIndex = (lastIndex + 1) % userIds.size();
+            for (int i = 0; i < sortedUserIds.size(); i++) {
+                if (sortedUserIds.get(i).equals(lastUsedId)) {
+                    currentIndex = (i + 1) % sortedUserIds.size();
+                    break;
+                }
+            }
         }
 
-        ULong nextUserId = userIds.get(currentIndex);
+        ULong nextUserId = sortedUserIds.get(currentIndex);
         ruleConfig.setLastUsedUserId(nextUserId);
 
-        return Mono.just(List.of(nextUserId));
+        return Mono.just(nextUserId);
     }
 
-    private Mono<List<ULong>> handlePercentage(UserDistribution distribution, List<ULong> userIds) {
-        if (distribution.getPercentage() == null || distribution.getPercentage() <= 0) return Mono.just(userIds);
+    private Mono<ULong> getRandom(List<ULong> userIds) {
+        return Mono.just(userIds.get(random.nextInt(userIds.size())));
+    }
+
+    // TODO will need to update all these according to requirements right now will focus on ROUND ROBIN
+
+    private Mono<ULong> handlePercentage(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getPercentage() == null || distribution.getPercentage() <= 0) return this.getRandom(userIds);
 
         int count = (int) Math.ceil((distribution.getPercentage() / 100.0) * userIds.size());
-        return Mono.just(userIds.subList(0, Math.min(count, userIds.size())));
+        return Mono.just(userIds.get(Math.min(count - 1, userIds.size() - 1)));
     }
 
-    private Mono<List<ULong>> handleWeighted(UserDistribution distribution, List<ULong> userIds) {
-        if (distribution.getWeight() == null || distribution.getWeight() <= 0) return Mono.just(userIds);
+    private Mono<ULong> handleWeighted(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getWeight() == null || distribution.getWeight() <= 0) return this.getRandom(userIds);
 
         int count = Math.min(distribution.getWeight(), userIds.size());
-        return Mono.just(userIds.subList(0, count));
+        return Mono.just(userIds.get(count - 1));
     }
 
-    private Mono<List<ULong>> handleLoadBalanced(UserDistribution distribution, List<ULong> userIds) {
-        if (distribution.getMaxLoad() == null || distribution.getMaxLoad() <= 0) return Mono.just(userIds);
+    private Mono<ULong> handleLoadBalanced(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getMaxLoad() == null || distribution.getMaxLoad() <= 0) return this.getRandom(userIds);
 
         Integer currentCount = distribution.getCurrentCount();
         if (currentCount == null) currentCount = 0;
 
-        if (currentCount >= distribution.getMaxLoad()) return Mono.just(List.of());
+        if (currentCount >= distribution.getMaxLoad()) return this.getRandom(userIds);
 
         distribution.setCurrentCount(currentCount + 1);
-        return Mono.just(List.of(userIds.get(currentCount % userIds.size())));
+        return Mono.just(userIds.get(currentCount % userIds.size()));
     }
 
-    private Mono<List<ULong>> handlePriorityQueue(UserDistribution distribution, List<ULong> userIds) {
-        if (distribution.getPriority() == null || distribution.getPriority() < 0) return Mono.just(userIds);
+    private Mono<ULong> handlePriorityQueue(UserDistribution distribution, List<ULong> userIds) {
+        if (distribution.getPriority() == null || distribution.getPriority() < 0) return this.getRandom(userIds);
 
-        int count = Math.min(distribution.getPriority() + 1, userIds.size());
-        return Mono.just(userIds.subList(0, count));
+        int count = Math.min(distribution.getPriority(), userIds.size() - 1);
+        return Mono.just(userIds.get(count));
     }
 
-    private Mono<List<ULong>> handleHybrid(UserDistribution distribution, List<ULong> userIds) {
+    private Mono<ULong> handleHybrid(UserDistribution distribution, List<ULong> userIds) {
         if (distribution.getHybridWeights() == null
-                || distribution.getHybridWeights().isEmpty()) return Mono.just(userIds);
+                || distribution.getHybridWeights().isEmpty()) return this.getRandom(userIds);
 
-        List<ULong> selectedUsers = new ArrayList<>();
         Map<DistributionType, Integer> weights = distribution.getHybridWeights();
+        int totalWeight = weights.values().stream().mapToInt(Integer::intValue).sum();
 
-        for (Map.Entry<DistributionType, Integer> entry : weights.entrySet()) {
-            int weight = entry.getValue();
-            if (weight <= 0) continue;
+        if (totalWeight <= 0) return this.getRandom(userIds);
 
-            int count = Math.min(weight, userIds.size());
-            selectedUsers.addAll(userIds.subList(0, count));
-        }
-
-        return Mono.just(selectedUsers);
+        int selectedIndex = random.nextInt(totalWeight);
+        return Mono.just(userIds.get(selectedIndex % userIds.size()));
     }
 
     private Mono<Boolean> evaluateRule(ULong ruleId, JsonElement data) {
@@ -171,9 +181,9 @@ public class RuleExecutionService {
                 rule -> {
                     if (rule == null) return Mono.empty();
 
-                    if (rule.isSimple()) return simpleRuleService.getCondition(rule.getId());
+                    if (rule.isSimple()) return simpleRuleService.getCondition(ruleId);
 
-                    if (rule.isComplex()) return complexRuleService.getCondition(rule.getId());
+                    if (rule.isComplex()) return complexRuleService.getCondition(ruleId);
 
                     return Mono.empty();
                 },

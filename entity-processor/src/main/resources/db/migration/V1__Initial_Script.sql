@@ -81,7 +81,6 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
   COLLATE = `utf8mb4_unicode_ci`;
 
 
-
 DROP TABLE IF EXISTS `entity_processor`.`entity_processor_models`;
 
 CREATE TABLE `entity_processor_models` (
@@ -354,6 +353,7 @@ CREATE TABLE `entity_processor`.`entity_processor_simple_complex_rule_relations`
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
+
 DROP TABLE IF EXISTS `entity_processor`.`entity_processor_value_template_rules`;
 
 CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
@@ -383,8 +383,9 @@ CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_Value Template_RULES_CODE` (`CODE`),
-    CONSTRAINT `FK1_Value TEMPLATE_RULES_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
+    UNIQUE KEY `UK1_VALUE_TEMPLATE_RULES_CODE` (`CODE`),
+    UNIQUE KEY `UK2_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID_PLATFORM` (`APP_CODE`, `CLIENT_CODE`, `VALUE_TEMPLATE_ID`, `PLATFORM`),
+    CONSTRAINT `FK1_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
         REFERENCES `ENTITY_PROCESSOR_VALUE_TEMPLATES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
@@ -392,6 +393,7 @@ CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
+
 
 DROP TABLE IF EXISTS `entity_processor`.`entity_processor_product_rules`;
 
@@ -423,6 +425,7 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_PRODUCT_RULES_CODE` (`CODE`),
+    UNIQUE KEY `UK2_PRODUCT_RULES_VALUE_TEMPLATE_ID_PLATFORM` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `PLATFORM`),
     CONSTRAINT `FK1_PRODUCT_RULES_PRODUCT_ID` FOREIGN KEY (`PRODUCT_ID`)
         REFERENCES `ENTITY_PROCESSOR_PRODUCTS` (`ID`)
         ON DELETE CASCADE

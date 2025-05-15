@@ -278,7 +278,7 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
 
     @Override
     public List<UniqueKey<EntityProcessorProductRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK1_PRODUCT_RULES_CODE);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK1_PRODUCT_RULES_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK2_PRODUCT_RULES_VALUE_TEMPLATE_ID_PLATFORM);
     }
 
     @Override

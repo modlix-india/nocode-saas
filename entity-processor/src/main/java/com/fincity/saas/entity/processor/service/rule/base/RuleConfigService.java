@@ -1,10 +1,23 @@
 package com.fincity.saas.entity.processor.service.rule.base;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.rule.base.RuleConfigDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
@@ -12,16 +25,7 @@ import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -64,6 +68,10 @@ public abstract class RuleConfigService<
         return super.readIdentityInternal(identity);
     }
 
+    public Mono<D> read(String appCode, String clientCode, ULong entityId, Platform platform) {
+        return this.dao.getRuleConfig(appCode, clientCode, entityId, platform);
+    }
+
     public Mono<D> create(T ruleConfigRequest) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
@@ -79,6 +87,7 @@ public abstract class RuleConfigService<
                 (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
                     ruleConfig
                             .setEntityId(entityId)
+                            .setPlatform(ruleConfigRequest.getPlatform())
                             .setRules(this.getOrderToIdMap(rules))
                             .setUserDistributions(userDistributions)
                             .setAddedByUserId(hasAccess.getT1().getT3())
@@ -121,9 +130,6 @@ public abstract class RuleConfigService<
     private D updateRuleConfigFromRequest(D ruleConfig, T ruleConfigRequest) {
 
         ruleConfig.setBreakAtFirstMatch(ruleConfigRequest.isBreakAtFirstMatch());
-        ruleConfig.setExecuteOnlyIfAllPreviousMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousMatch());
-        ruleConfig.setExecuteOnlyIfAllPreviousNotMatch(ruleConfigRequest.isExecuteOnlyIfAllPreviousNotMatch());
-        ruleConfig.setContinueOnNoMatch(ruleConfigRequest.isContinueOnNoMatch());
         ruleConfig.setUserDistributionType(ruleConfigRequest.getUserDistributionType());
 
         return ruleConfig;

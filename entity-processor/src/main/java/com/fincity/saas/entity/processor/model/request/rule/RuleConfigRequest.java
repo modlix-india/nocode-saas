@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.model.request.rule;
 
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -20,6 +21,7 @@ public abstract class RuleConfigRequest extends BaseRequest<RuleConfigRequest> i
     @Serial
     private static final long serialVersionUID = 5784534925780897041L;
 
+    private Platform platform;
     private Identity ruleConfigId;
     private boolean breakAtFirstMatch = false;
     private boolean executeOnlyIfAllPreviousMatch = false;

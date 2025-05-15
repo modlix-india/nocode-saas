@@ -279,7 +279,7 @@ public class EntityProcessorValueTemplateRules extends TableImpl<EntityProcessor
 
     @Override
     public List<UniqueKey<EntityProcessorValueTemplateRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES_UK1_VALUE_TEMPLATE_RULES_CODE);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES_UK1_VALUE_TEMPLATE_RULES_CODE, Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES_UK2_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID_PLATFORM);
     }
 
     @Override

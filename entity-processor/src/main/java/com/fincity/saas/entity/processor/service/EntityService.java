@@ -10,6 +10,8 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEnti
 import com.fincity.saas.entity.processor.model.request.EntityRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import com.fincity.saas.entity.processor.service.rule.RuleExecutionService;
+
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,13 +24,14 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     private static final String ENTITY_CACHE = "entity";
 
     private final ProductService productService;
-    private final StageService stageService;
     private final ModelService modelService;
+    private final ProductRuleService productRuleService;
 
-    public EntityService(ProductService productService, StageService stageService, ModelService modelService) {
+    public EntityService(
+		    ProductService productService, ModelService modelService, ProductRuleService productRuleService) {
         this.productService = productService;
-        this.stageService = stageService;
         this.modelService = modelService;
+	    this.productRuleService = productRuleService;
     }
 
     @Override
@@ -66,6 +69,7 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
         return FlatMapUtil.flatMapMono(
                 () -> this.productService.checkAndUpdateIdentity(entityRequest.getProductId()),
                 productIdentity -> Mono.just(entityRequest.setProductId(productIdentity)),
+
                 (productIdentity, req) -> super.create(Entity.of(req)));
     }
 
