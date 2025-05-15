@@ -242,8 +242,9 @@ public class OAuth2RestService extends AbstractRestTokenService {
                         }
                     });
 
-                    return webClient
-                            .get()
+                    String methodType = (String) tokenDetails.getOrDefault("methodType", "GET");
+
+                    return (methodType.equals("POST") ? webClient.post() : webClient.get())
                             .uri(uriBuilder.build().toUri())
                             .retrieve()
                             .bodyToMono(JsonNode.class)
@@ -327,6 +328,7 @@ public class OAuth2RestService extends AbstractRestTokenService {
                             .retrieve()
                             .bodyToMono(JsonNode.class);
                 },
+
                 (ca, tokenResponse) -> this.coreTokenDAO
                         .create(new CoreToken()
                                 .setClientCode(connection.getClientCode())
