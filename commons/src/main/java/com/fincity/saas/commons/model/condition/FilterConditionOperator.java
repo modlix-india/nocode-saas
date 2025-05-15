@@ -16,5 +16,5 @@ public enum FilterConditionOperator {
 	STRING_LOOSE_EQUAL,
 	MATCH,
 	MATCH_ALL,
-	TEXT_SEARCH;
+	TEXT_SEARCH,
 }

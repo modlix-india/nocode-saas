@@ -67,7 +67,7 @@ public class BooleanUtil {
     }
 
     public static Mono<Boolean> safeValueOfWithEmpty(Object b) {
-        return Mono.justOrEmpty(safeValueOf(b)).filter(Boolean::booleanValue);
+        return Mono.just(safeValueOf(b)).filter(Boolean::booleanValue);
     }
 
     private BooleanUtil() {
