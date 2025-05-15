@@ -2,8 +2,8 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
+import com.fincity.saas.entity.processor.util.IClassConvertor;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,7 +17,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Product extends BaseProcessorDto<Product> implements IEntitySeries {
+public class Product extends BaseProcessorDto<Product> implements IClassConvertor {
 
     @Serial
     private static final long serialVersionUID = 8028699089699178352L;

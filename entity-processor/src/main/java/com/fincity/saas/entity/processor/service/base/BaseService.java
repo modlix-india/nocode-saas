@@ -97,7 +97,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         });
     }
 
-    public Mono<D> readIdentityInternal(ULong id) {
+    public Mono<D> readById(ULong id) {
         return this.dao
                 .readInternal(id)
                 .flatMap(value -> value != null
@@ -130,7 +130,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
 
         return (identity.isCode()
                         ? this.readByCode(identity.getCode())
-                        : this.readIdentityInternal(ULongUtil.valueOf(identity.getId())))
+                        : this.readById(ULongUtil.valueOf(identity.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG));
@@ -152,7 +152,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                     ProcessorMessageResourceService.IDENTITY_MISSING);
 
         if (identity.isId())
-            return this.readIdentityInternal(ULongUtil.valueOf(identity.getId()))
+            return this.readById(ULongUtil.valueOf(identity.getId()))
                     .map(entity -> identity)
                     .switchIfEmpty(this.msgService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -226,7 +226,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<BaseResponse> getBaseResponse(ULong id) {
-        return this.readIdentityInternal(id).map(BaseDto::toBaseResponse);
+        return this.readById(id).map(BaseDto::toBaseResponse);
     }
 
     public Mono<BaseResponse> getBaseResponse(String code) {

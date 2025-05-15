@@ -1,10 +1,5 @@
 package com.fincity.saas.entity.processor.service;
 
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductRuleDAO;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -13,10 +8,12 @@ import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductRuleRequest;
-import com.fincity.saas.entity.processor.service.rule.RuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.base.RuleConfigService;
 import com.google.gson.JsonElement;
-
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -26,7 +23,7 @@ public class ProductRuleService
     private static final String PRODUCT_RULE_CONFIG = "productRuleConfig";
 
     private ProductService productService;
-    private RuleExecutionService ruleExecutionService;
+    private ValueTemplateRuleService valueTemplateRuleService;
 
     @Lazy
     @Autowired
@@ -34,9 +31,10 @@ public class ProductRuleService
         this.productService = productService;
     }
 
+    @Lazy
     @Autowired
-    private void setRuleExecutionService(RuleExecutionService ruleExecutionService) {
-        this.ruleExecutionService = ruleExecutionService;
+    private void setValueTemplateRuleService(ValueTemplateRuleService valueTemplateRuleService) {
+        this.valueTemplateRuleService = valueTemplateRuleService;
     }
 
     @Override
@@ -54,10 +52,21 @@ public class ProductRuleService
         return Mono.just(new ProductRule());
     }
 
-    public Mono<ULong> getUserAssignment(
+    @Override
+    protected Mono<ULong> getUserAssignment(
+            String appCode, String clientCode, ULong productId, Platform platform, JsonElement data) {
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.read(appCode, clientCode, productId, platform),
+                        productRule -> super.ruleExecutionService.executeRules(productRule, data))
+                .switchIfEmpty(this.getUserAssignmentFromTemplate(appCode, clientCode, productId, platform, data));
+    }
+
+    private Mono<ULong> getUserAssignmentFromTemplate(
             String appCode, String clientCode, ULong productId, Platform platform, JsonElement data) {
         return FlatMapUtil.flatMapMono(
-                () -> this.read(appCode, clientCode, productId, platform),
-                productRule -> ruleExecutionService.executeRules(productRule, data));
+                () -> productService.readById(productId),
+                product -> this.valueTemplateRuleService.getUserAssignment(
+                        appCode, clientCode, product.getValueTemplateId(), platform, data));
     }
 }

@@ -6,12 +6,11 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.entity.processor.dao.EntityDAO;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorEntitiesRecord;
 import com.fincity.saas.entity.processor.model.request.EntityRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-import com.fincity.saas.entity.processor.service.rule.RuleExecutionService;
-
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,10 +27,10 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     private final ProductRuleService productRuleService;
 
     public EntityService(
-		    ProductService productService, ModelService modelService, ProductRuleService productRuleService) {
+            ProductService productService, ModelService modelService, ProductRuleService productRuleService) {
         this.productService = productService;
         this.modelService = modelService;
-	    this.productRuleService = productRuleService;
+        this.productRuleService = productRuleService;
     }
 
     @Override
@@ -66,11 +65,21 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
     }
 
     public Mono<Entity> create(EntityRequest entityRequest) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.productService.checkAndUpdateIdentity(entityRequest.getProductId()),
-                productIdentity -> Mono.just(entityRequest.setProductId(productIdentity)),
 
-                (productIdentity, req) -> super.create(Entity.of(req)));
+        Entity entity = Entity.of(entityRequest);
+
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> this.productService.checkAndUpdateIdentity(entityRequest.getProductId()),
+                (hasAccess, productIdentity) -> Mono.just(entityRequest.setProductId(productIdentity)),
+                (hasAccess, productIdentity, req) -> this.productRuleService.getUserAssignment(
+                        hasAccess.getT1().getT1(),
+                        hasAccess.getT1().getT2(),
+                        productIdentity.getULongId(),
+                        Platform.PRE_QUALIFICATION,
+                        entity.toJson()),
+                (hasAccess, productIdentity, req, userId) -> this.setEntityAssignment(entity, userId),
+                (hasAccess, productIdentity, req, userId, aEnttiy) -> super.createInternal(aEnttiy, hasAccess));
     }
 
     public Mono<ProcessorResponse> createResponse(EntityRequest entityRequest) {
@@ -88,7 +97,7 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
 
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> this.productService.readIdentityInternal(entity.getProductId()),
+                ca -> this.productService.readById(entity.getProductId()),
                 (ca, product) -> Mono.just(entity.setProductId(product.getId())),
                 (ca, product, pEntity) ->
                         this.setDefaultStage(pEntity, product.getDefaultStageId(), product.getDefaultStatusId()));
@@ -108,5 +117,11 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
 
     private Mono<Entity> updateModel(Entity entity) {
         return this.modelService.getOrCreateEntityPhoneModel(entity.getAppCode(), entity.getClientCode(), entity);
+    }
+
+    private Mono<Entity> setEntityAssignment(Entity entity, ULong userId) {
+        entity.setAddedByUserId(userId);
+        entity.setCurrentUserId(userId);
+        return Mono.just(entity);
     }
 }

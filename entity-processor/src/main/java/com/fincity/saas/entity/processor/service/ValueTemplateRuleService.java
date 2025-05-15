@@ -1,12 +1,15 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ValueTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ValueTemplate;
 import com.fincity.saas.entity.processor.dto.ValueTemplateRule;
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplateRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ValueTemplateRuleRequest;
 import com.fincity.saas.entity.processor.service.rule.base.RuleConfigService;
+import com.google.gson.JsonElement;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -44,5 +47,13 @@ public class ValueTemplateRuleService
     @Override
     protected Mono<ValueTemplateRule> createNewInstance() {
         return Mono.just(new ValueTemplateRule());
+    }
+
+    @Override
+    protected Mono<ULong> getUserAssignment(
+            String appCode, String clientCode, ULong valueTemplateId, Platform platform, JsonElement data) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(appCode, clientCode, valueTemplateId, platform),
+                productRule -> super.ruleExecutionService.executeRules(productRule, data));
     }
 }

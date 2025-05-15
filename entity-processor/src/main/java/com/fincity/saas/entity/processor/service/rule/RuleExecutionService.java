@@ -1,19 +1,16 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
-
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

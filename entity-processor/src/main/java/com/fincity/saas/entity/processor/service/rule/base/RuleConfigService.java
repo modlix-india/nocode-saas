@@ -1,17 +1,5 @@
 package com.fincity.saas.entity.processor.service.rule.base;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.rule.base.RuleConfigDAO;
@@ -24,8 +12,19 @@ import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.service.rule.RuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
-
+import com.google.gson.JsonElement;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -38,6 +37,7 @@ public abstract class RuleConfigService<
         extends BaseService<R, D, O> implements IEntitySeries {
 
     private RuleService ruleService;
+    protected RuleExecutionService ruleExecutionService;
 
     @Lazy
     @Autowired
@@ -45,9 +45,17 @@ public abstract class RuleConfigService<
         this.ruleService = ruleService;
     }
 
+    @Autowired
+    private void setRuleExecutionService(RuleExecutionService ruleExecutionService) {
+        this.ruleExecutionService = ruleExecutionService;
+    }
+
     protected abstract Mono<ULong> getEntityId(String appCode, String clientCode, ULong userId, Identity entityId);
 
     protected abstract Mono<D> createNewInstance();
+
+    protected abstract Mono<ULong> getUserAssignment(
+            String appCode, String clientCode, ULong entityId, Platform platform, JsonElement data);
 
     @Override
     public Mono<D> create(D entity) {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import java.io.IOException;
 import java.io.Serial;
@@ -14,6 +15,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -55,6 +57,7 @@ public class Identity implements Serializable {
             this.id = new BigInteger(code);
         } catch (NumberFormatException e) {
             // nothing
+            return this;
         }
 
         return this;
@@ -62,6 +65,10 @@ public class Identity implements Serializable {
 
     public boolean isId() {
         return id != null;
+    }
+
+    public ULong getULongId() {
+        return ULongUtil.valueOf(this.getId());
     }
 
     public static class IdentityDeserializer extends JsonDeserializer<Identity> {

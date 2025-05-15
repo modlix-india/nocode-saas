@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.EntityRequest;
+import com.fincity.saas.entity.processor.util.IClassConvertor;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
 import lombok.Data;
@@ -17,7 +18,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Entity extends BaseProcessorDto<Entity> {
+public class Entity extends BaseProcessorDto<Entity> implements IClassConvertor {
 
     @Serial
     private static final long serialVersionUID = 1639822311147907381L;
