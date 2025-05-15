@@ -271,20 +271,20 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
                     String rTokenKey = (String) connectionDetails.get(REFRESH_TOKEN_KEY);
 
+                    Mono<CoreToken> refreshToken = Mono.just(new CoreToken()); // Default empty token for zip to work
+
                     // saving refresh token if present
                     if (!StringUtil.safeIsBlank(rTokenKey))
-                        this.coreTokenDAO
-                                .create(new CoreToken()
-                                        .setClientCode(connection.getClientCode())
-                                        .setAppCode(connection.getAppCode())
-                                        .setConnectionName(connection.getName())
-                                        .setUserId(coreCoreToken.getUserId())
-                                        .setExpiresAt(coreCoreToken.getExpiresAt())
-                                        .setTokenType(CoreTokensTokenType.REFRESH)
-                                        .setToken(tup.getT2().get(rTokenKey).asText()))
-                                .block();
+                        refreshToken = this.coreTokenDAO.create(new CoreToken()
+                                .setClientCode(connection.getClientCode())
+                                .setAppCode(connection.getAppCode())
+                                .setConnectionName(connection.getName())
+                                .setUserId(coreCoreToken.getUserId())
+                                .setExpiresAt(coreCoreToken.getExpiresAt())
+                                .setTokenType(CoreTokensTokenType.REFRESH)
+                                .setToken(tup.getT2().get(rTokenKey).asText()));
 
-                    return token;
+                    return token.zipWith(refreshToken).map(results -> Tuples.of(results.getT1(), results.getT2()));
                 },
                 (coreCoreToken, connection, invPrev, evictCache, tup, updated) -> {
                     response.setStatusCode(HttpStatus.FOUND);
@@ -328,7 +328,6 @@ public class OAuth2RestService extends AbstractRestTokenService {
                             .retrieve()
                             .bodyToMono(JsonNode.class);
                 },
-
                 (ca, tokenResponse) -> this.coreTokenDAO
                         .create(new CoreToken()
                                 .setClientCode(connection.getClientCode())
