@@ -88,4 +88,12 @@ public class Identity implements Serializable {
             return Identity.of(id, code);
         }
     }
+
+    @Override
+    public String toString() {
+        if (isNull()) return "Identity{null}";
+        if (isCode()) return "Identity{code='" + code + "'}";
+        if (isId()) return "Identity{id=" + id + "}";
+        return "Identity{id=" + id + ", code='" + code + "'}";
+    }
 }

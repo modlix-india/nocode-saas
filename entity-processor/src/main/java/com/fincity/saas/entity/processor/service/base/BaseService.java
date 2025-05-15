@@ -75,14 +75,9 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     @Override
     protected Mono<ULong> getLoggedInUserId() {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> Mono.justOrEmpty(
-                                ca.isAuthenticated()
-                                        ? ULong.valueOf(ca.getUser().getId())
-                                        : null))
-                .switchIfEmpty(msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT));
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.justOrEmpty(
+                        ca.isAuthenticated() ? ULong.valueOf(ca.getUser().getId()) : null));
     }
 
     @Override
@@ -130,10 +125,15 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
 
         return (identity.isCode()
                         ? this.readByCode(identity.getCode())
+                                .switchIfEmpty(this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                                        identity.getCode()))
                         : this.readById(ULongUtil.valueOf(identity.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.IDENTITY_WRONG));
+                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                        identity.getId()));
     }
 
     public Mono<Identity> updateIdentity(Identity identity) {
@@ -242,13 +242,16 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS)),
+                                ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS,
+                                acTup.getT2())),
                 (acTup, hasAppAccess) -> this.securityService
                         .isUserBeingManaged(ca.getUser().getId(), acTup.getT2())
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT)),
+                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                ca.getUser().getId(),
+                                acTup.getT2())),
                 (acTup, hasAppAccess, isUserManaged) -> Mono.just(Tuples.of(
                         Tuples.of(
                                 acTup.getT1(),

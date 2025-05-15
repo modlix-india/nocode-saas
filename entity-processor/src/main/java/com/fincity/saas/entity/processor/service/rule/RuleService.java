@@ -97,7 +97,10 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                     Integer order = entry.getKey();
                     UserDistribution userDistribution = entry.getValue().getUserDistribution();
 
-                    if (userDistribution == null) return Flux.empty();
+                    if (userDistribution == null)
+                           return this.msgService.throwMessage(
+                                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                    ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING, entry.getValue().getRuleId());
 
                     RuleRequest ruleRequest = entry.getValue();
 
@@ -107,13 +110,10 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                     return this.createInternal(ruleRequest)
                             .map(rule -> Map.entry(rule.getId(), Tuples.of(order, userDistribution)));
                 })
-                .collectMap(Map.Entry::getKey, Map.Entry::getValue)
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING));
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
     }
 
-    public Mono<Map<ULong, Integer>> updateWIthOrder(Map<Integer, RuleRequest> ruleRequests) {
+    public Mono<Map<ULong, Integer>> updateWithOrder(Map<Integer, RuleRequest> ruleRequests) {
 
         if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
 

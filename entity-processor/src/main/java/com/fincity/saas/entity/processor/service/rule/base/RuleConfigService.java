@@ -158,7 +158,7 @@ public abstract class RuleConfigService<
         if (!allValid)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.USER_DISTRIBUTION_INVALID);
+                    ProcessorMessageResourceService.USER_DISTRIBUTION_INVALID, distributionType);
 
         return Mono.just(distributionMap);
     }
