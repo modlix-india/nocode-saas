@@ -1,5 +1,10 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductRuleDAO;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -12,10 +17,6 @@ import com.fincity.saas.entity.processor.service.rule.RuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.base.RuleConfigService;
 import com.google.gson.JsonElement;
 
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -53,12 +54,10 @@ public class ProductRuleService
         return Mono.just(new ProductRule());
     }
 
-    public Mono<ULong> getUserAssignment(String appCode, String clientCode, ULong productId, Platform platform, JsonElement data) {
+    public Mono<ULong> getUserAssignment(
+            String appCode, String clientCode, ULong productId, Platform platform, JsonElement data) {
         return FlatMapUtil.flatMapMono(
                 () -> this.read(appCode, clientCode, productId, platform),
-                productRule -> {
-                    return ruleExecutionService.executeRules(productRule, data);
-                }
-        )
+                productRule -> ruleExecutionService.executeRules(productRule, data));
     }
 }
