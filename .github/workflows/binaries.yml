@@ -68,3 +68,6 @@ jobs:
       - name: Building schedular
         working-directory: ./schedular
         run: mvn compile jib:build
+      - name: Building entity-processor
+        working-directory: ./entity-processor
+        run: mvn compile jib:build
