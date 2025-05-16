@@ -229,8 +229,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Setter for
      * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
-     * is where this stage will be displayed in CRM, can be GLOBAL,
-     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
+     * POST_QUALIFICATION.
      */
     public EntityProcessorStagesRecord setPlatform(Platform value) {
         set(11, value);
@@ -240,8 +240,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
-     * is where this stage will be displayed in CRM, can be GLOBAL,
-     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
+     * POST_QUALIFICATION.
      */
     public Platform getPlatform() {
         return (Platform) get(11);

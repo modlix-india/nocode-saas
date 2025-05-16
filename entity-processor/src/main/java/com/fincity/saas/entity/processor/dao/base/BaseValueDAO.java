@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.dao.base;
 
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
-import com.fincity.saas.entity.processor.model.common.IdAndValue;
+import com.fincity.saas.entity.processor.model.common.BaseValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,16 +21,19 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
     private static final String VALUE_TEMPLATE_ID = "VALUE_TEMPLATE_ID";
     private static final String IS_PARENT = "IS_PARENT";
     private static final String PLATFORM = "PLATFORM";
+    private static final String ORDER = "ORDER";
 
     protected final Field<ULong> valueTemplateIdField;
     protected final Field<Boolean> isParentField;
     protected final Field<Platform> platformField;
+    protected final Field<Integer> orderField;
 
     protected BaseValueDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
         this.valueTemplateIdField = flowTable.field(VALUE_TEMPLATE_ID, ULong.class);
         this.isParentField = flowTable.field(IS_PARENT, Boolean.class);
         this.platformField = flowTable.field(PLATFORM, Platform.class);
+        this.orderField = flowTable.field(ORDER, Integer.class);
     }
 
     public Mono<Boolean> existsById(
@@ -39,10 +42,10 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
         if (valueEntityIds == null || valueEntityIds.length == 0) return Mono.just(Boolean.FALSE);
 
         return Mono.from(this.dslContext
-                .selectOne()
-                .from(this.table)
-                .where(DSL.and(this.getBaseValueConditions(
-                        appCode, clientCode, platform, valueTemplateId, null, valueEntityIds))))
+                        .selectOne()
+                        .from(this.table)
+                        .where(DSL.and(this.getBaseValueConditions(
+                                appCode, clientCode, platform, valueTemplateId, null, valueEntityIds))))
                 .map(rec -> Boolean.TRUE)
                 .defaultIfEmpty(Boolean.FALSE);
     }
@@ -53,10 +56,10 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
         if (valueEntityNames == null || valueEntityNames.length == 0) return Mono.just(Boolean.FALSE);
 
         return Mono.from(this.dslContext
-                .selectOne()
-                .from(this.table)
-                .where(DSL.and(this.getBaseValueNameConditions(
-                        appCode, clientCode, platform, valueTemplateId, null, valueEntityNames))))
+                        .selectOne()
+                        .from(this.table)
+                        .where(DSL.and(this.getBaseValueNameConditions(
+                                appCode, clientCode, platform, valueTemplateId, null, valueEntityNames))))
                 .map(rec -> Boolean.TRUE)
                 .defaultIfEmpty(Boolean.FALSE);
     }
@@ -71,25 +74,25 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .collectList();
     }
 
-    public Mono<List<IdAndValue<Integer, String>>> getAllValueTemplateIdAndNames(
+    public Mono<List<BaseValue>> getAllValueTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong valueTemplateId, Boolean isParent) {
         return Flux.from(this.dslContext
                         .select(this.idField, super.nameField)
                         .from(this.table)
                         .where(DSL.and(
                                 this.getBaseValueConditions(appCode, clientCode, platform, valueTemplateId, isParent))))
-                .map(e -> new IdAndValue<>(e.get(this.idField).intValue(), e.get(super.nameField)))
+                .map(e -> BaseValue.of(e.get(this.idField), e.get(super.nameField), e.get(this.orderField)))
                 .collectList();
     }
 
-    public Mono<List<IdAndValue<Integer, String>>> getAllValueTemplateIdAndNames(
+    public Mono<List<BaseValue>> getAllValueTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
         return Flux.from(this.dslContext
                         .select(this.idField, super.nameField)
                         .from(this.table)
                         .where(DSL.and(
                                 this.getBaseValueConditions(appCode, clientCode, platform, valueTemplateId, null))))
-                .map(e -> new IdAndValue<>(e.get(this.idField).intValue(), e.get(super.nameField)))
+                .map(e -> BaseValue.of(e.get(this.idField), e.get(super.nameField), e.get(this.orderField)))
                 .collectList();
     }
 

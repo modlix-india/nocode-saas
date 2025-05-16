@@ -26,6 +26,12 @@ public class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implemen
     private Boolean isParent;
     private ULong parentLevel0;
     private ULong parentLevel1;
+    private Integer order;
+
+    public T setOrder(Integer order) {
+        this.order = order;
+        return (T) this;
+    }
 
     public boolean hasParentLevels() {
         return this.parentLevel0 != null || this.parentLevel1 != null;

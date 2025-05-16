@@ -6,23 +6,26 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.model.common.BaseValue;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ValueTemplateService;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.apache.hc.core5.util.Identifiable;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 
 @Service
 public abstract class BaseValueService<
@@ -39,6 +42,8 @@ public abstract class BaseValueService<
     public String getValueIdValueKey() {
         return IdAndValue.ID_CACHE_KEY;
     }
+
+    public abstract Mono<D> applyOrder(D entity, Tuple3<String, String, ULong> accessInfo);
 
     @Autowired
     private void setValueTemplateService(ValueTemplateService valueTemplateService) {
@@ -81,19 +86,23 @@ public abstract class BaseValueService<
         });
     }
 
-    private Mono<D> validateEntity(D entity, String appCode, String clientCode) {
+    private Mono<D> validateEntity(D entity, Tuple3<String, String, ULong> accessInfo) {
         return FlatMapUtil.flatMapMono(
                 () -> entity.hasParentLevels()
                         ? this.existsById(
-                                appCode,
-                                clientCode,
+                                accessInfo.getT1(),
+                                accessInfo.getT2(),
                                 entity.getPlatform(),
                                 entity.getValueTemplateId(),
                                 entity.getParentLevel0(),
                                 entity.getParentLevel1())
                         : Mono.just(Boolean.TRUE),
                 parentExists -> this.existsByName(
-                        appCode, clientCode, entity.getPlatform(), entity.getValueTemplateId(), entity.getName()),
+                        accessInfo.getT1(),
+                        accessInfo.getT2(),
+                        entity.getPlatform(),
+                        entity.getValueTemplateId(),
+                        entity.getName()),
                 (parentExists, nameExists) -> {
                     if (Boolean.TRUE.equals(nameExists))
                         return this.msgService.throwMessage(
@@ -111,25 +120,16 @@ public abstract class BaseValueService<
     public Mono<D> create(D entity) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> validateEntity(
-                        entity, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()),
-                (hasAccess, validated) -> {
-                    validated.setAppCode(hasAccess.getT1().getT1());
-                    validated.setClientCode(hasAccess.getT1().getT2());
-                    validated.setAddedByUserId(hasAccess.getT1().getT3());
-                    validated.setIsParent(validated.getParentLevel0() == null || validated.getParentLevel1() == null);
+                hasAccess -> this.validateEntity(entity, hasAccess.getT1()),
+                (hasAccess, vEntity) -> this.applyOrder(vEntity, hasAccess.getT1()),
+                (hasAccess, vEntity, cEntity) -> {
+                    cEntity.setAppCode(hasAccess.getT1().getT1());
+                    cEntity.setClientCode(hasAccess.getT1().getT2());
+                    cEntity.setAddedByUserId(hasAccess.getT1().getT3());
+                    cEntity.setIsParent(Boolean.TRUE);
 
-                    return super.create(validated);
+                    return super.create(cEntity);
                 });
-    }
-
-    @Override
-    public Mono<D> update(D entity) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                hasAccess -> validateEntity(
-                        entity, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()),
-                (hasAccess, validated) -> this.updateInternal(validated));
     }
 
     public Mono<D> createChild(D entity, D parentEntity) {
@@ -143,6 +143,14 @@ public abstract class BaseValueService<
         if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
 
         return super.create(entity);
+    }
+
+    @Override
+    public Mono<D> update(D entity) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                hasAccess -> this.validateEntity(entity, hasAccess.getT1()),
+                (hasAccess, validated) -> this.updateInternal(validated));
     }
 
     @Override
@@ -196,16 +204,16 @@ public abstract class BaseValueService<
             ULong... children) {
         return FlatMapUtil.flatMapMono(
                         () -> this.getAllValues(appCode, clientCode, platform, valueTemplateId), valueEntityMap -> {
-                            IdAndValue<ULong, String> parentKey = valueEntityMap.keySet().stream()
+                            BaseValue parentKey = valueEntityMap.keySet().stream()
                                     .filter(k -> k.getId().equals(parent))
                                     .findFirst()
                                     .orElse(null);
 
                             if (parentKey == null) return Mono.just(Boolean.FALSE);
 
-                            Set<IdAndValue<ULong, String>> parentChildren = valueEntityMap.get(parentKey);
+                            Set<BaseValue> parentChildren = valueEntityMap.get(parentKey);
                             Set<ULong> parentChildIds = parentChildren.stream()
-                                    .map(IdAndValue::getId)
+                                    .map(BaseValue::getId)
                                     .collect(Collectors.toSet());
 
                             boolean allChildrenValid = Stream.of(children).allMatch(parentChildIds::contains);
@@ -215,15 +223,32 @@ public abstract class BaseValueService<
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Map<IdAndValue<ULong, String>, Set<IdAndValue<ULong, String>>>> getAllValues(
+    public Mono<TreeMap<BaseValue, TreeSet<BaseValue>>> getAllValuesInOrder(
+            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
+        return this.getAllValues(appCode, clientCode, platform, valueTemplateId).map(map -> {
+            TreeMap<BaseValue, TreeSet<BaseValue>> orderedMap =
+                    new TreeMap<>(Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
+
+            map.forEach((key, value) -> {
+                TreeSet<BaseValue> orderedSet = new TreeSet<>(
+                        Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
+                orderedSet.addAll(value);
+                orderedMap.put(key, orderedSet);
+            });
+
+            return orderedMap;
+        });
+    }
+
+    public Mono<Map<BaseValue, Set<BaseValue>>> getAllValues(
             String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.getAllValuesInternal(appCode, clientCode, platform, valueTemplateId),
-                super.getCacheKey(this.getValueEtKey(), appCode, clientCode, valueTemplateId));
+                super.getCacheKey(this.getValueEtKey(), appCode, clientCode, platform, valueTemplateId));
     }
 
-    private Mono<Map<IdAndValue<ULong, String>, Set<IdAndValue<ULong, String>>>> getAllValuesInternal(
+    private Mono<Map<BaseValue, Set<BaseValue>>> getAllValuesInternal(
             String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
@@ -231,26 +256,26 @@ public abstract class BaseValueService<
                         this.getAllValueMap(appCode, clientCode, platform, valueTemplateId)),
                 tup -> Mono.just(tup.getT1().stream()
                         .collect(Collectors.toMap(
-                                value -> IdAndValue.of(value.getId(), value.getName()),
+                                value -> BaseValue.of(value.getId(), value.getName(), value.getOrder()),
                                 value -> this.getValueChildNamesSet(value, tup.getT2()),
                                 (a, b) -> b))));
     }
 
-    private Mono<Map<Integer, String>> getAllValueMap(
+    private Mono<Map<ULong, BaseValue>> getAllValueMap(
             String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao
                         .getAllValueTemplateIdAndNames(appCode, clientCode, platform, valueTemplateId)
-                        .map(IdAndValue::toMap),
+                        .map(BaseValue::toIdMap),
                 super.getCacheKey(this.getValueIdValueKey(), appCode, clientCode, valueTemplateId));
     }
 
-    private Set<IdAndValue<ULong, String>> getValueChildNamesSet(D valueEntity, Map<Integer, String> valueEntityMap) {
+    private Set<BaseValue> getValueChildNamesSet(D valueEntity, Map<ULong, BaseValue> valueEntityMap) {
         return Stream.of(valueEntity.getParentLevel0(), valueEntity.getParentLevel1())
                 .filter(Objects::nonNull)
-                .map(id -> IdAndValue.of(id, valueEntityMap.get(id.intValue())))
-                .filter(idAndValue -> idAndValue.getValue() != null)
+                .map(valueEntityMap::get)
+                .filter(baseValue -> baseValue.getValue() != null)
                 .collect(Collectors.toSet());
     }
 }

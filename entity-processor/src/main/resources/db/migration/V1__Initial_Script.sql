@@ -48,7 +48,7 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
     `IS_PARENT` TINYINT NOT NULL DEFAULT 1 NOT NULL COMMENT 'Is this the main Source or not.',
     `PARENT_LEVEL_0` BIGINT UNSIGNED NULL COMMENT 'Parent Stage for this stage.',
     `PARENT_LEVEL_1` BIGINT UNSIGNED NULL COMMENT 'Parent stage level 1 for this stage.',
-    `PLATFORM` ENUM ('GLOBAL', 'PRE_QUALIFICATION', 'QUALIFICATION', 'MAIN') DEFAULT 'GLOBAL' NOT NULL COMMENT 'Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.',
+    `PLATFORM` ENUM ('PRE_QUALIFICATION', 'POST_QUALIFICATION') DEFAULT 'POST_QUALIFICATION' NOT NULL COMMENT 'Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.',
     `STAGE_TYPE` ENUM ('OPEN', 'CLOSED') DEFAULT 'OPEN' NOT NULL COMMENT 'Stage type can be Open or Closed.',
     `IS_SUCCESS` TINYINT NOT NULL DEFAULT 0 NOT NULL COMMENT 'This flag will tell weather this stage will end in a success or not.',
     `IS_FAILURE` TINYINT NOT NULL DEFAULT 0 NOT NULL COMMENT 'This flag will tell weather this stage will end in a failure or not.',

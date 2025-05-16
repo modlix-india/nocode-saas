@@ -10,19 +10,15 @@ import org.jooq.Schema;
 
 
 /**
- * Platform is where this stage will be displayed in CRM, can be GLOBAL,
- * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+ * Platform is where this stage will be displayed in CRM, can be
+ * PRE_QUALIFICATION, POST_QUALIFICATION.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityProcessorStagesPlatform implements EnumType {
 
-    GLOBAL("GLOBAL"),
-
     PRE_QUALIFICATION("PRE_QUALIFICATION"),
 
-    QUALIFICATION("QUALIFICATION"),
-
-    MAIN("MAIN");
+    POST_QUALIFICATION("POST_QUALIFICATION");
 
     private final String literal;
 

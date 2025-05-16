@@ -1,14 +1,12 @@
 package com.fincity.saas.entity.processor.dto;
 
-import java.io.Serial;
-
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -28,7 +26,6 @@ public class Stage extends BaseValueDto<Stage> {
     private StageType stageType = StageType.OPEN;
     private Boolean isSuccess;
     private Boolean isFailure;
-    private Integer order;
 
     public static Stage ofParent(StageRequest stageRequest) {
         return (Stage) new Stage()

@@ -17,6 +17,7 @@ import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -44,7 +45,12 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     protected String getCacheKey(Object... entityNames) {
-        return String.join(":", Stream.of(entityNames).map(Object::toString).toArray(String[]::new));
+        return String.join(
+                ":",
+                Stream.of(entityNames)
+                        .filter(Objects::nonNull)
+                        .map(Object::toString)
+                        .toArray(String[]::new));
     }
 
     protected Mono<Boolean> evictCache(D entity) {

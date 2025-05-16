@@ -4,14 +4,19 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
+import com.fincity.saas.entity.processor.model.common.BaseValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
 import java.util.Map;
+import java.util.TreeMap;
+import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 
 @Service
 public class StageService extends BaseValueService<EntityProcessorStagesRecord, Stage, StageDAO> {
@@ -26,6 +31,21 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.STAGE;
+    }
+
+    @Override
+    public Mono<Stage> applyOrder(Stage entity, Tuple3<String, String, ULong> accessInfo) {
+
+        if (entity.isChild()) return Mono.just(entity);
+
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> this.getLatestStageByOrder(
+                        accessInfo.getT1(), accessInfo.getT2(), entity.getValueTemplateId(), entity.getPlatform()),
+                latestStage -> {
+                    if (latestStage == null) return Mono.just((Stage) entity.setOrder(1));
+
+                    return Mono.just((Stage) entity.setOrder(latestStage.getOrder() + 1));
+                });
     }
 
     public Mono<Stage> create(StageRequest stageRequest) {
@@ -52,6 +72,31 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                         parent))
                 .collectList()
                 .then(Mono.just(parent));
+    }
+
+    public Mono<BaseValue> getLatestStageByOrder(
+            String appCode, String clientCode, ULong valueTemplateId, Platform platform) {
+        return super.getAllValuesInOrder(appCode, clientCode, platform, valueTemplateId)
+                .map(TreeMap::lastKey);
+    }
+
+    public Mono<BaseValue> getFirstStage(String appCode, String clientCode, ULong valueTemplateId) {
+        return super.getAllValuesInOrder(appCode, clientCode, null, valueTemplateId)
+                .map(TreeMap::firstKey);
+    }
+
+    public Mono<BaseValue> getFirstStatus(String appCode, String clientCode, ULong valueTemplateId, ULong stageId) {
+        return super.getAllValuesInOrder(appCode, clientCode, null, valueTemplateId)
+                .flatMap(treeMap -> {
+                    BaseValue stage = treeMap.keySet().stream()
+                            .filter(key -> key.getId().equals(stageId))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (stage == null || !treeMap.containsKey(stage)) return Mono.empty();
+
+                    return Mono.justOrEmpty(treeMap.get(stage).first());
+                });
     }
 
     private Mono<Boolean> updateOrder(Map<Integer, Identity> stageMap) {

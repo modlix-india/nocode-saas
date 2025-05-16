@@ -137,10 +137,10 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
-     * is where this stage will be displayed in CRM, can be GLOBAL,
-     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
+     * POST_QUALIFICATION.
      */
-    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("GLOBAL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorStagesPlatform, Platform>(EntityProcessorStagesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("POST_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.", new EnumConverter<EntityProcessorStagesPlatform, Platform>(EntityProcessorStagesPlatform.class, Platform.class));
 
     /**
      * The column
