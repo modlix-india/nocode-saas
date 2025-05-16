@@ -1,5 +1,10 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductRuleDAO;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -11,10 +16,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductRuleRequest;
 import com.fincity.saas.entity.processor.service.rule.base.RuleConfigService;
 import com.google.gson.JsonElement;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 @Service
@@ -49,8 +51,13 @@ public class ProductRuleService
     }
 
     @Override
-    protected Mono<ULong> getEntityId(String appCode, String clientCode, ULong userId, Identity productId) {
+    protected Mono<ULong> getEntityId(String appCode, String clientCode, Identity productId) {
         return productService.readWithAccess(productId).map(Product::getId);
+    }
+
+    @Override
+    protected Mono<ULong> getValueTemplateId(String appCode, String clientCode, Identity entityId) {
+        return productService.readIdentityInternal(entityId).map(Product::getValueTemplateId);
     }
 
     @Override

@@ -5,11 +5,9 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
-import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorValueTemplateRulesPlatform;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorValueTemplateRulesUserDistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplateRulesRecord;
 
@@ -121,11 +119,10 @@ public class EntityProcessorValueTemplateRules extends TableImpl<EntityProcessor
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_value_template_rules.PLATFORM</code>.
-     * Platform is where this stage will be displayed in CRM, can be GLOBAL,
-     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     * <code>entity_processor.entity_processor_value_template_rules.STAGE_ID</code>.
+     * Stage Id to which this Value Template rule config is assigned
      */
-    public final TableField<EntityProcessorValueTemplateRulesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorValueTemplateRulesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorValueTemplateRulesPlatform, Platform>(EntityProcessorValueTemplateRulesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorValueTemplateRulesRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Stage Id to which this Value Template rule config is assigned");
 
     /**
      * The column
@@ -279,7 +276,7 @@ public class EntityProcessorValueTemplateRules extends TableImpl<EntityProcessor
 
     @Override
     public List<UniqueKey<EntityProcessorValueTemplateRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES_UK1_VALUE_TEMPLATE_RULES_CODE, Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES_UK2_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID_PLATFORM);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES_UK1_VALUE_TEMPLATE_RULES_CODE, Keys.KEY_ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES_UK2_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID_STAGE_ID);
     }
 
     @Override

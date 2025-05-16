@@ -1,5 +1,10 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ValueTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ValueTemplate;
@@ -11,10 +16,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ValueTemplateRuleRequest;
 import com.fincity.saas.entity.processor.service.rule.base.RuleConfigService;
 import com.google.gson.JsonElement;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 @Service
@@ -46,8 +48,13 @@ public class ValueTemplateRuleService
     }
 
     @Override
-    protected Mono<ULong> getEntityId(String appCode, String clientCode, ULong userId, Identity valueTemplateId) {
+    protected Mono<ULong> getEntityId(String appCode, String clientCode, Identity valueTemplateId) {
         return valueTemplateService.readWithAccess(valueTemplateId).map(ValueTemplate::getId);
+    }
+
+    @Override
+    protected Mono<ULong> getValueTemplateId(String appCode, String clientCode, Identity entityId) {
+        return valueTemplateService.readIdentityInternal(entityId).map(ValueTemplate::getId);
     }
 
     @Override

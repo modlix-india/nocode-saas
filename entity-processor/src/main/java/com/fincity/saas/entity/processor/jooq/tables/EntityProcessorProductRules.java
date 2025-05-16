@@ -5,11 +5,9 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
-import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRulesPlatform;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductRulesUserDistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
 
@@ -121,11 +119,10 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_rules.PLATFORM</code>.
-     * Platform is where this stage will be displayed in CRM, can be GLOBAL,
-     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     * <code>entity_processor.entity_processor_product_rules.STAGE_ID</code>.
+     * Stage Id to which this product rule config is assigned
      */
-    public final TableField<EntityProcessorProductRulesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductRulesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.", new EnumConverter<EntityProcessorProductRulesPlatform, Platform>(EntityProcessorProductRulesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorProductRulesRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Stage Id to which this product rule config is assigned");
 
     /**
      * The column
@@ -278,7 +275,7 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
 
     @Override
     public List<UniqueKey<EntityProcessorProductRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK1_PRODUCT_RULES_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK2_PRODUCT_RULES_VALUE_TEMPLATE_ID_PLATFORM);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK1_PRODUCT_RULES_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_RULES_UK2_PRODUCT_RULES_VALUE_TEMPLATE_ID_STAGE_ID);
     }
 
     @Override

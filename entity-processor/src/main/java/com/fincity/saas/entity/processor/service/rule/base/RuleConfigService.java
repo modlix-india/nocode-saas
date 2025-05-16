@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleConfigRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.service.rule.RuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
@@ -36,8 +37,9 @@ public abstract class RuleConfigService<
                 O extends RuleConfigDAO<R, D>>
         extends BaseService<R, D, O> implements IEntitySeries {
 
-    private RuleService ruleService;
     protected RuleExecutionService ruleExecutionService;
+    private RuleService ruleService;
+    private StageService stageService;
 
     @Lazy
     @Autowired
@@ -46,11 +48,18 @@ public abstract class RuleConfigService<
     }
 
     @Autowired
+    private void setStageService(StageService stageService) {
+        this.stageService = stageService;
+    }
+
+    @Autowired
     private void setRuleExecutionService(RuleExecutionService ruleExecutionService) {
         this.ruleExecutionService = ruleExecutionService;
     }
 
-    protected abstract Mono<ULong> getEntityId(String appCode, String clientCode, ULong userId, Identity entityId);
+    protected abstract Mono<ULong> getEntityId(String appCode, String clientCode, Identity entityId);
+
+    protected abstract Mono<ULong> getValueTemplateId(String appCode, String clientCode, Identity entityId);
 
     protected abstract Mono<D> createNewInstance();
 
@@ -84,18 +93,24 @@ public abstract class RuleConfigService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 hasAccess -> this.getEntityId(
+                        hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), ruleConfigRequest.getIdentity()),
+                (hasAccess, entityId) -> this.getValueTemplateId(
+                        hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), ruleConfigRequest.getIdentity()),
+                (hasAccess, entityId, valueTemplateId) -> this.stageService.existsById(
                         hasAccess.getT1().getT1(),
                         hasAccess.getT1().getT2(),
-                        hasAccess.getT1().getT3(),
-                        ruleConfigRequest.getIdentity()),
-                (hasAccess, entityId) -> ruleService.createWithUserDistribution(ruleConfigRequest.getRules()),
-                (hasAccess, entityId, rules) -> this.createFromRequest(ruleConfigRequest),
-                (hasAccess, entityId, rules, ruleConfig) ->
+                        null,
+                        valueTemplateId,
+                        ruleConfigRequest.getStageId()),
+                (hasAccess, entityId, valueTemplateId, stageExists) ->
+                        ruleService.createWithUserDistribution(ruleConfigRequest.getRules()),
+                (hasAccess, entityId, valueTemplateId, stageExists, rules) -> this.createFromRequest(ruleConfigRequest),
+                (hasAccess, entityId, valueTemplateId, stageExists, rules, ruleConfig) ->
                         this.createUserDistributions(ruleConfigRequest.getUserDistributionType(), rules),
-                (hasAccess, entityId, rules, ruleConfig, userDistributions) -> {
+                (hasAccess, entityId, valueTemplateId, stageExists, rules, ruleConfig, userDistributions) -> {
                     ruleConfig
                             .setEntityId(entityId)
-                            .setPlatform(ruleConfigRequest.getPlatform())
+                            .setStageId(ruleConfig.getStageId())
                             .setRules(this.getOrderToIdMap(rules))
                             .setUserDistributions(userDistributions)
                             .setAddedByUserId(hasAccess.getT1().getT3())
@@ -109,10 +124,7 @@ public abstract class RuleConfigService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 hasAccess -> this.getEntityId(
-                        hasAccess.getT1().getT1(),
-                        hasAccess.getT1().getT2(),
-                        hasAccess.getT1().getT3(),
-                        ruleConfigRequest.getIdentity()),
+                        hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), ruleConfigRequest.getIdentity()),
                 (hasAccess, entityId) -> ruleService.updateWithUserDistribution(ruleConfigRequest.getRules()),
                 (hasAccess, entityId, rules) -> this.updateFromRequest(ruleConfigRequest),
                 (hasAccess, entityId, rules, ruleConfig) ->

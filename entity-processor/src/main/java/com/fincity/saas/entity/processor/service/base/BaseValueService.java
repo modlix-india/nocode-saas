@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ValueTemplateService;
 import java.util.Map;
@@ -14,6 +15,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.hc.core5.util.Identifiable;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -164,6 +167,14 @@ public abstract class BaseValueService<
                 hasAccess -> this.read(id),
                 (hasAccess, entity) -> super.delete(entity.getId()),
                 (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
+    }
+
+    public Mono<Boolean> existsById(
+            String appCode, String clientCode, Platform platform, ULong valueTemplateId, Identity valueEntity) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.checkAndUpdateIdentity(valueEntity),
+                identity -> this.existsById(appCode, clientCode, platform, valueTemplateId, identity.getULongId()));
     }
 
     protected Mono<Boolean> existsById(

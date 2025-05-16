@@ -5,8 +5,7 @@ import org.jooq.EnumType;
 
 public enum Platform implements EnumType {
     PRE_QUALIFICATION("PRE_QUALIFICATION", 0),
-    QUALIFICATION("QUALIFICATION", 1),
-    MAIN("MAIN", 2);
+    POST_QUALIFICATION("POST_QUALIFICATION", 1);
 
     private static final TreeMap<Integer, Platform> ORDER_MAP = new TreeMap<>();
 

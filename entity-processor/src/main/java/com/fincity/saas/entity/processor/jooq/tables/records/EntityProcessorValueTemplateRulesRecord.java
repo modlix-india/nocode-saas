@@ -4,7 +4,6 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplateRules;
 
@@ -179,23 +178,21 @@ public class EntityProcessorValueTemplateRulesRecord extends UpdatableRecordImpl
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_value_template_rules.PLATFORM</code>.
-     * Platform is where this stage will be displayed in CRM, can be GLOBAL,
-     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     * <code>entity_processor.entity_processor_value_template_rules.STAGE_ID</code>.
+     * Stage Id to which this Value Template rule config is assigned
      */
-    public EntityProcessorValueTemplateRulesRecord setPlatform(Platform value) {
+    public EntityProcessorValueTemplateRulesRecord setStageId(ULong value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_value_template_rules.PLATFORM</code>.
-     * Platform is where this stage will be displayed in CRM, can be GLOBAL,
-     * PRE_QUALIFICATION, QUALIFICATION or MAIN.
+     * <code>entity_processor.entity_processor_value_template_rules.STAGE_ID</code>.
+     * Stage Id to which this Value Template rule config is assigned
      */
-    public Platform getPlatform() {
-        return (Platform) get(8);
+    public ULong getStageId() {
+        return (ULong) get(8);
     }
 
     /**
@@ -491,7 +488,7 @@ public class EntityProcessorValueTemplateRulesRecord extends UpdatableRecordImpl
     /**
      * Create a detached, initialised EntityProcessorValueTemplateRulesRecord
      */
-    public EntityProcessorValueTemplateRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong valueTemplateId, Platform platform, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, DistributionType userDistributionType, JSON userDistributions, ULong lastUsedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorValueTemplateRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong valueTemplateId, ULong stageId, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, DistributionType userDistributionType, JSON userDistributions, ULong lastUsedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES);
 
         setId(id);
@@ -502,7 +499,7 @@ public class EntityProcessorValueTemplateRulesRecord extends UpdatableRecordImpl
         setDescription(description);
         setAddedByUserId(addedByUserId);
         setValueTemplateId(valueTemplateId);
-        setPlatform(platform);
+        setStageId(stageId);
         setBreakAtFirstMatch(breakAtFirstMatch);
         setExecuteOnlyIfAllPreviousMatch(executeOnlyIfAllPreviousMatch);
         setExecuteOnlyIfAllPreviousNotMatch(executeOnlyIfAllPreviousNotMatch);

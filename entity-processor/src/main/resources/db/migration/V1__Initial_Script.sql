@@ -366,7 +366,7 @@ CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Value Template Rule Config.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Value Template Rule Config.',
     `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template ID related to this Value Template Rule Config.',
-    `PLATFORM` ENUM ('PRE_QUALIFICATION', 'QUALIFICATION', 'MAIN') DEFAULT 'PRE_QUALIFICATION' NOT NULL COMMENT 'Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.',
+    `STAGE_ID` BIGINT UNSIGNED NULL COMMENT 'Stage Id to which this Value Template rule config is assigned',
     `BREAK_AT_FIRST_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should break at first match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules do not match.',
@@ -384,9 +384,13 @@ CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_VALUE_TEMPLATE_RULES_CODE` (`CODE`),
-    UNIQUE KEY `UK2_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID_PLATFORM` (`APP_CODE`, `CLIENT_CODE`, `VALUE_TEMPLATE_ID`, `PLATFORM`),
+    UNIQUE KEY `UK2_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID_STAGE_ID` (`APP_CODE`, `CLIENT_CODE`, `VALUE_TEMPLATE_ID`, `STAGE_ID`),
     CONSTRAINT `FK1_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
         REFERENCES `ENTITY_PROCESSOR_VALUE_TEMPLATES` (`ID`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_VALUE_TEMPLATE_RULES_STAGE_ID` FOREIGN KEY (`STAGE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_STAGES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 
@@ -407,7 +411,7 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product Rule Config.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Product Rule Config.',
     `PRODUCT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product Rule ID related to this Product Rule Config.',
-    `PLATFORM` ENUM ('PRE_QUALIFICATION', 'QUALIFICATION', 'MAIN') DEFAULT 'PRE_QUALIFICATION' NOT NULL COMMENT 'Platform is where this stage will be displayed in CRM, can be GLOBAL, PRE_QUALIFICATION, QUALIFICATION or MAIN.',
+    `STAGE_ID` BIGINT UNSIGNED NULL COMMENT 'Stage Id to which this product rule config is assigned',
     `BREAK_AT_FIRST_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should break at first match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules do not match.',
@@ -425,12 +429,15 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_PRODUCT_RULES_CODE` (`CODE`),
-    UNIQUE KEY `UK2_PRODUCT_RULES_VALUE_TEMPLATE_ID_PLATFORM` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `PLATFORM`),
+    UNIQUE KEY `UK2_PRODUCT_RULES_VALUE_TEMPLATE_ID_STAGE_ID` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `STAGE_ID`),
     CONSTRAINT `FK1_PRODUCT_RULES_PRODUCT_ID` FOREIGN KEY (`PRODUCT_ID`)
         REFERENCES `ENTITY_PROCESSOR_PRODUCTS` (`ID`)
         ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_PRODUCT_RULES_STAGE_ID` FOREIGN KEY (`STAGE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_STAGES` (`ID`)
+        ON DELETE CASCADE
         ON UPDATE CASCADE
-
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;

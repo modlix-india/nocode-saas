@@ -43,7 +43,7 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .from(this.table)
                 .where(DSL.and(this.getBaseValueConditions(
                         appCode, clientCode, platform, valueTemplateId, null, valueEntityIds))))
-                .map(record -> Boolean.TRUE)
+                .map(rec -> Boolean.TRUE)
                 .defaultIfEmpty(Boolean.FALSE);
     }
 
@@ -57,7 +57,7 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .from(this.table)
                 .where(DSL.and(this.getBaseValueNameConditions(
                         appCode, clientCode, platform, valueTemplateId, null, valueEntityNames))))
-                .map(record -> Boolean.TRUE)
+                .map(rec -> Boolean.TRUE)
                 .defaultIfEmpty(Boolean.FALSE);
     }
 
