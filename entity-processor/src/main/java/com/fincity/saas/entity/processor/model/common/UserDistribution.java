@@ -1,14 +1,17 @@
 package com.fincity.saas.entity.processor.model.common;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+
+import org.jooq.types.ULong;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -18,6 +21,7 @@ public class UserDistribution implements Serializable {
     private static final long serialVersionUID = 7428944421074508272L;
 
     private List<ULong> profileIds;
+    private List<ULong> userIds;
     private Integer percentage;
     private Integer maxLoad;
     private Integer weight;

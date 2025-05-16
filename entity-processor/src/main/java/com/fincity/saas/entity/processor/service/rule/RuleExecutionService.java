@@ -34,10 +34,18 @@ public class RuleExecutionService {
         this.conditionEvaluator = conditionEvaluator;
     }
 
-    private Mono<List<ULong>> getUsersFromProfiles(List<ULong> profileIds) {
+    private Mono<List<ULong>> getUsersForDistribution(UserDistribution userDistribution) {
+
+        if (userDistribution == null) return Mono.empty();
+
+        if ((userDistribution.getProfileIds() == null
+                        || userDistribution.getProfileIds().isEmpty())
+                && (userDistribution.getUserIds() == null
+                        || userDistribution.getUserIds().isEmpty())) return Mono.empty();
+
         // TODO: Implement actual logic to fetch users from profiles
         // For now, return an empty list
-        return Mono.just(List.of());
+        return Mono.just(userDistribution.getUserIds());
     }
 
     public <T extends RuleConfig<T>> Mono<ULong> executeRules(T ruleConfig, JsonElement data) {
@@ -66,13 +74,7 @@ public class RuleExecutionService {
                     UserDistribution distribution =
                             ruleConfig.getUserDistributions().get(matchedRuleId);
 
-                    if (distribution == null
-                            || distribution.getProfileIds() == null
-                            || distribution.getProfileIds().isEmpty()) {
-                        return Mono.empty();
-                    }
-
-                    return getUsersFromProfiles(distribution.getProfileIds())
+                    return getUsersForDistribution(distribution)
                             .flatMap(userIds -> distributeUsers(ruleConfig, distribution, userIds));
                 });
     }
