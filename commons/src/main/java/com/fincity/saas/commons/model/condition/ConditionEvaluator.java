@@ -20,11 +20,10 @@ import com.google.gson.JsonPrimitive;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-
 public class ConditionEvaluator {
 
-    private final String prefix;
     private static final Gson GSON = new Gson();
+    private final String prefix;
 
     public ConditionEvaluator(String prefix) {
         this.prefix = prefix;
@@ -74,10 +73,10 @@ public class ConditionEvaluator {
                         () -> this.extractFieldValue(obj, fc.getField()),
                         target -> fc.isValueField()
                                 ? this.extractFieldValue(obj, Objects.toString(fc.getValue(), ""))
-                                : Mono.just(convertToJsonElement(fc.getValue())),
+                                : convertToJsonElement(fc.getValue()),
                         (target, filterValElement) -> fc.isToValueField()
                                 ? extractFieldValue(obj, Objects.toString(fc.getToValue(), ""))
-                                : Mono.just(convertToJsonElement(fc.getToValue())),
+                                : convertToJsonElement(fc.getToValue()),
                         (target, filterValElement, toValElement) -> switch (fc.getOperator()) {
                             case EQUALS -> valueEquals(target, filterValElement);
                             case GREATER_THAN ->
@@ -97,7 +96,7 @@ public class ConditionEvaluator {
                                 if (multiValue == null || multiValue.isEmpty()) yield Mono.just(Boolean.FALSE);
 
                                 yield Flux.fromIterable(multiValue)
-                                        .map(this::convertToJsonElement)
+                                        .flatMap(this::convertToJsonElement)
                                         .flatMap(val -> valueEquals(target, val))
                                         .any(result -> result)
                                         .defaultIfEmpty(Boolean.FALSE);
@@ -127,10 +126,10 @@ public class ConditionEvaluator {
                 .defaultIfEmpty(Boolean.FALSE);
     }
 
-    private JsonElement convertToJsonElement(Object value) {
-        if (value == null) return JsonNull.INSTANCE;
-        if (value instanceof JsonElement je) return je;
-        return GSON.toJsonTree(value);
+    private Mono<JsonElement> convertToJsonElement(Object value) {
+        if (value == null) return Mono.just(JsonNull.INSTANCE);
+        if (value instanceof JsonElement je) return Mono.just(je);
+        return Mono.just(GSON.toJsonTree(value));
     }
 
     private Mono<Boolean> valueEquals(JsonElement jsonVal, JsonElement filterVal) { // NOSONAR

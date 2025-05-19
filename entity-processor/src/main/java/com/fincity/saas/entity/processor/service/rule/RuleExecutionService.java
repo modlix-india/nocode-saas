@@ -1,20 +1,17 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
-
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -28,9 +25,7 @@ public class RuleExecutionService {
     private final ConcurrentHashMap<String, ConditionEvaluator> conditionEvaluatorCache = new ConcurrentHashMap<>();
 
     public RuleExecutionService(
-            RuleService ruleService,
-            SimpleRuleService simpleRuleService,
-            ComplexRuleService complexRuleService) {
+            RuleService ruleService, SimpleRuleService simpleRuleService, ComplexRuleService complexRuleService) {
         this.ruleService = ruleService;
         this.simpleRuleService = simpleRuleService;
         this.complexRuleService = complexRuleService;
@@ -191,7 +186,8 @@ public class RuleExecutionService {
                 (rule, condition) -> {
                     if (condition == null) return Mono.just(Boolean.FALSE);
 
-                    ConditionEvaluator con = conditionEvaluatorCache.computeIfAbsent(tokenPrefix, ConditionEvaluator::new);
+                    ConditionEvaluator con =
+                            conditionEvaluatorCache.computeIfAbsent(tokenPrefix, ConditionEvaluator::new);
 
                     return con.evaluate(condition, data);
                 });

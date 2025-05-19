@@ -65,16 +65,27 @@ public class ProductRuleService
 
     @Override
     protected Mono<ULong> getUserAssignment(
-            String appCode, String clientCode, ULong productId, Platform platform, String tokenPrefix, JsonElement data) {
+            String appCode,
+            String clientCode,
+            ULong productId,
+            Platform platform,
+            String tokenPrefix,
+            JsonElement data) {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.read(appCode, clientCode, productId, platform),
                         productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, data))
-                .switchIfEmpty(this.getUserAssignmentFromTemplate(appCode, clientCode, productId, platform, tokenPrefix, data));
+                .switchIfEmpty(this.getUserAssignmentFromTemplate(
+                        appCode, clientCode, productId, platform, tokenPrefix, data));
     }
 
     private Mono<ULong> getUserAssignmentFromTemplate(
-            String appCode, String clientCode, ULong productId, Platform platform,String tokenPrefix, JsonElement data) {
+            String appCode,
+            String clientCode,
+            ULong productId,
+            Platform platform,
+            String tokenPrefix,
+            JsonElement data) {
         return FlatMapUtil.flatMapMono(
                 () -> productService.readById(productId),
                 product -> this.valueTemplateRuleService.getUserAssignment(

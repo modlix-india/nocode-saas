@@ -1,9 +1,5 @@
 package com.fincity.saas.entity.processor.enums;
 
-import java.util.Map;
-
-import org.jooq.EnumType;
-
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Model;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -15,8 +11,9 @@ import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
-
+import java.util.Map;
 import lombok.Getter;
+import org.jooq.EnumType;
 
 @Getter
 public enum EntitySeries implements EnumType {
@@ -97,8 +94,7 @@ public enum EntitySeries implements EnumType {
     }
 
     public String getTokenPrefix(String appCode) {
-        if (appCode.equals("leadzump"))
-            return LEADZUMP_TOKEN_PREFIX_MAP.get(this);
+        if (appCode.equals("leadzump")) return LEADZUMP_TOKEN_PREFIX_MAP.get(this);
 
         return this.tokenPrefix;
     }
