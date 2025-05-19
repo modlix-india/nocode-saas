@@ -82,6 +82,7 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
                         hasAccess.getT1().getT2(),
                         productIdentity.getULongId(),
                         Platform.PRE_QUALIFICATION,
+                        this.getEntityTokenPrefix(hasAccess.getT1().getT1()),
                         entity.toJson()),
                 (hasAccess, productIdentity, req, userId) -> this.setEntityAssignment(entity, userId),
                 (hasAccess, productIdentity, req, userId, aEnttiy) -> super.createInternal(aEnttiy, hasAccess));

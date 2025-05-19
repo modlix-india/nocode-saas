@@ -64,7 +64,7 @@ public abstract class RuleConfigService<
     protected abstract Mono<D> createNewInstance();
 
     protected abstract Mono<ULong> getUserAssignment(
-            String appCode, String clientCode, ULong entityId, Platform platform, JsonElement data);
+            String appCode, String clientCode, ULong entityId, Platform platform, String tokenPrefix, JsonElement data);
 
     @Override
     public Mono<D> create(D entity) {

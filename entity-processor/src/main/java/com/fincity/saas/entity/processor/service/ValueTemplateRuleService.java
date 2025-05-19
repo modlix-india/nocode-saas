@@ -62,9 +62,14 @@ public class ValueTemplateRuleService
 
     @Override
     protected Mono<ULong> getUserAssignment(
-            String appCode, String clientCode, ULong valueTemplateId, Platform platform, JsonElement data) {
+            String appCode,
+            String clientCode,
+            ULong valueTemplateId,
+            Platform platform,
+            String tokenPrefix,
+            JsonElement data) {
         return FlatMapUtil.flatMapMono(
                 () -> this.read(appCode, clientCode, valueTemplateId, platform),
-                productRule -> super.ruleExecutionService.executeRules(productRule, data));
+                productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, data));
     }
 }

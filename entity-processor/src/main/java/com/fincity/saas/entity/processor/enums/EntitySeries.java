@@ -1,5 +1,8 @@
 package com.fincity.saas.entity.processor.enums;
 
+import org.jooq.EnumType;
+
+import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.ObjectValueSetterExtractor;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Model;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -11,33 +14,40 @@ import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
+import com.google.gson.JsonObject;
+
 import lombok.Getter;
-import org.jooq.EnumType;
 
 @Getter
 public enum EntitySeries implements EnumType {
-    XXX("XXX", "Unknown", 11),
-    ENTITY("ENTITY", "Entity", 12),
-    MODEL("MODEL", "Model", 13),
-    PRODUCT("PRODUCT", "Product", 14),
-    VALUE_TEMPLATE("VALUE_TEMPLATE", "Value Template", 15),
-    STAGE("STAGE", "Stage", 16),
-    RULE("RULE", "Rule", 17),
-    SIMPLE_RULE("SIMPLE_RULE", "Simple Rule", 18),
-    COMPLEX_RULE("COMPLEX_RULE", "Complex Rule", 19),
-    SIMPLE_COMPLEX_CONDITION_RELATION("SIMPLE_COMPLEX_CONDITION_RELATION", "Simple Complex Condition Relation", 20),
-    ENTITY_RULE("ENTITY_RULE", "Entity Rule", 21),
-    PRODUCT_RULE("PRODUCT_RULE", "Product Rule", 22),
-    VALUE_TEMPLATE_RULE("VALUE_TEMPLATE_RULE", "Value Template Rule", 23);
+    XXX("XXX", "Unknown", 11, "xxx."),
+    ENTITY("ENTITY", "Entity", 12, "Entity."),
+    MODEL("MODEL", "Model", 13, "Model."),
+    PRODUCT("PRODUCT", "Product", 14, "Product."),
+    VALUE_TEMPLATE("VALUE_TEMPLATE", "Value Template", 15, "ValueTemplate."),
+    STAGE("STAGE", "Stage", 16, "Stage."),
+    RULE("RULE", "Rule", 17, "Rule."),
+    SIMPLE_RULE("SIMPLE_RULE", "Simple Rule", 18, "SimpleRule."),
+    COMPLEX_RULE("COMPLEX_RULE", "Complex Rule", 19, "ComplexRule."),
+    SIMPLE_COMPLEX_CONDITION_RELATION(
+            "SIMPLE_COMPLEX_CONDITION_RELATION",
+            "Simple Complex Condition Relation",
+            20,
+            "SimpleComplexConditionRelation."),
+    ENTITY_RULE("ENTITY_RULE", "Entity Rule", 21, "EntityRule."),
+    PRODUCT_RULE("PRODUCT_RULE", "Product Rule", 22, "ProductRule."),
+    VALUE_TEMPLATE_RULE("VALUE_TEMPLATE_RULE", "Value Template Rule", 23, "ValueTemplateRule.");
 
     private final String literal;
     private final String displayName;
     private final int value;
+    private final String tokenPrefix;
 
-    EntitySeries(String literal, String displayName, int value) {
+    EntitySeries(String literal, String displayName, int value, String tokenPrefix) {
         this.literal = literal;
         this.displayName = displayName;
         this.value = value;
+        this.tokenPrefix = tokenPrefix;
     }
 
     public static EntitySeries lookupLiteral(String literal) {
@@ -70,5 +80,10 @@ public enum EntitySeries implements EnumType {
             case PRODUCT_RULE -> ProductRule.class;
             case VALUE_TEMPLATE_RULE -> ValueTemplateRule.class;
         };
+    }
+
+    public String getTokenPrefix(String appCode) {
+        if (appCode.equals("leadzump")) return "";
+        return tokenPrefix;
     }
 }
