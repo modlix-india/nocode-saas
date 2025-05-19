@@ -22,14 +22,19 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
 
     private static final String ENTITY_CACHE = "entity";
 
-    private final ProductService productService;
     private final ModelService modelService;
+    private final ProductService productService;
+    private final StageService stageService;
     private final ProductRuleService productRuleService;
 
     public EntityService(
-            ProductService productService, ModelService modelService, ProductRuleService productRuleService) {
-        this.productService = productService;
+            ModelService modelService,
+            ProductService productService,
+            StageService stageService,
+            ProductRuleService productRuleService) {
         this.modelService = modelService;
+        this.productService = productService;
+        this.stageService = stageService;
         this.productRuleService = productRuleService;
     }
 
@@ -100,16 +105,20 @@ public class EntityService extends BaseProcessorService<EntityProcessorEntitiesR
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> this.productService.readById(entity.getProductId()),
                 (ca, product) -> Mono.just(entity.setProductId(product.getId())),
-                (ca, product, pEntity) ->
-                        this.setDefaultStage(pEntity, product.getDefaultStageId(), product.getDefaultStatusId()));
+                (ca, product, pEntity) -> this.setDefaultStage(pEntity, product.getValueTemplateId()));
     }
 
-    private Mono<Entity> setDefaultStage(Entity entity, ULong defaultStageId, ULong defaultStatusId) {
+    private Mono<Entity> setDefaultStage(Entity entity, ULong valueTemplateId) {
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> stageService.getFirstStage(entity.getAppCode(), entity.getClientCode(), valueTemplateId),
+                stage -> stageService.getFirstStatus(
+                        entity.getAppCode(), entity.getClientCode(), valueTemplateId, stage.getId()),
+                (stage, status) -> {
+                    entity.setStatus(status.getId());
+                    entity.setStatus(status.getId());
 
-        entity.setStage(defaultStageId);
-        entity.setStatus(defaultStatusId);
-
-        return Mono.just(entity);
+                    return Mono.just(entity);
+                });
     }
 
     private Mono<Entity> setModel(Tuple3<String, String, ULong> accessInfo, Entity entity) {

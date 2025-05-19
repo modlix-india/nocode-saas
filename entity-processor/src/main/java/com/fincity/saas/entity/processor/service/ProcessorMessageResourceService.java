@@ -22,6 +22,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String IDENTITY_MISSING = "identity_missing";
     public static final String IDENTITY_WRONG = "identity_wrong";
     public static final String PRODUCT_FORBIDDEN_ACCESS = "product_forbidden_access";
+    public static final String VALUE_TEMPLATE_FORBIDDEN_ACCESS = "value_template_forbidden_access";
     public static final String MODEL_NOT_CREATED = "model_not_created";
     public static final String USER_DISTRIBUTION_MISSING = "user_distribution_missing";
     public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";

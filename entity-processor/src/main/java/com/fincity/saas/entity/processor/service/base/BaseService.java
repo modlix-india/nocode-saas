@@ -123,6 +123,22 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return FlatMapUtil.flatMapMono(this::hasAccess, hasAccess -> this.readIdentityInternal(identity));
     }
 
+    public Mono<D> readByIdInternal(ULong id) {
+
+        if (id == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    this.getEntityName());
+
+        return this.readById(id)
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                        this.getEntityName(),
+                        id));
+    }
+
     public Mono<D> readIdentityInternal(Identity identity) {
 
         if (identity == null || identity.isNull())

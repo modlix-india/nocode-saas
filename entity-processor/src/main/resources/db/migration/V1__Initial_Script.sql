@@ -126,8 +126,6 @@ CREATE TABLE `entity_processor_products` (
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this product.',
     `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this Product is assigned.',
     `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'Value Template related to this Product.',
-    `DEFAULT_STAGE` BIGINT UNSIGNED NULL COMMENT 'Default stage for this product. This will be value for entity stage if stage in not inferred.',
-    `DEFAULT_STATUS` BIGINT UNSIGNED NULL COMMENT 'Default status for this product. This will be value for entity status if status in not inferred.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
@@ -139,14 +137,6 @@ CREATE TABLE `entity_processor_products` (
     UNIQUE KEY `UK1_PRODUCTS_CODE` (`CODE`),
     CONSTRAINT `FK1_PRODUCTS_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
         REFERENCES `ENTITY_PROCESSOR_VALUE_TEMPLATES` (`ID`)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE,
-    CONSTRAINT `FK2_PRODUCTS_STAGE_ID` FOREIGN KEY (`DEFAULT_STAGE`)
-        REFERENCES `ENTITY_PROCESSOR_STAGES` (`ID`)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE,
-    CONSTRAINT `FK3_PRODUCTS_STATUS_ID` FOREIGN KEY (`DEFAULT_STATUS`)
-        REFERENCES `ENTITY_PROCESSOR_STAGES` (`ID`)
         ON DELETE RESTRICT
         ON UPDATE CASCADE
 

@@ -24,12 +24,12 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
     private static final String PRODUCT_CACHE = "product";
 
-    private StageService stageService;
+    private ValueTemplateService valueTemplateService;
 
     @Lazy
     @Autowired
-    private void setStageService(StageService stageService) {
-        this.stageService = stageService;
+    private void setValueTemplateService(ValueTemplateService valueTemplateService) {
+        this.valueTemplateService = valueTemplateService;
     }
 
     @Override
@@ -50,34 +50,15 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
-        return FlatMapUtil.flatMapMono(
-                () -> product.getDefaultStageId() != null && product.getDefaultStatusId() != null
-                        ? stageService.isValidParentChild(
-                                accessInfo.getT1(),
-                                accessInfo.getT2(),
-                                null,
-                                product.getValueTemplateId(),
-                                product.getDefaultStageId(),
-                                product.getDefaultStatusId())
-                        : Mono.just(Boolean.TRUE),
-                isValid -> {
-                    if (Boolean.FALSE.equals(isValid))
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.INVALID_CHILD_FOR_PARENT,
-                                product.getDefaultStatusId(),
-                                product.getDefaultStageId());
-
-                    return Mono.just(product);
-                });
+        return valueTemplateService
+                .readByIdInternal(product.getValueTemplateId())
+                .map(valueTemplate -> product);
     }
 
     @Override
     protected Mono<Product> updatableEntity(Product entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
             existing.setValueTemplateId(entity.getValueTemplateId());
-            existing.setDefaultStageId(entity.getDefaultStageId());
-            existing.setDefaultStatusId(entity.getDefaultStatusId());
 
             return Mono.just(existing);
         });

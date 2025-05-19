@@ -23,8 +23,6 @@ public class Product extends BaseProcessorDto<Product> implements IClassConverto
     private static final long serialVersionUID = 8028699089699178352L;
 
     private ULong valueTemplateId;
-    private ULong defaultStageId;
-    private ULong defaultStatusId;
 
     public static Product of(ProductRequest productRequest) {
         return new Product().setName(productRequest.getName()).setDescription(productRequest.getDescription());

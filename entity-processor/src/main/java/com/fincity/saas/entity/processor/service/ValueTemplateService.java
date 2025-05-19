@@ -87,7 +87,7 @@ public class ValueTemplateService
             if (Boolean.FALSE.equals(hasAccess.getT2()))
                 return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        ProcessorMessageResourceService.PRODUCT_FORBIDDEN_ACCESS);
+                        ProcessorMessageResourceService.VALUE_TEMPLATE_FORBIDDEN_ACCESS);
 
             return this.readIdentityInternal(identity);
         });

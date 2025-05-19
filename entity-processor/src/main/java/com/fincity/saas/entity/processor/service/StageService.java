@@ -42,9 +42,9 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 () -> this.getLatestStageByOrder(
                         accessInfo.getT1(), accessInfo.getT2(), entity.getValueTemplateId(), entity.getPlatform()),
                 latestStage -> {
-                    if (latestStage == null) return Mono.just((Stage) entity.setOrder(1));
+                    if (latestStage == null) return Mono.just(entity.setOrder(1));
 
-                    return Mono.just((Stage) entity.setOrder(latestStage.getOrder() + 1));
+                    return Mono.just(entity.setOrder(latestStage.getOrder() + 1));
                 });
     }
 
