@@ -9,13 +9,18 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
-import com.fincity.security.jooq.tables.SecurityOrgStructure.SecurityOrgStructurePath;
+import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
+import com.fincity.security.jooq.tables.SecurityOneTimeToken.SecurityOneTimeTokenPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPastPasswords.SecurityPastPasswordsPath;
 import com.fincity.security.jooq.tables.SecurityPastPins.SecurityPastPinsPath;
+import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
+import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
+import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.SecurityUserAddress.SecurityUserAddressPath;
-import com.fincity.security.jooq.tables.SecurityUserRolePermission.SecurityUserRolePermissionPath;
 import com.fincity.security.jooq.tables.SecurityUserToken.SecurityUserTokenPath;
+import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
+import com.fincity.security.jooq.tables.SecurityV2UserRole.SecurityV2UserRolePath;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 
 import java.time.LocalDateTime;
@@ -73,6 +78,18 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      * The column <code>security.security_user.ID</code>. Primary key
      */
     public final TableField<SecurityUserRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
+
+    /**
+     * The column <code>security.security_user.DESIGNATION_ID</code>.
+     * Designation ID for which this user belongs to
+     */
+    public final TableField<SecurityUserRecord, ULong> DESIGNATION_ID = createField(DSL.name("DESIGNATION_ID"), SQLDataType.BIGINTUNSIGNED, this, "Designation ID for which this user belongs to");
+
+    /**
+     * The column <code>security.security_user.REPORTING_TO</code>. Reporting to
+     * ID for which this user belongs to
+     */
+    public final TableField<SecurityUserRecord, ULong> REPORTING_TO = createField(DSL.name("REPORTING_TO"), SQLDataType.BIGINTUNSIGNED, this, "Reporting to ID for which this user belongs to");
 
     /**
      * The column <code>security.security_user.CLIENT_ID</code>. Client ID for
@@ -320,7 +337,7 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
 
     @Override
     public List<ForeignKey<SecurityUserRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_USER_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_USER_CLIENT_ID, Keys.FK1_USER_DESIGNATION_ID, Keys.FK2_USER_REPORTING_TO_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -334,6 +351,32 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
             _securityClient = new SecurityClientPath(this, Keys.FK1_USER_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityDesignationPath _securityDesignation;
+
+    /**
+     * Get the implicit join path to the
+     * <code>security.security_designation</code> table.
+     */
+    public SecurityDesignationPath securityDesignation() {
+        if (_securityDesignation == null)
+            _securityDesignation = new SecurityDesignationPath(this, Keys.FK1_USER_DESIGNATION_ID, null);
+
+        return _securityDesignation;
+    }
+
+    private transient SecurityUserPath _securityUser;
+
+    /**
+     * Get the implicit join path to the <code>security.security_user</code>
+     * table.
+     */
+    public SecurityUserPath securityUser() {
+        if (_securityUser == null)
+            _securityUser = new SecurityUserPath(this, Keys.FK2_USER_REPORTING_TO_ID, null);
+
+        return _securityUser;
     }
 
     private transient SecurityPastPasswordsPath _securityPastPasswords;
@@ -375,17 +418,17 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
         return _securityUserAddress;
     }
 
-    private transient SecurityUserRolePermissionPath _securityUserRolePermission;
+    private transient SecurityV2UserRolePath _securityV2UserRole;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_user_role_permission</code> table
+     * <code>security.security_v2_user_role</code> table
      */
-    public SecurityUserRolePermissionPath securityUserRolePermission() {
-        if (_securityUserRolePermission == null)
-            _securityUserRolePermission = new SecurityUserRolePermissionPath(this, null, Keys.FK1_USER_ROLE_USER_ID.getInverseKey());
+    public SecurityV2UserRolePath securityV2UserRole() {
+        if (_securityV2UserRole == null)
+            _securityV2UserRole = new SecurityV2UserRolePath(this, null, Keys.FK1_USER_ROLE_V2_USER_ID.getInverseKey());
 
-        return _securityUserRolePermission;
+        return _securityV2UserRole;
     }
 
     private transient SecurityUserTokenPath _securityUserToken;
@@ -401,18 +444,17 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
         return _securityUserToken;
     }
 
-    private transient SecurityOrgStructurePath _fk2OrgStructureUserId;
+    private transient SecurityOneTimeTokenPath _securityOneTimeToken;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_org_structure</code> table, via the
-     * <code>FK2_ORG_STRUCTURE_USER_ID</code> key
+     * <code>security.security_one_time_token</code> table
      */
-    public SecurityOrgStructurePath fk2OrgStructureUserId() {
-        if (_fk2OrgStructureUserId == null)
-            _fk2OrgStructureUserId = new SecurityOrgStructurePath(this, null, Keys.FK2_ORG_STRUCTURE_USER_ID.getInverseKey());
+    public SecurityOneTimeTokenPath securityOneTimeToken() {
+        if (_securityOneTimeToken == null)
+            _securityOneTimeToken = new SecurityOneTimeTokenPath(this, null, Keys.FK2_ONE_TIME_TOKEN_USER_ID.getInverseKey());
 
-        return _fk2OrgStructureUserId;
+        return _securityOneTimeToken;
     }
 
     private transient SecurityOtpPath _securityOtp;
@@ -428,18 +470,33 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
         return _securityOtp;
     }
 
-    private transient SecurityOrgStructurePath _fk3OrgStructureManagerId;
+    private transient SecurityProfileUserPath _securityProfileUser;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_org_structure</code> table, via the
-     * <code>FK3_ORG_STRUCTURE_MANAGER_ID</code> key
+     * <code>security.security_profile_user</code> table
      */
-    public SecurityOrgStructurePath fk3OrgStructureManagerId() {
-        if (_fk3OrgStructureManagerId == null)
-            _fk3OrgStructureManagerId = new SecurityOrgStructurePath(this, null, Keys.FK3_ORG_STRUCTURE_MANAGER_ID.getInverseKey());
+    public SecurityProfileUserPath securityProfileUser() {
+        if (_securityProfileUser == null)
+            _securityProfileUser = new SecurityProfileUserPath(this, null, Keys.FK2_PROFILE_USER_USER_ID.getInverseKey());
 
-        return _fk3OrgStructureManagerId;
+        return _securityProfileUser;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_profile</code> table
+     */
+    public SecurityProfilePath securityProfile() {
+        return securityProfileUser().securityProfile();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_v2_role</code> table
+     */
+    public SecurityV2RolePath securityV2Role() {
+        return securityV2UserRole().securityV2Role();
     }
 
     @Override

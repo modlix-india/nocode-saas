@@ -4,13 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MimeTypeUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
@@ -26,117 +20,149 @@ import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Mono;
 
+import java.time.ZoneOffset;
+
 @RestController
 public class UniversalController {
 
-	private final JSService jsService;
+    private final JSService jsService;
 
-	private final IndexHTMLService indexHTMLService;
+    private final IndexHTMLService indexHTMLService;
 
-	private final ManifestService manifestService;
+    private final ManifestService manifestService;
 
-	private final URIPathService uriPathService;
+    private final URIPathService uriPathService;
 
-	private final IFeignSecurityService securityService;
+    private final IFeignSecurityService securityService;
 
-	private final Gson gson;
+    private final Gson gson;
 
-	@Value("${ui.resourceCacheAge:604800}")
-	private int cacheAge;
+    @Value("${ui.resourceCacheAge:604800}")
+    private int cacheAge;
 
-	private static final ResponseEntity<String> RESPONSE_NOT_FOUND = ResponseEntity
-			.notFound()
-			.build();
+    private static final ResponseEntity<String> RESPONSE_NOT_FOUND = ResponseEntity
+            .notFound()
+            .build();
 
-	private static final ResponseEntity<String> RESPONSE_BAD_REQUEST = ResponseEntity
-			.badRequest()
-			.build();
+    private static final ResponseEntity<String> RESPONSE_BAD_REQUEST = ResponseEntity
+            .badRequest()
+            .build();
 
-	public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
-			URIPathService uriPathService, IFeignSecurityService securityService, Gson gson) {
-		this.jsService = jsService;
-		this.indexHTMLService = indexHTMLService;
-		this.manifestService = manifestService;
-		this.uriPathService = uriPathService;
-		this.securityService = securityService;
-		this.gson = gson;
-	}
 
-	@GetMapping(value = "js/dist/**")
-	public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request) {
+    private final static String START = "<html><head><title>SSO</title><script>var designMode = window.self !== window.top;";
+    private final static String END = "</script></head><body></body></html>";
 
-		int index = request.getURI().getPath().indexOf("/js/dist/");
-		String filePath = request.getURI().getPath().substring(index + 9);
 
-		return jsService.getJSResource(filePath)
-				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
-				.defaultIfEmpty(RESPONSE_NOT_FOUND);
-	}
+    public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
+                               URIPathService uriPathService, IFeignSecurityService securityService, Gson gson) {
+        this.jsService = jsService;
+        this.indexHTMLService = indexHTMLService;
+        this.manifestService = manifestService;
+        this.uriPathService = uriPathService;
+        this.securityService = securityService;
+        this.gson = gson;
+    }
 
-	@GetMapping(value = "manifest/manifest.json", produces = MimeTypeUtils.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<String>> manifest(@RequestHeader("appCode") String appCode,
-			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
+    @GetMapping(value = "js/dist/**")
+    public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag,
+                                                ServerHttpRequest request) {
 
-		return manifestService.getManifest(appCode, clientCode)
-				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
-				.defaultIfEmpty(RESPONSE_NOT_FOUND);
-	}
+        int index = request.getURI().getPath().indexOf("/js/dist/");
+        String filePath = request.getURI().getPath().substring(index + 9);
 
-	@GetMapping(value = "/apiDocs", produces = MimeTypeUtils.TEXT_HTML_VALUE)
-	public Mono<ResponseEntity<String>> apiDocs(@RequestHeader("appCode") String appCode,
-			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader(name = "If-None-Match", required = false) String eTag) {
+        return jsService.getJSResource(filePath)
+                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                .defaultIfEmpty(RESPONSE_NOT_FOUND);
+    }
 
-		return uriPathService.generateApiDocs(appCode, clientCode)
-				.flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
-				.defaultIfEmpty(RESPONSE_NOT_FOUND);
-	}
+    @GetMapping(value = "manifest/manifest.json", produces = MimeTypeUtils.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<String>> manifest(@RequestHeader("appCode") String appCode,
+                                                 @RequestHeader("clientCode") String clientCode,
+                                                 @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-	@GetMapping(value = "**")
-	public Mono<ResponseEntity<String>> defaultGetRequest(
-			@RequestHeader("appCode") String appCode,
-			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request) {
+        return manifestService.getManifest(appCode, clientCode)
+                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                .defaultIfEmpty(RESPONSE_NOT_FOUND);
+    }
 
-		return FlatMapUtil.flatMapMono(
-				SecurityContextUtil::getUsersContextAuthentication,
+    @GetMapping(value = "/apiDocs", produces = MimeTypeUtils.TEXT_HTML_VALUE)
+    public Mono<ResponseEntity<String>> apiDocs(@RequestHeader("appCode") String appCode,
+                                                @RequestHeader("clientCode") String clientCode,
+                                                @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-				ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+        return uriPathService.generateApiDocs(appCode, clientCode)
+                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                .defaultIfEmpty(RESPONSE_NOT_FOUND);
+    }
 
-				(ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
-				.switchIfEmpty(Mono
-						.defer(() -> indexHTMLService.getIndexHTML(request, appCode, clientCode)
-								.flatMap(e -> ResponseEntityUtils
-										.makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
-	}
+    @GetMapping(value = "**")
+    public Mono<ResponseEntity<String>> defaultGetRequest(
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader(name = "If-None-Match", required = false) String eTag,
+            ServerHttpRequest request) {
 
-	@RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = { RequestMethod.POST,
-			RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE })
-	public Mono<ResponseEntity<String>> defaultRequests(
-			@RequestHeader("appCode") String appCode,
-			@RequestHeader("clientCode") String clientCode,
-			@RequestHeader(name = "If-None-Match", required = false) String eTag,
-			ServerHttpRequest request,
-			@RequestBody String jsonString) {
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-		JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
-				: this.gson.fromJson(jsonString, JsonObject.class);
+                        ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
 
-		return FlatMapUtil.flatMapMono(
-				SecurityContextUtil::getUsersContextAuthentication,
+                        (ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
+                .switchIfEmpty(Mono
+                        .defer(() -> indexHTMLService.getIndexHTML(request, appCode, clientCode)
+                                .flatMap(e -> ResponseEntityUtils
+                                        .makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
+    }
 
-				ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+    @RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = {RequestMethod.POST,
+            RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
+    public Mono<ResponseEntity<String>> defaultRequests(
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader(name = "If-None-Match", required = false) String eTag,
+            ServerHttpRequest request,
+            @RequestBody String jsonString) {
 
-				(ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc).map(ResponseEntity::ok))
-				.switchIfEmpty(Mono.just(RESPONSE_BAD_REQUEST));
-	}
+        JsonObject jsonObject = StringUtil.safeIsBlank(jsonString) ? new JsonObject()
+                : this.gson.fromJson(jsonString, JsonObject.class);
 
-	@GetMapping("/.well-known/acme-challenge/{token}")
-	public Mono<ResponseEntity<String>> tokenCheck(@PathVariable String token) {
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-		return this.securityService.token(token).map(ResponseEntity::ok);
-	}
+                        ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+
+                        (ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc).map(ResponseEntity::ok))
+                .switchIfEmpty(Mono.just(RESPONSE_BAD_REQUEST));
+    }
+
+    @GetMapping("/.well-known/acme-challenge/{token}")
+    public Mono<ResponseEntity<String>> tokenCheck(@PathVariable String token) {
+
+        return this.securityService.token(token).map(ResponseEntity::ok);
+    }
+
+    @GetMapping(value = "/sso/{token}", produces = MimeTypeUtils.TEXT_HTML_VALUE)
+    public Mono<String> ssoRedirection(@PathVariable String token,
+                                       @RequestHeader(value = "X-Forwarded-Host", required = false) String forwardedHost,
+                                       @RequestHeader(required = false) String clientCode,
+                                       @RequestHeader(required = false) String appCode,
+                                       @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
+                                       @RequestParam(required = false, defaultValue = "/") String redirectUrl,
+                                       ServerHttpRequest request) {
+
+        String addr = ipAddress;
+        if (addr == null) {
+            addr = request.getRemoteAddress() == null ? "" : request.getRemoteAddress().getAddress().getHostAddress();
+        }
+
+        return this.securityService.authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
+                .map(ca -> {
+                    String storeTokenScript = "window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthToken', '\""
+                            + ca.getAccessToken()
+                            + "\"');window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthTokenExpiry', '"
+                            + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC) + "');";
+                    String redirectionScript = "window.location.href = '" + redirectUrl + "';";
+                    return START + storeTokenScript + redirectionScript + END;
+                });
+    }
 }

@@ -16,17 +16,19 @@ import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
+import lombok.Getter;
 
+@Getter
 public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
 
-	@Value("${spring.r2dbc.url}")
-	private String url;
+  @Value("${spring.r2dbc.url}")
+  protected String url;
 
-	@Value("${spring.r2dbc.username}")
-	private String username;
+  @Value("${spring.r2dbc.username}")
+  protected String username;
 
-	@Value("${spring.r2dbc.password}")
-	private String password;
+  @Value("${spring.r2dbc.password}")
+	protected String password;
 
 	protected AbstractJooqBaseConfiguration(ObjectMapper objectMapper) {
 		super(objectMapper);

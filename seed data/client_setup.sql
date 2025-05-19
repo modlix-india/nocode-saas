@@ -2598,6 +2598,1831 @@ drop table if exists security_client_manage;
 drop table if exists security_client_manage_hierarcy;
 drop table if exists security_code_access;
 
+-- V38__Security Profiles.sql
+
+use security;
+
+-- Dropping all the tables that are replaced with new tables
+DROP TABLE IF EXISTS `security_app_reg_user_profile`;
+DROP TABLE IF EXISTS `security_app_reg_user_designation`;
+DROP TABLE IF EXISTS `security_app_reg_user_role_v2`;
+DROP TABLE IF EXISTS `security_app_reg_profile`;
+DROP TABLE IF EXISTS `security_app_reg_profile_restriction`;
+DROP TABLE IF EXISTS `security_profile_client_restriction`;
+DROP TABLE IF EXISTS `security_app_reg_designation`;
+DROP TABLE IF EXISTS `security_app_reg_department`;
+DROP TABLE IF EXISTS `security_profile_arrangement`;
+DROP TABLE IF EXISTS `security_v2_user_role`;
+DROP TABLE IF EXISTS `security_v2_role_permission`;
+DROP TABLE IF EXISTS `security_v2_role_role`;
+DROP TABLE IF EXISTS `security_profile_user`;
+DROP TABLE IF EXISTS `security_profile_role`;
+DROP TABLE IF EXISTS `security_client_profile`;
+DROP TABLE IF EXISTS `security_v2_role`;
+
+-- These are required in re runs
+-- ALTER TABLE `security_user`
+--   DROP CONSTRAINT `FK1_USER_DESIGNATION_ID`,
+--   DROP CONSTRAINT `FK2_USER_REPORTING_TO_ID`;
+--
+-- ALTER TABLE `security_user`
+--   DROP COLUMN `DESIGNATION_ID`,
+--   DROP COLUMN `REPORTING_TO`;
+
+DROP TABLE IF EXISTS `security_designation`;
+DROP TABLE IF EXISTS `security_profile`;
+DROP TABLE IF EXISTS `security_department`;
+
+CREATE TABLE `security_profile`
+(
+    `ID`              bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`       bigint unsigned NOT NULL COMMENT 'Client ID for which this profile belongs to',
+    `NAME`            varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Name of the profile',
+    `APP_ID`          bigint unsigned NOT NULL,
+    `DESCRIPTION`     text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci         DEFAULT NULL COMMENT 'Description of the profile',
+    `ROOT_PROFILE_ID` bigint unsigned                                               DEFAULT NULL COMMENT 'Profile ID to which the user is assigned',
+    `ARRANGEMENT`     json                                                          DEFAULT NULL COMMENT 'Arrangement of the profile',
+
+    `CREATED_BY`      bigint unsigned                                               DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`      timestamp       NOT NULL                                      DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`      bigint unsigned                                               DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT`      timestamp       NOT NULL                                      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_PROFILE_NAME_APP_ID` (`NAME`, `APP_ID`),
+    KEY `FK1_PROFILE_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_PROFILE_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_PROFILE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_PROFILE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK3_PROFILE_ROOT_PROFILE_ID` FOREIGN KEY (`ROOT_PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+)
+    ENGINE = InnoDB
+    DEFAULT CHARSET = utf8mb4
+    COLLATE = utf8mb4_unicode_ci;
+
+-- Security V2 Role Table
+
+CREATE TABLE `security_v2_role`
+(
+    `ID`          bigint unsigned                                               NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`   bigint unsigned                                               NOT NULL COMMENT 'Client ID for which this role belongs to',
+    `NAME`        varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the role',
+    `SHORT_NAME`  varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci          DEFAULT NULL COMMENT 'Short name of the role',
+    `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the role',
+    `APP_ID`      bigint unsigned                                                        DEFAULT NULL COMMENT 'App ID for which this role belongs to',
+
+    `CREATED_BY`  bigint unsigned                                                        DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`  timestamp                                                     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`  bigint unsigned                                                        DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT`  timestamp                                                     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+    PRIMARY KEY (`ID`),
+    KEY `FK1_V2_ROLE_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_V2_ROLE_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_V2_ROLE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_V2_ROLE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Security Profile Role Table
+
+CREATE TABLE `security_profile_role`
+(
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this role belongs to',
+    `ROLE_ID`    bigint unsigned NOT NULL COMMENT 'Role ID for which this role belongs to',
+    `EXCLUDE`    tinyint(1)      NOT NULL DEFAULT 0 COMMENT 'Flag to indicate if this role is excluded',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_PROFILE_ROLE_APP_ID` (`PROFILE_ID`, `ROLE_ID`),
+    KEY `FK1_PROFILE_ROLE_PROFILE_ID` (`PROFILE_ID`),
+    KEY `FK2_PROFILE_ROLE_ROLE_ID` (`ROLE_ID`),
+    CONSTRAINT `FK1_PROFILE_ROLE_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_PROFILE_ROLE_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Security Profile Client restriction Table
+
+CREATE TABLE `security_profile_client_restriction`
+(
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this restriction belongs to',
+    `CLIENT_ID`  bigint unsigned NOT NULL COMMENT 'Client ID for which this restriction belongs to',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_PROFILE_CLIENT_APP_ID` (`PROFILE_ID`, `CLIENT_ID`),
+    KEY `FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID` (`PROFILE_ID`),
+    CONSTRAINT `FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT `FK3_PROFILE_CLIENT_RESTRICTION_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT
+)
+    ENGINE = InnoDB
+    DEFAULT CHARSET = utf8mb4
+    COLLATE = utf8mb4_unicode_ci;
+-- Security Profile User Table
+
+CREATE TABLE `security_profile_user`
+(
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `PROFILE_ID` bigint unsigned NOT NULL COMMENT 'Profile ID for which this user belongs to',
+    `USER_ID`    bigint unsigned NOT NULL COMMENT 'User ID for which this profile belongs to',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_PROFILE_USER_PROFILE_ID_USER_ID` (`PROFILE_ID`, `USER_ID`),
+    KEY `FK1_PROFILE_USER_PROFILE_ID` (`PROFILE_ID`),
+    KEY `FK2_PROFILE_USER_USER_ID` (`USER_ID`),
+    CONSTRAINT `FK1_PROFILE_USER_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_PROFILE_USER_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security_user` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Security Role Role Table
+
+CREATE TABLE `security_v2_role_role`
+(
+    `ID`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `ROLE_ID`     bigint unsigned NOT NULL COMMENT 'Role ID in which the sub role is nested',
+    `SUB_ROLE_ID` bigint unsigned NOT NULL COMMENT 'Sub Role ID for which this role belongs to',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_ROLE_ROLE_ROLE_ID_SUB_ROLE_ID` (`ROLE_ID`, `SUB_ROLE_ID`),
+    KEY `FK1_ROLE_ROLE_ROLE_ID` (`ROLE_ID`),
+    KEY `FK2_ROLE_ROLE_SUB_ROLE_ID` (`SUB_ROLE_ID`),
+    CONSTRAINT `FK1_ROLE_ROLE_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_ROLE_ROLE_SUB_ROLE_ID` FOREIGN KEY (`SUB_ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Security Role Permission Table
+
+CREATE TABLE `security_v2_role_permission`
+(
+    `ID`            bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `ROLE_ID`       bigint unsigned NOT NULL COMMENT 'Role ID for the permissions contained',
+    `PERMISSION_ID` bigint unsigned NOT NULL COMMENT 'Permission ID for which this role has permission',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_ROLE_PERMISSION_ROLE_ID_PERMISSION_ID` (`ROLE_ID`, `PERMISSION_ID`),
+    KEY `FK1_ROLE_PERMISSION_ROLE_ID` (`ROLE_ID`),
+    KEY `FK2_ROLE_PERMISSION_PERMISSION_ID` (`PERMISSION_ID`),
+    CONSTRAINT `FK1_ROLE_PERMISSION_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_ROLE_PERMISSION_PERMISSION_ID` FOREIGN KEY (`PERMISSION_ID`) REFERENCES `security_permission` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Security V2 User Role Table
+
+CREATE TABLE `security_v2_user_role`
+(
+    `ID`      bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `USER_ID` bigint unsigned NOT NULL COMMENT 'User ID to which this role is assigned',
+    `ROLE_ID` bigint unsigned NOT NULL COMMENT 'Role ID assigned to the user',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_USER_ROLE_USER_ID_ROLE_ID` (`USER_ID`, `ROLE_ID`),
+    KEY `FK1_USER_ROLE_V2_USER_ID` (`USER_ID`),
+    KEY `FK2_USER_ROLE_V2_ROLE_ID` (`ROLE_ID`),
+    CONSTRAINT `FK1_USER_ROLE_V2_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security_user` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_USER_ROLE_V2_ROLE_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Security Department Table
+-- Security Department Table with Parent Department Reference
+CREATE TABLE `security_department`
+(
+    `ID`                   bigint unsigned                                               NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`            bigint unsigned                                               NOT NULL COMMENT 'Client ID for which this department belongs to',
+    `NAME`                 varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the department',
+    `DESCRIPTION`          text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the department',
+    `PARENT_DEPARTMENT_ID` bigint unsigned                                                        DEFAULT NULL COMMENT 'Parent department for hierarchical structure',
+
+    `CREATED_BY`           bigint unsigned                                                        DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`           timestamp                                                     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`           bigint unsigned                                                        DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT`           timestamp                                                     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_DEPARTMENT_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_DEPARTMENT_PARENT_ID` (`PARENT_DEPARTMENT_ID`),
+
+    CONSTRAINT `FK1_DEPARTMENT_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`)
+        REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_DEPARTMENT_PARENT_ID` FOREIGN KEY (`PARENT_DEPARTMENT_ID`)
+        REFERENCES `security_department` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Security Designation Table with Reporting & Hierarchy
+CREATE TABLE `security_designation`
+(
+    `ID`                    bigint unsigned                                               NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`             bigint unsigned                                               NOT NULL COMMENT 'Client ID for which this designation belongs to',
+    `NAME`                  varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the designation',
+    `DESCRIPTION`           text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the designation',
+    `DEPARTMENT_ID`         bigint unsigned                                                        DEFAULT NULL COMMENT 'Department ID for which this designation belongs to',
+    `PARENT_DESIGNATION_ID` bigint unsigned                                                        DEFAULT NULL COMMENT 'Parent designation for hierarchy',
+    `NEXT_DESIGNATION_ID`   bigint unsigned                                                        DEFAULT NULL COMMENT 'Next designation in the hierarchy',
+    `PROFILE_ID`            bigint unsigned                                                        DEFAULT NULL COMMENT 'Profile ID for which this designation belongs to',
+
+    `CREATED_BY`            bigint unsigned                                                        DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`            timestamp                                                     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`            bigint unsigned                                                        DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT`            timestamp                                                     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_DESIGNATION_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_DESIGNATION_DEPARTMENT_ID` (`DEPARTMENT_ID`),
+    KEY `FK3_DESIGNATION_PARENT_ID` (`PARENT_DESIGNATION_ID`),
+
+    CONSTRAINT `FK1_DESIGNATION_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`)
+        REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK2_DESIGNATION_DEPARTMENT_ID` FOREIGN KEY (`DEPARTMENT_ID`)
+        REFERENCES `security_department` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `FK3_DESIGNATION_PARENT_ID` FOREIGN KEY (`PARENT_DESIGNATION_ID`)
+        REFERENCES `security_designation` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `FK4_DESIGNATION_NEXT_DESIGNATION_ID` FOREIGN KEY (`NEXT_DESIGNATION_ID`)
+        REFERENCES `security_designation` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `FK5_DESIGNATION_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`)
+        REFERENCES `security_profile` (`ID`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+-- Adding designation and reporting to user in security_user table along with foreign key constraints
+
+ALTER TABLE `security_user`
+    ADD COLUMN `DESIGNATION_ID` bigint unsigned DEFAULT NULL COMMENT 'Designation ID for which this user belongs to' AFTER `ID`,
+    ADD COLUMN `REPORTING_TO`   bigint unsigned DEFAULT NULL COMMENT 'Reporting to ID for which this user belongs to' AFTER `DESIGNATION_ID`;
+
+ALTER TABLE `security_user`
+    ADD CONSTRAINT `FK1_USER_DESIGNATION_ID` FOREIGN KEY (`DESIGNATION_ID`) REFERENCES `security_designation` (`ID`) ON DELETE SET NULL ON UPDATE RESTRICT,
+    ADD CONSTRAINT `FK2_USER_REPORTING_TO_ID` FOREIGN KEY (`REPORTING_TO`) REFERENCES `security_user` (`ID`) ON DELETE SET NULL ON UPDATE RESTRICT;
+
+-- App registration related tables
+
+CREATE TABLE `security_app_reg_profile_restriction`
+(
+    `ID`            bigint unsigned                                                                        NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`     bigint unsigned                                                                        NOT NULL COMMENT 'Client ID',
+    `CLIENT_TYPE`   char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                               NOT NULL DEFAULT 'BUS' COMMENT 'Client type',
+    `APP_ID`        bigint unsigned                                                                        NOT NULL COMMENT 'App ID',
+    `LEVEL`         enum ('CLIENT','CUSTOMER','CONSUMER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CLIENT' COMMENT 'Access level',
+    `BUSINESS_TYPE` char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                              NOT NULL DEFAULT 'COMMON' COMMENT 'Business type',
+
+    `PROFILE_ID`    bigint unsigned                                                                        NOT NULL COMMENT 'Profile ID',
+
+    `CREATED_BY`    bigint unsigned                                                                                 DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`    timestamp                                                                              NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `CLIENT_ID` (`CLIENT_ID`, `APP_ID`, `PROFILE_ID`, `CLIENT_TYPE`, `LEVEL`, `BUSINESS_TYPE`),
+    KEY `FK2_APP_REG_PROFILE_APP_ID` (`APP_ID`),
+    KEY `FK3_APP_REG_PROFILE_PROFILE_ID` (`PROFILE_ID`),
+    KEY `FK4_APP_REG_PROFILE_CLIENT_TYPE` (`CLIENT_TYPE`),
+    CONSTRAINT `FK1_APP_REG_PROFILE_CLNT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_PROFILE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK3_APP_REG_PROFILE_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK4_APP_REG_PROFILE_CLIENT_TYPE` FOREIGN KEY (`CLIENT_TYPE`) REFERENCES `security_client_type` (`CODE`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `security_app_reg_department`
+(
+    `ID`                   bigint unsigned                                                                        NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`            bigint unsigned                                                                        NOT NULL COMMENT 'Client ID',
+    `CLIENT_TYPE`          char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                               NOT NULL DEFAULT 'BUS' COMMENT 'Client type',
+    `APP_ID`               bigint unsigned                                                                        NOT NULL COMMENT 'App ID',
+    `LEVEL`                enum ('CLIENT','CUSTOMER','CONSUMER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CLIENT' COMMENT 'Access level',
+    `BUSINESS_TYPE`        char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                              NOT NULL DEFAULT 'COMMON' COMMENT 'Business type',
+
+    `NAME`                 varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                          NOT NULL COMMENT 'Name of the department',
+    `DESCRIPTION`          text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the department',
+    `PARENT_DEPARTMENT_ID` bigint unsigned                                                                                 DEFAULT NULL COMMENT 'Parent department for hierarchical structure in this registration details',
+
+    `CREATED_BY`           bigint unsigned                                                                                 DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`           timestamp                                                                              NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_APP_REG_DEPARTMENT_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_APP_REG_DEPARTMENT_PARENT_ID` (`PARENT_DEPARTMENT_ID`),
+    KEY `FK3_APP_REG_DEPARTMENT_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_APP_REG_DEPARTMENT_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_DEPARTMENT_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_DEPARTMENT_PARENT_ID` FOREIGN KEY (`PARENT_DEPARTMENT_ID`) REFERENCES `security_app_reg_department` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+
+-- Security App Reg User RoleV2 Table
+
+CREATE TABLE `security_app_reg_user_role_v2`
+(
+    `ID`            bigint unsigned                                                                        NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`     bigint unsigned                                                                        NOT NULL COMMENT 'Client ID',
+    `CLIENT_TYPE`   char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                               NOT NULL DEFAULT 'BUS' COMMENT 'Client type',
+    `APP_ID`        bigint unsigned                                                                        NOT NULL COMMENT 'App ID',
+    `LEVEL`         enum ('CLIENT','CUSTOMER','CONSUMER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CLIENT' COMMENT 'Access level',
+    `BUSINESS_TYPE` char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                              NOT NULL DEFAULT 'COMMON' COMMENT 'Business type',
+
+    `ROLE_ID`       bigint unsigned                                                                        NOT NULL COMMENT 'Role ID',
+
+    `CREATED_BY`    bigint unsigned                                                                                 DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`    timestamp                                                                              NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_APP_REG_USER_ROLE_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_APP_REG_USER_ROLE_ROLE_V2_ID` (`ROLE_ID`),
+    KEY `FK3_APP_REG_USER_ROLE_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_APP_REG_USER_ROLE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_USER_ROLE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_USER_ROLE_ROLE_V2_ID` FOREIGN KEY (`ROLE_ID`) REFERENCES `security_v2_role` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `security_app_reg_designation`
+(
+    `ID`                    bigint unsigned                                                                        NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`             bigint unsigned                                                                        NOT NULL COMMENT 'Client ID',
+    `CLIENT_TYPE`           char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                               NOT NULL DEFAULT 'BUS' COMMENT 'Client type',
+    `APP_ID`                bigint unsigned                                                                        NOT NULL COMMENT 'App ID',
+    `LEVEL`                 enum ('CLIENT','CUSTOMER','CONSUMER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CLIENT' COMMENT 'Access level',
+    `BUSINESS_TYPE`         char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                              NOT NULL DEFAULT 'COMMON' COMMENT 'Business type',
+
+    `NAME`                  varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                          NOT NULL COMMENT 'Name of the designation',
+    `DESCRIPTION`           text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the designation',
+    `DEPARTMENT_ID`         bigint unsigned                                                                        NOT NULL COMMENT 'Department ID for which this designation belongs to',
+    `PARENT_DESIGNATION_ID` bigint unsigned                                                                                 DEFAULT NULL COMMENT 'Parent designation for hierarchy',
+    `NEXT_DESIGNATION_ID`   bigint unsigned                                                                                 DEFAULT NULL COMMENT 'Next designation in the hierarchy',
+
+    `CREATED_BY`            bigint unsigned                                                                                 DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`            timestamp                                                                              NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_APP_REG_DESIGNATION_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_APP_REG_DESIGNATION_DEPARTMENT_ID` (`DEPARTMENT_ID`),
+    KEY `FK3_APP_REG_DESIGNATION_PARENT_ID` (`PARENT_DESIGNATION_ID`),
+    KEY `FK4_APP_REG_DESIGNATION_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_APP_REG_DESIGNATION_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_DESIGNATION_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_DESIGNATION_DEPARTMENT_ID` FOREIGN KEY (`DEPARTMENT_ID`) REFERENCES `security_app_reg_department` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK3_APP_REG_DESIGNATION_PARENT_ID` FOREIGN KEY (`PARENT_DESIGNATION_ID`) REFERENCES `security_app_reg_designation` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `FK4_APP_REG_DESIGNATION_NEXT_DESIGNATION_ID` FOREIGN KEY (`NEXT_DESIGNATION_ID`) REFERENCES `security_app_reg_designation` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+
+CREATE TABLE `security_app_reg_user_profile`
+(
+    `ID`            bigint unsigned                                                                        NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`     bigint unsigned                                                                        NOT NULL COMMENT 'Client ID',
+    `CLIENT_TYPE`   char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                               NOT NULL DEFAULT 'BUS' COMMENT 'Client type',
+    `APP_ID`        bigint unsigned                                                                        NOT NULL COMMENT 'App ID',
+    `LEVEL`         enum ('CLIENT','CUSTOMER','CONSUMER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CLIENT' COMMENT 'Access level',
+    `BUSINESS_TYPE` char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                              NOT NULL DEFAULT 'COMMON' COMMENT 'Business type',
+
+    `PROFILE_ID`    bigint unsigned                                                                        NOT NULL COMMENT 'Profile ID',
+
+    `CREATED_BY`    bigint unsigned                                                                                 DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`    timestamp                                                                              NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `CLIENT_ID` (`CLIENT_ID`, `APP_ID`, `PROFILE_ID`, `CLIENT_TYPE`, `LEVEL`, `BUSINESS_TYPE`),
+    KEY `FK2_APP_REG_USER_PROFILE_APP_ID` (`APP_ID`),
+    KEY `FK3_APP_REG_USER_PROFILE_PROFILE_ID` (`PROFILE_ID`),
+    KEY `FK4_APP_REG_USER_PROFILE_CLIENT_TYPE` (`CLIENT_TYPE`),
+    CONSTRAINT `FK1_APP_REG_USER_PROFILE_CLNT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_USER_PROFILE_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK3_APP_REG_USER_PROFILE_PROFILE_ID` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security_profile` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK4_APP_REG_USER_PROFILE_CLIENT_TYPE` FOREIGN KEY (`CLIENT_TYPE`) REFERENCES `security_client_type` (`CODE`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `security_app_reg_user_designation`
+(
+    `ID`             bigint unsigned                                                                        NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`      bigint unsigned                                                                        NOT NULL COMMENT 'Client ID',
+    `CLIENT_TYPE`    char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                               NOT NULL DEFAULT 'BUS' COMMENT 'Client type',
+    `APP_ID`         bigint unsigned                                                                        NOT NULL COMMENT 'App ID',
+    `LEVEL`          enum ('CLIENT','CUSTOMER','CONSUMER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CLIENT' COMMENT 'Access level',
+    `BUSINESS_TYPE`  char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci                              NOT NULL DEFAULT 'COMMON' COMMENT 'Business type',
+
+    `DESIGNATION_ID` bigint unsigned                                                                        NOT NULL COMMENT 'Designation ID',
+
+    `CREATED_BY`     bigint unsigned                                                                                 DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`     timestamp                                                                              NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_APP_REG_USER_DESIGNATION_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK2_APP_REG_USER_DESIGNATION_DESIGNATION_ID` (`DESIGNATION_ID`),
+    KEY `FK3_APP_REG_USER_DESIGNATION_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_APP_REG_USER_DESIGNATION_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_USER_DESIGNATION_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `FK2_APP_REG_USER_DESIGNATION_DESIGNATION_ID` FOREIGN KEY (`DESIGNATION_ID`) REFERENCES `security_app_reg_designation` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Adding profile related permissions and roles
+
+SELECT ID
+from `security_client`
+WHERE CODE = 'SYSTEM'
+LIMIT 1
+INTO @v_client_system;
+
+-- DELETING any profile related permissions;
+
+DELETE
+FROM security.security_permission
+where NAME like 'Profile%';
+
+-- Inserting old roles into v2 role table
+
+INSERT INTO `security_v2_role` (`CLIENT_ID`, `NAME`, `APP_ID`, `DESCRIPTION`)
+SELECT `CLIENT_ID`, `NAME`, `APP_ID`, `DESCRIPTION`
+FROM `security_role`;
+
+-- Inserting old permissions into v2 role table to create a new role for each permission
+
+INSERT INTO `security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+SELECT CLIENT_ID,
+       NAME,
+       concat(left(short_name, 1), lower(substr(short_name, 2))) as SHORT_NAME,
+       DESCRIPTION
+FROM (SELECT CLIENT_ID,
+             NAME,
+             IF(SUBSTRING_INDEX(`NAME`, ' ', 1) = 'ASSIGN', 'ASSIGN', SUBSTRING_INDEX(`NAME`, ' ', - 1)) AS short_name,
+             DESCRIPTION
+      FROM security.security_permission) nt;
+
+-- Creating the relation between newly created permission roles with existing permissions
+
+INSERT INTO `security_v2_role_permission` (ROLE_ID, PERMISSION_ID)
+select r.id role_id, p.id permission_id
+from security_v2_role r
+         left join security_permission p on r.name = p.name
+where p.id is not null;
+
+INSERT INTO `security_v2_role_role` (ROLE_ID, SUB_ROLE_ID)
+select vr.id, vr2.id
+from security_role_permission rp
+         left join security_role r on r.id = rp.role_id
+         left join security_v2_role vr on vr.name = r.name
+         left join security_permission p on p.id = rp.PERMISSION_ID
+         left join security_v2_role vr2 on vr2.name = p.name;
+
+INSERT IGNORE INTO `security_permission` (CLIENT_ID, NAME, DESCRIPTION)
+VALUES (@v_client_system, 'Profile CREATE', 'Profile create'),
+       (@v_client_system, 'Profile READ', 'Profile read'),
+       (@v_client_system, 'Profile UPDATE', 'Profile update'),
+       (@v_client_system, 'Profile DELETE', 'Profile delete');
+
+INSERT IGNORE INTO `security_v2_role` (CLIENT_ID, NAME, SHORT_NAME, DESCRIPTION)
+VALUES (@v_client_system, 'Profile CREATE', 'Create', 'Profile create'),
+       (@v_client_system, 'Profile READ', 'Read', 'Profile read'),
+       (@v_client_system, 'Profile UPDATE', 'Update', 'Profile update'),
+       (@v_client_system, 'Profile DELETE', 'Delete', 'Profile delete'),
+       (@v_client_system, 'Profile Manager', 'Manager', 'Profile manager'),
+       (@v_client_system, 'Owner', 'Owner', 'Owner');
+
+SELECT ID
+from `security_v2_role`
+WHERE NAME = 'Profile Manager'
+LIMIT 1
+INTO @v_role_profile_manager;
+
+SELECT ID
+from `security_v2_role`
+WHERE NAME = 'Profile CREATE'
+LIMIT 1
+INTO @v_role_profile_create;
+SELECT ID
+from `security_v2_role`
+WHERE NAME = 'Profile READ'
+LIMIT 1
+INTO @v_role_profile_read;
+SELECT ID
+from `security_v2_role`
+WHERE NAME = 'Profile UPDATE'
+LIMIT 1
+INTO @v_role_profile_update;
+SELECT ID
+from `security_v2_role`
+WHERE NAME = 'Profile DELETE'
+LIMIT 1
+INTO @v_role_profile_delete;
+
+INSERT IGNORE INTO `security_v2_role_permission` (ROLE_ID, PERMISSION_ID)
+VALUES (@v_role_profile_create, (SELECT ID FROM `security_permission` WHERE NAME = 'Profile CREATE' LIMIT 1)),
+       (@v_role_profile_read, (SELECT ID FROM `security_permission` WHERE NAME = 'Profile READ' LIMIT 1)),
+       (@v_role_profile_update, (SELECT ID FROM `security_permission` WHERE NAME = 'Profile UPDATE' LIMIT 1)),
+       (@v_role_profile_delete, (SELECT ID FROM `security_permission` WHERE NAME = 'Profile DELETE' LIMIT 1));
+
+INSERT IGNORE INTO `security_v2_role_role` (ROLE_ID, SUB_ROLE_ID)
+VALUES (@v_role_profile_manager, @v_role_profile_create),
+       (@v_role_profile_manager, @v_role_profile_read),
+       (@v_role_profile_manager, @v_role_profile_update),
+       (@v_role_profile_manager, @v_role_profile_delete);
+
+ALTER TABLE `security`.`security_sox_log`
+    CHANGE COLUMN `OBJECT_NAME` `OBJECT_NAME` ENUM ('USER', 'ROLE', 'PERMISSION', 'PACKAGE', 'CLIENT', 'CLIENT_TYPE', 'APP', 'PROFILE') CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL COMMENT 'Operation on the object';
+
+SET SQL_SAFE_UPDATES = 0;
+DELETE
+FROM `security`.`security_v2_role`
+where short_name = 'Assign';
+SET SQL_SAFE_UPDATES = 1;
+
+select id
+from security.security_app
+where app_code = 'appbuilder'
+into @v_app_appbuilder;
+select id
+from security.security_client
+where code = 'system'
+into @v_client_system;
+
+delete
+from security.security_profile
+where app_id = @v_app_appbuilder;
+
+select id
+from security.security_v2_role
+where name = 'Actions Manager'
+into @v_role_actions_manager;
+select id
+from security.security_v2_role
+where name = 'Application Manager'
+into @v_role_app_manager;
+select id
+from security.security_v2_role
+where name = 'Client Manager'
+into @v_role_client_manager;
+select id
+from security.security_v2_role
+where name = 'Client Type Manager'
+into @v_role_client_type_manager;
+select id
+from security.security_v2_role
+where name = 'Client Update Manager'
+into @v_role_client_update_manager;
+select id
+from security.security_v2_role
+where name = 'Data Connection Manager'
+into @v_role_data_connection_manager;
+select id
+from security.security_v2_role
+where name = 'Data Manager'
+into @v_role_data_manager;
+select id
+from security.security_v2_role
+where name = 'EventAction Manager'
+into @v_role_eventaction_manager;
+select id
+from security.security_v2_role
+where name = 'EventDefinition Manager'
+into @v_role_eventdefinition_manager;
+select id
+from security.security_v2_role
+where name = 'Files Manager'
+into @v_role_files_manager;
+select id
+from security.security_v2_role
+where name = 'Function Manager'
+into @v_role_function_manager;
+select id
+from security.security_v2_role
+where name = 'Integration Manager'
+into @v_role_integration_manager;
+select id
+from security.security_v2_role
+where name = 'Owner'
+into @v_role_owner;
+select id
+from security.security_v2_role
+where name = 'Package Manager'
+into @v_role_package_manager;
+select id
+from security.security_v2_role
+where name = 'Page Manager'
+into @v_role_page_manager;
+select id
+from security.security_v2_role
+where name = 'Permission Manager'
+into @v_role_permission_manager;
+select id
+from security.security_v2_role
+where name = 'Personalization Manager'
+into @v_role_personalization_manager;
+select id
+from security.security_v2_role
+where name = 'Profile Manager'
+into @v_role_profile_manager;
+select id
+from security.security_v2_role
+where name = 'Role Manager'
+into @v_role_role_manager;
+select id
+from security.security_v2_role
+where name = 'Schema Manager'
+into @v_role_schema_manager;
+select id
+from security.security_v2_role
+where name = 'Style Manager'
+into @v_role_style_manager;
+select id
+from security.security_v2_role
+where name = 'System Application Manager'
+into @v_role_system_application_manager;
+select id
+from security.security_v2_role
+where name = 'Template Manager'
+into @v_role_template_manager;
+select id
+from security.security_v2_role
+where name = 'Theme Manager'
+into @v_role_theme_manager;
+select id
+from security.security_v2_role
+where name = 'Transport Manager'
+into @v_role_transport_manager;
+select id
+from security.security_v2_role
+where name = 'User Manager'
+into @v_role_user_manager;
+select id
+from security.security_v2_role
+where name = 'Workflow Manager'
+into @v_role_workflow_manager;
+
+insert into security.security_profile(client_id, app_id, name, description, arrangement) value
+    (@v_client_system, @v_app_appbuilder, 'Appbuilder Owner', 'Owner of App Builder',
+     JSON_OBJECT(
+             "r1", JSON_OBJECT("roleId", @v_role_actions_manager),
+             "r2", JSON_OBJECT("roleId", @v_role_app_manager),
+             "r3", JSON_OBJECT("roleId", @v_role_client_manager),
+             "r4", JSON_OBJECT("roleId", @v_role_client_type_manager),
+             "r5", JSON_OBJECT("roleId", @v_role_client_update_manager),
+             "r6", JSON_OBJECT("roleId", @v_role_data_connection_manager),
+             "r7", JSON_OBJECT("roleId", @v_role_data_manager),
+             "r8", JSON_OBJECT("roleId", @v_role_eventaction_manager),
+             "r9", JSON_OBJECT("roleId", @v_role_eventdefinition_manager),
+             "r10", JSON_OBJECT("roleId", @v_role_files_manager),
+             "r11", JSON_OBJECT("roleId", @v_role_function_manager),
+             "r12", JSON_OBJECT("roleId", @v_role_integration_manager),
+             "r13", JSON_OBJECT("roleId", @v_role_owner),
+             "r14", JSON_OBJECT("roleId", @v_role_package_manager),
+             "r15", JSON_OBJECT("roleId", @v_role_page_manager),
+             "r16", JSON_OBJECT("roleId", @v_role_permission_manager),
+             "r17", JSON_OBJECT("roleId", @v_role_personalization_manager),
+             "r18", JSON_OBJECT("roleId", @v_role_profile_manager),
+             "r19", JSON_OBJECT("roleId", @v_role_role_manager),
+             "r20", JSON_OBJECT("roleId", @v_role_schema_manager),
+             "r21", JSON_OBJECT("roleId", @v_role_style_manager),
+             "r22", JSON_OBJECT("roleId", @v_role_system_application_manager),
+             "r23", JSON_OBJECT("roleId", @v_role_template_manager),
+             "r24", JSON_OBJECT("roleId", @v_role_theme_manager),
+             "r25", JSON_OBJECT("roleId", @v_role_transport_manager),
+             "r26", JSON_OBJECT("roleId", @v_role_user_manager),
+             "r27", JSON_OBJECT("roleId", @v_role_workflow_manager)
+     )
+        );
+
+select id
+from security.security_user
+where USER_NAME = 'sysadmin'
+into @v_user_sysadmin;
+select id
+from security.security_profile
+where name = 'Appbuilder Owner'
+into @v_profile_appbuilder_owner;
+
+insert into security.security_profile_role(profile_id, role_id)
+values (@v_profile_appbuilder_owner, @v_role_actions_manager),
+       (@v_profile_appbuilder_owner, @v_role_app_manager),
+       (@v_profile_appbuilder_owner, @v_role_client_manager),
+       (@v_profile_appbuilder_owner, @v_role_client_type_manager),
+       (@v_profile_appbuilder_owner, @v_role_client_update_manager),
+       (@v_profile_appbuilder_owner, @v_role_data_connection_manager),
+       (@v_profile_appbuilder_owner, @v_role_data_manager),
+       (@v_profile_appbuilder_owner, @v_role_eventaction_manager),
+       (@v_profile_appbuilder_owner, @v_role_eventdefinition_manager),
+       (@v_profile_appbuilder_owner, @v_role_files_manager),
+       (@v_profile_appbuilder_owner, @v_role_function_manager),
+       (@v_profile_appbuilder_owner, @v_role_integration_manager),
+       (@v_profile_appbuilder_owner, @v_role_owner),
+       (@v_profile_appbuilder_owner, @v_role_package_manager),
+       (@v_profile_appbuilder_owner, @v_role_page_manager),
+       (@v_profile_appbuilder_owner, @v_role_permission_manager),
+       (@v_profile_appbuilder_owner, @v_role_personalization_manager),
+       (@v_profile_appbuilder_owner, @v_role_profile_manager),
+       (@v_profile_appbuilder_owner, @v_role_role_manager),
+       (@v_profile_appbuilder_owner, @v_role_schema_manager),
+       (@v_profile_appbuilder_owner, @v_role_style_manager),
+       (@v_profile_appbuilder_owner, @v_role_system_application_manager),
+       (@v_profile_appbuilder_owner, @v_role_template_manager),
+       (@v_profile_appbuilder_owner, @v_role_theme_manager),
+       (@v_profile_appbuilder_owner, @v_role_transport_manager),
+       (@v_profile_appbuilder_owner, @v_role_user_manager),
+       (@v_profile_appbuilder_owner, @v_role_workflow_manager);
+
+insert into security.security_profile_user(profile_id, user_id)
+values (@v_profile_appbuilder_owner, @v_user_sysadmin);
+
+-- V39__Security Profile Role Correction.sql
+
+
+select id
+from security.security_v2_role
+where name = 'Data Manager'
+into @v_data_man;
+select id
+from security.security_v2_role
+where name = 'Data Connection Manager'
+into @v_conn_man;
+
+delete
+from security.security_v2_role_role
+where ROLE_ID in (@v_data_man, @v_conn_man);
+
+select id
+from security.security_v2_role
+where name = 'Storage CREATE'
+into @v_sr_sc;
+select id
+from security.security_v2_role
+where name = 'Storage READ'
+into @v_sr_sr;
+select id
+from security.security_v2_role
+where name = 'Storage UPDATE'
+into @v_sr_su;
+select id
+from security.security_v2_role
+where name = 'Storage DELETE'
+into @v_sr_sd;
+
+insert into security.security_v2_role_role (role_id, sub_role_id)
+values (@v_data_man, @v_sr_sc),
+       (@v_data_man, @v_sr_sr),
+       (@v_data_man, @v_sr_su),
+       (@v_data_man, @v_sr_sd);
+
+select id
+from security.security_v2_role
+where name = 'Connection CREATE'
+into @v_sr_sc;
+select id
+from security.security_v2_role
+where name = 'Connection READ'
+into @v_sr_sr;
+select id
+from security.security_v2_role
+where name = 'Connection UPDATE'
+into @v_sr_su;
+select id
+from security.security_v2_role
+where name = 'Connection DELETE'
+into @v_sr_sd;
+
+insert into security.security_v2_role_role (role_id, sub_role_id)
+values (@v_conn_man, @v_sr_sc),
+       (@v_conn_man, @v_sr_sr),
+       (@v_conn_man, @v_sr_su),
+       (@v_conn_man, @v_sr_sd);
+
+select *
+from security.security_v2_role_role
+where ROLE_ID in (@v_data_man, @v_conn_man);
+
+Select id
+from security.security_v2_role
+WHERE (`NAME` = 'STATIC Files PATH')
+into @v_files_static_role;
+Select id
+from security.security_v2_role
+WHERE (`NAME` = 'SECURED Files PATH')
+into @v_files_secured_role;
+UPDATE `security`.`security_v2_role`
+SET `SHORT_NAME` = 'Static'
+WHERE id = @v_files_static_role;
+UPDATE `security`.`security_v2_role`
+SET `SHORT_NAME` = 'Secured'
+WHERE id = @v_files_secured_role;
+
+-- V40__AppBuilder Owner profile updated.sql
+
+select id
+from security.security_v2_role
+where name = 'Client Manager'
+limit 1
+into @v_r_1;
+select id
+from security.security_v2_role
+where name = 'User Manager'
+limit 1
+into @v_r_2;
+select id
+from security.security_v2_role
+where name = 'Package Manager'
+limit 1
+into @v_r_3;
+select id
+from security.security_v2_role
+where name = 'Role Manager'
+limit 1
+into @v_r_4;
+select id
+from security.security_v2_role
+where name = 'Permission Manager'
+limit 1
+into @v_r_5;
+select id
+from security.security_v2_role
+where name = 'Client Type Manager'
+limit 1
+into @v_r_6;
+select id
+from security.security_v2_role
+where name = 'Client Update Manager'
+limit 1
+into @v_r_7;
+select id
+from security.security_v2_role
+where name = 'Application Manager'
+limit 1
+into @v_r_8;
+select id
+from security.security_v2_role
+where name = 'System Application Manager'
+limit 1
+into @v_r_9;
+select id
+from security.security_v2_role
+where name = 'Function Manager'
+limit 1
+into @v_r_10;
+select id
+from security.security_v2_role
+where name = 'Page Manager'
+limit 1
+into @v_r_11;
+select id
+from security.security_v2_role
+where name = 'Theme Manager'
+limit 1
+into @v_r_12;
+select id
+from security.security_v2_role
+where name = 'Personalization Manager'
+limit 1
+into @v_r_13;
+select id
+from security.security_v2_role
+where name = 'Files Manager'
+limit 1
+into @v_r_14;
+select id
+from security.security_v2_role
+where name = 'Data Manager'
+limit 1
+into @v_r_15;
+select id
+from security.security_v2_role
+where name = 'Data Connection Manager'
+limit 1
+into @v_r_16;
+select id
+from security.security_v2_role
+where name = 'Schema Manager'
+limit 1
+into @v_r_17;
+select id
+from security.security_v2_role
+where name = 'Workflow Manager'
+limit 1
+into @v_r_18;
+select id
+from security.security_v2_role
+where name = 'Template Manager'
+limit 1
+into @v_r_19;
+select id
+from security.security_v2_role
+where name = 'Actions Manager'
+limit 1
+into @v_r_20;
+select id
+from security.security_v2_role
+where name = 'Style Manager'
+limit 1
+into @v_r_21;
+select id
+from security.security_v2_role
+where name = 'Transport Manager'
+limit 1
+into @v_r_22;
+select id
+from security.security_v2_role
+where name = 'EventDefinition Manager'
+limit 1
+into @v_r_23;
+select id
+from security.security_v2_role
+where name = 'EventAction Manager'
+limit 1
+into @v_r_24;
+select id
+from security.security_v2_role
+where name = 'Super Admin'
+limit 1
+into @v_r_25;
+select id
+from security.security_v2_role
+where name = 'Integration Manager'
+limit 1
+into @v_r_26;
+select id
+from security.security_v2_role
+where name = 'Client CREATE'
+limit 1
+into @v_r_32;
+select id
+from security.security_v2_role
+where name = 'Client READ'
+limit 1
+into @v_r_33;
+select id
+from security.security_v2_role
+where name = 'Client UPDATE'
+limit 1
+into @v_r_34;
+select id
+from security.security_v2_role
+where name = 'Client DELETE'
+limit 1
+into @v_r_35;
+select id
+from security.security_v2_role
+where name = 'User CREATE'
+limit 1
+into @v_r_37;
+select id
+from security.security_v2_role
+where name = 'User READ'
+limit 1
+into @v_r_38;
+select id
+from security.security_v2_role
+where name = 'User UPDATE'
+limit 1
+into @v_r_39;
+select id
+from security.security_v2_role
+where name = 'User DELETE'
+limit 1
+into @v_r_40;
+select id
+from security.security_v2_role
+where name = 'Package CREATE'
+limit 1
+into @v_r_43;
+select id
+from security.security_v2_role
+where name = 'Package READ'
+limit 1
+into @v_r_44;
+select id
+from security.security_v2_role
+where name = 'Package UPDATE'
+limit 1
+into @v_r_45;
+select id
+from security.security_v2_role
+where name = 'Package DELETE'
+limit 1
+into @v_r_46;
+select id
+from security.security_v2_role
+where name = 'Role CREATE'
+limit 1
+into @v_r_47;
+select id
+from security.security_v2_role
+where name = 'Role READ'
+limit 1
+into @v_r_48;
+select id
+from security.security_v2_role
+where name = 'Role UPDATE'
+limit 1
+into @v_r_49;
+select id
+from security.security_v2_role
+where name = 'Role DELETE'
+limit 1
+into @v_r_50;
+select id
+from security.security_v2_role
+where name = 'Permission CREATE'
+limit 1
+into @v_r_53;
+select id
+from security.security_v2_role
+where name = 'Permission READ'
+limit 1
+into @v_r_54;
+select id
+from security.security_v2_role
+where name = 'Permission UPDATE'
+limit 1
+into @v_r_55;
+select id
+from security.security_v2_role
+where name = 'Permission DELETE'
+limit 1
+into @v_r_56;
+select id
+from security.security_v2_role
+where name = 'Client Type CREATE'
+limit 1
+into @v_r_57;
+select id
+from security.security_v2_role
+where name = 'Client Type READ'
+limit 1
+into @v_r_58;
+select id
+from security.security_v2_role
+where name = 'Client Type UPDATE'
+limit 1
+into @v_r_59;
+select id
+from security.security_v2_role
+where name = 'Client Type DELETE'
+limit 1
+into @v_r_60;
+select id
+from security.security_v2_role
+where name = 'Application CREATE'
+limit 1
+into @v_r_61;
+select id
+from security.security_v2_role
+where name = 'Application READ'
+limit 1
+into @v_r_62;
+select id
+from security.security_v2_role
+where name = 'Application UPDATE'
+limit 1
+into @v_r_63;
+select id
+from security.security_v2_role
+where name = 'Application DELETE'
+limit 1
+into @v_r_64;
+select id
+from security.security_v2_role
+where name = 'Function CREATE'
+limit 1
+into @v_r_65;
+select id
+from security.security_v2_role
+where name = 'Function READ'
+limit 1
+into @v_r_66;
+select id
+from security.security_v2_role
+where name = 'Function UPDATE'
+limit 1
+into @v_r_67;
+select id
+from security.security_v2_role
+where name = 'Function DELETE'
+limit 1
+into @v_r_68;
+select id
+from security.security_v2_role
+where name = 'Page CREATE'
+limit 1
+into @v_r_69;
+select id
+from security.security_v2_role
+where name = 'Page READ'
+limit 1
+into @v_r_70;
+select id
+from security.security_v2_role
+where name = 'Page UPDATE'
+limit 1
+into @v_r_71;
+select id
+from security.security_v2_role
+where name = 'Page DELETE'
+limit 1
+into @v_r_72;
+select id
+from security.security_v2_role
+where name = 'Theme CREATE'
+limit 1
+into @v_r_73;
+select id
+from security.security_v2_role
+where name = 'Theme READ'
+limit 1
+into @v_r_74;
+select id
+from security.security_v2_role
+where name = 'Theme UPDATE'
+limit 1
+into @v_r_75;
+select id
+from security.security_v2_role
+where name = 'Theme DELETE'
+limit 1
+into @v_r_76;
+select id
+from security.security_v2_role
+where name = 'Personalization CLEAR'
+limit 1
+into @v_r_77;
+select id
+from security.security_v2_role
+where name = 'STATIC Files PATH'
+limit 1
+into @v_r_78;
+select id
+from security.security_v2_role
+where name = 'SECURED Files PATH'
+limit 1
+into @v_r_79;
+select id
+from security.security_v2_role
+where name = 'Client Password Policy READ'
+limit 1
+into @v_r_80;
+select id
+from security.security_v2_role
+where name = 'Client Password Policy CREATE'
+limit 1
+into @v_r_81;
+select id
+from security.security_v2_role
+where name = 'Client Password Policy UPDATE'
+limit 1
+into @v_r_82;
+select id
+from security.security_v2_role
+where name = 'Client Password Policy DELETE'
+limit 1
+into @v_r_83;
+select id
+from security.security_v2_role
+where name = 'Storage CREATE'
+limit 1
+into @v_r_84;
+select id
+from security.security_v2_role
+where name = 'Storage READ'
+limit 1
+into @v_r_85;
+select id
+from security.security_v2_role
+where name = 'Storage UPDATE'
+limit 1
+into @v_r_86;
+select id
+from security.security_v2_role
+where name = 'Storage DELETE'
+limit 1
+into @v_r_87;
+select id
+from security.security_v2_role
+where name = 'Connection CREATE'
+limit 1
+into @v_r_88;
+select id
+from security.security_v2_role
+where name = 'Connection READ'
+limit 1
+into @v_r_89;
+select id
+from security.security_v2_role
+where name = 'Connection UPDATE'
+limit 1
+into @v_r_90;
+select id
+from security.security_v2_role
+where name = 'Connection DELETE'
+limit 1
+into @v_r_91;
+select id
+from security.security_v2_role
+where name = 'Schema CREATE'
+limit 1
+into @v_r_92;
+select id
+from security.security_v2_role
+where name = 'Schema READ'
+limit 1
+into @v_r_93;
+select id
+from security.security_v2_role
+where name = 'Schema UPDATE'
+limit 1
+into @v_r_94;
+select id
+from security.security_v2_role
+where name = 'Schema DELETE'
+limit 1
+into @v_r_95;
+select id
+from security.security_v2_role
+where name = 'Workflow CREATE'
+limit 1
+into @v_r_96;
+select id
+from security.security_v2_role
+where name = 'Workflow READ'
+limit 1
+into @v_r_97;
+select id
+from security.security_v2_role
+where name = 'Workflow UPDATE'
+limit 1
+into @v_r_98;
+select id
+from security.security_v2_role
+where name = 'Workflow DELETE'
+limit 1
+into @v_r_99;
+select id
+from security.security_v2_role
+where name = 'Template CREATE'
+limit 1
+into @v_r_100;
+select id
+from security.security_v2_role
+where name = 'Template READ'
+limit 1
+into @v_r_101;
+select id
+from security.security_v2_role
+where name = 'Template UPDATE'
+limit 1
+into @v_r_102;
+select id
+from security.security_v2_role
+where name = 'Template DELETE'
+limit 1
+into @v_r_103;
+select id
+from security.security_v2_role
+where name = 'Actions CREATE'
+limit 1
+into @v_r_104;
+select id
+from security.security_v2_role
+where name = 'Actions READ'
+limit 1
+into @v_r_105;
+select id
+from security.security_v2_role
+where name = 'Actions UPDATE'
+limit 1
+into @v_r_106;
+select id
+from security.security_v2_role
+where name = 'Actions DELETE'
+limit 1
+into @v_r_107;
+select id
+from security.security_v2_role
+where name = 'Style CREATE'
+limit 1
+into @v_r_108;
+select id
+from security.security_v2_role
+where name = 'Style READ'
+limit 1
+into @v_r_109;
+select id
+from security.security_v2_role
+where name = 'Style UPDATE'
+limit 1
+into @v_r_110;
+select id
+from security.security_v2_role
+where name = 'Style DELETE'
+limit 1
+into @v_r_111;
+select id
+from security.security_v2_role
+where name = 'Transport CREATE'
+limit 1
+into @v_r_112;
+select id
+from security.security_v2_role
+where name = 'Transport READ'
+limit 1
+into @v_r_113;
+select id
+from security.security_v2_role
+where name = 'Transport UPDATE'
+limit 1
+into @v_r_114;
+select id
+from security.security_v2_role
+where name = 'Transport DELETE'
+limit 1
+into @v_r_115;
+select id
+from security.security_v2_role
+where name = 'EventDefinition CREATE'
+limit 1
+into @v_r_116;
+select id
+from security.security_v2_role
+where name = 'EventDefinition READ'
+limit 1
+into @v_r_117;
+select id
+from security.security_v2_role
+where name = 'EventDefinition UPDATE'
+limit 1
+into @v_r_118;
+select id
+from security.security_v2_role
+where name = 'EventDefinition DELETE'
+limit 1
+into @v_r_119;
+select id
+from security.security_v2_role
+where name = 'EventAction CREATE'
+limit 1
+into @v_r_120;
+select id
+from security.security_v2_role
+where name = 'EventAction READ'
+limit 1
+into @v_r_121;
+select id
+from security.security_v2_role
+where name = 'EventAction UPDATE'
+limit 1
+into @v_r_122;
+select id
+from security.security_v2_role
+where name = 'EventAction DELETE'
+limit 1
+into @v_r_123;
+select id
+from security.security_v2_role
+where name = 'Integration CREATE'
+limit 1
+into @v_r_124;
+select id
+from security.security_v2_role
+where name = 'Integration READ'
+limit 1
+into @v_r_125;
+select id
+from security.security_v2_role
+where name = 'Integration UPDATE'
+limit 1
+into @v_r_126;
+select id
+from security.security_v2_role
+where name = 'Integration DELETE'
+limit 1
+into @v_r_127;
+select id
+from security.security_v2_role
+where name = 'Profile CREATE'
+limit 1
+into @v_r_159;
+select id
+from security.security_v2_role
+where name = 'Profile READ'
+limit 1
+into @v_r_160;
+select id
+from security.security_v2_role
+where name = 'Profile UPDATE'
+limit 1
+into @v_r_161;
+select id
+from security.security_v2_role
+where name = 'Profile DELETE'
+limit 1
+into @v_r_162;
+select id
+from security.security_v2_role
+where name = 'Profile Manager'
+limit 1
+into @v_r_163;
+select id
+from security.security_v2_role
+where name = 'Owner'
+limit 1
+into @v_r_164;
+
+select id
+from security.security_profile
+where name = 'Appbuilder Owner'
+into @v_profile_appbuilder_owner;
+
+update security.security_profile
+set arrangement = JSON_OBJECT("r164", JSON_OBJECT("order", 3, "roleId", @v_r_164, "assignable", true), "g1",
+                              JSON_OBJECT("name", "Security", "order", 2, "assignable", true, "subArrangements",
+                                          JSON_OBJECT("r163",
+                                                      JSON_OBJECT("order", 0, "roleId", @v_r_163, "assignable", true,
+                                                                  "subArrangements", JSON_OBJECT("r160",
+                                                                                                 JSON_OBJECT("order", 1, "roleId", @v_r_160, "assignable", true),
+                                                                                                 "r162",
+                                                                                                 JSON_OBJECT("order", 3, "roleId", @v_r_162, "assignable", true),
+                                                                                                 "r159",
+                                                                                                 JSON_OBJECT("order", 0, "roleId", @v_r_159, "assignable", true),
+                                                                                                 "r161",
+                                                                                                 JSON_OBJECT("order", 2, "roleId", @v_r_161, "assignable", true))),
+                                                      "r2",
+                                                      JSON_OBJECT("order", 1, "roleId", @v_r_2, "assignable", true,
+                                                                  "subArrangements", JSON_OBJECT("r39",
+                                                                                                 JSON_OBJECT("order", 2, "roleId", @v_r_39, "assignable", true),
+                                                                                                 "r40",
+                                                                                                 JSON_OBJECT("order", 3, "roleId", @v_r_40, "assignable", true),
+                                                                                                 "r37",
+                                                                                                 JSON_OBJECT("order", 0, "roleId", @v_r_37, "assignable", true),
+                                                                                                 "r38",
+                                                                                                 JSON_OBJECT("order", 1, "roleId", @v_r_38, "assignable", true))),
+                                                      "r22",
+                                                      JSON_OBJECT("order", 6, "roleId", @v_r_22, "assignable", true,
+                                                                  "subArrangements", JSON_OBJECT("r114",
+                                                                                                 JSON_OBJECT("order", 2, "roleId", @v_r_114, "assignable", true),
+                                                                                                 "r115",
+                                                                                                 JSON_OBJECT("order", 3, "roleId", @v_r_115, "assignable", true),
+                                                                                                 "r112",
+                                                                                                 JSON_OBJECT("order", 0, "roleId", @v_r_112, "assignable", true),
+                                                                                                 "r113",
+                                                                                                 JSON_OBJECT("order", 1, "roleId", @v_r_113, "assignable", true))),
+                                                      "r14",
+                                                      JSON_OBJECT("order", 3, "roleId", @v_r_14, "assignable", true,
+                                                                  "subArrangements", JSON_OBJECT("r78",
+                                                                                                 JSON_OBJECT("roleId", @v_r_78, "assignable", true),
+                                                                                                 "r79",
+                                                                                                 JSON_OBJECT("roleId", @v_r_79, "assignable", true))),
+                                                      "r4",
+                                                      JSON_OBJECT("order", 5, "roleId", @v_r_4, "assignable", true,
+                                                                  "subArrangements", JSON_OBJECT("r49",
+                                                                                                 JSON_OBJECT("order", 2, "roleId", @v_r_49, "assignable", true),
+                                                                                                 "r50",
+                                                                                                 JSON_OBJECT("order", 3, "roleId", @v_r_50, "assignable", true),
+                                                                                                 "r47",
+                                                                                                 JSON_OBJECT("order", 0, "roleId", @v_r_47, "assignable", true),
+                                                                                                 "r48",
+                                                                                                 JSON_OBJECT("order", 1, "roleId", @v_r_48, "assignable", true))),
+                                                      "r1",
+                                                      JSON_OBJECT("order", 2, "roleId", @v_r_1, "assignable", true,
+                                                                  "subArrangements", JSON_OBJECT("r33",
+                                                                                                 JSON_OBJECT("order", 1, "roleId", @v_r_33, "assignable", true),
+                                                                                                 "r35",
+                                                                                                 JSON_OBJECT("order", 3, "roleId", @v_r_35, "assignable", true),
+                                                                                                 "r34",
+                                                                                                 JSON_OBJECT("order", 2, "roleId", @v_r_34, "assignable", true),
+                                                                                                 "r32",
+                                                                                                 JSON_OBJECT("order", 0, "roleId", @v_r_32, "assignable", true))),
+                                                      "r5",
+                                                      JSON_OBJECT("order", 4, "roleId", @v_r_5, "assignable", true,
+                                                                  "subArrangements", JSON_OBJECT("r54",
+                                                                                                 JSON_OBJECT("order", 1, "roleId", @v_r_54, "assignable", true),
+                                                                                                 "r55",
+                                                                                                 JSON_OBJECT("order", 2, "roleId", @v_r_55, "assignable", true),
+                                                                                                 "r56",
+                                                                                                 JSON_OBJECT("order", 3, "roleId", @v_r_56, "assignable", true),
+                                                                                                 "r53",
+                                                                                                 JSON_OBJECT("order", 0, "roleId", @v_r_53, "assignable", true))))),
+                              "g2", JSON_OBJECT("name", "Core", "order", 1, "assignable", true, "subArrangements",
+                                                JSON_OBJECT("r20",
+                                                            JSON_OBJECT("order", 9, "roleId", @v_r_20, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r105",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_105, "assignable", true),
+                                                                                                             "r107",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_107, "assignable", true),
+                                                                                                             "r104",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_104, "assignable", true),
+                                                                                                             "r106",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_106, "assignable", true))),
+                                                            "r24",
+                                                            JSON_OBJECT("order", 3, "roleId", @v_r_24, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r121",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_121, "assignable", true),
+                                                                                                             "r120",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_120, "assignable", true),
+                                                                                                             "r122",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_122, "assignable", true),
+                                                                                                             "r123",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_123, "assignable", true))),
+                                                            "r16",
+                                                            JSON_OBJECT("order", 1, "roleId", @v_r_16, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r89",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_89, "assignable", true),
+                                                                                                             "r91",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_91, "assignable", true),
+                                                                                                             "r90",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_90, "assignable", true),
+                                                                                                             "r88",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_88, "assignable", true))),
+                                                            "r15",
+                                                            JSON_OBJECT("order", 0, "roleId", @v_r_15, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r87",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_87, "assignable", true),
+                                                                                                             "r84",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_84, "assignable", true),
+                                                                                                             "r85",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_85, "assignable", true),
+                                                                                                             "r86",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_86, "assignable", true))),
+                                                            "r19",
+                                                            JSON_OBJECT("order", 6, "roleId", @v_r_19, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r103",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_103, "assignable", true),
+                                                                                                             "r101",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_101, "assignable", true),
+                                                                                                             "r100",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_100, "assignable", true),
+                                                                                                             "r102",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_102, "assignable", true))),
+                                                            "r23",
+                                                            JSON_OBJECT("order", 2, "roleId", @v_r_23, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r118",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_118, "assignable", true),
+                                                                                                             "r119",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_119, "assignable", true),
+                                                                                                             "r116",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_116, "assignable", true),
+                                                                                                             "r117",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_117, "assignable", true))),
+                                                            "r17",
+                                                            JSON_OBJECT("order", 4, "roleId", @v_r_17, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r92",
+                                                                                                             JSON_OBJECT("roleId", @v_r_92, "assignable", true),
+                                                                                                             "r93",
+                                                                                                             JSON_OBJECT("roleId", @v_r_93, "assignable", true),
+                                                                                                             "r94",
+                                                                                                             JSON_OBJECT("roleId", @v_r_94, "assignable", true),
+                                                                                                             "r95",
+                                                                                                             JSON_OBJECT("roleId", @v_r_95, "assignable", true))),
+                                                            "r10",
+                                                            JSON_OBJECT("order", 5, "roleId", @v_r_10, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r67",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_67, "assignable", true),
+                                                                                                             "r66",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_66, "assignable", true),
+                                                                                                             "r68",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_68, "assignable", true),
+                                                                                                             "r65",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_65, "assignable", true))),
+                                                            "r26",
+                                                            JSON_OBJECT("order", 7, "roleId", @v_r_26, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r125",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_125, "assignable", true),
+                                                                                                             "r127",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_127, "assignable", true),
+                                                                                                             "r124",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_124, "assignable", true),
+                                                                                                             "r126",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_126, "assignable", true))),
+                                                            "r18",
+                                                            JSON_OBJECT("order", 8, "roleId", @v_r_18, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r99",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_99, "assignable", true),
+                                                                                                             "r96",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_96, "assignable", true),
+                                                                                                             "r98",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_98, "assignable", true),
+                                                                                                             "r97",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_97, "assignable", true))))),
+                              "g3", JSON_OBJECT("name", "UI", "order", 0, "assignable", true, "subArrangements",
+                                                JSON_OBJECT("r21",
+                                                            JSON_OBJECT("order", 3, "roleId", @v_r_21, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r111",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_111, "assignable", true),
+                                                                                                             "r109",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_109, "assignable", true),
+                                                                                                             "r110",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_110, "assignable", true),
+                                                                                                             "r108",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_108, "assignable", true))),
+                                                            "r12",
+                                                            JSON_OBJECT("order", 2, "roleId", @v_r_12, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r73",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_73, "assignable", true),
+                                                                                                             "r75",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_75, "assignable", true),
+                                                                                                             "r74",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_74, "assignable", true),
+                                                                                                             "r76",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_76, "assignable", true))),
+                                                            "r13",
+                                                            JSON_OBJECT("order", 4, "roleId", @v_r_13, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r77",
+                                                                                                             JSON_OBJECT("roleId", @v_r_77, "assignable", true))),
+                                                            "r8",
+                                                            JSON_OBJECT("order", 0, "roleId", @v_r_8, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r61",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_61, "assignable", true),
+                                                                                                             "r63",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_63, "assignable", true),
+                                                                                                             "r64",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_64, "assignable", true),
+                                                                                                             "r62",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_62, "assignable", true))),
+                                                            "r11",
+                                                            JSON_OBJECT("order", 1, "roleId", @v_r_11, "assignable",
+                                                                        true, "subArrangements", JSON_OBJECT("r70",
+                                                                                                             JSON_OBJECT("order", 1, "roleId", @v_r_70, "assignable", true),
+                                                                                                             "r69",
+                                                                                                             JSON_OBJECT("order", 0, "roleId", @v_r_69, "assignable", true),
+                                                                                                             "r71",
+                                                                                                             JSON_OBJECT("order", 2, "roleId", @v_r_71, "assignable", true),
+                                                                                                             "r72",
+                                                                                                             JSON_OBJECT("order", 3, "roleId", @v_r_72, "assignable", true))))))
+where id = @v_profile_appbuilder_owner;
+
+delete
+from security.security_profile_role
+where profile_id = @v_profile_appbuilder_owner;
+
+insert into security.security_profile_role(profile_id, role_id)
+values (@v_profile_appbuilder_owner, @v_r_1),
+       (@v_profile_appbuilder_owner, @v_r_2),
+       (@v_profile_appbuilder_owner, @v_r_3),
+       (@v_profile_appbuilder_owner, @v_r_4),
+       (@v_profile_appbuilder_owner, @v_r_5),
+       (@v_profile_appbuilder_owner, @v_r_6),
+       (@v_profile_appbuilder_owner, @v_r_7),
+       (@v_profile_appbuilder_owner, @v_r_8),
+       (@v_profile_appbuilder_owner, @v_r_9),
+       (@v_profile_appbuilder_owner, @v_r_10),
+       (@v_profile_appbuilder_owner, @v_r_11),
+       (@v_profile_appbuilder_owner, @v_r_12),
+       (@v_profile_appbuilder_owner, @v_r_13),
+       (@v_profile_appbuilder_owner, @v_r_14),
+       (@v_profile_appbuilder_owner, @v_r_15),
+       (@v_profile_appbuilder_owner, @v_r_16),
+       (@v_profile_appbuilder_owner, @v_r_17),
+       (@v_profile_appbuilder_owner, @v_r_18),
+       (@v_profile_appbuilder_owner, @v_r_19),
+       (@v_profile_appbuilder_owner, @v_r_20),
+       (@v_profile_appbuilder_owner, @v_r_21),
+       (@v_profile_appbuilder_owner, @v_r_22),
+       (@v_profile_appbuilder_owner, @v_r_23),
+       (@v_profile_appbuilder_owner, @v_r_24),
+       (@v_profile_appbuilder_owner, @v_r_25),
+       (@v_profile_appbuilder_owner, @v_r_26),
+       (@v_profile_appbuilder_owner, @v_r_32),
+       (@v_profile_appbuilder_owner, @v_r_33),
+       (@v_profile_appbuilder_owner, @v_r_34),
+       (@v_profile_appbuilder_owner, @v_r_35),
+       (@v_profile_appbuilder_owner, @v_r_37),
+       (@v_profile_appbuilder_owner, @v_r_38),
+       (@v_profile_appbuilder_owner, @v_r_39),
+       (@v_profile_appbuilder_owner, @v_r_40),
+       (@v_profile_appbuilder_owner, @v_r_43),
+       (@v_profile_appbuilder_owner, @v_r_44),
+       (@v_profile_appbuilder_owner, @v_r_45),
+       (@v_profile_appbuilder_owner, @v_r_46),
+       (@v_profile_appbuilder_owner, @v_r_47),
+       (@v_profile_appbuilder_owner, @v_r_48),
+       (@v_profile_appbuilder_owner, @v_r_49),
+       (@v_profile_appbuilder_owner, @v_r_50),
+       (@v_profile_appbuilder_owner, @v_r_53),
+       (@v_profile_appbuilder_owner, @v_r_54),
+       (@v_profile_appbuilder_owner, @v_r_55),
+       (@v_profile_appbuilder_owner, @v_r_56),
+       (@v_profile_appbuilder_owner, @v_r_57),
+       (@v_profile_appbuilder_owner, @v_r_58),
+       (@v_profile_appbuilder_owner, @v_r_59),
+       (@v_profile_appbuilder_owner, @v_r_60),
+       (@v_profile_appbuilder_owner, @v_r_61),
+       (@v_profile_appbuilder_owner, @v_r_62),
+       (@v_profile_appbuilder_owner, @v_r_63),
+       (@v_profile_appbuilder_owner, @v_r_64),
+       (@v_profile_appbuilder_owner, @v_r_65),
+       (@v_profile_appbuilder_owner, @v_r_66),
+       (@v_profile_appbuilder_owner, @v_r_67),
+       (@v_profile_appbuilder_owner, @v_r_68),
+       (@v_profile_appbuilder_owner, @v_r_69),
+       (@v_profile_appbuilder_owner, @v_r_70),
+       (@v_profile_appbuilder_owner, @v_r_71),
+       (@v_profile_appbuilder_owner, @v_r_72),
+       (@v_profile_appbuilder_owner, @v_r_73),
+       (@v_profile_appbuilder_owner, @v_r_74),
+       (@v_profile_appbuilder_owner, @v_r_75),
+       (@v_profile_appbuilder_owner, @v_r_76),
+       (@v_profile_appbuilder_owner, @v_r_77),
+       (@v_profile_appbuilder_owner, @v_r_78),
+       (@v_profile_appbuilder_owner, @v_r_79),
+       (@v_profile_appbuilder_owner, @v_r_80),
+       (@v_profile_appbuilder_owner, @v_r_81),
+       (@v_profile_appbuilder_owner, @v_r_82),
+       (@v_profile_appbuilder_owner, @v_r_83),
+       (@v_profile_appbuilder_owner, @v_r_84),
+       (@v_profile_appbuilder_owner, @v_r_85),
+       (@v_profile_appbuilder_owner, @v_r_86),
+       (@v_profile_appbuilder_owner, @v_r_87),
+       (@v_profile_appbuilder_owner, @v_r_88),
+       (@v_profile_appbuilder_owner, @v_r_89),
+       (@v_profile_appbuilder_owner, @v_r_90),
+       (@v_profile_appbuilder_owner, @v_r_91),
+       (@v_profile_appbuilder_owner, @v_r_92),
+       (@v_profile_appbuilder_owner, @v_r_93),
+       (@v_profile_appbuilder_owner, @v_r_94),
+       (@v_profile_appbuilder_owner, @v_r_95),
+       (@v_profile_appbuilder_owner, @v_r_96),
+       (@v_profile_appbuilder_owner, @v_r_97),
+       (@v_profile_appbuilder_owner, @v_r_98),
+       (@v_profile_appbuilder_owner, @v_r_99),
+       (@v_profile_appbuilder_owner, @v_r_100),
+       (@v_profile_appbuilder_owner, @v_r_101),
+       (@v_profile_appbuilder_owner, @v_r_102),
+       (@v_profile_appbuilder_owner, @v_r_103),
+       (@v_profile_appbuilder_owner, @v_r_104),
+       (@v_profile_appbuilder_owner, @v_r_105),
+       (@v_profile_appbuilder_owner, @v_r_106),
+       (@v_profile_appbuilder_owner, @v_r_107),
+       (@v_profile_appbuilder_owner, @v_r_108),
+       (@v_profile_appbuilder_owner, @v_r_109),
+       (@v_profile_appbuilder_owner, @v_r_110),
+       (@v_profile_appbuilder_owner, @v_r_111),
+       (@v_profile_appbuilder_owner, @v_r_112),
+       (@v_profile_appbuilder_owner, @v_r_113),
+       (@v_profile_appbuilder_owner, @v_r_114),
+       (@v_profile_appbuilder_owner, @v_r_115),
+       (@v_profile_appbuilder_owner, @v_r_116),
+       (@v_profile_appbuilder_owner, @v_r_117),
+       (@v_profile_appbuilder_owner, @v_r_118),
+       (@v_profile_appbuilder_owner, @v_r_119),
+       (@v_profile_appbuilder_owner, @v_r_120),
+       (@v_profile_appbuilder_owner, @v_r_121),
+       (@v_profile_appbuilder_owner, @v_r_122),
+       (@v_profile_appbuilder_owner, @v_r_123),
+       (@v_profile_appbuilder_owner, @v_r_124),
+       (@v_profile_appbuilder_owner, @v_r_125),
+       (@v_profile_appbuilder_owner, @v_r_126),
+       (@v_profile_appbuilder_owner, @v_r_127),
+       (@v_profile_appbuilder_owner, @v_r_159),
+       (@v_profile_appbuilder_owner, @v_r_160),
+       (@v_profile_appbuilder_owner, @v_r_161),
+       (@v_profile_appbuilder_owner, @v_r_162),
+       (@v_profile_appbuilder_owner, @v_r_163),
+       (@v_profile_appbuilder_owner, @v_r_164);
+
+-- V41__Security OneTimeToken script.sql
+use security;
+
+DROP TABLE IF EXISTS `security_one_time_token`;
+
+CREATE TABLE `security_one_time_token`
+(
+    `ID`         bigint unsigned                                              NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `USER_ID`    bigint unsigned                                              NOT NULL COMMENT 'User id',
+    `TOKEN`      char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci    NOT NULL COMMENT 'One Time Token',
+    `IP_ADDRESS` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'User IP from where he logged in',
+    `CREATED_AT` timestamp                                                    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_ONE_TIME_TOKEN_USER_ID` (`USER_ID`),
+    UNIQUE KEY `FK3_ONE_TIME_TOKEN` (`TOKEN`),
+    CONSTRAINT `FK2_ONE_TIME_TOKEN_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security_user` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+    ENGINE = InnoDB
+    DEFAULT CHARSET = utf8mb4
+    COLLATE = utf8mb4_unicode_ci;
+
+
+-- V42__Security Alter Department Designation Add UniqueKey.sql
+
+USE `security`;
+
+ALTER TABLE `security`.`security_department`
+    ADD CONSTRAINT `UK1_SECURITY_DEPARTMENT_CLIENT_ID_NAME` UNIQUE (`CLIENT_ID`, `NAME`);
+
+ALTER TABLE `security`.`security_designation`
+    ADD CONSTRAINT `UK1_SECURITY_DESIGNATION_CLIENT_ID_NAME` UNIQUE (`CLIENT_ID`, `NAME`);
+
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....

@@ -1,12 +1,11 @@
 package com.fincity.saas.core.controller;
 
+import com.fincity.saas.commons.core.document.EventAction;
+import com.fincity.saas.commons.core.repository.EventActionRepository;
+import com.fincity.saas.commons.core.service.EventActionService;
+import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
-import com.fincity.saas.core.document.EventAction;
-import com.fincity.saas.core.repository.EventActionRepository;
-import com.fincity.saas.core.service.EventActionService;
 
 @RestController
 @RequestMapping("api/core/eventActions")

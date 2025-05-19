@@ -28,7 +28,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
-import com.fincity.security.dao.appregistration.AppRegistrationDAO;
+import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
@@ -82,7 +82,7 @@ public class ClientRegistrationService {
 	private final ClientHierarchyService clientHierarchyService;
 	private final EventCreationService ecService;
 	private final ClientUrlService clientUrlService;
-	private final AppRegistrationDAO appRegistrationDAO;
+	private final AppRegistrationV2DAO appRegistrationDAO;
 	private final IFeignFilesService filesService;
 	private final AppRegistrationIntegrationService appRegistrationIntegrationService;
 	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
@@ -94,7 +94,7 @@ public class ClientRegistrationService {
 	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
 			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
 			ClientHierarchyService clientHierarchyService, EventCreationService ecService,
-			ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO, IFeignFilesService filesService,
+			ClientUrlService clientUrlService, AppRegistrationV2DAO appRegistrationDAO, IFeignFilesService filesService,
 			AppRegistrationIntegrationService appRegistrationIntegrationService,
 			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
 			SecurityMessageResourceService securityMessageResourceService) {
@@ -243,15 +243,17 @@ public class ClientRegistrationService {
 			AbstractPolicy policy) {
 
 		if (registrationRequest.isBusinessClient() && safeIsBlank(registrationRequest.getBusinessType()))
-			registrationRequest.setBusinessType(AppRegistrationService.DEFAULT_BUSINESS_TYPE);
+			registrationRequest.setBusinessType(AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE);
 
 		String password = registrationRequest.getInputPass();
 
 		return FlatMapUtil.flatMapMono(
 
-				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null ?
-						this.clientService.validatePasswordPolicy(policy, null, registrationRequest.getInputPassType(),
-						password) : Mono.just(Boolean.TRUE),
+				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null
+						? this.clientService.validatePasswordPolicy(policy, null,
+								registrationRequest.getInputPassType(),
+								password)
+						: Mono.just(Boolean.TRUE),
 
 				passValid -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
 						: this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
@@ -448,7 +450,7 @@ public class ClientRegistrationService {
 						.create(loggedInFromClientId, createdClient.getId()),
 
 				(isVerified, app, c, createdClient, clientHierarchy) -> this.clientService
-						.addClientPackagesAfterRegistration(app.getId(), app.getClientId(), loggedInFromClientId,
+						.addClientRegistrationObjects(app.getId(), app.getClientId(), loggedInFromClientId,
 								createdClient),
 
 				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
@@ -468,10 +470,9 @@ public class ClientRegistrationService {
 			String otp) {
 
 		if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
-			return Mono.just(Boolean.TRUE);
 
-		if (ca.isAuthenticated())
-			return Mono.just(Boolean.TRUE);
+			if (ca.isAuthenticated())
+				return Mono.just(Boolean.TRUE);
 
 		OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest().setEmailId(emailId)
 				.setPhoneNumber(phoneNumber).setPurpose(OtpPurpose.REGISTRATION).setOtp(otp);
@@ -765,7 +766,7 @@ public class ClientRegistrationService {
 
 				SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.userService.getUserForContext(registrationRequest.getUserId()),
+				ca -> this.userService.getUserForContext(ca.getUrlAppCode(), registrationRequest.getUserId()),
 
 				(ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
 
