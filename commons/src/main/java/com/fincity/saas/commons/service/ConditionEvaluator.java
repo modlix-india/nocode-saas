@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.model.condition;
+package com.fincity.saas.commons.service;
 
 import static com.fincity.saas.commons.model.condition.ComplexConditionOperator.AND;
 
@@ -7,10 +7,14 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.ObjectValueSetterExtractor;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
@@ -24,6 +28,10 @@ public class ConditionEvaluator {
 
     private static final Gson GSON = new Gson();
     private final String prefix;
+
+    private final ConcurrentHashMap<String, ExpressionEvaluator> evaluatorCache = new ConcurrentHashMap<>();
+
+    private final ConcurrentHashMap<JsonObject, ObjectValueSetterExtractor> extractorCache = new ConcurrentHashMap<>();
 
     public ConditionEvaluator(String prefix) {
         this.prefix = prefix;
@@ -46,10 +54,19 @@ public class ConditionEvaluator {
 
         boolean isAnd = cc.getOperator() == AND;
 
-        return Flux.fromIterable(conds)
-                .flatMap(sub -> evaluate(sub, json))
-                .reduce((acc, result) -> isAnd ? (acc && result) : (acc || result))
-                .defaultIfEmpty(isAnd);
+        if (isAnd) {
+            return Flux.fromIterable(conds)
+                    .flatMap(sub -> evaluate(sub, json))
+                    .takeUntil(result -> !result)
+                    .all(result -> result)
+                    .defaultIfEmpty(true);
+        } else {
+            return Flux.fromIterable(conds)
+                    .flatMap(sub -> evaluate(sub, json))
+                    .takeUntil(result -> result)
+                    .any(result -> result)
+                    .defaultIfEmpty(false);
+        }
     }
 
     private Mono<JsonElement> extractFieldValue(JsonObject obj, String field) {
@@ -57,9 +74,10 @@ public class ConditionEvaluator {
 
         if (!field.startsWith(prefix)) return Mono.just(JsonNull.INSTANCE);
 
-        ObjectValueSetterExtractor extractor = new ObjectValueSetterExtractor(obj, prefix);
+        ObjectValueSetterExtractor extractor =
+                extractorCache.computeIfAbsent(obj, k -> new ObjectValueSetterExtractor(obj, prefix));
 
-        ExpressionEvaluator evaluator = new ExpressionEvaluator(field);
+        ExpressionEvaluator evaluator = evaluatorCache.computeIfAbsent(field, k -> new ExpressionEvaluator(field));
 
         return Mono.just(evaluator.evaluate(Map.of(extractor.getPrefix(), extractor)));
     }
