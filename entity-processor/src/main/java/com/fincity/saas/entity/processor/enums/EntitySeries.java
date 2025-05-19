@@ -1,8 +1,9 @@
 package com.fincity.saas.entity.processor.enums;
 
+import java.util.Map;
+
 import org.jooq.EnumType;
 
-import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.ObjectValueSetterExtractor;
 import com.fincity.saas.entity.processor.dto.Entity;
 import com.fincity.saas.entity.processor.dto.Model;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -14,7 +15,6 @@ import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
-import com.google.gson.JsonObject;
 
 import lombok.Getter;
 
@@ -38,6 +38,20 @@ public enum EntitySeries implements EnumType {
     PRODUCT_RULE("PRODUCT_RULE", "Product Rule", 22, "ProductRule."),
     VALUE_TEMPLATE_RULE("VALUE_TEMPLATE_RULE", "Value Template Rule", 23, "ValueTemplateRule.");
 
+    private static final Map<EntitySeries, String> LEADZUMP_TOKEN_PREFIX_MAP = Map.ofEntries(
+            Map.entry(XXX, XXX.getTokenPrefix()),
+            Map.entry(ENTITY, "Deal."),
+            Map.entry(MODEL, "Lead."),
+            Map.entry(PRODUCT, "Project."),
+            Map.entry(VALUE_TEMPLATE, "ValueTemplate."),
+            Map.entry(STAGE, "Stage."),
+            Map.entry(RULE, "Rule."),
+            Map.entry(SIMPLE_RULE, SIMPLE_RULE.getTokenPrefix()),
+            Map.entry(COMPLEX_RULE, COMPLEX_RULE.getTokenPrefix()),
+            Map.entry(SIMPLE_COMPLEX_CONDITION_RELATION, SIMPLE_COMPLEX_CONDITION_RELATION.getTokenPrefix()),
+            Map.entry(ENTITY_RULE, "DealRule."),
+            Map.entry(PRODUCT_RULE, "ProjectRule."),
+            Map.entry(VALUE_TEMPLATE_RULE, "ValueTemplateRule."));
     private final String literal;
     private final String displayName;
     private final int value;
@@ -83,7 +97,9 @@ public enum EntitySeries implements EnumType {
     }
 
     public String getTokenPrefix(String appCode) {
-        if (appCode.equals("leadzump")) return "";
-        return tokenPrefix;
+        if (appCode.equals("leadzump"))
+            return LEADZUMP_TOKEN_PREFIX_MAP.get(this);
+
+        return this.tokenPrefix;
     }
 }
