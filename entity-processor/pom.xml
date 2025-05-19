@@ -36,6 +36,7 @@
         <resources.dir>src/main/resources</resources.dir>
         <saas-commons-core-version>1.0.0</saas-commons-core-version>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
+        <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
         <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
         <saas-commons-version>2.0.0</saas-commons-version>
@@ -81,6 +82,11 @@
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons-jooq</artifactId>
             <version>${saas-commons-jooq-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-mongo</artifactId>
+            <version>${saas-commons-mongo-version}</version>
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
@@ -141,6 +147,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

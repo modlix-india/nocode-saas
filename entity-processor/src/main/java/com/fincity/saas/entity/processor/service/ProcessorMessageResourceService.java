@@ -5,9 +5,11 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+@Primary
 @Service
 public class ProcessorMessageResourceService extends AbstractMessageService {
 

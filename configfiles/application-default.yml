@@ -58,6 +58,8 @@ core:
       url: jdbc:mysql://localhost:3306/core
 
 entity-processor:
+  mongo:
+    uri: mongodb://root:Kiran%40123@localhost:27017/entity-processor?authSource=admin
   db:
     url: r2dbc:mysql://localhost:3306/entity_processor?serverTimezone=UTC
     username: root

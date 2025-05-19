@@ -82,8 +82,7 @@ public class FunctionController
                             ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
                                     ? new ReactiveHybridRepository<>(
                                             new KIRunReactiveFunctionRepository(), this.coreFunRepo, appFunctionRepo)
-                                    : new ReactiveHybridRepository<>(
-                                            this.coreFunRepo, appFunctionRepo));
+                                    : new ReactiveHybridRepository<>(this.coreFunRepo, appFunctionRepo));
 
                             return fRepo.find(namespace, name)
                                     .map(e -> e instanceof DefinitionFunction definitionFunction
@@ -113,8 +112,7 @@ public class FunctionController
                                                 new KIRunReactiveFunctionRepository(),
                                                 this.coreFunRepo,
                                                 appFunctionRepo)
-                                        : new ReactiveHybridRepository<>(
-                                                this.coreFunRepo, appFunctionRepo)),
+                                        : new ReactiveHybridRepository<>(this.coreFunRepo, appFunctionRepo)),
                         (ca, appFunctionRepo, fRepo) -> fRepo.filter(filter).collectList())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
                 .map(ResponseEntity::ok);
