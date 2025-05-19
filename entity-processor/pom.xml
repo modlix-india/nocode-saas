@@ -34,6 +34,7 @@
         <nocode-kirun-version>3.7.1</nocode-kirun-version>
         <palantir-java.format.version>2.61.0</palantir-java.format.version>
         <resources.dir>src/main/resources</resources.dir>
+        <saas-commons-core-version>1.0.0</saas-commons-core-version>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
         <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
@@ -70,6 +71,11 @@
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons</artifactId>
             <version>${saas-commons-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-core</artifactId>
+            <version>${saas-commons-core-version}</version>
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
